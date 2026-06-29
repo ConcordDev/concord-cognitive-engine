@@ -48,6 +48,12 @@ interface MacroDoneEvent {
   ok?: boolean;
   ms?: number;
 }
+interface MacroStageEvent {
+  runId?: string;
+  /** A real sub-step the backend macro reported reaching (e.g. "judging"). */
+  stage?: string;
+  detail?: string;
+}
 
 interface ConkayHudState {
   /** Count of ConKay macro runs the backend currently reports in flight. */
@@ -62,12 +68,17 @@ interface ConkayHudState {
   telemetry: ConkayTelemetry[];
   /** perf.now() of the most recent start — lets the scene ramp ring spin-up honestly. */
   startedAt: number | null;
+  /** The most recent real `macro:stage` sub-step name while a run is in flight,
+   *  or null. Cleared on start + completion — never lingers as fake progress. */
+  stage: string | null;
   /** Internal: the set of run ids currently in flight (dedupes repeat events). */
   _runIds: Set<string>;
 
   // ── single-writer adapter actions (CALL ONLY FROM the macro:* socket adapter) ──
   /** A real `macro:started` arrived for one of ConKay's runs. */
   macroStarted: (d: MacroStartEvent) => void;
+  /** A real `macro:stage` arrived — a genuine sub-step the macro reached. */
+  macroStage: (d: MacroStageEvent) => void;
   /** A real `macro:completed` arrived for one of ConKay's runs. */
   macroCompleted: (d: MacroDoneEvent) => void;
   /** Clear all HUD state (call when ConKay closes so rings don't persist). */
@@ -86,6 +97,7 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
   last: null,
   telemetry: [],
   startedAt: null,
+  stage: null,
   _runIds: new Set<string>(),
 
   macroStarted: (d) =>
@@ -102,7 +114,19 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
         inFlight: next.size,
         activeLabel: labelOf(d),
         startedAt: typeof performance !== 'undefined' ? performance.now() : Date.now(),
+        stage: null, // a fresh run starts with no sub-step reported yet
       };
+    }),
+
+  macroStage: (d) =>
+    set((s) => {
+      // Honest: only reflect a stage for a run the backend currently reports in
+      // flight (or an anonymous one). A stage with no live run is ignored — we
+      // never show a sub-step for work that isn't actually running.
+      const id = d.runId ?? '';
+      const live = s.inFlight > 0 && (!d.runId || s._runIds.has(id));
+      if (!live || !d.stage) return s;
+      return { ...s, stage: String(d.stage) };
     }),
 
   macroCompleted: (d) =>
@@ -121,6 +145,9 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
         _runIds: next,
         inFlight: next.size,
         last: fact,
+        // A completed run has no live sub-step — clear it so the HUD never shows
+        // a stage for finished work.
+        stage: next.size > 0 ? s.stage : null,
         // Newest first, capped — the panels render the real return facts only.
         telemetry: [fact, ...s.telemetry].slice(0, TELEMETRY_CAP),
       };
@@ -133,6 +160,7 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
       last: null,
       telemetry: [],
       startedAt: null,
+      stage: null,
       _runIds: new Set<string>(),
     })),
 }));

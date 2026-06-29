@@ -23,6 +23,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "forge.createProject",
+      "name": "createProject"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.diff",
+      "name": "diff"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.files",
+      "name": "files"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.fromImage",
+      "name": "fromImage"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "forge.fromSource",
       "name": "fromSource"
     },
@@ -88,8 +140,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "forge.listProjects",
+      "name": "listProjects"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "forge.manual",
       "name": "manual"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.openShare",
+      "name": "openShare"
     },
     {
       "_derived": true,
@@ -114,6 +192,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "forge.refine",
+      "name": "refine"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.regenerateSection",
+      "name": "regenerateSection"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.restoreVersion",
+      "name": "restoreVersion"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.sandbox",
+      "name": "sandbox"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "forge.sections",
       "name": "sections"
     },
@@ -127,11 +257,50 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "forge.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.thread",
+      "name": "thread"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "forge.validate",
       "name": "validate"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.versions",
+      "name": "versions"
     }
   ],
   "domain": "forge",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 10
+  "macroCount": 23
 }

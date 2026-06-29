@@ -10,6 +10,692 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "pharmacy.adherence-calendar",
+      "name": "adherence-calendar"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.adherence-report",
+      "name": "adherence-report"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.adherence-streak",
+      "name": "adherence-streak"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.adverse-events",
+      "name": "adverse-events"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.autoreorder-list",
+      "name": "autoreorder-list"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.autoreorder-remove",
+      "name": "autoreorder-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.autoreorder-run",
+      "name": "autoreorder-run"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.autoreorder-set",
+      "name": "autoreorder-set"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.caregiver-add",
+      "name": "caregiver-add"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.caregiver-alerts",
+      "name": "caregiver-alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.caregiver-list",
+      "name": "caregiver-list"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.caregiver-remove",
+      "name": "caregiver-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.checkInteractions",
+      "name": "checkInteractions"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.coupon-list",
+      "name": "coupon-list"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.coupon-save",
+      "name": "coupon-save"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": false,
+      "domain": "pharmacy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "dosePerKg": 10,
+                "frequencyPerDay": 3,
+                "maxDailyDose": 4000,
+                "weightKg": 70
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "frequencyPerDay": 2,
+                "weightKg": 70
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "dosePerKg": "Infinity",
+                "frequencyPerDay": "x",
+                "maxDailyDose": null,
+                "weightKg": "abc"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "dosePerKg": {
+          "max": 10000,
+          "min": 0,
+          "type": "number"
+        },
+        "frequencyPerDay": {
+          "max": 96,
+          "min": 1,
+          "type": "number"
+        },
+        "maxDailyDose": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "weightKg": {
+          "max": 1000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.singleDose === undefined || !/Infinity|NaN/.test(String(output.result.singleDose))",
+        "output.ok === false || output.result.dailyDose === undefined || !/Infinity|NaN/.test(String(output.result.dailyDose))",
+        "output.ok === false || output.result.singleDose === undefined || typeof output.result.capped === 'boolean'",
+        "output.ok === false || output.result.weightKg === undefined || Number.isFinite(output.result.weightKg)"
+      ],
+      "macro_id": "pharmacy.dosageCalculator",
+      "name": "dosageCalculator"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.dose-history",
+      "name": "dose-history"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.dose-log",
+      "name": "dose-log"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.drug-label",
+      "name": "drug-label"
+    },
+    {
+      "_derived": false,
+      "domain": "pharmacy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "medications": [
+                  "warfarin"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "medications": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "medications": [
+                  "",
+                  "  "
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "medications": {
+          "maxLength": 50,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.medicationsChecked) && output.result.medicationsChecked >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.interactionsFound) && output.result.interactionsFound >= 0)",
+        "output.ok === false || (Array.isArray(output.result.interactions) && Array.isArray(output.result.coMentions))"
+      ],
+      "macro_id": "pharmacy.drugInteractionCheck",
+      "name": "drugInteractionCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": false,
+      "domain": "pharmacy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "formulary": [
+                  {
+                    "brandName": "Lipitor",
+                    "covered": true,
+                    "genericName": "atorvastatin",
+                    "tier": 1
+                  }
+                ],
+                "query": "atorva"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "formulary": [
+                  {
+                    "genericName": "x",
+                    "tier": 1
+                  }
+                ],
+                "query": ""
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "formulary": []
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "drugName": {
+          "type": "string"
+        },
+        "formulary": {
+          "maxLength": 50000,
+          "type": "array"
+        },
+        "query": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.matches === undefined || Array.isArray(output.result.matches)",
+        "output.ok === false || output.result.found === undefined || (Number.isFinite(output.result.found) && output.result.found >= 0)",
+        "output.ok === false || output.result.formularySize === undefined || (Number.isFinite(output.result.formularySize) && output.result.formularySize >= 0)"
+      ],
+      "macro_id": "pharmacy.formularySearch",
+      "name": "formularySearch"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.interaction-grade",
+      "name": "interaction-grade"
+    },
+    {
+      "_derived": false,
+      "domain": "pharmacy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "inventory": [
+                  {
+                    "name": "Aspirin",
+                    "quantity": 2,
+                    "reorderPoint": 10
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "inventory": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "inventory": [
+                  {
+                    "expiryDate": "not-a-date",
+                    "name": "junk",
+                    "quantity": "NaN",
+                    "reorderPoint": "x"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "inventory": {
+          "maxLength": 5000,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.lowStock === undefined || (Number.isFinite(output.result.lowStock) && output.result.lowStock >= 0)",
+        "output.ok === false || output.result.expired === undefined || (Number.isFinite(output.result.expired) && output.result.expired >= 0)",
+        "output.ok === false || output.result.nearExpiry === undefined || (Number.isFinite(output.result.nearExpiry) && output.result.nearExpiry >= 0)",
+        "output.ok === false || output.result.alerts === undefined || Array.isArray(output.result.alerts)",
+        "output.ok === false || output.result.allClear === undefined || typeof output.result.allClear === 'boolean'"
+      ],
+      "macro_id": "pharmacy.inventoryAlert",
+      "name": "inventoryAlert"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.journal-add",
+      "name": "journal-add"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.journal-list",
+      "name": "journal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "pharmacy.list_mine",
       "name": "list_mine"
     },
@@ -62,11 +748,532 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "pharmacy.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.measurement-history",
+      "name": "measurement-history"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.measurement-log",
+      "name": "measurement-log"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.med-add",
+      "name": "med-add"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.med-archive",
+      "name": "med-archive"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.med-detail",
+      "name": "med-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.med-list",
+      "name": "med-list"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.med-update",
+      "name": "med-update"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.pharmacy-add",
+      "name": "pharmacy-add"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.pharmacy-dashboard",
+      "name": "pharmacy-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.pharmacy-list",
+      "name": "pharmacy-list"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.pill-identify",
+      "name": "pill-identify"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.price-compare",
+      "name": "price-compare"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.price-list",
+      "name": "price-list"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.price-lookup",
+      "name": "price-lookup"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.price-record",
+      "name": "price-record"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "pharmacy.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.refill-list",
+      "name": "refill-list"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.refill-request",
+      "name": "refill-request"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.refill-update",
+      "name": "refill-update"
+    },
+    {
+      "_derived": false,
+      "domain": "pharmacy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Array.isArray(output.result.due)",
+        "output.ok === false || (Number.isFinite(output.result.count) && output.result.count >= 0)",
+        "output.ok === false || output.result.due.every(d => Number.isFinite(d.daysOfSupply) && d.daysOfSupply >= 0)",
+        "output.ok === false || output.result.due.every(d => d.urgency === 'critical' || d.urgency === 'soon')"
+      ],
+      "macro_id": "pharmacy.refills-due",
+      "name": "refills-due"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.reminder-delete",
+      "name": "reminder-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.reminder-due",
+      "name": "reminder-due"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.reminder-list",
+      "name": "reminder-list"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.reminder-set",
+      "name": "reminder-set"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.reminder-toggle",
+      "name": "reminder-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.schedule-set",
+      "name": "schedule-set"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.today-doses",
+      "name": "today-doses"
+    },
+    {
+      "_derived": true,
+      "domain": "pharmacy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "pharmacy.vote",
+      "name": "vote"
     }
   ],
   "domain": "pharmacy",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 77
 }

@@ -1,6 +1,651 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "household",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dollarsPerPoint": 0.1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dollarsPerPoint": "NaN"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dollarsPerPoint": "1e999"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dollarsPerPoint": 999
+          }
+        }
+      ],
+      "inputs": {
+        "dollarsPerPoint": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.dollarsPerPoint)",
+        "output.ok === false || (output.result.dollarsPerPoint >= 0 && output.result.dollarsPerPoint <= 10)",
+        "output.ok === false || Number.isFinite(output.result.totalPoints)",
+        "output.ok === false || Number.isFinite(output.result.totalAllowance)",
+        "output.ok === false || Array.isArray(output.result.members)",
+        "output.ok === false || output.result.members.every(function(m){ return Number.isFinite(m.points) && Number.isFinite(m.allowance); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "household.allowance-summary",
+      "name": "allowance-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.assignee-leaderboard",
+      "name": "assignee-leaderboard"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.calendar-event-create",
+      "name": "calendar-event-create"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.calendar-event-delete",
+      "name": "calendar-event-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.calendar-event-list",
+      "name": "calendar-event-list"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.calendar-event-update",
+      "name": "calendar-event-update"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.calendar-upcoming-reminders",
+      "name": "calendar-upcoming-reminders"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.chore-board",
+      "name": "chore-board"
+    },
+    {
+      "_derived": false,
+      "domain": "household",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "chores": [
+              {
+                "currentAssignee": "Alex",
+                "name": "Dishes"
+              }
+            ],
+            "members": [
+              "Alex",
+              "Sam",
+              "Jordan"
+            ],
+            "strategy": "round-robin"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "chores": [
+              {
+                "name": "Dishes"
+              },
+              {
+                "name": "Trash"
+              }
+            ],
+            "members": [
+              "Alex",
+              "Sam"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "chores": [
+              {
+                "name": "X"
+              }
+            ],
+            "members": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "chores": [],
+            "members": [
+              "A"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "chores": {
+          "required": false,
+          "type": "array"
+        },
+        "members": {
+          "required": false,
+          "type": "array"
+        },
+        "strategy": {
+          "maxLength": 32,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.error !== undefined || Array.isArray(output.result.assignments)",
+        "output.ok === false || output.result.error !== undefined || Number.isFinite(output.result.totalChores)",
+        "output.ok === false || output.result.error !== undefined || Number.isFinite(output.result.members)",
+        "output.ok === false || output.result.error !== undefined || output.result.assignments.every(function(a){ return typeof a.chore === 'string' && typeof a.assignee === 'string'; })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "household.choreRotation",
+      "name": "choreRotation"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "household",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "amount": 30,
+            "description": "Dinner",
+            "paidBy": "Alex",
+            "splitAmong": [
+              "Alex",
+              "Sam",
+              "Jordan"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": 0,
+            "description": "X",
+            "paidBy": "A",
+            "splitAmong": [
+              "A"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": 5,
+            "description": "X",
+            "paidBy": "A",
+            "splitAmong": []
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": "1e999",
+            "description": "X",
+            "paidBy": "A",
+            "splitAmong": [
+              "A"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": "Infinity",
+            "description": "X",
+            "paidBy": "A",
+            "splitAmong": [
+              "A"
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "amount": {
+          "required": true,
+          "type": "number"
+        },
+        "category": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        },
+        "date": {
+          "maxLength": 10,
+          "required": false,
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "paidBy": {
+          "maxLength": 60,
+          "required": true,
+          "type": "string"
+        },
+        "splitAmong": {
+          "required": true,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Number.isFinite(output.result.expense.amount) && output.result.expense.amount > 0)",
+        "output.ok === false || (Number.isFinite(output.result.expense.sharePerPerson) && output.result.expense.sharePerPerson >= 0)",
+        "output.ok === false || Array.isArray(output.result.expense.splitAmong)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "household.expense-add",
+      "name": "expense-add"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.expense-balances",
+      "name": "expense-balances"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.expense-delete",
+      "name": "expense-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.expense-list",
+      "name": "expense-list"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.expense-settle",
+      "name": "expense-settle"
+    },
+    {
+      "_derived": false,
+      "domain": "household",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "mealPlan": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "mealPlan": [
+              {
+                "day": "Mon",
+                "ingredients": [
+                  {
+                    "name": "Tomato",
+                    "quantity": 3,
+                    "unit": "ea"
+                  },
+                  {
+                    "name": "Tomato",
+                    "quantity": 2,
+                    "unit": "ea"
+                  }
+                ],
+                "meal": "dinner"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "mealPlan": [
+              {
+                "ingredients": [
+                  {
+                    "name": "A",
+                    "quantity": "1e999"
+                  },
+                  {
+                    "name": "B",
+                    "quantity": "Infinity"
+                  },
+                  {
+                    "name": "C",
+                    "quantity": "NaN"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "meals": [
+              "Tacos",
+              "Salad"
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "categorize": {
+          "required": false,
+          "type": "boolean"
+        },
+        "mealPlan": {
+          "required": false,
+          "type": "array"
+        },
+        "meals": {
+          "required": false,
+          "type": "array"
+        },
+        "pantry": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Number.isFinite(output.result.uniqueItems)",
+        "output.ok === false || Number.isFinite(output.result.mealsPlanned)",
+        "output.ok === false || Array.isArray(output.result.list)",
+        "output.ok === false || output.result.list.every(function(i){ return Number.isFinite(i.quantity) && i.quantity > 0; })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "household.generateGroceryList",
+      "name": "generateGroceryList"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.household-dashboard",
+      "name": "household-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.like",
+      "name": "like"
+    },
+    {
       "_derived": true,
       "domain": "household",
       "fuzz_cases": [],
@@ -23,11 +668,748 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "household.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.maintenanceCheck",
+      "name": "maintenanceCheck"
+    },
+    {
+      "_derived": false,
+      "domain": "household",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "maintenanceItems": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lookaheadDays": 30,
+            "maintenanceItems": [
+              {
+                "intervalDays": 365,
+                "lastServiceDate": "2025-01-01",
+                "name": "Smoke detector"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "maintenanceItems": [
+              {
+                "name": "Gutters"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lookaheadDays": "NaN",
+            "maintenanceItems": [
+              {
+                "intervalDays": "Infinity",
+                "lastServiceDate": "garbage",
+                "name": "X"
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "lookaheadDays": {
+          "required": false,
+          "type": "number"
+        },
+        "maintenanceItems": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Number.isFinite(output.result.totalItems)",
+        "output.ok === false || Number.isFinite(output.result.overdueCount)",
+        "output.ok === false || Number.isFinite(output.result.upcomingCount)",
+        "output.ok === false || Number.isFinite(output.result.currentCount)",
+        "output.ok === false || Array.isArray(output.result.overdue)",
+        "output.ok === false || output.result.overdue.every(function(o){ return o.daysOverdue === null || Number.isFinite(o.daysOverdue); })",
+        "output.ok === false || output.result.upcoming.every(function(u){ return Number.isFinite(u.daysUntilDue); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "household.maintenanceDue",
+      "name": "maintenanceDue"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.meal-grocery-list",
+      "name": "meal-grocery-list"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.meal-plan-delete",
+      "name": "meal-plan-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.meal-plan-list",
+      "name": "meal-plan-list"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.meal-plan-set",
+      "name": "meal-plan-set"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.notification-create",
+      "name": "notification-create"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.notification-list",
+      "name": "notification-list"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.notification-mark-read",
+      "name": "notification-mark-read"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.off-product-lookup",
+      "name": "off-product-lookup"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.off-product-search",
+      "name": "off-product-search"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "household.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.room-create",
+      "name": "room-create"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.room-delete",
+      "name": "room-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.room-list",
+      "name": "room-list"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.rotateChores",
+      "name": "rotateChores"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.shopping-item-add",
+      "name": "shopping-item-add"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.shopping-item-remove",
+      "name": "shopping-item-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.shopping-item-toggle",
+      "name": "shopping-item-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.shopping-list-create",
+      "name": "shopping-list-create"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.shopping-list-delete",
+      "name": "shopping-list-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.shopping-list-list",
+      "name": "shopping-list-list"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.task-create",
+      "name": "task-create"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.task-delete",
+      "name": "task-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.task-done",
+      "name": "task-done"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.task-list",
+      "name": "task-list"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.task-template-create",
+      "name": "task-template-create"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.task-template-delete",
+      "name": "task-template-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.task-template-list",
+      "name": "task-template-list"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.task-template-spawn",
+      "name": "task-template-spawn"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.task-update",
+      "name": "task-update"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.vacation-toggle",
+      "name": "vacation-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "household",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "household.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": false,
+      "domain": "household",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "chores": [
+              {
+                "completedDate": "2026-06-28",
+                "name": "A"
+              },
+              {
+                "name": "B"
+              }
+            ],
+            "mealPlan": [
+              {
+                "recipe": "X"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "chores": [
+              {
+                "completedDate": "garbage",
+                "name": "A"
+              }
+            ],
+            "maintenanceItems": [
+              {
+                "intervalDays": "NaN",
+                "lastCompleted": "bad",
+                "name": "M"
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "chores": {
+          "required": false,
+          "type": "array"
+        },
+        "maintenanceItems": {
+          "required": false,
+          "type": "array"
+        },
+        "mealPlan": {
+          "required": false,
+          "type": "array"
+        },
+        "shoppingList": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Number.isFinite(output.result.choresCompleted)",
+        "output.ok === false || Number.isFinite(output.result.totalChores)",
+        "output.ok === false || Number.isFinite(output.result.choreCompletionRate)",
+        "output.ok === false || (output.result.choreCompletionRate >= 0 && output.result.choreCompletionRate <= 100)",
+        "output.ok === false || Number.isFinite(output.result.mealsPlanned)",
+        "output.ok === false || Number.isFinite(output.result.shoppingProgress.remaining)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "household.weeklySummary",
+      "name": "weeklySummary"
     }
   ],
   "domain": "household",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 70
 }

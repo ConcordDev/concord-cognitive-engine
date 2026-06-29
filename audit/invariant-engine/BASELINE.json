@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-06-26T21:28:35.257Z",
+  "generatedAt": "2026-06-29T03:26:48.524Z",
   "totals": {
-    "macrosEnumerated": 2599,
-    "headlessSafeDriven": 2574,
-    "headlessUnsafeSkipped": 25,
-    "violations": 11,
+    "macrosEnumerated": 14514,
+    "headlessSafeDriven": 13422,
+    "headlessUnsafeSkipped": 1092,
+    "violations": 12,
     "hardCrashes": 0
   },
   "byVector": {
     "V1": 0,
-    "V2": 5,
+    "V2": 6,
     "V3": 6,
     "META": 0,
     "HARD": 0
@@ -65,10 +65,15 @@
       "vector": "V3",
       "reason": "invariant_input_timeout"
     },
-    "e3f10e5312e35957": {
-      "macro_id": "ocean.live_tides",
+    "b543bf6827d3f6c2": {
+      "macro_id": "government.budget-breakdown",
       "vector": "V3",
       "reason": "invariant_input_timeout"
+    },
+    "d9ef3f3d839c7749": {
+      "macro_id": "travel.feed",
+      "vector": "V2",
+      "reason": "fuzz_timeout"
     }
   }
 }

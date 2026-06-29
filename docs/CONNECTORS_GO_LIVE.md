@@ -36,9 +36,35 @@ a redirect-URI registration, and (for a public launch) Google verification.
    - `CONNECTOR_OAUTH_REDIRECT_BASE` (when behind a proxy; else derived from the
      request host) and `FRONTEND_URL`
    - `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` (for Slack)
+   - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` (for GitHub)
+   - `NOTION_CLIENT_ID` / `NOTION_CLIENT_SECRET` (for Notion)
 4. **Scopes** (least-privilege, already wired): Calendar →
-   `calendar.events`; Gmail → `gmail.send`; Sheets → `spreadsheets.readonly`;
-   Slack → `chat:write,channels:read`.
+   `calendar.events`; Gmail → `gmail.send`; Sheets → `spreadsheets`;
+   Slack → `channels:read,channels:history,chat:write`; GitHub → `repo`;
+   Notion → capabilities (read/update/insert content) are configured **on the
+   integration** in Notion's console, not requested per-call.
+
+### The four marquee connectors (Slack / Sheets / GitHub / Notion)
+
+All four are built on the same `connectorFetch` chokepoint and unit-tested with
+an injected fetch (`server/tests/connector-extra-paths.test.js`). Each exposes
+`<domain>.connect` returning the real authorize URL; macros fail honestly with
+`no_token` until an operator completes the steps below. Domains/macros:
+
+- **Slack** (`domains/slack.js`): `channels` / `history` / `post` / `connect`.
+  OAuth app at <https://api.slack.com/apps>; redirect
+  `.../api/oauth/slack/authorize/callback`. User-token scopes above.
+- **Sheets** (`domains/sheets.js`): `read` / `append` / `connect`. Reuses the
+  Google client; enable the **Google Sheets API**. `spreadsheets` scope is
+  needed for the two-way `append`.
+- **GitHub** (`domains/github.js`): `repos` / `issues` / `issue-create` /
+  `connect`. OAuth app at <https://github.com/settings/developers>; redirect
+  `.../api/oauth/github/authorize/callback`. Tokens don't expire (no refresh).
+- **Notion** (`domains/notion.js`): `search` / `get` / `append` / `connect`.
+  Public integration at <https://www.notion.so/my-integrations>; redirect
+  `.../api/oauth/notion/authorize/callback`. Notion's token exchange is
+  non-standard (HTTP Basic auth + JSON body) — handled by the provider's
+  `buildTokenRequest` in `routes/connector-oauth.js`.
 5. **Test it** — sign in as a real user, run `calendar.accounts-connect-google`
    (or click connect in the ingest lens), complete consent, then run
    `calendar.accounts-push-event` and confirm an event lands on the test

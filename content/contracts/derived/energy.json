@@ -1,0 +1,1070 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.bill-estimate",
+      "name": "bill-estimate"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": false,
+      "domain": "energy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "electricityKWh": 1000,
+                "flightMiles": 2000,
+                "gasolineGallons": 40,
+                "naturalGasTherms": 50
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "electricityKWh": "1e999",
+                "flightMiles": "not-a-number",
+                "gasolineGallons": "NaN",
+                "naturalGasTherms": "Infinity"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "electricityKWh": -1000
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "electricityKWh": {
+          "required": false,
+          "type": "number"
+        },
+        "flightMiles": {
+          "required": false,
+          "type": "number"
+        },
+        "gasolineGallons": {
+          "required": false,
+          "type": "number"
+        },
+        "naturalGasTherms": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.totalMetricTons) && Number.isFinite(output.result.annualEstimate))",
+        "output.ok === false || (typeof output.result.breakdown === 'object' && Number.isFinite(output.result.breakdown.electricity) && Number.isFinite(output.result.breakdown.naturalGas) && Number.isFinite(output.result.breakdown.transportation) && Number.isFinite(output.result.breakdown.flights))",
+        "output.ok === false || typeof output.result.topSource === 'string'",
+        "output.ok === false || Array.isArray(output.result.reductionTips)"
+      ],
+      "macro_id": "energy.carbonFootprint",
+      "name": "carbonFootprint"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "energy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "costPerKWh": 0.2,
+            "readings": [
+              {
+                "kWh": 10
+              },
+              {
+                "kWh": 20
+              },
+              {
+                "kWh": 30
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "costPerKWh": "1e999",
+            "readings": [
+              {
+                "kWh": "1e999"
+              },
+              {
+                "kWh": "Infinity"
+              },
+              {
+                "kWh": "NaN"
+              },
+              {
+                "kWh": 5
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "readings": [
+              {
+                "kWh": -5
+              },
+              {
+                "value": -10
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "readings": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "costPerKWh": {
+          "required": false,
+          "type": "number"
+        },
+        "readings": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || typeof output.result.message === 'string' || (Number.isFinite(output.result.totalKWh) && Number.isFinite(output.result.avgKWh) && Number.isFinite(output.result.peakKWh) && Number.isFinite(output.result.estimatedCost) && Number.isFinite(output.result.costPerKWh) && Number.isFinite(output.result.peakToAvgRatio))",
+        "output.ok === false || typeof output.result.message === 'string' || Number.isInteger(output.result.readingCount)",
+        "output.ok === false || typeof output.result.message === 'string' || output.result.costPerKWh > 0"
+      ],
+      "macro_id": "energy.consumptionAnalysis",
+      "name": "consumptionAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.cost-projection",
+      "name": "cost-projection"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.device-add",
+      "name": "device-add"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.device-delete",
+      "name": "device-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.device-list",
+      "name": "device-list"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.device-update",
+      "name": "device-update"
+    },
+    {
+      "_derived": false,
+      "domain": "energy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "days": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "days": "1e999"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "days": "NaN"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "days": -5
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "days": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Array.isArray(output.result.devices)",
+        "output.ok === false || (Number.isFinite(output.result.totalKwh) && Number.isFinite(output.result.attributedKwh) && Number.isFinite(output.result.unattributedKwh) && Number.isFinite(output.result.wholeHomeKwh))",
+        "output.ok === false || Number.isInteger(output.result.days)",
+        "output.ok === false || output.result.devices.every(function(d){ return Number.isFinite(d.directKwh) && Number.isFinite(d.estimatedKwh) && Number.isFinite(d.attributedKwh) && Number.isFinite(d.pct); })"
+      ],
+      "macro_id": "energy.disaggregate",
+      "name": "disaggregate"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.eia-electricity-rates",
+      "name": "eia-electricity-rates"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.eia-generation-mix",
+      "name": "eia-generation-mix"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.energy-dashboard",
+      "name": "energy-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.goal-delete",
+      "name": "goal-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.goal-list",
+      "name": "goal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.goal-set",
+      "name": "goal-set"
+    },
+    {
+      "_derived": false,
+      "domain": "energy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "currentDemandMW": 800,
+            "gridFrequencyHz": 60.01,
+            "renewablePercent": 35,
+            "totalCapacityMW": 1000
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "currentDemandMW": "1e999",
+            "gridFrequencyHz": "not-a-number",
+            "renewablePercent": "NaN",
+            "totalCapacityMW": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "currentDemandMW": -100,
+            "totalCapacityMW": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "currentDemandMW": {
+          "required": false,
+          "type": "number"
+        },
+        "gridFrequencyHz": {
+          "required": false,
+          "type": "number"
+        },
+        "renewablePercent": {
+          "required": false,
+          "type": "number"
+        },
+        "totalCapacityMW": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Number.isFinite(output.result.utilization)",
+        "output.ok === false || ['critical-load','high-load','normal','low-load'].indexOf(output.result.status) !== -1",
+        "output.ok === false || (typeof output.result.currentDemand === 'string' && output.result.currentDemand.indexOf('Infinity') === -1 && output.result.currentDemand.indexOf('NaN') === -1)",
+        "output.ok === false || (typeof output.result.reserves === 'string' && output.result.reserves.indexOf('Infinity') === -1 && output.result.reserves.indexOf('NaN') === -1)",
+        "output.ok === false || typeof output.result.frequencyStable === 'boolean'"
+      ],
+      "macro_id": "energy.gridStatus",
+      "name": "gridStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.live-sample",
+      "name": "live-sample"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.live-stream",
+      "name": "live-stream"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.month-comparison",
+      "name": "month-comparison"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.rate-get",
+      "name": "rate-get"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.rate-set",
+      "name": "rate-set"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.reading-history",
+      "name": "reading-history"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.reading-log",
+      "name": "reading-log"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.solar-log",
+      "name": "solar-log"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.solar-self-consumption",
+      "name": "solar-self-consumption"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.solar-summary",
+      "name": "solar-summary"
+    },
+    {
+      "_derived": false,
+      "domain": "energy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "monthlyUsageKWh": 900,
+                "peakSunHours": 5,
+                "roofAreaSqFt": 1000
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "monthlyUsageKWh": "NaN",
+                "peakSunHours": "Infinity",
+                "roofAreaSqFt": "1e999"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "monthlyUsageKWh": -900,
+                "peakSunHours": -5,
+                "roofAreaSqFt": -100
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "monthlyUsageKWh": {
+          "required": false,
+          "type": "number"
+        },
+        "peakSunHours": {
+          "required": false,
+          "type": "number"
+        },
+        "roofAreaSqFt": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.roofArea) && Number.isFinite(output.result.systemSizeKW) && Number.isFinite(output.result.monthlyProductionKWh) && Number.isFinite(output.result.coveragePercent) && Number.isFinite(output.result.estimatedCost) && Number.isFinite(output.result.afterTaxCredit) && Number.isFinite(output.result.annualSavings) && Number.isFinite(output.result.paybackYears))",
+        "output.ok === false || Number.isInteger(output.result.maxPanels)",
+        "output.ok === false || typeof output.result.recommendation === 'string'"
+      ],
+      "macro_id": "energy.solarEstimate",
+      "name": "solarEstimate"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.top-consumers",
+      "name": "top-consumers"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.tou-breakdown",
+      "name": "tou-breakdown"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.tou-get",
+      "name": "tou-get"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.tou-set",
+      "name": "tou-set"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.usage-alerts",
+      "name": "usage-alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.usage-breakdown",
+      "name": "usage-breakdown"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "energy.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "energy",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 54
+}

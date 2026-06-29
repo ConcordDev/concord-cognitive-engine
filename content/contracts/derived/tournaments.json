@@ -1,6 +1,271 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "tournaments",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "tournament_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "tournament_not_found",
+            "ok": false
+          },
+          "input": {
+            "id": "__nope__",
+            "name": "Mallory"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "rating": {
+          "max": 5000,
+          "min": 0,
+          "type": "number"
+        },
+        "roster": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'",
+        "output.ok === false || (output.result && output.result.entrant && typeof output.result.entrant.id === 'string')",
+        "output.ok === false || (typeof output.result.entrant.seed === 'number' && output.result.entrant.seed >= 1)"
+      ],
+      "macro_id": "tournaments.addEntrant",
+      "name": "addEntrant"
+    },
+    {
+      "_derived": true,
+      "domain": "tournaments",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tournaments.cancel",
+      "name": "cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "tournaments",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tournaments.checkIn",
+      "name": "checkIn"
+    },
+    {
+      "_derived": false,
+      "domain": "tournaments",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "format": "round_robin",
+            "maxEntrants": 4,
+            "prizePoolCc": 1000,
+            "title": "Spring Cup"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "format": "single_elimination",
+            "title": "Free entry"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_prize_pool",
+            "ok": false
+          },
+          "input": {
+            "prizePoolCc": 1e+308,
+            "title": "Poisoned pool"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_payout_split",
+            "ok": false
+          },
+          "input": {
+            "payoutSplit": [
+              60,
+              1e+308,
+              15
+            ],
+            "title": "Poisoned split"
+          }
+        }
+      ],
+      "inputs": {
+        "format": {
+          "enum": [
+            "single_elimination",
+            "double_elimination",
+            "round_robin",
+            "swiss"
+          ],
+          "type": "string"
+        },
+        "game": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "maxEntrants": {
+          "max": 128,
+          "min": 2,
+          "type": "number"
+        },
+        "prizePoolCc": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "swissRounds": {
+          "max": 12,
+          "min": 1,
+          "type": "number"
+        },
+        "teamSize": {
+          "max": 10,
+          "min": 1,
+          "type": "number"
+        },
+        "title": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.tournament && typeof output.result.tournament.id === 'string')",
+        "output.ok === false || output.result.tournament.status === 'upcoming'",
+        "output.ok === false || (typeof output.result.tournament.prizePoolCc === 'number' && output.result.tournament.prizePoolCc >= 0 && output.result.tournament.prizePoolCc <= 1000000)",
+        "output.ok === false || Array.isArray(output.result.tournament.entrants)",
+        "output.ok === false || typeof output.result.tournament.shareSlug === 'string'"
+      ],
+      "macro_id": "tournaments.create",
+      "name": "create"
+    },
+    {
+      "_derived": true,
+      "domain": "tournaments",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tournaments.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "tournaments",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "status": "completed"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "format": "swiss"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "status": "__garbage__"
+          }
+        }
+      ],
+      "inputs": {
+        "format": {
+          "enum": [
+            "single_elimination",
+            "double_elimination",
+            "round_robin",
+            "swiss"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "upcoming",
+            "checkin",
+            "in_progress",
+            "completed",
+            "cancelled"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "output.result && Array.isArray(output.result.tournaments)",
+        "output.result && output.result.counts && typeof output.result.counts === 'object'",
+        "typeof output.result.counts.upcoming === 'number'"
+      ],
+      "macro_id": "tournaments.list",
+      "name": "list"
+    },
+    {
       "_derived": true,
       "domain": "tournaments",
       "fuzz_cases": [],
@@ -23,11 +288,208 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "tournaments.openCheckin",
+      "name": "openCheckin"
+    },
+    {
+      "_derived": false,
+      "domain": "tournaments",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "tournament_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "tournament_not_found",
+            "ok": false
+          },
+          "input": {
+            "id": "__nope__"
+          }
+        },
+        {
+          "expect": {
+            "error": "tournament_not_found",
+            "ok": false
+          },
+          "input": {
+            "id": "__nope__",
+            "payoutSplit": [
+              60,
+              1e+308,
+              15
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "payoutSplit": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'",
+        "output.ok === false || (typeof output.result.prizePoolCc === 'number' && Array.isArray(output.result.payouts))",
+        "output.ok === false || (typeof output.result.unallocated === 'number' && output.result.unallocated >= 0)",
+        "output.ok === false || (output.result.payouts.reduce((a, x) => a + x.amountCc, 0) + output.result.unallocated === output.result.prizePoolCc)"
+      ],
+      "macro_id": "tournaments.payouts",
+      "name": "payouts"
+    },
+    {
+      "_derived": true,
+      "domain": "tournaments",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "tournaments.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "tournaments",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tournaments.removeEntrant",
+      "name": "removeEntrant"
+    },
+    {
+      "_derived": false,
+      "domain": "tournaments",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "tournament_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "tournament_not_found",
+            "ok": false
+          },
+          "input": {
+            "id": "__nope__",
+            "matchId": "m_x",
+            "scoreA": 2,
+            "scoreB": 1
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "matchId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "scoreA": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "scoreB": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'",
+        "output.ok === false || (output.result && output.result.tournament && Array.isArray(output.result.tournament.matches))"
+      ],
+      "macro_id": "tournaments.reportMatch",
+      "name": "reportMatch"
+    },
+    {
+      "_derived": true,
+      "domain": "tournaments",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tournaments.seed",
+      "name": "seed"
+    },
+    {
+      "_derived": false,
+      "domain": "tournaments",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "tournament_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "tournament_not_found",
+            "ok": false
+          },
+          "input": {
+            "id": "__nope__"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'",
+        "output.ok === false || output.result.tournament.status === 'in_progress' || output.result.tournament.status === 'completed'",
+        "output.ok === false || typeof output.result.forfeited === 'number'"
+      ],
+      "macro_id": "tournaments.start",
+      "name": "start"
     }
   ],
   "domain": "tournaments",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 14
 }

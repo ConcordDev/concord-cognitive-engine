@@ -10,6 +10,753 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "calendar.accounts-connect",
+      "name": "accounts-connect"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.accounts-connect-google",
+      "name": "accounts-connect-google"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.accounts-disconnect",
+      "name": "accounts-disconnect"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.accounts-list",
+      "name": "accounts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.accounts-pull-events",
+      "name": "accounts-pull-events"
+    },
+    {
+      "_derived": false,
+      "domain": "calendar",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "account not found",
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "accountId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "calendar.accounts-push-event",
+      "name": "accounts-push-event"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.accounts-sync",
+      "name": "accounts-sync"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.ai-auto-schedule",
+      "name": "ai-auto-schedule"
+    },
+    {
+      "_derived": false,
+      "domain": "calendar",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "bookerName": "X",
+            "scheduleId": "ghost_999",
+            "slotStart": "2026-06-01T09:00:00"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "bookerName": "X",
+            "scheduleId": "ghost_999",
+            "slotStart": "garbage"
+          }
+        }
+      ],
+      "inputs": {
+        "bookerName": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "scheduleId": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "slotStart": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.booking && typeof output.result.booking.id === 'string')",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "calendar.appointment-book",
+      "name": "appointment-book"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.appointment-bookings",
+      "name": "appointment-bookings"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.appointment-cancel-booking",
+      "name": "appointment-cancel-booking"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.appointment-schedule-create",
+      "name": "appointment-schedule-create"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.appointment-schedule-delete",
+      "name": "appointment-schedule-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.appointment-schedule-list",
+      "name": "appointment-schedule-list"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.appointment-slots",
+      "name": "appointment-slots"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.availability-find",
+      "name": "availability-find"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.calendar-dashboard-summary",
+      "name": "calendar-dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.calendar-share",
+      "name": "calendar-share"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.calendar-shares-list",
+      "name": "calendar-shares-list"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.calendar-unshare",
+      "name": "calendar-unshare"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.calendars-create",
+      "name": "calendars-create"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.calendars-delete",
+      "name": "calendars-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.calendars-list",
+      "name": "calendars-list"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.calendars-update",
+      "name": "calendars-update"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.conference-clear",
+      "name": "conference-clear"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.conference-generate",
+      "name": "conference-generate"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.conflicts-check",
+      "name": "conflicts-check"
+    },
+    {
+      "_derived": false,
+      "domain": "calendar",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || typeof output.result === 'object'",
+        "output.ok !== true || output.result.message !== undefined || (Array.isArray(output.result.conflicts) && Number.isFinite(output.result.conflictCount) && typeof output.result.conflictFree === 'boolean')",
+        "output.ok !== true || !Array.isArray(output.result.conflicts) || output.result.conflicts.every(c => Number.isFinite(c.overlapMinutes))"
+      ],
+      "macro_id": "calendar.detectConflicts",
+      "name": "detectConflicts"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "calendar",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "title": "   "
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "start": "not-a-date",
+            "title": "Sync"
+          }
+        }
+      ],
+      "inputs": {
+        "end": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.event && typeof output.result.event.id === 'string')",
+        "output.ok === false || (Number.isFinite(new Date(output.result.event.start).getTime()) && Number.isFinite(new Date(output.result.event.end).getTime()))",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "calendar.events-create",
+      "name": "events-create"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.events-delete",
+      "name": "events-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.events-list",
+      "name": "events-list"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.events-update",
+      "name": "events-update"
+    },
+    {
+      "_derived": false,
+      "domain": "calendar",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || (Array.isArray(output.result.occurrences) && output.result.occurrences.length <= 52)",
+        "output.ok !== true || Number.isFinite(output.result.totalOccurrences)",
+        "output.ok !== true || output.result.occurrences.every(o => typeof o.date === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(o.date))"
+      ],
+      "macro_id": "calendar.expandRecurring",
+      "name": "expandRecurring"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.findAvailability",
+      "name": "findAvailability"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.ical-export",
+      "name": "ical-export"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.ical-parse",
+      "name": "ical-parse"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.invite-revoke",
+      "name": "invite-revoke"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.invite-rsvp",
+      "name": "invite-rsvp"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.invites-list",
+      "name": "invites-list"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.invites-send",
+      "name": "invites-send"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "calendar.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +770,413 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "calendar.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.nl-parse-event",
+      "name": "nl-parse-event"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.plan_day",
+      "name": "plan_day"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.plan_week",
+      "name": "plan_week"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "calendar.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.remind",
+      "name": "remind"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.reminders-acknowledge",
+      "name": "reminders-acknowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.reminders-due",
+      "name": "reminders-due"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.resolve_conflicts",
+      "name": "resolve_conflicts"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.schedule",
+      "name": "schedule"
+    },
+    {
+      "_derived": false,
+      "domain": "calendar",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || typeof output.result === 'object'",
+        "output.ok !== true || output.result.message !== undefined || (Array.isArray(output.result.optimizedOrder) && Number.isFinite(output.result.totalMinutes) && typeof output.result.fitsInWorkday === 'boolean')",
+        "output.ok !== true || output.result.totalMinutes === undefined || Number.isFinite(output.result.totalMinutes)"
+      ],
+      "macro_id": "calendar.scheduleOptimize",
+      "name": "scheduleOptimize"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.status-event-create",
+      "name": "status-event-create"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.status-events-list",
+      "name": "status-events-list"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.tasks-create",
+      "name": "tasks-create"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.tasks-delete",
+      "name": "tasks-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.tasks-list",
+      "name": "tasks-list"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.tasks-time-block",
+      "name": "tasks-time-block"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.tasks-toggle",
+      "name": "tasks-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.timezone-convert",
+      "name": "timezone-convert"
+    },
+    {
+      "_derived": true,
+      "domain": "calendar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "calendar.vote",
+      "name": "vote"
     }
   ],
   "domain": "calendar",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 80
 }

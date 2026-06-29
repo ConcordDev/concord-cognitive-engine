@@ -1,0 +1,1144 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.connectorDelete",
+      "name": "connectorDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.connectorKinds",
+      "name": "connectorKinds"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.connectorList",
+      "name": "connectorList"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.connectorSave",
+      "name": "connectorSave"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.connectorTest",
+      "name": "connectorTest"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.dataAddRelation",
+      "name": "dataAddRelation"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.dataAddTable",
+      "name": "dataAddTable"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.dataBindElement",
+      "name": "dataBindElement"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.dataBindings",
+      "name": "dataBindings"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.dataDeleteRelation",
+      "name": "dataDeleteRelation"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.dataDeleteTable",
+      "name": "dataDeleteTable"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.dataFieldTypes",
+      "name": "dataFieldTypes"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.dataSaveTable",
+      "name": "dataSaveTable"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.dataUnbindElement",
+      "name": "dataUnbindElement"
+    },
+    {
+      "_derived": false,
+      "domain": "app-maker",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "project_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "project_not_found",
+            "ok": false
+          },
+          "input": {
+            "projectId": "ghost_999"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "projectId": "ghost_999"
+          }
+        }
+      ],
+      "inputs": {
+        "label": {
+          "maxLength": 60,
+          "required": false,
+          "type": "string"
+        },
+        "projectId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.result.deployment.status === 'live'",
+        "output.ok === false || /^https:\\/\\/[a-z0-9-]+\\.apps\\.concord-os\\.org$/.test(output.result.deployment.url)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "app-maker.deployPublish",
+      "name": "deployPublish"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.deployStatus",
+      "name": "deployStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.editorAddPage",
+      "name": "editorAddPage"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.editorDeletePage",
+      "name": "editorDeletePage"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.editorPalette",
+      "name": "editorPalette"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.editorSavePage",
+      "name": "editorSavePage"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.libraryDelete",
+      "name": "libraryDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.libraryList",
+      "name": "libraryList"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.librarySave",
+      "name": "librarySave"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.marketBrowse",
+      "name": "marketBrowse"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.marketInstall",
+      "name": "marketInstall"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.marketPublish",
+      "name": "marketPublish"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.marketUnpublish",
+      "name": "marketUnpublish"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.previewRender",
+      "name": "previewRender"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.projectCreate",
+      "name": "projectCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.projectDelete",
+      "name": "projectDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.projectDuplicate",
+      "name": "projectDuplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.projectGet",
+      "name": "projectGet"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.projectList",
+      "name": "projectList"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.questEdgeAdd",
+      "name": "questEdgeAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.questEdgeDelete",
+      "name": "questEdgeDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.questGraphCreate",
+      "name": "questGraphCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.questGraphDelete",
+      "name": "questGraphDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.questGraphGet",
+      "name": "questGraphGet"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.questGraphList",
+      "name": "questGraphList"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.questGraphValidate",
+      "name": "questGraphValidate"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.questNodeDelete",
+      "name": "questNodeDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.questNodeSave",
+      "name": "questNodeSave"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.save",
+      "name": "save"
+    },
+    {
+      "_derived": false,
+      "domain": "app-maker",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "framework": "react",
+            "spec": {
+              "pages": [
+                {
+                  "components": [
+                    {
+                      "type": "Button"
+                    }
+                  ],
+                  "name": "Home",
+                  "path": "/"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "spec": {
+              "pages": []
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {},
+          "input": {
+            "spec": {
+              "pages": "not-an-array"
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "spec": {
+              "pages": [
+                {
+                  "components": [
+                    {
+                      "type": "Button"
+                    },
+                    {
+                      "type": "Button"
+                    }
+                  ],
+                  "name": "X",
+                  "path": "/user/:id"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "framework": {
+          "maxLength": 20,
+          "required": false,
+          "type": "string"
+        },
+        "spec": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.routes)",
+        "output.ok === false || output.result.message !== undefined || (typeof output.result.metrics.totalComponents === 'number' && Number.isFinite(output.result.metrics.totalComponents))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "app-maker.scaffoldApp",
+      "name": "scaffoldApp"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.uiComplexity",
+      "name": "uiComplexity"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.versionList",
+      "name": "versionList"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.versionRestore",
+      "name": "versionRestore"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.versionSnapshot",
+      "name": "versionSnapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": false,
+      "domain": "app-maker",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "wireframe": {
+              "screens": [
+                {
+                  "actions": [
+                    {
+                      "type": "navigate"
+                    }
+                  ],
+                  "links": [
+                    "Detail"
+                  ],
+                  "name": "Home"
+                },
+                {
+                  "actions": [
+                    {
+                      "type": "back"
+                    }
+                  ],
+                  "links": [
+                    "Home"
+                  ],
+                  "name": "Detail"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "wireframe": {
+              "screens": [
+                {
+                  "links": [
+                    "Ghost"
+                  ],
+                  "name": "Home"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "wireframe": {
+              "screens": []
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {},
+          "input": {
+            "wireframe": {
+              "screens": "bad"
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "wireframe": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.valid === 'boolean'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.issues)",
+        "output.ok === false || output.result.message !== undefined || (typeof output.result.summary.navigationCompleteness === 'number' && Number.isFinite(output.result.summary.navigationCompleteness))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "app-maker.wireframeValidate",
+      "name": "wireframeValidate"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.workflowDelete",
+      "name": "workflowDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.workflowOptions",
+      "name": "workflowOptions"
+    },
+    {
+      "_derived": true,
+      "domain": "app-maker",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "app-maker.workflowSave",
+      "name": "workflowSave"
+    }
+  ],
+  "domain": "app-maker",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 71
+}

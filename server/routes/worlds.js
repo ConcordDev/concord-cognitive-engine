@@ -3095,7 +3095,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const npc = db.prepare(`
         SELECT id, archetype, criminal_rep, fire_resistance, ice_resistance,
-               physical_resistance, current_hp, max_hp, npc_type, is_conscious
+               physical_resistance, current_hp, max_hp, npc_type, is_conscious,
+               x, z
         FROM world_npcs WHERE id = ?
       `).get(npcId);
       if (!npc) return res.status(404).json({ ok: false, error: "NPC not found" });
@@ -3221,7 +3222,33 @@ export default function createWorldsRouter({ requireAuth, db }) {
         } catch { /* awakening + low-health surfacing is best-effort */ }
       }
 
-      res.json({ ok: true, damageResult, eventId, kill, message: kill ? 'You have been defeated' : undefined });
+      // ── Layer 2 (loop honesty): the kill consequence must LAND ──────────────
+      // When an NPC defeats a player, the player really loses sparks + 1–3 items
+      // into a loot bag the NPC claims. handleNPCKilledPlayer (lib/pvp-loot.js)
+      // does all of this — but it had ZERO callers, so for months "You have been
+      // defeated" fired while the player's wallet/inventory stayed untouched (a
+      // toast-without-grant, like the fixed world-event endEvent bug). Wire it
+      // here, on the real kill, so the consequence is asserted-true not pretended.
+      let lootDrop = null;
+      if (kill) {
+        try {
+          const { handleNPCKilledPlayer } = await import("../lib/pvp-loot.js");
+          lootDrop = handleNPCKilledPlayer(db, {
+            npcId, playerId: userId, worldId,
+            x: Number(npc.x) || 0, y: 0, z: Number(npc.z) || 0,
+          });
+          // Truthful feedback travels in the response `lootDrop` below — the
+          // caller IS the victim (requireAuth → req.user.id), so no extra socket
+          // emit is needed (and a world-room emit with no listener would be an
+          // orphan). The grant itself is the source of truth.
+        } catch (lootErr) {
+          // Loot is best-effort — a drop failure must never wedge the combat
+          // response. But it is a real grant, not a notification, so we log it.
+          logger.warn?.("pvp-loot", "npc_kill_loot_failed", { worldId, npcId, userId, error: String(lootErr?.message || lootErr) });
+        }
+      }
+
+      res.json({ ok: true, damageResult, eventId, kill, lootDrop: lootDrop || undefined, message: kill ? 'You have been defeated' : undefined });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

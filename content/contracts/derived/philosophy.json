@@ -10,6 +10,383 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "philosophy.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.argumentMap",
+      "name": "argumentMap"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.block-add",
+      "name": "block-add"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.block-connect",
+      "name": "block-connect"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.block-delete",
+      "name": "block-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.block-embed",
+      "name": "block-embed"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.block-grid",
+      "name": "block-grid"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.channel-collaborator-add",
+      "name": "channel-collaborator-add"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.channel-collaborator-list",
+      "name": "channel-collaborator-list"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.channel-collaborator-remove",
+      "name": "channel-collaborator-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.channel-create",
+      "name": "channel-create"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.channel-delete",
+      "name": "channel-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.channel-detail",
+      "name": "channel-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.channel-list",
+      "name": "channel-list"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.channel-publish",
+      "name": "channel-publish"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.connections-graph",
+      "name": "connections-graph"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.debate-create",
+      "name": "debate-create"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.debate-detail",
+      "name": "debate-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.debate-list",
+      "name": "debate-list"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.debate-post",
+      "name": "debate-post"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.debate-resolve",
+      "name": "debate-resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.dialecticSynthesis",
+      "name": "dialecticSynthesis"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.ethicalFramework",
+      "name": "ethicalFramework"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "philosophy.list_mine",
       "name": "list_mine"
     },
@@ -49,11 +426,284 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "philosophy.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.philosophy-dashboard",
+      "name": "philosophy-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.philosophy-search",
+      "name": "philosophy-search"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.public-channel-detail",
+      "name": "public-channel-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.public-channels",
+      "name": "public-channels"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "philosophy.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.reference-delete",
+      "name": "reference-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.reference-list",
+      "name": "reference-list"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.reference-page",
+      "name": "reference-page"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.thoughtExperiment",
+      "name": "thoughtExperiment"
+    },
+    {
+      "_derived": true,
+      "domain": "philosophy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "philosophy.vote",
+      "name": "vote"
     }
   ],
   "domain": "philosophy",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 54
 }

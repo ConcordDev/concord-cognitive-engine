@@ -32,12 +32,21 @@ export async function bootEngine() {
   const mod = await import(new URL("../../server/server.js", import.meta.url).href);
   const T = mod.__TEST__ || mod.default?.__TEST__;
   if (!T) throw new Error("server.js did not export __TEST__");
-  const { MACROS, runMacro, makeInternalCtx } = T;
+  const { MACROS, runMacro, makeInternalCtx, LENS_ACTIONS, dispatchLensRun, BRAIN_BACKED_LENS_ACTIONS } = T;
   if (!(MACROS instanceof Map)) throw new Error("__TEST__.MACROS must be a Map");
   if (typeof runMacro !== "function") throw new Error("__TEST__.runMacro must be a function");
   if (typeof makeInternalCtx !== "function") throw new Error("__TEST__.makeInternalCtx must be a function");
   const cartographer = globalThis.__CARTOGRAPHER__ || { MACROS };
-  _boot = { runMacro, makeInternalCtx, MACROS, cartographer };
+  _boot = {
+    runMacro,
+    makeInternalCtx,
+    MACROS,
+    cartographer,
+    // path-3 surface (optional — back-compat if a branch lacks the exports).
+    lensActions: LENS_ACTIONS instanceof Map ? LENS_ACTIONS : new Map(),
+    dispatchLensRun: typeof dispatchLensRun === "function" ? dispatchLensRun : runMacro,
+    brainBacked: BRAIN_BACKED_LENS_ACTIONS instanceof Set ? BRAIN_BACKED_LENS_ACTIONS : new Set(),
+  };
   return _boot;
 }
 
@@ -120,26 +129,83 @@ export function shouldSkip(domain, name) {
 }
 
 /**
- * Enumerate every (domain, name, spec) macro from the live MACROS map, sorted
- * deterministically, each tagged with its headless-safe decision.
+ * Enumerate macros from BOTH registries, sorted deterministically, each tagged
+ * with its dispatch path (2 = MACROS/runMacro, 3 = LENS_ACTIONS/dispatchLensRun)
+ * and headless-safe decision.
+ *
+ * Path-2 (MACROS) is enumerated verbatim — preserving the existing driven set
+ * byte-for-byte. Path-3 (LENS_ACTIONS) adds the registerLensAction handlers the
+ * bare runMacro can't see, with two honesty filters:
+ *   - COLLISIONS stay path-2: a (domain,name) already in MACROS is left as-is
+ *     (no churn to the established baseline). Production prefers LENS_ACTIONS for
+ *     these, a minor fidelity gap noted in the engine docs.
+ *   - CARTESIAN REPLICAS collapse: keys like `code.erlang.git-checkout` are
+ *     per-language/entity copies of a base factory (`code.git-checkout`). We keep
+ *     one representative per (domain, final-segment) group — a factory fix
+ *     propagates to every copy, so one drive gives full coverage at sane cost.
+ *   - BRAIN-BACKED handlers (the universal analyze/generate/suggest + manifest
+ *     dispatch registrars) are marked skip:'brain_backed' — like llm_hint, they
+ *     forward to an LLM and are static-contract-only, never fuzzed.
+ *
  * @param {Map} MACROS
- * @returns {Array<{ domain:string, name:string, macroId:string, spec:object, skip:boolean, skipReason:string|null }>}
+ * @param {Map|null} lensActions  LENS_ACTIONS map (optional → path-2 only)
+ * @param {Set|null} brainBacked  keys of LLM-forwarding handlers (optional)
+ * @returns {Array<{ domain:string, name:string, macroId:string, spec:object, path:2|3, skip:boolean, skipReason:string|null }>}
  */
-export function enumerateMacros(MACROS) {
+export function enumerateMacros(MACROS, lensActions = null, brainBacked = null) {
   const out = [];
+  const seen = new Set();
   for (const [domain, macros] of MACROS.entries()) {
     for (const [name, entry] of macros.entries()) {
+      const macroId = `${domain}.${name}`;
+      seen.add(macroId);
       const decision = shouldSkip(domain, name);
       out.push({
         domain,
         name,
-        macroId: `${domain}.${name}`,
+        macroId,
         spec: entry?.spec || { domain, name },
+        path: 2,
         skip: decision.skip,
         skipReason: decision.skip ? decision.reason : null,
       });
     }
   }
+
+  if (lensActions instanceof Map) {
+    const bb = brainBacked instanceof Set ? brainBacked : new Set();
+    // Collapse cartesian replicas: keep the shortest key per (domain, finalSeg).
+    const groups = new Map(); // `${domain} ${finalSeg}` -> representative key
+    for (const key of lensActions.keys()) {
+      const dot = key.indexOf(".");
+      if (dot < 0) continue;
+      if (seen.has(key)) continue; // collision → path-2 owns it
+      const domain = key.slice(0, dot);
+      const name = key.slice(dot + 1);
+      const finalSeg = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1) : name;
+      const gk = `${domain} ${finalSeg}`;
+      const prev = groups.get(gk);
+      if (!prev || key.length < prev.length) groups.set(gk, key);
+    }
+    for (const key of groups.values()) {
+      const dot = key.indexOf(".");
+      const domain = key.slice(0, dot);
+      const name = key.slice(dot + 1);
+      const decision = shouldSkip(domain, name);
+      const brainSkip = bb.has(key);
+      const skip = decision.skip || brainSkip;
+      out.push({
+        domain,
+        name,
+        macroId: key,
+        spec: { domain, name },
+        path: 3,
+        skip,
+        skipReason: skip ? (brainSkip ? "brain_backed" : decision.reason) : null,
+      });
+    }
+  }
+
   out.sort((a, b) => a.macroId.localeCompare(b.macroId));
   return out;
 }

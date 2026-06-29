@@ -1,0 +1,397 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.backoffSchedule",
+      "name": "backoffSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.cacheStrategy",
+      "name": "cacheStrategy"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.deltaCompute",
+      "name": "deltaCompute"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.mergeResolve",
+      "name": "mergeResolve"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.replicationPull",
+      "name": "replicationPull"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.replicationPush",
+      "name": "replicationPush"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.replicationStatus",
+      "name": "replicationStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.swManifest",
+      "name": "swManifest"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.syncCheckpoint",
+      "name": "syncCheckpoint"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.syncConflict",
+      "name": "syncConflict"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "offline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "offline.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "offline",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 30
+}

@@ -10,8 +10,234 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "billing.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "billing.balance",
       "name": "balance"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.churnPrediction",
+      "name": "churnPrediction"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "billing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": 100,
+            "code": "NOPE"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": 100,
+            "code": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": "Infinity",
+            "code": "NOPE"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "amount": {
+          "min": 0,
+          "required": false,
+          "type": "number"
+        },
+        "code": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "redeem": {
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.discount)",
+        "output.ok === false || Number.isFinite(output.result.originalAmount)",
+        "output.ok === false || Number.isFinite(output.result.finalAmount)",
+        "output.ok === false || output.result.finalAmount >= 0",
+        "output.ok === false || output.result.discount <= output.result.originalAmount",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "billing.coupon-apply",
+      "name": "coupon-apply"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.coupon-create",
+      "name": "coupon-create"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.coupon-list",
+      "name": "coupon-list"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.dunning-list",
+      "name": "dunning-list"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.dunning-open",
+      "name": "dunning-open"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.dunning-retry",
+      "name": "dunning-retry"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.duplicate",
+      "name": "duplicate"
     },
     {
       "_derived": true,
@@ -49,8 +275,264 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "billing.invoice-create",
+      "name": "invoice-create"
+    },
+    {
+      "_derived": false,
+      "domain": "billing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lineItems": [
+              {
+                "description": "W",
+                "quantity": 3,
+                "taxable": true,
+                "unitPrice": 10
+              }
+            ],
+            "taxRate": 0.1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "discountRules": [
+              {
+                "type": "percentage",
+                "value": 0.1
+              }
+            ],
+            "lineItems": [
+              {
+                "description": "A",
+                "quantity": 10,
+                "unitPrice": 10
+              }
+            ],
+            "taxRate": 0.1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lineItems": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lineItems": [
+              {
+                "description": "Poison",
+                "quantity": "1e999",
+                "taxable": true,
+                "unitPrice": "Infinity"
+              }
+            ],
+            "taxRate": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lineItems": [
+              {
+                "description": "Huge",
+                "quantity": 1,
+                "unitPrice": 1e+308
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "discountRules": [
+              {
+                "type": "fixed",
+                "value": "NaN"
+              }
+            ],
+            "lineItems": [
+              {
+                "description": "B",
+                "quantity": 2,
+                "unitPrice": 25
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "currency": {
+          "required": false,
+          "type": "string"
+        },
+        "discountRules": {
+          "required": false,
+          "type": "array"
+        },
+        "lineItems": {
+          "required": false,
+          "type": "array"
+        },
+        "pricingTiers": {
+          "required": false,
+          "type": "array"
+        },
+        "taxRate": {
+          "min": 0,
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.subtotal)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.afterDiscount)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.tax.taxAmount)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.total)",
+        "output.ok === false || output.result.message !== undefined || output.result.lineItems.every(function(l){ return Number.isFinite(l.lineTotal); })"
+      ],
+      "macro_id": "billing.invoiceCalculation",
+      "name": "invoiceCalculation"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "billing.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.plan-create",
+      "name": "plan-create"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.plan-list",
+      "name": "plan-list"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.portal-overview",
+      "name": "portal-overview"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.portal-update-card",
+      "name": "portal-update-card"
     },
     {
       "_derived": true,
@@ -75,6 +557,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "billing.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "billing.recent_mine",
       "name": "recent_mine"
     },
@@ -88,11 +609,532 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "billing.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.revenue-analytics",
+      "name": "revenue-analytics"
+    },
+    {
+      "_derived": false,
+      "domain": "billing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "contracts": [
+              {
+                "customer": "Acme",
+                "deliverables": [
+                  {
+                    "deliveredDate": "2026-01-02",
+                    "name": "Setup",
+                    "standalonePrice": 250
+                  },
+                  {
+                    "name": "Support",
+                    "standalonePrice": 750
+                  }
+                ],
+                "endDate": "2026-12-31",
+                "id": "c1",
+                "startDate": "2026-01-01",
+                "totalValue": 1000
+              }
+            ],
+            "recognitionDate": "2026-06-01"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "contracts": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "contracts": [
+              {
+                "customer": "A",
+                "endDate": "2026-12-31",
+                "id": "c",
+                "startDate": "2026-01-01",
+                "totalValue": "Infinity"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "contracts": [
+              {
+                "customer": "A",
+                "deliverables": [
+                  {
+                    "name": "X",
+                    "standalonePrice": "1e999"
+                  }
+                ],
+                "endDate": "2026-12-31",
+                "id": "c",
+                "startDate": "2026-01-01",
+                "totalValue": 1e+308
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "contracts": [
+              {
+                "billingSchedule": [
+                  {
+                    "amount": "NaN",
+                    "date": "2026-02-01"
+                  }
+                ],
+                "customer": "A",
+                "endDate": "2026-12-31",
+                "id": "c",
+                "startDate": "2026-01-01",
+                "totalValue": 500
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "contracts": {
+          "required": false,
+          "type": "array"
+        },
+        "recognitionDate": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalContractValue)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalRecognizedRevenue)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalDeferredRevenue)",
+        "output.ok === false || output.result.message !== undefined || output.result.contracts.every(function(c){ return Number.isFinite(c.recognizedRevenue) && Number.isFinite(c.deferredRevenue); })"
+      ],
+      "macro_id": "billing.revenueRecognition",
+      "name": "revenueRecognition"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.subscription-cancel",
+      "name": "subscription-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.subscription-create",
+      "name": "subscription-create"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.subscription-list",
+      "name": "subscription-list"
+    },
+    {
+      "_derived": false,
+      "domain": "billing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "newPlanId": "ghost2",
+            "subscriptionId": "ghost"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "newPlanId": "y",
+            "subscriptionId": "x"
+          }
+        }
+      ],
+      "inputs": {
+        "apply": {
+          "required": false,
+          "type": "boolean"
+        },
+        "newPlanId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "subscriptionId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.unusedCredit)",
+        "output.ok === false || Number.isFinite(output.result.newPlanProrated)",
+        "output.ok === false || Number.isFinite(output.result.amountDue)",
+        "output.ok === false || (output.result.direction === 'upgrade-charge' || output.result.direction === 'downgrade-credit')",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "billing.subscription-proration",
+      "name": "subscription-proration"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": false,
+      "domain": "billing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "amount": 100,
+            "jurisdiction": "US-CA"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "amount": 100,
+            "b2b": true,
+            "jurisdiction": "EU-DE",
+            "taxId": "DE123456789"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": 100,
+            "jurisdiction": "MARS-1"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "amount": "Infinity",
+            "jurisdiction": "US-CA"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "amount": "1e999",
+            "jurisdiction": "GB"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "amount": {
+          "min": 0,
+          "required": false,
+          "type": "number"
+        },
+        "b2b": {
+          "required": false,
+          "type": "boolean"
+        },
+        "jurisdiction": {
+          "maxLength": 16,
+          "required": true,
+          "type": "string"
+        },
+        "taxId": {
+          "maxLength": 32,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.netAmount)",
+        "output.ok === false || Number.isFinite(output.result.taxAmount)",
+        "output.ok === false || Number.isFinite(output.result.grossAmount)",
+        "output.ok === false || output.result.taxAmount >= 0",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "billing.tax-calculate",
+      "name": "tax-calculate"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.tax-jurisdictions",
+      "name": "tax-jurisdictions"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "billing.usage",
       "name": "usage"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.usage-record",
+      "name": "usage-record"
+    },
+    {
+      "_derived": false,
+      "domain": "billing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "subscriptionId": "sub_none"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "subscriptionId": "sub_none",
+            "tiers": [
+              {
+                "unitPrice": "1e999",
+                "upTo": "Infinity"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "subscriptionId": "sub_none",
+            "tiers": [
+              {
+                "unitPrice": "NaN",
+                "upTo": 1000
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "subscriptionId": {
+          "maxLength": 80,
+          "required": false,
+          "type": "string"
+        },
+        "tiers": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalQuantity)",
+        "output.ok === false || Number.isFinite(output.result.totalCharge)",
+        "output.ok === false || Array.isArray(output.result.tierBreakdown)",
+        "output.ok === false || output.result.tierBreakdown.every(function(t){ return Number.isFinite(t.charge) && Number.isFinite(t.units); })"
+      ],
+      "macro_id": "billing.usage-summary",
+      "name": "usage-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "billing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "billing.vote",
+      "name": "vote"
     }
   ],
   "domain": "billing",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 7
+  "macroCount": 50
 }

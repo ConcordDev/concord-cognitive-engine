@@ -1,6 +1,58 @@
 {
   "contracts": [
     {
+      "_derived": true,
+      "domain": "deity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "deity.bless",
+      "name": "bless"
+    },
+    {
+      "_derived": true,
+      "domain": "deity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "deity.blessings",
+      "name": "blessings"
+    },
+    {
+      "_derived": true,
+      "domain": "deity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "deity.commune",
+      "name": "commune"
+    },
+    {
+      "_derived": true,
+      "domain": "deity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "deity.commune_log",
+      "name": "commune_log"
+    },
+    {
       "_derived": false,
       "domain": "deity",
       "fuzz_cases": [
@@ -55,6 +107,19 @@
       "name": "compose"
     },
     {
+      "_derived": true,
+      "domain": "deity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "deity.detail",
+      "name": "detail"
+    },
+    {
       "_derived": false,
       "domain": "deity",
       "fuzz_cases": [
@@ -88,6 +153,32 @@
       ],
       "macro_id": "deity.list",
       "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "deity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "deity.my_blessings",
+      "name": "my_blessings"
+    },
+    {
+      "_derived": true,
+      "domain": "deity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "deity.my_devotion",
+      "name": "my_devotion"
     },
     {
       "_derived": false,
@@ -174,6 +265,32 @@
       "name": "pilgrimage"
     },
     {
+      "_derived": true,
+      "domain": "deity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "deity.revise",
+      "name": "revise"
+    },
+    {
+      "_derived": true,
+      "domain": "deity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "deity.search",
+      "name": "search"
+    },
+    {
       "_derived": false,
       "domain": "deity",
       "fuzz_cases": [
@@ -217,5 +334,5 @@
   ],
   "domain": "deity",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 14
 }

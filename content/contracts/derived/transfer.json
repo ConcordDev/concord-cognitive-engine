@@ -23,8 +23,164 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "transfer.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "transfer.classify_domain",
       "name": "classify_domain"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.connector-delete",
+      "name": "connector-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.connector-list",
+      "name": "connector-list"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.connector-read",
+      "name": "connector-read"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.connector-upsert",
+      "name": "connector-upsert"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.dataQuality",
+      "name": "dataQuality"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.dry-run",
+      "name": "dry-run"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.duplicate",
+      "name": "duplicate"
     },
     {
       "_derived": true,
@@ -62,6 +218,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "transfer.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "transfer.list_patterns",
       "name": "list_patterns"
     },
@@ -88,11 +257,297 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "transfer.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.mapping-suggest",
+      "name": "mapping-suggest"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.migrationPlan",
+      "name": "migrationPlan"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.pipeline-delete",
+      "name": "pipeline-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.pipeline-list",
+      "name": "pipeline-list"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.pipeline-upsert",
+      "name": "pipeline-upsert"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.run-log",
+      "name": "run-log"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.run-sync",
+      "name": "run-sync"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.schedule-due",
+      "name": "schedule-due"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.schema-drift",
+      "name": "schema-drift"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.schemaMapping",
+      "name": "schemaMapping"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "transfer.status",
       "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.vote",
+      "name": "vote"
     }
   ],
   "domain": "transfer",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 7
+  "macroCount": 42
 }

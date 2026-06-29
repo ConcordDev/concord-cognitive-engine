@@ -127,14 +127,22 @@ export default function registerSocietyActions(register) {
   // server.js — so every society.* (wb-*) macro was invisible to runMacro and
   // hit `unknown_macro` at runtime, leaving the DataExplorer + SocietyActionPanel
   // (the live World Bank surface) dead-wired. Rewired to canonical register.
-  const registerLensAction = (domain, action, handler) =>
-    register(domain, action, (ctx, input = {}) => {
+  const registerLensAction = (domain, action, handler, ...extra) =>
+    register(domain, action, (ctx, input = {}, params) => {
       const inp = input && typeof input === "object" ? input : {};
-      const artifact = inp.artifact && typeof inp.artifact === "object"
+      // Dispatchers hand us a ready artifact envelope as arg1 (body under
+      // `.data`) + the flat body as arg2; pass the envelope through (not
+      // re-wrapped) and fold arg2 INTO `.data` so a caller that supplies the
+      // body only in arg2 (e.g. parity tests' fn(ctx,{data:{}},params)) is seen.
+      const base = inp.artifact && typeof inp.artifact === "object"
         ? inp.artifact
-        : { id: null, domain, type: "domain_action", data: inp, meta: {} };
-      return handler(ctx, artifact, inp);
-    });
+        : (inp.data && typeof inp.data === "object"
+            ? inp
+            : { id: null, domain, type: "domain_action", data: inp, meta: {} });
+      const p = params && typeof params === "object" ? params : {};
+      const data = { ...(base.data && typeof base.data === "object" ? base.data : {}), ...p };
+      return handler(ctx, { ...base, data }, data);
+    }, ...extra);
   /**
    * wb-indicator — Fetch a single World Bank indicator for a country.
    * params: { country: ISO-3 (e.g. "USA", "GBR"), indicator: WB code OR alias }

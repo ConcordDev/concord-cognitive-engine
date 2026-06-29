@@ -1,0 +1,1581 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.aircraft-add",
+      "name": "aircraft-add"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.aircraft-delete",
+      "name": "aircraft-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.aircraft-list",
+      "name": "aircraft-list"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.aircraft-update",
+      "name": "aircraft-update"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.airport-lookup",
+      "name": "airport-lookup"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.airspace-tfrs",
+      "name": "airspace-tfrs"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.approach-plates",
+      "name": "approach-plates"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.briefing-graphical",
+      "name": "briefing-graphical"
+    },
+    {
+      "_derived": false,
+      "domain": "aviation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "aftCGLimit": 47.3,
+                "emptyArm": 39,
+                "emptyWeight": 1500,
+                "fuelArm": 48,
+                "fuelWeight": 180,
+                "fwdCGLimit": 35,
+                "maxGross": 2550,
+                "pilotArm": 37,
+                "pilotWeight": 170
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "aircraft": {
+                  "cgEnvelope": {
+                    "aft": 47.3,
+                    "fwd": 35
+                  },
+                  "emptyArm": 39,
+                  "emptyWeight": 1500,
+                  "maxGrossWeight": 2550
+                },
+                "loading": [
+                  {
+                    "arm": 37,
+                    "station": "Pilot",
+                    "weight": 170
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "emptyArm": "Infinity",
+                "emptyWeight": "NaN",
+                "fuelArm": "abc",
+                "fuelWeight": 1e+308,
+                "maxGross": "x",
+                "pilotArm": 37,
+                "pilotWeight": 170
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "emptyArm": {
+          "type": "number"
+        },
+        "emptyWeight": {
+          "type": "number"
+        },
+        "fuelArm": {
+          "type": "number"
+        },
+        "fuelWeight": {
+          "type": "number"
+        },
+        "maxGross": {
+          "type": "number"
+        },
+        "pilotArm": {
+          "type": "number"
+        },
+        "pilotWeight": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.grossWeight)",
+        "output.ok === false || Number.isFinite(output.result.cg)",
+        "output.ok === false || Number.isFinite(output.result.totalMoment)",
+        "output.ok === false || Array.isArray(output.result.stations)",
+        "output.ok === false || typeof output.result.summary === 'string'",
+        "output.ok === false || output.result.stations.every(s => Number.isFinite(s.weight) && Number.isFinite(s.arm) && Number.isFinite(s.moment))"
+      ],
+      "macro_id": "aviation.calculate-wb",
+      "name": "calculate-wb"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.chart-catalog",
+      "name": "chart-catalog"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.currency_check",
+      "name": "currency_check"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.currency-event-add",
+      "name": "currency-event-add"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.currency-status",
+      "name": "currency-status"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.currencyCheck",
+      "name": "currencyCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.dashboard-summary",
+      "name": "dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.duty_time_check",
+      "name": "duty_time_check"
+    },
+    {
+      "_derived": false,
+      "domain": "aviation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "shifts": [
+                  {
+                    "dutyHours": 8,
+                    "startTime": "2026-06-28T08:00:00.000Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "shifts": [
+                  {
+                    "dutyHours": 12,
+                    "startTime": "2026-06-28T08:00:00.000Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "shifts": [
+                  {
+                    "dutyHours": "NaN",
+                    "startTime": "2026-06-28T08:00:00.000Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "flights": {
+          "type": "array"
+        },
+        "shifts": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.compliant === 'boolean'",
+        "output.ok === false || typeof output.result.limits === 'object'",
+        "output.ok === false || Number.isFinite(output.result.limits.flightDuty.actual)",
+        "output.ok === false || Number.isFinite(output.result.limits.sevenDay.actual)",
+        "output.ok === false || Number.isFinite(output.result.limits.twentyEightDay.actual)"
+      ],
+      "macro_id": "aviation.dutyTimeCheck",
+      "name": "dutyTimeCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.efis-snapshot",
+      "name": "efis-snapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.endorsement-add",
+      "name": "endorsement-add"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.endorsement-delete",
+      "name": "endorsement-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.endorsements-list",
+      "name": "endorsements-list"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.flight_summary",
+      "name": "flight_summary"
+    },
+    {
+      "_derived": false,
+      "domain": "aviation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "flights": [
+                  {
+                    "fuelUsed": 12,
+                    "hobbsTime": 1.4
+                  },
+                  {
+                    "fuelUsed": 17,
+                    "hobbsTime": 2
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "flights": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "flights": [
+                  {
+                    "fuelUsed": "abc",
+                    "hobbsTime": "NaN"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "flights": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalFlights)",
+        "output.ok === false || Number.isFinite(output.result.totalHours)",
+        "output.ok === false || output.result.totalFlights === 0 || Number.isFinite(output.result.averageDuration)"
+      ],
+      "macro_id": "aviation.flightSummary",
+      "name": "flightSummary"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.fuel-stops-calc",
+      "name": "fuel-stops-calc"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.hobbsLog",
+      "name": "hobbsLog"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.live-flights-tracked",
+      "name": "live-flights-tracked"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.live-flights-unwatch",
+      "name": "live-flights-unwatch"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.live-flights-watch",
+      "name": "live-flights-watch"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.logbook-add",
+      "name": "logbook-add"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.logbook-delete",
+      "name": "logbook-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.logbook-list",
+      "name": "logbook-list"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.logbook-totals",
+      "name": "logbook-totals"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.maintenance_alert",
+      "name": "maintenance_alert"
+    },
+    {
+      "_derived": false,
+      "domain": "aviation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "maintenanceItems": [
+                  {
+                    "dueAtHours": 1100,
+                    "name": "100hr",
+                    "priority": "normal"
+                  },
+                  {
+                    "dueDate": "2020-01-01",
+                    "name": "AD",
+                    "priority": "critical"
+                  }
+                ],
+                "totalCycles": 800,
+                "totalTime": 1200
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "maintenanceItems": [
+                  {
+                    "dueAtHours": 500,
+                    "name": "x"
+                  }
+                ],
+                "totalTime": 100
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "maintenanceItems": [
+                  {
+                    "dueAtHours": "Infinity",
+                    "name": "y"
+                  }
+                ],
+                "totalTime": "NaN"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "maintenanceItems": {
+          "type": "array"
+        },
+        "totalCycles": {
+          "type": "number"
+        },
+        "totalTime": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.allClear === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.overdueCount)",
+        "output.ok === false || Array.isArray(output.result.alerts)",
+        "output.ok === false || output.result.alerts.every(a => Array.isArray(a.reasons))"
+      ],
+      "macro_id": "aviation.maintenanceAlert",
+      "name": "maintenanceAlert"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.maintenanceDue",
+      "name": "maintenanceDue"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.notams-fetch",
+      "name": "notams-fetch"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.perf-landing",
+      "name": "perf-landing"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.perf-takeoff",
+      "name": "perf-takeoff"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.plan-create",
+      "name": "plan-create"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.plan-delete",
+      "name": "plan-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.plan-file",
+      "name": "plan-file"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.plan-filing-update",
+      "name": "plan-filing-update"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.plan-filings-list",
+      "name": "plan-filings-list"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.plan-list",
+      "name": "plan-list"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.rating-add",
+      "name": "rating-add"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.rating-delete",
+      "name": "rating-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.route-advisor",
+      "name": "route-advisor"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.route-plot",
+      "name": "route-plot"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.slipUtilization",
+      "name": "slipUtilization"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.track-logs-append",
+      "name": "track-logs-append"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.track-logs-end",
+      "name": "track-logs-end"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.track-logs-list",
+      "name": "track-logs-list"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.track-logs-start",
+      "name": "track-logs-start"
+    },
+    {
+      "_derived": false,
+      "domain": "aviation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "aftCGLimit": 47.3,
+                "emptyArm": 39,
+                "emptyWeight": 1500,
+                "fuelArm": 48,
+                "fuelWeight": 180,
+                "fwdCGLimit": 35,
+                "maxGross": 2550,
+                "pilotArm": 37,
+                "pilotWeight": 170
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "aftCGLimit": 47.3,
+                "cargoArm": 95,
+                "cargoWeight": 400,
+                "emptyArm": 39,
+                "emptyWeight": 1500,
+                "fuelArm": 48,
+                "fuelWeight": 600,
+                "fwdCGLimit": 35,
+                "maxGross": 2000,
+                "pilotArm": 37,
+                "pilotWeight": 300
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "emptyWeight": "NaN",
+                "fuelArm": "x",
+                "fuelWeight": 1e+308,
+                "maxGross": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "aftCGLimit": {
+          "type": "number"
+        },
+        "emptyArm": {
+          "type": "number"
+        },
+        "emptyWeight": {
+          "type": "number"
+        },
+        "fuelArm": {
+          "type": "number"
+        },
+        "fuelWeight": {
+          "type": "number"
+        },
+        "fwdCGLimit": {
+          "type": "number"
+        },
+        "maxGross": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.grossWeight)",
+        "output.ok === false || Number.isFinite(output.result.cg)",
+        "output.ok === false || typeof output.result.withinEnvelope === 'boolean'",
+        "output.ok === false || ['ok','warning','critical'].includes(output.result.overallSeverity)",
+        "output.ok === false || Array.isArray(output.result.issues)",
+        "output.ok === false || typeof output.result.message === 'string'"
+      ],
+      "macro_id": "aviation.validate-wb",
+      "name": "validate-wb"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.wb_calculate",
+      "name": "wb_calculate"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.weather_check",
+      "name": "weather_check"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.weather-metar",
+      "name": "weather-metar"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.weather-taf",
+      "name": "weather-taf"
+    },
+    {
+      "_derived": false,
+      "domain": "aviation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "ceiling": 25000,
+                "stationId": "KJFK",
+                "visibility": 10,
+                "windDirection": 270,
+                "windGust": 25,
+                "windSpeed": 15,
+                "wxConditions": "FEW250"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "ceiling": 800,
+                "visibility": 2,
+                "wind": {
+                  "direction": 90,
+                  "speed": 8
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "ceiling": "abc",
+                "visibility": "NaN",
+                "windDirection": 270,
+                "windSpeed": 15
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "ceiling": {
+          "type": "number"
+        },
+        "visibility": {
+          "type": "number"
+        },
+        "windDirection": {
+          "type": "number"
+        },
+        "windGust": {
+          "type": "number"
+        },
+        "windSpeed": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || ['VFR','MVFR','IFR','LIFR'].includes(output.result.flightCategory)",
+        "output.ok === false || typeof output.result.wind === 'string'",
+        "output.ok === false || typeof output.result.windComponents === 'object'",
+        "output.ok === false || typeof output.result.visibility === 'string'"
+      ],
+      "macro_id": "aviation.weatherCheck",
+      "name": "weatherCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "aviation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "aviation.wx-overlay",
+      "name": "wx-overlay"
+    }
+  ],
+  "domain": "aviation",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 81
+}

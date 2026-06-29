@@ -10,11 +10,1104 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ml.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.automl-templates",
+      "name": "automl-templates"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.compare_runs",
+      "name": "compare_runs"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.dataset-hub",
+      "name": "dataset-hub"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.dataset-list",
+      "name": "dataset-list"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.dataset-register",
+      "name": "dataset-register"
+    },
+    {
+      "_derived": false,
+      "domain": "ml",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "dataset": [
+                  {
+                    "age": 20,
+                    "city": "a"
+                  },
+                  {
+                    "age": 30,
+                    "city": "b"
+                  },
+                  {
+                    "age": 40,
+                    "city": "a"
+                  },
+                  {
+                    "age": 50,
+                    "city": "c"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "dataset": [
+                  {
+                    "age": 20
+                  },
+                  {
+                    "age": ""
+                  },
+                  {
+                    "age": 40
+                  },
+                  {
+                    "age": 50
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "dataset": [
+                  {
+                    "v": "Infinity"
+                  },
+                  {
+                    "v": 5
+                  },
+                  {
+                    "v": "NaN"
+                  },
+                  {
+                    "v": 10
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "dataset": {
+          "type": "array"
+        },
+        "rows": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message != null || (Number.isFinite(output.result.rows) && Number.isFinite(output.result.columns) && Array.isArray(output.result.profile))",
+        "output.ok === false || output.result.message != null || (output.result.qualityScore >= 0 && output.result.qualityScore <= 100)",
+        "output.ok === false || !Array.isArray(output.result.profile) || output.result.profile.every(p => typeof p.field === 'string' && ['numeric','categorical','text'].includes(p.type) && Number.isFinite(p.nullRate) && Number.isFinite(p.cardinality))",
+        "output.ok === false || !Array.isArray(output.result.profile) || output.result.profile.every(p => !p.stats || (Number.isFinite(p.stats.mean) && Number.isFinite(p.stats.median)))"
+      ],
+      "macro_id": "ml.datasetProfile",
+      "name": "datasetProfile"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.deploy",
+      "name": "deploy"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.deploy-create",
+      "name": "deploy-create"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.deploy-list",
+      "name": "deploy-list"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.deploy-scale",
+      "name": "deploy-scale"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.deploy-stop",
+      "name": "deploy-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.experiment-delete",
+      "name": "experiment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.experiment-finish",
+      "name": "experiment-finish"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.experiment-list",
+      "name": "experiment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.experiment-log",
+      "name": "experiment-log"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.experiment-start",
+      "name": "experiment-start"
+    },
+    {
+      "_derived": false,
+      "domain": "ml",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "features": [
+                  {
+                    "t": 1,
+                    "x": 1,
+                    "y": 2
+                  },
+                  {
+                    "t": 0,
+                    "x": 2,
+                    "y": 1
+                  },
+                  {
+                    "t": 1,
+                    "x": 3,
+                    "y": 5
+                  },
+                  {
+                    "t": 0,
+                    "x": 4,
+                    "y": 1
+                  }
+                ],
+                "target": "t"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "dataset": [
+                  {
+                    "a": 10,
+                    "b": 5
+                  },
+                  {
+                    "a": 20,
+                    "b": 6
+                  },
+                  {
+                    "a": 30,
+                    "b": 7
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "features": [
+                  {
+                    "a": 1
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "features": [
+                  {
+                    "t": 1,
+                    "x": "Infinity"
+                  },
+                  {
+                    "t": 0,
+                    "x": "NaN"
+                  },
+                  {
+                    "t": 1,
+                    "x": 3
+                  }
+                ],
+                "target": "t"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "dataset": {
+          "type": "array"
+        },
+        "features": {
+          "type": "array"
+        },
+        "target": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message != null || Array.isArray(output.result.rankings)",
+        "output.ok === false || output.result.message != null || Array.isArray(output.result.topFeatures)",
+        "output.ok === false || !Array.isArray(output.result.rankings) || output.result.rankings.every(r => typeof r.feature === 'string' && Number.isFinite(r.variance) && Number.isFinite(r.stdDev) && Number.isFinite(r.correlation) && Number.isFinite(r.importance))"
+      ],
+      "macro_id": "ml.featureImportance",
+      "name": "featureImportance"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.generate_report",
+      "name": "generate_report"
+    },
+    {
+      "_derived": false,
+      "domain": "ml",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "datasetSize": 5000,
+                "features": 20,
+                "model": "neural-network",
+                "task": "classification"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "datasetSize": 50000,
+                "features": 120,
+                "model": "xgboost",
+                "task": "regression"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "datasetSize": 200,
+                "features": 50,
+                "model": "linear",
+                "task": "classification"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "datasetSize": "abc",
+                "features": "NaN",
+                "model": "neural-network",
+                "task": "classification"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "datasetSize": {
+          "type": "number"
+        },
+        "features": {
+          "type": "number"
+        },
+        "model": {
+          "type": "string"
+        },
+        "task": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || typeof output.result.modelType === 'string'",
+        "output.ok === false || typeof output.result.taskType === 'string'",
+        "output.ok === false || (Number.isFinite(output.result.datasetSize) && Number.isFinite(output.result.featureCount))",
+        "output.ok === false || (typeof output.result.suggestions === 'object' && output.result.suggestions !== null)",
+        "output.ok === false || (Number.isFinite(output.result.suggestions.crossValidation) && Number.isFinite(output.result.suggestions.testSplit))",
+        "output.ok === false || Array.isArray(output.result.notes)"
+      ],
+      "macro_id": "ml.hyperparameterSuggest",
+      "name": "hyperparameterSuggest"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.infer",
+      "name": "infer"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ml.live_arxiv",
       "name": "live_arxiv"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.model-card",
+      "name": "model-card"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.model-compare",
+      "name": "model-compare"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.model-hub",
+      "name": "model-hub"
+    },
+    {
+      "_derived": false,
+      "domain": "ml",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "actuals": [
+                  "cat",
+                  "dog",
+                  "dog",
+                  "dog",
+                  "cat"
+                ],
+                "predictions": [
+                  "cat",
+                  "dog",
+                  "cat",
+                  "dog",
+                  "cat"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "actuals": [
+                  3,
+                  2.5,
+                  5,
+                  4
+                ],
+                "predictions": [
+                  3.1,
+                  2,
+                  5.5,
+                  4.2
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "actuals": [
+                  3,
+                  2.5,
+                  5,
+                  2
+                ],
+                "predictions": [
+                  3.5,
+                  "Infinity",
+                  "NaN",
+                  2.1
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "actuals": {
+          "type": "array"
+        },
+        "labels": {
+          "type": "array"
+        },
+        "predictions": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message != null || ['classification','regression'].includes(output.result.type)",
+        "output.ok === false || output.result.type !== 'classification' || (Number.isFinite(output.result.accuracy) && Number.isFinite(output.result.avgF1) && Array.isArray(output.result.perClass))",
+        "output.ok === false || output.result.type !== 'classification' || output.result.perClass.every(p => Number.isFinite(p.precision) && Number.isFinite(p.recall) && Number.isFinite(p.f1) && Number.isFinite(p.support))",
+        "output.ok === false || output.result.type !== 'regression' || (Number.isFinite(output.result.mse) && Number.isFinite(output.result.rmse) && Number.isFinite(output.result.mae) && Number.isFinite(output.result.r2))"
+      ],
+      "macro_id": "ml.modelEvaluate",
+      "name": "modelEvaluate"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.playground-infer",
+      "name": "playground-infer"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.run_experiment",
+      "name": "run_experiment"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.scale",
+      "name": "scale"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.space-create",
+      "name": "space-create"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.space-delete",
+      "name": "space-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.space-list",
+      "name": "space-list"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.stop",
+      "name": "stop"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.stop-deployment",
+      "name": "stop-deployment"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.train",
+      "name": "train"
+    },
+    {
+      "_derived": true,
+      "domain": "ml",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ml.vote",
+      "name": "vote"
     }
   ],
   "domain": "ml",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 1
+  "macroCount": 54
 }

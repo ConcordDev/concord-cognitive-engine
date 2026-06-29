@@ -1,0 +1,143 @@
+name: Autonomous Loop
+# Stage 3 of the self-driving completion loop (docs/AUTONOMOUS_LOOP.md).
+#
+# Each scheduled fire runs ONE bounded loop iteration: pick the highest-leverage
+# unit, let Claude Code (headless) do the intelligent worker step, then let the
+# DETERMINISTIC gates decide whether it lands. The gates — not the model — own the
+# commit: verify.mjs must PASS and guard.mjs must be clean, or the iteration is
+# discarded. Blast radius is one unit, on a dedicated branch, never main.
+#
+# ─── PREREQUISITES (one-time, human) ───────────────────────────────────────────
+#   1. Repo secret `ANTHROPIC_API_KEY` (or `CLAUDE_CODE_OAUTH_TOKEN`) — the loop
+#      cannot self-provision model access.
+#   2. A dedicated long-running branch `autoloop/main` off `main` (created once the
+#      groundwork PR merges). The loop only ever pushes here; humans review +
+#      fast-forward to main. It NEVER pushes to main.
+#   3. To pause: `touch AGENT_STOP` on the branch (kill-switch, honored below).
+#      To redirect mid-stream: commit a `STEER.md` on the branch.
+#
+# Safety rails that survive "maximize autonomy":
+#   • runs only on `autoloop/main` (hard-coded BRANCH), never on main;
+#   • guard.mjs hard-blocks any diff touching a grader/baseline, weakening a test,
+#     or a money/auth invariant — those are discarded, not committed;
+#   • verify.mjs is default-FAIL: no PASS → no commit;
+#   • one unit per run; AGENT_STOP short-circuits the whole job.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6h; conservative — bump once trusted
+  workflow_dispatch:
+    inputs:
+      max_iterations:
+        description: "Units to attempt this run (each is independently gated)"
+        required: false
+        default: "1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: autoloop
+  cancel-in-progress: false   # never interrupt a unit mid-commit
+
+env:
+  BRANCH: autoloop/main
+
+jobs:
+  iterate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the autoloop branch
+        uses: actions/checkout@v4
+        with:
+          ref: autoloop/main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Kill-switch — honor AGENT_STOP
+        id: stop
+        run: |
+          if [ -f AGENT_STOP ]; then
+            echo "AGENT_STOP present — halting (rm AGENT_STOP on the branch to resume)."
+            echo "stopped=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "stopped=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.stop.outputs.stopped == 'false'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            concord-frontend/package-lock.json
+
+      - name: Install deps
+        if: steps.stop.outputs.stopped == 'false'
+        run: |
+          (cd server && npm ci)
+          (cd concord-frontend && npm ci)
+
+      - name: Install Claude Code CLI
+        if: steps.stop.outputs.stopped == 'false'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Configure git identity
+        if: steps.stop.outputs.stopped == 'false'
+        run: |
+          git config user.name  "concord-autoloop[bot]"
+          git config user.email "autoloop@users.noreply.github.com"
+
+      - name: Run loop iterations
+        if: steps.stop.outputs.stopped == 'false'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          MAX_ITERS: ${{ github.event.inputs.max_iterations || '1' }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 "${MAX_ITERS:-1}"); do
+            [ -f AGENT_STOP ] && { echo "AGENT_STOP appeared — stopping."; break; }
+
+            # 1) Select the next unit; stop cleanly when the backlog is empty.
+            NEXT_JSON="$(node scripts/autoloop/next.mjs --json || true)"
+            UNIT_ID="$(node -e 'try{process.stdout.write((JSON.parse(process.argv[1])||{}).id||"")}catch{process.stdout.write("")}' "$NEXT_JSON")"
+            if [ -z "$UNIT_ID" ]; then echo "LOOP COMPLETE — no pending units."; break; fi
+            echo "::group::unit $UNIT_ID"
+
+            # 2) Snapshot the pre-work ratchet (default-FAIL anchor).
+            node scripts/autoloop/verify.mjs "$UNIT_ID" --capture || true
+
+            # 3) Intelligent worker step — Claude Code, headless, ONE unit, bounded.
+            #    The deterministic gates below (not the model) decide if it lands.
+            PROMPT="You are one iteration of the Concord autonomous completion loop. Read docs/AUTONOMOUS_LOOP.md (the north-star) in full first. Then work EXACTLY the unit '$UNIT_ID' whose worker prompt is in this JSON: $NEXT_JSON . Do the REAL work — never weaken or edit a grader, baseline, or existing test to pass; never touch a money/auth invariant (if the unit requires that, or a connector go-live needing real OAuth secrets, STOP and leave the tree unchanged). Make your edits, then run the unit's own checks until they are genuinely green. Do NOT commit or push — the workflow does that only if the independent gates pass. When done, write the unit id and a one-line evidence note to audit/autoloop/last-unit.txt."
+            claude -p "$PROMPT" \
+              --dangerously-skip-permissions \
+              --max-turns 60 \
+              || echo "worker step returned non-zero (will be gated below)"
+
+            # 4) Independent verifier (default-FAIL) + anti-gaming guard.
+            if node scripts/autoloop/verify.mjs "$UNIT_ID" && node scripts/autoloop/guard.mjs; then
+              node scripts/autoloop/loop.mjs --pass "$UNIT_ID" --note "$(cat audit/autoloop/last-unit.txt 2>/dev/null | head -c 200)"
+              git add -A
+              git commit -m "autoloop($UNIT_ID): verified unit — gates green" \
+                -m "Independent verify.mjs PASS + guard.mjs clean. One unit, on $BRANCH." || true
+              git push origin "HEAD:$BRANCH"
+              echo "✅ $UNIT_ID landed."
+            else
+              echo "✗ $UNIT_ID did not pass verify+guard — discarding changes."
+              node scripts/autoloop/loop.mjs --fail "$UNIT_ID" || true
+              git checkout -- . || true
+              git clean -fd server concord-frontend || true
+              # Persist only the attempt-count bump in the backlog.
+              git add audit/autoloop/backlog.json && git commit -m "autoloop($UNIT_ID): attempt recorded (verify/guard not met)" || true
+              git push origin "HEAD:$BRANCH" || true
+            fi
+            rm -f audit/autoloop/last-unit.txt
+            echo "::endgroup::"
+          done
+
+      - name: Status
+        if: steps.stop.outputs.stopped == 'false'
+        run: node scripts/autoloop/status.mjs || true

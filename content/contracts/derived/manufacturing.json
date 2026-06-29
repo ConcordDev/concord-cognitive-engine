@@ -10,6 +10,398 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "manufacturing.advanceStep",
+      "name": "advanceStep"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.andon-board",
+      "name": "andon-board"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.andon-raise",
+      "name": "andon-raise"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.andon-update",
+      "name": "andon-update"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": false,
+      "domain": "manufacturing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "components": [
+                  {
+                    "name": "Housing",
+                    "quantity": 2,
+                    "unitCost": 12.5
+                  }
+                ],
+                "product": "HA-400"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "components": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "components": [
+                  {
+                    "name": "bad",
+                    "quantity": "lots",
+                    "unitCost": "free"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "components": {
+          "maxLength": 5000,
+          "type": "array"
+        },
+        "product": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Number.isFinite(output.result.totalCost) && output.result.totalCost >= 0",
+        "Number.isInteger(output.result.componentCount) && output.result.componentCount >= 0",
+        "Array.isArray(output.result.components)",
+        "output.result.components.every(c => Number.isFinite(c.lineCost))"
+      ],
+      "macro_id": "manufacturing.bomCost",
+      "name": "bomCost"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.bomCostCalc",
+      "name": "bomCostCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "manufacturing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "defects": [
+                  {
+                    "severity": "minor",
+                    "type": "scratch"
+                  },
+                  {
+                    "severity": "critical",
+                    "type": "crack"
+                  }
+                ],
+                "inspected": 200
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "defects": [],
+                "inspected": 50
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "defects": [
+                  {
+                    "type": "x"
+                  }
+                ],
+                "inspected": "bad"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "defects": {
+          "maxLength": 100000,
+          "type": "array"
+        },
+        "inspected": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Number.isInteger(output.result.defectCount) && output.result.defectCount >= 0",
+        "Number.isFinite(output.result.defectRatePct) && output.result.defectRatePct >= 0",
+        "typeof output.result.byType === 'object' && output.result.byType !== null",
+        "['none','low','elevated','high'].includes(output.result.riskLevel)"
+      ],
+      "macro_id": "manufacturing.defectAnalysis",
+      "name": "defectAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.generateTraveler",
+      "name": "generateTraveler"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.inventory-allocate",
+      "name": "inventory-allocate"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.inventory-status",
+      "name": "inventory-status"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.inventory-upsert",
+      "name": "inventory-upsert"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.iot-machine-state",
+      "name": "iot-machine-state"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.iot-reading-ingest",
+      "name": "iot-reading-ingest"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "manufacturing.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +415,765 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "manufacturing.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "manufacturing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "machine": "CNC-01",
+                "plannedTime": 480
+              }
+            },
+            "durationMinutes": 48,
+            "reason": "tool change setup"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "plannedTime": 480
+              }
+            },
+            "durationMinutes": 60,
+            "reason": "bearing repair"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "plannedTime": 480
+              }
+            },
+            "durationMinutes": "lots",
+            "reason": "x"
+          }
+        }
+      ],
+      "inputs": {
+        "durationMinutes": {
+          "type": "number"
+        },
+        "machine": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "plannedTime": {
+          "type": "number"
+        },
+        "reason": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result.downtimeId === 'string' && output.result.downtimeId.startsWith('DT-')",
+        "Number.isFinite(output.result.durationMinutes) && output.result.durationMinutes >= 0",
+        "Number.isFinite(output.result.availabilityImpactPct) && output.result.availabilityImpactPct >= 0",
+        "['maintenance','setup','unplanned'].includes(output.result.category)"
+      ],
+      "macro_id": "manufacturing.logDowntime",
+      "name": "logDowntime"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.lot-genealogy",
+      "name": "lot-genealogy"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.lot-register",
+      "name": "lot-register"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.lots-list",
+      "name": "lots-list"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.maintenance-complete",
+      "name": "maintenance-complete"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.maintenance-plan-create",
+      "name": "maintenance-plan-create"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.maintenance-schedule",
+      "name": "maintenance-schedule"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.ncr-advance",
+      "name": "ncr-advance"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.ncr-create",
+      "name": "ncr-create"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.ncr-list",
+      "name": "ncr-list"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.oee-status",
+      "name": "oee-status"
+    },
+    {
+      "_derived": false,
+      "domain": "manufacturing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "downtime": 80,
+                "goodPieces": 680,
+                "idealCycleTime": 0.5,
+                "plannedTime": 480,
+                "totalPieces": 700
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "downtime": "oops",
+                "goodPieces": [],
+                "idealCycleTime": null,
+                "plannedTime": "NaN",
+                "totalPieces": {}
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "downtime": {
+          "type": "number"
+        },
+        "goodPieces": {
+          "type": "number"
+        },
+        "idealCycleTime": {
+          "type": "number"
+        },
+        "plannedTime": {
+          "type": "number"
+        },
+        "totalPieces": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Number.isFinite(output.result.oee) && output.result.oee >= 0",
+        "Number.isFinite(output.result.availability)",
+        "Number.isFinite(output.result.performance)",
+        "Number.isFinite(output.result.quality)",
+        "['world_class','typical','needs_improvement'].includes(output.result.rating)"
+      ],
+      "macro_id": "manufacturing.oeeCalculate",
+      "name": "oeeCalculate"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.oeeCalculator",
+      "name": "oeeCalculator"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "manufacturing.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": false,
+      "domain": "manufacturing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hoursWorked": 300000,
+                "incidents": [
+                  {
+                    "oshaRecordable": true,
+                    "type": "laceration"
+                  },
+                  {
+                    "oshaRecordable": false,
+                    "type": "near-miss"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hoursWorked": 200000,
+                "incidents": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hoursWorked": "bad",
+                "incidents": [
+                  {
+                    "recordable": true
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "hoursWorked": {
+          "type": "number"
+        },
+        "incidents": {
+          "maxLength": 100000,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Number.isFinite(output.result.incidentRate) && output.result.incidentRate >= 0",
+        "Number.isInteger(output.result.recordableIncidents) && output.result.recordableIncidents >= 0",
+        "Number.isInteger(output.result.totalIncidents)",
+        "['below_average','average','above_average'].includes(output.result.benchmark)"
+      ],
+      "macro_id": "manufacturing.safetyRate",
+      "name": "safetyRate"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.safetyRateReport",
+      "name": "safetyRateReport"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.schedule-gantt",
+      "name": "schedule-gantt"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.schedule-job-add",
+      "name": "schedule-job-add"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.schedule-job-reschedule",
+      "name": "schedule-job-reschedule"
+    },
+    {
+      "_derived": false,
+      "domain": "manufacturing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "workOrders": [
+                  {
+                    "dueDate": "2026-07-10",
+                    "id": "WO-A",
+                    "priority": 3
+                  },
+                  {
+                    "dueDate": "2026-07-05",
+                    "id": "WO-C",
+                    "priority": 1
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "workOrders": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "workOrders": [
+                  {
+                    "id": "no-prio"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "workOrders": {
+          "maxLength": 5000,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Array.isArray(output.result.sequence)",
+        "Number.isInteger(output.result.count) && output.result.count === output.result.sequence.length",
+        "output.result.sequence.every((s, i) => s.position === i + 1)"
+      ],
+      "macro_id": "manufacturing.scheduleOptimize",
+      "name": "scheduleOptimize"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.scheduleOptimizer",
+      "name": "scheduleOptimizer"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.spc-chart",
+      "name": "spc-chart"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.work-instruction-create",
+      "name": "work-instruction-create"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.work-instruction-step-complete",
+      "name": "work-instruction-step-complete"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.work-instructions-list",
+      "name": "work-instructions-list"
+    },
+    {
+      "_derived": true,
+      "domain": "manufacturing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "manufacturing.work-orders",
+      "name": "work-orders"
     }
   ],
   "domain": "manufacturing",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 60
 }

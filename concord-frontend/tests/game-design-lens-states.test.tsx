@@ -126,8 +126,15 @@ describe('game-design section — four UX states', () => {
     }));
     const { getByText, getAllByText } = render(<GameDesignSection />);
     await waitFor(() => expect(getByText('Skybound')).toBeInTheDocument());
-    // dashboard stat labels render from the real dashboard payload.
-    await waitFor(() => expect(getByText(/Mechanics/i)).toBeInTheDocument());
-    expect(getAllByText('5').length).toBeGreaterThan(0); // mechanics count
+    // dashboard stat labels render from the real dashboard payload. The fully
+    // painted surface has TWO "Mechanics" nodes (the dashboard stat label AND
+    // the GdMechanicsPanel tab button), so getByText throws "multiple elements"
+    // once both paint — a CI-load paint-order race that getAllByText avoids
+    // (mirrors the count assertion below).
+    await waitFor(() => expect(getAllByText(/Mechanics/i).length).toBeGreaterThan(0));
+    // De-flake: the mechanics COUNT can paint a tick after its LABEL under CI
+    // load, so retry rather than assert synchronously (was an intermittent
+    // frontend_coverage failure in the loaded parallel run; passes 5/5 locally).
+    await waitFor(() => expect(getAllByText('5').length).toBeGreaterThan(0)); // mechanics count
   });
 });

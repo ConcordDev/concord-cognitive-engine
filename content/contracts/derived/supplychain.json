@@ -10,6 +10,295 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "supplychain.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.demandForecast",
+      "name": "demandForecast"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.exceptionScan",
+      "name": "exceptionScan"
+    },
+    {
+      "_derived": false,
+      "domain": "supplychain",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "items": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "items": [
+                  {
+                    "currentStock": 5,
+                    "dailyDemand": 10,
+                    "holdingCost": 5,
+                    "leadTimeDays": 7,
+                    "name": "Widget",
+                    "orderCost": 50
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "items": [
+                  {
+                    "currentStock": "oops",
+                    "dailyDemand": "NaN",
+                    "holdingCost": "-Infinity",
+                    "leadTimeDays": "Infinity",
+                    "name": "Bad",
+                    "orderCost": "1e999"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "items": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "output.result.message !== undefined || Array.isArray(output.result.items)",
+        "output.result.message !== undefined || Number.isFinite(output.result.totalItems)",
+        "output.result.message !== undefined || Number.isFinite(output.result.needsReorder)",
+        "output.result.message !== undefined || output.result.items.every(function(i){ return Number.isFinite(i.eoq) && Number.isFinite(i.reorderPoint) && Number.isFinite(i.safetyStock) && Number.isFinite(i.currentStock) && Number.isFinite(i.daysOfStock); })",
+        "output.result.message !== undefined || output.result.items.every(function(i){ return typeof i.needsReorder === 'boolean'; })"
+      ],
+      "macro_id": "supplychain.inventoryOptimize",
+      "name": "inventoryOptimize"
+    },
+    {
+      "_derived": false,
+      "domain": "supplychain",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "orders": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "orders": [
+                  {
+                    "id": "o1",
+                    "orderDate": "2026-01-01",
+                    "receivedDate": "2026-01-06"
+                  },
+                  {
+                    "id": "o2",
+                    "orderDate": "2026-01-01",
+                    "receivedDate": "2026-01-11"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "orders": [
+                  {
+                    "id": "x",
+                    "orderDate": "garbage",
+                    "receivedDate": "also-garbage"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "orders": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "output.result.message !== undefined || Number.isFinite(output.result.ordersAnalyzed)",
+        "output.result.message !== undefined || Number.isFinite(output.result.avgLeadTimeDays)",
+        "output.result.message !== undefined || typeof output.result.reliability === 'string'"
+      ],
+      "macro_id": "supplychain.leadTimeAnalysis",
+      "name": "leadTimeAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "supplychain.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +312,622 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "supplychain.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.move",
+      "name": "move"
+    },
+    {
+      "_derived": false,
+      "domain": "supplychain",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "echelons": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "echelons": [
+              {
+                "currentStock": 2000,
+                "dailyDemand": 100,
+                "demandStdDev": 30,
+                "leadTimeDays": 7,
+                "location": "LA DC",
+                "tier": "regional"
+              },
+              {
+                "currentStock": 100,
+                "dailyDemand": 100,
+                "demandStdDev": 30,
+                "leadTimeDays": 7,
+                "location": "Dallas DC",
+                "tier": "regional"
+              }
+            ],
+            "serviceLevelZ": 1.65
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "echelons": [
+              {
+                "currentStock": "no",
+                "dailyDemand": "NaN",
+                "demandStdDev": "NaN",
+                "leadTimeDays": "Infinity",
+                "location": "X",
+                "tier": "regional"
+              }
+            ],
+            "serviceLevelZ": "NaN"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "echelons": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "output.result.message !== undefined || Array.isArray(output.result.echelons)",
+        "output.result.message !== undefined || Number.isFinite(output.result.totalSafetyStock)",
+        "output.result.message !== undefined || Number.isFinite(output.result.totalTargetStock)",
+        "output.result.message !== undefined || Number.isFinite(output.result.needsReplenish)",
+        "output.result.message !== undefined || Array.isArray(output.result.rebalanceTransfers)",
+        "output.result.message !== undefined || output.result.echelons.every(function(e){ return Number.isFinite(e.safetyStock) && Number.isFinite(e.reorderPoint) && Number.isFinite(e.cycleStock) && Number.isFinite(e.targetStock) && Number.isFinite(e.daysOfStock) && Number.isFinite(e.imbalance); })",
+        "output.result.message !== undefined || output.result.rebalanceTransfers.every(function(t){ return typeof t.from === 'string' && typeof t.to === 'string' && Number.isFinite(t.units); })"
+      ],
+      "macro_id": "supplychain.multiEchelonOptimize",
+      "name": "multiEchelonOptimize"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.networkGraph",
+      "name": "networkGraph"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.networkSet",
+      "name": "networkSet"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "supplychain.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.scenarioDelete",
+      "name": "scenarioDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.scenarioList",
+      "name": "scenarioList"
+    },
+    {
+      "_derived": false,
+      "domain": "supplychain",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "altLeadTimeDays": 10,
+            "altUnitCost": 14,
+            "baseDailyDemand": 100,
+            "baseLeadTimeDays": 14,
+            "baseUnitCost": 10,
+            "currentStock": 500,
+            "disruption": "port_closure",
+            "name": "Port test"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "altLeadTimeDays": 0,
+            "altUnitCost": 0,
+            "baseDailyDemand": 100,
+            "baseLeadTimeDays": 14,
+            "baseUnitCost": 10,
+            "currentStock": 500,
+            "disruption": "supplier_failure"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "altLeadTimeDays": "NaN",
+            "altUnitCost": "NaN",
+            "baseDailyDemand": "NaN",
+            "baseLeadTimeDays": "Infinity",
+            "baseUnitCost": "bad",
+            "currentStock": "-Infinity",
+            "disruption": "port_closure"
+          }
+        }
+      ],
+      "inputs": {
+        "disruption": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 240,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "Array.isArray(output.result.options) && output.result.options.length >= 1",
+        "typeof output.result.recommendation === 'string'",
+        "typeof output.result.resilient === 'boolean'",
+        "output.result.options.every(function(o){ return Number.isFinite(o.effectiveLeadTimeDays) && Number.isFinite(o.effectiveUnitCost) && Number.isFinite(o.demandDuringLead) && Number.isFinite(o.projectedStockoutUnits) && Number.isFinite(o.replenishCost) && Number.isFinite(o.daysToStockout); })",
+        "output.result.options.every(function(o){ return typeof o.source === 'string' && typeof o.stocksOut === 'boolean'; })"
+      ],
+      "macro_id": "supplychain.scenarioSimulate",
+      "name": "scenarioSimulate"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.seasonalForecast",
+      "name": "seasonalForecast"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.shipmentCheckpoint",
+      "name": "shipmentCheckpoint"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.shipmentCreate",
+      "name": "shipmentCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.shipmentDelete",
+      "name": "shipmentDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.shipmentList",
+      "name": "shipmentList"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.spendAnalytics",
+      "name": "spendAnalytics"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.status",
+      "name": "status"
+    },
+    {
+      "_derived": false,
+      "domain": "supplychain",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "suppliers": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "suppliers": [
+                  {
+                    "name": "Acme",
+                    "onTimePercent": 95,
+                    "priceCompetitiveness": 80,
+                    "qualityScore": 90,
+                    "responsiveness": 85
+                  },
+                  {
+                    "name": "Cheap",
+                    "onTimePercent": 50,
+                    "priceCompetitiveness": 60,
+                    "qualityScore": 40,
+                    "responsiveness": 45
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "suppliers": [
+                  {
+                    "name": "Bad",
+                    "onTimePercent": "Infinity",
+                    "priceCompetitiveness": "x",
+                    "qualityScore": "NaN",
+                    "responsiveness": "1e999"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "suppliers": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "output.result.message !== undefined || Array.isArray(output.result.suppliers)",
+        "output.result.message !== undefined || Number.isFinite(output.result.atRisk)",
+        "output.result.message !== undefined || output.result.suppliers.every(function(s){ return Number.isFinite(s.totalScore) && typeof s.supplier === 'string' && typeof s.tier === 'string'; })",
+        "output.result.message !== undefined || (output.result.suppliers.length === 0 || typeof output.result.topSupplier === 'string')"
+      ],
+      "macro_id": "supplychain.supplierScore",
+      "name": "supplierScore"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.workOrderAdvance",
+      "name": "workOrderAdvance"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.workOrderCreate",
+      "name": "workOrderCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.workOrderDelete",
+      "name": "workOrderDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.workOrderList",
+      "name": "workOrderList"
     }
   ],
   "domain": "supplychain",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 43
 }

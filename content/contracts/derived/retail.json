@@ -10,6 +10,720 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "retail.abandoned-cart-recover",
+      "name": "abandoned-cart-recover"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.abandoned-carts-list",
+      "name": "abandoned-carts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.analytics-revenue-by-day",
+      "name": "analytics-revenue-by-day"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.analytics-summary",
+      "name": "analytics-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.analytics-top-products",
+      "name": "analytics-top-products"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.campaigns-create",
+      "name": "campaigns-create"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.campaigns-list",
+      "name": "campaigns-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.campaigns-performance",
+      "name": "campaigns-performance"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.campaigns-record-conversion",
+      "name": "campaigns-record-conversion"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.campaigns-send",
+      "name": "campaigns-send"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.cart-add-line",
+      "name": "cart-add-line"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.cart-confirm-paid-with-intent",
+      "name": "cart-confirm-paid-with-intent"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.cart-create-payment-intent",
+      "name": "cart-create-payment-intent"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.cart-open",
+      "name": "cart-open"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.cart-tender",
+      "name": "cart-tender"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.cart-total",
+      "name": "cart-total"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.channels-connect",
+      "name": "channels-connect"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.channels-disconnect",
+      "name": "channels-disconnect"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.channels-list",
+      "name": "channels-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.channels-list-products",
+      "name": "channels-list-products"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.channels-sync-inventory",
+      "name": "channels-sync-inventory"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.collections-add-product",
+      "name": "collections-add-product"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.collections-create",
+      "name": "collections-create"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.collections-delete",
+      "name": "collections-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.collections-list",
+      "name": "collections-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "retail",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "avgOrderValue": 120,
+            "cac": 300,
+            "customerLifespanYears": 2.5,
+            "purchaseFrequencyPerYear": 6
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "avgOrderValue": 50,
+            "cac": 80,
+            "customerLifespanYears": 1,
+            "purchaseFrequencyPerYear": 2
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "avgOrderValue": 100,
+            "cac": 0,
+            "customerLifespanYears": 3,
+            "purchaseFrequencyPerYear": 4
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "avgOrderValue": "1e999",
+            "cac": -5,
+            "customerLifespanYears": "NaN",
+            "purchaseFrequencyPerYear": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "avgOrderValue": "abc",
+            "cac": "z",
+            "customerLifespanYears": "y",
+            "purchaseFrequencyPerYear": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "avgOrderValue": {
+          "required": false,
+          "type": "number"
+        },
+        "cac": {
+          "required": false,
+          "type": "number"
+        },
+        "customerLifespanYears": {
+          "required": false,
+          "type": "number"
+        },
+        "customers": {
+          "required": false,
+          "type": "array"
+        },
+        "purchaseFrequencyPerYear": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.result.ltv === undefined || Number.isFinite(output.result.ltv)",
+        "output.ok === false || output.result.ltvToCacRatio === undefined || Number.isFinite(output.result.ltvToCacRatio)",
+        "output.ok === false || output.result.cac === undefined || Number.isFinite(output.result.cac)",
+        "output.ok === false || output.result.avgOrderValue === undefined || Number.isFinite(output.result.avgOrderValue)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "retail.customerLTV",
+      "name": "customerLTV"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.customers-add",
+      "name": "customers-add"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.customers-delete",
+      "name": "customers-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.customers-list",
+      "name": "customers-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.customers-segments",
+      "name": "customers-segments"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.discounts-apply",
+      "name": "discounts-apply"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.discounts-create",
+      "name": "discounts-create"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.discounts-delete",
+      "name": "discounts-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.discounts-list",
+      "name": "discounts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.generate_label",
+      "name": "generate_label"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.gift-cards-balance",
+      "name": "gift-cards-balance"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.gift-cards-create",
+      "name": "gift-cards-create"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.gift-cards-list",
+      "name": "gift-cards-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.gift-cards-redeem",
+      "name": "gift-cards-redeem"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.initiate_return",
+      "name": "initiate_return"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "retail.list_mine",
       "name": "list_mine"
     },
@@ -36,11 +750,1048 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "retail.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.low-stock",
+      "name": "low-stock"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.orders-list",
+      "name": "orders-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": false,
+      "domain": "retail",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "deals": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "deals": [
+              {
+                "name": "d1",
+                "probability": 50,
+                "stage": "qualified",
+                "value": 1000
+              },
+              {
+                "name": "d2",
+                "probability": 25,
+                "stage": "proposal",
+                "value": 2000
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "deals": [
+              {
+                "name": "won",
+                "probability": 100,
+                "stage": "closed-won",
+                "value": 5000
+              },
+              {
+                "name": "open",
+                "probability": 40,
+                "stage": "negotiation",
+                "value": 1000
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "deals": [
+              {
+                "probability": "Infinity",
+                "stage": "x",
+                "value": "1e999"
+              },
+              {
+                "probability": 1000000000,
+                "stage": "z",
+                "value": 1000
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "deals": [
+              {
+                "probability": "abc",
+                "stage": "y",
+                "value": "NaN"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "deals": {
+              "boom": true
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "deals": {
+          "required": false,
+          "type": "array"
+        },
+        "includeClosed": {
+          "required": false,
+          "type": "boolean"
+        },
+        "opportunities": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isInteger(output.result.totalDeals)",
+        "output.ok === false || Number.isFinite(output.result.totalUnweighted)",
+        "output.ok === false || Number.isFinite(output.result.totalWeighted)",
+        "output.ok === false || Number.isFinite(output.result.expectedRevenue)",
+        "output.ok === false || Number.isFinite(output.result.conversionRate)",
+        "output.ok === false || (typeof output.result.byStage === 'object' && output.result.byStage !== null)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "retail.pipelineValue",
+      "name": "pipelineValue"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.process_refund",
+      "name": "process_refund"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.product-delete",
+      "name": "product-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.product-list",
+      "name": "product-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.product-upsert",
+      "name": "product-upsert"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "retail.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.refunds-create",
+      "name": "refunds-create"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.refunds-list",
+      "name": "refunds-list"
+    },
+    {
+      "_derived": false,
+      "domain": "retail",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "products": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "products": [
+              {
+                "dailyUsage": 1,
+                "leadTimeDays": 7,
+                "name": "Alpha",
+                "onHand": 2,
+                "reorderPoint": 10,
+                "sku": "A"
+              },
+              {
+                "onHand": 0,
+                "reorderPoint": 5,
+                "sku": "B"
+              },
+              {
+                "dailyUsage": 1,
+                "onHand": 100,
+                "reorderPoint": 5,
+                "sku": "D"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "products": [
+              {
+                "onHand": "1e999",
+                "reorderPoint": 10,
+                "sku": "X"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "products": [
+              {
+                "dailyUsage": "abc",
+                "onHand": "Infinity",
+                "reorderPoint": "NaN",
+                "sku": "X"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "products": [
+              null,
+              "junk",
+              42,
+              {
+                "onHand": 0,
+                "reorderPoint": 5,
+                "sku": "OK"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "products": "boom"
+          }
+        }
+      ],
+      "inputs": {
+        "inventory": {
+          "required": false,
+          "type": "array"
+        },
+        "products": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isInteger(output.result.totalProducts)",
+        "output.ok === false || Number.isInteger(output.result.criticalCount)",
+        "output.ok === false || Number.isInteger(output.result.reorderCount)",
+        "output.ok === false || Number.isInteger(output.result.sufficientCount)",
+        "output.ok === false || Array.isArray(output.result.critical)",
+        "output.ok === false || Array.isArray(output.result.needsReorder)",
+        "output.ok === false || output.result.critical.every(function(p){ return Number.isFinite(p.onHand) && Number.isFinite(p.reorderPoint); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "retail.reorderCheck",
+      "name": "reorderCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.reviews-delete",
+      "name": "reviews-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.reviews-list",
+      "name": "reviews-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.reviews-moderate",
+      "name": "reviews-moderate"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.reviews-submit",
+      "name": "reviews-submit"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.reviews-summary",
+      "name": "reviews-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.send_tracking",
+      "name": "send_tracking"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.shipping-label-buy",
+      "name": "shipping-label-buy"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.shipping-labels-list",
+      "name": "shipping-labels-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.shipping-rate-quote",
+      "name": "shipping-rate-quote"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.shipping-track",
+      "name": "shipping-track"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.shipping-zones-create",
+      "name": "shipping-zones-create"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.shipping-zones-delete",
+      "name": "shipping-zones-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.shipping-zones-list",
+      "name": "shipping-zones-list"
+    },
+    {
+      "_derived": false,
+      "domain": "retail",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "incidents": [
+              {
+                "priority": "high",
+                "responseMinutes": 30,
+                "slaMinutes": 60
+              },
+              {
+                "responseMinutes": 120,
+                "slaMinutes": 60
+              },
+              {
+                "responseMinutes": 50
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "incidents": [
+              {
+                "responseMinutes": 10,
+                "slaMinutes": 60
+              },
+              {
+                "responseMinutes": 20,
+                "slaMinutes": 60
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "incidents": [
+              {
+                "responseHours": 0.5,
+                "slaHours": 1
+              },
+              {
+                "priority": "high"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "incidents": [
+              {
+                "responseMinutes": "abc",
+                "slaMinutes": "NaN"
+              },
+              {
+                "responseMinutes": "Infinity",
+                "slaMinutes": "x"
+              },
+              {
+                "responseMinutes": 30,
+                "slaMinutes": 60
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "incidents": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "incidents": "boom"
+          }
+        }
+      ],
+      "inputs": {
+        "incidents": {
+          "required": false,
+          "type": "array"
+        },
+        "tickets": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.result.complianceRate === undefined || Number.isFinite(output.result.complianceRate)",
+        "output.ok === false || output.result.slaComplianceRate === undefined || Number.isFinite(output.result.slaComplianceRate)",
+        "output.ok === false || output.result.avgResponseMinutes === undefined || Number.isFinite(output.result.avgResponseMinutes)",
+        "output.ok === false || output.result.withinSLA === undefined || Number.isInteger(output.result.withinSLA)",
+        "output.ok === false || output.result.breaches === undefined || Number.isInteger(output.result.breaches)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "retail.slaStatus",
+      "name": "slaStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.staff-activate",
+      "name": "staff-activate"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.staff-check-permission",
+      "name": "staff-check-permission"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.staff-invite",
+      "name": "staff-invite"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.staff-list",
+      "name": "staff-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.staff-remove",
+      "name": "staff-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.staff-update-role",
+      "name": "staff-update-role"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.storefront-catalog",
+      "name": "storefront-catalog"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.storefront-checkout",
+      "name": "storefront-checkout"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.storefront-configure",
+      "name": "storefront-configure"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.storefront-get",
+      "name": "storefront-get"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.storefront-publish",
+      "name": "storefront-publish"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.tax-rates-delete",
+      "name": "tax-rates-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.tax-rates-list",
+      "name": "tax-rates-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.tax-rates-set",
+      "name": "tax-rates-set"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.transfers-create",
+      "name": "transfers-create"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.transfers-list",
+      "name": "transfers-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.transfers-receive",
+      "name": "transfers-receive"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.vote",
+      "name": "vote"
     }
   ],
   "domain": "retail",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 105
 }

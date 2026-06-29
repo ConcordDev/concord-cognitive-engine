@@ -10,8 +10,424 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "experience.addParticipant",
+      "name": "addParticipant"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.analyze",
+      "name": "analyze"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.buildReel",
+      "name": "buildReel"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.cardSortResults",
+      "name": "cardSortResults"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.compare_versions",
+      "name": "compare_versions"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "experience.consolidate",
       "name": "consolidate"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.createCardSort",
+      "name": "createCardSort"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.createClip",
+      "name": "createClip"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.createHeatmapStudy",
+      "name": "createHeatmapStudy"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.createPrototype",
+      "name": "createPrototype"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.createSurvey",
+      "name": "createSurvey"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.createTest",
+      "name": "createTest"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.endorse",
+      "name": "endorse"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.generate_resume",
+      "name": "generate_resume"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.heatmapResults",
+      "name": "heatmapResults"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.heuristicEval",
+      "name": "heuristicEval"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.inviteParticipants",
+      "name": "inviteParticipants"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.journeyMap",
+      "name": "journeyMap"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.listClips",
+      "name": "listClips"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.listPanel",
+      "name": "listPanel"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.listPrototypes",
+      "name": "listPrototypes"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.listRuns",
+      "name": "listRuns"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.listSurveys",
+      "name": "listSurveys"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.listTests",
+      "name": "listTests"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.move",
+      "name": "move"
     },
     {
       "_derived": true,
@@ -36,6 +452,84 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "experience.personaBuilder",
+      "name": "personaBuilder"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.prototypeAnalytics",
+      "name": "prototypeAnalytics"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "experience.recent",
       "name": "recent"
     },
@@ -49,8 +543,112 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "experience.recordClick",
+      "name": "recordClick"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.recordInteraction",
+      "name": "recordInteraction"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.recordRun",
+      "name": "recordRun"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "experience.retrieve",
       "name": "retrieve"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.screenPanel",
+      "name": "screenPanel"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.star",
+      "name": "star"
     },
     {
       "_derived": true,
@@ -77,9 +675,126 @@
       ],
       "macro_id": "experience.strategies",
       "name": "strategies"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.submitCardSort",
+      "name": "submitCardSort"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.submitSurveyResponse",
+      "name": "submitSurveyResponse"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.surveyNext",
+      "name": "surveyNext"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.surveyResults",
+      "name": "surveyResults"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.surveyTemplates",
+      "name": "surveyTemplates"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.usabilityScore",
+      "name": "usabilityScore"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.validate_claims",
+      "name": "validate_claims"
+    },
+    {
+      "_derived": true,
+      "domain": "experience",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "experience.vote",
+      "name": "vote"
     }
   ],
   "domain": "experience",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 6
+  "macroCount": 61
 }

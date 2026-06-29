@@ -99,8 +99,8 @@ function buildContract(macro, override) {
 }
 
 async function main() {
-  const { MACROS } = await bootEngine();
-  const macros = enumerateMacros(MACROS);
+  const { MACROS, lensActions, brainBacked } = await bootEngine();
+  const macros = enumerateMacros(MACROS, lensActions, brainBacked);
   const overrides = loadOverrides();
 
   // Group contracts by domain.
@@ -108,6 +108,10 @@ async function main() {
   let withSchema = 0;
   let withOverride = 0;
   for (const macro of macros) {
+    // Path-3 brain-backed/skip handlers are never driven, so emitting a static
+    // contract for them would only bloat the derived tree by ~29k entries. Skip.
+    // (Path-2 is emitted in full, including its skip macros, unchanged.)
+    if (macro.path === 3 && macro.skip) continue;
     const override = overrides.get(macro.macroId) || null;
     if (macro.spec?.paramSchema) withSchema++;
     if (override) withOverride++;

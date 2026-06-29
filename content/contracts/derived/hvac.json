@@ -10,8 +10,762 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "hvac.agreement-cancel",
+      "name": "agreement-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.agreement-complete-visit",
+      "name": "agreement-complete-visit"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.agreement-create",
+      "name": "agreement-create"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.agreement-list",
+      "name": "agreement-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.appointment-assign",
+      "name": "appointment-assign"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.appointment-create",
+      "name": "appointment-create"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.appointment-delete",
+      "name": "appointment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.appointment-status",
+      "name": "appointment-status"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.asset-add",
+      "name": "asset-add"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.asset-delete",
+      "name": "asset-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.asset-list",
+      "name": "asset-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.asset-log-service",
+      "name": "asset-log-service"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.booking-confirm",
+      "name": "booking-confirm"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.booking-list",
+      "name": "booking-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.booking-request",
+      "name": "booking-request"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.dispatch-board",
+      "name": "dispatch-board"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "hvac",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "monthlyBill": 300,
+                "squareFootage": 1500,
+                "systemAge": 12
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "monthlyBill": 90,
+                "squareFootage": 1800,
+                "systemAge": 3
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "monthlyBill": "abc",
+                "squareFootage": "Infinity",
+                "systemAge": "NaN"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "monthlyBill": {
+          "type": "number"
+        },
+        "squareFootage": {
+          "type": "number"
+        },
+        "systemAge": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.annualCost)",
+        "output.ok === false || Number.isFinite(output.result.costPerSqFt)",
+        "output.ok === false || Number.isFinite(output.result.estimatedAnnualSavings)",
+        "output.ok === false || typeof output.result.systemEfficiency === 'string'",
+        "output.ok === false || typeof output.result.expectedLifespan === 'string'",
+        "output.ok === false || Array.isArray(output.result.savingsOpportunities)",
+        "output.ok === false || Number.isFinite(output.result.roiScore)",
+        "output.ok === false || typeof output.result.recommendation === 'string'",
+        "output.ok === false || ['A','B','C','D'].includes(output.result.grade)"
+      ],
+      "macro_id": "hvac.energyAudit",
+      "name": "energyAudit"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.estimate-request-signature",
+      "name": "estimate-request-signature"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.estimate-sign",
+      "name": "estimate-sign"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.field-visit-complete",
+      "name": "field-visit-complete"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.field-visit-list",
+      "name": "field-visit-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.field-visit-start",
+      "name": "field-visit-start"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.field-visit-update",
+      "name": "field-visit-update"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "hvac.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "hvac",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "climate": "hot-humid",
+                "insulation": "good",
+                "squareFootage": 2000,
+                "stories": 2
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "climate": "very-cold",
+                "insulation": "average",
+                "squareFootage": 1500,
+                "stories": 1
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "climate": "made-up",
+                "insulation": "poor",
+                "squareFootage": "Infinity",
+                "stories": "NaN"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "climate": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "insulation": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "squareFootage": {
+          "type": "number"
+        },
+        "stories": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.heatingBTU)",
+        "output.ok === false || Number.isFinite(output.result.coolingBTU)",
+        "output.ok === false || typeof output.result.tonnageRecommended === 'string'",
+        "output.ok === false || typeof output.result.equipmentSize === 'string'",
+        "output.ok === false || typeof output.result.recommendation === 'string'",
+        "output.ok === false || Number.isFinite(output.result.squareFootage)",
+        "output.ok === false || Number.isFinite(output.result.tonnage)"
+      ],
+      "macro_id": "hvac.loadCalculation",
+      "name": "loadCalculation"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "hvac",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "lastServiceDate": "2020-01-01",
+                "systemType": "heat-pump"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "lastServiceDate": "",
+                "systemType": "furnace"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "lastServiceDate": "not-a-date",
+                "systemType": "central-ac"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "lastServiceDate": {
+          "maxLength": 20,
+          "type": "string"
+        },
+        "systemType": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.systemType === 'string'",
+        "output.ok === false || Number.isFinite(output.result.overdueCount)",
+        "output.ok === false || (output.result.lastServiceDate === null || typeof output.result.lastServiceDate === 'string')",
+        "output.ok === false || typeof output.result.recommendation === 'string'",
+        "output.ok === false || (Array.isArray(output.result.tasks) && output.result.tasks.every(t => typeof t.task === 'string' && typeof t.nextDue === 'string' && typeof t.diy === 'boolean'))",
+        "output.ok === false || Number.isFinite(output.result.daysSinceService)"
+      ],
+      "macro_id": "hvac.maintenanceSchedule",
+      "name": "maintenanceSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.payment-charge",
+      "name": "payment-charge"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.payment-list",
+      "name": "payment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.payment-refund",
+      "name": "payment-refund"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.rate",
+      "name": "rate"
     },
     {
       "_derived": true,
@@ -25,9 +779,242 @@
       ],
       "macro_id": "hvac.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.tech-add",
+      "name": "tech-add"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.tech-delete",
+      "name": "tech-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.tech-list",
+      "name": "tech-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": false,
+      "domain": "hvac",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "zones": [
+                  {
+                    "currentTemp": 75,
+                    "name": "Living room",
+                    "targetTemp": 72
+                  },
+                  {
+                    "currentTemp": 68,
+                    "name": "Bedroom",
+                    "targetTemp": 72
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "zones": [
+                  {
+                    "currentTemp": 72,
+                    "name": "A",
+                    "targetTemp": 72
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "zones": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "zones": [
+                  {
+                    "currentTemp": "Infinity",
+                    "name": "X",
+                    "targetTemp": "NaN"
+                  },
+                  {
+                    "currentTemp": "abc",
+                    "name": "Y",
+                    "targetTemp": 72
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "zones": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.zones)",
+        "output.ok === false || Number.isFinite(output.result.maxDeviation)",
+        "output.ok === false || Number.isFinite(output.result.avgDeviation)",
+        "output.ok === false || typeof output.result.verdict === 'string'",
+        "output.ok === false || Number.isFinite(output.result.balanceScore)",
+        "output.ok === false || typeof output.result.recommendation === 'string'",
+        "output.ok === false || output.result.zones.every(z => typeof z.zone === 'string' && Number.isFinite(z.current) && Number.isFinite(z.target) && Number.isFinite(z.deviation))"
+      ],
+      "macro_id": "hvac.zoneBalance",
+      "name": "zoneBalance"
     }
   ],
   "domain": "hvac",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 54
 }

@@ -10,6 +10,389 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "landscaping.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.bed-add",
+      "name": "bed-add"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.bed-delete",
+      "name": "bed-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.bed-list",
+      "name": "bed-list"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.care-log",
+      "name": "care-log"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.care-reminders",
+      "name": "care-reminders"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.climate-match",
+      "name": "climate-match"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.diary-add",
+      "name": "diary-add"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.diary-delete",
+      "name": "diary-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.diary-timeline",
+      "name": "diary-timeline"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.identify-plant",
+      "name": "identify-plant"
+    },
+    {
+      "_derived": false,
+      "domain": "landscaping",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "plantType": "lawn",
+                "squareFootage": 1500
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "plantType": "xeriscape",
+                "squareFootage": 1000
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "plantType": "moss-garden",
+                "squareFootage": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "plantType": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "squareFootage": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.squareFootage === 'number'",
+        "output.ok === false || typeof output.result.plantType === 'string'",
+        "output.ok === false || typeof output.result.inchesPerWeek === 'number'",
+        "output.ok === false || typeof output.result.gallonsPerWeek === 'number'",
+        "output.ok === false || typeof output.result.gallonsPerMonth === 'number'",
+        "output.ok === false || typeof output.result.runtimeMinutes === 'number'",
+        "output.ok === false || typeof output.result.frequency === 'string'",
+        "output.ok === false || typeof output.result.monthlyCost === 'number'",
+        "output.ok === false || Number.isFinite(output.result.gallonsPerWeek)",
+        "output.ok === false || Number.isFinite(output.result.gallonsPerMonth)",
+        "output.ok === false || Number.isFinite(output.result.monthlyCost)"
+      ],
+      "macro_id": "landscaping.irrigationCalc",
+      "name": "irrigationCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.landscaping-dashboard",
+      "name": "landscaping-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.layout-create",
+      "name": "layout-create"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.layout-delete",
+      "name": "layout-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.layout-list",
+      "name": "layout-list"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.layout-save-elements",
+      "name": "layout-save-elements"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "landscaping.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +406,539 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "landscaping.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.maintenance-calendar",
+      "name": "maintenance-calendar"
+    },
+    {
+      "_derived": false,
+      "domain": "landscaping",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "material": "mulch",
+                "squareFootage": 500
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "material": "topsoil",
+                "squareFootage": 100
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "material": "moon-dust",
+                "squareFootage": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "material": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "squareFootage": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.material === 'string'",
+        "output.ok === false || typeof output.result.squareFootage === 'number'",
+        "output.ok === false || typeof output.result.depthInches === 'number'",
+        "output.ok === false || typeof output.result.cubicYards === 'number'",
+        "output.ok === false || typeof output.result.bags === 'number'",
+        "output.ok === false || typeof output.result.estimatedCost === 'number'",
+        "output.ok === false || typeof output.result.deliveryNote === 'string'",
+        "output.ok === false || Number.isFinite(output.result.cubicYards)",
+        "output.ok === false || Number.isFinite(output.result.bags)",
+        "output.ok === false || Number.isFinite(output.result.estimatedCost)"
+      ],
+      "macro_id": "landscaping.materialEstimate",
+      "name": "materialEstimate"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.overlay-create",
+      "name": "overlay-create"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.overlay-delete",
+      "name": "overlay-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.overlay-list",
+      "name": "overlay-list"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.overlay-place",
+      "name": "overlay-place"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.planting-add",
+      "name": "planting-add"
+    },
+    {
+      "_derived": false,
+      "domain": "landscaping",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hardnessZone": 7,
+                "soilType": "loam",
+                "sunExposure": "full"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hardnessZone": 7,
+                "soilType": "clay",
+                "sunExposure": "shade"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hardnessZone": "Infinity",
+                "soilType": "lava",
+                "sunExposure": "MOONLIGHT"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "hardnessZone": {
+          "type": "number"
+        },
+        "soilType": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "sunExposure": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.zone)",
+        "output.ok === false || typeof output.result.sunExposure === 'string'",
+        "output.ok === false || typeof output.result.soilType === 'string'",
+        "output.ok === false || Array.isArray(output.result.recommendations)",
+        "output.ok === false || typeof output.result.totalMatches === 'number'",
+        "output.ok === false || output.result.totalMatches === output.result.recommendations.length",
+        "output.ok === false || output.result.recommendations.every(p => typeof p.name === 'string' && typeof p.type === 'string')"
+      ],
+      "macro_id": "landscaping.plantSelection",
+      "name": "plantSelection"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.proposal-build",
+      "name": "proposal-build"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "landscaping.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.save",
+      "name": "save"
+    },
+    {
+      "_derived": false,
+      "domain": "landscaping",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hardnessZone": 6
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hardnessZone": 9
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hardnessZone": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "hardnessZone": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.zone)",
+        "output.ok === false || (typeof output.result.plan === 'object' && output.result.plan !== null)",
+        "output.ok === false || ['spring','summer','fall','winter'].every(s => Array.isArray(output.result.plan[s]) && output.result.plan[s].length > 0)",
+        "output.ok === false || typeof output.result.currentSeason === 'string'",
+        "output.ok === false || Array.isArray(output.result.immediateActions)",
+        "output.ok === false || JSON.stringify(output.result.immediateActions) === JSON.stringify(output.result.plan[output.result.currentSeason])"
+      ],
+      "macro_id": "landscaping.seasonalPlan",
+      "name": "seasonalPlan"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.trefle-plant",
+      "name": "trefle-plant"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.trefle-search",
+      "name": "trefle-search"
+    },
+    {
+      "_derived": true,
+      "domain": "landscaping",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "landscaping.vote",
+      "name": "vote"
     }
   ],
   "domain": "landscaping",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 51
 }

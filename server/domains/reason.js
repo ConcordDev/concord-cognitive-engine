@@ -22,6 +22,9 @@ export default function registerReasonMacros(register) {
       requesterId: ctx?.actor?.userId || null,
       useCouncil: input.useCouncil !== false,
       useProof: input.useProof !== false,
+      // Honest ConKay HUD beats: emit a real `macro:stage` at each phase the
+      // verification actually reaches (resolving_citations → judging → proving).
+      onStage: typeof ctx?.emitMacroStage === "function" ? ctx.emitMacroStage : null,
     });
   }, {
     note: "verify a claim against its cited DTUs — deterministic citation floor + multi-brain council judge + (for math/logic claims) a sound Z3 proof gate",

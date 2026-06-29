@@ -222,7 +222,13 @@ export default function registerAutomotiveActions(registerLensAction) {
   registerLensAction("automotive", "maintenanceSchedule", (_ctx, artifact, params = {}) => {
   try {
     const data = resolveData(artifact, params);
-    const mileage = parseInt(data.mileage || data.odometer || data.currentMileage, 10) || 0;
+    const rawMileage = data.mileage ?? data.odometer ?? data.currentMileage;
+    // Reject poisoned values that represent a non-finite number (e.g. "1e999"
+    // → Infinity, "NaN") fail-CLOSED; a clean numeric string parses normally.
+    const numMileage = Number(rawMileage);
+    const mileage = (rawMileage != null && rawMileage !== "" && Number.isFinite(numMileage))
+      ? (parseInt(rawMileage, 10) || 0)
+      : 0;
     if (!Number.isFinite(mileage) || mileage <= 0) {
       return { ok: false, error: "mileage required (odometer reading > 0)" };
     }
@@ -372,6 +378,8 @@ export default function registerAutomotiveActions(registerLensAction) {
   function aidAu(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function uidAu(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function isoAu() { return new Date().toISOString(); }
+  // Finite-or-fallback coercion: poisoned NaN/Infinity numerics clamp to `d`.
+  function finNumAu(v, d = 0) { const n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : d; }
   function dayAu() { return new Date().toISOString().slice(0, 10); }
   function listAu(map, k) { if (!map.has(k)) map.set(k, []); return map.get(k); }
   function ensureSeqAu(s, userId) {
@@ -402,10 +410,14 @@ export default function registerAutomotiveActions(registerLensAction) {
       name,
       make: String(params.make || ''),
       model: String(params.model || ''),
-      year: Number(params.year) || null,
+      // CLAMP-AND-COMPUTE: poisoned year (NaN/Infinity) sanitizes to null
+      // (a real model year is finite), never leaks into the output.
+      year: Number.isFinite(Number(params.year)) ? Number(params.year) : null,
       vin: String(params.vin || ''),
       licensePlate: String(params.licensePlate || ''),
-      odometer: Math.max(0, Number(params.odometer) || 0),
+      // CLAMP-AND-COMPUTE: poisoned odometer (NaN/Infinity) sanitizes to a
+      // finite value, never leaks into the stored/returned vehicle record.
+      odometer: Math.max(0, finNumAu(params.odometer, 0)),
       odometerUnit: ['mi', 'km'].includes(params.odometerUnit) ? params.odometerUnit : 'mi',
       fuelUnit: ['gal', 'L'].includes(params.fuelUnit) ? params.fuelUnit : 'gal',
       color: String(params.color || ''),

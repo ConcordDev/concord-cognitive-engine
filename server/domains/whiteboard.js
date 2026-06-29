@@ -1743,7 +1743,7 @@ export default function registerWhiteboardActions(registerLensAction) {
           AND category = ?
           AND source_id LIKE ?
           AND archived_at IS NULL
-        ORDER BY evolution_score DESC
+        ORDER BY evolution_score DESC, rowid DESC
         LIMIT 1
       `).get(`interior:${a}`, `blueprint:${a}:${userId}:%`);
       archetypes[a] = row

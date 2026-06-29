@@ -1,0 +1,1075 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.alert-delete",
+      "name": "alert-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.alert-evaluate",
+      "name": "alert-evaluate"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.alert-list",
+      "name": "alert-list"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.alert-save",
+      "name": "alert-save"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.analytics-dashboard",
+      "name": "analytics-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.breakdown",
+      "name": "breakdown"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.cohort-build",
+      "name": "cohort-build"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.cohort-delete",
+      "name": "cohort-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.cohort-list",
+      "name": "cohort-list"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.cohort-save",
+      "name": "cohort-save"
+    },
+    {
+      "_derived": false,
+      "domain": "analytics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohorts": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohorts": [
+              {
+                "initialUsers": 500,
+                "name": "Jan",
+                "retention": [
+                  400,
+                  320,
+                  250
+                ]
+              },
+              {
+                "initialUsers": 600,
+                "name": "Feb",
+                "retention": [
+                  550,
+                  500,
+                  460
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohorts": [
+              {
+                "initialUsers": "1e999",
+                "name": "X",
+                "retention": [
+                  "Infinity",
+                  "NaN"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohorts": [
+              {
+                "initialUsers": 0,
+                "period": "2026-W01",
+                "retention": [
+                  10
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohorts": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "cohorts": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.cohorts)",
+        "output.ok === false || output.result.message !== undefined || output.result.cohorts.every(function(c){ return Number.isFinite(c.initialUsers) && Number.isFinite(c.avgRetention) && typeof c.cohort === 'string' && Array.isArray(c.retentionCurve); })",
+        "output.ok === false || output.result.message !== undefined || output.result.cohorts.every(function(c){ return c.retentionCurve.every(function(p){ return Number.isFinite(p.period) && Number.isFinite(p.retained) && Number.isFinite(p.rate); }); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "analytics.cohortAnalysis",
+      "name": "cohortAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.dashboard-delete",
+      "name": "dashboard-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.dashboard-get",
+      "name": "dashboard-get"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.dashboard-list",
+      "name": "dashboard-list"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.dashboard-save",
+      "name": "dashboard-save"
+    },
+    {
+      "_derived": false,
+      "domain": "analytics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataPoints": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataPoints": [
+              {
+                "date": "d1",
+                "value": 10
+              },
+              {
+                "date": "d2",
+                "value": 11
+              },
+              {
+                "date": "d3",
+                "value": 9
+              },
+              {
+                "date": "d4",
+                "value": 50
+              },
+              {
+                "date": "d5",
+                "value": 10
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataPoints": [
+              {
+                "value": "1e999"
+              },
+              {
+                "value": "Infinity"
+              },
+              {
+                "value": "NaN"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataPoints": [
+              {
+                "value": 5
+              },
+              {
+                "value": 5
+              },
+              {
+                "value": 5
+              },
+              {
+                "value": 5
+              },
+              {
+                "value": 5
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataPoints": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "dataPoints": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.mean)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.stdDev)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalPoints)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.anomaliesFound)",
+        "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.anomalies) && output.result.anomalies.every(function(a){ return Number.isFinite(a.value) && Number.isFinite(a.zScore) && typeof a.date === 'string'; }))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "analytics.detectAnomalies",
+      "name": "detectAnomalies"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.event-list",
+      "name": "event-list"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.event-stats",
+      "name": "event-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.event-stream",
+      "name": "event-stream"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.event-track",
+      "name": "event-track"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.funnel-build",
+      "name": "funnel-build"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.funnel-delete",
+      "name": "funnel-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.funnel-list",
+      "name": "funnel-list"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.funnel-save",
+      "name": "funnel-save"
+    },
+    {
+      "_derived": false,
+      "domain": "analytics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "stages": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "stages": [
+              {
+                "count": 1000,
+                "name": "Visit"
+              },
+              {
+                "count": 400,
+                "name": "Signup"
+              },
+              {
+                "count": 80,
+                "name": "Buy"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "stages": [
+              {
+                "count": "1e999",
+                "name": "A"
+              },
+              {
+                "count": "Infinity",
+                "name": "B"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "stages": [
+              {
+                "count": "NaN",
+                "name": "A"
+              },
+              {
+                "count": 0,
+                "name": "B"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "stages": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "stages": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.stages)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallConversion)",
+        "output.ok === false || output.result.message !== undefined || output.result.stages.every(function(s){ return Number.isFinite(s.count) && Number.isFinite(s.dropoff) && Number.isFinite(s.conversionFromTop) && typeof s.stage === 'string'; })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "analytics.funnelAnalysis",
+      "name": "funnelAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.global-summary",
+      "name": "global-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.path-analysis",
+      "name": "path-analysis"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.range-compare",
+      "name": "range-compare"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.retention-report",
+      "name": "retention-report"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.segment",
+      "name": "segment"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": false,
+      "domain": "analytics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataPoints": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataPoints": [
+              {
+                "value": 10
+              },
+              {
+                "value": 20
+              },
+              {
+                "value": 30
+              },
+              {
+                "value": 40
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataPoints": [
+              {
+                "value": "1e999"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataPoints": [
+              {
+                "value": "Infinity"
+              },
+              {
+                "value": "NaN"
+              },
+              {
+                "value": 3
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataPoints": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "dataPoints": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || ['upward','downward','flat'].indexOf(output.result.trend) >= 0",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.slope)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.lastValue)",
+        "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.forecast) && output.result.forecast.every(function(f){ return Number.isFinite(f.periodsAhead) && Number.isFinite(f.predicted); }))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "analytics.trendForecast",
+      "name": "trendForecast"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "analytics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "analytics.world-summary",
+      "name": "world-summary"
+    }
+  ],
+  "domain": "analytics",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 52
+}

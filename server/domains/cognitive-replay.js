@@ -176,9 +176,18 @@ export default function registerCognitiveReplayActions(registerLensAction) {
       const tool = param(artifact, params, "tool");
       const role = param(artifact, params, "role");
       const sessionId = param(artifact, params, "sessionId");
-      const fromTs = Number(param(artifact, params, "fromTs")) || null;
-      const toTs = Number(param(artifact, params, "toTs")) || null;
-      const limit = Math.min(1000, Math.max(1, Number(param(artifact, params, "limit")) || 300));
+      // Fail-CLOSED finite coercion: Number("Infinity")/Number(-Infinity) are
+      // truthy, so the old `Number(x) || null` pattern leaked ±Infinity into
+      // appliedFilters.{fromTs,toTs}. Clamp each timestamp to a finite, sane
+      // bound (fromTs floors at 0, toTs ceilings at now) and fall back to null
+      // when absent/non-finite so the filter still returns ok:true.
+      const _finTs = (v, fallback) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
+      const _fromRaw = _finTs(param(artifact, params, "fromTs"), null);
+      const fromTs = _fromRaw === null ? null : Math.max(0, _fromRaw);
+      const _toRaw = _finTs(param(artifact, params, "toTs"), null);
+      const toTs = _toRaw === null ? null : Math.min(Date.now(), Math.max(0, _toRaw));
+      const _limRaw = Number(param(artifact, params, "limit"));
+      const limit = Math.min(1000, Math.max(1, Number.isFinite(_limRaw) ? _limRaw : 300));
 
       let events = collectEvents(userId, { sessionId: sessionId || null });
       if (brain) events = events.filter((e) => e.brainsUsed.includes(brain));

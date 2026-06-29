@@ -10,6 +10,881 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "education.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.assignments-create",
+      "name": "assignments-create"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.assignments-list",
+      "name": "assignments-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.assignments-peer-review",
+      "name": "assignments-peer-review"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.assignments-submit",
+      "name": "assignments-submit"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.attendance_report",
+      "name": "attendance_report"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.attendanceReport",
+      "name": "attendanceReport"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.calculate_grades",
+      "name": "calculate_grades"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.certificates-issue",
+      "name": "certificates-issue"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.certificates-list",
+      "name": "certificates-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.cohorts-create",
+      "name": "cohorts-create"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.cohorts-join",
+      "name": "cohorts-join"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.cohorts-leave",
+      "name": "cohorts-leave"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.cohorts-list",
+      "name": "cohorts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.cohorts-set-status",
+      "name": "cohorts-set-status"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.courses-create",
+      "name": "courses-create"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.courses-delete",
+      "name": "courses-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.courses-get",
+      "name": "courses-get"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.courses-list",
+      "name": "courses-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.courses-search",
+      "name": "courses-search"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.dashboard-summary",
+      "name": "dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.discussions-list",
+      "name": "discussions-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.discussions-post",
+      "name": "discussions-post"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.discussions-upvote",
+      "name": "discussions-upvote"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.exercises-create",
+      "name": "exercises-create"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.exercises-hint",
+      "name": "exercises-hint"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.exercises-list",
+      "name": "exercises-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.exercises-submit",
+      "name": "exercises-submit"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.flashcards-card-create",
+      "name": "flashcards-card-create"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.flashcards-deck-create",
+      "name": "flashcards-deck-create"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.flashcards-decks",
+      "name": "flashcards-decks"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.flashcards-due",
+      "name": "flashcards-due"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.flashcards-review",
+      "name": "flashcards-review"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.gamification-status",
+      "name": "gamification-status"
+    },
+    {
+      "_derived": false,
+      "domain": "education",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "grades": [
+                  {
+                    "credits": 3,
+                    "maxScore": 100,
+                    "score": 95,
+                    "subject": "Math"
+                  },
+                  {
+                    "credits": 1,
+                    "maxScore": 100,
+                    "score": 85,
+                    "subject": "English"
+                  }
+                ],
+                "studentName": "Ada"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "grades": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "grades": [
+                  {
+                    "credits": "abc",
+                    "maxScore": "NaN",
+                    "score": "Infinity",
+                    "subject": "Math"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "grades": "broken"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "grades": {
+          "maxLength": 5000,
+          "required": false,
+          "type": "array"
+        },
+        "studentName": {
+          "maxLength": 256,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.cumulativeGpa) && output.result.cumulativeGpa >= 0 && output.result.cumulativeGpa <= 4)",
+        "output.ok === false || ['none','honor-roll','high-honors'].includes(output.result.honorRoll)",
+        "output.ok === false || (Array.isArray(output.result.subjects) && output.result.subjects.every(s => Number.isFinite(s.gpa) && Number.isFinite(s.percentage)))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "education.generateReportCard",
+      "name": "generateReportCard"
+    },
+    {
+      "_derived": false,
+      "domain": "education",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "students": [
+                  {
+                    "grades": [
+                      {
+                        "category": "exams",
+                        "maxScore": 100,
+                        "score": 90
+                      },
+                      {
+                        "category": "homework",
+                        "maxScore": 100,
+                        "score": 80
+                      }
+                    ],
+                    "name": "Ada",
+                    "studentId": "s1"
+                  }
+                ],
+                "weightScheme": [
+                  {
+                    "category": "exams",
+                    "weight": 60
+                  },
+                  {
+                    "category": "homework",
+                    "weight": 40
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "students": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "students": [
+                  {
+                    "grades": [
+                      {
+                        "category": "exams",
+                        "maxScore": "NaN",
+                        "score": "Infinity"
+                      }
+                    ],
+                    "name": "Bad",
+                    "studentId": "s1"
+                  }
+                ],
+                "weightScheme": [
+                  {
+                    "category": "exams",
+                    "weight": "abc"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "students": 123
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "students": {
+          "maxLength": 5000,
+          "required": false,
+          "type": "array"
+        },
+        "weightScheme": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.studentsGraded) && output.result.studentsGraded >= 0)",
+        "output.ok === false || (typeof output.result.classStats === 'object' && Number.isFinite(output.result.classStats.average) && Number.isFinite(output.result.classStats.median) && Number.isFinite(output.result.classStats.high) && Number.isFinite(output.result.classStats.low))",
+        "output.ok === false || (Array.isArray(output.result.students) && output.result.students.every(s => Number.isFinite(s.weightedPct) && typeof s.letterGrade === 'string'))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "education.gradeCalculation",
+      "name": "gradeCalculation"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lesson-plan-generate",
+      "name": "lesson-plan-generate"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lesson-qa-accept",
+      "name": "lesson-qa-accept"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lesson-qa-answer",
+      "name": "lesson-qa-answer"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lesson-qa-ask",
+      "name": "lesson-qa-ask"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lesson-qa-list",
+      "name": "lesson-qa-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lesson-qa-upvote",
+      "name": "lesson-qa-upvote"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lessons-complete",
+      "name": "lessons-complete"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lessons-create",
+      "name": "lessons-create"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.lessons-list",
+      "name": "lessons-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "education.list_mine",
       "name": "list_mine"
     },
@@ -75,11 +950,659 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "education.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.mastery-dashboard",
+      "name": "mastery-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.notes-delete",
+      "name": "notes-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.notes-list",
+      "name": "notes-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.notes-save",
+      "name": "notes-save"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.paths-create",
+      "name": "paths-create"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.paths-delete",
+      "name": "paths-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.paths-list",
+      "name": "paths-list"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.paths-reorder",
+      "name": "paths-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.points-award",
+      "name": "points-award"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": false,
+      "domain": "education",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "completions": [
+                  {
+                    "completedUnits": 8,
+                    "requirementId": "A"
+                  },
+                  {
+                    "completedUnits": 10,
+                    "requirementId": "B"
+                  }
+                ],
+                "requirements": [
+                  {
+                    "name": "Core",
+                    "requiredUnits": 10,
+                    "requirementId": "A"
+                  },
+                  {
+                    "name": "Elec",
+                    "requiredUnits": 10,
+                    "requirementId": "B"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "completions": [],
+                "requirements": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "completions": [
+                  {
+                    "completedUnits": "Infinity",
+                    "requirementId": "A"
+                  }
+                ],
+                "requirements": [
+                  {
+                    "name": "X",
+                    "requiredUnits": "ten",
+                    "requirementId": "A"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "requirements": "nope"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "completions": {
+          "maxLength": 50000,
+          "required": false,
+          "type": "array"
+        },
+        "requirements": {
+          "maxLength": 5000,
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.overallCompletionPct) && output.result.overallCompletionPct >= 0 && output.result.overallCompletionPct <= 100)",
+        "output.ok === false || (Number.isFinite(output.result.totalRequirements) && Number.isFinite(output.result.completedRequirements) && Number.isFinite(output.result.remainingRequirements))",
+        "output.ok === false || (Array.isArray(output.result.details) && output.result.details.every(d => Number.isFinite(d.completionPct) && d.completionPct <= 100 && typeof d.complete === 'boolean'))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "education.progressTrack",
+      "name": "progressTrack"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.quiz-from-text",
+      "name": "quiz-from-text"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.quiz-mint-deck",
+      "name": "quiz-mint-deck"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "education.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.schedule_conflict_check",
+      "name": "schedule_conflict_check"
+    },
+    {
+      "_derived": false,
+      "domain": "education",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "schedules": [
+                  {
+                    "day": "Mon",
+                    "endTime": "10:00",
+                    "id": "x",
+                    "room": "101",
+                    "startTime": "09:00",
+                    "title": "A"
+                  },
+                  {
+                    "day": "Mon",
+                    "endTime": "10:30",
+                    "id": "y",
+                    "room": "101",
+                    "startTime": "09:30",
+                    "title": "B"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "schedules": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "schedules": [
+                  {
+                    "day": "Mon",
+                    "endTime": null,
+                    "id": "x",
+                    "startTime": "not:time"
+                  },
+                  {
+                    "day": "Mon",
+                    "endTime": "??:??",
+                    "id": "y",
+                    "startTime": null
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "schedules": 42
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "schedules": {
+          "maxLength": 5000,
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.conflictsFound) && output.result.conflictsFound >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.totalEntries) && typeof output.result.conflictFree === 'boolean')",
+        "output.ok === false || (Array.isArray(output.result.conflicts) && output.result.conflicts.every(c => Number.isFinite(c.overlapMinutes)))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "education.scheduleConflict",
+      "name": "scheduleConflict"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.skills-create",
+      "name": "skills-create"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.skills-practice",
+      "name": "skills-practice"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.skills-tree",
+      "name": "skills-tree"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.tutor-ask",
+      "name": "tutor-ask"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.video-progress-get",
+      "name": "video-progress-get"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.video-progress-save",
+      "name": "video-progress-save"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.video-transcript-get",
+      "name": "video-transcript-get"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.video-transcript-save",
+      "name": "video-transcript-save"
+    },
+    {
+      "_derived": true,
+      "domain": "education",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "education.vote",
+      "name": "vote"
     }
   ],
   "domain": "education",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 6
+  "macroCount": 93
 }

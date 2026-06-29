@@ -10,6 +10,404 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "physics.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "physics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "junk": "1e999"
+          }
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "output.result && typeof output.result.constants === 'object'",
+        "Object.values(output.result.constants).every(function(c){ return Number.isFinite(c.value) && typeof c.units === 'string' && typeof c.name === 'string'; })",
+        "output.result.constants.c.value === 299792458"
+      ],
+      "macro_id": "physics.constants",
+      "name": "constants"
+    },
+    {
+      "_derived": false,
+      "domain": "physics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "from": "m",
+            "kind": "length",
+            "to": "ft",
+            "value": 1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "from": "C",
+            "kind": "temperature",
+            "to": "F",
+            "value": 100
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "from": "kmh",
+            "kind": "velocity",
+            "to": "mps",
+            "value": 100
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "from": "m",
+            "kind": "luminance",
+            "to": "ft",
+            "value": 1
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "from": "furlong",
+            "kind": "length",
+            "to": "ft",
+            "value": 1
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "from": "m",
+            "kind": "length",
+            "to": "ft"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "from": "m",
+            "kind": "length",
+            "to": "ft",
+            "value": "1e999"
+          }
+        }
+      ],
+      "inputs": {
+        "from": {
+          "maxLength": 16,
+          "required": true,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "length",
+            "mass",
+            "time",
+            "velocity",
+            "energy",
+            "force",
+            "pressure",
+            "temperature"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "to": {
+          "maxLength": 16,
+          "required": true,
+          "type": "string"
+        },
+        "value": {
+          "required": true,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.result)",
+        "output.ok === false || output.result.from === input.from",
+        "output.ok === false || output.result.to === input.to",
+        "output.ok === false || output.result.kind === input.kind",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "physics.convert-units",
+      "name": "convert-units"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.curriculum-get",
+      "name": "curriculum-get"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.curriculum-list",
+      "name": "curriculum-list"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "physics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "a": 9.81,
+            "t": 2,
+            "v0": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "a": 9.81,
+            "v0": 0,
+            "x": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "t": 2,
+            "v": 20,
+            "v0": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "t": 2,
+            "v0": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "a": "Infinity",
+            "t": "NaN",
+            "v0": "1e999"
+          }
+        }
+      ],
+      "inputs": {
+        "a": {
+          "required": false,
+          "type": "number"
+        },
+        "t": {
+          "required": false,
+          "type": "number"
+        },
+        "v": {
+          "required": false,
+          "type": "number"
+        },
+        "v0": {
+          "required": false,
+          "type": "number"
+        },
+        "x": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.solved === 'object')",
+        "output.ok === false || ['v0','v','a','t','x'].every(function(k){ var val = output.result.solved[k]; return val == null || Number.isFinite(val); })",
+        "output.ok === false || (Array.isArray(output.result.equations) && output.result.equations.length === 4)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "physics.kinematics-1d",
+      "name": "kinematics-1d"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.kinematicsSim",
+      "name": "kinematicsSim"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.kineticsSim",
+      "name": "kineticsSim"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "physics.list_mine",
       "name": "list_mine"
     },
@@ -36,11 +434,476 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "physics.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.measure",
+      "name": "measure"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.mechanics",
+      "name": "mechanics"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.orbitalMechanics",
+      "name": "orbitalMechanics"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.pendulum-period",
+      "name": "pendulum-period"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": false,
+      "domain": "physics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "angleDeg": 45,
+            "g": 9.81,
+            "h0": 0,
+            "v0": 20
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "angleDeg": 90,
+            "h0": 0,
+            "v0": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "angleDeg": 45,
+            "h0": 10,
+            "v0": 20
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "angleDeg": 30,
+            "v0": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "angleDeg": 120,
+            "v0": 20
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "angleDeg": 45,
+            "v0": "1e999"
+          }
+        }
+      ],
+      "inputs": {
+        "angleDeg": {
+          "required": true,
+          "type": "number"
+        },
+        "g": {
+          "required": false,
+          "type": "number"
+        },
+        "h0": {
+          "required": false,
+          "type": "number"
+        },
+        "v0": {
+          "required": true,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || ['timeOfFlight_s','range_m','maxHeight_m','timeToApex_s','impactSpeed_mps','v0x_mps','v0y_mps'].every(function(k){ return Number.isFinite(output.result[k]); })",
+        "output.ok === false || output.result.range_m >= 0",
+        "output.ok === false || output.result.maxHeight_m >= 0",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "physics.projectile",
+      "name": "projectile"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "physics.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.scene-delete",
+      "name": "scene-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.scene-get",
+      "name": "scene-get"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.scene-list",
+      "name": "scene-list"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.scene-load-shared",
+      "name": "scene-load-shared"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.scene-run",
+      "name": "scene-run"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.scene-save",
+      "name": "scene-save"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.scene-share",
+      "name": "scene-share"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.simulate",
+      "name": "simulate"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.simulate-scene",
+      "name": "simulate-scene"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.thermodynamics",
+      "name": "thermodynamics"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "physics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "physics.waveInterference",
+      "name": "waveInterference"
     }
   ],
   "domain": "physics",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 46
 }

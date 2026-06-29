@@ -10,8 +10,450 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reflection.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.calendar-month",
+      "name": "calendar-month"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.device-checkin",
+      "name": "device-checkin"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-attach-media",
+      "name": "entry-attach-media"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-create",
+      "name": "entry-create"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-decrypt",
+      "name": "entry-decrypt"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-delete",
+      "name": "entry-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-detail",
+      "name": "entry-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-encrypt",
+      "name": "entry-encrypt"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-from-template",
+      "name": "entry-from-template"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-list",
+      "name": "entry-list"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-map",
+      "name": "entry-map"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-remove-media",
+      "name": "entry-remove-media"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-search",
+      "name": "entry-search"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-set-place",
+      "name": "entry-set-place"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-summarize",
+      "name": "entry-summarize"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-timeline",
+      "name": "entry-timeline"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.entry-update",
+      "name": "entry-update"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.export-history",
+      "name": "export-history"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.growthMetrics",
+      "name": "growthMetrics"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.habitTracking",
+      "name": "habitTracking"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.insightExtraction",
+      "name": "insightExtraction"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reflection.insights",
       "name": "insights"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.journal-create",
+      "name": "journal-create"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.journal-delete",
+      "name": "journal-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.journal-export",
+      "name": "journal-export"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.journal-list",
+      "name": "journal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.journal-stats",
+      "name": "journal-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.journal-streak",
+      "name": "journal-streak"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.like",
+      "name": "like"
     },
     {
       "_derived": true,
@@ -38,6 +480,149 @@
       ],
       "macro_id": "reflection.live_quote",
       "name": "live_quote"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.mood-trend",
+      "name": "mood-trend"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.on-this-day",
+      "name": "on-this-day"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.prompt-library",
+      "name": "prompt-library"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.prompt-random",
+      "name": "prompt-random"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.prompt-today",
+      "name": "prompt-today"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.rate",
+      "name": "rate"
     },
     {
       "_derived": true,
@@ -88,6 +673,110 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reflection.reflect-deepen",
+      "name": "reflect-deepen"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.reflection-dashboard",
+      "name": "reflection-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.reflection-goal-set",
+      "name": "reflection-goal-set"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.reflection-goal-status",
+      "name": "reflection-goal-status"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.reminder-set",
+      "name": "reminder-set"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.reminder-status",
+      "name": "reminder-status"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reflection.self_model",
       "name": "self_model"
     },
@@ -101,11 +790,128 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reflection.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reflection.status",
       "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.sync-status",
+      "name": "sync-status"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.tags-list",
+      "name": "tags-list"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.templates-list",
+      "name": "templates-list"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.voice-entry-create",
+      "name": "voice-entry-create"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "reflection",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reflection.year-in-review",
+      "name": "year-in-review"
     }
   ],
   "domain": "reflection",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 8
+  "macroCount": 70
 }

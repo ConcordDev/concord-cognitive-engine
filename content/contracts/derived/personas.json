@@ -23,6 +23,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "personas.browse",
+      "name": "browse"
+    },
+    {
+      "_derived": true,
+      "domain": "personas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "personas.chat_history",
+      "name": "chat_history"
+    },
+    {
+      "_derived": true,
+      "domain": "personas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "personas.chat_open",
+      "name": "chat_open"
+    },
+    {
+      "_derived": true,
+      "domain": "personas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "personas.chat_send",
+      "name": "chat_send"
+    },
+    {
+      "_derived": true,
+      "domain": "personas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "personas.create",
       "name": "create"
     },
@@ -38,6 +90,19 @@
       ],
       "macro_id": "personas.delete",
       "name": "delete"
+    },
+    {
+      "_derived": true,
+      "domain": "personas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "personas.facets",
+      "name": "facets"
     },
     {
       "_derived": false,
@@ -132,6 +197,19 @@
       "name": "list_mine"
     },
     {
+      "_derived": true,
+      "domain": "personas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "personas.mine",
+      "name": "mine"
+    },
+    {
       "_derived": false,
       "domain": "personas",
       "fuzz_cases": [
@@ -173,8 +251,47 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "personas.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "personas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "personas.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "personas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "personas.regenerate_portrait",
+      "name": "regenerate_portrait"
+    },
+    {
+      "_derived": true,
+      "domain": "personas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "personas.revise",
+      "name": "revise"
     },
     {
       "_derived": true,
@@ -270,5 +387,5 @@
   ],
   "domain": "personas",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 13
+  "macroCount": 22
 }

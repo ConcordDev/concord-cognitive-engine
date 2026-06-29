@@ -250,6 +250,200 @@ export async function listGmailLabels(db, userId, opts = {}) {
   return { ok: true, labels: (res.data?.labels || []).map((l) => ({ id: l.id, name: l.name, type: l.type })) };
 }
 
+// ── Slack (connector_id "slack", Bearer user/bot token) ─────────────────────
+// Slack's Web API returns HTTP 200 even on logical failure, with { ok:false,
+// error } in the body. connectorFetch sees HTTP 200 as success, so surface the
+// body-level failure as an honest connector error rather than a faked success.
+const SLACK_BASE = "https://slack.com/api";
+function slackBodyOk(res) {
+  if (!res.ok) return res; // transport/HTTP/token failure already shaped
+  if (res.data && res.data.ok === false) return { ok: false, reason: res.data.error || "slack_error", data: res.data };
+  return { ok: true };
+}
+
+/** List the workspace's conversations (channels) the token can see. */
+export async function listSlackChannels(db, userId, query = {}, opts = {}) {
+  const params = new URLSearchParams({
+    limit: String(Math.min(Math.max(Number(query.limit) || 100, 1), 200)),
+    exclude_archived: "true",
+    types: query.types || "public_channel",
+  });
+  if (query.cursor) params.set("cursor", String(query.cursor));
+  const res = await connectorFetch(db, userId, "slack", `${SLACK_BASE}/conversations.list?${params.toString()}`, { method: "GET" }, opts);
+  const norm = slackBodyOk(res); if (!norm.ok) return norm;
+  const channels = (res.data?.channels || []).map((c) => ({
+    id: c.id, name: c.name, isPrivate: !!c.is_private, isMember: !!c.is_member, topic: c.topic?.value || "",
+  }));
+  return { ok: true, channels, nextCursor: res.data?.response_metadata?.next_cursor || null };
+}
+
+/** Read recent messages from a Slack channel. */
+export async function readSlackMessages(db, userId, channel, query = {}, opts = {}) {
+  if (!channel) return { ok: false, reason: "missing_channel" };
+  const params = new URLSearchParams({
+    channel: String(channel),
+    limit: String(Math.min(Math.max(Number(query.limit) || 50, 1), 200)),
+  });
+  if (query.cursor) params.set("cursor", String(query.cursor));
+  if (query.oldest) params.set("oldest", String(query.oldest));
+  const res = await connectorFetch(db, userId, "slack", `${SLACK_BASE}/conversations.history?${params.toString()}`, { method: "GET" }, opts);
+  const norm = slackBodyOk(res); if (!norm.ok) return norm;
+  const messages = (res.data?.messages || []).map((m) => ({
+    ts: m.ts, user: m.user || m.bot_id || null, text: m.text || "", type: m.type || "message",
+    threadTs: m.thread_ts || null, replyCount: m.reply_count || 0,
+  }));
+  return { ok: true, messages, nextCursor: res.data?.response_metadata?.next_cursor || null };
+}
+
+/** Post a message to a Slack channel (real two-way write). */
+export async function postSlackMessage(db, userId, channel, text, opts = {}) {
+  if (!channel) return { ok: false, reason: "missing_channel" };
+  if (!text) return { ok: false, reason: "missing_text" };
+  const res = await connectorFetch(
+    db, userId, "slack", `${SLACK_BASE}/chat.postMessage`,
+    { method: "POST", headers: { "Content-Type": "application/json; charset=utf-8" }, body: JSON.stringify({ channel, text }) },
+    opts,
+  );
+  const norm = slackBodyOk(res); if (!norm.ok) return norm;
+  return { ok: true, ts: res.data?.ts || null, channel: res.data?.channel || channel };
+}
+
+// ── Google Sheets (connector_id "google_sheets", scope spreadsheets) ────────
+const SHEETS_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
+
+/** Read a range of a spreadsheet (values.get). Returns a 2D values array. */
+export async function readGoogleSheet(db, userId, spreadsheetId, range = "A1:Z1000", opts = {}) {
+  if (!spreadsheetId) return { ok: false, reason: "missing_spreadsheet" };
+  const res = await connectorFetch(
+    db, userId, "google_sheets",
+    `${SHEETS_BASE}/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}`,
+    { method: "GET" }, opts,
+  );
+  if (!res.ok) return res;
+  return { ok: true, range: res.data?.range || range, values: res.data?.values || [], rowCount: (res.data?.values || []).length };
+}
+
+/** Append a row to a spreadsheet (values.append, real two-way write). */
+export async function appendGoogleSheetRow(db, userId, spreadsheetId, range, values, opts = {}) {
+  if (!spreadsheetId) return { ok: false, reason: "missing_spreadsheet" };
+  const row = Array.isArray(values) ? values : [values];
+  const params = new URLSearchParams({ valueInputOption: "USER_ENTERED", insertDataOption: "INSERT_ROWS" });
+  const res = await connectorFetch(
+    db, userId, "google_sheets",
+    `${SHEETS_BASE}/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range || "A1")}:append?${params.toString()}`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values: [row] }) }, opts,
+  );
+  if (!res.ok) return res;
+  return { ok: true, updatedRange: res.data?.updates?.updatedRange || null, updatedRows: res.data?.updates?.updatedRows || 0 };
+}
+
+// ── GitHub (connector_id "github", Bearer token, no expiry) ─────────────────
+const GITHUB_BASE = "https://api.github.com";
+// GitHub requires a User-Agent and prefers its versioned vendor Accept type.
+const GITHUB_HEADERS = { Accept: "application/vnd.github+json", "User-Agent": "concord-connector", "X-GitHub-Api-Version": "2022-11-28" };
+
+/** List repositories the authenticated user can access. */
+export async function listGitHubRepos(db, userId, query = {}, opts = {}) {
+  const params = new URLSearchParams({
+    per_page: String(Math.min(Math.max(Number(query.perPage) || 30, 1), 100)),
+    sort: query.sort || "updated",
+  });
+  if (query.page) params.set("page", String(query.page));
+  const res = await connectorFetch(db, userId, "github", `${GITHUB_BASE}/user/repos?${params.toString()}`, { method: "GET", headers: GITHUB_HEADERS }, opts);
+  if (!res.ok) return res;
+  const repos = (res.data || []).map((r) => ({
+    id: r.id, fullName: r.full_name, name: r.name, private: !!r.private,
+    description: r.description || "", openIssues: r.open_issues_count || 0, url: r.html_url,
+  }));
+  return { ok: true, repos };
+}
+
+/** List issues for a repo ("owner/name"). Filters out PRs (issues endpoint includes them). */
+export async function readGitHubIssues(db, userId, repo, query = {}, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  const params = new URLSearchParams({
+    state: query.state || "open",
+    per_page: String(Math.min(Math.max(Number(query.perPage) || 30, 1), 100)),
+  });
+  if (query.labels) params.set("labels", String(query.labels));
+  const res = await connectorFetch(db, userId, "github", `${GITHUB_BASE}/repos/${repo}/issues?${params.toString()}`, { method: "GET", headers: GITHUB_HEADERS }, opts);
+  if (!res.ok) return res;
+  const issues = (res.data || []).filter((i) => !i.pull_request).map((i) => ({
+    number: i.number, title: i.title, state: i.state, body: i.body || "", author: i.user?.login || null,
+    labels: (i.labels || []).map((l) => (typeof l === "string" ? l : l.name)), comments: i.comments || 0, url: i.html_url,
+  }));
+  return { ok: true, issues };
+}
+
+/** Create an issue on a repo (real two-way write). */
+export async function createGitHubIssue(db, userId, repo, issue = {}, opts = {}) {
+  if (!repo) return { ok: false, reason: "missing_repo" };
+  if (!issue.title) return { ok: false, reason: "missing_title" };
+  const body = { title: issue.title, body: issue.body || "", ...(Array.isArray(issue.labels) ? { labels: issue.labels } : {}) };
+  const res = await connectorFetch(
+    db, userId, "github", `${GITHUB_BASE}/repos/${repo}/issues`,
+    { method: "POST", headers: { ...GITHUB_HEADERS, "Content-Type": "application/json" }, body: JSON.stringify(body) }, opts,
+  );
+  if (!res.ok) return res;
+  return { ok: true, number: res.data?.number || null, url: res.data?.html_url || null };
+}
+
+// ── Notion (connector_id "notion", Bearer token, Notion-Version header) ─────
+const NOTION_BASE = "https://api.notion.com/v1";
+const NOTION_HEADERS = { "Notion-Version": "2022-06-28" };
+
+/** Search pages/databases the integration can see. */
+export async function searchNotion(db, userId, query = {}, opts = {}) {
+  const body = { page_size: Math.min(Math.max(Number(query.pageSize) || 25, 1), 100) };
+  if (query.query) body.query = String(query.query);
+  if (query.filter) body.filter = query.filter; // e.g. { property:'object', value:'page' }
+  const res = await connectorFetch(
+    db, userId, "notion", `${NOTION_BASE}/search`,
+    { method: "POST", headers: { ...NOTION_HEADERS, "Content-Type": "application/json" }, body: JSON.stringify(body) }, opts,
+  );
+  if (!res.ok) return res;
+  const results = (res.data?.results || []).map((r) => ({
+    id: r.id, object: r.object, url: r.url || null, title: notionTitle(r),
+    createdTime: r.created_time || null, lastEditedTime: r.last_edited_time || null,
+  }));
+  return { ok: true, results, nextCursor: res.data?.next_cursor || null, hasMore: !!res.data?.has_more };
+}
+
+/** Read a single Notion page's metadata. */
+export async function readNotionPage(db, userId, pageId, opts = {}) {
+  if (!pageId) return { ok: false, reason: "missing_page" };
+  const res = await connectorFetch(db, userId, "notion", `${NOTION_BASE}/pages/${encodeURIComponent(pageId)}`, { method: "GET", headers: NOTION_HEADERS }, opts);
+  if (!res.ok) return res;
+  return { ok: true, page: { id: res.data?.id, url: res.data?.url || null, title: notionTitle(res.data), archived: !!res.data?.archived, lastEditedTime: res.data?.last_edited_time || null } };
+}
+
+/** Append a paragraph block to a page/block (real two-way write). */
+export async function appendNotionBlock(db, userId, blockId, text, opts = {}) {
+  if (!blockId) return { ok: false, reason: "missing_block" };
+  if (!text) return { ok: false, reason: "missing_text" };
+  const children = [{ object: "block", type: "paragraph", paragraph: { rich_text: [{ type: "text", text: { content: String(text) } }] } }];
+  const res = await connectorFetch(
+    db, userId, "notion", `${NOTION_BASE}/blocks/${encodeURIComponent(blockId)}/children`,
+    { method: "PATCH", headers: { ...NOTION_HEADERS, "Content-Type": "application/json" }, body: JSON.stringify({ children }) }, opts,
+  );
+  if (!res.ok) return res;
+  return { ok: true, appended: (res.data?.results || []).length, blockId };
+}
+
+/** Extract a human title from a Notion page/search result (best-effort). */
+function notionTitle(r) {
+  try {
+    const props = r?.properties || {};
+    for (const v of Object.values(props)) {
+      if (v?.type === "title" && Array.isArray(v.title)) {
+        return v.title.map((t) => t.plain_text || t.text?.content || "").join("") || "(untitled)";
+      }
+    }
+    if (Array.isArray(r?.title)) return r.title.map((t) => t.plain_text || "").join("") || "(untitled)";
+  } catch { /* ignore */ }
+  return "(untitled)";
+}
+
 /** Normalize a Gmail API message resource into a flat, render-ready shape. */
 export function parseGmailMessage(raw = {}) {
   const headers = {};

@@ -10,8 +10,1099 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "photography.album-add-photo",
+      "name": "album-add-photo"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.album-create",
+      "name": "album-create"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.album-delete",
+      "name": "album-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.album-detail",
+      "name": "album-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.album-list",
+      "name": "album-list"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.catalog-stats",
+      "name": "catalog-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "photography",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "compositionRules": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "compositionRules": [
+                  "rule-of-thirds",
+                  "leading-lines",
+                  "depth"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "compositionRules": [
+                  "bogus",
+                  "<script>alert(1)</script>",
+                  "symmetry"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "compositionRules": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.rulesApplied)",
+        "output.ok === false || (Number.isFinite(output.result.score) && output.result.score >= 0 && output.result.score <= 100)",
+        "output.ok === false || Array.isArray(output.result.allRules)",
+        "output.ok === false || Array.isArray(output.result.suggestions)",
+        "output.ok === false || ['strong-composition','basic-composition','no-rules-applied'].includes(output.result.strength)"
+      ],
+      "macro_id": "photography.compositionAnalysis",
+      "name": "compositionAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.cull-filter",
+      "name": "cull-filter"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.cull-summary",
+      "name": "cull-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.develop-copy-paste",
+      "name": "develop-copy-paste"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.develop-reset",
+      "name": "develop-reset"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.develop-set",
+      "name": "develop-set"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.export-preset-list",
+      "name": "export-preset-list"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.export-preset-save",
+      "name": "export-preset-save"
+    },
+    {
+      "_derived": false,
+      "domain": "photography",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "aperture": 5.6,
+                "ev": 12,
+                "iso": 100
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "aperture": 1.4,
+                "ev": 6,
+                "iso": 1600
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "aperture": "1e999",
+                "ev": "NaN",
+                "iso": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "aperture": {
+          "required": false,
+          "type": "number"
+        },
+        "ev": {
+          "required": false,
+          "type": "number"
+        },
+        "iso": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.shutterSpeed === 'string'",
+        "output.ok === false || /^(\\d+s|1\\/\\d+s)$/.test(output.result.shutterSpeed)",
+        "output.ok === false || ['shallow','moderate','deep'].includes(output.result.depthOfField)",
+        "output.ok === false || ['likely','frozen'].includes(output.result.motionBlur)",
+        "output.ok === false || ['ok','use-tripod'].includes(output.result.handheld)",
+        "output.ok === false || typeof output.result.aperture === 'string'",
+        "output.ok === false || Number.isFinite(output.result.iso)",
+        "output.ok === false || Number.isFinite(output.result.ev)"
+      ],
+      "macro_id": "photography.exposureCalc",
+      "name": "exposureCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.face-tag-add",
+      "name": "face-tag-add"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.face-tag-list",
+      "name": "face-tag-list"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": false,
+      "domain": "photography",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "budget": "medium",
+                "genre": "portrait"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "budget": "high",
+                "genre": "landscape"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "budget": "1e999",
+                "genre": "<script>alert(1)</script>"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "budget": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        },
+        "genre": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.genre === 'string'",
+        "output.ok === false || typeof output.result.budget === 'string'",
+        "output.ok === false || (output.result.recommendation && typeof output.result.recommendation.lens === 'string')",
+        "output.ok === false || typeof output.result.recommendation.lighting === 'string'",
+        "output.ok === false || typeof output.result.recommendation.accessory === 'string'",
+        "output.ok === false || typeof output.result.tip === 'string'"
+      ],
+      "macro_id": "photography.gearRecommend",
+      "name": "gearRecommend"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.geometry-set",
+      "name": "geometry-set"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.histogram-compute",
+      "name": "histogram-compute"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.keyword-add",
+      "name": "keyword-add"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.keyword-list",
+      "name": "keyword-list"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.lens-correction-set",
+      "name": "lens-correction-set"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "photography.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.mask-create",
+      "name": "mask-create"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.mask-delete",
+      "name": "mask-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.mask-list",
+      "name": "mask-list"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.mask-update",
+      "name": "mask-update"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.move",
+      "name": "move"
+    },
+    {
+      "_derived": false,
+      "domain": "photography",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "query": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "query": "   "
+          }
+        }
+      ],
+      "inputs": {
+        "orientation": {
+          "enum": [
+            "landscape",
+            "portrait",
+            "square"
+          ],
+          "required": false,
+          "type": "string"
+        },
+        "perPage": {
+          "required": false,
+          "type": "number"
+        },
+        "query": {
+          "maxLength": 200,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "photography.pexels-search",
+      "name": "pexels-search"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.photo-color-label",
+      "name": "photo-color-label"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.photo-delete",
+      "name": "photo-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.photo-detail",
+      "name": "photo-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.photo-flag",
+      "name": "photo-flag"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.photo-import",
+      "name": "photo-import"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.photo-list",
+      "name": "photo-list"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.photo-rate",
+      "name": "photo-rate"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.photo-search",
+      "name": "photo-search"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.photo-update",
+      "name": "photo-update"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.preset-apply",
+      "name": "preset-apply"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.preset-apply-batch",
+      "name": "preset-apply-batch"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.preset-create",
+      "name": "preset-create"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.preset-delete",
+      "name": "preset-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.preset-list",
+      "name": "preset-list"
+    },
+    {
+      "_derived": false,
+      "domain": "photography",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "dpi": 300,
+                "heightPixels": 3000,
+                "widthPixels": 4000
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "dpi": 150,
+                "heightPixels": 768,
+                "widthPixels": 1024
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "dpi": "NaN",
+                "heightPixels": "1e999",
+                "widthPixels": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "dpi": {
+          "required": false,
+          "type": "number"
+        },
+        "heightPixels": {
+          "required": false,
+          "type": "number"
+        },
+        "widthPixels": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.resolution === 'string'",
+        "output.ok === false || Number.isFinite(output.result.megapixels)",
+        "output.ok === false || typeof output.result.maxPrintAt300DPI === 'string'",
+        "output.ok === false || typeof output.result.maxPrintAt150DPI === 'string'",
+        "output.ok === false || ['professional','good','web-only'].includes(output.result.quality)"
+      ],
+      "macro_id": "photography.printSize",
+      "name": "printSize"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.raw-decode-meta",
+      "name": "raw-decode-meta"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.raw-develop",
+      "name": "raw-develop"
     },
     {
       "_derived": true,
@@ -36,11 +1127,258 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "photography.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "photography.resolve_shot",
       "name": "resolve_shot"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.shoot-assign",
+      "name": "shoot-assign"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.shoot-create",
+      "name": "shoot-create"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.shoot-list",
+      "name": "shoot-list"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.smart-collection-create",
+      "name": "smart-collection-create"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.smart-collection-delete",
+      "name": "smart-collection-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.smart-collection-eval",
+      "name": "smart-collection-eval"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.smart-collection-list",
+      "name": "smart-collection-list"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.tone-curve-apply",
+      "name": "tone-curve-apply"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.tone-curve-delete",
+      "name": "tone-curve-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.tone-curve-list",
+      "name": "tone-curve-list"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.tone-curve-save",
+      "name": "tone-curve-save"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.vision",
+      "name": "vision"
+    },
+    {
+      "_derived": true,
+      "domain": "photography",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photography.vote",
+      "name": "vote"
     }
   ],
   "domain": "photography",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 81
 }

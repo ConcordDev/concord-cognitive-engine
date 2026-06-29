@@ -10,6 +10,525 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "construction.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.budget-add",
+      "name": "budget-add"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.budget-delete",
+      "name": "budget-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.budget-list",
+      "name": "budget-list"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.budget-update",
+      "name": "budget-update"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.changeorder-create",
+      "name": "changeorder-create"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.changeorder-decide",
+      "name": "changeorder-decide"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.changeorder-delete",
+      "name": "changeorder-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.changeorder-list",
+      "name": "changeorder-list"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "construction",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "tasks": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "tasks": [
+              {
+                "dependencies": [],
+                "duration": 5,
+                "name": "Excavate"
+              },
+              {
+                "dependencies": [
+                  "Excavate"
+                ],
+                "duration": 10,
+                "name": "Foundation"
+              },
+              {
+                "dependencies": [
+                  "Foundation"
+                ],
+                "duration": 15,
+                "name": "Framing"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "tasks": [
+              {
+                "dependencies": [
+                  "missing-dep"
+                ],
+                "duration": "NaN",
+                "name": "A"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "tasks": [
+              {
+                "dependencies": [],
+                "duration": 1e+308,
+                "name": "X"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "tasks": "boom"
+          }
+        }
+      ],
+      "inputs": {
+        "tasks": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.projectDuration)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.criticalPath)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.tasks)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "construction.criticalPath",
+      "name": "criticalPath"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.dailylog-create",
+      "name": "dailylog-create"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.dailylog-delete",
+      "name": "dailylog-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.dailylog-list",
+      "name": "dailylog-list"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.drawing-add",
+      "name": "drawing-add"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.drawing-compare",
+      "name": "drawing-compare"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.drawing-delete",
+      "name": "drawing-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.drawing-list",
+      "name": "drawing-list"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.drawing-markup",
+      "name": "drawing-markup"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.drawing-revise",
+      "name": "drawing-revise"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "construction",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "tasks": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "startDate": "2026-06-01",
+            "tasks": [
+              {
+                "dependencies": [],
+                "duration": 5,
+                "name": "A"
+              },
+              {
+                "dependencies": [
+                  "A"
+                ],
+                "duration": 7,
+                "name": "B"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "startDate": "<script>alert(1)</script>",
+            "tasks": [
+              {
+                "dependencies": [
+                  "ghost"
+                ],
+                "duration": "NaN",
+                "name": "C"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "tasks": [
+              {
+                "dependencies": [],
+                "duration": 1e+308,
+                "name": "D"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "tasks": "boom"
+          }
+        }
+      ],
+      "inputs": {
+        "startDate": {
+          "maxLength": 32,
+          "required": false,
+          "type": "string"
+        },
+        "tasks": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Array.isArray(output.result.bars)",
+        "output.ok === false || output.result.bars.length === 0 || Number.isFinite(output.result.projectDuration)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "construction.ganttSchedule",
+      "name": "ganttSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "construction.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +542,677 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "construction.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": false,
+      "domain": "construction",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {},
+          "input": {
+            "phases": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "phases": [
+              {
+                "actualPercent": 95,
+                "name": "Sitework",
+                "plannedPercent": 90
+              },
+              {
+                "actualPercent": 52,
+                "name": "Foundation",
+                "plannedPercent": 60
+              },
+              {
+                "actualPercent": 20,
+                "name": "Framing",
+                "plannedPercent": 40
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "phases": [
+              {
+                "actualPercent": "Infinity",
+                "name": "P",
+                "plannedPercent": "NaN"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "phases": [
+              {
+                "actualPercent": -1,
+                "name": "Q",
+                "plannedPercent": 1e+308
+              }
+            ]
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "phases": "boom"
+          }
+        }
+      ],
+      "inputs": {
+        "phases": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallPlannedPercent)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallActualPercent)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallVariance)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.behindPhases)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "construction.progressReport",
+      "name": "progressReport"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.punch-add",
+      "name": "punch-add"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.punch-delete",
+      "name": "punch-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.punch-list",
+      "name": "punch-list"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.punch-update",
+      "name": "punch-update"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "construction.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.rfi-close",
+      "name": "rfi-close"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.rfi-delete",
+      "name": "rfi-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.rfi-list",
+      "name": "rfi-list"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.rfi-respond",
+      "name": "rfi-respond"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.rfi-submit",
+      "name": "rfi-submit"
+    },
+    {
+      "_derived": false,
+      "domain": "construction",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "incidents": [
+              {},
+              {}
+            ],
+            "safetyChecklist": [
+              {
+                "item": "ppe",
+                "passed": true
+              },
+              {
+                "critical": true,
+                "item": "fall",
+                "passed": false
+              }
+            ],
+            "totalHoursWorked": 120000,
+            "workerCount": 25
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "incidents": [],
+            "safetyChecklist": [
+              {
+                "passed": true
+              }
+            ],
+            "totalHoursWorked": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "incidents": [
+              {}
+            ],
+            "safetyChecklist": [
+              {
+                "passed": true
+              }
+            ],
+            "totalHoursWorked": "1e999"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "incidents": [
+              {}
+            ],
+            "safetyChecklist": [
+              {
+                "passed": true
+              }
+            ],
+            "totalHoursWorked": -1,
+            "workerCount": "Infinity"
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "safetyChecklist": "boom"
+          }
+        }
+      ],
+      "inputs": {
+        "incidents": {
+          "required": false,
+          "type": "array"
+        },
+        "safetyChecklist": {
+          "required": false,
+          "type": "array"
+        },
+        "totalHoursWorked": {
+          "required": false,
+          "type": "number"
+        },
+        "workerCount": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.complianceRate)",
+        "output.ok === false || Number.isFinite(output.result.incidentRate)",
+        "output.ok === false || (output.result.complianceRate >= 0 && output.result.complianceRate <= 100)",
+        "output.ok === false || typeof output.result.checklistResults === 'object'",
+        "output.ok === false || Array.isArray(output.result.criticalFailures)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "construction.safetyCompliance",
+      "name": "safetyCompliance"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.submittal-create",
+      "name": "submittal-create"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.submittal-delete",
+      "name": "submittal-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.submittal-list",
+      "name": "submittal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.submittal-review",
+      "name": "submittal-review"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": false,
+      "domain": "construction",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lineItems": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "laborPercent": 40,
+            "lineItems": [
+              {
+                "description": "Concrete",
+                "quantity": 100,
+                "unit": "cy",
+                "unitCost": 150,
+                "wastePercent": 10
+              }
+            ],
+            "squareFootage": 2000
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "laborPercent": "Infinity",
+            "lineItems": [
+              {
+                "description": "poison",
+                "quantity": "Infinity",
+                "unit": "ea",
+                "unitCost": "1e999",
+                "wastePercent": "NaN"
+              }
+            ],
+            "squareFootage": "-1e999"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lineItems": [
+              {
+                "description": "neg",
+                "quantity": -5,
+                "unit": "ea",
+                "unitCost": 1e+308,
+                "wastePercent": 0
+              }
+            ]
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "lineItems": "boom"
+          }
+        }
+      ],
+      "inputs": {
+        "laborPercent": {
+          "required": false,
+          "type": "number"
+        },
+        "lineItems": {
+          "required": false,
+          "type": "array"
+        },
+        "squareFootage": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.subtotalMaterials)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.laborCost)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overhead)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.profit)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.grandTotal)",
+        "output.ok === false || output.result.message !== undefined || output.result.costPerSqFt === null || Number.isFinite(output.result.costPerSqFt)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "construction.takeoffEstimate",
+      "name": "takeoffEstimate"
+    },
+    {
+      "_derived": true,
+      "domain": "construction",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "construction.vote",
+      "name": "vote"
     }
   ],
   "domain": "construction",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 57
 }

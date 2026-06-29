@@ -1,0 +1,488 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.communicationFlow",
+      "name": "communicationFlow"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.comp-rollup",
+      "name": "comp-rollup"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.employee-remove",
+      "name": "employee-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.employee-upsert",
+      "name": "employee-upsert"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.hris-import",
+      "name": "hris-import"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.orgChart",
+      "name": "orgChart"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.reassign",
+      "name": "reassign"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.roster-list",
+      "name": "roster-list"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.roster-set",
+      "name": "roster-set"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.scenario-create",
+      "name": "scenario-create"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.scenario-delete",
+      "name": "scenario-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.scenario-list",
+      "name": "scenario-list"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.snapshot-capture",
+      "name": "snapshot-capture"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.snapshot-diff",
+      "name": "snapshot-diff"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.snapshot-list",
+      "name": "snapshot-list"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.teamComposition",
+      "name": "teamComposition"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.tenure-attrition",
+      "name": "tenure-attrition"
+    },
+    {
+      "_derived": true,
+      "domain": "organ",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "organ.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "organ",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 37
+}

@@ -10,6 +10,305 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "crypto.address-book-delete",
+      "name": "address-book-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.address-book-list",
+      "name": "address-book-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.address-book-save",
+      "name": "address-book-save"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.ai-portfolio-insight",
+      "name": "ai-portfolio-insight"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.alert-deliver",
+      "name": "alert-deliver"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.alert-deliveries-list",
+      "name": "alert-deliveries-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.alert-deliveries-mark-read",
+      "name": "alert-deliveries-mark-read"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.allocation-breakdown",
+      "name": "allocation-breakdown"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.dashboard-summary",
+      "name": "dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.detectPatterns",
+      "name": "detectPatterns"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.estimateGas",
+      "name": "estimateGas"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.holdings-add",
+      "name": "holdings-add"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.holdings-list",
+      "name": "holdings-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.holdings-sell",
+      "name": "holdings-sell"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.import-csv",
+      "name": "import-csv"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "crypto.list_mine",
       "name": "list_mine"
     },
@@ -49,11 +348,765 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "crypto.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.market-overview",
+      "name": "market-overview"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.nfts-add",
+      "name": "nfts-add"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.nfts-delete",
+      "name": "nfts-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.nfts-list",
+      "name": "nfts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.onchain-sync",
+      "name": "onchain-sync"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.onchain-syncs-list",
+      "name": "onchain-syncs-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.order-cancel",
+      "name": "order-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.order-create",
+      "name": "order-create"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.order-list",
+      "name": "order-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.orders-check",
+      "name": "orders-check"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.portfolio-history",
+      "name": "portfolio-history"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.portfolio-snapshot",
+      "name": "portfolio-snapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.portfolio-summary",
+      "name": "portfolio-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.portfolioAnalysis",
+      "name": "portfolioAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.price-alerts-check",
+      "name": "price-alerts-check"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.price-alerts-create",
+      "name": "price-alerts-create"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.price-alerts-delete",
+      "name": "price-alerts-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.price-alerts-list",
+      "name": "price-alerts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.price-stream",
+      "name": "price-stream"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "crypto.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.recurring-buys-create",
+      "name": "recurring-buys-create"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.recurring-buys-list",
+      "name": "recurring-buys-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.recurring-buys-run-due",
+      "name": "recurring-buys-run-due"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.recurring-buys-toggle",
+      "name": "recurring-buys-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.revoke-allowance",
+      "name": "revoke-allowance"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.search-tokens",
+      "name": "search-tokens"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.send",
+      "name": "send"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.staking-positions-list",
+      "name": "staking-positions-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.staking-rewards-record",
+      "name": "staking-rewards-record"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.staking-stake",
+      "name": "staking-stake"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.staking-unstake",
+      "name": "staking-unstake"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.swap-quote",
+      "name": "swap-quote"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.swap-route",
+      "name": "swap-route"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.tax-report",
+      "name": "tax-report"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.token-allowances",
+      "name": "token-allowances"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.token-candles",
+      "name": "token-candles"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.transactions-list",
+      "name": "transactions-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.transactions-record",
+      "name": "transactions-record"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.verifyTransaction",
+      "name": "verifyTransaction"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.wallet-create",
+      "name": "wallet-create"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.wallet-delete",
+      "name": "wallet-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.wallet-list",
+      "name": "wallet-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.wallet-rename",
+      "name": "wallet-rename"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.watchlist-add",
+      "name": "watchlist-add"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.watchlist-list",
+      "name": "watchlist-list"
+    },
+    {
+      "_derived": true,
+      "domain": "crypto",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crypto.watchlist-remove",
+      "name": "watchlist-remove"
     }
   ],
   "domain": "crypto",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 85
 }

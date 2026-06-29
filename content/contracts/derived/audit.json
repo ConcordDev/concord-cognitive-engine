@@ -10,11 +10,973 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "audit.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "audit",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "framework": "SOC2",
+                "records": [
+                  {
+                    "fields": {
+                      "email": "a@b.com"
+                    },
+                    "id": "r1"
+                  },
+                  {
+                    "fields": {
+                      "email": "bad"
+                    },
+                    "id": "r2"
+                  }
+                ],
+                "rules": [
+                  {
+                    "field": "email",
+                    "id": "u",
+                    "name": "Valid email",
+                    "pattern": "^[^@]+@[^@]+$",
+                    "type": "pattern"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "rules": [
+                  {
+                    "field": "x",
+                    "id": "u",
+                    "name": "x",
+                    "type": "required"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "framework": "SOC2",
+                "records": [
+                  {
+                    "fields": {
+                      "age": "not-a-number"
+                    },
+                    "id": "r1"
+                  }
+                ],
+                "rules": [
+                  {
+                    "field": "age",
+                    "id": "u",
+                    "max": 120,
+                    "min": 0,
+                    "name": "Age range",
+                    "type": "range"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "framework": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "records": {
+          "type": "array"
+        },
+        "rules": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.framework === 'string'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.complianceRate)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalRequirements)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.metRequirements)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.status === 'string'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.gaps)"
+      ],
+      "macro_id": "audit.complianceCheck",
+      "name": "complianceCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.controlList",
+      "name": "controlList"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.controlUpdate",
+      "name": "controlUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.evidenceAdd",
+      "name": "evidenceAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.evidenceDelete",
+      "name": "evidenceDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.evidenceList",
+      "name": "evidenceList"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.exportReport",
+      "name": "exportReport"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.findingAdd",
+      "name": "findingAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.findingList",
+      "name": "findingList"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.findingUpdate",
+      "name": "findingUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.frameworkAdopt",
+      "name": "frameworkAdopt"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.frameworkCatalog",
+      "name": "frameworkCatalog"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.monitorConfigure",
+      "name": "monitorConfigure"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.monitorList",
+      "name": "monitorList"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.monitorRun",
+      "name": "monitorRun"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.policyAccept",
+      "name": "policyAccept"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.policyAcceptanceList",
+      "name": "policyAcceptanceList"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.policyAdd",
+      "name": "policyAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.policyList",
+      "name": "policyList"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "audit.query",
       "name": "query"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": false,
+      "domain": "audit",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "controls": [
+                  {
+                    "effectiveness": 0.9,
+                    "id": "c1",
+                    "name": "Firewall"
+                  },
+                  {
+                    "effectiveness": 0.8,
+                    "id": "c2",
+                    "name": "MFA"
+                  }
+                ],
+                "inherentRisks": [
+                  {
+                    "category": "security",
+                    "id": "ir1",
+                    "impact": 0.8,
+                    "likelihood": 0.5,
+                    "name": "Data breach"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "controls": [],
+                "inherentRisks": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "controls": [
+                  {
+                    "effectiveness": "12abc",
+                    "id": "c",
+                    "name": "c"
+                  }
+                ],
+                "inherentRisks": [
+                  {
+                    "id": "i",
+                    "impact": "Infinity",
+                    "likelihood": "NaN",
+                    "name": "i"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "controls": {
+          "type": "array"
+        },
+        "inherentRisks": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.auditRisk)",
+        "output.ok === false || typeof output.result.riskLevel === 'string'",
+        "output.ok === false || Number.isFinite(output.result.overallControlRisk)",
+        "output.ok === false || Number.isFinite(output.result.detectionRisk)",
+        "output.ok === false || Number.isFinite(output.result.inherentRisk)",
+        "output.ok === false || Array.isArray(output.result.controls)"
+      ],
+      "macro_id": "audit.riskScore",
+      "name": "riskScore"
+    },
+    {
+      "_derived": false,
+      "domain": "audit",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "confidenceLevel": 95,
+                "expectedErrorRate": 1,
+                "populationSize": 10000,
+                "tolerableErrorRate": 5
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "confidenceLevel": 90,
+                "expectedErrorRate": 5,
+                "populationSize": 5000,
+                "tolerableErrorRate": 2
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "populationSize": 0
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "confidenceLevel": "NaN",
+                "expectedErrorRate": "12xyz",
+                "populationSize": "Infinity",
+                "tolerableErrorRate": "abc"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "confidenceLevel": {
+          "type": "number"
+        },
+        "expectedErrorRate": {
+          "type": "number"
+        },
+        "populationSize": {
+          "type": "number"
+        },
+        "tolerableErrorRate": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.sampleSize)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.populationSize)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.confidenceLevel)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.method === 'string'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.rationale === 'string'"
+      ],
+      "macro_id": "audit.samplingPlan",
+      "name": "samplingPlan"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": false,
+      "domain": "audit",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "trail": [
+                  {
+                    "action": "create",
+                    "actor": "alice",
+                    "hash": "h1",
+                    "sequenceNumber": 1,
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "action": "update",
+                    "actor": "bob",
+                    "previousHash": "WRONG",
+                    "sequenceNumber": 3,
+                    "timestamp": "2026-01-01T00:01:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "trail": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "trail": [
+                  {
+                    "action": "x",
+                    "actor": "a",
+                    "sequenceNumber": 1,
+                    "timestamp": "not-a-date"
+                  },
+                  {
+                    "action": "y",
+                    "actor": "a",
+                    "sequenceNumber": 2,
+                    "timestamp": "also-bad"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "trail": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalEvents)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.anomalies)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.userActivitySummary)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.suspiciousPatterns)"
+      ],
+      "macro_id": "audit.trailAnalysis",
+      "name": "trailAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.vendorAdd",
+      "name": "vendorAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.vendorList",
+      "name": "vendorList"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.vendorUpdate",
+      "name": "vendorUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "audit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "audit.vote",
+      "name": "vote"
     }
   ],
   "domain": "audit",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 1
+  "macroCount": 46
 }

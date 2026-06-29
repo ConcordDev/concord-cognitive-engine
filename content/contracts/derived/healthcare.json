@@ -10,6 +10,617 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "healthcare.ai-chart-search",
+      "name": "ai-chart-search"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.ai-scribe",
+      "name": "ai-scribe"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.allergies-add",
+      "name": "allergies-add"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.allergies-delete",
+      "name": "allergies-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.allergies-list",
+      "name": "allergies-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.appointment-book",
+      "name": "appointment-book"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.appointment-charge-copay",
+      "name": "appointment-charge-copay"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.appointment-list",
+      "name": "appointment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.care-gaps",
+      "name": "care-gaps"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.care-team-assign",
+      "name": "care-team-assign"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.care-team-list",
+      "name": "care-team-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.care-team-remove",
+      "name": "care-team-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.cds-order-check",
+      "name": "cds-order-check"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.checkInteractions",
+      "name": "checkInteractions"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.claim-adjudicate",
+      "name": "claim-adjudicate"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.claim-create",
+      "name": "claim-create"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.claim-list",
+      "name": "claim-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.claim-submit",
+      "name": "claim-submit"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.coverage-add",
+      "name": "coverage-add"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.coverage-list",
+      "name": "coverage-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.coverage-verify",
+      "name": "coverage-verify"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.dashboard-summary",
+      "name": "dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.device-ingest",
+      "name": "device-ingest"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.device-readings",
+      "name": "device-readings"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.drug-interaction-check",
+      "name": "drug-interaction-check"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.encounters-create",
+      "name": "encounters-create"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.encounters-list",
+      "name": "encounters-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.encounters-save-soap",
+      "name": "encounters-save-soap"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.encounters-sign",
+      "name": "encounters-sign"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.exportEncounter",
+      "name": "exportEncounter"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.fhir-export",
+      "name": "fhir-export"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.generateSummary",
+      "name": "generateSummary"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.icd10-search",
+      "name": "icd10-search"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.immunizations-add",
+      "name": "immunizations-add"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.immunizations-list",
+      "name": "immunizations-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.labs-known-tests",
+      "name": "labs-known-tests"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.labs-list",
+      "name": "labs-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.labs-portal-view",
+      "name": "labs-portal-view"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.labs-record",
+      "name": "labs-record"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.labs-release",
+      "name": "labs-release"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "healthcare.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +634,726 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "healthcare.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.medications-add",
+      "name": "medications-add"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.medications-delete",
+      "name": "medications-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.medications-list",
+      "name": "medications-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.medications-log-dose",
+      "name": "medications-log-dose"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.messages-list",
+      "name": "messages-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.messages-mark-read",
+      "name": "messages-mark-read"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.messages-send",
+      "name": "messages-send"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.order-cancel",
+      "name": "order-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.order-create",
+      "name": "order-create"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.order-list",
+      "name": "order-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.order-update-status",
+      "name": "order-update-status"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.patients-create",
+      "name": "patients-create"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.patients-detail",
+      "name": "patients-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.patients-list",
+      "name": "patients-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.patients-update",
+      "name": "patients-update"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.problems-add",
+      "name": "problems-add"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.problems-list",
+      "name": "problems-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.problems-update",
+      "name": "problems-update"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.protocolMatch",
+      "name": "protocolMatch"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.provider-slots",
+      "name": "provider-slots"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.providers-search",
+      "name": "providers-search"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.proxy-grant",
+      "name": "proxy-grant"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.proxy-list",
+      "name": "proxy-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.proxy-revoke",
+      "name": "proxy-revoke"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "healthcare.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.record-get",
+      "name": "record-get"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.refills-list",
+      "name": "refills-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.refills-request",
+      "name": "refills-request"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.refills-respond",
+      "name": "refills-respond"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.rx-price-compare",
+      "name": "rx-price-compare"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.smartphrases-create",
+      "name": "smartphrases-create"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.smartphrases-delete",
+      "name": "smartphrases-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.smartphrases-expand",
+      "name": "smartphrases-expand"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.smartphrases-list",
+      "name": "smartphrases-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.soapAutoFill",
+      "name": "soapAutoFill"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.symptom-triage",
+      "name": "symptom-triage"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.telehealth-create",
+      "name": "telehealth-create"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.telehealth-list",
+      "name": "telehealth-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.telehealth-update-status",
+      "name": "telehealth-update-status"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.vision",
+      "name": "vision"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.visit-summary",
+      "name": "visit-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.vitals-list",
+      "name": "vitals-list"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.vitals-record",
+      "name": "vitals-record"
+    },
+    {
+      "_derived": true,
+      "domain": "healthcare",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "healthcare.vote",
+      "name": "vote"
     }
   ],
   "domain": "healthcare",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 104
 }

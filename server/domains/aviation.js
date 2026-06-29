@@ -19,7 +19,7 @@ export default function registerAviationActions(registerLensAction) {
     ["paxRow1", "PAX Row 1"], ["paxRow2", "PAX Row 2"],
     ["cargo", "Cargo"], ["baggage", "Baggage"],
   ];
-  function _fin(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  function _fin(v, d = 0) { const n = Number(v); return Number.isFinite(n) ? n : d; }
   function normalizeWBInput(artifact, params) {
     const d = (artifact && artifact.data) || {};
     const p = params || {};
@@ -239,8 +239,10 @@ export default function registerAviationActions(registerLensAction) {
   try {
     const items = artifact.data?.maintenanceItems || [];
     const now = new Date();
-    const currentHours = artifact.data?.totalTime || artifact.data?.currentHours || 0;
-    const currentCycles = artifact.data?.totalCycles || artifact.data?.currentCycles || 0;
+    // CLAMP-AND-COMPUTE: a poisoned totalTime/totalCycles (NaN/Infinity) must
+    // sanitize to a finite value, never leak into the echoed result fields.
+    const currentHours = _fin(artifact.data?.totalTime ?? artifact.data?.currentHours ?? 0);
+    const currentCycles = _fin(artifact.data?.totalCycles ?? artifact.data?.currentCycles ?? 0);
     const alerts = [];
 
     for (const item of items) {
@@ -318,10 +320,12 @@ export default function registerAviationActions(registerLensAction) {
     const dewpoint = d.dewpoint;
     const altimeter = d.altimeter;
 
-    // Determine flight category based on ceiling and visibility
+    // Determine flight category based on ceiling and visibility.
+    // CLAMP-AND-COMPUTE: a poisoned visibility/ceiling (NaN/Infinity) must
+    // sanitize to a finite value before it can leak into the echoed result.
     let flightCategory = "VFR";
-    const visSM = visibility != null ? parseFloat(visibility) : 99;
-    const ceil = ceiling != null ? parseInt(ceiling, 10) : 99999;
+    const visSM = visibility != null ? _fin(parseFloat(visibility), 99) : 99;
+    const ceil = ceiling != null ? _fin(parseInt(ceiling, 10), 99999) : 99999;
 
     if (visSM < 1 || ceil < 500) {
       flightCategory = "LIFR";
@@ -349,7 +353,7 @@ export default function registerAviationActions(registerLensAction) {
         station: artifact.title || d.station || d.stationId,
         observedAt: d.observedAt || d.observationTime || new Date().toISOString(),
         wind: windString,
-        windComponents: { direction: wind.direction || 0, speed: wind.speed || 0, gust: wind.gust || null },
+        windComponents: { direction: _fin(wind.direction), speed: _fin(wind.speed), gust: wind.gust != null && Number.isFinite(Number(wind.gust)) ? _fin(wind.gust) : null },
         visibility: visString,
         visibilityValue: visSM,
         ceiling: ceiling != null ? `${ceilString} (${ceiling} ft AGL)` : "CLR",
@@ -389,37 +393,40 @@ export default function registerAviationActions(registerLensAction) {
   try {
     const { aircraft: ac, loading } = normalizeWBInput(artifact, params);
 
-    const emptyWeight = Number(ac.emptyWeight) || 0;
-    const emptyArm = Number(ac.emptyArm) || 0;
-    const emptyMoment = emptyWeight * emptyArm;
+    // CLAMP-AND-COMPUTE: inputs are already _fin'd by normalizeWBInput, but a
+    // large-but-finite input (e.g. 1e308) can overflow a product/sum to Infinity.
+    // Clamp every COMPUTED numeric output with _fin so no NaN/Infinity ever leaks.
+    const emptyWeight = _fin(ac.emptyWeight);
+    const emptyArm = _fin(ac.emptyArm);
+    const emptyMoment = _fin(emptyWeight * emptyArm);
 
     const stations = loading.map((l, i) => {
-      const w = Number(l.weight) || 0;
-      const arm = Number(l.arm) || 0;
+      const w = _fin(l.weight);
+      const arm = _fin(l.arm);
       return {
         idx: i + 1,
         station: l.station || `Station ${i + 1}`,
-        weight: Math.round(w * 10) / 10,
-        arm: Math.round(arm * 100) / 100,
-        moment: Math.round(w * arm * 10) / 10,
+        weight: _fin(Math.round(w * 10) / 10),
+        arm: _fin(Math.round(arm * 100) / 100),
+        moment: _fin(Math.round(w * arm * 10) / 10),
       };
     });
 
-    const totalLoadWeight = stations.reduce((s, st) => s + st.weight, 0);
-    const totalLoadMoment = stations.reduce((s, st) => s + st.moment, 0);
-    const grossWeight = Math.round((emptyWeight + totalLoadWeight) * 10) / 10;
-    const totalMoment = Math.round((emptyMoment + totalLoadMoment) * 10) / 10;
-    const cg = grossWeight > 0 ? Math.round((totalMoment / grossWeight) * 100) / 100 : 0;
+    const totalLoadWeight = _fin(stations.reduce((s, st) => s + st.weight, 0));
+    const totalLoadMoment = _fin(stations.reduce((s, st) => s + st.moment, 0));
+    const grossWeight = _fin(Math.round((emptyWeight + totalLoadWeight) * 10) / 10);
+    const totalMoment = _fin(Math.round((emptyMoment + totalLoadMoment) * 10) / 10);
+    const cg = grossWeight > 0 ? _fin(Math.round((totalMoment / grossWeight) * 100) / 100) : 0;
 
     const result = {
       generatedAt: new Date().toISOString(),
-      aircraft: { tailNumber: ac.tailNumber, emptyWeight, emptyArm, emptyMoment: Math.round(emptyMoment * 10) / 10 },
+      aircraft: { tailNumber: ac.tailNumber, emptyWeight, emptyArm, emptyMoment: _fin(Math.round(emptyMoment * 10) / 10) },
       stations,
-      totals: { loadWeight: Math.round(totalLoadWeight * 10) / 10, loadMoment: Math.round(totalLoadMoment * 10) / 10 },
+      totals: { loadWeight: _fin(Math.round(totalLoadWeight * 10) / 10), loadMoment: _fin(Math.round(totalLoadMoment * 10) / 10) },
       grossWeight,
       totalMoment,
       cg,
-      maxGrossWeight: Number(ac.maxGrossWeight) || null,
+      maxGrossWeight: (ac.maxGrossWeight != null && Number.isFinite(Number(ac.maxGrossWeight))) ? _fin(ac.maxGrossWeight) : null,
       cgEnvelope: ac.cgEnvelope || null,
       summary: `Gross ${grossWeight} lb @ CG ${cg} in. Total moment ${totalMoment} lb-in.`,
     };

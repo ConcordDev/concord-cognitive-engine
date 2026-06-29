@@ -78,9 +78,12 @@ const BATCHES = {
       show: r => `tons=${r.totalTonnage} recov=${r.recoverableMetal} gross=${r.grossValue}` },
   ],
   forestry: [
-    { dom: "forestry", act: "timberVolume", data: { trees: [{ dbh: 12, height: 60 }], pricePerMBF: 400 },
-      // 0.00545415*144*60*0.5 = 23.56 BF
-      assert: r => near(r.totalBoardFeet, 24, 0.6), show: r => `BF=${r.totalBoardFeet} val=${r.estimatedValue}` },
+    // Real ForestryActionPanel contract: { species, acres, avgAgeYears,
+    // treeCount, pricePerMBF }. ageMaturity = 1 − e^(−35/35) = 0.6321;
+    // bfPerTree = round(220·1.0·(0.15 + 0.85·0.6321)) = round(151.2) = 151;
+    // boardFeet = 151·100 = 15100; valuation = round(15.1·400) = 6040.
+    { dom: "forestry", act: "timberVolume", data: { species: "mixed", acres: 10, avgAgeYears: 35, treeCount: 100, pricePerMBF: 400 },
+      assert: r => near(r.boardFeet, 15100, 2) && near(r.valuation, 6040, 2), show: r => `BF=${r.boardFeet} val=${r.valuation}` },
     { dom: "forestry", act: "fireRisk", data: { temperatureF: 100, humidityPercent: 10, windSpeedMph: 30, droughtIndex: 5, fuelMoisturePercent: 5 },
       // 25+25+20+25+15=110→100; extreme
       assert: r => near(r.riskScore, 100) && r.riskLevel === "extreme", show: r => `risk=${r.riskScore} ${r.riskLevel}` },
@@ -127,13 +130,16 @@ const BATCHES = {
       show: r => `sub=${r.subtotal} tax=${r.taxAmount} total=${r.total}` },
   ],
   hr: [
-    { dom: "hr", act: "turnoverAnalysis", data: { totalEmployees: 100, departuresThisYear: 10, avgSalary: 50000 },
-      // rate=10; cost/turnover=25000; annual=250000
-      assert: r => near(r.turnoverRate, 10) && near(r.annualCost, 250000),
-      show: r => `rate=${r.turnoverRate}% cost=${r.annualCost}` },
-    { dom: "hr", act: "compensationBenchmark", data: { salary: 100000, yearsExperience: 5, location: "remote" },
-      // exp5→1.15; remote→0.9; 100000*1.15*0.9=103500
-      assert: r => near(r.benchmarkSalary, 103500, 1), show: r => `bench=${r.benchmarkSalary}` },
+    // Real HrActionPanel contract: turnoverAnalysis takes { headcount,
+    // leaversLast12Months }. BLS avg-headcount denominator = head + leavers/2 =
+    // 100 + 5 = 105; ratePct = round1(10/105*100) = 9.5; 6 < 9.5 ≤ 13 → "healthy".
+    { dom: "hr", act: "turnoverAnalysis", data: { headcount: 100, leaversLast12Months: 10 },
+      assert: r => near(r.ratePct, 9.5, 0.1) && r.band === "healthy",
+      show: r => `rate=${r.ratePct}% band=${r.band}` },
+    // compensationBenchmark takes { role, location }. senior → base 165;
+    // /engineer/ → ×1.15 = 189.75; remote → ×0.92 = 174.57; round → 175.
+    { dom: "hr", act: "compensationBenchmark", data: { role: "senior software engineer", location: "remote" },
+      assert: r => near(r.market50, 175, 1), show: r => `market50=${r.market50}` },
   ],
   supplychain: [
     { dom: "supplychain", act: "inventoryOptimize", data: { items: [{ dailyDemand: 10, leadTimeDays: 5, currentStock: 100, orderCost: 50, holdingCost: 2 }] },
@@ -282,4 +288,8 @@ for (const bn of batchNames) {
 }
 console.log(`\n${C.g}${pass} pass${C.rst}  ${fail ? C.r : C.dim}${fail} fail${C.rst}  ${err ? C.y : C.dim}${err} err${C.rst}`);
 if (failures.length) { console.log(`\n${C.r}Triage:${C.rst}`); for (const [k, v] of failures) console.log(`  • ${k}  ${C.dim}${v}${C.rst}`); }
-process.exit((fail > 0 || err > 0) ? 1 : 0);
+// Defer exit one tick past V8's async-module fulfillment: this harness imports
+// server.js (top-level await), and a synchronous process.exit() here can race
+// V8's module-fulfillment callback → the intermittent `AsyncModuleExecutionFulfilled`
+// fatal (exit 133, all assertions already passing) that beats audits.yml's retry.
+setImmediate(() => process.exit((fail > 0 || err > 0) ? 1 : 0));

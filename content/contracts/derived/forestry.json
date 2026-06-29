@@ -10,11 +10,1009 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "forestry.activity-log",
+      "name": "activity-log"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.carbon-credit-issue",
+      "name": "carbon-credit-issue"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.carbon-credit-list",
+      "name": "carbon-credit-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.carbon-credit-retire",
+      "name": "carbon-credit-retire"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.carbon-credit-verify",
+      "name": "carbon-credit-verify"
+    },
+    {
+      "_derived": false,
+      "domain": "forestry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": 100,
+            "ageYears": 30,
+            "species": "douglas-fir"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": 10,
+            "ageYears": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": 0,
+            "ageYears": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": 50,
+            "ageYears": "Infinity",
+            "treesPerAcre": "1e999"
+          }
+        }
+      ],
+      "inputs": {
+        "acres": {
+          "required": false,
+          "type": "number"
+        },
+        "ageYears": {
+          "required": false,
+          "type": "number"
+        },
+        "species": {
+          "required": false,
+          "type": "string"
+        },
+        "treesPerAcre": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.tonsPerYear) && output.result.tonsPerYear >= 0)",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.lifetimeTons) && Number.isFinite(output.result.equivalentCars))",
+        "output.ok === false || output.result.tonsPerYear === undefined || typeof output.result.tonsPerYear === 'number'"
+      ],
+      "macro_id": "forestry.carbonSequestration",
+      "name": "carbonSequestration"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.cruise-plot-add",
+      "name": "cruise-plot-add"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.cruise-plot-delete",
+      "name": "cruise-plot-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.cruise-plot-list",
+      "name": "cruise-plot-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.cruise-summary",
+      "name": "cruise-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": false,
+      "domain": "forestry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "humidity": 10,
+            "tempF": 100,
+            "windMph": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "humidity": 70,
+            "tempF": 60,
+            "windMph": 3
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "droughtIndex": "1e999",
+            "fuelMoisturePercent": "NaN",
+            "humidity": "NaN",
+            "tempF": "Infinity",
+            "windMph": "1e999"
+          }
+        }
+      ],
+      "inputs": {
+        "droughtIndex": {
+          "required": false,
+          "type": "number"
+        },
+        "fuelMoisturePercent": {
+          "required": false,
+          "type": "number"
+        },
+        "humidity": {
+          "required": false,
+          "type": "number"
+        },
+        "tempF": {
+          "required": false,
+          "type": "number"
+        },
+        "windMph": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.score) && output.result.score >= 0 && output.result.score <= 100)",
+        "output.ok === false || ['low','moderate','high','extreme'].includes(output.result.riskLevel)",
+        "output.ok === false || Array.isArray(output.result.factors)"
+      ],
+      "macro_id": "forestry.fireRisk",
+      "name": "fireRisk"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.forestry-dashboard",
+      "name": "forestry-dashboard"
+    },
+    {
+      "_derived": false,
+      "domain": "forestry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": 40,
+            "currentAge": 20,
+            "siteIndex": 100,
+            "species": "douglas_fir"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "acres": 0,
+            "species": "oak"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "acres": "1e999",
+            "species": "mixed"
+          }
+        }
+      ],
+      "inputs": {
+        "acres": {
+          "required": true,
+          "type": "number"
+        },
+        "currentAge": {
+          "required": false,
+          "type": "number"
+        },
+        "currentVolumePerAcre": {
+          "required": false,
+          "type": "number"
+        },
+        "rotationYears": {
+          "required": false,
+          "type": "number"
+        },
+        "siteIndex": {
+          "required": false,
+          "type": "number"
+        },
+        "species": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Array.isArray(output.result.projection)",
+        "output.ok === false || output.result.projection.every(r => Number.isFinite(r.volumePerAcre) && Number.isFinite(r.totalVolume) && Number.isFinite(r.mai) && Number.isFinite(r.cai))",
+        "output.ok === false || (Number.isFinite(output.result.biologicalRotationAge) && Number.isFinite(output.result.peakMai))"
+      ],
+      "macro_id": "forestry.growth-projection",
+      "name": "growth-projection"
+    },
+    {
+      "_derived": false,
+      "domain": "forestry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": 100,
+            "currentAge": 25,
+            "species": "douglas-fir"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": 50,
+            "currentAge": 10,
+            "method": "clearcut",
+            "species": "loblolly-pine"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": 0,
+            "currentAge": 30,
+            "species": "oak"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": "1e999",
+            "currentAge": 20,
+            "species": "mixed"
+          }
+        }
+      ],
+      "inputs": {
+        "acres": {
+          "required": false,
+          "type": "number"
+        },
+        "currentAge": {
+          "required": false,
+          "type": "number"
+        },
+        "method": {
+          "required": false,
+          "type": "string"
+        },
+        "species": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.schedule)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.rotation)",
+        "output.ok === false || output.result.schedule === undefined || output.result.schedule.every(s => Number.isFinite(s.year) && Number.isFinite(s.acres) && Number.isFinite(s.volume))"
+      ],
+      "macro_id": "forestry.harvestPlan",
+      "name": "harvestPlan"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.inciweb-active-fires",
+      "name": "inciweb-active-fires"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "forestry.live_gbif",
       "name": "live_gbif"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.nifc-fire-perimeters",
+      "name": "nifc-fire-perimeters"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.pest-complete-treatment",
+      "name": "pest-complete-treatment"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.pest-list",
+      "name": "pest-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.pest-report",
+      "name": "pest-report"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.pest-schedule-treatment",
+      "name": "pest-schedule-treatment"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.replant-list",
+      "name": "replant-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.replant-project-create",
+      "name": "replant-project-create"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.replant-survival-survey",
+      "name": "replant-survival-survey"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.replant-update-status",
+      "name": "replant-update-status"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.stand-add",
+      "name": "stand-add"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.stand-delete",
+      "name": "stand-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.stand-list",
+      "name": "stand-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.stand-polygon-delete",
+      "name": "stand-polygon-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.stand-polygon-list",
+      "name": "stand-polygon-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.stand-polygon-save",
+      "name": "stand-polygon-save"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": false,
+      "domain": "forestry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": 40,
+            "avgAgeYears": 35,
+            "species": "douglas-fir",
+            "treeCount": 100
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": 10,
+            "avgAgeYears": 30,
+            "species": "oak",
+            "treeCount": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acres": "1e999",
+            "avgAgeYears": "Infinity",
+            "pricePerMBF": "NaN",
+            "species": "mixed",
+            "treeCount": "100"
+          }
+        }
+      ],
+      "inputs": {
+        "acres": {
+          "required": false,
+          "type": "number"
+        },
+        "avgAgeYears": {
+          "required": false,
+          "type": "number"
+        },
+        "pricePerMBF": {
+          "required": false,
+          "type": "number"
+        },
+        "species": {
+          "required": false,
+          "type": "string"
+        },
+        "treeCount": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.boardFeet) && output.result.boardFeet >= 0)",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.valuation) && Number.isFinite(output.result.cubicFeet))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "forestry.timberVolume",
+      "name": "timberVolume"
+    },
+    {
+      "_derived": true,
+      "domain": "forestry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forestry.vote",
+      "name": "vote"
     }
   ],
   "domain": "forestry",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 1
+  "macroCount": 53
 }

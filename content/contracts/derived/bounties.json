@@ -1,6 +1,397 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "bounties",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "category": "security",
+            "description": "sessions drop on refresh; needs a patch",
+            "rewardCc": 250,
+            "title": "Fix the auth bug"
+          }
+        },
+        {
+          "expect": {
+            "error": "title must be at least 6 characters",
+            "ok": false
+          },
+          "input": {
+            "description": "long enough description here",
+            "rewardCc": 10,
+            "title": "short"
+          }
+        },
+        {
+          "expect": {
+            "error": "description must be at least 12 characters",
+            "ok": false
+          },
+          "input": {
+            "description": "tiny",
+            "rewardCc": 10,
+            "title": "Valid title here"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid numeric field: rewardCc",
+            "ok": false
+          },
+          "input": {
+            "description": "absurd reward must reject",
+            "rewardCc": 1e+308,
+            "title": "Poisoned reward bounty"
+          }
+        }
+      ],
+      "inputs": {
+        "category": {
+          "enum": [
+            "security",
+            "feature",
+            "bug",
+            "design",
+            "docs",
+            "research",
+            "infra",
+            "other"
+          ],
+          "type": "string"
+        },
+        "deadline": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 6000,
+          "required": true,
+          "type": "string"
+        },
+        "difficulty": {
+          "enum": [
+            "beginner",
+            "intermediate",
+            "advanced",
+            "expert"
+          ],
+          "type": "string"
+        },
+        "milestones": {
+          "type": "array"
+        },
+        "rewardCc": {
+          "max": 1000000,
+          "min": 1,
+          "type": "number"
+        },
+        "tags": {
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 160,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.bounty && typeof output.result.bounty.id === 'string')",
+        "output.ok === false || output.result.bounty.status === 'open'",
+        "output.ok === false || (typeof output.result.bounty.rewardCc === 'number' && output.result.bounty.rewardCc >= 1 && output.result.bounty.rewardCc <= 1000000)",
+        "output.ok === false || (typeof output.result.bounty.poolCc === 'number' && output.result.bounty.poolCc === output.result.bounty.rewardCc)",
+        "output.ok === false || output.result.bounty.paidCc === 0"
+      ],
+      "macro_id": "bounties.create",
+      "name": "create"
+    },
+    {
+      "_derived": false,
+      "domain": "bounties",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "bounty not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "bounty not found",
+            "ok": false
+          },
+          "input": {
+            "bountyId": "__nope__",
+            "reason": "a long enough reason to file"
+          }
+        }
+      ],
+      "inputs": {
+        "bountyId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 1500,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.dispute && output.result.dispute.status === 'open')",
+        "output.ok === false || output.result.bounty.status === 'disputed'",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bounties.dispute-open",
+      "name": "dispute-open"
+    },
+    {
+      "_derived": false,
+      "domain": "bounties",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "bounty not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "bounty not found",
+            "ok": false
+          },
+          "input": {
+            "bountyId": "__nope__",
+            "ruling": "uphold"
+          }
+        }
+      ],
+      "inputs": {
+        "bountyId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "ruling": {
+          "enum": [
+            "uphold",
+            "overturn",
+            "split"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "rulingNote": {
+          "maxLength": 1500,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.dispute && output.result.dispute.status === 'resolved')",
+        "output.ok === false || ['uphold', 'overturn', 'split'].includes(output.result.dispute.ruling)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bounties.dispute-resolve",
+      "name": "dispute-resolve"
+    },
+    {
+      "_derived": false,
+      "domain": "bounties",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "bounty not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "bounty not found",
+            "ok": false
+          },
+          "input": {
+            "bountyId": "__no_such_bounty__"
+          }
+        }
+      ],
+      "inputs": {
+        "bountyId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.bounty && typeof output.result.bounty.id === 'string')",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bounties.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "bounties",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 5
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 50,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.topEarners))",
+        "output.ok === false || Array.isArray(output.result.topResolvers)",
+        "output.ok === false || output.result.topEarners.every(r => typeof r.earnedCc === 'number' && r.earnedCc > 0)",
+        "output.ok === false || output.result.topEarners.length <= 50"
+      ],
+      "macro_id": "bounties.leaderboard",
+      "name": "leaderboard"
+    },
+    {
+      "_derived": false,
+      "domain": "bounties",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10,
+            "sortBy": "reward"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "category": "security",
+            "difficulty": "expert",
+            "query": "auth",
+            "tag": "crypto"
+          }
+        }
+      ],
+      "inputs": {
+        "category": {
+          "enum": [
+            "security",
+            "feature",
+            "bug",
+            "design",
+            "docs",
+            "research",
+            "infra",
+            "other"
+          ],
+          "type": "string"
+        },
+        "difficulty": {
+          "enum": [
+            "beginner",
+            "intermediate",
+            "advanced",
+            "expert"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "max": 100,
+          "min": 1,
+          "type": "number"
+        },
+        "query": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "sortBy": {
+          "enum": [
+            "recent",
+            "reward",
+            "submissions"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "maxLength": 24,
+          "type": "string"
+        },
+        "tag": {
+          "maxLength": 30,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.bounties))",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+        "output.ok === false || output.result.bounties.length <= output.result.total",
+        "output.ok === false || output.result.bounties.length <= 100",
+        "output.ok === false || Array.isArray(output.result.categories)",
+        "output.ok === false || Array.isArray(output.result.difficulties)"
+      ],
+      "macro_id": "bounties.list",
+      "name": "list"
+    },
+    {
       "_derived": true,
       "domain": "bounties",
       "fuzz_cases": [],
@@ -14,6 +405,32 @@
       "name": "list_mine"
     },
     {
+      "_derived": false,
+      "domain": "bounties",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.posted))",
+        "output.ok === false || Array.isArray(output.result.submitted)",
+        "output.ok === false || (typeof output.result.earnedCc === 'number' && output.result.earnedCc >= 0)",
+        "output.ok === false || (typeof output.result.resolvedCount === 'number' && output.result.resolvedCount >= 0)"
+      ],
+      "macro_id": "bounties.my-activity",
+      "name": "my-activity"
+    },
+    {
       "_derived": true,
       "domain": "bounties",
       "fuzz_cases": [],
@@ -25,9 +442,121 @@
       ],
       "macro_id": "bounties.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "bounties",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "bounty not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "bounty not found",
+            "ok": false
+          },
+          "input": {
+            "bountyId": "__nope__",
+            "claimantId": "c",
+            "milestoneId": "m"
+          }
+        }
+      ],
+      "inputs": {
+        "bountyId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "claimantId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "milestoneId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.milestone && output.result.milestone.status === 'paid')",
+        "output.ok === false || (typeof output.result.paidCc === 'number' && output.result.paidCc >= 0 && output.result.paidCc <= 1000000)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bounties.release-milestone",
+      "name": "release-milestone"
+    },
+    {
+      "_derived": false,
+      "domain": "bounties",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "bounty not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "bounty not found",
+            "ok": false
+          },
+          "input": {
+            "bountyId": "__nope__",
+            "summary": "a valid summary here"
+          }
+        }
+      ],
+      "inputs": {
+        "bountyId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "link": {
+          "maxLength": 400,
+          "type": "string"
+        },
+        "milestoneId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "notes": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 240,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.submission && typeof output.result.submission.id === 'string')",
+        "output.ok === false || output.result.submission.status === 'pending'",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bounties.submit",
+      "name": "submit"
     }
   ],
   "domain": "bounties",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 11
 }

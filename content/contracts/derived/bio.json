@@ -10,6 +10,296 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "bio.align-multiple",
+      "name": "align-multiple"
+    },
+    {
+      "_derived": false,
+      "domain": "bio",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "seqA": "GATTACA",
+            "seqB": "GATTACA"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "seqA": "ATGC"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "match": "Infinity",
+            "seqA": "ATGC",
+            "seqB": "GGGG"
+          }
+        }
+      ],
+      "inputs": {
+        "gap": {
+          "required": false,
+          "type": "number"
+        },
+        "match": {
+          "required": false,
+          "type": "number"
+        },
+        "mismatch": {
+          "required": false,
+          "type": "number"
+        },
+        "seqA": {
+          "required": true,
+          "type": "string"
+        },
+        "seqB": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.score)",
+        "output.ok === false || typeof output.result.alignA === 'string'",
+        "output.ok === false || typeof output.result.alignB === 'string'",
+        "output.ok === false || typeof output.result.alignBars === 'string'",
+        "output.ok === false || output.result.alignA.length === output.result.alignB.length",
+        "output.ok === false || output.result.alignA.length === output.result.alignBars.length",
+        "output.ok === false || (Number.isFinite(output.result.identity) && output.result.identity >= 0 && output.result.identity <= 100)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bio.align-pairwise",
+      "name": "align-pairwise"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.analyze",
+      "name": "analyze"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.blast-search",
+      "name": "blast-search"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.cloning-simulate",
+      "name": "cloning-simulate"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "bio",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sequence": "ATGGCCATGGCGCCCAGAACTGAGATCAATAGTACCCGTATTAACGGGTGA"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "sequence": "ATGC"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "sequence": "###"
+          }
+        }
+      ],
+      "inputs": {
+        "sequence": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.guides)",
+        "output.ok === false || output.result.guides.every(function(g){ return typeof g.guide === 'string' && g.guide.length === 20 && Number.isFinite(g.onTargetScore) && Number.isFinite(g.compositeScore); })",
+        "output.ok === false || output.result.guideCount === undefined || Number.isInteger(output.result.guideCount)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bio.crispr-design",
+      "name": "crispr-design"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.geneExpression",
+      "name": "geneExpression"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.link-gene-function",
+      "name": "link-gene-function"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "bio.list_mine",
       "name": "list_mine"
     },
@@ -49,11 +339,614 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "bio.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.map-pathway",
+      "name": "map-pathway"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.motifDetection",
+      "name": "motifDetection"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.notebook-create",
+      "name": "notebook-create"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.notebook-delete",
+      "name": "notebook-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.notebook-list",
+      "name": "notebook-list"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.notebook-update",
+      "name": "notebook-update"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.parse-fasta",
+      "name": "parse-fasta"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.phylogeneticDistance",
+      "name": "phylogeneticDistance"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.plasmid-map",
+      "name": "plasmid-map"
+    },
+    {
+      "_derived": false,
+      "domain": "bio",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sequence": "ATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGC",
+            "targetLength": 20,
+            "targetTm": 60
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "sequence": "ATGC"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "sequence": ""
+          }
+        }
+      ],
+      "inputs": {
+        "sequence": {
+          "required": true,
+          "type": "string"
+        },
+        "targetLength": {
+          "required": false,
+          "type": "number"
+        },
+        "targetTm": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.forward && typeof output.result.forward.sequence === 'string')",
+        "output.ok === false || (output.result.reverse && typeof output.result.reverse.sequence === 'string')",
+        "output.ok === false || Number.isFinite(output.result.forward.tm)",
+        "output.ok === false || Number.isFinite(output.result.forward.gcPercent)",
+        "output.ok === false || Number.isInteger(output.result.productSize)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bio.primer-design",
+      "name": "primer-design"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.profile-organism",
+      "name": "profile-organism"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "bio.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": false,
+      "domain": "bio",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sequence": "AAAGAATTCAAA"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "enzymes": [
+              "EcoRI"
+            ],
+            "sequence": "GAATTCGGATCC"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "sequence": ""
+          }
+        }
+      ],
+      "inputs": {
+        "enzymes": {
+          "required": false,
+          "type": "array"
+        },
+        "sequence": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.sites)",
+        "output.ok === false || output.result.count === output.result.sites.length",
+        "output.ok === false || output.result.sites.every(function(s){ return typeof s.enzyme === 'string' && Number.isInteger(s.position) && Number.isInteger(s.cutAt) && typeof s.site === 'string'; })",
+        "output.ok === false || Array.isArray(output.result.enzymesScanned)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bio.restriction-map",
+      "name": "restriction-map"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.review-protocol",
+      "name": "review-protocol"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.save",
+      "name": "save"
+    },
+    {
+      "_derived": false,
+      "domain": "bio",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "dna",
+            "sequence": "ATGCATGC"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "kind": "dna",
+            "sequence": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "kind": "bogus",
+            "sequence": "ATGC"
+          }
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "required": false,
+          "type": "string"
+        },
+        "sequence": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isInteger(output.result.length)",
+        "output.ok === false || ['dna','rna','protein'].indexOf(output.result.kind) >= 0",
+        "output.ok === false || output.result.gcPercent === undefined || Number.isFinite(output.result.gcPercent)",
+        "output.ok === false || output.result.tm === undefined || Number.isFinite(output.result.tm)",
+        "output.ok === false || output.result.orfs === undefined || Array.isArray(output.result.orfs)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bio.sequence-analyze",
+      "name": "sequence-analyze"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.sequence-delete",
+      "name": "sequence-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.sequence-list",
+      "name": "sequence-list"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.sequence-save",
+      "name": "sequence-save"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.sequenceAlign",
+      "name": "sequenceAlign"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.trace-evolution",
+      "name": "trace-evolution"
+    },
+    {
+      "_derived": false,
+      "domain": "bio",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sequence": "ATGAAATTTGGGTAA"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "sequence": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "sequence": "XYZ123"
+          }
+        }
+      ],
+      "inputs": {
+        "sequence": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isInteger(output.result.length)",
+        "output.ok === false || (Array.isArray(output.result.frames) && output.result.frames.length === 6)",
+        "output.ok === false || output.result.frames.every(function(f){ return typeof f.protein === 'string' && Array.isArray(f.codons); })",
+        "output.ok === false || output.result.longestOrf === null || typeof output.result.longestOrf.peptide === 'string'",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "bio.translate-orf",
+      "name": "translate-orf"
+    },
+    {
+      "_derived": true,
+      "domain": "bio",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bio.vote",
+      "name": "vote"
     }
   ],
   "domain": "bio",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 52
 }

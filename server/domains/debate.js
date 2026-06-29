@@ -105,6 +105,7 @@ export default function registerDebateActions(registerLensAction) {
         sides = [];
       }
     }
+    sides = asArray(sides).filter(s => s && typeof s === "object");
     if (sides.length < 2) return { ok: true, result: { message: "Add at least 2 debate sides with arguments." } };
     const scored = sides.map(s => {
       const args = asArray(s.arguments);

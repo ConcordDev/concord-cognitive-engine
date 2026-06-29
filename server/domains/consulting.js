@@ -27,7 +27,12 @@ export default function registerConsultingActions(registerLensAction) {
     const hours = deliverables.reduce((s, d) => s + (finPos(d && d.hours, 8) || 8), 0);
     const totalFee = Math.round(hours * rate * 100) / 100;
     const contingency = Math.round(totalFee * 0.15 * 100) / 100;
-    return { ok: true, result: { client: data.client || artifact.title, deliverables: deliverables.map(d => { const h = finPos(d && d.hours, 8) || 8; return { name: d && d.name, hours: h, fee: Math.round(h * rate * 100) / 100 }; }), totalHours: hours, hourlyRate: rate, subtotal: totalFee, contingency, grandTotal: Math.round((totalFee + contingency) * 100) / 100, timeline: `${Math.ceil(hours / 40)} weeks at full-time` } };
+    // Coerce each deliverable name to a string-or-null label. A poisoned
+    // deliverables entry that is itself a bare number (e.g. NaN) makes
+    // `d && d.name` short-circuit to that NaN — leaking a non-finite number into
+    // the output. Normalise so `name` is never a raw number.
+    const safeName = (d) => { const v = d && typeof d === "object" ? d.name : undefined; return (v == null || typeof v === "number") ? (typeof v === "string" ? v : null) : String(v); };
+    return { ok: true, result: { client: data.client || artifact.title, deliverables: deliverables.map(d => { const h = finPos(d && d.hours, 8) || 8; return { name: safeName(d), hours: h, fee: Math.round(h * rate * 100) / 100 }; }), totalHours: hours, hourlyRate: rate, subtotal: totalFee, contingency, grandTotal: Math.round((totalFee + contingency) * 100) / 100, timeline: `${Math.ceil(hours / 40)} weeks at full-time` } };
   });
   registerLensAction("consulting", "utilizationRate", (ctx, artifact, _params) => {
     const data = artifact.data || {};

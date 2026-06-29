@@ -1,0 +1,423 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.alerts",
+      "name": "alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.healthPulse",
+      "name": "healthPulse"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.heartbeatControl",
+      "name": "heartbeatControl"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.heartbeatList",
+      "name": "heartbeatList"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.heartbeatRegistry",
+      "name": "heartbeatRegistry"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.latencyHistogram",
+      "name": "latencyHistogram"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.loadPredict",
+      "name": "loadPredict"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.recordSample",
+      "name": "recordSample"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.rhythmAnalysis",
+      "name": "rhythmAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.skipReport",
+      "name": "skipReport"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.stream",
+      "name": "stream"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.uptimeSLA",
+      "name": "uptimeSLA"
+    },
+    {
+      "_derived": true,
+      "domain": "tick",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tick.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "tick",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 32
+}

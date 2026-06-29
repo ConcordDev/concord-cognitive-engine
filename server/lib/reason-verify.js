@@ -56,11 +56,17 @@ function resolveCitations(db, citationIds, requesterId) {
  *           proofBrainFn?: Function, proofZ3Runner?: Function }} opts
  * @returns {Promise<object>} verification verdict
  */
-export async function verifyClaim(db, { claim, citationIds = [], requesterId = null, useCouncil = true, useProof = true, proofBrainFn = null, proofZ3Runner = null } = {}) {
+export async function verifyClaim(db, { claim, citationIds = [], requesterId = null, useCouncil = true, useProof = true, proofBrainFn = null, proofZ3Runner = null, onStage = null } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   const ids = (Array.isArray(citationIds) ? citationIds : []).map(String).filter(Boolean);
   const claimText = String(claim || "").trim();
 
+  // Honest progress beats for the ConKay HUD: a stage fires only when that real
+  // phase actually runs (citation resolution always; council/proof only when
+  // they execute). Best-effort — never affects the verdict.
+  const stage = (s, d) => { try { onStage?.(s, d); } catch { /* decoration only */ } };
+
+  stage("resolving_citations");
   const { resolved, unresolved } = resolveCitations(db, ids, requesterId);
   const citationsTotal = ids.length;
   const allResolved = citationsTotal > 0 && unresolved.length === 0;
@@ -80,6 +86,7 @@ export async function verifyClaim(db, { claim, citationIds = [], requesterId = n
   // and there's a claim to judge. Never blocks; offline → keep the floor verdict.
   if (useCouncil && claimText && allResolved) {
     try {
+      stage("judging");
       const { councilDecision } = await import("./agentic/council.js");
       const excerpts = resolved.map((r, i) => {
         let body = r.title || "";
@@ -118,6 +125,7 @@ export async function verifyClaim(db, { claim, citationIds = [], requesterId = n
       const { proveClaim, classifyAmenable } = await import("./proof-gate.js");
       // Skip the brain-wiring cost entirely when the claim isn't proof-amenable.
       if (classifyAmenable(claimText).amenable) {
+        stage("proving");
         // Default formaliser = the subconscious brain (the autonomous slot), via the
         // BYO-aware brainChat router. Injectable for offline tests.
         let brainFn = proofBrainFn;

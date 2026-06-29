@@ -39,6 +39,16 @@ const SKIP = [
   // excluded — those get real render tests.)
   /(^|\/)world\/CombatVFXBridge\.tsx$/,
   /(^|\/)landscaping\/GardenStudio\.tsx$/,
+  // ConKay's summonable surface + its holographic scene/backdrop + voice hook are
+  // browser-only integration code: a socket subscriber, a getUserMedia STT/TTS
+  // loop, and a three.js/<Canvas> world-tree. jsdom can't exercise the WebGL/mic
+  // paths, so per-file statement coverage isn't meaningful (same rationale as
+  // world-lens above). The PURE logic — conkayHudStore.ts — is NOT excluded and
+  // carries full unit coverage; the honest macro:* binding is tested there.
+  /(^|\/)conkay\/ConKayOverlay\.tsx$/,
+  /(^|\/)conkay\/ConKayScene\.tsx$/,
+  /(^|\/)conkay\/ConKayBackdrop\.tsx$/,
+  /(^|\/)conkay\/useConKayVoice\.ts$/,
 ];
 
 const baseRef = process.argv[2] || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : 'origin/main');

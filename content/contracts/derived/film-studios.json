@@ -10,6 +10,673 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "film-studios.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.breakdown-summary",
+      "name": "breakdown-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.breakdown-tag",
+      "name": "breakdown-tag"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.breakdown-untag",
+      "name": "breakdown-untag"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.budget-line-add",
+      "name": "budget-line-add"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.budget-line-delete",
+      "name": "budget-line-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.budget-line-update",
+      "name": "budget-line-update"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.budget-list",
+      "name": "budget-list"
+    },
+    {
+      "_derived": false,
+      "domain": "film-studios",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "totalBudget": 2000000
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "totalBudget": "50000"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "totalBudget": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "totalBudget": "1e400"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "totalBudget": "NaN"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "totalBudget": -5
+          }
+        }
+      ],
+      "inputs": {
+        "totalBudget": {
+          "maxLength": 32,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Number.isFinite(output.result.totalBudget) && output.result.totalBudget >= 0",
+        "Array.isArray(output.result.breakdown)",
+        "output.result.breakdown.every(b => Number.isFinite(b.percentage) && Number.isFinite(b.amount) && b.amount >= 0)",
+        "Math.abs(output.result.breakdown.reduce((a,b)=>a+b.percentage,0) - 100) < 0.0001",
+        "output.result.breakdown.reduce((a,b)=>a+b.amount,0) <= output.result.totalBudget + 0.01"
+      ],
+      "macro_id": "film-studios.budgetBreakdown",
+      "name": "budgetBreakdown"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.call-sheet",
+      "name": "call-sheet"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.cast-add",
+      "name": "cast-add"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.cast-delete",
+      "name": "cast-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.cast-list",
+      "name": "cast-list"
+    },
+    {
+      "_derived": false,
+      "domain": "film-studios",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cast": [
+              {
+                "dailyRate": 1500,
+                "name": "Lead",
+                "role": "lead",
+                "sceneCount": 30
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cast": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cast": [
+              {
+                "dailyRate": "Infinity",
+                "name": "X",
+                "sceneCount": 10
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cast": [
+              {
+                "dailyRate": "1e400",
+                "name": "X",
+                "sceneCount": "1e400"
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "cast": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "output.result.message !== undefined || Number.isFinite(output.result.totalCastBudget)",
+        "output.result.cast === undefined || output.result.cast.every(c => Number.isFinite(c.totalCost) && c.totalCost >= 0 && Number.isFinite(c.dailyRate) && Number.isFinite(c.scenes))"
+      ],
+      "macro_id": "film-studios.castAnalysis",
+      "name": "castAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.clip-add",
+      "name": "clip-add"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.clip-delete",
+      "name": "clip-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.clip-list",
+      "name": "clip-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.clip-reorder",
+      "name": "clip-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.clip-ripple-delete",
+      "name": "clip-ripple-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.clip-set-media",
+      "name": "clip-set-media"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.clip-update",
+      "name": "clip-update"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "film-studios",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "project not found",
+            "ok": false
+          },
+          "input": {
+            "projectId": "ghost_999"
+          }
+        }
+      ],
+      "inputs": {
+        "projectId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof (output.error || output.reason) === 'string'",
+        "output.ok !== true || (Number.isFinite(output.result.totalEstimated) && Number.isFinite(output.result.totalActual) && Number.isFinite(output.result.variance))",
+        "output.ok !== true || (typeof output.result.overBudget === 'boolean' && Number.isFinite(output.result.spentPct))"
+      ],
+      "macro_id": "film-studios.cost-report",
+      "name": "cost-report"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.crew-add",
+      "name": "crew-add"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.crew-delete",
+      "name": "crew-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.crew-list",
+      "name": "crew-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.cut-list",
+      "name": "cut-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.dood-report",
+      "name": "dood-report"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.element-list-report",
+      "name": "element-list-report"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.festival-delete",
+      "name": "festival-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.festival-list",
+      "name": "festival-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.festival-submit",
+      "name": "festival-submit"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.festival-update",
+      "name": "festival-update"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.film-dashboard",
+      "name": "film-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "film-studios.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +690,1100 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "film-studios.location-create",
+      "name": "location-create"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.location-delete",
+      "name": "location-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.location-list",
+      "name": "location-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.location-update",
+      "name": "location-update"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.marker-add",
+      "name": "marker-add"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.marker-delete",
+      "name": "marker-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.marker-list",
+      "name": "marker-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.media-delete",
+      "name": "media-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.media-list",
+      "name": "media-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.media-register",
+      "name": "media-register"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.media-set-quality",
+      "name": "media-set-quality"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.multicam-delete",
+      "name": "multicam-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.multicam-group",
+      "name": "multicam-group"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.multicam-list",
+      "name": "multicam-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.note-add",
+      "name": "note-add"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.note-list",
+      "name": "note-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.note-resolve",
+      "name": "note-resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.page-lock-toggle",
+      "name": "page-lock-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.party-chat-list",
+      "name": "party-chat-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.party-chat-post",
+      "name": "party-chat-post"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.party-create",
+      "name": "party-create"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.party-delete",
+      "name": "party-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.party-list",
+      "name": "party-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.party-state",
+      "name": "party-state"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.party-sync",
+      "name": "party-sync"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.postProductionTimeline",
+      "name": "postProductionTimeline"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.production-calendar",
+      "name": "production-calendar"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.project-create",
+      "name": "project-create"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.project-delete",
+      "name": "project-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.project-list",
+      "name": "project-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "film-studios.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.revision-create",
+      "name": "revision-create"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.revision-delete",
+      "name": "revision-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.revision-list",
+      "name": "revision-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.scene-add",
+      "name": "scene-add"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.scene-delete",
+      "name": "scene-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.scene-list",
+      "name": "scene-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.scene-revision-tag",
+      "name": "scene-revision-tag"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.scene-script-get",
+      "name": "scene-script-get"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.scene-script-set",
+      "name": "scene-script-set"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.scene-update",
+      "name": "scene-update"
+    },
+    {
+      "_derived": false,
+      "domain": "film-studios",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "scenes": [
+              {
+                "cast": [
+                  "A"
+                ],
+                "location": "Beach"
+              },
+              {
+                "cast": [
+                  "B"
+                ],
+                "location": "Beach"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "scenes": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "scenes": [
+              {
+                "cast": [
+                  "X"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "scenes": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "output.result.message !== undefined || (Number.isFinite(output.result.totalShootDays) && Number.isFinite(output.result.totalWeeks))",
+        "output.result.locations === undefined || output.result.locations.every(l => Number.isFinite(l.scenes) && Number.isFinite(l.estimatedDays) && l.estimatedDays >= 0 && Array.isArray(l.cast))"
+      ],
+      "macro_id": "film-studios.scheduleShoot",
+      "name": "scheduleShoot"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.screenplay",
+      "name": "screenplay"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.sequence-create",
+      "name": "sequence-create"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.sequence-list",
+      "name": "sequence-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.shoot-day-create",
+      "name": "shoot-day-create"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.shoot-day-delete",
+      "name": "shoot-day-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.shoot-day-list",
+      "name": "shoot-day-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.shot-add",
+      "name": "shot-add"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.shot-board-sequence",
+      "name": "shot-board-sequence"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.shot-delete",
+      "name": "shot-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.shot-list",
+      "name": "shot-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.shot-relink-scene",
+      "name": "shot-relink-scene"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.shot-storyboard-set",
+      "name": "shot-storyboard-set"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.storyboard",
+      "name": "storyboard"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.storyboard-reorder",
+      "name": "storyboard-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.strip-assign",
+      "name": "strip-assign"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.stripboard",
+      "name": "stripboard"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.task-create",
+      "name": "task-create"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.task-delete",
+      "name": "task-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.task-list",
+      "name": "task-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.task-update",
+      "name": "task-update"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.version-create",
+      "name": "version-create"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.version-list",
+      "name": "version-list"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.version-set-status",
+      "name": "version-set-status"
+    },
+    {
+      "_derived": false,
+      "domain": "film-studios",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "imageB64": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
+      ],
+      "macro_id": "film-studios.vision",
+      "name": "vision"
+    },
+    {
+      "_derived": true,
+      "domain": "film-studios",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "film-studios.vote",
+      "name": "vote"
     }
   ],
   "domain": "film-studios",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 119
 }

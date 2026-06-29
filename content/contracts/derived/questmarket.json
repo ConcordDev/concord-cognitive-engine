@@ -10,6 +10,253 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "questmarket.abandonClaim",
+      "name": "abandonClaim"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.acceptQuest",
+      "name": "acceptQuest"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.achievementShowcase",
+      "name": "achievementShowcase"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.achievementUnlock",
+      "name": "achievementUnlock"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.balanceDifficulty",
+      "name": "balanceDifficulty"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.cancelQuest",
+      "name": "cancelQuest"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.createGuild",
+      "name": "createGuild"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.guildDetail",
+      "name": "guildDetail"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.guildScore",
+      "name": "guildScore"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.joinGuild",
+      "name": "joinGuild"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.leaderboardRank",
+      "name": "leaderboardRank"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.leaveGuild",
+      "name": "leaveGuild"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "questmarket.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +270,336 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "questmarket.listGuilds",
+      "name": "listGuilds"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.listQuests",
+      "name": "listQuests"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.marketStats",
+      "name": "marketStats"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.myClaims",
+      "name": "myClaims"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.myReputation",
+      "name": "myReputation"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.postQuest",
+      "name": "postQuest"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.questClaims",
+      "name": "questClaims"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "questmarket.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.reputationBoard",
+      "name": "reputationBoard"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.rewardEconomics",
+      "name": "rewardEconomics"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.submitProof",
+      "name": "submitProof"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.verifyClaim",
+      "name": "verifyClaim"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "questmarket",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "questmarket.walletGet",
+      "name": "walletGet"
     }
   ],
   "domain": "questmarket",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 46
 }

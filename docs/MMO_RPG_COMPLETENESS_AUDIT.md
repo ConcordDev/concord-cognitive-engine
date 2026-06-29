@@ -181,3 +181,35 @@ drift (CLAUDE.md structural counts grew with the new domain/migration) is surfac
 - Wiring-integrity audit: `docs/research/WIRING_INTEGRITY_AUDIT.md`
 - Lens wiring: `node scripts/verify-lens-backends.mjs` (258 WIRED / 0 broken)
 - Detectors: `cd server && node scripts/run-detectors.js`
+
+---
+
+## Game-loop honesty audit — D2 (2026-06-28)
+
+A loop-by-loop pass for the two failure modes: Layer-1 (orphan emit / dead listener / undispatched
+heartbeat / dead macro) and Layer-2 ("consequence doesn't land" — reward toast without the grant).
+
+**Layer 1: CLEAN.** `node scripts/audit-emergent-wiring.mjs` → 114 WIRED / 105 ENTITY-INLINE / **0 ORPHAN**.
+
+**Layer 2: 10 reward loops verified genuinely closed** (real DB write + idempotency + tests, NOT re-done):
+gather→inventory, craft→inventory+XP, quest reward (transaction + idempotent on (user,quest)), world-event
+reward (real `mintCoins`, event-scoped refId), death→loot drop, corpse recovery, run-mode payout
+(`roguelite_meta_currency`, even on death), achievement unlock, NPC dialogue→asymmetry, royalty cascade.
+
+**One genuine unlanded consequence found + FIXED:**
+- **NPC-kills-player loot** — `lib/pvp-loot.js#handleNPCKilledPlayer` is a complete grant (deducts 30%
+  victim sparks + ledger row, drops 1–3 items, NPC claims into wealth + activity_resources) but had
+  **ZERO callers**: the npc-attack route (`routes/worlds.js` POST `/:worldId/combat/npc-attack`) fired
+  "You have been defeated" while the player's wallet/inventory stayed untouched — the canonical
+  toast-without-grant. Now wired on the real `kill`, with truthful feedback in the response `lootDrop`
+  (no orphan emit). Pinned by `server/tests/integration/npc-kill-loot.test.js` (4 — asserts the sparks
+  deduction + inventory DELETE + bag claim + NPC credit, and that an unknown victim grants nothing).
+
+**Two suspected-decoupling items verified CLOSED (state really persists; no honesty defect):**
+- **skill-evolution → unlock**: `lib/skill-evolution.js#applyEvolution` writes `skill_revisions` (grown
+  max_damage / cooldown per tier) + `skill_evolution_unlocks` (idempotent UNIQUE). State lands; the
+  `skill:evolved` emit is for juice, not the source of truth. (Gameplay read-path of evolved stats is an
+  enhancement, not a fabricated success.)
+- **faction-strategy → behavior**: `lib/embodied/faction-strategy.js#applyMove` transactionally updates
+  `faction_strategy_state` + `faction_relations` + mirrors rival momentum + logs `faction_strategy_log`,
+  and surfaces via `faction-war:*` → `StrategicWarBanner`/`EmergentEventFeed`. The consequence lands.

@@ -10,6 +10,318 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "whiteboard.ai-cluster-stickies",
+      "name": "ai-cluster-stickies"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.ai-generate-board",
+      "name": "ai-generate-board"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.ai-summarize-board",
+      "name": "ai-summarize-board"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.board-delete",
+      "name": "board-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.board-duplicate",
+      "name": "board-duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.board-export-json",
+      "name": "board-export-json"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.board-list",
+      "name": "board-list"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.board-load",
+      "name": "board-load"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.board-save",
+      "name": "board-save"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.broadcast-cursor",
+      "name": "broadcast-cursor"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.broadcast-scene",
+      "name": "broadcast-scene"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.clusterGroup",
+      "name": "clusterGroup"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.collaborate",
+      "name": "collaborate"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.comments-add",
+      "name": "comments-add"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.comments-delete",
+      "name": "comments-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.comments-list",
+      "name": "comments-list"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.comments-resolve",
+      "name": "comments-resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.connector-create",
+      "name": "connector-create"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.connector-delete",
+      "name": "connector-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.connector-list",
+      "name": "connector-list"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "whiteboard.create",
       "name": "create"
     },
@@ -23,8 +335,229 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "whiteboard.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.embed-add",
+      "name": "embed-add"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.embed-delete",
+      "name": "embed-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.embed-list",
+      "name": "embed-list"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.embed-update",
+      "name": "embed-update"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.export-raster-plan",
+      "name": "export-raster-plan"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.exportPrep",
+      "name": "exportPrep"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.frame-create",
+      "name": "frame-create"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.frame-delete",
+      "name": "frame-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.frame-list",
+      "name": "frame-list"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.frame-update",
+      "name": "frame-update"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "whiteboard.get",
       "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.join-shared",
+      "name": "join-shared"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.layout",
+      "name": "layout"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.layoutOptimize",
+      "name": "layoutOptimize"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.leave-shared",
+      "name": "leave-shared"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.like",
+      "name": "like"
     },
     {
       "_derived": true,
@@ -62,6 +595,188 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "whiteboard.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.ops-apply",
+      "name": "ops-apply"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.ops-since",
+      "name": "ops-since"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.presence-list",
+      "name": "presence-list"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.presence-ping",
+      "name": "presence-ping"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.presentation-build",
+      "name": "presentation-build"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.publish-as-blueprint",
+      "name": "publish-as-blueprint"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.published-blueprint-coverage",
+      "name": "published-blueprint-coverage"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.reaction-send",
+      "name": "reaction-send"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "whiteboard.recent_mine",
       "name": "recent_mine"
     },
@@ -75,11 +790,310 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "whiteboard.render",
+      "name": "render"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.shapeDetect",
+      "name": "shapeDetect"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.share-board",
+      "name": "share-board"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.shared-list",
+      "name": "shared-list"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.shared-vote-cast",
+      "name": "shared-vote-cast"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.shared-vote-tally",
+      "name": "shared-vote-tally"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.snapshot",
+      "name": "snapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.template-load",
+      "name": "template-load"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.templates-list",
+      "name": "templates-list"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.timer-get",
+      "name": "timer-get"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.timer-start",
+      "name": "timer-start"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.timer-stop",
+      "name": "timer-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "whiteboard.update",
       "name": "update"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.vision",
+      "name": "vision"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.vote-cast",
+      "name": "vote-cast"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.vote-tally",
+      "name": "vote-tally"
+    },
+    {
+      "_derived": true,
+      "domain": "whiteboard",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "whiteboard.workspace-summary",
+      "name": "workspace-summary"
     }
   ],
   "domain": "whiteboard",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 6
+  "macroCount": 84
 }

@@ -10,6 +10,153 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "classroom.announce",
+      "name": "announce"
+    },
+    {
+      "_derived": false,
+      "domain": "classroom",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohortId": 1,
+            "points": 80,
+            "title": "Essay",
+            "topic": "Week 1"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohortId": 1,
+            "points": 5000,
+            "title": "Big"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohortId": 1,
+            "points": "1e999",
+            "title": "Poison"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohortId": 1,
+            "points": -7,
+            "title": "Neg"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "cohortId": 1
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "title": "Orphan"
+          }
+        }
+      ],
+      "inputs": {
+        "cohortId": {
+          "required": true,
+          "type": "number"
+        },
+        "dueAt": {
+          "required": false,
+          "type": "string"
+        },
+        "instructions": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        },
+        "points": {
+          "max": 1000,
+          "min": 0,
+          "required": false,
+          "type": "number"
+        },
+        "title": {
+          "maxLength": 4000,
+          "required": true,
+          "type": "string"
+        },
+        "topic": {
+          "maxLength": 80,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.assignment === 'object' && output.result.assignment !== null)",
+        "output.ok === false || typeof output.result.assignment.id === 'string'",
+        "output.ok === false || (Number.isFinite(output.result.assignment.points) && output.result.assignment.points >= 0 && output.result.assignment.points <= 1000)",
+        "output.ok === false || output.result.assignment.status === 'published'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "classroom.assignment-create",
+      "name": "assignment-create"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.assignment-delete",
+      "name": "assignment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.assignment-list",
+      "name": "assignment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "classroom.create_cohort",
       "name": "create_cohort"
     },
@@ -25,6 +172,117 @@
       ],
       "macro_id": "classroom.enrol",
       "name": "enrol"
+    },
+    {
+      "_derived": false,
+      "domain": "classroom",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "score": 5,
+            "submissionId": "missing"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "score": "Infinity",
+            "submissionId": "missing"
+          }
+        }
+      ],
+      "inputs": {
+        "feedback": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        },
+        "maxPoints": {
+          "required": false,
+          "type": "number"
+        },
+        "returned": {
+          "required": false,
+          "type": "boolean"
+        },
+        "score": {
+          "required": false,
+          "type": "number"
+        },
+        "submissionId": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.grade === 'object' && output.result.grade !== null)",
+        "output.ok === false || Number.isFinite(output.result.grade.score)",
+        "output.ok === false || Number.isFinite(output.result.grade.maxPoints)",
+        "output.ok === false || (Number.isFinite(output.result.grade.percent) && output.result.grade.percent >= 0 && output.result.grade.percent <= 100)",
+        "output.ok === false || (output.result.grade.score >= 0 && output.result.grade.score <= output.result.grade.maxPoints)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "classroom.grade-submission",
+      "name": "grade-submission"
+    },
+    {
+      "_derived": false,
+      "domain": "classroom",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohortId": 7
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohortId": "not-a-number"
+          }
+        }
+      ],
+      "inputs": {
+        "cohortId": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.rows)",
+        "output.ok === false || Array.isArray(output.result.assignments)",
+        "output.ok === false || Number.isInteger(output.result.studentCount)",
+        "output.ok === false || output.result.classAverage === null || Number.isFinite(output.result.classAverage)",
+        "output.ok === false || output.result.rows.every(function(r){ return (r.average === null || Number.isFinite(r.average)) && Number.isFinite(r.totalEarned) && Number.isFinite(r.totalPossible); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "classroom.gradebook",
+      "name": "gradebook"
     },
     {
       "_derived": true,
@@ -62,8 +320,241 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "classroom.material-add",
+      "name": "material-add"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.material-delete",
+      "name": "material-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.material-list",
+      "name": "material-list"
+    },
+    {
+      "_derived": false,
+      "domain": "classroom",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "isbn": "12345"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "isbn": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "isbn": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.isbn === 'string'",
+        "output.ok === false || Array.isArray(output.result.publishers)",
+        "output.ok === false || Array.isArray(output.result.authorKeys)",
+        "output.ok === false || !('authors' in output.result)",
+        "output.ok === false || !('publisher' in output.result)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "classroom.ol-isbn",
+      "name": "ol-isbn"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.ol-search",
+      "name": "ol-search"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.ol-subject",
+      "name": "ol-subject"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.ol-work",
+      "name": "ol-work"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "classroom.peer_review",
       "name": "peer_review"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.quiz-attempts",
+      "name": "quiz-attempts"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.quiz-create",
+      "name": "quiz-create"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.quiz-get",
+      "name": "quiz-get"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.quiz-list",
+      "name": "quiz-list"
+    },
+    {
+      "_derived": false,
+      "domain": "classroom",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "answers": {},
+            "quizId": "missing"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "answers": "not-an-object",
+            "quizId": "missing"
+          }
+        }
+      ],
+      "inputs": {
+        "answers": {
+          "required": false,
+          "type": "object"
+        },
+        "quizId": {
+          "required": true,
+          "type": "string"
+        },
+        "studentId": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.attempt === 'object' && output.result.attempt !== null)",
+        "output.ok === false || Number.isFinite(output.result.attempt.score)",
+        "output.ok === false || Number.isFinite(output.result.attempt.totalPoints)",
+        "output.ok === false || (Number.isFinite(output.result.attempt.percent) && output.result.attempt.percent >= 0 && output.result.attempt.percent <= 100)",
+        "output.ok === false || Array.isArray(output.result.attempt.breakdown)",
+        "output.ok === false || output.result.attempt.breakdown.every(function(b){ return typeof b.correct === 'boolean' && Number.isFinite(b.awarded); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "classroom.quiz-submit",
+      "name": "quiz-submit"
     },
     {
       "_derived": true,
@@ -88,11 +579,103 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "classroom.stream-list",
+      "name": "stream-list"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.submission-create",
+      "name": "submission-create"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "classroom.submission-list",
+      "name": "submission-list"
+    },
+    {
+      "_derived": true,
+      "domain": "classroom",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "classroom.submit_homework",
       "name": "submit_homework"
+    },
+    {
+      "_derived": false,
+      "domain": "classroom",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cohortId": 5,
+            "studentId": "stu-1"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "studentId": ""
+          }
+        }
+      ],
+      "inputs": {
+        "cohortId": {
+          "required": false,
+          "type": "number"
+        },
+        "studentId": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.upcoming)",
+        "output.ok === false || Array.isArray(output.result.missing)",
+        "output.ok === false || Array.isArray(output.result.done)",
+        "output.ok === false || (Number.isInteger(output.result.counts.upcoming) && Number.isInteger(output.result.counts.missing) && Number.isInteger(output.result.counts.done))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "classroom.todo",
+      "name": "todo"
     }
   ],
   "domain": "classroom",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 7
+  "macroCount": 29
 }

@@ -10,6 +10,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "sponsorship.billing",
+      "name": "billing"
+    },
+    {
+      "_derived": false,
+      "domain": "sponsorship",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "cancelled": false,
+            "ok": false
+          },
+          "input": {
+            "sponsorshipId": "ghost_999"
+          }
+        }
+      ],
+      "inputs": {
+        "sponsorshipId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || typeof output.cancelled === 'boolean'",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
       "macro_id": "sponsorship.cancel",
       "name": "cancel"
     },
@@ -22,6 +61,96 @@
         "output !== null && output !== undefined",
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.change_tier",
+      "name": "change_tier"
+    },
+    {
+      "_derived": false,
+      "domain": "sponsorship",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dispatchFreqHours": 168,
+            "monthlyCc": 5,
+            "npcId": "npc_arden"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_inputs"
+          },
+          "input": {
+            "monthlyCc": 5
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_inputs"
+          },
+          "input": {
+            "monthlyCc": 0,
+            "npcId": "npc_arden"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_inputs"
+          },
+          "input": {
+            "monthlyCc": -3,
+            "npcId": "npc_arden"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "monthlyCc": 1e+308,
+            "npcId": "npc_arden"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "dispatchFreqHours": 1e+308,
+            "npcId": "npc_arden"
+          }
+        }
+      ],
+      "inputs": {
+        "dispatchFreqHours": {
+          "required": false,
+          "type": "number"
+        },
+        "monthlyCc": {
+          "required": false,
+          "type": "number"
+        },
+        "npcId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.currency === 'CC'",
+        "output.ok === false || (output.sponsorshipId !== undefined && output.sponsorshipId !== null)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
       ],
       "macro_id": "sponsorship.create",
       "name": "create"
@@ -36,8 +165,84 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "sponsorship.discover",
+      "name": "discover"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.dispatch_history",
+      "name": "dispatch_history"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.leaderboard",
+      "name": "leaderboard"
+    },
+    {
+      "_derived": false,
+      "domain": "sponsorship",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.sponsorships)",
+        "output.ok === false || output.sponsorships.every(s => s && (s.id !== undefined))"
+      ],
       "macro_id": "sponsorship.list_for_user",
       "name": "list_for_user"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.list_messages",
+      "name": "list_messages"
     },
     {
       "_derived": true,
@@ -62,11 +267,102 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "sponsorship.list_tiers",
+      "name": "list_tiers"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.mark_message_read",
+      "name": "mark_message_read"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.pause",
+      "name": "pause"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.publish_post",
+      "name": "publish_post"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "sponsorship.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.resume",
+      "name": "resume"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.send_thanks",
+      "name": "send_thanks"
+    },
+    {
+      "_derived": true,
+      "domain": "sponsorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sponsorship.subscribe",
+      "name": "subscribe"
     }
   ],
   "domain": "sponsorship",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 19
 }

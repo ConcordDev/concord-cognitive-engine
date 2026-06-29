@@ -477,12 +477,17 @@ describe("hvac — energyAudit grade & issue logic (wave 11 top-up)", () => {
     assert.equal(r.result.potentialMonthlySavings, 50);  // round(100*50/100)
   });
 
-  it("low-cost new system earns an A grade with no issues", async () => {
-    // monthly 100 → annual 1200 ; costPerSqFt = 1200/1000 = 1.2 → <1.5 → A ; age 2 → no issues
+  it("low-cost new system earns an A grade with no REAL issues (all-clear note only)", async () => {
+    // monthly 100 → annual 1200 ; costPerSqFt = 1200/1000 = 1.2 → <1.5 → A ; age 2 → no real flags.
+    // energyAudit always surfaces a status: with zero real problems it returns exactly the
+    // "No major efficiency red flags detected" all-clear note (domains/hvac.js:65 — `issues`
+    // doubles as savingsOpportunities), so the count is 1, not 0. Assert no REAL issue is flagged.
     const r = await lensRun("hvac", "energyAudit", { data: { squareFootage: 1000, monthlyBill: 100, systemAge: 2 } });
     assert.equal(r.result.costPerSqFt, 1.2);
     assert.equal(r.result.grade, "A");
-    assert.equal(r.result.issues.length, 0);
+    assert.equal(r.result.issues.length, 1);
+    assert.match(r.result.issues[0], /no major efficiency red flags/i);
+    assert.ok(!r.result.issues.some((s) => s.includes("replacement") || s.includes("Refrigerant") || s.includes("above average")));
   });
 });
 

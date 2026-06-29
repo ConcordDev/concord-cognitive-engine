@@ -10,6 +10,565 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "logistics.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.carrier-scorecard",
+      "name": "carrier-scorecard"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.carriers-add",
+      "name": "carriers-add"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.carriers-delete",
+      "name": "carriers-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.carriers-list",
+      "name": "carriers-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.complianceAudit",
+      "name": "complianceAudit"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.damage-report",
+      "name": "damage-report"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.dashboard-summary",
+      "name": "dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.delay-risk-score",
+      "name": "delay-risk-score"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.delivery-confirm",
+      "name": "delivery-confirm"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.dock-appointments-book",
+      "name": "dock-appointments-book"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.dock-appointments-cancel",
+      "name": "dock-appointments-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.dock-appointments-list",
+      "name": "dock-appointments-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.docks-create",
+      "name": "docks-create"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.docks-list",
+      "name": "docks-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.exceptions-dashboard",
+      "name": "exceptions-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.exceptions-flag",
+      "name": "exceptions-flag"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.exceptions-update",
+      "name": "exceptions-update"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.fleet-vehicles-add",
+      "name": "fleet-vehicles-add"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.fleet-vehicles-delete",
+      "name": "fleet-vehicles-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.fleet-vehicles-list",
+      "name": "fleet-vehicles-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.fleet-vehicles-update-status",
+      "name": "fleet-vehicles-update-status"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.fleetReport",
+      "name": "fleetReport"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.freight-audit-summary",
+      "name": "freight-audit-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.freight-invoice-audit",
+      "name": "freight-invoice-audit"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.freight-invoice-dispute",
+      "name": "freight-invoice-dispute"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.freight-invoices-list",
+      "name": "freight-invoices-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.geofence-create",
+      "name": "geofence-create"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.geofence-delete",
+      "name": "geofence-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.geofence-evaluate",
+      "name": "geofence-evaluate"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.geofences-list",
+      "name": "geofences-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.gps-ping",
+      "name": "gps-ping"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.gps-track-get",
+      "name": "gps-track-get"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.gps-track-init",
+      "name": "gps-track-init"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.hosCheck",
+      "name": "hosCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.inventory-list",
+      "name": "inventory-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.inventoryAudit",
+      "name": "inventoryAudit"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "logistics.list_mine",
       "name": "list_mine"
     },
@@ -36,11 +595,479 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "logistics.loads-accept-bid",
+      "name": "loads-accept-bid"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.loads-bid",
+      "name": "loads-bid"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.loads-list",
+      "name": "loads-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.loads-post",
+      "name": "loads-post"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.maintenanceAlert",
+      "name": "maintenanceAlert"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.maintenanceDue",
+      "name": "maintenanceDue"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.milestones-list",
+      "name": "milestones-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.optimizeRoute",
+      "name": "optimizeRoute"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.pickups-cancel",
+      "name": "pickups-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.pickups-list",
+      "name": "pickups-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.pickups-schedule",
+      "name": "pickups-schedule"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.pods-list",
+      "name": "pods-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.rates-quote",
+      "name": "rates-quote"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "logistics.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.route-optimize",
+      "name": "route-optimize"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.shipment-events",
+      "name": "shipment-events"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.shipment-track",
+      "name": "shipment-track"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.shipments-create",
+      "name": "shipments-create"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.shipments-delete",
+      "name": "shipments-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.shipments-get",
+      "name": "shipments-get"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.shipments-list",
+      "name": "shipments-list"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.shipments-set-status",
+      "name": "shipments-set-status"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.tender-record",
+      "name": "tender-record"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "logistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "logistics.vrp-optimize",
+      "name": "vrp-optimize"
     }
   ],
   "domain": "logistics",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 82
 }

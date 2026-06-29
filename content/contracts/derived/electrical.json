@@ -10,8 +10,891 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "electrical.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": false,
+      "domain": "electrical",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "boxVolumeCubicInches": 18,
+            "currentCarrying": 4,
+            "devices": 1,
+            "groundConductors": 2,
+            "internalClamps": true,
+            "largestAwg": 14,
+            "supportFittings": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "boxVolumeCubicInches": 10,
+            "currentCarrying": 6,
+            "devices": 2,
+            "groundConductors": 1,
+            "internalClamps": true,
+            "largestAwg": 12
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "currentCarrying": 4,
+            "devices": 1,
+            "internalClamps": true,
+            "largestAwg": 14
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "boxVolumeCubicInches": "Infinity",
+            "currentCarrying": -5,
+            "devices": -1,
+            "groundConductors": "NaN",
+            "largestAwg": 14
+          }
+        }
+      ],
+      "inputs": {
+        "boxVolumeCubicInches": {
+          "type": "number"
+        },
+        "currentCarrying": {
+          "type": "number"
+        },
+        "devices": {
+          "type": "number"
+        },
+        "groundConductors": {
+          "type": "number"
+        },
+        "internalClamps": {
+          "type": "boolean"
+        },
+        "largestAwg": {
+          "type": "number"
+        },
+        "supportFittings": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Number.isFinite(output.result.totalConductorEquivalents) && output.result.totalConductorEquivalents >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.requiredBoxVolume) && output.result.requiredBoxVolume >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.providedBoxVolume) && output.result.providedBoxVolume >= 0)",
+        "output.ok === false || output.result.pass === null || typeof output.result.pass === 'boolean'",
+        "output.ok === false || typeof output.result.verdict === 'string'",
+        "output.ok === false || Array.isArray(output.result.breakdown)"
+      ],
+      "macro_id": "electrical.boxFill",
+      "name": "boxFill"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.checklistCreate",
+      "name": "checklistCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.checklistDelete",
+      "name": "checklistDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.checklistList",
+      "name": "checklistList"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.checklistSetItem",
+      "name": "checklistSetItem"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.checklistTemplates",
+      "name": "checklistTemplates"
+    },
+    {
+      "_derived": false,
+      "domain": "electrical",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "circuits": [
+                  {
+                    "breaker": "20A",
+                    "devices": [
+                      "recept",
+                      "lights"
+                    ],
+                    "name": "C1",
+                    "panel": "Main",
+                    "room": "Kitchen",
+                    "wireRunFeet": 40
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "circuits": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "circuits": [
+                  {
+                    "devices": "not-an-array",
+                    "name": "bad",
+                    "wireRunFeet": "Infinity"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "circuits": {
+          "maxLength": 5000,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Number.isFinite(output.result.panels) && output.result.panels >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.totalCircuits) && output.result.totalCircuits >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.unassigned) && output.result.unassigned >= 0)",
+        "output.ok === false || Number.isFinite(output.result.avgDevicesPerCircuit)",
+        "output.ok === false || Array.isArray(output.result.circuitMap)",
+        "output.ok === false || output.result.circuitMap.every((c) => Array.isArray(c.devices) && Number.isFinite(c.wireRun) && c.wireRun >= 0)"
+      ],
+      "macro_id": "electrical.circuitTrace",
+      "name": "circuitTrace"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "electrical",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "conductors": [
+              {
+                "awg": 12,
+                "count": 3
+              }
+            ],
+            "conduitType": "EMT"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "conductors": [
+              {
+                "awg": 4,
+                "count": 9
+              }
+            ],
+            "conduitSize": "3/4",
+            "conduitType": "EMT"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "conductors": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "conductors": [
+              {
+                "awg": 12,
+                "count": -3
+              },
+              {
+                "awg": 10,
+                "count": "NaN"
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "conductors": {
+          "maxLength": 5000,
+          "type": "array"
+        },
+        "conduitSize": {
+          "maxLength": 12,
+          "type": "string"
+        },
+        "conduitType": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.result.totalConductors === undefined || (Number.isFinite(output.result.totalConductors) && output.result.totalConductors >= 0)",
+        "output.ok === false || output.result.totalConductorArea === undefined || (Number.isFinite(output.result.totalConductorArea) && output.result.totalConductorArea >= 0)",
+        "output.ok === false || output.result.necFillLimitPercent === undefined || [53,31,40].includes(output.result.necFillLimitPercent)",
+        "output.ok === false || output.result.conductors === undefined || output.result.conductors.every((c) => Number.isFinite(c.count) && c.count >= 1 && Number.isFinite(c.areaTotal) && c.areaTotal >= 0)",
+        "output.ok === false || output.result.requested == null || typeof output.result.requested.pass === 'boolean'"
+      ],
+      "macro_id": "electrical.conduitFill",
+      "name": "conduitFill"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.diagramAddNode",
+      "name": "diagramAddNode"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.diagramCreate",
+      "name": "diagramCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.diagramDelete",
+      "name": "diagramDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.diagramList",
+      "name": "diagramList"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.diagramRemoveNode",
+      "name": "diagramRemoveNode"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.estimateAddLine",
+      "name": "estimateAddLine"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.estimateCreate",
+      "name": "estimateCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.estimateDelete",
+      "name": "estimateDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.estimateList",
+      "name": "estimateList"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.estimateRemoveLine",
+      "name": "estimateRemoveLine"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.estimateToInvoice",
+      "name": "estimateToInvoice"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.invoiceList",
+      "name": "invoiceList"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.invoiceMarkPaid",
+      "name": "invoiceMarkPaid"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "electrical.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "electrical",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "circuits": [
+                  {
+                    "name": "Kitchen",
+                    "voltage": 120,
+                    "watts": 1800
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "circuits": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "circuits": [
+                  {
+                    "name": "junk",
+                    "voltage": 0,
+                    "watts": "Infinity"
+                  },
+                  {
+                    "name": "neg",
+                    "voltage": 120,
+                    "watts": -500
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "circuits": {
+          "maxLength": 5000,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.totalAmps === undefined || (Number.isFinite(output.result.totalAmps) && output.result.totalAmps >= 0)",
+        "output.ok === false || output.result.totalWatts === undefined || (Number.isFinite(output.result.totalWatts) && output.result.totalWatts >= 0)",
+        "output.ok === false || output.result.utilization === undefined || Number.isFinite(output.result.utilization)",
+        "output.ok === false || output.result.circuits === undefined || Array.isArray(output.result.circuits)",
+        "output.ok === false || output.result.circuits === undefined || output.result.circuits.every((c) => Number.isFinite(c.amps) && c.amps >= 0)"
+      ],
+      "macro_id": "electrical.loadCalculation",
+      "name": "loadCalculation"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.panelAddCircuit",
+      "name": "panelAddCircuit"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.panelCreate",
+      "name": "panelCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.panelDelete",
+      "name": "panelDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.panelList",
+      "name": "panelList"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.panelRemoveCircuit",
+      "name": "panelRemoveCircuit"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.panelSchedule",
+      "name": "panelSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.priceListGet",
+      "name": "priceListGet"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.priceListRemove",
+      "name": "priceListRemove"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.priceListUpsert",
+      "name": "priceListUpsert"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.rate",
+      "name": "rate"
     },
     {
       "_derived": true,
@@ -25,9 +908,357 @@
       ],
       "macro_id": "electrical.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": false,
+      "domain": "electrical",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "inspectionItems": [
+                  {
+                    "critical": false,
+                    "name": "GFCI present",
+                    "necCode": "210.8",
+                    "notes": "ok",
+                    "passed": true
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "inspectionItems": [
+                  {
+                    "critical": true,
+                    "name": "Ground bond",
+                    "necCode": "250.28",
+                    "notes": "missing",
+                    "passed": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "inspectionItems": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "inspectionItems": {
+          "maxLength": 5000,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.total === undefined || (Number.isFinite(output.result.total) && output.result.total >= 0)",
+        "output.ok === false || output.result.passRate === undefined || (Number.isFinite(output.result.passRate) && output.result.passRate >= 0 && output.result.passRate <= 100)",
+        "output.ok === false || output.result.criticalFailures === undefined || (Number.isFinite(output.result.criticalFailures) && output.result.criticalFailures >= 0)",
+        "output.ok === false || output.result.results === undefined || Array.isArray(output.result.results)",
+        "output.ok === false || output.result.overallResult === undefined || typeof output.result.overallResult === 'string'"
+      ],
+      "macro_id": "electrical.safetyInspection",
+      "name": "safetyInspection"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": false,
+      "domain": "electrical",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "amps": 20,
+                "distanceFeet": 100,
+                "voltage": 240,
+                "wireGauge": 10
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "amps": 30,
+                "distanceFeet": 200,
+                "voltage": 120,
+                "wireGauge": 14
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "amps": "Infinity",
+                "distanceFeet": "NaN",
+                "voltage": 0,
+                "wireGauge": 12
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "amps": {
+          "type": "number"
+        },
+        "distanceFeet": {
+          "type": "number"
+        },
+        "voltage": {
+          "type": "number"
+        },
+        "wireGauge": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.voltageDrop === 'string'",
+        "output.ok === false || typeof output.result.dropPercent === 'string'",
+        "output.ok === false || Number.isFinite(output.result.dropPercentValue)",
+        "output.ok === false || typeof output.result.acceptable === 'boolean'",
+        "output.ok === false || typeof output.result.necLimit === 'string'",
+        "output.ok === false || typeof output.result.recommendation === 'string'",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.voltageDrop))"
+      ],
+      "macro_id": "electrical.voltageDropCalc",
+      "name": "voltageDropCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "electrical",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "electrical.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": false,
+      "domain": "electrical",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "continuous": true,
+            "distanceFeet": 50,
+            "loadAmps": 40,
+            "voltage": 240
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "continuous": true,
+            "distanceFeet": 300,
+            "loadAmps": 20,
+            "voltage": 120
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "distanceFeet": 50,
+            "loadAmps": 0,
+            "voltage": 120
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "distanceFeet": "NaN",
+            "loadAmps": "Infinity",
+            "voltage": "abc"
+          }
+        }
+      ],
+      "inputs": {
+        "continuous": {
+          "type": "boolean"
+        },
+        "distanceFeet": {
+          "type": "number"
+        },
+        "loadAmps": {
+          "type": "number"
+        },
+        "voltage": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.designAmps) && output.result.designAmps > 0)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.recommendedWire === 'string'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.minBreaker === 'string'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.recommendedAmpacity)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.upsizedForVoltageDrop === 'boolean'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.basis === 'string'"
+      ],
+      "macro_id": "electrical.wireSize",
+      "name": "wireSize"
     }
   ],
   "domain": "electrical",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 56
 }

@@ -56,18 +56,22 @@ export default function registerEnergyActions(registerLensAction) {
   });
   registerLensAction("energy", "carbonFootprint", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Fail-closed, non-negative finite inputs. Poison collapses to 0 so the
-    // CO2 totals stay finite (an Infinity here would render as null in the UI).
-    const electricityKWh = finiteNum(data.electricityKWh, 0, 0);
-    const naturalGasTherms = finiteNum(data.naturalGasTherms, 0, 0);
-    const gasolineGallons = finiteNum(data.gasolineGallons, 0, 0);
-    const flightMiles = finiteNum(data.flightMiles, 0, 0);
-    // EPA emission factors
-    const co2Electricity = electricityKWh * 0.000417; // metric tons per kWh
-    const co2Gas = naturalGasTherms * 0.0053;
-    const co2Gasoline = gasolineGallons * 0.00887;
-    const co2Flights = flightMiles * 0.000255;
-    const total = co2Electricity + co2Gas + co2Gasoline + co2Flights;
+    // Fail-closed, non-negative finite inputs CLAMPED to a sane upper bound so a
+    // poisoned magnitude (e.g. 1e308) can never overflow an emission-factor
+    // multiply into Infinity (which would render as null in the UI). 1e12 is far
+    // above any real annual consumption yet leaves headroom before float overflow.
+    const MAX_CONSUMPTION = 1e12;
+    const electricityKWh = finiteNum(data.electricityKWh, 0, 0, MAX_CONSUMPTION);
+    const naturalGasTherms = finiteNum(data.naturalGasTherms, 0, 0, MAX_CONSUMPTION);
+    const gasolineGallons = finiteNum(data.gasolineGallons, 0, 0, MAX_CONSUMPTION);
+    const flightMiles = finiteNum(data.flightMiles, 0, 0, MAX_CONSUMPTION);
+    // EPA emission factors. Re-coerce each derived figure to finite as a
+    // belt-and-suspenders guard against any residual non-finite arithmetic.
+    const co2Electricity = finiteNum(electricityKWh * 0.000417, 0); // metric tons per kWh
+    const co2Gas = finiteNum(naturalGasTherms * 0.0053, 0);
+    const co2Gasoline = finiteNum(gasolineGallons * 0.00887, 0);
+    const co2Flights = finiteNum(flightMiles * 0.000255, 0);
+    const total = finiteNum(co2Electricity + co2Gas + co2Gasoline + co2Flights, 0);
     const usAvg = 16; // tons per capita
     return { ok: true, result: { breakdown: { electricity: Math.round(co2Electricity * 1000) / 1000, naturalGas: Math.round(co2Gas * 1000) / 1000, transportation: Math.round(co2Gasoline * 1000) / 1000, flights: Math.round(co2Flights * 1000) / 1000 }, totalMetricTons: Math.round(total * 1000) / 1000, annualEstimate: Math.round(total * 12 * 100) / 100, vsUSAverage: `${Math.round((total * 12 / usAvg) * 100)}% of US average`, topSource: [["electricity", co2Electricity], ["naturalGas", co2Gas], ["transportation", co2Gasoline], ["flights", co2Flights]].sort((a, b) => b[1] - a[1])[0][0], reductionTips: co2Electricity > co2Gas ? ["Switch to renewable energy provider", "Improve insulation", "LED lighting"] : ["Improve heating efficiency", "Seal air leaks", "Smart thermostat"] } };
   });
@@ -651,7 +655,7 @@ export default function registerEnergyActions(registerLensAction) {
     const readings = (s.readings.get(userId) || []).filter((r) => new Date(r.date).getTime() >= cutoff);
     const devices = s.devices.get(userId) || [];
     if (devices.length === 0) {
-      return { ok: true, result: { devices: [], totalKwh: 0, attributedKwh: 0, unattributedKwh: 0, days } };
+      return { ok: true, result: { devices: [], totalKwh: 0, attributedKwh: 0, unattributedKwh: 0, wholeHomeKwh: 0, days } };
     }
     const directByDevice = new Map();
     let wholeHomeKwh = 0, total = 0;

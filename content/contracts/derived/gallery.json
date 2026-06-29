@@ -10,6 +10,448 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "gallery.artist",
+      "name": "artist"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.artwork-remove",
+      "name": "artwork-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.artwork-save",
+      "name": "artwork-save"
+    },
+    {
+      "_derived": false,
+      "domain": "gallery",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": -5
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "gallery.cma-artwork",
+      "name": "cma-artwork"
+    },
+    {
+      "_derived": false,
+      "domain": "gallery",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.departments)",
+        "output.ok === false || output.result.departments.length > 0",
+        "output.ok === false || output.result.departments.every(d => typeof d === 'string')"
+      ],
+      "macro_id": "gallery.cma-departments",
+      "name": "cma-departments"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.cma-search",
+      "name": "cma-search"
+    },
+    {
+      "_derived": false,
+      "domain": "gallery",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Dutch Masters"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "name": "   "
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "name": {
+          "maxLength": 100,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.collection && typeof output.result.collection.id === 'string')",
+        "output.ok === false || (typeof output.result.collection.name === 'string' && output.result.collection.name.length > 0)",
+        "output.ok === false || Array.isArray(output.result.collection.artworks)"
+      ],
+      "macro_id": "gallery.collection-create",
+      "name": "collection-create"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.collection-delete",
+      "name": "collection-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.collection-detail",
+      "name": "collection-detail"
+    },
+    {
+      "_derived": false,
+      "domain": "gallery",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.collections)",
+        "output.ok === false || typeof output.result.count === 'number'",
+        "output.ok === false || output.result.collections.every(c => typeof c.id === 'string' && typeof c.artworkCount === 'number')"
+      ],
+      "macro_id": "gallery.collection-list",
+      "name": "collection-list"
+    },
+    {
+      "_derived": false,
+      "domain": "gallery",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "ids": [
+              1
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "ids": []
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "ids": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "gallery.compare",
+      "name": "compare"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.deep-zoom",
+      "name": "deep-zoom"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.exhibit-add-panel",
+      "name": "exhibit-add-panel"
+    },
+    {
+      "_derived": false,
+      "domain": "gallery",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "theme": "chiaroscuro",
+            "title": "Light & Shadow"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "intro": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "theme": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 160,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.exhibit && typeof output.result.exhibit.id === 'string')",
+        "output.ok === false || output.result.exhibit.published === false",
+        "output.ok === false || Array.isArray(output.result.exhibit.panels)"
+      ],
+      "macro_id": "gallery.exhibit-create",
+      "name": "exhibit-create"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.exhibit-delete",
+      "name": "exhibit-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.exhibit-detail",
+      "name": "exhibit-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.exhibit-list",
+      "name": "exhibit-list"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.exhibit-publish",
+      "name": "exhibit-publish"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.exhibit-remove-panel",
+      "name": "exhibit-remove-panel"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.exhibit-reorder-panels",
+      "name": "exhibit-reorder-panels"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.gallery-dashboard",
+      "name": "gallery-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "gallery.list_mine",
       "name": "list_mine"
     },
@@ -38,9 +480,224 @@
       ],
       "macro_id": "gallery.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.recommendations",
+      "name": "recommendations"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.record-view",
+      "name": "record-view"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.si-search",
+      "name": "si-search"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.view-history",
+      "name": "view-history"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.virtual-room-create",
+      "name": "virtual-room-create"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.virtual-room-delete",
+      "name": "virtual-room-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.virtual-room-detail",
+      "name": "virtual-room-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.virtual-room-list",
+      "name": "virtual-room-list"
+    },
+    {
+      "_derived": false,
+      "domain": "gallery",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "roomId": "__no_such_room__",
+            "title": "X"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "title": "Y"
+          }
+        }
+      ],
+      "inputs": {
+        "roomId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 300,
+          "required": true,
+          "type": "string"
+        },
+        "widthM": {
+          "min": 0.2,
+          "type": "number"
+        },
+        "x": {
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "y": {
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.placement && typeof output.result.placement.id === 'string')",
+        "output.ok === false || (Number.isFinite(output.result.placement.x) && output.result.placement.x >= 0 && output.result.placement.x <= 1)",
+        "output.ok === false || (Number.isFinite(output.result.placement.y) && output.result.placement.y >= 0 && output.result.placement.y <= 1)"
+      ],
+      "macro_id": "gallery.virtual-room-place",
+      "name": "virtual-room-place"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.virtual-room-remove-placement",
+      "name": "virtual-room-remove-placement"
+    },
+    {
+      "_derived": true,
+      "domain": "gallery",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "gallery.visual-search",
+      "name": "visual-search"
+    },
+    {
+      "_derived": false,
+      "domain": "gallery",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.styles)",
+        "output.ok === false || output.result.styles.includes('impressionism')"
+      ],
+      "macro_id": "gallery.visual-search-styles",
+      "name": "visual-search-styles"
     }
   ],
   "domain": "gallery",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 37
 }

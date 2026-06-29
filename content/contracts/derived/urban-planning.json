@@ -10,6 +10,296 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "urban-planning.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": false,
+      "domain": "urban-planning",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "stateFips (2 digits) + countyFips (3 digits) required",
+            "ok": false
+          },
+          "input": {
+            "countyFips": "75x",
+            "stateFips": "6"
+          }
+        },
+        {
+          "expect": {
+            "error": "stateFips (2 digits) + countyFips (3 digits) required",
+            "ok": false
+          },
+          "input": {
+            "countyFips": "001",
+            "stateFips": "123"
+          }
+        }
+      ],
+      "inputs": {
+        "countyFips": {
+          "maxLength": 4,
+          "required": true,
+          "type": "string"
+        },
+        "stateFips": {
+          "maxLength": 4,
+          "required": true,
+          "type": "string"
+        },
+        "year": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'",
+        "output.ok === false || typeof output.result === 'object'"
+      ],
+      "macro_id": "urban-planning.census-acs-county",
+      "name": "census-acs-county"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.comment-add",
+      "name": "comment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.comment-list",
+      "name": "comment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.comment-resolve",
+      "name": "comment-resolve"
+    },
+    {
+      "_derived": false,
+      "domain": "urban-planning",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "areaSqMiles": 10,
+            "housingUnits": 55000,
+            "population": 120000
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "areaSqMiles": 1,
+            "housingUnits": 200,
+            "population": 500
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "areaSqMiles": 1,
+            "population": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "areaSqMiles": {
+          "required": false,
+          "type": "number"
+        },
+        "housingUnits": {
+          "required": false,
+          "type": "number"
+        },
+        "population": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || typeof output.result.populationDensity === 'string'",
+        "output.ok === false || ['urban-core','urban','suburban','rural'].includes(output.result.classification)",
+        "output.ok === false || ['supports-rail','supports-bus','car-dependent'].includes(output.result.transitViability)"
+      ],
+      "macro_id": "urban-planning.densityCalc",
+      "name": "densityCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.exportPlan",
+      "name": "exportPlan"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.hud-income-limits",
+      "name": "hud-income-limits"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.impactDashboard",
+      "name": "impactDashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "urban-planning.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +313,650 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "urban-planning.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "urban-planning",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "efficiency": 0.82,
+            "lotSizeSqFt": 20000,
+            "useMix": "mixed",
+            "zoneType": "mixed"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lotSizeSqFt": 15000,
+            "useMix": "commercial",
+            "zoneType": "commercial"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "efficiency": 1e+308,
+            "lotSizeSqFt": 1e+308,
+            "zoneType": "residential"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lotSizeSqFt": -5,
+            "zoneType": "residential"
+          }
+        }
+      ],
+      "inputs": {
+        "efficiency": {
+          "required": false,
+          "type": "number"
+        },
+        "lotSizeSqFt": {
+          "required": false,
+          "type": "number"
+        },
+        "useMix": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        },
+        "zoneType": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (typeof output.result.floors === 'number' && Number.isFinite(output.result.floors) && output.result.floors >= 1)",
+        "output.ok === false || (typeof output.result.grossFloorAreaSqFt === 'number' && Number.isFinite(output.result.grossFloorAreaSqFt) && output.result.grossFloorAreaSqFt >= 0)",
+        "output.ok === false || (typeof output.result.dwellingUnits === 'number' && Number.isFinite(output.result.dwellingUnits) && output.result.dwellingUnits >= 0)",
+        "output.ok === false || (typeof output.result.population === 'number' && Number.isFinite(output.result.population) && output.result.population >= 0)",
+        "output.ok === false || (typeof output.result.emissionsTonnesPerYear === 'number' && Number.isFinite(output.result.emissionsTonnesPerYear) && output.result.emissionsTonnesPerYear >= 0)",
+        "output.ok === false || (typeof output.result.envelope === 'object' && Number.isFinite(output.result.envelope.heightFt))"
+      ],
+      "macro_id": "urban-planning.massingEnvelope",
+      "name": "massingEnvelope"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.parcel-add",
+      "name": "parcel-add"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.parcel-list",
+      "name": "parcel-list"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.parcel-remove",
+      "name": "parcel-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "urban-planning.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.scenario-compare",
+      "name": "scenario-compare"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.scenario-create",
+      "name": "scenario-create"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.scenario-list",
+      "name": "scenario-list"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.scenario-remove",
+      "name": "scenario-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": false,
+      "domain": "urban-planning",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "currentADT": 10000,
+            "newCommercialSqFt": 50000,
+            "newHousingUnits": 200
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "currentADT": 10000,
+            "newHousingUnits": 5
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "newHousingUnits": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "currentADT": {
+          "required": false,
+          "type": "number"
+        },
+        "newCommercialSqFt": {
+          "required": false,
+          "type": "number"
+        },
+        "newHousingUnits": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (typeof output.result.newDailyTrips === 'number' && Number.isFinite(output.result.newDailyTrips))",
+        "output.ok === false || (typeof output.result.peakHourTrips === 'number' && Number.isFinite(output.result.peakHourTrips))",
+        "output.ok === false || ['significant','moderate','minimal'].includes(output.result.impactLevel)",
+        "output.ok === false || Array.isArray(output.result.mitigation)"
+      ],
+      "macro_id": "urban-planning.trafficImpact",
+      "name": "trafficImpact"
+    },
+    {
+      "_derived": false,
+      "domain": "urban-planning",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "parcels": [
+              {
+                "id": "p1",
+                "lat": 37.7805,
+                "lng": -122.4105
+              }
+            ],
+            "stops": [
+              {
+                "id": "s1",
+                "lat": 37.78,
+                "lng": -122.41,
+                "mode": "rail"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "stops": [
+              {
+                "lat": 0,
+                "lng": 0,
+                "mode": "hyperloop"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "error": "stops array required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "stops array required",
+            "ok": false
+          },
+          "input": {
+            "stops": []
+          }
+        }
+      ],
+      "inputs": {
+        "parcels": {
+          "required": false,
+          "type": "array"
+        },
+        "stops": {
+          "required": true,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Array.isArray(output.result.catchments)",
+        "output.ok === false || (typeof output.result.totalCatchmentAcres === 'number' && Number.isFinite(output.result.totalCatchmentAcres))",
+        "output.ok === false || (typeof output.result.parcelsServed === 'number' && output.result.parcelsServed >= 0)",
+        "output.ok === false || (output.result.parcelsServed <= output.result.parcelsEvaluated)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "urban-planning.transitCoverage",
+      "name": "transitCoverage"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": false,
+      "domain": "urban-planning",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "amenities": [
+              {
+                "category": "grocery",
+                "withinWalkingDistance": true
+              },
+              {
+                "category": "transit",
+                "withinWalkingDistance": true
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "amenities": [
+              {
+                "category": "spaceport",
+                "withinWalkingDistance": true
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "amenities": "bad"
+          }
+        }
+      ],
+      "inputs": {
+        "amenities": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (typeof output.result.walkabilityScore === 'number' && output.result.walkabilityScore >= 0 && output.result.walkabilityScore <= 100)",
+        "output.ok === false || typeof output.result.rating === 'string'",
+        "output.ok === false || typeof output.result.amenityScores === 'object'"
+      ],
+      "macro_id": "urban-planning.walkabilityScore",
+      "name": "walkabilityScore"
+    },
+    {
+      "_derived": false,
+      "domain": "urban-planning",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lotSizeSqFt": 10000,
+            "zoneType": "commercial"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lotSizeSqFt": 8000,
+            "zoneType": "spaceport"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lotSizeSqFt": 1e+308,
+            "zoneType": "mixed"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lotSizeSqFt": -1,
+            "zoneType": "mixed"
+          }
+        }
+      ],
+      "inputs": {
+        "lotSizeSqFt": {
+          "required": false,
+          "type": "number"
+        },
+        "zoneType": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (typeof output.result.floorAreaRatio === 'number' && Number.isFinite(output.result.floorAreaRatio))",
+        "output.ok === false || (typeof output.result.maxBuildableSqFt === 'number' && Number.isFinite(output.result.maxBuildableSqFt) && output.result.maxBuildableSqFt >= 0)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "urban-planning.zoningAnalysis",
+      "name": "zoningAnalysis"
     }
   ],
   "domain": "urban-planning",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 42
 }

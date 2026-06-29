@@ -10,6 +10,935 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "creative.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.asset_report",
+      "name": "asset_report"
+    },
+    {
+      "_derived": false,
+      "domain": "creative",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "assets": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "assets": [
+              {
+                "name": "hero.psd",
+                "status": "ready",
+                "type": "graphic"
+              },
+              {
+                "name": "promo.mp4",
+                "status": "pending",
+                "type": "video"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "assets": [
+              {
+                "type": "x"
+              },
+              "garbage",
+              null
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "assets": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "assets": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalAssets)",
+        "output.ok === false || Number.isFinite(output.result.ready)",
+        "output.ok === false || (typeof output.result.byType === 'object' && output.result.byType !== null)",
+        "output.ok === false || Array.isArray(output.result.missing)",
+        "output.ok === false || output.result.missing.every(function(m){ return typeof m.name === 'string'; })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "creative.assetOrganize",
+      "name": "assetOrganize"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.board-create",
+      "name": "board-create"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.board-delete",
+      "name": "board-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.board-duplicate",
+      "name": "board-duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.board-from-template",
+      "name": "board-from-template"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.board-get",
+      "name": "board-get"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.board-list",
+      "name": "board-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.board-rename",
+      "name": "board-rename"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.board-templates",
+      "name": "board-templates"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.breakdown-create",
+      "name": "breakdown-create"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.breakdown-delete",
+      "name": "breakdown-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.breakdown-get",
+      "name": "breakdown-get"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.breakdown-list",
+      "name": "breakdown-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.breakdown-rescan",
+      "name": "breakdown-rescan"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.breakdown-tag",
+      "name": "breakdown-tag"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.breakdown-untag",
+      "name": "breakdown-untag"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.budget_analysis",
+      "name": "budget_analysis"
+    },
+    {
+      "_derived": false,
+      "domain": "creative",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lines": [
+              {
+                "actual": 4200,
+                "budgeted": 5000,
+                "category": "Talent"
+              },
+              {
+                "actual": 2600,
+                "budgeted": 2000,
+                "category": "Gear"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "budget": 1000,
+            "expenses": [
+              {
+                "amount": 800,
+                "category": "A"
+              },
+              {
+                "amount": 700,
+                "category": "B"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lines": [
+              {
+                "actual": "Infinity",
+                "budgeted": "1e999",
+                "category": "X"
+              },
+              {
+                "actual": "NaN",
+                "budgeted": 0,
+                "category": "Y"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lines": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "budget": {
+          "required": false,
+          "type": "number"
+        },
+        "expenses": {
+          "required": false,
+          "type": "array"
+        },
+        "lines": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalBudgeted)",
+        "output.ok === false || Number.isFinite(output.result.totalActual)",
+        "output.ok === false || Number.isFinite(output.result.totalVariance)",
+        "output.ok === false || typeof output.result.overBudget === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.lines)",
+        "output.ok === false || output.result.lines.every(function(l){ return Number.isFinite(l.budgeted) && Number.isFinite(l.actual) && Number.isFinite(l.variance); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "creative.budgetTrack",
+      "name": "budgetTrack"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.calendar-add",
+      "name": "calendar-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.calendar-delete",
+      "name": "calendar-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.calendar-list",
+      "name": "calendar-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.calendar-update",
+      "name": "calendar-update"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.callsheet-add-row",
+      "name": "callsheet-add-row"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.callsheet-create",
+      "name": "callsheet-create"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.callsheet-delete",
+      "name": "callsheet-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.callsheet-get",
+      "name": "callsheet-get"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.callsheet-list",
+      "name": "callsheet-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.callsheet-remove-row",
+      "name": "callsheet-remove-row"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.card-add",
+      "name": "card-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.card-delete",
+      "name": "card-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.card-move",
+      "name": "card-move"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.card-raise",
+      "name": "card-raise"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.card-update",
+      "name": "card-update"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.connection-add",
+      "name": "connection-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.connection-delete",
+      "name": "connection-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.creative-dashboard",
+      "name": "creative-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.deliverable-add-version",
+      "name": "deliverable-add-version"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.deliverable-create",
+      "name": "deliverable-create"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.deliverable-decide",
+      "name": "deliverable-decide"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.deliverable-delete",
+      "name": "deliverable-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.deliverable-get",
+      "name": "deliverable-get"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.deliverable-list",
+      "name": "deliverable-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.deliverable-set-current",
+      "name": "deliverable-set-current"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.deliverable-submit",
+      "name": "deliverable-submit"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.distribution_checklist",
+      "name": "distribution_checklist"
+    },
+    {
+      "_derived": false,
+      "domain": "creative",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "platform": "Spotify",
+            "type": "podcast"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "checklist": [
+              {
+                "item": "Render 4K master",
+                "ready": true
+              },
+              {
+                "item": "Upload caption file",
+                "ready": false
+              }
+            ],
+            "deliveryDate": "2026-07-01",
+            "platform": "YouTube"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "items": [
+              {
+                "done": true,
+                "name": "x"
+              },
+              "garbage",
+              null
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "checklist": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "checklist": {
+          "required": false,
+          "type": "array"
+        },
+        "deliveryDate": {
+          "maxLength": 64,
+          "required": false,
+          "type": "string"
+        },
+        "items": {
+          "required": false,
+          "type": "array"
+        },
+        "platform": {
+          "maxLength": 160,
+          "required": false,
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 64,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.platform === 'string'",
+        "output.ok === false || Array.isArray(output.result.checklist)",
+        "output.ok === false || Number.isFinite(output.result.total)",
+        "output.ok === false || Number.isFinite(output.result.readyCount)",
+        "output.ok === false || (Number.isFinite(output.result.percent) && output.result.percent >= 0 && output.result.percent <= 100)",
+        "output.ok === false || output.result.checklist.every(function(c){ return typeof c.item === 'string' && typeof c.ready === 'boolean'; })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "creative.distributionChecklist",
+      "name": "distributionChecklist"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "creative.domains",
       "name": "domains"
     },
@@ -23,8 +952,229 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "creative.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.generate_shot_list",
+      "name": "generate_shot_list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "creative.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.project_summary",
+      "name": "project_summary"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.prooflink-create",
+      "name": "prooflink-create"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.prooflink-delete",
+      "name": "prooflink-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.prooflink-inbox",
+      "name": "prooflink-inbox"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.prooflink-list",
+      "name": "prooflink-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.prooflink-public-comment",
+      "name": "prooflink-public-comment"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.prooflink-public-get",
+      "name": "prooflink-public-get"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.prooflink-toggle",
+      "name": "prooflink-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.rate",
+      "name": "rate"
     },
     {
       "_derived": true,
@@ -51,9 +1201,294 @@
       ],
       "macro_id": "creative.registry",
       "name": "registry"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.review-asset-create",
+      "name": "review-asset-create"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.review-asset-delete",
+      "name": "review-asset-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.review-asset-list",
+      "name": "review-asset-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.review-comment-add",
+      "name": "review-comment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.review-comment-delete",
+      "name": "review-comment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.review-comment-list",
+      "name": "review-comment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.review-comment-resolve",
+      "name": "review-comment-resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.revision_summary",
+      "name": "revision_summary"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.share",
+      "name": "share"
+    },
+    {
+      "_derived": false,
+      "domain": "creative",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "type": "photo"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "scenes": [
+              {
+                "duration": 90,
+                "type": "wide"
+              },
+              {
+                "duration": 30,
+                "type": "close"
+              }
+            ],
+            "type": "video"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "scenes": [
+              {
+                "duration": "1e999",
+                "type": "x"
+              },
+              {
+                "duration": "NaN",
+                "type": "y"
+              }
+            ],
+            "type": "video"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "scenes": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "scenes": {
+          "required": false,
+          "type": "array"
+        },
+        "type": {
+          "maxLength": 64,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.shots)",
+        "output.ok === false || Number.isFinite(output.result.totalShots)",
+        "output.ok === false || Number.isFinite(output.result.estimatedRuntime)",
+        "output.ok === false || Array.isArray(output.result.equipmentList)",
+        "output.ok === false || output.result.shots.every(function(s){ return Number.isFinite(s.shotNumber) && typeof s.type === 'string' && Number.isFinite(s.duration); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "creative.shotListGenerate",
+      "name": "shotListGenerate"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "creative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative.vote",
+      "name": "vote"
     }
   ],
   "domain": "creative",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 89
 }

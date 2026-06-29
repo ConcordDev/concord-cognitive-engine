@@ -10,6 +10,319 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "mentorship.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "mentorship",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "currentSkills": [
+              "js",
+              "ts"
+            ],
+            "skillGaps": [
+              "architecture"
+            ],
+            "targetRole": "Lead"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "skills": [
+              "react"
+            ],
+            "targetRole": "Staff"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "currentSkills": "Infinity",
+            "skillGaps": "1e999",
+            "targetRole": 42
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "targetRole": ""
+          }
+        }
+      ],
+      "inputs": {
+        "currentSkills": {
+          "required": false,
+          "type": "array"
+        },
+        "skillGaps": {
+          "required": false,
+          "type": "array"
+        },
+        "skills": {
+          "required": false,
+          "type": "array"
+        },
+        "targetRole": {
+          "maxLength": 120,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.currentSkillCount)",
+        "output.ok === false || typeof output.result.targetRole === 'string'",
+        "output.ok === false || Array.isArray(output.result.gaps)",
+        "output.ok === false || (Array.isArray(output.result.milestones) && output.result.milestones.length === 4)",
+        "output.ok === false || output.result.timelineWeeks === 26",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "mentorship.developmentPlan",
+      "name": "developmentPlan"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "mentorship",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "feedback": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "feedback": [
+              {
+                "rating": 5,
+                "tags": [
+                  "helpful"
+                ]
+              },
+              {
+                "rating": 4,
+                "tags": [
+                  "helpful",
+                  "clear"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "feedback": [
+              {
+                "rating": "Infinity",
+                "tags": [
+                  "x"
+                ]
+              },
+              {
+                "rating": "1e999"
+              },
+              {
+                "rating": "NaN"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "feedback": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "feedback": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.avgRating)",
+        "output.ok === false || output.result.message !== undefined || (output.result.avgRating >= 0 && output.result.avgRating <= 5)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.sessions)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.topThemes)",
+        "output.ok === false || output.result.message !== undefined || ['high','moderate','needs-attention'].includes(output.result.satisfaction)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "mentorship.feedbackSummary",
+      "name": "feedbackSummary"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.goal-checkin",
+      "name": "goal-checkin"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.goal-create",
+      "name": "goal-create"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.goal-list",
+      "name": "goal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "mentorship.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +336,637 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "mentorship.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "mentorship",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "mentee": {
+              "goals": [
+                "learn react"
+              ],
+              "name": "E",
+              "preferredSchedule": "weekly"
+            },
+            "mentor": {
+              "availability": "weekly",
+              "experience": true,
+              "name": "M",
+              "skills": [
+                "react",
+                "node"
+              ]
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "goals": [
+              "learn rust"
+            ],
+            "meetingFrequency": "weekly",
+            "menteeName": "Eve",
+            "mentorName": "Ada",
+            "sessionsCompleted": 3,
+            "skills": [
+              "rust"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "mentee": {
+              "goals": "NaN"
+            },
+            "mentor": {
+              "experience": "1e999",
+              "skills": "Infinity"
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "mentee": 42,
+            "mentor": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "goals": {
+          "required": false,
+          "type": "array"
+        },
+        "mentee": {
+          "required": false,
+          "type": "object"
+        },
+        "menteeName": {
+          "maxLength": 80,
+          "required": false,
+          "type": "string"
+        },
+        "mentor": {
+          "required": false,
+          "type": "object"
+        },
+        "mentorName": {
+          "maxLength": 80,
+          "required": false,
+          "type": "string"
+        },
+        "skills": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.matchScore)",
+        "output.ok === false || (output.result.matchScore >= 0 && output.result.matchScore <= 100)",
+        "output.ok === false || Number.isFinite(output.result.skillOverlap)",
+        "output.ok === false || ['excellent','good','fair'].includes(output.result.compatibility)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "mentorship.matchScore",
+      "name": "matchScore"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.mentor-directory",
+      "name": "mentor-directory"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.mentor-profile",
+      "name": "mentor-profile"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.mentor-register",
+      "name": "mentor-register"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.message-inbox",
+      "name": "message-inbox"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.message-send",
+      "name": "message-send"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.message-thread",
+      "name": "message-thread"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.program-report",
+      "name": "program-report"
+    },
+    {
+      "_derived": false,
+      "domain": "mentorship",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "goals": [
+              {
+                "completed": true
+              },
+              {
+                "status": "done"
+              },
+              {}
+            ],
+            "sessions": [
+              {
+                "duration": 1
+              },
+              {
+                "duration": 2
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "goals": [
+              "ship",
+              "learn"
+            ],
+            "sessionsCompleted": 5
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "goals": [
+              {
+                "completed": true
+              }
+            ],
+            "sessions": [
+              {
+                "duration": "Infinity"
+              },
+              {
+                "duration": "1e999"
+              },
+              {
+                "duration": "NaN"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sessionsCompleted": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "goals": "nope",
+            "sessions": 7
+          }
+        }
+      ],
+      "inputs": {
+        "goals": {
+          "required": false,
+          "type": "array"
+        },
+        "sessions": {
+          "required": false,
+          "type": "array"
+        },
+        "sessionsCompleted": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalGoals)",
+        "output.ok === false || Number.isFinite(output.result.completed)",
+        "output.ok === false || Number.isFinite(output.result.completionRate)",
+        "output.ok === false || (output.result.completionRate >= 0 && output.result.completionRate <= 100)",
+        "output.ok === false || Number.isFinite(output.result.sessionsCompleted)",
+        "output.ok === false || Number.isFinite(output.result.totalHours)",
+        "output.ok === false || ['strong','building','early-stage'].includes(output.result.momentum)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "mentorship.progressTrack",
+      "name": "progressTrack"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "mentorship.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.request-list",
+      "name": "request-list"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.request-respond",
+      "name": "request-respond"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.request-send",
+      "name": "request-send"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.request-withdraw",
+      "name": "request-withdraw"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.review-add",
+      "name": "review-add"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.review-list",
+      "name": "review-list"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.session-book",
+      "name": "session-book"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.session-list",
+      "name": "session-list"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.session-note-save",
+      "name": "session-note-save"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.session-update",
+      "name": "session-update"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.vote",
+      "name": "vote"
     }
   ],
   "domain": "mentorship",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 46
 }

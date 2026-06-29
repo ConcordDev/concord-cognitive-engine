@@ -1,6 +1,31 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "federation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.items))",
+        "output.ok === false || output.result.items.length <= 50",
+        "output.ok === false || output.result.items.every(i => typeof i.id === 'string' || typeof i.id === 'number' || i.id === undefined)"
+      ],
+      "macro_id": "federation.activity",
+      "name": "activity"
+    },
+    {
       "_derived": true,
       "domain": "federation",
       "fuzz_cases": [],
@@ -12,6 +37,19 @@
       ],
       "macro_id": "federation.actor",
       "name": "actor"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.checkPeerAllowed",
+      "name": "checkPeerAllowed"
     },
     {
       "_derived": true,
@@ -105,6 +143,160 @@
       "name": "list_mine"
     },
     {
+      "_derived": false,
+      "domain": "federation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.entries))",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total === output.result.entries.length)",
+        "output.ok === false || (typeof output.result.verified === 'number' && output.result.verified <= output.result.total)",
+        "output.ok === false || output.result.entries.every(e => typeof e.fingerprint === 'string')",
+        "output.ok === false || output.result.entries.every(e => e.publicKey === undefined)"
+      ],
+      "macro_id": "federation.listActorKeys",
+      "name": "listActorKeys"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.listModerationQueue",
+      "name": "listModerationQueue"
+    },
+    {
+      "_derived": false,
+      "domain": "federation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "filter": "block"
+          }
+        }
+      ],
+      "inputs": {
+        "filter": {
+          "enum": [
+            "allow",
+            "block",
+            "pending"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.entries))",
+        "output.ok === false || (output.result.counts && typeof output.result.counts.allow === 'number' && typeof output.result.counts.block === 'number' && typeof output.result.counts.pending === 'number')",
+        "output.ok === false || typeof output.result.total === 'number'",
+        "output.ok === false || output.result.entries.length <= output.result.total",
+        "output.ok === false || output.result.entries.every(e => ['allow','block','pending'].includes(e.policy))",
+        "output.ok === false || !input || !input.filter || output.result.entries.every(e => e.policy === input.filter)"
+      ],
+      "macro_id": "federation.listPeerPolicies",
+      "name": "listPeerPolicies"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.listRelays",
+      "name": "listRelays"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.listSyncPolicies",
+      "name": "listSyncPolicies"
+    },
+    {
+      "_derived": false,
+      "domain": "federation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sinceMs": 3600000
+          }
+        }
+      ],
+      "inputs": {
+        "sinceMs": {
+          "max": 1000000000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.series))",
+        "output.ok === false || (typeof output.result.totalInbound === 'number' && output.result.totalInbound >= 0)",
+        "output.ok === false || (typeof output.result.totalOutbound === 'number' && output.result.totalOutbound >= 0)",
+        "output.ok === false || (output.result.ratio === null || typeof output.result.ratio === 'number')",
+        "output.ok === false || (output.result.peerCounts && typeof output.result.peerCounts.allow === 'number')",
+        "output.ok === false || (typeof output.result.openModeration === 'number' && output.result.openModeration >= 0)",
+        "output.ok === false || (typeof output.result.relayCount === 'number' && output.result.relayCount >= 0)"
+      ],
+      "macro_id": "federation.metricsDashboard",
+      "name": "metricsDashboard"
+    },
+    {
       "_derived": true,
       "domain": "federation",
       "fuzz_cases": [],
@@ -118,6 +310,46 @@
       "name": "outbox"
     },
     {
+      "_derived": false,
+      "domain": "federation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.configured))",
+        "output.ok === false || Array.isArray(output.result.trustGraph)",
+        "output.ok === false || output.result.trustGraph.length <= 50",
+        "output.ok === false || typeof output.result.federationEnabled === 'boolean'",
+        "output.ok === false || output.result.configured.every(p => typeof p.hasToken === 'boolean')"
+      ],
+      "macro_id": "federation.peers",
+      "name": "peers"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.pollRelay",
+      "name": "pollRelay"
+    },
+    {
       "_derived": true,
       "domain": "federation",
       "fuzz_cases": [],
@@ -129,9 +361,165 @@
       ],
       "macro_id": "federation.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.recordMetric",
+      "name": "recordMetric"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.recordTrustEvent",
+      "name": "recordTrustEvent"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.registerActorKey",
+      "name": "registerActorKey"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.removePeerPolicy",
+      "name": "removePeerPolicy"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.reportInbound",
+      "name": "reportInbound"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.reviewInbound",
+      "name": "reviewInbound"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.setPeerPolicy",
+      "name": "setPeerPolicy"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.setSyncPolicy",
+      "name": "setSyncPolicy"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.subscribeRelay",
+      "name": "subscribeRelay"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.trustHistory",
+      "name": "trustHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.unsubscribeRelay",
+      "name": "unsubscribeRelay"
+    },
+    {
+      "_derived": true,
+      "domain": "federation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "federation.verifyActorSignature",
+      "name": "verifyActorSignature"
     }
   ],
   "domain": "federation",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 10
+  "macroCount": 32
 }

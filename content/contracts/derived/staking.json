@@ -1,6 +1,212 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "staking",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "poolId": "core"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "months": 12,
+            "poolId": "core"
+          }
+        },
+        {
+          "expect": {
+            "error": "unknown_pool",
+            "ok": false
+          },
+          "input": {
+            "poolId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "months": {
+          "max": 60,
+          "min": 1,
+          "type": "number"
+        },
+        "poolId": {
+          "enum": [
+            "flex",
+            "core",
+            "growth"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Array.isArray(output.result.series) && output.result.points === output.result.series.length)",
+        "output.ok === false || (typeof output.result.currentAprPct === 'number' && Number.isFinite(output.result.currentAprPct) && output.result.currentAprPct >= 0)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "staking.apr_history",
+      "name": "apr_history"
+    },
+    {
+      "_derived": true,
+      "domain": "staking",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "staking.compound_now",
+      "name": "compound_now"
+    },
+    {
+      "_derived": true,
+      "domain": "staking",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "staking.early_unstake",
+      "name": "early_unstake"
+    },
+    {
+      "_derived": false,
+      "domain": "staking",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 50
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 500,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Array.isArray(output.result.entries) && output.result.count === output.result.entries.length)",
+        "output.ok === false || (typeof output.result.totalYieldEarnedCc === 'number' && Number.isFinite(output.result.totalYieldEarnedCc))",
+        "output.ok === false || (typeof output.result.totalPenaltiesCc === 'number' && Number.isFinite(output.result.totalPenaltiesCc))",
+        "output.ok === false || Array.isArray(output.result.timeline)"
+      ],
+      "macro_id": "staking.earnings_ledger",
+      "name": "earnings_ledger"
+    },
+    {
+      "_derived": false,
+      "domain": "staking",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "months": 12,
+            "poolId": "core",
+            "principalCc": 1000
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "months": 6,
+            "poolId": "growth",
+            "principalCc": 5
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_principalCc",
+            "ok": false
+          },
+          "input": {
+            "months": 6,
+            "poolId": "core",
+            "principalCc": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "error": "unknown_pool",
+            "ok": false
+          },
+          "input": {
+            "months": 6,
+            "poolId": "nope",
+            "principalCc": 100
+          }
+        }
+      ],
+      "inputs": {
+        "months": {
+          "max": 60,
+          "min": 1,
+          "type": "number"
+        },
+        "poolId": {
+          "enum": [
+            "flex",
+            "core",
+            "growth"
+          ],
+          "type": "string"
+        },
+        "principalCc": {
+          "max": 1000000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.aprPct === 'number' && Number.isFinite(output.result.aprPct))",
+        "output.ok === false || (Array.isArray(output.result.monthly) && output.result.monthly.length === output.result.months)",
+        "output.ok === false || (typeof output.result.compoundTermCc === 'number' && output.result.compoundTermCc >= output.result.termCc)",
+        "output.ok === false || typeof output.error === 'string'"
+      ],
+      "macro_id": "staking.estimate_rewards",
+      "name": "estimate_rewards"
+    },
+    {
       "_derived": true,
       "domain": "staking",
       "fuzz_cases": [],
@@ -25,6 +231,239 @@
       ],
       "macro_id": "staking.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "staking",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "months": 12
+          }
+        }
+      ],
+      "inputs": {
+        "months": {
+          "max": 60,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Array.isArray(output.result.pools) && output.result.pools.length >= 3)",
+        "output.ok === false || output.result.pools.every(p => typeof p.id === 'string' && typeof p.previewAprPct === 'number' && Number.isFinite(p.previewAprPct))",
+        "output.ok === false || output.result.pools.every(p => typeof p.minStake === 'number' && p.minStake >= 0)"
+      ],
+      "macro_id": "staking.list_pools",
+      "name": "list_pools"
+    },
+    {
+      "_derived": false,
+      "domain": "staking",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.positions)",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.positions.length)",
+        "output.ok === false || (typeof output.result.totalPrincipalCc === 'number' && output.result.totalPrincipalCc >= 0)",
+        "output.ok === false || (typeof output.result.totalAccruedYieldCc === 'number' && output.result.totalAccruedYieldCc >= 0)"
+      ],
+      "macro_id": "staking.list_positions",
+      "name": "list_positions"
+    },
+    {
+      "_derived": false,
+      "domain": "staking",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Array.isArray(output.result.receipts) && output.result.count === output.result.receipts.length)",
+        "output.ok === false || (typeof output.result.liveFaceValueCc === 'number' && output.result.liveFaceValueCc >= 0)"
+      ],
+      "macro_id": "staking.list_receipts",
+      "name": "list_receipts"
+    },
+    {
+      "_derived": false,
+      "domain": "staking",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "windowDays": 60
+          }
+        }
+      ],
+      "inputs": {
+        "windowDays": {
+          "max": 365,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Array.isArray(output.result.matured) && output.result.maturedCount === output.result.matured.length)",
+        "output.ok === false || (Array.isArray(output.result.upcoming) && output.result.upcomingCount === output.result.upcoming.length)",
+        "output.ok === false || (typeof output.result.windowDays === 'number' && output.result.windowDays >= 1)"
+      ],
+      "macro_id": "staking.maturity_reminders",
+      "name": "maturity_reminders"
+    },
+    {
+      "_derived": false,
+      "domain": "staking",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_months",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "months": 6,
+            "poolId": "core",
+            "principalCc": 200
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "months": 6,
+            "poolId": "growth",
+            "principalCc": 10
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_principalCc",
+            "ok": false
+          },
+          "input": {
+            "months": 6,
+            "poolId": "core",
+            "principalCc": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_months",
+            "ok": false
+          },
+          "input": {
+            "months": 1e+308,
+            "poolId": "core",
+            "principalCc": 100
+          }
+        },
+        {
+          "expect": {
+            "error": "unknown_pool",
+            "ok": false
+          },
+          "input": {
+            "months": 6,
+            "poolId": "nope",
+            "principalCc": 100
+          }
+        }
+      ],
+      "inputs": {
+        "autoCompound": {
+          "type": "boolean"
+        },
+        "liquidReceipt": {
+          "type": "boolean"
+        },
+        "months": {
+          "max": 60,
+          "min": 1,
+          "type": "number"
+        },
+        "poolId": {
+          "enum": [
+            "flex",
+            "core",
+            "growth"
+          ],
+          "type": "string"
+        },
+        "principalCc": {
+          "max": 1000000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.position === 'object' && output.result.position !== null)",
+        "output.ok === false || (typeof output.result.position.id === 'string' && output.result.position.id.length > 0)",
+        "output.ok === false || (typeof output.result.position.principalCc === 'number' && Number.isFinite(output.result.position.principalCc) && output.result.position.principalCc >= 0)",
+        "output.ok === false || typeof output.error === 'string'"
+      ],
+      "macro_id": "staking.open_stake",
+      "name": "open_stake"
     },
     {
       "_derived": true,
@@ -62,11 +501,125 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "staking.redeem_stake",
+      "name": "redeem_stake"
+    },
+    {
+      "_derived": false,
+      "domain": "staking",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_stake_id",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "not_found",
+            "ok": false
+          },
+          "input": {
+            "enabled": true,
+            "stakeId": "stk_does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "stakeId": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.stakeId === 'string' && output.result.stakeId.length > 0)",
+        "output.ok === false || typeof output.result.autoCompound === 'boolean'",
+        "output.ok === false || typeof output.error === 'string'"
+      ],
+      "macro_id": "staking.set_auto_compound",
+      "name": "set_auto_compound"
+    },
+    {
+      "_derived": true,
+      "domain": "staking",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "staking.stake",
       "name": "stake"
+    },
+    {
+      "_derived": false,
+      "domain": "staking",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_receipt_id",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "missing_recipient",
+            "ok": false
+          },
+          "input": {
+            "receiptId": "rcpt_x"
+          }
+        },
+        {
+          "expect": {
+            "error": "not_found",
+            "ok": false
+          },
+          "input": {
+            "receiptId": "rcpt_x",
+            "toUserId": "other_user"
+          }
+        }
+      ],
+      "inputs": {
+        "receiptId": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        },
+        "toUserId": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.receiptId === 'string' && output.result.receiptId.length > 0)",
+        "output.ok === false || (typeof output.result.faceValueCc === 'number' && output.result.faceValueCc >= 0)",
+        "output.ok === false || typeof output.error === 'string'"
+      ],
+      "macro_id": "staking.transfer_receipt",
+      "name": "transfer_receipt"
     }
   ],
   "domain": "staking",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 18
 }

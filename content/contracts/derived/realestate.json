@@ -1,0 +1,995 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.agent-lead-submit",
+      "name": "agent-lead-submit"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.agent-message",
+      "name": "agent-message"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.agents-add",
+      "name": "agents-add"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.agents-list",
+      "name": "agents-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.avm-estimate",
+      "name": "avm-estimate"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.calc-affordability",
+      "name": "calc-affordability"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.calc-mortgage",
+      "name": "calc-mortgage"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.calc-rent-vs-buy",
+      "name": "calc-rent-vs-buy"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.capRate",
+      "name": "capRate"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.cashFlow",
+      "name": "cashFlow"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.closingTimeline",
+      "name": "closingTimeline"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.commute-estimate",
+      "name": "commute-estimate"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.compare",
+      "name": "compare"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.dashboard-summary",
+      "name": "dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.delete-search",
+      "name": "delete-search"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.favourites-list",
+      "name": "favourites-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.favourites-toggle",
+      "name": "favourites-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.hot-score",
+      "name": "hot-score"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.lead-update-status",
+      "name": "lead-update-status"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.leads-list",
+      "name": "leads-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.lenders-add",
+      "name": "lenders-add"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.lenders-list",
+      "name": "lenders-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.listing-photos-add",
+      "name": "listing-photos-add"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.listing-photos-delete",
+      "name": "listing-photos-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.listing-photos-list",
+      "name": "listing-photos-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.listing-tour-set",
+      "name": "listing-tour-set"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.listings-add",
+      "name": "listings-add"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.listings-delete",
+      "name": "listings-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.listings-get",
+      "name": "listings-get"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.listings-in-bounds",
+      "name": "listings-in-bounds"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.listings-list",
+      "name": "listings-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.listings-search",
+      "name": "listings-search"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.messages-list",
+      "name": "messages-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.neighborhood-stats",
+      "name": "neighborhood-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.notes-delete",
+      "name": "notes-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.notes-list",
+      "name": "notes-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.notes-save",
+      "name": "notes-save"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.open-houses-upcoming",
+      "name": "open-houses-upcoming"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.parse-search-query",
+      "name": "parse-search-query"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.preapproval-request",
+      "name": "preapproval-request"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.preapprovals-list",
+      "name": "preapprovals-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.price-history",
+      "name": "price-history"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.price-history-add",
+      "name": "price-history-add"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.property-detail",
+      "name": "property-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.save-search",
+      "name": "save-search"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.saved-search-check-alerts",
+      "name": "saved-search-check-alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.saved-searches-list",
+      "name": "saved-searches-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.school-ratings",
+      "name": "school-ratings"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.tours-cancel",
+      "name": "tours-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.tours-list",
+      "name": "tours-list"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.tours-request",
+      "name": "tours-request"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.vacancy_report",
+      "name": "vacancy_report"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.vacancyRate",
+      "name": "vacancyRate"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.vacancyReport",
+      "name": "vacancyReport"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "realestate.walk-score",
+      "name": "walk-score"
+    }
+  ],
+  "domain": "realestate",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 76
+}

@@ -10,8 +10,398 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ingest.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.batch-ingest",
+      "name": "batch-ingest"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.batchStatus",
+      "name": "batchStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.configureConnector",
+      "name": "configureConnector"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.deleteConnection",
+      "name": "deleteConnection"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.deleteSchedule",
+      "name": "deleteSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.extractEntities",
+      "name": "extractEntities"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.getDedupConfig",
+      "name": "getDedupConfig"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.getMapping",
+      "name": "getMapping"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.getWebhookEndpoint",
+      "name": "getWebhookEndpoint"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.listConnections",
+      "name": "listConnections"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.listConnectors",
+      "name": "listConnectors"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.listSchedules",
+      "name": "listSchedules"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.listSyncRuns",
+      "name": "listSyncRuns"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.listWebhookRecords",
+      "name": "listWebhookRecords"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.ocrIngest",
+      "name": "ocrIngest"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.parseDocument",
+      "name": "parseDocument"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.previewTransform",
+      "name": "previewTransform"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ingest.processQueueOnce",
       "name": "processQueueOnce"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.pushRecord",
+      "name": "pushRecord"
     },
     {
       "_derived": true,
@@ -36,11 +426,206 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ingest.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.replaySyncRun",
+      "name": "replaySyncRun"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.runSync",
+      "name": "runSync"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.saveMapping",
+      "name": "saveMapping"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.scheduleSync",
+      "name": "scheduleSync"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.setDedupConfig",
+      "name": "setDedupConfig"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.toggleSchedule",
+      "name": "toggleSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ingest.url",
       "name": "url"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.validateSchema",
+      "name": "validateSchema"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ingest.vote",
+      "name": "vote"
     }
   ],
   "domain": "ingest",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 48
 }

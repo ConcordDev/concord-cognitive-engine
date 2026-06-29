@@ -1,0 +1,540 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.album-add-media",
+      "name": "album-add-media"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.album-create",
+      "name": "album-create"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.album-list",
+      "name": "album-list"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.comment-add",
+      "name": "comment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.comment-delete",
+      "name": "comment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.comment-list",
+      "name": "comment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.criticalPath",
+      "name": "criticalPath"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.feed-list",
+      "name": "feed-list"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.ganttSchedule",
+      "name": "ganttSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.memories",
+      "name": "memories"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.notifications-list",
+      "name": "notifications-list"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.notifications-mark-read",
+      "name": "notifications-mark-read"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.post-create",
+      "name": "post-create"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.post-delete",
+      "name": "post-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.profile-get",
+      "name": "profile-get"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.profile-update",
+      "name": "profile-update"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.react",
+      "name": "react"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.reactions-breakdown",
+      "name": "reactions-breakdown"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.share-post",
+      "name": "share-post"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.temporalClustering",
+      "name": "temporalClustering"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.trendAnalysis",
+      "name": "trendAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "timeline.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "timeline",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 41
+}

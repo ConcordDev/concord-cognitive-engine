@@ -1,6 +1,105 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "goddess",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "tone": "ecstatic"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "query": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "tone": {
+          "enum": [
+            "exalted",
+            "warm",
+            "neutral",
+            "cold",
+            "mourning"
+          ],
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 128,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.dispatches)",
+        "output.ok === false || typeof output.result.count === 'number'",
+        "output.ok === false || (output.result.toneCounts !== null && typeof output.result.toneCounts === 'object')",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "goddess.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": false,
+      "domain": "goddess",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 128,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.dispatch !== null && typeof output.dispatch === 'object')",
+        "output.ok === false || (typeof output.dispatch.tone === 'string' && typeof output.dispatch.body === 'string')",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "goddess.compose_now",
+      "name": "compose_now"
+    },
+    {
       "_derived": true,
       "domain": "goddess",
       "fuzz_cases": [],
@@ -10,8 +109,21 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "goddess.compose_now",
-      "name": "compose_now"
+      "macro_id": "goddess.correlate",
+      "name": "correlate"
+    },
+    {
+      "_derived": true,
+      "domain": "goddess",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goddess.detail",
+      "name": "detail"
     },
     {
       "_derived": true,
@@ -27,6 +139,68 @@
       "name": "list_mine"
     },
     {
+      "_derived": false,
+      "domain": "goddess",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "dispatchId": 1,
+            "kind": "smitten"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "dispatchId": 1e+308,
+            "kind": "heard"
+          }
+        }
+      ],
+      "inputs": {
+        "dispatchId": {
+          "min": 1,
+          "required": true,
+          "type": "number"
+        },
+        "kind": {
+          "enum": [
+            "heard",
+            "blessed",
+            "grieved",
+            "questioned",
+            "vowed"
+          ],
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 280,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.reactionCount === 'number'",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "goddess.react",
+      "name": "react"
+    },
+    {
       "_derived": true,
       "domain": "goddess",
       "fuzz_cases": [],
@@ -35,6 +209,44 @@
         "output !== null && output !== undefined",
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goddess.reactions",
+      "name": "reactions"
+    },
+    {
+      "_derived": false,
+      "domain": "goddess",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 5,
+            "worldId": "ghost-world-no-rows"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 128,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.dispatches)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
       ],
       "macro_id": "goddess.recent",
       "name": "recent"
@@ -51,9 +263,93 @@
       ],
       "macro_id": "goddess.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "goddess",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "tone": "radiant"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "tone": "warm",
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "tone": {
+          "enum": [
+            "exalted",
+            "warm",
+            "neutral",
+            "cold",
+            "mourning"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 128,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.subscription !== null && typeof output.result.subscription === 'object')",
+        "output.ok === false || typeof output.result.subscription.tone === 'string'",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "goddess.subscribe",
+      "name": "subscribe"
+    },
+    {
+      "_derived": true,
+      "domain": "goddess",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goddess.subscriptions",
+      "name": "subscriptions"
+    },
+    {
+      "_derived": true,
+      "domain": "goddess",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goddess.unsubscribe",
+      "name": "unsubscribe"
     }
   ],
   "domain": "goddess",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 12
 }

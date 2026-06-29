@@ -10,8 +10,656 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "neuro.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "neuro",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "channels": [
+                  {
+                    "name": "Fz",
+                    "sampleRate": 8,
+                    "samples": [
+                      0,
+                      1,
+                      0,
+                      -1,
+                      0,
+                      1,
+                      0,
+                      -1
+                    ]
+                  },
+                  {
+                    "name": "Pz",
+                    "sampleRate": 8,
+                    "samples": [
+                      0,
+                      0.8,
+                      0,
+                      -0.8,
+                      0,
+                      0.8,
+                      0,
+                      -0.8
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "channels": [
+                  {
+                    "name": "Fz",
+                    "sampleRate": 8,
+                    "samples": [
+                      0,
+                      1,
+                      0,
+                      -1
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "channels": [
+                  {
+                    "name": "A",
+                    "sampleRate": 8,
+                    "samples": [
+                      "abc",
+                      null,
+                      1,
+                      "Infinity",
+                      0.5
+                    ]
+                  },
+                  {
+                    "name": "B",
+                    "sampleRate": 8,
+                    "samples": [
+                      0.4,
+                      "NaN",
+                      -1,
+                      0.2,
+                      "x"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "channels": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.channelCount)",
+        "output.ok === false || Array.isArray(output.result.significantConnections)",
+        "output.ok === false || output.result.significantConnections.every(c => typeof c.from === 'string' && typeof c.to === 'string' && Number.isFinite(c.correlation) && Math.abs(c.correlation) <= 1.0001)",
+        "output.ok === false || (output.result.networkMetrics && Number.isFinite(output.result.networkMetrics.density) && Number.isFinite(output.result.networkMetrics.averageConnectivity))",
+        "output.ok === false || (output.result.correlationMatrix && Array.isArray(output.result.correlationMatrix.labels) && Array.isArray(output.result.correlationMatrix.matrix))",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "neuro.connectivityAnalysis",
+      "name": "connectivityAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.deleteRecording",
+      "name": "deleteRecording"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.epochData",
+      "name": "epochData"
+    },
+    {
+      "_derived": false,
+      "domain": "neuro",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "epochs": [
+                  {
+                    "onset": 0,
+                    "samples": [
+                      0,
+                      0,
+                      0,
+                      5,
+                      5,
+                      0,
+                      0,
+                      0
+                    ]
+                  },
+                  {
+                    "onset": 0,
+                    "samples": [
+                      0,
+                      0,
+                      1,
+                      5,
+                      4,
+                      1,
+                      0,
+                      0
+                    ]
+                  }
+                ],
+                "sampleRate": 256
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "eventOnset": 0.5,
+                "signal": {
+                  "name": "Fz",
+                  "sampleRate": 10,
+                  "samples": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    3,
+                    2,
+                    1,
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    3,
+                    2,
+                    1,
+                    0,
+                    1,
+                    2,
+                    3
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "eventOnset": 0.5,
+                "signal": {
+                  "name": "Fz",
+                  "sampleRate": 256,
+                  "samples": [
+                    "abc",
+                    null,
+                    "Infinity",
+                    "NaN"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "epochs": {
+          "type": "array"
+        },
+        "eventOnset": {
+          "type": "number"
+        },
+        "sampleRate": {
+          "type": "number"
+        },
+        "signal": {
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.epochCount)",
+        "output.ok === false || Number.isFinite(output.result.peakAmplitude)",
+        "output.ok === false || Number.isFinite(output.result.snr)",
+        "output.ok === false || typeof output.result.snrQuality === 'string'",
+        "output.ok === false || Number.isFinite(output.result.baselineRms)",
+        "output.ok === false || Array.isArray(output.result.peaks)",
+        "output.ok === false || Array.isArray(output.result.identifiedComponents)",
+        "output.ok === false || output.result.identifiedComponents.every(c => typeof c.component === 'string' && Number.isFinite(c.latencyMs) && Number.isFinite(c.amplitude))",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "neuro.erpAnalysis",
+      "name": "erpAnalysis"
+    },
+    {
+      "_derived": false,
+      "domain": "neuro",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "channels": [
+                  {
+                    "name": "CH1",
+                    "sampleRate": 16,
+                    "samples": [
+                      0,
+                      0.38,
+                      0.71,
+                      0.92,
+                      1,
+                      0.92,
+                      0.71,
+                      0.38,
+                      0,
+                      -0.38,
+                      -0.71,
+                      -0.92,
+                      -1,
+                      -0.92,
+                      -0.71,
+                      -0.38
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "signal": {
+                  "channel": "Fz",
+                  "sampleRate": 16,
+                  "samples": [
+                    0,
+                    1,
+                    0,
+                    -1,
+                    0,
+                    1,
+                    0,
+                    -1,
+                    0,
+                    1,
+                    0,
+                    -1,
+                    0,
+                    1,
+                    0,
+                    -1
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "channels": [
+                  {
+                    "name": "CH1",
+                    "sampleRate": 16,
+                    "samples": [
+                      "abc",
+                      null,
+                      "NaN",
+                      "Infinity",
+                      0.5,
+                      1,
+                      0,
+                      -1
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "channels": {
+          "type": "array"
+        },
+        "signal": {
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.channels)",
+        "output.ok === false || Number.isFinite(output.result.channelCount)",
+        "output.ok === false || output.result.channels.every(c => typeof c.channel === 'string')",
+        "output.ok === false || output.result.channels.every(c => Number.isFinite(c.peakFrequency))",
+        "output.ok === false || output.result.channels.every(c => c.dominantBand && typeof c.dominantBand.name === 'string' && Number.isFinite(c.dominantBand.relativePower))",
+        "output.ok === false || output.result.channels.every(c => ['delta','theta','alpha','beta','gamma'].every(b => c.bands[b] && typeof c.bands[b].label === 'string' && Number.isFinite(c.bands[b].relativePower)))",
+        "output.ok === false || output.result.channels.every(c => Number.isFinite(c.indices.alphaBetaRatio) && Number.isFinite(c.indices.thetaBetaRatio))",
+        "output.ok === false || output.result.channels.every(c => typeof c.indices.arousalLevel === 'string' && typeof c.indices.attentionIndex === 'string')",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "neuro.frequencyAnalysis",
+      "name": "frequencyAnalysis"
+    },
+    {
+      "_derived": false,
+      "domain": "neuro",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "events": [],
+            "format": "csv",
+            "name": "rest",
+            "sampleRate": 256,
+            "text": "Fz,Cz,Pz\n0.1,-0.2,0.3\n0.2,-0.1,0.25\n0.15,-0.15,0.2"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "format": "edf-json",
+            "payload": {
+              "channels": [
+                {
+                  "name": "O1",
+                  "samples": [
+                    0.1,
+                    0.2,
+                    0.3,
+                    0.4
+                  ]
+                }
+              ],
+              "sampleRate": 128
+            },
+            "sampleRate": 128
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "format": "csv",
+            "text": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "format": "csv",
+            "sampleRate": 256,
+            "text": "Fz,Cz\nabc,1.2\nNaN,0.5\n0.3,xyz"
+          }
+        }
+      ],
+      "inputs": {
+        "events": {
+          "type": "array"
+        },
+        "format": {
+          "maxLength": 16,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "sampleRate": {
+          "type": "number"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.recordingId === 'string'",
+        "output.ok === false || Array.isArray(output.result.channelNames)",
+        "output.ok === false || Number.isFinite(output.result.channelCount)",
+        "output.ok === false || Number.isFinite(output.result.sampleCount)",
+        "output.ok === false || Number.isFinite(output.result.durationSec)",
+        "output.ok === false || Number.isFinite(output.result.eventCount)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "neuro.importSignal",
+      "name": "importSignal"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "neuro.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.listRecordings",
+      "name": "listRecordings"
     },
     {
       "_derived": true,
@@ -75,11 +723,356 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "neuro.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.preprocess",
+      "name": "preprocess"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "neuro.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.sourceLocalization",
+      "name": "sourceLocalization"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.star",
+      "name": "star"
+    },
+    {
+      "_derived": false,
+      "domain": "neuro",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "groupA": [
+              1.2,
+              0.9,
+              1.5,
+              1.1,
+              1.3
+            ],
+            "groupB": [
+              0.4,
+              0.6,
+              0.3,
+              0.5,
+              0.45
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "groupA": [
+              1
+            ],
+            "groupB": [
+              2,
+              3
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "groupA": [
+              1.2,
+              "NaN",
+              0.9,
+              "Infinity",
+              1.5,
+              "abc",
+              1.1
+            ],
+            "groupB": [
+              0.4,
+              0.6,
+              "-Infinity",
+              0.3,
+              0.5
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "groupA": {
+          "type": "array"
+        },
+        "groupB": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.test === 'string'",
+        "output.ok === false || (output.result.groupA && Number.isFinite(output.result.groupA.n) && Number.isFinite(output.result.groupA.mean) && Number.isFinite(output.result.groupA.sd))",
+        "output.ok === false || (output.result.groupB && Number.isFinite(output.result.groupB.n) && Number.isFinite(output.result.groupB.mean) && Number.isFinite(output.result.groupB.sd))",
+        "output.ok === false || Number.isFinite(output.result.tStatistic)",
+        "output.ok === false || Number.isFinite(output.result.degreesOfFreedom)",
+        "output.ok === false || (Number.isFinite(output.result.pValue) && output.result.pValue >= 0 && output.result.pValue <= 1)",
+        "output.ok === false || (Number.isFinite(output.result.cohensD) && typeof output.result.effectSize === 'string')",
+        "output.ok === false || typeof output.result.significance === 'string'",
+        "output.ok === false || typeof output.result.significant === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.meanDifference)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "neuro.statisticalTest",
+      "name": "statisticalTest"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.timeFrequency",
+      "name": "timeFrequency"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.topographicMap",
+      "name": "topographicMap"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.train",
+      "name": "train"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "neuro",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "neuro.waveformWindow",
+      "name": "waveformWindow"
     }
   ],
   "domain": "neuro",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 6
+  "macroCount": 40
 }

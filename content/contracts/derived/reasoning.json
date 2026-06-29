@@ -23,6 +23,123 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reasoning.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.argumentMap",
+      "name": "argumentMap"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.assess_strength",
+      "name": "assess_strength"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.check_fallacies",
+      "name": "check_fallacies"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.collaborator-add",
+      "name": "collaborator-add"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.collaborator-remove",
+      "name": "collaborator-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reasoning.conclude",
       "name": "conclude"
     },
@@ -49,8 +166,99 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reasoning.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.evidence-attach",
+      "name": "evidence-attach"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.evidence-detach",
+      "name": "evidence-detach"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.fallacyDetect",
+      "name": "fallacyDetect"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.fork",
+      "name": "fork"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reasoning.get_trace",
       "name": "get_trace"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.like",
+      "name": "like"
     },
     {
       "_derived": true,
@@ -88,8 +296,255 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reasoning.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.logicValidate",
+      "name": "logicValidate"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.map-create",
+      "name": "map-create"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.map-delete",
+      "name": "map-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.map-export",
+      "name": "map-export"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.map-get",
+      "name": "map-get"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.map-list",
+      "name": "map-list"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.map-score",
+      "name": "map-score"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.map-update",
+      "name": "map-update"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.node-add",
+      "name": "node-add"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.node-delete",
+      "name": "node-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.node-update",
+      "name": "node-update"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.premiseExtract",
+      "name": "premiseExtract"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reasoning.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.repost",
+      "name": "repost"
     },
     {
       "_derived": false,
@@ -175,8 +630,86 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reasoning.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.scheme-instantiate",
+      "name": "scheme-instantiate"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.scheme-list",
+      "name": "scheme-list"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reasoning.status",
       "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.tag",
+      "name": "tag"
     },
     {
       "_derived": false,
@@ -275,11 +808,50 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reasoning.validate",
+      "name": "validate"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.validate_logic",
+      "name": "validate_logic"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reasoning.validate_step",
       "name": "validate_step"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.vote",
+      "name": "vote"
     }
   ],
   "domain": "reasoning",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 12
+  "macroCount": 56
 }

@@ -10,8 +10,968 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "voice.analyze",
+      "name": "analyze"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.extract_tasks",
+      "name": "extract_tasks"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.highlight-toggle",
+      "name": "highlight-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "voice.ingest",
       "name": "ingest"
+    },
+    {
+      "_derived": false,
+      "domain": "voice",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "contextRadius": 50,
+                "keywords": [
+                  "release",
+                  "budget",
+                  "missing"
+                ],
+                "transcript": "We will ship the release; the budget is a problem."
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "keywords": [],
+                "transcript": "alpha beta gamma"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "keywords": [
+                  "x"
+                ],
+                "transcript": "   "
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "contextRadius": "Infinity",
+                "keywords": [
+                  "hit"
+                ],
+                "transcript": "hit hit hit"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "contextRadius": "1e999",
+                "keywords": [
+                  "hit"
+                ],
+                "transcript": "hit"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "keywords": [
+                  "x"
+                ],
+                "transcript": 12345
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "contextRadius": {
+          "type": "number"
+        },
+        "keywords": {
+          "type": "array"
+        },
+        "text": {
+          "maxLength": 40000,
+          "type": "string"
+        },
+        "transcript": {
+          "maxLength": 40000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result === 'object')",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalOccurrences)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.keywordDensity === 'string'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.topKeywords)",
+        "output.ok === false || output.result.message !== undefined || output.result.topKeywords.every(function(k){ return typeof k.keyword === 'string' && Number.isFinite(k.count) && Array.isArray(k.occurrences); })",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.notFound)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "voice.keywordSpot",
+      "name": "keywordSpot"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.live-append",
+      "name": "live-append"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.live-detail",
+      "name": "live-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.live-finalize",
+      "name": "live-finalize"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.live-list",
+      "name": "live-list"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.live-start",
+      "name": "live-start"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.meeting-bot-finalize",
+      "name": "meeting-bot-finalize"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.meeting-bot-join",
+      "name": "meeting-bot-join"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.meeting-cancel",
+      "name": "meeting-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.meeting-list",
+      "name": "meeting-list"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.meeting-schedule",
+      "name": "meeting-schedule"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.process",
+      "name": "process"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.recording-auto-label-speakers",
+      "name": "recording-auto-label-speakers"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.recording-create",
+      "name": "recording-create"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.recording-delete",
+      "name": "recording-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.recording-detail",
+      "name": "recording-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.recording-list",
+      "name": "recording-list"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.recording-rename",
+      "name": "recording-rename"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.recording-share",
+      "name": "recording-share"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.recording-summary",
+      "name": "recording-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.recording-unshare",
+      "name": "recording-unshare"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.segment-comment-add",
+      "name": "segment-comment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.segment-comment-delete",
+      "name": "segment-comment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.segment-comments-list",
+      "name": "segment-comments-list"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.segment-edit",
+      "name": "segment-edit"
+    },
+    {
+      "_derived": false,
+      "domain": "voice",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "transcript": "This is excellent and wonderful, I love it."
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "transcript": "This is terrible and awful, I hate the failure."
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "transcript": "This is not good."
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "transcript": {
+                  "x": 1
+                }
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "segments": {
+          "type": "array"
+        },
+        "text": {
+          "maxLength": 40000,
+          "type": "string"
+        },
+        "transcript": {
+          "maxLength": 40000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result === 'object')",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.overallScore) && output.result.overallScore >= -1 && output.result.overallScore <= 1)",
+        "output.ok === false || output.result.message !== undefined || ['positive','negative','neutral'].includes(output.result.overallLabel)",
+        "output.ok === false || output.result.message !== undefined || ['improving','declining','stable','insufficient-data'].includes(output.result.sentimentArc)",
+        "output.ok === false || output.result.message !== undefined || (output.result.segmentBreakdown && output.result.segmentBreakdown.total === output.result.segmentBreakdown.positive + output.result.segmentBreakdown.negative + output.result.segmentBreakdown.neutral)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "voice.sentimentScore",
+      "name": "sentimentScore"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.share-detail",
+      "name": "share-detail"
+    },
+    {
+      "_derived": false,
+      "domain": "voice",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "transcript": "[Speaker A]: Good morning everyone. [Speaker B]: Ready to ship today."
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "segments": [
+                  {
+                    "endTime": 4,
+                    "speaker": "Ana",
+                    "startTime": 0,
+                    "text": "hello there"
+                  },
+                  {
+                    "endTime": 6,
+                    "speaker": "Ben",
+                    "startTime": 4,
+                    "text": "yes indeed"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "segments": [
+                  {
+                    "endTime": "NaN",
+                    "speaker": "X",
+                    "startTime": "Infinity",
+                    "text": "a b c"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "transcript": [
+                  123
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "segments": {
+          "type": "array"
+        },
+        "transcript": {
+          "maxLength": 40000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result === 'object')",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.speakerCount)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.dominantSpeaker === 'string'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.speakers)",
+        "output.ok === false || output.result.message !== undefined || output.result.speakers.every(function(s){ return typeof s.speaker === 'string' && Number.isFinite(s.wordCount) && Number.isFinite(s.wordShare) && Number.isFinite(s.talkTimeSeconds); })",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalWords)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "voice.speakerDiarize",
+      "name": "speakerDiarize"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.summarize",
+      "name": "summarize"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.tag",
+      "name": "tag"
     },
     {
       "_derived": true,
@@ -36,11 +996,240 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "voice.transcript-search",
+      "name": "transcript-search"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.transcript-translate",
+      "name": "transcript-translate"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.transcript-translations-list",
+      "name": "transcript-translations-list"
+    },
+    {
+      "_derived": false,
+      "domain": "voice",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "durationMinutes": 1,
+                "transcript": "Good morning. Um, we will ship the great release today."
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "transcript": "Just a single sentence here."
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "durationMinutes": "Infinity",
+                "transcript": "Some words."
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "durationMinutes": "1e999",
+                "transcript": "Some words."
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "transcript": {
+                  "not": "a string"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "durationMinutes": {
+          "type": "number"
+        },
+        "text": {
+          "maxLength": 40000,
+          "type": "string"
+        },
+        "transcript": {
+          "maxLength": 40000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result === 'object')",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.wordCount)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.sentenceCount)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.speakingRate === 'string'",
+        "output.ok === false || output.result.message !== undefined || (typeof output.result.fillerWords === 'object' && !Array.isArray(output.result.fillerWords))",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalFillers)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.fillerRate === 'string'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.vocabularyRichness === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "voice.transcriptAnalyze",
+      "name": "transcriptAnalyze"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "voice.tts",
       "name": "tts"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.voice-dashboard",
+      "name": "voice-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.voiceprint-delete",
+      "name": "voiceprint-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.voiceprint-enroll",
+      "name": "voiceprint-enroll"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.voiceprint-identify",
+      "name": "voiceprint-identify"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.voiceprint-list",
+      "name": "voiceprint-list"
+    },
+    {
+      "_derived": true,
+      "domain": "voice",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "voice.vote",
+      "name": "vote"
     }
   ],
   "domain": "voice",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 64
 }

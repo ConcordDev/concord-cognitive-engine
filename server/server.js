@@ -39125,6 +39125,14 @@ const LENS_ACTIONS = new Map(); // `${domain}.${action}` → async (ctx, artifac
 // that previously sat ~12k lines earlier and triggered a TDZ ReferenceError
 // at startup. Now assigned at the declaration site.
 globalThis.__concordLensActions = LENS_ACTIONS;
+// Keys of LENS_ACTIONS handlers that forward to an LLM brain (the universal
+// analyze/generate/suggest registrar + the domain-specific manifest registrar).
+// The Orchestrated Invariant Engine harness reads this to mark those handlers
+// STATIC-CONTRACT-ONLY: like the existing llm_hint/external_io skips, they are
+// non-deterministic and fuzzing them just hammers Ollama — so they are never
+// adversarially driven. Deterministic registerLensAction handlers are NOT here.
+const BRAIN_BACKED_LENS_ACTIONS = new Set();
+globalThis.__concordBrainBackedLensActions = BRAIN_BACKED_LENS_ACTIONS;
 function registerLensAction(domain, action, handler) {
   LENS_ACTIONS.set(`${domain}.${action}`, handler);
 }
@@ -39225,6 +39233,32 @@ function _unwrapLensEnvelope(r) {
   if (r && typeof r === "object" && "ok" in r && "result" in r) return r.result;
   return r;
 }
+
+// Test-only faithful dispatcher for the Orchestrated Invariant Engine harness.
+// Prefers LENS_ACTIONS (path-3 registerLensAction handlers), falls back to
+// MACROS (path-2). The bare runMacro cannot see LENS_ACTIONS, so the
+// macro-assassin needs this to drive path-3-only handlers (the 23 super-lens
+// domain modules + inline ones).
+//
+// Returns the handler's RAW envelope ({ok, result, ...}) — NOT the
+// _unwrapLensEnvelope'd inner result. The contract layer (derived + overrides)
+// references `output.ok` and `output.result.*`, the same WRAPPED shape bare
+// runMacro yields for path-2, so the two paths grade identically. (An earlier
+// version unwrapped here, which stripped {ok,result} and made every contract
+// reference resolve to undefined — a measurement artifact, not a domain bug.)
+// The /api/lens/run ROUTE still unwraps before sending to the frontend; that is
+// a transport concern, separate from how the macro layer is graded.
+// No HTTP/auth — the harness supplies an internal owner ctx.
+async function _dispatchLensRunForTest(domain, name, input, ctx) {
+  const lensHandler = LENS_ACTIONS.get(`${domain}.${name}`);
+  if (lensHandler) {
+    const data = _peelRedundantArtifactWrapper(input || {});
+    const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
+    return await lensHandler(ctx, virtualArtifact, data);
+  }
+  return await runMacro(domain, name, input || {}, ctx);
+}
+
 app.post("/api/lens/run", async (req, res) => {
   // ── ConKay honest event spine (Track B / Phase 0) ──────────────────────
   // A macro run is a single request→response, so its work is otherwise
@@ -39265,6 +39299,13 @@ app.post("/api/lens/run", async (req, res) => {
     );
     if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
     const ctx = makeCtx(req);
+    // ConKay honest spine (Phase 2): let a genuinely multi-step macro report a
+    // real intermediate `macro:stage` tied to this run id. It only emits when a
+    // runId + resolved user exist (same gate as started/completed via
+    // emitMacroLife), so normal traffic and anon callers emit nothing. A macro
+    // calls ctx.emitMacroStage("judging") at a REAL sub-step — never a timer.
+    ctx.emitMacroStage = (stage, detail) =>
+      emitMacroLife("macro:stage", { stage: String(stage || ""), ...(detail ? { detail: String(detail) } : {}) });
     // H1: gate the whole dispatch (lens-action AND macro paths) for anonymous callers
     // in secured production — the runMacro ACL doesn't protect this surface (see
     // _lensActionForbiddenForAnon). Reads use the GET /api/lens/:domain[/:id] routes.
@@ -39728,7 +39769,7 @@ registerLensAction("sim", "simulate", (ctx, artifact, params) => {
   const assumptions = artifact.data?.assumptions || params.assumptions || [];
   const _variables = artifact.data?.variables || {};
   let seed = 0;
-  for (let i = 0; i < artifact.id.length; i++) seed = ((seed << 5) - seed) + artifact.id.charCodeAt(i);
+  { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }
   const mulberry32 = (s) => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const rng = mulberry32(seed + (artifact.data?.runCount || 0));
   const outcomes = assumptions.map(a => {
@@ -40920,7 +40961,7 @@ registerLensAction("finance", "simulate", (ctx, artifact, params) => {
   const lastPrice = prices[prices.length - 1] || currentPrice;
   const steps = params.steps || 30;
   let seed = 0;
-  for (let i = 0; i < artifact.id.length; i++) seed = ((seed << 5) - seed) + artifact.id.charCodeAt(i);
+  { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }
   const mulberry32 = (s) => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const rng = mulberry32(seed);
   const simulated = [];
@@ -41331,7 +41372,7 @@ registerLensAction("game", "simulate", (ctx, artifact, params) => {
   const successRate = turns.length > 0 ? turns.filter(t => t.outcome === "success").length / turns.length : 0.5;
   const avgXp = turns.length > 0 ? turns.reduce((s, t) => s + (t.xpGained || 0), 0) / turns.length : 25;
   let seed = 0;
-  for (let i = 0; i < artifact.id.length; i++) seed = ((seed << 5) - seed) + artifact.id.charCodeAt(i);
+  { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }
   const mulberry32 = (s) => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const rng = mulberry32(seed);
   const outcomes = scenarios.map((s, _idx) => {
@@ -41353,7 +41394,7 @@ registerLensAction("game", "resolve_turn", (ctx, artifact, params) => {
   const skillBonus = Math.min(0.3, turns.length * 0.005);
   const adjustedRate = Math.max(0.1, Math.min(0.95, (successRate + skillBonus) / difficulty));
   let seed = turns.length;
-  for (let i = 0; i < artifact.id.length; i++) seed = ((seed << 5) - seed) + artifact.id.charCodeAt(i);
+  { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }
   const mulberry32 = (s) => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const roll = mulberry32(seed)();
   const outcome = roll < adjustedRate ? "success" : "failure";
@@ -41424,6 +41465,7 @@ function registerUniversalLensActions() {
     for (const action of UNIVERSAL_ACTIONS) {
       const key = `${domain}.${action}`;
       if (LENS_ACTIONS.has(key)) continue; // respect custom handlers
+      BRAIN_BACKED_LENS_ACTIONS.add(key); // utility-brain backed → static-contract-only
       LENS_ACTIONS.set(key, async (ctx, artifact, params) => {
         const result = await utilityCall(action, domain, {
           artifactTitle: artifact?.title,
@@ -42838,6 +42880,7 @@ function registerDomainSpecificActions() {
       if (LENS_ACTIONS.has(key)) { skipped++; continue; }
 
       const dispatcher = BRAIN_DISPATCHERS[brain] || utilityCall;
+      BRAIN_BACKED_LENS_ACTIONS.add(key); // brain-dispatch → static-contract-only
       LENS_ACTIONS.set(key, async (ctx, artifact, params) => {
         const result = await dispatcher(action, domain, {
           artifactTitle: artifact?.title,
@@ -77182,6 +77225,14 @@ export const __TEST__ = Object.freeze({
   makeInternalCtx,
   makeCtx,
   MACROS,
+  // Orchestrated Invariant Engine — path-3 surface. LENS_ACTIONS holds the
+  // registerLensAction handlers (super-lens domain modules + inline) that the
+  // bare runMacro/MACROS path cannot see; dispatchLensRun drives them through
+  // the exact /api/lens/run dispatch; BRAIN_BACKED_LENS_ACTIONS marks the
+  // LLM-forwarding handlers as static-contract-only (never fuzzed).
+  LENS_ACTIONS,
+  dispatchLensRun: _dispatchLensRunForTest,
+  BRAIN_BACKED_LENS_ACTIONS,
   COUNCIL_GATES,
   ROYALTY_RATES,
   CREATIVE_REGISTRY,

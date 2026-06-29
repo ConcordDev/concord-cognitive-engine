@@ -1,0 +1,966 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.activityCorrelation",
+      "name": "activityCorrelation"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": false,
+      "domain": "affect",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "activities": [
+              "walk",
+              "Reading"
+            ],
+            "mood": 4,
+            "note": "decent day"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "mood": 1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "mood": 5,
+            "promptAnswer": "today was calm",
+            "promptId": "prompt_0"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "mood": 99
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "mood": "NaN"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "mood": "Infinity"
+          }
+        }
+      ],
+      "inputs": {
+        "activities": {
+          "required": false,
+          "type": "array"
+        },
+        "mood": {
+          "required": true,
+          "type": "number"
+        },
+        "note": {
+          "maxLength": 2000,
+          "required": false,
+          "type": "string"
+        },
+        "promptAnswer": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        },
+        "promptId": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.entry && Number.isFinite(output.result.entry.mood))",
+        "output.ok === false || typeof output.result.entry.moodLabel === 'string'",
+        "output.ok === false || typeof output.result.entry.moodEmoji === 'string'",
+        "output.ok === false || Array.isArray(output.result.entry.activities)",
+        "output.ok === false || Number.isFinite(output.result.currentStreak)",
+        "output.ok === false || Number.isFinite(output.result.longestStreak)",
+        "output.ok === false || Number.isFinite(output.result.totalCheckins)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "affect.checkin",
+      "name": "checkin"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.checkinHistory",
+      "name": "checkinHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "affect",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": [
+                  {
+                    "text": "work deadline stress made me anxious",
+                    "timestamp": "2026-06-01T09:00:00Z"
+                  },
+                  {
+                    "text": "more work stress and a tight deadline",
+                    "timestamp": "2026-06-02T09:30:00Z"
+                  },
+                  {
+                    "text": "work stress again, anxious about money",
+                    "timestamp": "2026-06-04T09:15:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "checkins": [
+                  {
+                    "note": "family time happy and calm"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": "not an array"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": 42
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": [
+                  {
+                    "text": 123
+                  },
+                  null,
+                  {
+                    "text": "stress and work"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "entries": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Number.isFinite(output.result.entryCount)",
+        "output.ok === false || Array.isArray(output.result.patterns)",
+        "output.ok === false || output.result.patterns.every(function(p){ return typeof p.theme === 'string' && Number.isFinite(p.count); })",
+        "output.ok === false || Array.isArray(output.result.triggers)",
+        "output.ok === false || output.result.triggers.every(function(t){ return typeof t.trigger === 'string' && Number.isFinite(t.count); })",
+        "output.ok === false || Array.isArray(output.result.cycles)",
+        "output.ok === false || output.result.cycles.every(function(c){ return typeof c.label === 'string'; })",
+        "output.ok === false || Array.isArray(output.result.correlations)",
+        "output.ok === false || typeof output.result.summary === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "affect.detect-patterns",
+      "name": "detect-patterns"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "affect",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": [
+                  {
+                    "id": "a",
+                    "text": "terrible awful miserable"
+                  },
+                  {
+                    "id": "b",
+                    "text": "okay getting better"
+                  },
+                  {
+                    "id": "c",
+                    "text": "wonderful amazing joy"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": [
+                  {
+                    "text": "great success triumph"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": "not an array"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": 42
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "entries": {
+                  "x": 1
+                }
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "entries": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.arcType === 'string'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.entryCount)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.volatility)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.smoothedValence)",
+        "output.ok === false || output.result.message !== undefined || output.result.smoothedValence.every(function(v){ return Number.isFinite(v); })",
+        "output.ok === false || output.result.message !== undefined || (output.result.arcSegments && Number.isFinite(output.result.arcSegments.beginning) && Number.isFinite(output.result.arcSegments.middle) && Number.isFinite(output.result.arcSegments.end))",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallValence)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallIntensity)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "affect.emotionTimeline",
+      "name": "emotionTimeline"
+    },
+    {
+      "_derived": false,
+      "domain": "affect",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "feedback": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "feedback": [
+                  {
+                    "text": "the dashboard is confusing and slow, a real problem",
+                    "userId": "u1"
+                  },
+                  {
+                    "text": "I love how easy and fast and simple it is",
+                    "userId": "u2"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "feedback": [
+                  {
+                    "text": "I clicked buy and it was smooth and helpful"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "feedback": "not an array"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "feedback": {
+                  "x": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "feedback": [
+                  null,
+                  {
+                    "text": 123
+                  },
+                  "raw",
+                  {
+                    "text": "I love this it is great"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "feedback": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalFeedback)",
+        "output.ok === false || output.result.message !== undefined || (output.result.quadrants && ['thinks','feels','says','does'].every(function(q){ return output.result.quadrants[q] && Number.isFinite(output.result.quadrants[q].count) && Array.isArray(output.result.quadrants[q].items); }))",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.painPoints)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.gains)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.topThemes)",
+        "output.ok === false || output.result.message !== undefined || (output.result.summary && Number.isFinite(output.result.summary.totalPainPoints) && Number.isFinite(output.result.summary.totalGains) && Number.isFinite(output.result.summary.avgPainScore) && Number.isFinite(output.result.summary.avgGainScore) && Number.isFinite(output.result.summary.sentimentBalance))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "affect.empathyMap",
+      "name": "empathyMap"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.exportReport",
+      "name": "exportReport"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.getScale",
+      "name": "getScale"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.journalPrompts",
+      "name": "journalPrompts"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.nudges",
+      "name": "nudges"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.save",
+      "name": "save"
+    },
+    {
+      "_derived": false,
+      "domain": "affect",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "text": ""
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "text": "I am so happy and grateful, this is wonderful"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "text": "this terrible awful horrible day fills me with despair"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "text": "I am not happy"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "text": 9999
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "text": {
+                  "x": 1
+                }
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "text": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || (output.result.vad && Number.isFinite(output.result.vad.valence) && Number.isFinite(output.result.vad.arousal) && Number.isFinite(output.result.vad.dominance))",
+        "output.ok === false || output.result.message !== undefined || ['positive','neutral','negative'].indexOf(output.result.sentimentLabel) >= 0",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.tokenCount)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.matchedTokens)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.coverage)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.emotionHits)",
+        "output.ok === false || output.result.message !== undefined || ['low','moderate','high'].indexOf(output.result.sarcasmLikelihood) >= 0",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "affect.sentimentAnalysis",
+      "name": "sentimentAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.setReminder",
+      "name": "setReminder"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.setScale",
+      "name": "setScale"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.trends",
+      "name": "trends"
+    },
+    {
+      "_derived": true,
+      "domain": "affect",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "affect.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "affect",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 34
+}

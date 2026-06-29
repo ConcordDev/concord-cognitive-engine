@@ -201,8 +201,10 @@ export default function registerBillingActions(registerLensAction) {
       summary: {
         lineItemCount: processedItems.length,
         totalQuantity,
-        avgUnitPrice: processedItems.length > 0
-          ? Math.round((subtotal / totalQuantity) * 10000) / 10000
+        // Guard the average: 0/0 (zero-priced poisoned line items with zero total
+        // quantity) yields NaN, which would leak into the output as JSON null.
+        avgUnitPrice: processedItems.length > 0 && totalQuantity > 0
+          ? finNum(Math.round((subtotal / totalQuantity) * 10000) / 10000)
           : 0,
       },
     };

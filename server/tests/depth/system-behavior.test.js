@@ -162,10 +162,15 @@ describe("system — distributed traces (record + percentile rollup)", () => {
     assert.equal(route.avgMs, Math.round(route.totalMs / route.count));
   });
 
-  it("trace-record clamps an absurd duration to the 600000ms ceiling and a status into range", async () => {
-    const t = await lensRun("system", "trace-record", { params: { route: "/slow", durationMs: 9e9, status: 999 } }, ctx);
+  it("trace-record clamps an absurd-but-valid duration to the 600000ms ceiling and a status into range", async () => {
+    // A large-but-finite duration (≤ 1e9, the badNumericField poison threshold) is CLAMPED to the ceiling.
+    const t = await lensRun("system", "trace-record", { params: { route: "/slow", durationMs: 5e8, status: 999 } }, ctx);
     assert.equal(t.result.durationMs, 600000); // clamped hi
     assert.equal(t.result.status, 599);         // clamped to valid HTTP max
+    // A truly poisoned duration (> 1e9) is fail-CLOSED rejected, not clamped (macro-assassin contract).
+    const poison = await lensRun("system", "trace-record", { params: { route: "/x", durationMs: 9e9 } }, ctx);
+    assert.equal(poison.result.ok, false);
+    assert.equal(poison.result.error, "invalid_durationMs");
   });
 
   it("traces: a 4xx span lifts the error rate above zero", async () => {

@@ -10,6 +10,508 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "debate.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": false,
+      "domain": "debate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "debateId": "missing",
+            "stance": "pro",
+            "text": "It reduces commute emissions"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "debateId": "missing",
+            "text": "no"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "debateId": 9999,
+            "text": "valid claim text here"
+          }
+        }
+      ],
+      "inputs": {
+        "debateId": {
+          "required": true,
+          "type": "string"
+        },
+        "parentId": {
+          "required": false,
+          "type": "string"
+        },
+        "positionId": {
+          "required": false,
+          "type": "string"
+        },
+        "stance": {
+          "enum": [
+            "pro",
+            "con"
+          ],
+          "required": false,
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 600,
+          "minLength": 4,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.claim && typeof output.result.claim.id === 'string')",
+        "output.ok === false || ['pro','con'].includes(output.result.claim.stance)",
+        "output.ok === false || (output.result.score && Number.isFinite(output.result.score.supportPct))",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "debate.claim-add",
+      "name": "claim-add"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.claim-delete",
+      "name": "claim-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.claim-edit",
+      "name": "claim-edit"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.claim-impact",
+      "name": "claim-impact"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.claim-vote",
+      "name": "claim-vote"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "debate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "thesis": "AI models should be open-sourced for safety review"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "thesis": "short"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "thesis": 9999
+          }
+        }
+      ],
+      "inputs": {
+        "thesis": {
+          "maxLength": 400,
+          "minLength": 8,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.debate && typeof output.result.debate.id === 'string')",
+        "output.ok === false || typeof output.result.debate.thesis === 'string'",
+        "output.ok === false || Array.isArray(output.result.debate.claims)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "debate.debate-create",
+      "name": "debate-create"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.debate-dashboard",
+      "name": "debate-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.debate-delete",
+      "name": "debate-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.debate-detail",
+      "name": "debate-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.debate-list",
+      "name": "debate-list"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.debate-share",
+      "name": "debate-share"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "debate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "claim": "Renewables cut emissions because studies show a 40% drop",
+            "evidence": [
+              1,
+              2
+            ],
+            "reasoning": "Long-form reasoning that is well over fifty characters in length so the reasoning score lands in the mid band."
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "claim": "Everyone knows this always works",
+            "reasoning": "obviously true"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "claim": 9999
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "claim": "valid claim text",
+            "evidence": "notarray"
+          }
+        }
+      ],
+      "inputs": {
+        "claim": {
+          "maxLength": 2000,
+          "required": false,
+          "type": "string"
+        },
+        "evidence": {
+          "required": false,
+          "type": "array"
+        },
+        "reasoning": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 2000,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (typeof output.result.message === 'string') || (Number.isFinite(output.result.overallScore) && Number.isFinite(output.result.evidenceScore) && Number.isFinite(output.result.reasoningScore))",
+        "output.ok === false || (typeof output.result.message === 'string') || ['strong','moderate','weak'].includes(output.result.strength)",
+        "output.ok === false || (typeof output.result.message === 'string') || Array.isArray(output.result.fallaciesDetected)"
+      ],
+      "macro_id": "debate.evaluateArgument",
+      "name": "evaluateArgument"
+    },
+    {
+      "_derived": false,
+      "domain": "debate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "A ban will inevitably lead to ruin, either we act or society collapses, and everyone agrees."
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "This is a calm and reasonable statement with no flaws."
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": 9999
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "argument": {
+              "x": 1
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "argument": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (typeof output.result.message === 'string') || (Number.isFinite(output.result.count) && Number.isFinite(output.result.textLength))",
+        "output.ok === false || (typeof output.result.message === 'string') || ['appears-sound','minor-issues','significant-issues'].includes(output.result.logicalSoundness)",
+        "output.ok === false || (typeof output.result.message === 'string') || Array.isArray(output.result.fallaciesDetected)"
+      ],
+      "macro_id": "debate.fallacyCheck",
+      "name": "fallacyCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "debate.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +525,433 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "debate.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.position-add",
+      "name": "position-add"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.position-delete",
+      "name": "position-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.position-scores",
+      "name": "position-scores"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "debate.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.save",
+      "name": "save"
+    },
+    {
+      "_derived": false,
+      "domain": "debate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sides": [
+              {
+                "arguments": [
+                  {
+                    "claim": "x",
+                    "evidence": [
+                      1,
+                      2
+                    ],
+                    "rebuttal": true
+                  }
+                ],
+                "name": "Alpha"
+              },
+              {
+                "arguments": [
+                  {
+                    "claim": "y"
+                  }
+                ],
+                "name": "Beta"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sides": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sides": "notarray"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sides": [
+              null,
+              {
+                "arguments": 5
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "sides": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (typeof output.result.message === 'string') || (Array.isArray(output.result.sides) && output.result.sides.length >= 2)",
+        "output.ok === false || (typeof output.result.message === 'string') || Number.isFinite(output.result.margin)",
+        "output.ok === false || (typeof output.result.message === 'string') || typeof output.result.close === 'boolean'"
+      ],
+      "macro_id": "debate.scoreDebate",
+      "name": "scoreDebate"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.shared-view",
+      "name": "shared-view"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.source-add",
+      "name": "source-add"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.source-delete",
+      "name": "source-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.status",
+      "name": "status"
+    },
+    {
+      "_derived": false,
+      "domain": "debate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "arguments": [
+              "A ban costs jobs",
+              "Alternatives are not ready"
+            ],
+            "side": "con"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "position": "Free movement boosts national GDP over the long run"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "position": 9999
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "arguments": "notarray"
+          }
+        }
+      ],
+      "inputs": {
+        "argument": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        },
+        "arguments": {
+          "required": false,
+          "type": "array"
+        },
+        "position": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        },
+        "side": {
+          "enum": [
+            "pro",
+            "con"
+          ],
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (typeof output.result.message === 'string') || (Array.isArray(output.result.steelmanSteps) && output.result.steelmanSteps.length >= 1)",
+        "output.ok === false || (typeof output.result.message === 'string') || (output.result.framework && typeof output.result.framework.premise === 'string')",
+        "output.ok === false || (typeof output.result.message === 'string') || Number.isFinite(output.result.originalLength)"
+      ],
+      "macro_id": "debate.steelmanPosition",
+      "name": "steelmanPosition"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "debate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "debate.vote",
+      "name": "vote"
     }
   ],
   "domain": "debate",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 43
 }

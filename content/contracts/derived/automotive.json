@@ -1,0 +1,1449 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.appointments-create",
+      "name": "appointments-create"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.appointments-delete",
+      "name": "appointments-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.appointments-list",
+      "name": "appointments-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.appointments-update",
+      "name": "appointments-update"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.attachments-add",
+      "name": "attachments-add"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.attachments-delete",
+      "name": "attachments-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.attachments-list",
+      "name": "attachments-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.automotive-dashboard-summary",
+      "name": "automotive-dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.compare-vehicles",
+      "name": "compare-vehicles"
+    },
+    {
+      "_derived": false,
+      "domain": "automotive",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "purchasePrice": 20000,
+            "salvageValue": 5000,
+            "vehicleId": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "vehicleId": "<script>alert(1)</script>"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "purchasePrice": "1e999",
+            "salvageValue": "NaN",
+            "vehicleId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "purchasePrice": {
+          "max": 100000000,
+          "min": 0,
+          "type": "number"
+        },
+        "salvageValue": {
+          "max": 100000000,
+          "min": 0,
+          "type": "number"
+        },
+        "vehicleId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Number.isFinite(output.result.depreciation) && output.result.depreciation >= 0)",
+        "output.ok === false || Number.isFinite(output.result.operatingCost)",
+        "output.ok === false || Number.isFinite(output.result.totalCostOfOwnership)",
+        "output.ok === false || (output.result.costPerMile === null || Number.isFinite(output.result.costPerMile))",
+        "output.ok === false || typeof output.result.byCategory === 'object'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "automotive.cost-of-ownership",
+      "name": "cost-of-ownership"
+    },
+    {
+      "_derived": false,
+      "domain": "automotive",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "code": "P0300"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "code": "p0420"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "code": "U2999"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "code": "XYZ"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "code": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "code": {
+          "maxLength": 16,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.code === 'string'",
+        "output.ok === false || ['Powertrain','Body','Chassis','Network'].indexOf(output.result.system) !== -1",
+        "output.ok === false || ['critical','moderate','informational'].indexOf(output.result.severity) !== -1",
+        "output.ok === false || ['sae-j2012','generic-sae-interpretation'].indexOf(output.result.source) !== -1",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "automotive.diagnosticLookup",
+      "name": "diagnosticLookup"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.documents-create",
+      "name": "documents-create"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.documents-delete",
+      "name": "documents-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.documents-list",
+      "name": "documents-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.expenses-delete",
+      "name": "expenses-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.expenses-list",
+      "name": "expenses-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.expenses-log",
+      "name": "expenses-log"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.fuel-delete",
+      "name": "fuel-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.fuel-list",
+      "name": "fuel-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.fuel-log",
+      "name": "fuel-log"
+    },
+    {
+      "_derived": false,
+      "domain": "automotive",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "fillups": [
+                  {
+                    "gallons": 10,
+                    "mileage": 100,
+                    "pricePerGallon": 3
+                  },
+                  {
+                    "gallons": 10,
+                    "mileage": 300,
+                    "pricePerGallon": 3.5
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "fillups": [
+              {
+                "gallons": 8,
+                "mileage": 0
+              },
+              {
+                "gallons": 8,
+                "mileage": 240
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "fillups": [
+                  {
+                    "gallons": 1,
+                    "mileage": 1
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "fillups": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {},
+          "input": {
+            "artifact": {
+              "data": {
+                "fillups": [
+                  {
+                    "gallons": "NaN",
+                    "mileage": "1e999"
+                  },
+                  {
+                    "gallons": "y",
+                    "mileage": "x"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "fillups": {
+          "maxLength": 5000,
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.avgMPG)",
+        "output.ok === false || (output.result.avgMPG >= 0)",
+        "output.ok === false || Number.isFinite(output.result.totalGallons)",
+        "output.ok === false || Number.isFinite(output.result.totalFuelCost)",
+        "output.ok === false || Number.isFinite(output.result.costPerMile)",
+        "output.ok === false || Array.isArray(output.result.readings)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "automotive.fuelEfficiency",
+      "name": "fuelEfficiency"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "automotive",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "mileage": 50000,
+                "year": 2020
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "mileage": 7500
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "currentMileage": 4900
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "mileage": 0
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "mileage": "1e999"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "mileage": {
+          "max": 100000000,
+          "min": 1,
+          "required": false,
+          "type": "number"
+        },
+        "year": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.services)",
+        "output.ok === false || output.result.services.length === 12",
+        "output.ok === false || Number.isFinite(output.result.mileage)",
+        "output.ok === false || output.result.services.every(function(s){ return Number.isFinite(s.milesUntilDue) && typeof s.status === 'string'; })",
+        "output.ok === false || Number.isFinite(output.result.overdueCount)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "automotive.maintenanceSchedule",
+      "name": "maintenanceSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.obd-delete",
+      "name": "obd-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.obd-import",
+      "name": "obd-import"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.obd-list",
+      "name": "obd-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.predictive-maintenance",
+      "name": "predictive-maintenance"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.recall-lookup",
+      "name": "recall-lookup"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.renewals-create",
+      "name": "renewals-create"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.renewals-delete",
+      "name": "renewals-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.renewals-list",
+      "name": "renewals-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.renewals-upcoming",
+      "name": "renewals-upcoming"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.renewals-update",
+      "name": "renewals-update"
+    },
+    {
+      "_derived": false,
+      "domain": "automotive",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "repairs": [
+                  {
+                    "laborHours": 2,
+                    "name": "Brake pads",
+                    "partsCost": 100
+                  }
+                ],
+                "shopRate": 150
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "repairs": [
+                  {
+                    "laborHours": 1,
+                    "name": "Alignment",
+                    "partsCost": 0
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "repairs": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {},
+          "input": {
+            "artifact": {
+              "data": {
+                "repairs": [
+                  {
+                    "laborHours": "Infinity",
+                    "name": "x",
+                    "partsCost": "NaN"
+                  }
+                ],
+                "shopRate": "1e999"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "repairs": {
+          "maxLength": 5000,
+          "required": false,
+          "type": "array"
+        },
+        "shopRate": {
+          "max": 100000,
+          "min": 0,
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.repairs)",
+        "output.ok === false || Number.isFinite(output.result.grandTotal)",
+        "output.ok === false || (Number.isFinite(output.result.tax) && output.result.tax >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.totalWithTax) && output.result.totalWithTax >= output.result.grandTotal)",
+        "output.ok === false || output.result.repairs.every(function(r){ return Number.isFinite(r.laborCost) && Number.isFinite(r.total); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "automotive.repairEstimate",
+      "name": "repairEstimate"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.schedule-create",
+      "name": "schedule-create"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.schedule-delete",
+      "name": "schedule-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.schedule-list",
+      "name": "schedule-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.service-delete",
+      "name": "service-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.service-list",
+      "name": "service-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.service-log",
+      "name": "service-log"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.service-reminders",
+      "name": "service-reminders"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.shops-create",
+      "name": "shops-create"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.shops-delete",
+      "name": "shops-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.shops-geocode",
+      "name": "shops-geocode"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.shops-list",
+      "name": "shops-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.trips-delete",
+      "name": "trips-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.trips-list",
+      "name": "trips-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.trips-log",
+      "name": "trips-log"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.vehicle-stats",
+      "name": "vehicle-stats"
+    },
+    {
+      "_derived": false,
+      "domain": "automotive",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "make": "Honda",
+            "model": "Civic",
+            "name": "Daily",
+            "odometer": 50000,
+            "year": 2020
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Bare"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "name": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Poisoned",
+            "odometer": "1e999"
+          }
+        }
+      ],
+      "inputs": {
+        "make": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "model": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 160,
+          "required": true,
+          "type": "string"
+        },
+        "odometer": {
+          "max": 100000000,
+          "min": 0,
+          "type": "number"
+        },
+        "year": {
+          "max": 2100,
+          "min": 1885,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.vehicle && typeof output.result.vehicle.id === 'string')",
+        "output.ok === false || typeof output.result.vehicle.number === 'string'",
+        "output.ok === false || (output.result.vehicle.odometer >= 0 && Number.isFinite(output.result.vehicle.odometer))",
+        "output.ok === false || ['mi','km'].indexOf(output.result.vehicle.odometerUnit) !== -1",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "automotive.vehicles-create",
+      "name": "vehicles-create"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.vehicles-delete",
+      "name": "vehicles-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.vehicles-list",
+      "name": "vehicles-list"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.vehicles-update",
+      "name": "vehicles-update"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.vin-decode",
+      "name": "vin-decode"
+    },
+    {
+      "_derived": true,
+      "domain": "automotive",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "automotive.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "automotive",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 74
+}

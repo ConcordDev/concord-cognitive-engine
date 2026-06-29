@@ -217,6 +217,19 @@ export function ConKayOverlay() {
         useConkayHudStore.getState().macroStarted({ runId: d.runId, domain: d.domain, action: d.action });
       },
     );
+    // Mid-flight beat: a real `macro:stage` the backend macro emits when it
+    // reaches a genuine sub-step (e.g. reason.verify → resolving_citations →
+    // judging). Honest by construction — it only fires from real handler
+    // progress, never a timer; the store ignores stages with no live run.
+    const offStage = subscribe<{ runId?: string; stage?: string; detail?: string }>(
+      'macro:stage',
+      (d) => {
+        if (!d?.runId || d.runId !== liveRunRef.current || !d.stage) return;
+        const pretty = String(d.stage).replace(/_/g, ' ');
+        setWorkStatus(`Backend: ${pretty}${d.detail ? ` — ${d.detail}` : ''}…`);
+        useConkayHudStore.getState().macroStage({ runId: d.runId, stage: d.stage, detail: d.detail });
+      },
+    );
     const offDone = subscribe<{ runId?: string; domain?: string; action?: string; ok?: boolean; ms?: number; error?: string }>(
       'macro:completed',
       (d) => {
@@ -234,7 +247,7 @@ export function ConKayOverlay() {
     );
     // Resetting on teardown clears any in-flight count so the rings never spin
     // after ConKay closes (no orphaned "work" with nothing running).
-    return () => { offStart(); offDone(); useConkayHudStore.getState().reset(); };
+    return () => { offStart(); offStage(); offDone(); useConkayHudStore.getState().reset(); };
   }, [open]);
 
   const append = useCallback((m: OverlayMsg) => setMessages((prev) => [...prev, m]), []);

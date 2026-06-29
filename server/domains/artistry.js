@@ -26,7 +26,7 @@ export default function registerArtistryActions(registerLensAction) {
   try {
     const raw = artifact.data?.palette || [];
     if (raw.length === 0) {
-      return { ok: true, result: { message: "No palette data provided. Supply artifact.data.palette as an array of hex color strings or objects with { color, weight }.", colors: [], dominantHue: null, harmonyScore: 0 } };
+      return { ok: true, result: { message: "No palette data provided. Supply artifact.data.palette as an array of hex color strings or objects with { color, weight }.", colors: [], dominantHue: null, harmonyScore: 0, contrastRange: 0 } };
     }
 
     const colors = raw.map((entry) => {

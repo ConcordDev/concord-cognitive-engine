@@ -67,10 +67,13 @@ export default function registerWeldingActions(registerLensAction) {
     const travelSpeed = travelSpeedRaw > 0 ? travelSpeedRaw : 5;
     const efficiency = wFinite(artifact.data?.efficiency, 0.8);
     const maxInterpass = wFinite(artifact.data?.maxInterpassTemp, 250);
-    const heatInputJmm = (voltage * amperage * efficiency) / travelSpeed;
-    const heatInputKJmm = Math.round(heatInputJmm / 1000 * 100) / 100;
+    // CLAMP-AND-COMPUTE: inputs are wFinite-clamped, but a large-but-finite
+    // input (e.g. 1e308) can overflow the product to Infinity. Clamp every
+    // COMPUTED numeric output so no NaN/Infinity ever leaks.
+    const heatInputJmm = wFinite((voltage * amperage * efficiency) / travelSpeed, 0);
+    const heatInputKJmm = wFinite(Math.round(heatInputJmm / 1000 * 100) / 100, 0);
     const risk = heatInputKJmm > 3.0 ? "high" : heatInputKJmm > 1.5 ? "moderate" : "low";
-    return { ok: true, result: { voltage: `${voltage}V`, amperage: `${amperage}A`, travelSpeed: `${travelSpeed} mm/s`, efficiency, heatInput: `${heatInputKJmm} kJ/mm`, heatInputJoules: Math.round(heatInputJmm), maxInterpassTemp: `${maxInterpass}°C`, distortionRisk: risk, recommendations: [heatInputKJmm > 2.5 ? "Reduce heat input — increase travel speed or reduce amperage" : null, heatInputKJmm < 0.5 ? "Low heat input — risk of incomplete fusion" : null, "Monitor interpass temperature between passes", risk === "high" ? "Use backstep welding technique to reduce distortion" : null].filter(Boolean) } };
+    return { ok: true, result: { voltage: `${voltage}V`, amperage: `${amperage}A`, travelSpeed: `${travelSpeed} mm/s`, efficiency, heatInput: `${heatInputKJmm} kJ/mm`, heatInputJoules: wFinite(Math.round(heatInputJmm), 0), maxInterpassTemp: `${maxInterpass}°C`, distortionRisk: risk, recommendations: [heatInputKJmm > 2.5 ? "Reduce heat input — increase travel speed or reduce amperage" : null, heatInputKJmm < 0.5 ? "Low heat input — risk of incomplete fusion" : null, "Monitor interpass temperature between passes", risk === "high" ? "Use backstep welding technique to reduce distortion" : null].filter(Boolean) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

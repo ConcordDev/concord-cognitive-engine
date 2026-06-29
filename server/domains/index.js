@@ -180,6 +180,10 @@ import artistry from './artistry.js';
 import atlas from './atlas.js';
 import graph from './graph.js';
 import gmail from './gmail.js';
+import slack from './slack.js';
+import sheets from './sheets.js';
+import githubConnector from './github.js';
+import notion from './notion.js';
 import importdomain from './importdomain.js';
 import ingest from './ingest.js';
 import law from './law.js';
@@ -417,6 +421,10 @@ export default [
   atlas,
   graph,
   gmail,
+  slack,
+  sheets,
+  githubConnector,
+  notion,
   importdomain,
   ingest,
   law,

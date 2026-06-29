@@ -281,9 +281,20 @@ export default function registerNeuroActions(registerLensAction) {
     // SECONDS (≤1 ⇒ fraction of the trace is NOT assumed; seconds throughout).
     if (epochs.length === 0 && artifact.data?.signal) {
       const sig = artifact.data.signal || {};
-      const samples = Array.isArray(sig.samples) ? sig.samples : [];
+      const rawSamples = Array.isArray(sig.samples) ? sig.samples : [];
       sampleRate = Number(sig.sampleRate) || sampleRate;
-      if (samples.length === 0) return { ok: false, error: "Signal has no samples." };
+      if (rawSamples.length === 0) return { ok: false, error: "Signal has no samples." };
+      // Coerce to finite numbers; a trace with no finite samples is rejected
+      // rather than letting NaN leak into the ERP math. null/undefined raw
+      // entries are treated as non-finite (not coerced to 0), so a signal whose
+      // samples are all non-numeric ("abc"/"Infinity"/"NaN"/null) is rejected.
+      const samples = rawSamples.map(v => {
+        if (v === null || v === undefined) return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+      });
+      if (!samples.some(v => v !== null)) return { ok: false, error: "Signal has no finite samples." };
+      for (let i = 0; i < samples.length; i++) if (samples[i] === null) samples[i] = 0;
       const rawOnsets = Array.isArray(artifact.data.eventOnset)
         ? artifact.data.eventOnset
         : [artifact.data.eventOnset != null ? artifact.data.eventOnset : 0.5];

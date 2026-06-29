@@ -6,7 +6,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { PublishAsAdaptiveMusicDialog } from './PublishAsAdaptiveMusicDialog';
 
-interface Render { id: string; projectId: string; projectName: string; trackId: string | null; format: string; sampleRate: number; kind: string; durationSec: number; status: string; outputUrl: string; bouncedAt: string }
+interface Render { id: string; projectId: string; projectName: string; trackId: string | null; format: string; sampleRate: number; kind: string; durationSec: number; status: string; downloadUrl?: string; reason?: string; sizeBytes?: number; bouncedAt: string }
 
 export function BouncePanel({ projectId }: { projectId?: string }) {
   const [renders, setRenders] = useState<Render[]>([]);
@@ -106,12 +106,24 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
                 <FileAudio className="w-3.5 h-3.5 text-emerald-300" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{r.projectName}</div>
-                  <div className="text-[10px] text-gray-400">{r.format} · {r.sampleRate / 1000}kHz · {r.kind}</div>
+                  <div className="text-[10px] text-gray-400">
+                    {r.format} · {r.sampleRate / 1000}kHz · {r.kind}
+                    {/* Honest: only a real, persisted artifact carries a size + download. */}
+                    {r.status === 'pending' && <span className="text-amber-300/80"> · render happens in your browser — not yet available here</span>}
+                    {r.status === 'failed' && <span className="text-red-300/80"> · {r.reason || 'render failed'}</span>}
+                  </div>
                 </div>
-                <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded inline-flex items-center gap-0.5', r.status === 'completed' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300')}>
-                  {r.status === 'completed' && <CheckCircle className="w-2.5 h-2.5" />}
-                  {r.status}
-                </span>
+                {/* Real download ONLY when the backend persisted bytes (downloadUrl present). No dead link for pending/failed. */}
+                {r.status === 'completed' && r.downloadUrl ? (
+                  <a href={r.downloadUrl} download className="text-[9px] uppercase px-1.5 py-0.5 rounded inline-flex items-center gap-0.5 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25" title="Download rendered audio">
+                    <Download className="w-2.5 h-2.5" /> download
+                  </a>
+                ) : (
+                  <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded inline-flex items-center gap-0.5', r.status === 'completed' ? 'bg-emerald-500/15 text-emerald-300' : r.status === 'failed' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300')}>
+                    {r.status === 'completed' && <CheckCircle className="w-2.5 h-2.5" />}
+                    {r.status}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

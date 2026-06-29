@@ -473,8 +473,8 @@ export default function registerCommonsenseActions(registerLensAction) {
    */
   registerLensAction("commonsense", "defaultReasoning", (ctx, artifact, _params) => {
   try {
-    const classes = artifact.data?.classes || [];
-    const instance = artifact.data?.instance || {};
+    const classes = Array.isArray(artifact.data?.classes) ? artifact.data.classes : [];
+    const instance = (artifact.data?.instance && typeof artifact.data.instance === "object") ? artifact.data.instance : {};
 
     if (classes.length === 0) {
       return { ok: true, result: { message: "No class hierarchy provided." } };

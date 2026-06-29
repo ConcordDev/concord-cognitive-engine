@@ -28,7 +28,7 @@ export default function registerConstructionActions(registerLensAction) {
 
   registerLensAction("construction", "takeoffEstimate", (ctx, artifact, _params) => {
     const cdata = calcData(artifact);
-    const items = cdata.lineItems || [];
+    const items = Array.isArray(cdata.lineItems) ? cdata.lineItems : [];
     if (items.length === 0) return { ok: true, result: { message: "Add line items with quantity, unit, and unit cost." } };
     const estimated = items.map(item => {
       const qty = finNum(item.quantity, 0);
@@ -48,7 +48,8 @@ export default function registerConstructionActions(registerLensAction) {
   });
 
   registerLensAction("construction", "criticalPath", (ctx, artifact, _params) => {
-    const tasks = calcData(artifact).tasks || [];
+    const rawTasks = calcData(artifact).tasks;
+    const tasks = Array.isArray(rawTasks) ? rawTasks : [];
     if (tasks.length === 0) return { ok: true, result: { message: "Add tasks with duration and dependencies." } };
     const taskMap = {};
     tasks.forEach(t => { taskMap[t.name || t.id] = { name: t.name || t.id, duration: parseInt(t.duration) || 1, deps: t.dependencies || [], earlyStart: 0, earlyFinish: 0, lateStart: 0, lateFinish: 0, slack: 0 }; });
@@ -73,8 +74,8 @@ export default function registerConstructionActions(registerLensAction) {
 
   registerLensAction("construction", "safetyCompliance", (ctx, artifact, _params) => {
     const data = calcData(artifact);
-    const checklistItems = data.safetyChecklist || [];
-    const incidents = data.incidents || [];
+    const checklistItems = Array.isArray(data.safetyChecklist) ? data.safetyChecklist : [];
+    const incidents = Array.isArray(data.incidents) ? data.incidents : [];
     const workers = parseInt(data.workerCount) || 1;
     const hoursWorked = parseInt(data.totalHoursWorked) || 0;
     const compliant = checklistItems.filter(c => c.passed || c.compliant).length;
@@ -85,7 +86,8 @@ export default function registerConstructionActions(registerLensAction) {
   });
 
   registerLensAction("construction", "progressReport", (ctx, artifact, _params) => {
-    const phases = calcData(artifact).phases || [];
+    const rawPhases = calcData(artifact).phases;
+    const phases = Array.isArray(rawPhases) ? rawPhases : [];
     if (phases.length === 0) return { ok: true, result: { message: "Add project phases with planned vs actual progress." } };
     const analyzed = phases.map(p => {
       const planned = finNum(p.plannedPercent, 0);
