@@ -4,10 +4,22 @@
   "name": "costPerLine",
   "reads_artifact_data": true,
   "inputs": {
-    "infrastructureCost": { "type": "number", "required": false },
-    "monthlyOpsCost": { "type": "number", "required": false },
-    "subscribers": { "type": "number", "required": false },
-    "arpu": { "type": "number", "required": false }
+    "infrastructureCost": {
+      "type": "number",
+      "required": false
+    },
+    "monthlyOpsCost": {
+      "type": "number",
+      "required": false
+    },
+    "subscribers": {
+      "type": "number",
+      "required": false
+    },
+    "arpu": {
+      "type": "number",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -22,11 +34,68 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "infrastructureCost": 600000, "monthlyOpsCost": 50000, "subscribers": 10000, "arpu": 50 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "infrastructureCost": 6000000, "monthlyOpsCost": 100000, "subscribers": 1000, "arpu": 50 } } }, "expect": { "ok": true } },
-    { "input": { "infrastructureCost": 1200000, "monthlyOpsCost": 30000, "subscribers": 5000, "arpu": 40 }, "expect": { "ok": true } },
-    { "input": {}, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "infrastructureCost": "1e999", "monthlyOpsCost": "NaN", "subscribers": "0", "arpu": "Infinity" } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "infrastructureCost": 600000,
+            "monthlyOpsCost": 50000,
+            "subscribers": 10000,
+            "arpu": 50
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "infrastructureCost": 6000000,
+            "monthlyOpsCost": 100000,
+            "subscribers": 1000,
+            "arpu": 50
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "infrastructureCost": 1200000,
+        "monthlyOpsCost": 30000,
+        "subscribers": 5000,
+        "arpu": 40
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "infrastructureCost": "1e999",
+            "monthlyOpsCost": "NaN",
+            "subscribers": "0",
+            "arpu": "Infinity"
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). COMPONENT-EXACT shape: panel sends {artifact:{data:{infrastructureCost,monthlyOpsCost,subscribers,arpu}}}; dispatch peels the wrapper. RETURNS subscribers/arpu/costPerSubscriber/margin/marginPercent/profitable/breakeven — the exact keys the CostResult card renders. costPerSubscriber = (infra/60 + ops)/subscribers; margin = arpu - costPerSub. subscribers parseInt||1 so a '0' floors to 1 (no /0). POISON: infra/ops/arpu via num() so 'Infinity'/'1e999'/'NaN' collapse to finite defaults; margin + marginPercent stay FINITE. Pure compute, no STATE. Pinned by server/tests/telecommunications-lens-macros.test.js."
 }

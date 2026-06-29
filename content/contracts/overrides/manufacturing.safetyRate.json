@@ -4,8 +4,13 @@
   "name": "safetyRate",
   "reads_artifact_data": true,
   "inputs": {
-    "hoursWorked": { "type": "number" },
-    "incidents": { "type": "array", "maxLength": 100000 }
+    "hoursWorked": {
+      "type": "number"
+    },
+    "incidents": {
+      "type": "array",
+      "maxLength": 100000
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -16,9 +21,58 @@
     "['below_average','average','above_average'].includes(output.result.benchmark)"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "hoursWorked": 300000, "incidents": [{ "type": "laceration", "oshaRecordable": true }, { "type": "near-miss", "oshaRecordable": false }] } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "hoursWorked": 200000, "incidents": [] } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "hoursWorked": "bad", "incidents": [{ "recordable": true }] } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "hoursWorked": 300000,
+            "incidents": [
+              {
+                "type": "laceration",
+                "oshaRecordable": true
+              },
+              {
+                "type": "near-miss",
+                "oshaRecordable": false
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "hoursWorked": 200000,
+            "incidents": []
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "hoursWorked": "bad",
+            "incidents": [
+              {
+                "recordable": true
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "ManufacturingActionPanel actSafe() sends {artifact:{data:{hoursWorked,incidents:[{type,severity,oshaRecordable}]}}}. TRIR = recordable × 200000 / hoursWorked; recordable counts oshaRecordable OR the `recordable` alias. The hoursWorked > 0 guard makes the rate finite (poisoned/zero hours → fall back to the 200000 OSHA base or rate 0), never Infinity/NaN."
 }

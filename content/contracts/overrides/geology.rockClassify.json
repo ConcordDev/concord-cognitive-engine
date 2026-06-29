@@ -3,11 +3,26 @@
   "domain": "geology",
   "name": "rockClassify",
   "inputs": {
-    "name": { "type": "string", "required": false },
-    "mohsHardness": { "type": "number", "required": false },
-    "luster": { "type": "string", "required": false },
-    "color": { "type": "string", "required": false },
-    "texture": { "type": "string", "required": false }
+    "name": {
+      "type": "string",
+      "required": false
+    },
+    "mohsHardness": {
+      "type": "number",
+      "required": false
+    },
+    "luster": {
+      "type": "string",
+      "required": false
+    },
+    "color": {
+      "type": "string",
+      "required": false
+    },
+    "texture": {
+      "type": "string",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -19,11 +34,67 @@
     "output.ok === false || Array.isArray(output.result.commonUses)"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "name": "Gneiss", "mohsHardness": 7, "texture": "foliated" } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "texture": "vesicular", "mohsHardness": 6 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "mohsHardness": "Infinity" } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "mohsHardness": "1e999" } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "name": "Gneiss",
+            "mohsHardness": 7,
+            "texture": "foliated"
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "texture": "vesicular",
+            "mohsHardness": 6
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "mohsHardness": "Infinity"
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "mohsHardness": "1e999"
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler (registerLensAction; dispatch key 'geology.rockClassify'). Pure-compute: maps texture→rockType and Mohs hardness→durability/commonUses bands. Fail-CLOSED: mohsHardness is coerced via a finite-guard then CLAMPED to [0,10] so a poisoned Infinity/NaN/1e999 can never leak Infinity (serialized null) or push durability out of its bands. Reads input.X (the page/AI-action params) and degrades on an empty body. Pinned by server/tests/geology-lens-macros.test.js."
 }

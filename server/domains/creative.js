@@ -72,6 +72,12 @@ export default function registerCreativeActions(registerLensAction) {
   // `budget` + `expenses[]` (amount/category) shape.
   registerLensAction("creative", "budgetTrack", (_ctx, artifact, _params) => {
     const d = (artifact && artifact.data) || {};
+    // FAIL-CLOSED: a provided top-level budget must be a finite, non-negative
+    // number — a poisoned value (NaN/Infinity/1e308/-1) must reject.
+    if (d.budget !== undefined && d.budget !== null && d.budget !== "") {
+      const b = Number(d.budget);
+      if (!Number.isFinite(b) || b < 0) return { ok: false, error: "invalid_budget" };
+    }
     let lines = [];
     if (Array.isArray(d.lines)) {
       lines = d.lines.map((raw) => {

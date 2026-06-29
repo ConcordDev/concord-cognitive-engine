@@ -3,10 +3,18 @@
   "domain": "audit",
   "name": "samplingPlan",
   "inputs": {
-    "populationSize": { "type": "number" },
-    "confidenceLevel": { "type": "number" },
-    "tolerableErrorRate": { "type": "number" },
-    "expectedErrorRate": { "type": "number" }
+    "populationSize": {
+      "type": "number"
+    },
+    "confidenceLevel": {
+      "type": "number"
+    },
+    "tolerableErrorRate": {
+      "type": "number"
+    },
+    "expectedErrorRate": {
+      "type": "number"
+    }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -20,10 +28,171 @@
     "output.ok === false || output.result.message !== undefined || typeof output.result.rationale === 'string'"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "populationSize": 10000, "confidenceLevel": 95, "tolerableErrorRate": 5, "expectedErrorRate": 1 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "populationSize": 5000, "confidenceLevel": 90, "tolerableErrorRate": 2, "expectedErrorRate": 5 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "populationSize": 0 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "populationSize": "Infinity", "confidenceLevel": "NaN", "tolerableErrorRate": "abc", "expectedErrorRate": "12xyz" } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "populationSize": 10000,
+            "confidenceLevel": 95,
+            "tolerableErrorRate": 5,
+            "expectedErrorRate": 1,
+            "samplingPlan": {
+              "analyzedAt": "2026-06-29T01:38:04.426Z",
+              "populationSize": 10000,
+              "parameters": {
+                "confidenceLevel": 0.95,
+                "confidencePct": 95,
+                "marginOfError": 0.05,
+                "marginOfErrorPct": 5,
+                "expectedDefectRate": 0.01,
+                "zScore": 1.96
+              },
+              "requiredSampleSize": 16,
+              "samplingFraction": 0.16,
+              "infinitePopulationSampleSize": 16,
+              "finitePopulationCorrection": 1.0518,
+              "comparisonByConfidence": [
+                {
+                  "confidenceLevel": 0.8,
+                  "confidencePct": 80,
+                  "sampleSize": 7,
+                  "samplingFraction": 0.07
+                },
+                {
+                  "confidenceLevel": 0.85,
+                  "confidencePct": 85,
+                  "sampleSize": 9,
+                  "samplingFraction": 0.09
+                },
+                {
+                  "confidenceLevel": 0.9,
+                  "confidencePct": 90,
+                  "sampleSize": 11,
+                  "samplingFraction": 0.11
+                },
+                {
+                  "confidenceLevel": 0.95,
+                  "confidencePct": 95,
+                  "sampleSize": 16,
+                  "samplingFraction": 0.16
+                },
+                {
+                  "confidenceLevel": 0.99,
+                  "confidencePct": 99,
+                  "sampleSize": 27,
+                  "samplingFraction": 0.27
+                }
+              ],
+              "stratifiedPlan": null,
+              "sampleSize": 16,
+              "confidenceLevel": 95,
+              "expectedErrorRate": 1,
+              "method": "attribute (finite-population)",
+              "rationale": "n=16 of 10000 at 95% confidence, ±5% margin, 1% expected error rate (Z=1.96)."
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "populationSize": 5000,
+            "confidenceLevel": 90,
+            "tolerableErrorRate": 2,
+            "expectedErrorRate": 5,
+            "samplingPlan": {
+              "analyzedAt": "2026-06-29T01:38:04.426Z",
+              "populationSize": 5000,
+              "parameters": {
+                "confidenceLevel": 0.9,
+                "confidencePct": 90,
+                "marginOfError": 0.02,
+                "marginOfErrorPct": 2,
+                "expectedDefectRate": 0.05,
+                "zScore": 1.645
+              },
+              "requiredSampleSize": 302,
+              "samplingFraction": 6.04,
+              "infinitePopulationSampleSize": 322,
+              "finitePopulationCorrection": 0.9398,
+              "comparisonByConfidence": [
+                {
+                  "confidenceLevel": 0.8,
+                  "confidencePct": 80,
+                  "sampleSize": 188,
+                  "samplingFraction": 3.76
+                },
+                {
+                  "confidenceLevel": 0.85,
+                  "confidencePct": 85,
+                  "sampleSize": 235,
+                  "samplingFraction": 4.7
+                },
+                {
+                  "confidenceLevel": 0.9,
+                  "confidencePct": 90,
+                  "sampleSize": 302,
+                  "samplingFraction": 6.04
+                },
+                {
+                  "confidenceLevel": 0.95,
+                  "confidencePct": 95,
+                  "sampleSize": 419,
+                  "samplingFraction": 8.38
+                },
+                {
+                  "confidenceLevel": 0.99,
+                  "confidencePct": 99,
+                  "sampleSize": 681,
+                  "samplingFraction": 13.62
+                }
+              ],
+              "stratifiedPlan": null,
+              "sampleSize": 302,
+              "confidenceLevel": 90,
+              "expectedErrorRate": 5,
+              "method": "attribute (finite-population)",
+              "rationale": "n=302 of 5000 at 90% confidence, ±2% margin, 5% expected error rate (Z=1.645)."
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "populationSize": 0
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "populationSize": "Infinity",
+            "confidenceLevel": "NaN",
+            "tolerableErrorRate": "abc",
+            "expectedErrorRate": "12xyz"
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "Pure compute, reads artifact.data. AuditActionPanel.actSample sends FLAT PERCENTS {populationSize, confidenceLevel:95, tolerableErrorRate:5, expectedErrorRate:1}; the original parity path sends {population:{total}} + params.confidenceLevel(0.95 fraction). Handler accepts BOTH: flat component keys (confidenceLevel/tolerableErrorRate/expectedErrorRate) are percents (/100), params keys (marginOfError/expectedDefectRate) are fractions. Finite-population attribute sample size n = (Z^2 p q / E^2) / (1 + (n_inf-1)/N). Result card renders sampleSize / populationSize / confidenceLevel(as a PERCENT for the '{confidenceLevel}% confidence' line) / expectedErrorRate / method / rationale EXACTLY (the prior requiredSampleSize + nested parameters{} fields were NOT what the card read → the sample card was blank and the flat percents reached fraction-reading params; fixed 2026-06-28; requiredSampleSize + parameters{} retained for parity + provenance). Fail-CLOSED numerics: Number()+Number.isFinite, so 'Infinity' populationSize is rejected (-> non-positive -> empty message, never an Infinity sample) and '12abc' confidence falls to the 95% default, never silently accepted as 12."
 }

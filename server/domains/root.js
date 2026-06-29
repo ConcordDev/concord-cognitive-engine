@@ -504,6 +504,11 @@ export default function registerRootActions(registerLensAction) {
       if (params.a == null || params.a === "") return { ok: false, error: "operand a is required" };
       payload = { a: params.a, b: params.b ?? null, op };
     }
+    // Fail-closed: a supplied resultDecimal must be a finite number — a poisoned
+    // NaN/Infinity/1e308 must reject, not silently coerce to null + return ok:true.
+    if (params.resultDecimal != null && !Number.isFinite(Number(params.resultDecimal))) {
+      return { ok: false, error: "invalid_resultDecimal" };
+    }
     const shareId = rootId("share");
     const snapshot = {
       shareId,
@@ -511,7 +516,7 @@ export default function registerRootActions(registerLensAction) {
       ...payload,
       label: String(params.label || "").trim().slice(0, 120),
       resultGlyph: params.resultGlyph != null ? String(params.resultGlyph) : null,
-      resultDecimal: params.resultDecimal != null && isFinite(Number(params.resultDecimal))
+      resultDecimal: params.resultDecimal != null && Number.isFinite(Number(params.resultDecimal))
         ? Number(params.resultDecimal) : null,
       sharedBy: rootActor(ctx),
       sharedAt: rootNow(),

@@ -107,12 +107,15 @@ export default function registerDebateActions(registerLensAction) {
     }
     if (sides.length < 2) return { ok: true, result: { message: "Add at least 2 debate sides with arguments." } };
     const scored = sides.map(s => {
-      const args = asArray(s.arguments);
+      // Tolerate malformed sides (null / non-object / non-array arguments): a side
+      // that isn't an object contributes a zero-score entry rather than throwing.
+      const side = (s && typeof s === "object") ? s : {};
+      const args = asArray(side.arguments);
       const evidenceCount = args.reduce((sum, a) => sum + asArray(a && a.evidence).length, 0);
       const rebuttals = args.filter(a => a && (a.rebuttal || a.counters)).length;
-      const votes = Number(s.votes) || 0;
+      const votes = Number(side.votes) || 0;
       const score = Math.round(args.length * 15 + evidenceCount * 10 + rebuttals * 20 + votes * 2);
-      return { side: s.name || s.position || "—", arguments: args.length, evidencePoints: evidenceCount, rebuttals, score, votes, highlights: args.slice(0, 2).map(argText).filter(Boolean) };
+      return { side: side.name || side.position || "—", arguments: args.length, evidencePoints: evidenceCount, rebuttals, score, votes, highlights: args.slice(0, 2).map(argText).filter(Boolean) };
     }).sort((a, b) => b.score - a.score);
     return { ok: true, result: { sides: scored, winner: scored[0]?.side, margin: scored.length >= 2 ? scored[0].score - scored[1].score : 0, close: scored.length >= 2 && Math.abs(scored[0].score - scored[1].score) < 20 } };
    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

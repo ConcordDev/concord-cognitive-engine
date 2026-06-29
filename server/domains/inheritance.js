@@ -116,6 +116,11 @@ export default function registerInheritanceActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const name = String(params.name || "").trim();
       if (!name) return { ok: false, error: "missing_name" };
+      // FAIL-CLOSED: a provided sharePct must be a finite, non-negative number.
+      if (params.sharePct !== undefined && params.sharePct !== null && params.sharePct !== "") {
+        const sp = Number(params.sharePct);
+        if (!Number.isFinite(sp) || sp < 0) return { ok: false, error: "invalid_sharePct" };
+      }
       const sharePct = Math.max(0, Math.min(100, Number(params.sharePct) || 0));
       const e = getEstate(userId);
       const ben = {

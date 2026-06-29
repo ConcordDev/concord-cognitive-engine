@@ -3,11 +3,26 @@
   "domain": "retail",
   "name": "customerLTV",
   "inputs": {
-    "avgOrderValue": { "type": "number", "required": false },
-    "purchaseFrequencyPerYear": { "type": "number", "required": false },
-    "customerLifespanYears": { "type": "number", "required": false },
-    "cac": { "type": "number", "required": false },
-    "customers": { "type": "array", "required": false }
+    "avgOrderValue": {
+      "type": "number",
+      "required": false
+    },
+    "purchaseFrequencyPerYear": {
+      "type": "number",
+      "required": false
+    },
+    "customerLifespanYears": {
+      "type": "number",
+      "required": false
+    },
+    "cac": {
+      "type": "number",
+      "required": false
+    },
+    "customers": {
+      "type": "array",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -19,12 +34,97 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    { "input": { "avgOrderValue": 120, "purchaseFrequencyPerYear": 6, "customerLifespanYears": 2.5, "cac": 300 }, "expect": { "ok": true } },
-    { "input": { "avgOrderValue": 50, "purchaseFrequencyPerYear": 2, "customerLifespanYears": 1, "cac": 80 }, "expect": { "ok": true } },
-    { "input": { "avgOrderValue": 100, "purchaseFrequencyPerYear": 4, "customerLifespanYears": 3, "cac": 0 }, "expect": { "ok": true } },
-    { "input": { "avgOrderValue": "1e999", "purchaseFrequencyPerYear": "Infinity", "customerLifespanYears": "NaN", "cac": -5 }, "expect": { "ok": true } },
-    { "input": { "avgOrderValue": "abc", "purchaseFrequencyPerYear": "x", "customerLifespanYears": "y", "cac": "z" }, "expect": { "ok": true } },
-    { "input": {}, "expect": { "ok": true } }
+    {
+      "input": {
+        "avgOrderValue": 120,
+        "purchaseFrequencyPerYear": 6,
+        "customerLifespanYears": 2.5,
+        "cac": 300,
+        "ltvReport": {
+          "generatedAt": "2026-06-29T01:42:25.839Z",
+          "avgOrderValue": 120,
+          "purchaseFrequency": 6,
+          "customerLifespanYears": 2.5,
+          "ltv": 1800,
+          "cac": 300,
+          "ltvToCacRatio": 6,
+          "profitable": true
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "avgOrderValue": 50,
+        "purchaseFrequencyPerYear": 2,
+        "customerLifespanYears": 1,
+        "cac": 80,
+        "ltvReport": {
+          "generatedAt": "2026-06-29T01:42:25.839Z",
+          "avgOrderValue": 50,
+          "purchaseFrequency": 2,
+          "customerLifespanYears": 1,
+          "ltv": 100,
+          "cac": 80,
+          "ltvToCacRatio": 1.25,
+          "profitable": false
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "avgOrderValue": 100,
+        "purchaseFrequencyPerYear": 4,
+        "customerLifespanYears": 3,
+        "cac": 0,
+        "ltvReport": {
+          "generatedAt": "2026-06-29T01:42:25.839Z",
+          "avgOrderValue": 100,
+          "purchaseFrequency": 4,
+          "customerLifespanYears": 3,
+          "ltv": 1200,
+          "cac": 0,
+          "ltvToCacRatio": 1200,
+          "profitable": true
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "avgOrderValue": "1e999",
+        "purchaseFrequencyPerYear": "Infinity",
+        "customerLifespanYears": "NaN",
+        "cac": -5
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "avgOrderValue": "abc",
+        "purchaseFrequencyPerYear": "x",
+        "customerLifespanYears": "y",
+        "cac": "z"
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler (server/domains/retail.js). 3-arg dispatch via /api/lens/run on key 'retail.customerLTV'. Drives the RetailActionPanel LTV card: flat unit-economics branch reads { avgOrderValue, purchaseFrequencyPerYear, customerLifespanYears, cac } and returns { avgOrderValue, purchaseFrequency, customerLifespanYears, ltv, cac, ltvToCacRatio, profitable }. ltv = AOV × freq/yr × lifespan(yr). FAIL-CLOSED: poisoned numerics → finite default (0); cac=0 collapses the ratio to ltv (never Infinity). Legacy customers[]-array branch (order-history LTV report) preserved for back-compat callers. Authored spec pinned by server/tests/retail-lens-macros.test.js."
 }

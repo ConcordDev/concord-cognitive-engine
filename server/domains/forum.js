@@ -40,7 +40,13 @@ export default function registerForumActions(registerLensAction) {
   });
   registerLensAction("forum", "communityHealth", (ctx, artifact, params = {}) => {
     const data = artifact?.data || {};
-    // Fail-closed: clamp every input to a finite non-negative integer.
+    // Fail CLOSED on a present-but-poisoned numeric (NaN/Infinity AND the finite
+    // poisons 1e308 / -1) — a clamp would have laundered them into a fabricated
+    // "ok:true" health score.
+    for (const _k of ["activeUsers", "totalUsers", "postsThisWeek", "postsLastWeek"]) {
+      const _raw = params[_k] ?? data[_k];
+      if (_raw !== undefined && _raw !== null && _raw !== "") { const n = Number(_raw); if (!Number.isFinite(n) || n < 0 || n > 1e12) return { ok: false, error: `invalid_${_k}` }; }
+    }
     const activeUsers = Math.max(0, fmInt(params.activeUsers ?? data.activeUsers, 0));
     const totalUsers = Math.max(1, fmInt(params.totalUsers ?? data.totalUsers, 1));
     const postsThisWeek = Math.max(0, fmInt(params.postsThisWeek ?? data.postsThisWeek, 0));

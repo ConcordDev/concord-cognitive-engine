@@ -3,13 +3,27 @@
   "domain": "electrical",
   "name": "boxFill",
   "inputs": {
-    "largestAwg": { "type": "number" },
-    "currentCarrying": { "type": "number" },
-    "groundConductors": { "type": "number" },
-    "devices": { "type": "number" },
-    "supportFittings": { "type": "number" },
-    "boxVolumeCubicInches": { "type": "number" },
-    "internalClamps": { "type": "boolean" }
+    "largestAwg": {
+      "type": "number"
+    },
+    "currentCarrying": {
+      "type": "number"
+    },
+    "groundConductors": {
+      "type": "number"
+    },
+    "devices": {
+      "type": "number"
+    },
+    "supportFittings": {
+      "type": "number"
+    },
+    "boxVolumeCubicInches": {
+      "type": "number"
+    },
+    "internalClamps": {
+      "type": "boolean"
+    }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -23,10 +37,56 @@
     "output.ok === false || Array.isArray(output.result.breakdown)"
   ],
   "fuzz_cases": [
-    { "input": { "largestAwg": 14, "currentCarrying": 4, "groundConductors": 2, "devices": 1, "internalClamps": true, "supportFittings": 0, "boxVolumeCubicInches": 18 }, "expect": { "ok": true } },
-    { "input": { "largestAwg": 12, "currentCarrying": 6, "groundConductors": 1, "devices": 2, "internalClamps": true, "boxVolumeCubicInches": 10 }, "expect": { "ok": true } },
-    { "input": { "largestAwg": 14, "currentCarrying": 4, "devices": 1, "internalClamps": true }, "expect": { "ok": true } },
-    { "input": { "largestAwg": 14, "currentCarrying": -5, "groundConductors": "NaN", "devices": -1, "boxVolumeCubicInches": "Infinity" }, "expect": { "ok": true } }
+    {
+      "input": {
+        "largestAwg": 14,
+        "currentCarrying": 4,
+        "groundConductors": 2,
+        "devices": 1,
+        "internalClamps": true,
+        "supportFittings": 0,
+        "boxVolumeCubicInches": 18
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "largestAwg": 12,
+        "currentCarrying": 6,
+        "groundConductors": 1,
+        "devices": 2,
+        "internalClamps": true,
+        "boxVolumeCubicInches": 10
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "largestAwg": 14,
+        "currentCarrying": 4,
+        "devices": 1,
+        "internalClamps": true
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "largestAwg": 14,
+        "currentCarrying": -5,
+        "groundConductors": "NaN",
+        "devices": -1,
+        "boxVolumeCubicInches": "Infinity"
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "Pure compute. NecCalculators sends lensRun('electrical','boxFill',{...}) → body.input flat → handler reads artifact.data (== params). NEC 314.16: equivalents = hots + grounds(all=1) + clamps(all=1) + devices×2 + support fittings; required = equivalents × per-AWG volume; PASS when provided box volume ≥ required. Fail-closed: every count sanitises via num() + clamps to ≥0 integer, and an Infinity/NaN box volume sanitises to 0 → treated as 'no volume entered' → pass:null (NEVER a fake PASS on an unverifiable box — the dangerous failure mode). Cards render totalConductorEquivalents/requiredBoxVolume/providedBoxVolume/breakdown[].{item,equivalents}/pass/verdict EXACTLY (field-aligned against BoxFillCalc). No STATE, no DB."
 }

@@ -568,6 +568,25 @@ export default function registerAuditActions(registerLensAction) {
     // Fail-CLOSED numeric coercion: Number()+Number.isFinite, NOT parseFloat
     // (so "12abc"/"Infinity"/"NaN" fall to the supplied default, never leak).
     const num = (v, dflt) => { const n = Number(v); return Number.isFinite(n) ? n : dflt; };
+    // Fail-CLOSED reject of poisoned numeric inputs (NaN/Infinity/1e308/negative)
+    // BEFORE any sampling math. A present-but-poisoned value must be rejected, not
+    // silently clamped — an absurd populationSize/confidenceLevel would otherwise
+    // produce a fabricated-but-ok sampling plan.
+    const POISON_MAX = 1e9;
+    for (const [src, key] of [
+      [d, "populationSize"], [population, "total"],
+      [d, "confidenceLevel"], [params, "confidenceLevel"],
+      [d, "expectedErrorRate"], [d, "expectedDefectRate"], [params, "expectedDefectRate"],
+      [d, "tolerableErrorRate"], [d, "marginOfError"], [params, "marginOfError"],
+    ]) {
+      if (src == null) continue;
+      const raw = src[key];
+      if (raw === undefined || raw === null || raw === "") continue;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || n > POISON_MAX) {
+        return { ok: false, error: `invalid_${key}` };
+      }
+    }
     // Flat component keys (tolerableErrorRate/expectedErrorRate, and
     // confidenceLevel sent alongside the flat populationSize) are ALWAYS percents
     // (0–100) from the lens's "Conf %"/"Tol %" text inputs → divide by 100.

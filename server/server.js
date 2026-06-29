@@ -39762,7 +39762,7 @@ registerLensAction("sim", "simulate", (ctx, artifact, params) => {
   const assumptions = artifact.data?.assumptions || params.assumptions || [];
   const _variables = artifact.data?.variables || {};
   let seed = 0;
-  for (let i = 0; i < artifact.id.length; i++) seed = ((seed << 5) - seed) + artifact.id.charCodeAt(i);
+  { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }
   const mulberry32 = (s) => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const rng = mulberry32(seed + (artifact.data?.runCount || 0));
   const outcomes = assumptions.map(a => {
@@ -40954,7 +40954,7 @@ registerLensAction("finance", "simulate", (ctx, artifact, params) => {
   const lastPrice = prices[prices.length - 1] || currentPrice;
   const steps = params.steps || 30;
   let seed = 0;
-  for (let i = 0; i < artifact.id.length; i++) seed = ((seed << 5) - seed) + artifact.id.charCodeAt(i);
+  { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }
   const mulberry32 = (s) => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const rng = mulberry32(seed);
   const simulated = [];
@@ -41365,7 +41365,7 @@ registerLensAction("game", "simulate", (ctx, artifact, params) => {
   const successRate = turns.length > 0 ? turns.filter(t => t.outcome === "success").length / turns.length : 0.5;
   const avgXp = turns.length > 0 ? turns.reduce((s, t) => s + (t.xpGained || 0), 0) / turns.length : 25;
   let seed = 0;
-  for (let i = 0; i < artifact.id.length; i++) seed = ((seed << 5) - seed) + artifact.id.charCodeAt(i);
+  { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }
   const mulberry32 = (s) => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const rng = mulberry32(seed);
   const outcomes = scenarios.map((s, _idx) => {
@@ -41387,7 +41387,7 @@ registerLensAction("game", "resolve_turn", (ctx, artifact, params) => {
   const skillBonus = Math.min(0.3, turns.length * 0.005);
   const adjustedRate = Math.max(0.1, Math.min(0.95, (successRate + skillBonus) / difficulty));
   let seed = turns.length;
-  for (let i = 0; i < artifact.id.length; i++) seed = ((seed << 5) - seed) + artifact.id.charCodeAt(i);
+  { const _gid = String(artifact.id ?? artifact.domain ?? "game"); for (let i = 0; i < _gid.length; i++) seed = ((seed << 5) - seed) + _gid.charCodeAt(i); }
   const mulberry32 = (s) => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const roll = mulberry32(seed)();
   const outcome = roll < adjustedRate ? "success" : "failure";

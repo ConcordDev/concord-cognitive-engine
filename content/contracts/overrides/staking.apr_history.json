@@ -3,20 +3,54 @@
   "domain": "staking",
   "name": "apr_history",
   "inputs": {
-    "poolId": { "type": "string", "enum": ["flex", "core", "growth"] },
-    "months": { "type": "number", "min": 1, "max": 60 }
+    "poolId": {
+      "type": "string",
+      "enum": [
+        "flex",
+        "core",
+        "growth"
+      ]
+    },
+    "months": {
+      "type": "number",
+      "min": 1,
+      "max": 60
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
     "typeof output.ok === 'boolean'",
     "output.ok === false || (Array.isArray(output.result.series) && output.result.points === output.result.series.length)",
     "output.ok === false || (typeof output.result.currentAprPct === 'number' && Number.isFinite(output.result.currentAprPct) && output.result.currentAprPct >= 0)",
-    "output.ok === false || typeof output.error === 'string'"
+    "output.ok === true || typeof output.error === 'string'"
   ],
   "fuzz_cases": [
-    { "input": { "poolId": "core" }, "expect": { "ok": true } },
-    { "input": { "poolId": "core", "months": 12 }, "expect": { "ok": true } },
-    { "input": { "poolId": "nope" }, "expect": { "ok": false, "error": "unknown_pool" } }
+    {
+      "input": {
+        "poolId": "core"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "poolId": "core",
+        "months": 12
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "poolId": "nope"
+      },
+      "expect": {
+        "ok": false,
+        "error": "unknown_pool"
+      }
+    }
   ],
   "_note": "apr_history is a PURE READ — samples today's APR into an in-memory per-pool series (globalThis._concordSTATE.stakingAprHistory) and returns it, so a fresh caller still sees >=1 real point. unknown pool returns ok:false unknown_pool. months is internally clamped, no poisoned value escapes to the series."
 }

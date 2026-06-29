@@ -20,6 +20,41 @@ export default function registerAviationActions(registerLensAction) {
     ["cargo", "Cargo"], ["baggage", "Baggage"],
   ];
   function _fin(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  // Fail-CLOSED guard: true when a caller-supplied field is PRESENT but
+  // non-finite (NaN / Infinity / -Infinity / "1e999" / overflow). Absent fields
+  // (null/undefined/"") pass. A safety-critical W&B / weather calc must reject a
+  // poisoned numeric, not silently fold it to 0 and report ok:true.
+  function _presentBad(v) {
+    if (v == null || v === "") return false;
+    const n = typeof v === "number" ? v : Number(v);
+    return !Number.isFinite(n);
+  }
+  // Check the W&B numeric fields across both the flat editor shape and a
+  // structured aircraft object. Returns the first offending field name or null.
+  function _firstBadWBField(artifact, params) {
+    const d = (artifact && artifact.data) || {};
+    const p = params || {};
+    const src = Object.keys(d).length ? d : p;
+    const flat = [
+      "emptyWeight", "emptyArm", "fuelWeight", "fuelArm", "pilotWeight", "pilotArm",
+      "maxGross", "maxGrossWeight", "fwdCGLimit", "aftCGLimit",
+    ];
+    for (const f of flat) {
+      if (_presentBad(src[f]) || _presentBad(p[f])) return f;
+    }
+    // Structured aircraft object (when supplied).
+    const ac = (src.aircraft && typeof src.aircraft === "object" && !Array.isArray(src.aircraft)) ? src.aircraft : null;
+    if (ac) {
+      for (const f of ["emptyWeight", "emptyArm", "maxGrossWeight"]) {
+        if (_presentBad(ac[f])) return f;
+      }
+      if (ac.cgEnvelope && typeof ac.cgEnvelope === "object") {
+        if (_presentBad(ac.cgEnvelope.fwd)) return "fwdCGLimit";
+        if (_presentBad(ac.cgEnvelope.aft)) return "aftCGLimit";
+      }
+    }
+    return null;
+  }
   function normalizeWBInput(artifact, params) {
     const d = (artifact && artifact.data) || {};
     const p = params || {};
@@ -239,6 +274,14 @@ export default function registerAviationActions(registerLensAction) {
   try {
     const items = artifact.data?.maintenanceItems || [];
     const now = new Date();
+    // Fail CLOSED on a poisoned current-hours/cycles value — an Infinity here
+    // would mark every hours/cycles-limited item "exceeded" while ok:true.
+    if (_presentBad(artifact.data?.totalTime) || _presentBad(artifact.data?.currentHours)) {
+      return { ok: false, error: "invalid_totalTime" };
+    }
+    if (_presentBad(artifact.data?.totalCycles) || _presentBad(artifact.data?.currentCycles)) {
+      return { ok: false, error: "invalid_totalCycles" };
+    }
     const currentHours = artifact.data?.totalTime || artifact.data?.currentHours || 0;
     const currentCycles = artifact.data?.totalCycles || artifact.data?.currentCycles || 0;
     const alerts = [];
@@ -308,6 +351,19 @@ export default function registerAviationActions(registerLensAction) {
     // Weather editor (renderWeatherEditor) actually persists — otherwise the
     // METAR-format wind string read 000/00KT for every observation.
     const d = artifact.data || {};
+    // Fail CLOSED on poisoned (present-but-non-finite) weather numerics — an
+    // Infinity/NaN ceiling or visibility would mis-classify the flight category
+    // (a safety call) while still reporting ok:true.
+    const w0 = (d.wind && typeof d.wind === "object") ? d.wind : {};
+    for (const [field, val] of [
+      ["ceiling", d.ceiling],
+      ["visibility", d.visibility],
+      ["windDirection", d.windDirection ?? w0.direction],
+      ["windGust", d.windGust ?? w0.gust],
+      ["windSpeed", d.windSpeed ?? w0.speed],
+    ]) {
+      if (_presentBad(val)) return { ok: false, error: `invalid_${field}` };
+    }
     const wind = (d.wind && typeof d.wind === "object")
       ? d.wind
       : { direction: d.windDirection, speed: d.windSpeed, gust: d.windGust };
@@ -387,6 +443,10 @@ export default function registerAviationActions(registerLensAction) {
    */
   registerLensAction("aviation", "calculate-wb", (ctx, artifact, params) => {
   try {
+    // Fail CLOSED on any poisoned (present-but-non-finite) W&B numeric — folding
+    // it to 0 would produce a wrong gross weight / CG on a safety calculator.
+    const badWB = _firstBadWBField(artifact, params);
+    if (badWB) return { ok: false, error: `invalid_${badWB}` };
     const { aircraft: ac, loading } = normalizeWBInput(artifact, params);
 
     const emptyWeight = Number(ac.emptyWeight) || 0;
@@ -438,6 +498,10 @@ export default function registerAviationActions(registerLensAction) {
    */
   registerLensAction("aviation", "validate-wb", (ctx, artifact, params) => {
   try {
+    // Fail CLOSED on any poisoned W&B numeric — a folded-to-0 value would make
+    // the envelope "withinEnvelope" verdict a dangerous false-positive.
+    const badWB = _firstBadWBField(artifact, params);
+    if (badWB) return { ok: false, error: `invalid_${badWB}` };
     const { aircraft: ac, loading } = normalizeWBInput(artifact, params);
     const emptyWeight = Number(ac.emptyWeight) || 0;
     const emptyArm = Number(ac.emptyArm) || 0;

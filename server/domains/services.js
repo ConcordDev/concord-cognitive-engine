@@ -38,6 +38,12 @@ export default function registerServicesActions(registerLensAction) {
 
   registerLensAction("services", "revenueByProvider", (ctx, artifact, params) => {
     const appointments = artifact.data?.appointments || [];
+    // FAIL-CLOSED: period is a numeric lookback window (days). A poisoned value
+    // (NaN/Infinity/1e308/-1) would produce an Invalid Date cutoff — reject it.
+    if (params.period !== undefined && params.period !== null && params.period !== "") {
+      const p = Number(params.period);
+      if (!Number.isFinite(p) || p < 0) return { ok: false, error: "invalid_period" };
+    }
     const period = params.period || 30;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - period);

@@ -316,6 +316,8 @@ export default function registerNeuroActions(registerLensAction) {
       epochs = built;
     }
 
+    // No epoch data → ok:false (the contract pins this; there is nothing to
+    // analyze without epochs).
     if (epochs.length === 0) return { ok: false, error: "No epoch data." };
 
     const epochLen = epochs[0].samples?.length || 0;

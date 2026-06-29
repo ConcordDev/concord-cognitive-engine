@@ -3,8 +3,14 @@
   "domain": "household",
   "name": "maintenanceDue",
   "inputs": {
-    "maintenanceItems": { "type": "array", "required": false },
-    "lookaheadDays": { "type": "number", "required": false }
+    "maintenanceItems": {
+      "type": "array",
+      "required": false
+    },
+    "lookaheadDays": {
+      "type": "number",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -20,11 +26,121 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": true } },
-    { "input": { "maintenanceItems": [] }, "expect": { "ok": true } },
-    { "input": { "maintenanceItems": [{ "name": "Smoke detector", "lastServiceDate": "2025-01-01", "intervalDays": 365 }], "lookaheadDays": 30 }, "expect": { "ok": true } },
-    { "input": { "maintenanceItems": [{ "name": "Gutters" }] }, "expect": { "ok": true } },
-    { "input": { "maintenanceItems": [{ "name": "X", "lastServiceDate": "garbage", "intervalDays": "Infinity" }], "lookaheadDays": "NaN" }, "expect": { "ok": true } }
+    {
+      "input": {
+        "maintenanceReport": {
+          "checkedAt": "2026-06-29T01:38:04.451Z",
+          "lookaheadDays": 30,
+          "totalItems": 0,
+          "overdueCount": 0,
+          "upcomingCount": 0,
+          "currentCount": 0,
+          "overdue": [],
+          "upcoming": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "maintenanceItems": [],
+        "maintenanceReport": {
+          "checkedAt": "2026-06-29T01:38:04.451Z",
+          "lookaheadDays": 30,
+          "totalItems": 0,
+          "overdueCount": 0,
+          "upcomingCount": 0,
+          "currentCount": 0,
+          "overdue": [],
+          "upcoming": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "maintenanceItems": [
+          {
+            "name": "Smoke detector",
+            "lastServiceDate": "2025-01-01",
+            "intervalDays": 365
+          }
+        ],
+        "lookaheadDays": 30,
+        "maintenanceReport": {
+          "checkedAt": "2026-06-29T01:38:04.451Z",
+          "lookaheadDays": 30,
+          "totalItems": 1,
+          "overdueCount": 1,
+          "upcomingCount": 0,
+          "currentCount": 0,
+          "overdue": [
+            {
+              "name": "Smoke detector",
+              "category": "general",
+              "lastServiceDate": "2025-01-01",
+              "intervalDays": 365,
+              "nextDueDate": "2026-01-01",
+              "daysOverdue": 179,
+              "status": "overdue",
+              "notes": ""
+            }
+          ],
+          "upcoming": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "maintenanceItems": [
+          {
+            "name": "Gutters"
+          }
+        ],
+        "maintenanceReport": {
+          "checkedAt": "2026-06-29T01:38:04.451Z",
+          "lookaheadDays": 30,
+          "totalItems": 1,
+          "overdueCount": 1,
+          "upcomingCount": 0,
+          "currentCount": 0,
+          "overdue": [
+            {
+              "name": "Gutters",
+              "status": "never-serviced",
+              "daysOverdue": null,
+              "nextDueDate": null
+            }
+          ],
+          "upcoming": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "maintenanceItems": [
+          {
+            "name": "X",
+            "lastServiceDate": "garbage",
+            "intervalDays": "Infinity"
+          }
+        ],
+        "lookaheadDays": "NaN"
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler. Dispatch key 'household.maintenanceDue'. Reads artifact.data.maintenanceItems || params.maintenanceItems. Computes nextDue = lastServiceDate + intervalDays; buckets overdue / upcoming (within lookaheadDays) / current. Never-serviced items are overdue with daysOverdue:null. POISON: lastServiceDate via finiteDate (bad date → null → never-serviced, no NaN), intervalDays via finiteInt(...,365), lookaheadDays via finiteNum(...,30) — every count + day delta stays FINITE. Pinned by server/tests/household-lens-macros.test.js."
 }

@@ -3,10 +3,22 @@
   "domain": "energy",
   "name": "carbonFootprint",
   "inputs": {
-    "electricityKWh": { "type": "number", "required": false },
-    "naturalGasTherms": { "type": "number", "required": false },
-    "gasolineGallons": { "type": "number", "required": false },
-    "flightMiles": { "type": "number", "required": false }
+    "electricityKWh": {
+      "type": "number",
+      "required": false
+    },
+    "naturalGasTherms": {
+      "type": "number",
+      "required": false
+    },
+    "gasolineGallons": {
+      "type": "number",
+      "required": false
+    },
+    "flightMiles": {
+      "type": "number",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -18,11 +30,64 @@
     "output.ok === false || Array.isArray(output.result.reductionTips)"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "electricityKWh": 1000, "naturalGasTherms": 50, "gasolineGallons": 40, "flightMiles": 2000 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "electricityKWh": "1e999", "naturalGasTherms": "Infinity", "gasolineGallons": "NaN", "flightMiles": "not-a-number" } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "electricityKWh": -1000 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
-    { "input": {}, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "electricityKWh": 1000,
+            "naturalGasTherms": 50,
+            "gasolineGallons": 40,
+            "flightMiles": 2000
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "electricityKWh": "1e999",
+            "naturalGasTherms": "Infinity",
+            "gasolineGallons": "NaN",
+            "flightMiles": "not-a-number"
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "electricityKWh": -1000
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'energy.carbonFootprint'. SolarCarbonPanel sends {input:{artifact:{data:{electricityKWh,naturalGasTherms,gasolineGallons,flightMiles}}}}; dispatch peels → artifact.data. EPA emission factors (kWh*0.000417, therms*0.0053, gal*0.00887, mi*0.000255). POISON CONTRACT: finiteNum(x,0,0) floors each input non-negative + finite so the CO2 totals + breakdown stay FINITE (the old parseFloat(x)||0 leaked Infinity → JSON null). Renders breakdown{electricity,naturalGas,transportation,flights}, totalMetricTons, annualEstimate, vsUSAverage, topSource, reductionTips. Pinned by server/tests/energy-lens-macros.test.js."
 }

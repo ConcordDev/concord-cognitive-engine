@@ -454,7 +454,13 @@ export default function registerAccountingActions(registerLensAction) {
   try {
     const lineItems = artifact.data?.lineItems || params?.lineItems || [];
     const client = params?.client || artifact.data?.client || {};
-    const dueDays = Number(params?.dueDays) || 30;
+    let dueDays = 30;
+    if (params?.dueDays !== undefined && params?.dueDays !== null && params?.dueDays !== "") {
+      dueDays = Number(params.dueDays);
+      if (!Number.isFinite(dueDays) || dueDays < 0) {
+        return { ok: false, error: "invalid_dueDays" };
+      }
+    }
     const issueDate = new Date();
     const dueDate = new Date(issueDate.getTime() + dueDays * 86_400_000);
 

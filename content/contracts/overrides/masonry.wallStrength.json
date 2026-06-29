@@ -3,10 +3,18 @@
   "domain": "masonry",
   "name": "wallStrength",
   "inputs": {
-    "heightFeet": { "type": "number" },
-    "thicknessInches": { "type": "number" },
-    "reinforced": { "type": "boolean" },
-    "loadBearing": { "type": "boolean" }
+    "heightFeet": {
+      "type": "number"
+    },
+    "thicknessInches": {
+      "type": "number"
+    },
+    "reinforced": {
+      "type": "boolean"
+    },
+    "loadBearing": {
+      "type": "boolean"
+    }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -20,10 +28,57 @@
     "output.ok === false || (output.result.reinforced ? output.result.maxAllowedRatio === 25 : output.result.maxAllowedRatio === 20)"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "heightFeet": 8, "thicknessInches": 8, "reinforced": true } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "heightFeet": 30, "thicknessInches": 6, "reinforced": false } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "heightFeet": "Infinity", "thicknessInches": 0 } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "heightFeet": 8,
+            "thicknessInches": 8,
+            "reinforced": true
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "heightFeet": 30,
+            "thicknessInches": 6,
+            "reinforced": false
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "heightFeet": "Infinity",
+            "thicknessInches": 0
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "Pure compute, reads artifact.data (MasonStuff channel). slendernessRatio = (heightFeet × 12) / thicknessInches, rounded to 0.1; maxAllowedRatio = 25 (reinforced) / 20 (unreinforced); passesSlenderness = ratio ≤ max; recommendation grades adequate / near-limit (>80% of max) / too-slender. Non-finite or non-positive height/thickness fall to defaults 8/8 (Number.isFinite guard) — slenderness is never NaN/Infinity. Result card renders heightFeet/thicknessInches/slendernessRatio/maxAllowedRatio/passesSlenderness/reinforced/loadBearing/recommendation EXACTLY."
 }

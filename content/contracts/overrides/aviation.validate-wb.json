@@ -3,13 +3,27 @@
   "domain": "aviation",
   "name": "validate-wb",
   "inputs": {
-    "emptyWeight": { "type": "number" },
-    "emptyArm": { "type": "number" },
-    "fuelWeight": { "type": "number" },
-    "fuelArm": { "type": "number" },
-    "maxGross": { "type": "number" },
-    "fwdCGLimit": { "type": "number" },
-    "aftCGLimit": { "type": "number" }
+    "emptyWeight": {
+      "type": "number"
+    },
+    "emptyArm": {
+      "type": "number"
+    },
+    "fuelWeight": {
+      "type": "number"
+    },
+    "fuelArm": {
+      "type": "number"
+    },
+    "maxGross": {
+      "type": "number"
+    },
+    "fwdCGLimit": {
+      "type": "number"
+    },
+    "aftCGLimit": {
+      "type": "number"
+    }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -23,10 +37,115 @@
     "output.ok === false || typeof output.result.message === 'string'"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "emptyWeight": 1500, "emptyArm": 39, "fuelWeight": 180, "fuelArm": 48, "pilotWeight": 170, "pilotArm": 37, "maxGross": 2550, "fwdCGLimit": 35, "aftCGLimit": 47.3 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "emptyWeight": 1500, "emptyArm": 39, "fuelWeight": 600, "fuelArm": 48, "pilotWeight": 300, "pilotArm": 37, "cargoWeight": 400, "cargoArm": 95, "maxGross": 2000, "fwdCGLimit": 35, "aftCGLimit": 47.3 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "emptyWeight": "NaN", "maxGross": "Infinity", "fuelWeight": 1e308, "fuelArm": "x" } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "emptyWeight": 1500,
+            "emptyArm": 39,
+            "fuelWeight": 180,
+            "fuelArm": 48,
+            "pilotWeight": 170,
+            "pilotArm": 37,
+            "maxGross": 2550,
+            "fwdCGLimit": 35,
+            "aftCGLimit": 47.3,
+            "lastWBValidation": {
+              "validatedAt": "2026-06-29T01:38:04.430Z",
+              "aircraft": "(unknown)",
+              "grossWeight": 1850,
+              "cg": 39.69,
+              "withinEnvelope": true,
+              "issues": [],
+              "overallSeverity": "ok",
+              "message": "Within limits. Gross weight and CG within envelope."
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "emptyWeight": 1500,
+            "emptyArm": 39,
+            "fuelWeight": 600,
+            "fuelArm": 48,
+            "pilotWeight": 300,
+            "pilotArm": 37,
+            "cargoWeight": 400,
+            "cargoArm": 95,
+            "maxGross": 2000,
+            "fwdCGLimit": 35,
+            "aftCGLimit": 47.3,
+            "lastWBValidation": {
+              "validatedAt": "2026-06-29T01:38:04.431Z",
+              "aircraft": "(unknown)",
+              "grossWeight": 2800,
+              "cg": 48.71,
+              "withinEnvelope": false,
+              "issues": [
+                {
+                  "severity": "critical",
+                  "kind": "over-gross",
+                  "message": "Gross weight 2800.0 lb exceeds max 2000.0 lb by 800.0 lb. DO NOT FLY."
+                },
+                {
+                  "severity": "critical",
+                  "kind": "cg-aft",
+                  "message": "CG 48.71 in is aft of envelope (47.30 in). Move weight forward."
+                }
+              ],
+              "overallSeverity": "critical",
+              "message": "Gross weight 2800.0 lb exceeds max 2000.0 lb by 800.0 lb. DO NOT FLY. CG 48.71 in is aft of envelope (47.30 in). Move weight forward."
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "lastWBValidation": {
+              "validatedAt": "2026-06-29T01:38:04.431Z",
+              "aircraft": "(unknown)",
+              "grossWeight": 0,
+              "cg": 0,
+              "withinEnvelope": true,
+              "issues": [],
+              "overallSeverity": "ok",
+              "message": "Within limits. Gross weight and CG within envelope."
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "emptyWeight": "NaN",
+            "maxGross": "Infinity",
+            "fuelWeight": 1e+308,
+            "fuelArm": "x"
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "W&B envelope validation. Same flat-vs-structured shape mismatch as calculate-wb (now folded via normalizeWBInput). Returns withinEnvelope/overallSeverity(ok|warning|critical)/issues[]/message; over-gross or out-of-CG-envelope is severity:'critical' with a 'DO NOT FLY' message. Poisoned numerics keep grossWeight/cg finite. Fixed 2026-06-28."
 }

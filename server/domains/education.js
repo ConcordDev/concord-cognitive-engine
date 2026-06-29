@@ -290,6 +290,11 @@ export default function registerEducationActions(registerLensAction) {
    */
   registerLensAction("education", "generateReportCard", (_ctx, artifact, params) => {
   try {
+    // Fail-CLOSED: a non-array `grades` (e.g. the string "broken") must not be
+    // iterated char-by-char to fabricate a report card — reject it outright.
+    if (artifact.data.grades !== undefined && artifact.data.grades !== null && !Array.isArray(artifact.data.grades)) {
+      return { ok: false, error: "invalid_grades" };
+    }
     const grades = artifact.data.grades || [];
     const honorRollThreshold = params.honorRollThreshold || 3.5;
     const highHonorsThreshold = params.highHonorsThreshold || 3.8;

@@ -120,9 +120,14 @@ export default function registerPharmacyActions(registerLensAction) {
   });
 
   registerLensAction("pharmacy", "dosageCalculator", (ctx, artifact, _params) => { const data = artifact.data || {};
-    // FAIL-CLOSED: a dosing calculator must NEVER emit NaN/Infinity. A non-finite
-    // weight/dose/freq is treated as absent (defaults), and a non-finite dose/kg
-    // returns the honest prompt rather than printing "Infinity mg".
+    // FAIL-CLOSED: a dosing calculator must NEVER emit NaN/Infinity NOR silently
+    // default a poisoned input — an explicitly-supplied NaN/Infinity/1e308 for any
+    // dosing field is rejected outright (a defaulted dose is a real safety harm).
+    for (const f of ["weightKg", "dosePerKg", "frequencyPerDay", "maxDailyDose"]) {
+      if (data[f] !== undefined && data[f] !== null && data[f] !== "" && !Number.isFinite(Number(data[f]))) {
+        return { ok: false, error: `invalid_${f}` };
+      }
+    }
     const fin = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
     const weight = fin(data.weightKg) ?? 70;
     const dosePerKgRaw = fin(data.dosePerKg);

@@ -41,6 +41,23 @@ export default function registerCognitiveReplayActions(registerLensAction) {
   const DAY_MS = 86400000;
   const HOUR_MS = 3600000;
 
+  // Fail-CLOSED reject of poisoned numeric inputs (NaN/Infinity/1e308/negative)
+  // BEFORE any aggregation. The `Number(x) || default` pattern silently masks a
+  // poisoned value (and a poisoned fromTs=Infinity even survives `|| null`),
+  // producing a misleading ok:true; this rejects it with an honest error. Reads
+  // through `param()` so both params and artifact.data inputs are guarded. An
+  // absent field is fine (the macro uses its default).
+  const POISON_MAX = 1e15; // timestamps are ms epoch (~1.7e12), so allow large
+  function badNumericField(artifact, params, keys) {
+    for (const k of keys) {
+      const raw = param(artifact, params, k);
+      if (raw === undefined || raw === null || raw === "") continue;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || n > POISON_MAX) return k;
+    }
+    return null;
+  }
+
   // ── pull the live event corpus for a user ──────────────────────────
   // Mirrors chat.timeline's sweep so the lens shares one source of
   // truth. Returns chronologically-sorted events (oldest → newest).
@@ -138,6 +155,8 @@ export default function registerCognitiveReplayActions(registerLensAction) {
     try {
       const userId = uid(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
+      const badField = badNumericField(artifact, params, ["sinceDays"]);
+      if (badField) return { ok: false, error: `invalid_${badField}` };
       const sinceDays = Math.min(365, Math.max(1, Number(param(artifact, params, "sinceDays")) || 7));
       const all = collectEvents(userId);
       const cutoff = Date.now() - sinceDays * DAY_MS;
@@ -172,6 +191,8 @@ export default function registerCognitiveReplayActions(registerLensAction) {
     try {
       const userId = uid(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
+      const badField = badNumericField(artifact, params, ["fromTs", "toTs", "limit"]);
+      if (badField) return { ok: false, error: `invalid_${badField}` };
       const brain = param(artifact, params, "brain");
       const tool = param(artifact, params, "tool");
       const role = param(artifact, params, "role");
@@ -218,6 +239,8 @@ export default function registerCognitiveReplayActions(registerLensAction) {
     try {
       const userId = uid(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
+      const badField = badNumericField(artifact, params, ["sinceDays"]);
+      if (badField) return { ok: false, error: `invalid_${badField}` };
       const sinceDays = Math.min(365, Math.max(1, Number(param(artifact, params, "sinceDays")) || 7));
       const cutoff = Date.now() - sinceDays * DAY_MS;
       const events = collectEvents(userId).filter((e) => !e.ts || e.ts >= cutoff);

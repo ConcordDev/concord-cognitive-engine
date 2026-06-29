@@ -3,7 +3,9 @@
   "domain": "landscaping",
   "name": "seasonalPlan",
   "inputs": {
-    "hardnessZone": { "type": "number" }
+    "hardnessZone": {
+      "type": "number"
+    }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -17,10 +19,52 @@
     "output.ok === false || JSON.stringify(output.result.immediateActions) === JSON.stringify(output.result.plan[output.result.currentSeason])"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "hardnessZone": 6 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "hardnessZone": 9 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "hardnessZone": "Infinity" } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "hardnessZone": 6
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "hardnessZone": 9
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "hardnessZone": "Infinity"
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "Pure compute, reads artifact.data. zone = parseInt(hardnessZone)||7. plan = {spring,summer,fall,winter} each an action-list array; currentSeason derived from the live month index; immediateActions === plan[currentSeason] (the column SeasonalPlanCalendar highlights as 'now'). NaN/Infinity zone → 7 default — never NaN. SeasonalPlanCalendar maps Object.entries(plan) and renders zone/currentSeason/immediateActions EXACTLY."
 }

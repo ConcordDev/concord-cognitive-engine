@@ -884,6 +884,11 @@ export default function registerChemActions(registerLensAction) {
         contribution: Math.round(contribution * 1000) / 1000,
       });
     }
+    // FAIL-CLOSED: a formula with no resolvable atoms (e.g. "()", "0") yields a
+    // zero/non-positive weight — never claim a 0 g/mol molecule.
+    if (!Number.isFinite(mw) || mw <= 0 || components.length === 0) {
+      return { ok: false, error: "could not parse formula" };
+    }
     // Percent composition
     for (const c of components) {
       c.percentMass = Math.round((c.contribution / mw) * 10000) / 100;

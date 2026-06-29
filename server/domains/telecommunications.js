@@ -112,6 +112,11 @@ export default function registerTelecommunicationsActions(registerLensAction) {
   registerLensAction("telecommunications", "networkCapacity", (ctx, artifact, _params) => {
     try {
       const data = artifact?.data || {};
+      for (const f of ["bandwidthGbps", "utilizationPercent", "activeUsers"]) {
+        if (data[f] !== undefined && data[f] !== null && !Number.isFinite(Number(data[f]))) {
+          return { ok: false, error: `invalid_${f}` };
+        }
+      }
       const bandwidth = num(data.bandwidthGbps, 10);
       const utilization = num(data.utilizationPercent, 60);
       const users = parseInt(data.activeUsers, 10) || 1000;
@@ -136,6 +141,11 @@ export default function registerTelecommunicationsActions(registerLensAction) {
   registerLensAction("telecommunications", "signalQuality", (ctx, artifact, _params) => {
     try {
       const data = artifact?.data || {};
+      for (const f of ["snrDb", "bitErrorRate", "latencyMs", "jitterMs"]) {
+        if (data[f] !== undefined && data[f] !== null && !Number.isFinite(Number(data[f]))) {
+          return { ok: false, error: `invalid_${f}` };
+        }
+      }
       const snr = num(data.snrDb, 20);
       const ber = num(data.bitErrorRate, 1e-6);
       const latency = num(data.latencyMs, 30);
@@ -197,6 +207,11 @@ export default function registerTelecommunicationsActions(registerLensAction) {
   registerLensAction("telecommunications", "costPerLine", (ctx, artifact, _params) => {
     try {
       const data = artifact?.data || {};
+      for (const f of ["infrastructureCost", "monthlyOpsCost", "subscribers", "arpu"]) {
+        if (data[f] !== undefined && data[f] !== null && !Number.isFinite(Number(data[f]))) {
+          return { ok: false, error: `invalid_${f}` };
+        }
+      }
       const infrastructure = num(data.infrastructureCost, 0);
       const operations = num(data.monthlyOpsCost, 0);
       const subscribers = parseInt(data.subscribers, 10) || 1;
@@ -301,6 +316,11 @@ export default function registerTelecommunicationsActions(registerLensAction) {
       }
       if (!towers.length) {
         return { ok: false, error: "No towers — save towers first or pass params.towers" };
+      }
+      for (const f of ["rxSensitivityDbm", "mobileHeightM", "fadeMarginDb"]) {
+        if (params?.[f] !== undefined && params[f] !== null && !Number.isFinite(Number(params[f]))) {
+          return { ok: false, error: `invalid_${f}` };
+        }
       }
       const rxSensitivityDbm = num(params?.rxSensitivityDbm, -100); // typical handset
       const mobileHeightM = num(params?.mobileHeightM, 1.5);
@@ -793,6 +813,11 @@ export default function registerTelecommunicationsActions(registerLensAction) {
     try {
       const s = ensureState();
       const outages = list(s.outages, uid(ctx));
+      for (const f of ["windowDays", "slaTargetPercent"]) {
+        if (params?.[f] !== undefined && params[f] !== null && !Number.isFinite(Number(params[f]))) {
+          return { ok: false, error: `invalid_${f}` };
+        }
+      }
       const windowDays = Math.max(1, parseInt(params?.windowDays, 10) || 30);
       const slaTargetPct = num(params?.slaTargetPercent, 99.9);
       const windowMs = windowDays * 24 * 3600 * 1000;

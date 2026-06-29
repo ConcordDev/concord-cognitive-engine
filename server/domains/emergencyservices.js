@@ -28,6 +28,13 @@ export default function registerEmergencyServicesActions(registerLensAction) {
   // ─── Field calculators ──────────────────────────────────────────────
   registerLensAction("emergency-services", "triageAssess", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    // FAIL-CLOSED: a provided severity must be a finite, non-negative number.
+    // A poisoned value (NaN/Infinity/1e308/-1) must reject — for a triage
+    // decision we never silently fall back to a default severity.
+    if (data.severity !== undefined && data.severity !== null && data.severity !== "") {
+      const sv = Number(data.severity);
+      if (!Number.isFinite(sv) || sv < 0) return { ok: false, error: "invalid_severity" };
+    }
     const severity = intOr(data.severity, 3); // 1-5, 1 = most severe
     const vitals = data.vitals || {};
     const breathing = vitals.breathing !== false;

@@ -5,10 +5,16 @@ export default function registerWeldingActions(registerLensAction) {
   // leak NaN/Infinity into a computed result. parseFloat alone passes Infinity
   // through ("Infinity" → Infinity), so Number.isFinite is the real guard.
   const wFinite = (v, dflt) => { const n = parseFloat(v); return Number.isFinite(n) ? n : dflt; };
+  // Fail-CLOSED guard: a field PRESENT but non-finite (Infinity/NaN/1e999) must
+  // reject rather than fall back to a default — otherwise a poisoned input is
+  // laundered into a confident, wrong calculator result.
+  const wBad = (v) => v !== undefined && v !== null && v !== "" && !Number.isFinite(Number(v));
 
   registerLensAction("welding", "jointStrength", (ctx, artifact, _params) => {
     try {
     const data = artifact.data || {};
+    if (wBad(data.thickness)) return { ok: false, error: "invalid_thickness" };
+    if (wBad(data.length)) return { ok: false, error: "invalid_length" };
     const thickness = wFinite(data.thickness, 6);
     const weldType = (data.weldType || "fillet").toLowerCase();
     const material = (data.material || "mild-steel").toLowerCase();
@@ -31,6 +37,7 @@ export default function registerWeldingActions(registerLensAction) {
     const baseMetal = (data.baseMetal || data.material || "mild-steel").toLowerCase();
     const position = (data.position || "flat").toLowerCase();
     const jointType = (data.jointType || "fillet").toLowerCase();
+    if (wBad(data.thickness)) return { ok: false, error: "invalid_thickness" };
     const thickness = wFinite(data.thickness, 6);
     const rodDatabase = {
       "mild-steel": [
@@ -59,6 +66,10 @@ export default function registerWeldingActions(registerLensAction) {
 
   registerLensAction("welding", "heatInput", (ctx, artifact, _params) => {
     try {
+    if (wBad(artifact.data?.voltage)) return { ok: false, error: "invalid_voltage" };
+    if (wBad(artifact.data?.amperage ?? artifact.data?.current)) return { ok: false, error: "invalid_amperage" };
+    if (wBad(artifact.data?.travelSpeed)) return { ok: false, error: "invalid_travelSpeed" };
+    if (wBad(artifact.data?.efficiency)) return { ok: false, error: "invalid_efficiency" };
     const voltage = wFinite(artifact.data?.voltage, 25);
     const amperage = wFinite(artifact.data?.amperage ?? artifact.data?.current, 150);
     const travelSpeedRaw = wFinite(artifact.data?.travelSpeed, 5);

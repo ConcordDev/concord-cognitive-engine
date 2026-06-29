@@ -4,11 +4,21 @@
   "name": "oeeCalculate",
   "reads_artifact_data": true,
   "inputs": {
-    "plannedTime": { "type": "number" },
-    "downtime": { "type": "number" },
-    "idealCycleTime": { "type": "number" },
-    "totalPieces": { "type": "number" },
-    "goodPieces": { "type": "number" }
+    "plannedTime": {
+      "type": "number"
+    },
+    "downtime": {
+      "type": "number"
+    },
+    "idealCycleTime": {
+      "type": "number"
+    },
+    "totalPieces": {
+      "type": "number"
+    },
+    "goodPieces": {
+      "type": "number"
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -20,9 +30,48 @@
     "['world_class','typical','needs_improvement'].includes(output.result.rating)"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "plannedTime": 480, "downtime": 80, "idealCycleTime": 0.5, "totalPieces": 700, "goodPieces": 680 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "plannedTime": "NaN", "downtime": "oops", "idealCycleTime": null, "totalPieces": {}, "goodPieces": [] } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "plannedTime": 480,
+            "downtime": 80,
+            "idealCycleTime": 0.5,
+            "totalPieces": 700,
+            "goodPieces": 680
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "plannedTime": "NaN",
+            "downtime": "oops",
+            "idealCycleTime": null,
+            "totalPieces": {},
+            "goodPieces": []
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "ManufacturingActionPanel actOee() sends {artifact:{title,data:{plannedTime,downtime,idealCycleTime,totalPieces,goodPieces}}}; the dispatch peels the wrapper so the handler reads artifact.data.X. Renders oee/availability/performance/quality/rating. OEE = A×P×Q with the > 0 guards making poisoned-numeric input degrade to a finite, never-NaN result."
 }

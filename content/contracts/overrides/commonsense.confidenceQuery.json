@@ -3,10 +3,26 @@
   "domain": "commonsense",
   "name": "confidenceQuery",
   "inputs": {
-    "subject": { "type": "string", "required": true, "maxLength": 200 },
-    "minConfidence": { "type": "number", "required": false, "min": 0, "max": 1 },
-    "relation": { "type": "string", "required": false, "maxLength": 64 },
-    "useConceptNet": { "type": "boolean", "required": false }
+    "subject": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "minConfidence": {
+      "type": "number",
+      "required": false,
+      "min": 0,
+      "max": 1
+    },
+    "relation": {
+      "type": "string",
+      "required": false,
+      "maxLength": 64
+    },
+    "useConceptNet": {
+      "type": "boolean",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -20,11 +36,54 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    { "input": { "subject": "dog", "useConceptNet": false }, "expect": { "ok": true } },
-    { "input": { "subject": "dog", "minConfidence": 0.5, "useConceptNet": false }, "expect": { "ok": true } },
-    { "input": { "subject": "", "useConceptNet": false }, "expect": { "ok": false } },
-    { "input": { "subject": "cat", "minConfidence": "1e999", "useConceptNet": false }, "expect": { "ok": true } },
-    { "input": { "subject": "cat", "minConfidence": -1, "useConceptNet": false }, "expect": { "ok": true } }
+    {
+      "input": {
+        "subject": "dog",
+        "useConceptNet": false
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "subject": "dog",
+        "minConfidence": 0.5,
+        "useConceptNet": false
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "subject": "",
+        "useConceptNet": false
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "subject": "cat",
+        "minConfidence": "1e999",
+        "useConceptNet": false
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "subject": "cat",
+        "minConfidence": -1,
+        "useConceptNet": false
+      },
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler (registerLensAction). Dispatch key 'commonsense.confidenceQuery'. KnowledgeBaseWorkbench.tsx sends {subject,minConfidence,relation,useConceptNet} (flat params) and reads {subject,minConfidence,matches:[{subject,relation,relationLabel,object,confidence,source,origin}],count,localCount,conceptNetCount,interpretation} — verified aligned. Confidence-weighted query over the per-user fact store + optional ConceptNet edges (weight→saturating confidence 1-exp(-w/3)). minConfidence clamped [0,1] so poisoned '1e999'/-1 collapse; every match confidence FINITE 0..1; missing subject → {ok:false}; useConceptNet:false keeps it network-free + deterministic. ConceptNet failure degrades to local-only. Already behaviorally pinned by server/tests/commonsense-domain-parity.test.js; authored spec documents the component contract for the lens gate."
 }

@@ -22,9 +22,27 @@ function finiteNum(v, fallback = 0, min, max) {
   return out;
 }
 
+// Fail-CLOSED numeric guard for fields a caller supplied. Returns
+// { bad:true, field } when the field is PRESENT but non-finite
+// (NaN / Infinity / -Infinity / "1e999" / overflow), so the handler can
+// reject the whole request rather than silently substituting a default
+// and returning ok:true on poisoned input. An absent field (null/undefined)
+// is allowed through (bad:false) so empty/minimal inputs keep their default
+// behaviour. Optional requirePositive rejects values <= 0.
+function presentButBad(v, requirePositive = false) {
+  if (v == null || v === "") return false;
+  const n = typeof v === "number" ? v : parseFloat(v);
+  if (!Number.isFinite(n)) return true;
+  if (requirePositive && n <= 0) return true;
+  return false;
+}
+
 export default function registerEnergyActions(registerLensAction) {
   registerLensAction("energy", "consumptionAnalysis", (ctx, artifact, _params) => {
     const readings = Array.isArray(artifact.data?.readings) ? artifact.data.readings : [];
+    // Fail CLOSED on a poisoned (present-but-non-finite) costPerKWh rather than
+    // silently defaulting and returning ok:true with a wrong estimatedCost.
+    if (presentButBad(artifact.data?.costPerKWh)) return { ok: false, error: "invalid_costPerKWh" };
     if (readings.length === 0) return { ok: true, result: { message: "Add energy readings (kWh) to analyze consumption." } };
     // Clamp each reading to a finite, non-negative kWh. Poisoned entries
     // (Infinity / NaN / "1e999") collapse to 0 rather than corrupting the sum.
@@ -38,6 +56,11 @@ export default function registerEnergyActions(registerLensAction) {
   });
   registerLensAction("energy", "solarEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    // Fail CLOSED on present-but-poisoned numeric inputs (Infinity / NaN /
+    // "1e999"/overflow). Absent fields keep their physically-sane defaults.
+    if (presentButBad(data.roofAreaSqFt, true)) return { ok: false, error: "invalid_roofAreaSqFt" };
+    if (presentButBad(data.peakSunHours, true)) return { ok: false, error: "invalid_peakSunHours" };
+    if (presentButBad(data.monthlyUsageKWh, true)) return { ok: false, error: "invalid_monthlyUsageKWh" };
     // Clamp to physically-sane bounds so a poisoned ("1e999"/"Infinity") or
     // absurd input never cascades into Infinity panels/cost/payback.
     const roofSqFt = finiteNum(data.roofAreaSqFt, 1000, 100, 1_000_000);
@@ -56,8 +79,13 @@ export default function registerEnergyActions(registerLensAction) {
   });
   registerLensAction("energy", "carbonFootprint", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Fail-closed, non-negative finite inputs. Poison collapses to 0 so the
-    // CO2 totals stay finite (an Infinity here would render as null in the UI).
+    // Fail CLOSED on present-but-poisoned numeric inputs so the CO2 totals can
+    // never be an Infinity/NaN lie. Absent fields default to 0.
+    if (presentButBad(data.electricityKWh)) return { ok: false, error: "invalid_electricityKWh" };
+    if (presentButBad(data.naturalGasTherms)) return { ok: false, error: "invalid_naturalGasTherms" };
+    if (presentButBad(data.gasolineGallons)) return { ok: false, error: "invalid_gasolineGallons" };
+    if (presentButBad(data.flightMiles)) return { ok: false, error: "invalid_flightMiles" };
+    // Non-negative finite inputs (negatives clamp to 0).
     const electricityKWh = finiteNum(data.electricityKWh, 0, 0);
     const naturalGasTherms = finiteNum(data.naturalGasTherms, 0, 0);
     const gasolineGallons = finiteNum(data.gasolineGallons, 0, 0);
@@ -186,8 +214,13 @@ export default function registerEnergyActions(registerLensAction) {
 
   registerLensAction("energy", "gridStatus", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Fail-closed finite parse with sane bounds; these values are also echoed
-    // into output strings, so an unguarded Infinity would render "Infinity MW".
+    // Fail CLOSED on present-but-poisoned numerics; these values are echoed into
+    // output strings, so an unguarded Infinity would render "Infinity MW".
+    if (presentButBad(data.currentDemandMW)) return { ok: false, error: "invalid_currentDemandMW" };
+    if (presentButBad(data.totalCapacityMW)) return { ok: false, error: "invalid_totalCapacityMW" };
+    if (presentButBad(data.renewablePercent)) return { ok: false, error: "invalid_renewablePercent" };
+    if (presentButBad(data.gridFrequencyHz)) return { ok: false, error: "invalid_gridFrequencyHz" };
+    // Finite parse with sane bounds.
     const demandMW = finiteNum(data.currentDemandMW, 0, 0, 100_000_000);
     const capacityMW = finiteNum(data.totalCapacityMW, 0, 0, 100_000_000);
     const renewablePercent = finiteNum(data.renewablePercent, 0, 0, 100);
@@ -646,28 +679,34 @@ export default function registerEnergyActions(registerLensAction) {
   try {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = enAid(ctx);
+    // Fail CLOSED on a poisoned (present-but-non-finite) days window.
+    if (presentButBad(params.days, true)) return { ok: false, error: "invalid_days" };
     const days = Math.max(1, Math.min(365, Math.round(enNum(params.days, 30))));
     const cutoff = Date.now() - days * EN_DAY;
     const readings = (s.readings.get(userId) || []).filter((r) => new Date(r.date).getTime() >= cutoff);
     const devices = s.devices.get(userId) || [];
     if (devices.length === 0) {
-      return { ok: true, result: { devices: [], totalKwh: 0, attributedKwh: 0, unattributedKwh: 0, days } };
+      return { ok: true, result: { devices: [], totalKwh: 0, attributedKwh: 0, unattributedKwh: 0, wholeHomeKwh: 0, days } };
     }
+    // Coerce each reading's kwh through a finite guard so a stray non-finite
+    // value (from older/imported state) can never make a total an Infinity/NaN.
+    const fin = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
     const directByDevice = new Map();
     let wholeHomeKwh = 0, total = 0;
     for (const r of readings) {
-      total += r.kwh;
+      const kwh = fin(r.kwh);
+      total += kwh;
       if (r.deviceId) {
-        directByDevice.set(r.deviceId, Math.round(((directByDevice.get(r.deviceId) || 0) + r.kwh) * 1000) / 1000);
+        directByDevice.set(r.deviceId, Math.round(((directByDevice.get(r.deviceId) || 0) + kwh) * 1000) / 1000);
       } else {
-        wholeHomeKwh += r.kwh;
+        wholeHomeKwh += kwh;
       }
     }
     // Split whole-home consumption by nameplate-wattage weight.
-    const totalWattage = devices.reduce((a, d) => a + (d.wattage || 0), 0);
+    const totalWattage = devices.reduce((a, d) => a + fin(d.wattage), 0);
     const rows = devices.map((d) => {
       const direct = directByDevice.get(d.id) || 0;
-      const weight = totalWattage > 0 ? (d.wattage || 0) / totalWattage : (1 / devices.length);
+      const weight = totalWattage > 0 ? fin(d.wattage) / totalWattage : (1 / devices.length);
       const estimated = Math.round(wholeHomeKwh * weight * 1000) / 1000;
       const attributed = Math.round((direct + estimated) * 1000) / 1000;
       return {

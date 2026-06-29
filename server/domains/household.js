@@ -301,6 +301,11 @@ export default function registerHouseholdActions(registerLensAction) {
    */
   registerLensAction("household", "maintenanceDue", (ctx, artifact, params) => {
   try {
+    // Fail-CLOSED on a poisoned lookaheadDays — a NaN/Infinity/1e308 window must
+    // reject rather than collapse to a default and report a fabricated schedule.
+    if (params && params.lookaheadDays !== undefined && params.lookaheadDays !== null && params.lookaheadDays !== "" && !Number.isFinite(Number(params.lookaheadDays))) {
+      return { ok: false, error: "invalid_lookaheadDays" };
+    }
     const items = artifact.data.maintenanceItems || params.maintenanceItems || [];
     const lookaheadDays = finiteNum(params.lookaheadDays, 30);
     const now = new Date();
@@ -977,6 +982,11 @@ export default function registerHouseholdActions(registerLensAction) {
   registerLensAction("household", "allowance-summary", (ctx, _a, params = {}) => {
   try {
     const s = getCoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // Fail-CLOSED on a poisoned dollarsPerPoint — a NaN/Infinity/1e308 rate must
+    // reject rather than collapse to a default and report a fabricated allowance.
+    if (params && params.dollarsPerPoint !== undefined && params.dollarsPerPoint !== null && params.dollarsPerPoint !== "" && !Number.isFinite(Number(params.dollarsPerPoint))) {
+      return { ok: false, error: "invalid_dollarsPerPoint" };
+    }
     const home = getHomeState();
     const log = home ? hmList(home.choreLog, hmActor(ctx)) : [];
     const rate = Math.max(0, Math.min(10, finiteNum(params.dollarsPerPoint, 0.05)));

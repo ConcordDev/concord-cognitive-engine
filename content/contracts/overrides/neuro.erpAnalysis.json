@@ -3,10 +3,18 @@
   "domain": "neuro",
   "name": "erpAnalysis",
   "inputs": {
-    "epochs": { "type": "array" },
-    "signal": { "type": "object" },
-    "eventOnset": { "type": "number" },
-    "sampleRate": { "type": "number" }
+    "epochs": {
+      "type": "array"
+    },
+    "signal": {
+      "type": "object"
+    },
+    "eventOnset": {
+      "type": "number"
+    },
+    "sampleRate": {
+      "type": "number"
+    }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -23,10 +31,116 @@
     "output.ok === true || typeof output.error === 'string'"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "epochs": [{ "samples": [0,0,0,5,5,0,0,0], "onset": 0 }, { "samples": [0,0,1,5,4,1,0,0], "onset": 0 }], "sampleRate": 256 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "signal": { "name": "Fz", "samples": [0,1,2,3,4,3,2,1,0,1,2,3,4,3,2,1,0,1,2,3], "sampleRate": 10 }, "eventOnset": 0.5 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": {} } }, "expect": { "ok": false } },
-    { "input": { "artifact": { "data": { "signal": { "name": "Fz", "samples": ["abc", null, "Infinity", "NaN"], "sampleRate": 256 }, "eventOnset": 0.5 } } }, "expect": { "ok": false } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "epochs": [
+              {
+                "samples": [
+                  0,
+                  0,
+                  0,
+                  5,
+                  5,
+                  0,
+                  0,
+                  0
+                ],
+                "onset": 0
+              },
+              {
+                "samples": [
+                  0,
+                  0,
+                  1,
+                  5,
+                  4,
+                  1,
+                  0,
+                  0
+                ],
+                "onset": 0
+              }
+            ],
+            "sampleRate": 256
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "signal": {
+              "name": "Fz",
+              "samples": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                3,
+                2,
+                1,
+                0,
+                1,
+                2,
+                3,
+                4,
+                3,
+                2,
+                1,
+                0,
+                1,
+                2,
+                3
+              ],
+              "sampleRate": 10
+            },
+            "eventOnset": 0.5
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {}
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "signal": {
+              "name": "Fz",
+              "samples": [
+                "abc",
+                null,
+                "Infinity",
+                "NaN"
+              ],
+              "sampleRate": 256
+            },
+            "eventOnset": 0.5
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "Pure compute, reads artifact.data. TWO entry shapes: (1) artifact.data.epochs[] (EegWorkbench.doErp), (2) a single artifact.data.signal + eventOnset (NeuroActionPanel.actErp) — the continuous trace is sliced into a baseline-corrected pre/post epoch around the onset(s) (added 2026-06-28; previously a signal payload returned 'No epoch data.', a dead surface). SNR is CLAMPED to a finite sentinel (9999) so a silent baseline never leaks Infinity. The card reads epochCount/peakAmplitude/snr/snrQuality/baselineRms/peaks/identifiedComponents EXACTLY (the prior peakAmplitudeMicroV/peakLatencyMs/component/baseline fields were never returned — fixed 2026-06-28). A signal with no finite samples is rejected."
 }

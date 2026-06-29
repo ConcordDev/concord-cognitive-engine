@@ -34,6 +34,17 @@ export default function registerGameDesignActions(registerLensAction) {
       "battle-pass": { revenue: "seasonal", avgLTV: 40, retention: "higher", fairness: "moderate", development: "seasonal-content" },
     };
     const chosen = models[model] || models.premium;
+    // FAIL-CLOSED: a provided expectedDAU / conversionRate must be a finite,
+    // non-negative number. parseFloat("1e999") === Infinity would otherwise
+    // leak straight into projectedMonthlyRevenue.
+    if (data.expectedDAU !== undefined && data.expectedDAU !== null && data.expectedDAU !== "") {
+      const n = Number(data.expectedDAU);
+      if (!Number.isFinite(n) || n < 0) return { ok: false, error: "invalid_expectedDAU" };
+    }
+    if (data.conversionRate !== undefined && data.conversionRate !== null && data.conversionRate !== "") {
+      const n = Number(data.conversionRate);
+      if (!Number.isFinite(n) || n < 0) return { ok: false, error: "invalid_conversionRate" };
+    }
     const dau = parseInt(data.expectedDAU) || 10000;
     const conversionRate = model === "premium" ? 1 : parseFloat(data.conversionRate) || 0.05;
     const projectedMonthly = Math.round(dau * conversionRate * chosen.avgLTV / 12);

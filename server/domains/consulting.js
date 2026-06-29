@@ -20,8 +20,26 @@ export default function registerConsultingActions(registerLensAction) {
     const n = typeof v === "number" ? v : parseFloat(v);
     return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fallback;
   };
+  // Fail-CLOSED reject of poisoned numeric inputs (NaN/Infinity/1e308/negative)
+  // BEFORE any compute. finPos silently substitutes a fallback for a poisoned
+  // value, masking the bad input behind an ok:true; this rejects it so the
+  // caller gets an honest error instead of a fabricated-but-finite result.
+  // `allowNegative` admits the signed NPS band. An absent field is fine.
+  const POISON_MAX = 1e9;
+  function badNumericField(src, keys, allowNegative = false) {
+    if (src == null) return null;
+    for (const k of keys) {
+      const raw = src[k];
+      if (raw === undefined || raw === null || raw === "") continue;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || (!allowNegative && n < 0) || Math.abs(n) > POISON_MAX) return k;
+    }
+    return null;
+  }
   registerLensAction("consulting", "engagementScope", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    const badRate = badNumericField(data, ["hourlyRate"]);
+    if (badRate) return { ok: false, error: `invalid_${badRate}` };
     const deliverables = Array.isArray(data.deliverables) ? data.deliverables : [];
     const rate = finPos(data.hourlyRate, 200) || 200;
     const hours = deliverables.reduce((s, d) => s + (finPos(d && d.hours, 8) || 8), 0);
@@ -31,6 +49,8 @@ export default function registerConsultingActions(registerLensAction) {
   });
   registerLensAction("consulting", "utilizationRate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    const badField = badNumericField(data, ["billableHours", "totalHours"]);
+    if (badField) return { ok: false, error: `invalid_${badField}` };
     const billableHours = finPos(data.billableHours, 0);
     const totalHours = finPos(data.totalHours, 40) || 40; // guard divide-by-zero
     const rate = billableHours / totalHours;
@@ -46,6 +66,10 @@ export default function registerConsultingActions(registerLensAction) {
   });
   registerLensAction("consulting", "clientHealth", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    const badNps = badNumericField(data, ["nps"], true);
+    if (badNps) return { ok: false, error: `invalid_${badNps}` };
+    const badField = badNumericField(data, ["invoicesPaid", "invoicesTotal", "avgResponseDays"]);
+    if (badField) return { ok: false, error: `invalid_${badField}` };
     const nps = finSigned(data.nps, -100, 100, 0);
     const invoicesPaid = finPos(data.invoicesPaid, 0);
     const invoicesTotal = finPos(data.invoicesTotal, 1) || 1; // guard divide-by-zero

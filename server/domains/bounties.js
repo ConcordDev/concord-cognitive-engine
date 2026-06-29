@@ -189,6 +189,8 @@ export default function registerBountiesActions(registerLensAction) {
       if (sortBy === "reward") rows.sort((a, b) => poolFor(b) - poolFor(a));
       else if (sortBy === "submissions") rows.sort((a, b) => (b.submissions || []).length - (a.submissions || []).length);
       else rows.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      const badLimit = badNumericField(params, ["limit"]);
+      if (badLimit) return { ok: false, error: `invalid numeric field: ${badLimit}` };
       const limit = Math.min(100, Math.max(1, num(params.limit, 50)));
       return {
         ok: true,
@@ -390,6 +392,8 @@ export default function registerBountiesActions(registerLensAction) {
   registerLensAction("bounties", "leaderboard", (_ctx, _a, params = {}) => {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const badLimit = badNumericField(params, ["limit"]);
+      if (badLimit) return { ok: false, error: `invalid numeric field: ${badLimit}` };
       const limit = Math.min(50, Math.max(1, num(params.limit, 10)));
       const earners = [...s.earnings.entries()]
         .map(([userId, earnedCc]) => ({ userId, earnedCc, resolved: s.resolved.get(userId) || 0 }))

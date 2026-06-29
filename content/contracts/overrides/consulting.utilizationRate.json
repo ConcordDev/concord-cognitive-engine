@@ -3,8 +3,14 @@
   "domain": "consulting",
   "name": "utilizationRate",
   "inputs": {
-    "billableHours": { "type": "number", "required": false },
-    "totalHours": { "type": "number", "required": false }
+    "billableHours": {
+      "type": "number",
+      "required": false
+    },
+    "totalHours": {
+      "type": "number",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -17,11 +23,48 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": true } },
-    { "input": { "billableHours": 32, "totalHours": 40 }, "expect": { "ok": true } },
-    { "input": { "billableHours": "1e999", "totalHours": "Infinity" }, "expect": { "ok": true } },
-    { "input": { "billableHours": 5, "totalHours": 0 }, "expect": { "ok": true } },
-    { "input": { "billableHours": "NaN", "totalHours": "1e308" }, "expect": { "ok": true } }
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "billableHours": 32,
+        "totalHours": 40
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "billableHours": "1e999",
+        "totalHours": "Infinity"
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "billableHours": 5,
+        "totalHours": 0
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "billableHours": "NaN",
+        "totalHours": "1e308"
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler reading artifact.data. Pure compute; utilization % vs 75% target. POISON: hours via finPos; totalHours defaulted to 40 then guarded so a 0/non-finite divisor never yields Infinity/NaN. utilizationRate + variance stay FINITE. Pinned by server/tests/consulting-lens-macros.test.js."
 }

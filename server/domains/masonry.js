@@ -2,6 +2,9 @@
 export default function registerMasonryActions(registerLensAction) {
   registerLensAction("masonry", "materialEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    // Fail-CLOSED: a present-but-poisoned squareFootage rejects rather than
+    // silently flooring to 0 (so a poisoned input can't masquerade as empty).
+    if (data.squareFootage !== undefined && data.squareFootage !== null && data.squareFootage !== "" && !Number.isFinite(Number(data.squareFootage))) return { ok: false, error: "invalid_squareFootage" };
     // Fail-closed: a non-finite (NaN/Infinity/"abc") squareFootage floors to 0
     // so no NaN/Infinity leaks into any rendered number.
     const sqftRaw = parseFloat(data.squareFootage);
@@ -31,6 +34,10 @@ export default function registerMasonryActions(registerLensAction) {
   });
   registerLensAction("masonry", "wallStrength", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    // Fail-CLOSED: a present-but-poisoned height/thickness rejects rather than
+    // silently defaulting (a fabricated slenderness verdict is a safety lie).
+    if (data.heightFeet !== undefined && data.heightFeet !== null && data.heightFeet !== "" && !Number.isFinite(Number(data.heightFeet))) return { ok: false, error: "invalid_heightFeet" };
+    if (data.thicknessInches !== undefined && data.thicknessInches !== null && data.thicknessInches !== "" && !Number.isFinite(Number(data.thicknessInches))) return { ok: false, error: "invalid_thicknessInches" };
     // Fail-closed: non-finite height/thickness fall back to defaults so the
     // slenderness ratio can never become NaN/Infinity.
     const hRaw = parseFloat(data.heightFeet);

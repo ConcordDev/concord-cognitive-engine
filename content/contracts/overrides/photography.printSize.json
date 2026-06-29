@@ -3,9 +3,18 @@
   "domain": "photography",
   "name": "printSize",
   "inputs": {
-    "widthPixels": { "type": "number", "required": false },
-    "heightPixels": { "type": "number", "required": false },
-    "dpi": { "type": "number", "required": false }
+    "widthPixels": {
+      "type": "number",
+      "required": false
+    },
+    "heightPixels": {
+      "type": "number",
+      "required": false
+    },
+    "dpi": {
+      "type": "number",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -17,10 +26,58 @@
     "output.ok === false || ['professional','good','web-only'].includes(output.result.quality)"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "widthPixels": 4000, "heightPixels": 3000, "dpi": 300 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "widthPixels": 1024, "heightPixels": 768, "dpi": 150 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "widthPixels": "Infinity", "heightPixels": "1e999", "dpi": "NaN" } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "widthPixels": 4000,
+            "heightPixels": 3000,
+            "dpi": 300
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "widthPixels": 1024,
+            "heightPixels": 768,
+            "dpi": 150
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "widthPixels": "Infinity",
+            "heightPixels": "1e999",
+            "dpi": "NaN"
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler. NOT assassin-driven (LENS_ACTIONS only). Authored contract pinned by server/tests/photography-lens-macros.test.js. PhotographyActionPanel sends { artifact: { data: { widthPixels, heightPixels, dpi } } } (peeled → handler reads artifact.data.widthPixels/heightPixels/dpi). POISON: each value via parseInt|fallback (4000/3000/300) so 'Infinity'/'1e999'/'NaN' collapse to defaults; megapixels stays FINITE (never NaN/Infinity)."
 }

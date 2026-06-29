@@ -3,11 +3,26 @@
   "domain": "forestry",
   "name": "fireRisk",
   "inputs": {
-    "tempF": { "type": "number", "required": false },
-    "humidity": { "type": "number", "required": false },
-    "windMph": { "type": "number", "required": false },
-    "droughtIndex": { "type": "number", "required": false },
-    "fuelMoisturePercent": { "type": "number", "required": false }
+    "tempF": {
+      "type": "number",
+      "required": false
+    },
+    "humidity": {
+      "type": "number",
+      "required": false
+    },
+    "windMph": {
+      "type": "number",
+      "required": false
+    },
+    "droughtIndex": {
+      "type": "number",
+      "required": false
+    },
+    "fuelMoisturePercent": {
+      "type": "number",
+      "required": false
+    }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -19,10 +34,44 @@
     "output.ok === false || Array.isArray(output.result.factors)"
   ],
   "fuzz_cases": [
-    { "input": { "tempF": 100, "humidity": 10, "windMph": 30 }, "expect": { "ok": true } },
-    { "input": { "tempF": 60, "humidity": 70, "windMph": 3 }, "expect": { "ok": true } },
-    { "input": {}, "expect": { "ok": true } },
-    { "input": { "tempF": "Infinity", "humidity": "NaN", "windMph": "1e999", "droughtIndex": "1e999", "fuelMoisturePercent": "NaN" }, "expect": { "ok": true } }
+    {
+      "input": {
+        "tempF": 100,
+        "humidity": 10,
+        "windMph": 30
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "tempF": 60,
+        "humidity": 70,
+        "windMph": 3
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "tempF": "Infinity",
+        "humidity": "NaN",
+        "windMph": "1e999",
+        "droughtIndex": "1e999",
+        "fuelMoisturePercent": "NaN"
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler; dispatch key 'forestry.fireRisk'. ForestryActionPanel posts { tempF, humidity, windMph }; renders result.riskLevel + result.score. The PRIOR handler read temperatureF/humidityPercent/windSpeedMph (names the panel never sends → always defaulted) and returned riskScore (not the `score` the panel reads). Fixed: reads both the panel's names AND the legacy names, returns score === riskScore, clamps score to [0,100], emits a factors[] list. POISON: frFinite() rejects Infinity/NaN/1e999 → each weather term falls back to a sane default so the additive score is ALWAYS a finite int in [0,100] and riskLevel is one of low/moderate/high/extreme — no NaN band. Pinned by server/tests/forestry-lens-macros.test.js."
 }

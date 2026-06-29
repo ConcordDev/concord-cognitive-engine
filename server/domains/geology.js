@@ -27,6 +27,9 @@ export default function registerGeologyActions(registerLensAction) {
 
   registerLensAction("geology", "rockClassify", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    // Fail-CLOSED: a poisoned mohsHardness (NaN/Infinity/1e308/-1) must reject,
+    // not silently clamp to a default and still return ok:true. Mohs is 0–10.
+    if (data.mohsHardness != null) { const v = Number(data.mohsHardness); if (!Number.isFinite(v) || v < 0 || v > 10) return { ok: false, error: "invalid_mohsHardness" }; }
     // Mohs scale is 1–10; clamp to a sane band so a poisoned/huge value can't
     // leak and the durability/uses branches stay meaningful.
     const hardness = Math.max(0, Math.min(10, fin(data.mohsHardness, 0)));
@@ -38,8 +41,10 @@ export default function registerGeologyActions(registerLensAction) {
   });
   registerLensAction("geology", "seismicRisk", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Coordinates clamp to the real lat/lon envelope; a poisoned Infinity/NaN
-    // falls back to the default site rather than leaking null into `location`.
+    // Fail-CLOSED: a poisoned latitude/longitude must reject rather than clamp
+    // onto the default site and return ok:true with a bogus risk score.
+    if (data.latitude != null) { const v = Number(data.latitude); if (!Number.isFinite(v) || v < -90 || v > 90) return { ok: false, error: "invalid_latitude" }; }
+    if (data.longitude != null) { const v = Number(data.longitude); if (!Number.isFinite(v) || v < -180 || v > 180) return { ok: false, error: "invalid_longitude" }; }
     const lat = Math.max(-90, Math.min(90, fin(data.latitude, 37)));
     const lon = Math.max(-180, Math.min(180, fin(data.longitude, -122)));
     const soilType = (data.soilType || "rock").toLowerCase();
@@ -52,6 +57,10 @@ export default function registerGeologyActions(registerLensAction) {
   });
   registerLensAction("geology", "mineralId", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    // Fail-CLOSED: poisoned hardness/specificGravity must reject, not clamp onto
+    // a default and return ok:true. Mohs 0–10; SG 0–25 (osmium ~22.6 is densest).
+    if (data.hardness != null) { const v = Number(data.hardness); if (!Number.isFinite(v) || v < 0 || v > 10) return { ok: false, error: "invalid_hardness" }; }
+    if (data.specificGravity != null) { const v = Number(data.specificGravity); if (!Number.isFinite(v) || v < 0 || v > 25) return { ok: false, error: "invalid_specificGravity" }; }
     // Hardness 0–10 (Mohs), specific gravity 0–25 (osmium ~22.6 is the densest
     // natural solid) — clamp both so a poisoned numeric can't leak Infinity/NaN.
     const properties = { hardness: Math.max(0, Math.min(10, fin(data.hardness, 0))), streak: data.streak || "", cleavage: data.cleavage || "", fracture: data.fracture || "", specific_gravity: Math.max(0, Math.min(25, fin(data.specificGravity, 0))) };

@@ -3,13 +3,34 @@
   "domain": "geology",
   "name": "mineralId",
   "inputs": {
-    "name": { "type": "string", "required": false },
-    "hardness": { "type": "number", "required": false },
-    "streak": { "type": "string", "required": false },
-    "cleavage": { "type": "string", "required": false },
-    "fracture": { "type": "string", "required": false },
-    "specificGravity": { "type": "number", "required": false },
-    "color": { "type": "string", "required": false }
+    "name": {
+      "type": "string",
+      "required": false
+    },
+    "hardness": {
+      "type": "number",
+      "required": false
+    },
+    "streak": {
+      "type": "string",
+      "required": false
+    },
+    "cleavage": {
+      "type": "string",
+      "required": false
+    },
+    "fracture": {
+      "type": "string",
+      "required": false
+    },
+    "specificGravity": {
+      "type": "number",
+      "required": false
+    },
+    "color": {
+      "type": "string",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -21,11 +42,71 @@
     "output.ok === false || ['silicate-likely','carbonate-or-sulfate','clay-or-evaporite'].includes(output.result.classification)"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "name": "Quartz", "hardness": 7, "streak": "white", "cleavage": "none", "specificGravity": 2.65, "color": "clear" } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "name": "Unknown", "hardness": 3 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "hardness": "Infinity", "specificGravity": "1e999" } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "hardness": -5 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "name": "Quartz",
+            "hardness": 7,
+            "streak": "white",
+            "cleavage": "none",
+            "specificGravity": 2.65,
+            "color": "clear"
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "name": "Unknown",
+            "hardness": 3
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "hardness": "Infinity",
+            "specificGravity": "1e999"
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "hardness": -5
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler (dispatch key 'geology.mineralId'). Pure-compute mineral identification: a weighted confidence score (0–100) over which diagnostic tests were performed + a hardness-bucketed classification. Fail-CLOSED: hardness is finite-guarded + clamped to [0,10] (Mohs) and specificGravity to [0,25] (osmium ~22.6 is the densest natural solid), so a poisoned Infinity/NaN can never leak into properties. Pinned by server/tests/geology-lens-macros.test.js."
 }

@@ -3,7 +3,10 @@
   "domain": "household",
   "name": "allowance-summary",
   "inputs": {
-    "dollarsPerPoint": { "type": "number", "required": false }
+    "dollarsPerPoint": {
+      "type": "number",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -17,11 +20,44 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": true } },
-    { "input": { "dollarsPerPoint": 0.1 }, "expect": { "ok": true } },
-    { "input": { "dollarsPerPoint": "NaN" }, "expect": { "ok": true } },
-    { "input": { "dollarsPerPoint": "1e999" }, "expect": { "ok": true } },
-    { "input": { "dollarsPerPoint": 999 }, "expect": { "ok": true } }
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "dollarsPerPoint": 0.1
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "dollarsPerPoint": "NaN"
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "dollarsPerPoint": "1e999"
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "dollarsPerPoint": 999
+      },
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler (STATE-backed, per-user). Dispatch key 'household.allowance-summary'. AllowanceTracker sends flat dollarsPerPoint. Aggregates the real chore-completion log into per-person points, then allowance = points × rate. POISON: rate via finiteNum(...,0.05) so NaN/Infinity collapse to the 0.05 default; a genuinely-large FINITE rate (999) is clamped to the [0,10] ceiling — dollarsPerPoint + every allowance stays FINITE and bounded. Pinned by server/tests/household-lens-macros.test.js."
 }

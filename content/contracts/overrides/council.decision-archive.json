@@ -3,13 +3,38 @@
   "domain": "council",
   "name": "decision-archive",
   "inputs": {
-    "title": { "type": "string", "required": true, "maxLength": 256 },
-    "summary": { "type": "string", "required": false, "maxLength": 4000 },
-    "outcome": { "type": "string", "required": false, "maxLength": 32 },
-    "votesFor": { "type": "number", "required": false },
-    "votesAgainst": { "type": "number", "required": false },
-    "tags": { "type": "array", "required": false },
-    "decidedAt": { "type": "string", "required": false, "maxLength": 64 }
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 256
+    },
+    "summary": {
+      "type": "string",
+      "required": false,
+      "maxLength": 4000
+    },
+    "outcome": {
+      "type": "string",
+      "required": false,
+      "maxLength": 32
+    },
+    "votesFor": {
+      "type": "number",
+      "required": false
+    },
+    "votesAgainst": {
+      "type": "number",
+      "required": false
+    },
+    "tags": {
+      "type": "array",
+      "required": false
+    },
+    "decidedAt": {
+      "type": "string",
+      "required": false,
+      "maxLength": 64
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -22,10 +47,47 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": false } },
-    { "input": { "title": "Adopt remote-work policy", "summary": "Hybrid approved", "outcome": "passed", "votesFor": 7, "votesAgainst": 2, "tags": ["hr", "policy"] }, "expect": { "ok": true } },
-    { "input": { "title": "X", "votesFor": 1e999, "votesAgainst": -5 }, "expect": { "ok": true } },
-    { "input": { "title": "Y", "tags": "nope" }, "expect": { "ok": true } }
+    {
+      "input": {},
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "title": "Adopt remote-work policy",
+        "summary": "Hybrid approved",
+        "outcome": "passed",
+        "votesFor": 7,
+        "votesAgainst": 2,
+        "tags": [
+          "hr",
+          "policy"
+        ]
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "title": "X",
+        "votesFor": null,
+        "votesAgainst": -5
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "title": "Y",
+        "tags": "nope"
+      },
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler. Dispatch key 'council.decision-archive'. STATE-backed (per-user globalThis._concordSTATE.councilLens.decisions); whole body in try/catch → handler_error on any throw. DecisionArchive sends {title,summary,outcome,votesFor,votesAgainst,tags,decidedAt}; returns {decision:{id,title,summary,outcome,proposalId,meetingId,votesFor,votesAgainst,tags,decidedAt,createdAt}}. VALIDATION: missing title → ok:false. POISON: votesFor/votesAgainst via Math.max(0, parseInt||0) so 1e999/-5 collapse to a FINITE non-negative int; tags only kept when an array. Pinned by server/tests/council-lens-macros.test.js."
 }

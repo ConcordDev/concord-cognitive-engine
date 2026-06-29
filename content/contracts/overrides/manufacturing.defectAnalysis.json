@@ -4,8 +4,13 @@
   "name": "defectAnalysis",
   "reads_artifact_data": true,
   "inputs": {
-    "defects": { "type": "array", "maxLength": 100000 },
-    "inspected": { "type": "number" }
+    "defects": {
+      "type": "array",
+      "maxLength": 100000
+    },
+    "inspected": {
+      "type": "number"
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -16,9 +21,58 @@
     "['none','low','elevated','high'].includes(output.result.riskLevel)"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "inspected": 200, "defects": [{ "type": "scratch", "severity": "minor" }, { "type": "crack", "severity": "critical" }] } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "inspected": 50, "defects": [] } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "inspected": "bad", "defects": [{ "type": "x" }] } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "inspected": 200,
+            "defects": [
+              {
+                "type": "scratch",
+                "severity": "minor"
+              },
+              {
+                "type": "crack",
+                "severity": "critical"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "inspected": 50,
+            "defects": []
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "inspected": "bad",
+            "defects": [
+              {
+                "type": "x"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "page.tsx handleAction('defectAnalysis') runs against a saved artifact; handler reads artifact.data.defects + inspected. Renders defectCount/inspected/defectRatePct/byType/bySeverity/topDefect/riskLevel. Rate = defects/inspected×100; inspected coerces to total on garbage so the rate is always finite. critical>0 → high risk."
 }

@@ -6,9 +6,15 @@ export default function registerHVACActions(registerLensAction) {
   // ever leaks into a rendered number.
   const num = (v, d) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : d; };
   const intNum = (v, d) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.floor(n) : d; };
+  // Fail-CLOSED guard: a field PRESENT but non-finite (Infinity/NaN/1e999) must
+  // reject rather than silently coerce to a default — otherwise a poisoned input
+  // is laundered into a confident, wrong sizing/audit result.
+  const hvBad = (v) => v !== undefined && v !== null && v !== "" && !Number.isFinite(Number(v));
 
   registerLensAction("hvac", "loadCalculation", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    if (hvBad(data.squareFootage)) return { ok: false, error: "invalid_squareFootage" };
+    if (hvBad(data.stories)) return { ok: false, error: "invalid_stories" };
     const sqft = num(data.squareFootage, 1000);
     const stories = intNum(data.stories, 1);
     const insulation = String(data.insulation || "average").toLowerCase();
@@ -52,6 +58,9 @@ export default function registerHVACActions(registerLensAction) {
   });
   registerLensAction("hvac", "energyAudit", (ctx, artifact, _params) => {
     const data = artifact.data || {};
+    if (hvBad(data.monthlyBill)) return { ok: false, error: "invalid_monthlyBill" };
+    if (hvBad(data.squareFootage)) return { ok: false, error: "invalid_squareFootage" };
+    if (hvBad(data.systemAge)) return { ok: false, error: "invalid_systemAge" };
     const monthlyBill = num(data.monthlyBill, 0);
     const sqft = num(data.squareFootage, 1000);
     const systemAge = intNum(data.systemAge, 0);

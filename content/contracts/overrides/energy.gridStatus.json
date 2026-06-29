@@ -3,10 +3,22 @@
   "domain": "energy",
   "name": "gridStatus",
   "inputs": {
-    "currentDemandMW": { "type": "number", "required": false },
-    "totalCapacityMW": { "type": "number", "required": false },
-    "renewablePercent": { "type": "number", "required": false },
-    "gridFrequencyHz": { "type": "number", "required": false }
+    "currentDemandMW": {
+      "type": "number",
+      "required": false
+    },
+    "totalCapacityMW": {
+      "type": "number",
+      "required": false
+    },
+    "renewablePercent": {
+      "type": "number",
+      "required": false
+    },
+    "gridFrequencyHz": {
+      "type": "number",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -19,10 +31,43 @@
     "output.ok === false || typeof output.result.frequencyStable === 'boolean'"
   ],
   "fuzz_cases": [
-    { "input": { "currentDemandMW": 800, "totalCapacityMW": 1000, "renewablePercent": 35, "gridFrequencyHz": 60.01 }, "expect": { "ok": true } },
-    { "input": { "currentDemandMW": "1e999", "totalCapacityMW": "Infinity", "renewablePercent": "NaN", "gridFrequencyHz": "not-a-number" }, "expect": { "ok": true } },
-    { "input": { "currentDemandMW": -100, "totalCapacityMW": 0 }, "expect": { "ok": true } },
-    { "input": {}, "expect": { "ok": true } }
+    {
+      "input": {
+        "currentDemandMW": 800,
+        "totalCapacityMW": 1000,
+        "renewablePercent": 35,
+        "gridFrequencyHz": 60.01
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "currentDemandMW": "1e999",
+        "totalCapacityMW": "Infinity",
+        "renewablePercent": "NaN",
+        "gridFrequencyHz": "not-a-number"
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "currentDemandMW": -100,
+        "totalCapacityMW": 0
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'energy.gridStatus'. Reads artifact.data.{currentDemandMW,totalCapacityMW,renewablePercent,gridFrequencyHz}. POISON CONTRACT: these values are ECHOED into output STRINGS ('800 MW', '200 MW available'), so finiteNum() clamps each finite + non-negative BEFORE formatting — a poisoned 'Infinity' can never render 'Infinity MW'. utilization guards div-by-zero on zero capacity. Renders currentDemand/totalCapacity/utilization/renewableShare/gridFrequency/frequencyStable/status/reserves. Pinned by server/tests/energy-lens-macros.test.js."
 }

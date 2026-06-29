@@ -3,9 +3,15 @@
   "domain": "aviation",
   "name": "maintenanceAlert",
   "inputs": {
-    "totalTime": { "type": "number" },
-    "totalCycles": { "type": "number" },
-    "maintenanceItems": { "type": "array" }
+    "totalTime": {
+      "type": "number"
+    },
+    "totalCycles": {
+      "type": "number"
+    },
+    "maintenanceItems": {
+      "type": "array"
+    }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -17,10 +23,77 @@
     "output.ok === false || output.result.alerts.every(a => Array.isArray(a.reasons))"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "totalTime": 1200, "totalCycles": 800, "maintenanceItems": [{ "name": "100hr", "dueAtHours": 1100, "priority": "normal" }, { "name": "AD", "dueDate": "2020-01-01", "priority": "critical" }] } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "totalTime": 100, "maintenanceItems": [{ "name": "x", "dueAtHours": 500 }] } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "totalTime": "NaN", "maintenanceItems": [{ "name": "y", "dueAtHours": "Infinity" }] } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "totalTime": 1200,
+            "totalCycles": 800,
+            "maintenanceItems": [
+              {
+                "name": "100hr",
+                "dueAtHours": 1100,
+                "priority": "normal"
+              },
+              {
+                "name": "AD",
+                "dueDate": "2020-01-01",
+                "priority": "critical"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "totalTime": 100,
+            "maintenanceItems": [
+              {
+                "name": "x",
+                "dueAtHours": 500
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "totalTime": "NaN",
+            "maintenanceItems": [
+              {
+                "name": "y",
+                "dueAtHours": "Infinity"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "Maintenance alerting. Returns alerts[]/overdueCount/allClear/aircraft/registration; alerts sort critical-first (uses ?? not || so priority 'critical'→0 isn't demoted). The page's Action Result panel renders alerts/allClear (a render block was added — the maintenanceDue block guards on items+overdueCount and maintenanceAlert returns alerts not items, so its output never displayed). Fixed 2026-06-28."
 }

@@ -1,4 +1,17 @@
 export default function registerManufacturingActions(registerLensAction) {
+  // Fail-CLOSED numeric guard: true when a caller-supplied field is PRESENT
+  // but non-finite (NaN / Infinity / -Infinity / "1e999" / overflow) — or, when
+  // requirePositive, present and <= 0. Absent fields (null/undefined) pass so
+  // empty/minimal inputs keep their defaults. Lets a handler reject poisoned
+  // input instead of silently substituting a default and returning ok:true.
+  const presentButBad = (v, requirePositive = false) => {
+    if (v == null || v === "") return false;
+    const n = typeof v === "number" ? v : Number(v);
+    if (!Number.isFinite(n)) return true;
+    if (requirePositive && n <= 0) return true;
+    return false;
+  };
+
   registerLensAction("manufacturing", "scheduleOptimize", (ctx, artifact, _params) => {
     const workOrders = artifact.data?.workOrders || [artifact];
     const sorted = [...workOrders].sort((a, b) => {
@@ -28,11 +41,17 @@ export default function registerManufacturingActions(registerLensAction) {
   });
 
   registerLensAction("manufacturing", "oeeCalculate", (ctx, artifact, params) => {
-    const plannedTime = artifact.data?.plannedTime || params.plannedTime || 480;
-    const downtime = artifact.data?.downtime || params.downtime || 0;
-    const idealCycleTime = artifact.data?.idealCycleTime || params.idealCycleTime || 1;
-    const totalPieces = artifact.data?.totalPieces || params.totalPieces || 0;
-    const goodPieces = artifact.data?.goodPieces || params.goodPieces || totalPieces;
+    // Fail CLOSED on any present-but-poisoned numeric input — an Infinity here
+    // would silently produce a meaningless OEE and still report ok:true.
+    const ad = artifact.data || {};
+    for (const f of ["plannedTime", "downtime", "idealCycleTime", "totalPieces", "goodPieces"]) {
+      if (presentButBad(ad[f]) || presentButBad(params[f])) return { ok: false, error: `invalid_${f}` };
+    }
+    const plannedTime = ad.plannedTime || params.plannedTime || 480;
+    const downtime = ad.downtime || params.downtime || 0;
+    const idealCycleTime = ad.idealCycleTime || params.idealCycleTime || 1;
+    const totalPieces = ad.totalPieces || params.totalPieces || 0;
+    const goodPieces = ad.goodPieces || params.goodPieces || totalPieces;
     const runTime = plannedTime - downtime;
     const availability = plannedTime > 0 ? runTime / plannedTime : 0;
     const performance = (runTime > 0 && idealCycleTime > 0) ? (idealCycleTime * totalPieces) / runTime : 0;
@@ -53,6 +72,11 @@ export default function registerManufacturingActions(registerLensAction) {
 
   registerLensAction("manufacturing", "safetyRate", (ctx, artifact, params) => {
     const incidents = artifact.data?.incidents || [];
+    // Fail CLOSED: a poisoned hoursWorked (Infinity/NaN) would make the
+    // OSHA incident-rate denominator a lie while still reporting ok:true.
+    if (presentButBad(artifact.data?.hoursWorked, true) || presentButBad(params.hoursWorked, true)) {
+      return { ok: false, error: "invalid_hoursWorked" };
+    }
     const hoursWorked = artifact.data?.hoursWorked || params.hoursWorked || 200000;
     // OSHA-recordable flag — accept either `oshaRecordable` or the `recordable`
     // alias (both are explicit per-incident flags, never inferred from severity).
@@ -751,6 +775,11 @@ export default function registerManufacturingActions(registerLensAction) {
       if (bySeverity[sev] !== undefined) bySeverity[sev] += 1; else bySeverity.minor += 1;
     }
     const total = defects.length;
+    // Fail CLOSED on a present-but-poisoned inspected count — Infinity/NaN would
+    // make defectRatePct a non-finite lie while still returning ok:true.
+    if (presentButBad(artifact.data?.inspected) || presentButBad(params.inspected)) {
+      return { ok: false, error: "invalid_inspected" };
+    }
     const inspected = Number(artifact.data?.inspected ?? params.inspected ?? total) || total;
     const defectRate = inspected > 0 ? Math.round((total / inspected) * 10000) / 100 : 0;
     const topDefect = Object.entries(byType).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
@@ -786,8 +815,14 @@ export default function registerManufacturingActions(registerLensAction) {
   registerLensAction("manufacturing", "logDowntime", (ctx, artifact, params = {}) => {
     const machine = artifact.data?.machine || artifact.title || params.machine || "machine";
     const reason = String(params.reason || artifact.data?.reason || "unplanned");
-    // Fail CLOSED: a poisoned duration/plannedTime string must coerce to a safe
-    // numeric, never NaN (which would poison availabilityImpactPct).
+    // Fail CLOSED on present-but-poisoned duration/plannedTime (Infinity/NaN)
+    // rather than substituting a default and reporting a wrong impact as ok:true.
+    if (presentButBad(params.durationMinutes) || presentButBad(artifact.data?.durationMinutes)) {
+      return { ok: false, error: "invalid_durationMinutes" };
+    }
+    if (presentButBad(params.plannedTime, true) || presentButBad(artifact.data?.plannedTime, true)) {
+      return { ok: false, error: "invalid_plannedTime" };
+    }
     const safeNum = (v, fallback) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
     const durationMinutes = Math.max(0, safeNum(params.durationMinutes ?? artifact.data?.durationMinutes ?? 0, 0));
     const plannedTime = Math.max(1, safeNum(artifact.data?.plannedTime ?? params.plannedTime ?? 480, 480));

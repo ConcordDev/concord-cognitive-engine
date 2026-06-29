@@ -328,9 +328,22 @@ export default function registerBoardActions(registerLensAction) {
   registerLensAction("board", "burndownForecast", (ctx, artifact, params = {}) => {
   try {
     const sprints = safeArr(params.sprints ?? artifact?.data?.sprints);
+    // Fail-closed on poisoned numeric inputs (NaN/Infinity/1e308/-1): an explicit
+    // isFinite reject so a poisoned knob can never silently degrade to a default
+    // and return ok:true.
+    const _rpRaw = params.remainingPoints ?? artifact?.data?.remainingPoints;
+    for (const [name, raw] of [
+      ["remainingPoints", _rpRaw],
+      ["simulations", params.simulations],
+      ["sprintLengthDays", params.sprintLengthDays],
+    ]) {
+      if (raw !== undefined && raw !== null && !Number.isFinite(Number(raw))) {
+        return { ok: false, error: `invalid_${name}` };
+      }
+    }
     // finNum: a poisoned remainingPoints ("Infinity"/"1e999") must NOT pass the
     // > 0 gate and seed an infinite Monte-Carlo loop / non-finite output.
-    const remainingPoints = finNum(params.remainingPoints ?? artifact?.data?.remainingPoints, 0);
+    const remainingPoints = finNum(_rpRaw, 0);
     // Clamp the simulation knobs FINITE + bounded so a poisoned/huge value can't
     // hang the loop. 1..50_000 sims, 1..365-day sprints.
     const simulations = Math.max(1, Math.min(50000, finInt(params.simulations, 1000)));

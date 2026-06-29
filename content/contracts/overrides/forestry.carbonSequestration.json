@@ -3,10 +3,22 @@
   "domain": "forestry",
   "name": "carbonSequestration",
   "inputs": {
-    "species": { "type": "string", "required": false },
-    "acres": { "type": "number", "required": false },
-    "ageYears": { "type": "number", "required": false },
-    "treesPerAcre": { "type": "number", "required": false }
+    "species": {
+      "type": "string",
+      "required": false
+    },
+    "acres": {
+      "type": "number",
+      "required": false
+    },
+    "ageYears": {
+      "type": "number",
+      "required": false
+    },
+    "treesPerAcre": {
+      "type": "number",
+      "required": false
+    }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -18,10 +30,44 @@
     "output.ok === false || output.result.tonsPerYear === undefined || typeof output.result.tonsPerYear === 'number'"
   ],
   "fuzz_cases": [
-    { "input": { "species": "douglas-fir", "acres": 100, "ageYears": 30 }, "expect": { "ok": true } },
-    { "input": { "acres": 10, "ageYears": 10 }, "expect": { "ok": true } },
-    { "input": { "acres": 0, "ageYears": 30 }, "expect": { "ok": true } },
-    { "input": { "acres": 50, "ageYears": "Infinity", "treesPerAcre": "1e999" }, "expect": { "ok": true } }
+    {
+      "input": {
+        "species": "douglas-fir",
+        "acres": 100,
+        "ageYears": 30
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "acres": 10,
+        "ageYears": 10
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "acres": 0,
+        "ageYears": 30
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "acres": 50,
+        "ageYears": "Infinity",
+        "treesPerAcre": "1e999"
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler; dispatch key 'forestry.carbonSequestration'. ForestryActionPanel posts { species, acres, ageYears }; renders result.tonsPerYear + result.equivalentCars as NUMBERS. The PRIOR handler read artifact.data.acreage/standAge and returned annualSequestration as the STRING 'X tons CO2/year' (the panel reads numeric result.tonsPerYear → always undefined → rendered 'undefined t/yr'). Fixed: returns numeric tonsPerYear (acres × age-banded rate), lifetimeTons (acres × density × 0.015 × age), equivalentCars (tons/4.6). POISON: frFinite() rejects Infinity/NaN/1e999 → non-finite acres → 0 → empty-guidance; poisoned age/density default; every numeric output FINITE — no NaN/Infinity ever leaks into the carbon tile. Pinned by server/tests/forestry-lens-macros.test.js."
 }

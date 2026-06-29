@@ -4,10 +4,26 @@
   "name": "dosageCalculator",
   "reads_artifact_data": true,
   "inputs": {
-    "weightKg": { "type": "number", "min": 0, "max": 1000 },
-    "dosePerKg": { "type": "number", "min": 0, "max": 10000 },
-    "frequencyPerDay": { "type": "number", "min": 1, "max": 96 },
-    "maxDailyDose": { "type": "number", "min": 0, "max": 1000000 }
+    "weightKg": {
+      "type": "number",
+      "min": 0,
+      "max": 1000
+    },
+    "dosePerKg": {
+      "type": "number",
+      "min": 0,
+      "max": 10000
+    },
+    "frequencyPerDay": {
+      "type": "number",
+      "min": 1,
+      "max": 96
+    },
+    "maxDailyDose": {
+      "type": "number",
+      "min": 0,
+      "max": 1000000
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -19,9 +35,49 @@
     "output.ok === false || output.result.weightKg === undefined || Number.isFinite(output.result.weightKg)"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": { "weightKg": 70, "dosePerKg": 10, "frequencyPerDay": 3, "maxDailyDose": 4000 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "weightKg": 70, "frequencyPerDay": 2 } } }, "expect": { "ok": true } },
-    { "input": { "artifact": { "data": { "weightKg": "abc", "dosePerKg": "Infinity", "frequencyPerDay": "x", "maxDailyDose": null } } }, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "weightKg": 70,
+            "dosePerKg": 10,
+            "frequencyPerDay": 3,
+            "maxDailyDose": 4000
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "weightKg": 70,
+            "frequencyPerDay": 2
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "artifact": {
+          "data": {
+            "weightKg": "abc",
+            "dosePerKg": "Infinity",
+            "frequencyPerDay": "x",
+            "maxDailyDose": null
+          }
+        }
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "Reads weightKg/dosePerKg/frequencyPerDay/maxDailyDose from artifact.data (PharmacyActionPanel + page send {input: data}; the route mirrors data onto the virtual artifact). singleDose = round(weight×dosePerKg×100)/100 mg; dailyDose = round(min(single×freq, maxDaily)) mg; capped = dailyDose>maxDaily. FAIL-CLOSED: a non-finite weight/freq/max falls back to defaults (70 / 1 / unbounded); a non-finite or <=0 dosePerKg returns the honest 'Provide dose per kg' prompt rather than printing 'Infinity mg' / 'NaN mg'. Pure compute, no STATE, no NaN leak. Not medical advice — disclaimer always present."
 }

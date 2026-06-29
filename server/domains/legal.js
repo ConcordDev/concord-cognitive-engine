@@ -9,13 +9,21 @@ export default function registerLegalActions(registerLensAction) {
   };
 
   registerLensAction("legal", "deadlineCheck", (ctx, artifact, params) => {
+    // Fail-CLOSED: a poisoned daysAhead (NaN/±Infinity/1e308/-1) must not silently
+    // widen/break the upcoming-deadline window. Default when absent; reject when
+    // present-but-not-finite so the calculator never lies about what's "upcoming".
+    let daysAhead = 30;
+    if (params.daysAhead !== undefined && params.daysAhead !== null && params.daysAhead !== "") {
+      daysAhead = Number(params.daysAhead);
+      if (!Number.isFinite(daysAhead)) return { ok: false, error: "invalid_daysAhead" };
+    }
     const now = new Date();
     const items = artifact.data?.items || [];
     const upcoming = items.filter(i => {
       if (!i.deadline) return false;
       const dl = new Date(i.deadline);
       const daysUntil = (dl - now) / (1000 * 60 * 60 * 24);
-      return daysUntil >= 0 && daysUntil <= (params.daysAhead || 30);
+      return daysUntil >= 0 && daysUntil <= daysAhead;
     }).map(i => ({
       ...i,
       daysUntil: Math.ceil((new Date(i.deadline) - now) / (1000 * 60 * 60 * 24)),
@@ -177,7 +185,14 @@ export default function registerLegalActions(registerLensAction) {
   try {
     const timeEntries = artifact.data?.timeEntries || [];
     const expenses = artifact.data?.expenses || [];
-    const taxRate = finiteNum(params.taxRate, 0);
+    // Fail-CLOSED: a poisoned taxRate must not mint a NaN/Infinity/negative tax line.
+    // finiteNum already screens NaN/±Infinity/1e308 → fallback, but a finite-negative
+    // (-1) would slip through and produce a nonsense credit; reject it explicitly.
+    let taxRate = 0;
+    if (params.taxRate !== undefined && params.taxRate !== null && params.taxRate !== "") {
+      taxRate = Number(params.taxRate);
+      if (!Number.isFinite(taxRate) || taxRate < 0) return { ok: false, error: "invalid_taxRate" };
+    }
 
     let totalHours = 0;
     const lineItems = timeEntries.map((entry, idx) => {

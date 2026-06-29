@@ -3,9 +3,23 @@
   "domain": "commonsense",
   "name": "inferChain",
   "inputs": {
-    "maxHops": { "type": "number", "required": false, "min": 1, "max": 5 },
-    "minConfidence": { "type": "number", "required": false, "min": 0, "max": 1 },
-    "relation": { "type": "string", "required": false, "maxLength": 64 }
+    "maxHops": {
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 5
+    },
+    "minConfidence": {
+      "type": "number",
+      "required": false,
+      "min": 0,
+      "max": 1
+    },
+    "relation": {
+      "type": "string",
+      "required": false,
+      "maxLength": 64
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -19,11 +33,47 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": true } },
-    { "input": { "maxHops": 3, "minConfidence": 0.3 }, "expect": { "ok": true } },
-    { "input": { "maxHops": "1e999", "minConfidence": "Infinity" }, "expect": { "ok": true } },
-    { "input": { "maxHops": -1, "minConfidence": -1 }, "expect": { "ok": true } },
-    { "input": { "relation": "is_a" }, "expect": { "ok": true } }
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "maxHops": 3,
+        "minConfidence": 0.3
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "maxHops": "1e999",
+        "minConfidence": "Infinity"
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "maxHops": -1,
+        "minConfidence": -1
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "relation": "is_a"
+      },
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler (registerLensAction). Dispatch key 'commonsense.inferChain'. KnowledgeBaseWorkbench.tsx sends {maxHops,minConfidence} (flat params, NOT artifact-wrapped) and reads {inferences:[{subject,relation,relationLabel,object,confidence,hops,rationale,derivation:[{subject,relation,object,confidence}]}],count,baseFactCount,maxHops,minConfidence} — verified aligned. Transitive-relation closure over the per-user fact store: BFS chains seed.subject --rel--> ... up to maxHops, confidence = product of edge confidences, dedupes against known + derived. maxHops clamped [1,5], minConfidence clamped [0,1] so poisoned '1e999'/'Infinity'/-1 collapse to a valid bound; empty store → {inferences:[],count:0}. Already behaviorally pinned by server/tests/commonsense-domain-parity.test.js; authored spec documents the component contract for the lens gate."
 }

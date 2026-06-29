@@ -3,10 +3,22 @@
   "domain": "fitness",
   "name": "hr-zones",
   "inputs": {
-    "age": { "type": "number", "required": false },
-    "restingHr": { "type": "number", "required": false },
-    "maxHr": { "type": "number", "required": false },
-    "method": { "type": "string", "required": false }
+    "age": {
+      "type": "number",
+      "required": false
+    },
+    "restingHr": {
+      "type": "number",
+      "required": false
+    },
+    "maxHr": {
+      "type": "number",
+      "required": false
+    },
+    "method": {
+      "type": "string",
+      "required": false
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -17,10 +29,43 @@
     "output.ok === false || output.result.zones.every(z => Number.isFinite(z.lowBpm) && Number.isFinite(z.highBpm) && z.highBpm >= z.lowBpm)"
   ],
   "fuzz_cases": [
-    { "input": { "artifact": { "data": {} }, "age": 30, "restingHr": 60 }, "expect": { "ok": true } },
-    { "input": { "age": "Infinity", "restingHr": "1e999", "maxHr": "NaN" }, "expect": { "ok": true } },
-    { "input": { "age": -30, "restingHr": -60 }, "expect": { "ok": true } },
-    { "input": {}, "expect": { "ok": true } }
+    {
+      "input": {
+        "artifact": {
+          "data": {}
+        },
+        "age": 30,
+        "restingHr": 60
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "age": "Infinity",
+        "restingHr": "1e999",
+        "maxHr": "NaN"
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "age": -30,
+        "restingHr": -60
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    }
   ],
   "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'fitness.hr-zones'. Returns { zones[].{zone,name,lowBpm,highBpm,pctOfMax,...}, maxHr, restingHr, method }. POISON CONTRACT: ffnum() + clamps guarantee maxHr and every zone's lowBpm/highBpm are finite and monotone even on poisoned age/restingHr — HeartRateZones renders these bands. Pinned by server/tests/fitness-lens-macros.test.js. Path-3-only → assassin does not drive it; node:test is the real enforcement."
 }

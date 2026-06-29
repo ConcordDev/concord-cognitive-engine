@@ -3,11 +3,29 @@
   "domain": "automotive",
   "name": "vehicles-create",
   "inputs": {
-    "name": { "type": "string", "required": true, "maxLength": 160 },
-    "make": { "type": "string", "maxLength": 120 },
-    "model": { "type": "string", "maxLength": 120 },
-    "year": { "type": "number", "min": 1885, "max": 2100 },
-    "odometer": { "type": "number", "min": 0, "max": 100000000 }
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 160
+    },
+    "make": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "model": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "year": {
+      "type": "number",
+      "min": 1885,
+      "max": 2100
+    },
+    "odometer": {
+      "type": "number",
+      "min": 0,
+      "max": 100000000
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -19,11 +37,49 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    { "input": { "name": "Daily", "make": "Honda", "model": "Civic", "year": 2020, "odometer": 50000 }, "expect": { "ok": true } },
-    { "input": { "name": "Bare" }, "expect": { "ok": true } },
-    { "input": {}, "expect": { "ok": false } },
-    { "input": { "name": "" }, "expect": { "ok": false } },
-    { "input": { "name": "Poisoned", "odometer": "1e999" }, "expect": { "ok": true } }
+    {
+      "input": {
+        "name": "Daily",
+        "make": "Honda",
+        "model": "Civic",
+        "year": 2020,
+        "odometer": 50000
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "name": "Bare"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {},
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "name": ""
+      },
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "name": "Poisoned",
+        "odometer": "1e999"
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ],
   "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). STATE-backed per-user garage (globalThis._concordSTATE.automotiveLens.vehicles, keyed by ctx.actor.userId). Requires a non-empty name (fail-CLOSED on blank). odometer is clamped to Math.max(0, Number||0) so a poisoned '1e999'→Infinity→Number||0 collapses to 0 — never a negative or NaN odometer. odometerUnit/fuelUnit fall back to mi/gal on garbage. Sequence number V-NNN auto-increments per user. Degrade-graceful: returns {ok:false,error:'STATE unavailable'} when STATE absent — never throws. Pinned by server/tests/automotive-lens-macros.test.js."
 }

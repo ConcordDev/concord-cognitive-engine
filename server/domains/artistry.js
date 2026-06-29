@@ -26,7 +26,7 @@ export default function registerArtistryActions(registerLensAction) {
   try {
     const raw = artifact.data?.palette || [];
     if (raw.length === 0) {
-      return { ok: true, result: { message: "No palette data provided. Supply artifact.data.palette as an array of hex color strings or objects with { color, weight }.", colors: [], dominantHue: null, harmonyScore: 0 } };
+      return { ok: true, result: { message: "No palette data provided. Supply artifact.data.palette as an array of hex color strings or objects with { color, weight }.", colors: [], dominantHue: null, harmonyScore: 0, contrastRange: 0 } };
     }
 
     const colors = raw.map((entry) => {
@@ -100,10 +100,14 @@ export default function registerArtistryActions(registerLensAction) {
     const avgSat = Math.round(colors.reduce((s, c) => s + c.saturation * c.weight, 0) / totalWeight);
     const avgLight = Math.round(colors.reduce((s, c) => s + c.lightness * c.weight, 0) / totalWeight);
 
-    // Contrast ratio between lightest and darkest
-    const lightest = Math.max(...colors.map((c) => c.lightness));
-    const darkest = Math.min(...colors.map((c) => c.lightness));
-    const contrastRange = lightest - darkest;
+    // Contrast ratio between lightest and darkest. FAIL-CLOSED: any poisoned /
+    // non-finite lightness must not leak a non-finite contrastRange — coerce
+    // each lightness to a finite number and guard the difference.
+    const lightnesses = colors.map((c) => (Number.isFinite(c.lightness) ? c.lightness : 0));
+    const lightest = Math.max(...lightnesses);
+    const darkest = Math.min(...lightnesses);
+    const contrastRangeRaw = lightest - darkest;
+    const contrastRange = Number.isFinite(contrastRangeRaw) ? contrastRangeRaw : 0;
 
     // Temperature balance
     const warmCount = colors.filter((c) => c.temperature === "warm").length;

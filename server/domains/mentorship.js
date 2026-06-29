@@ -53,6 +53,12 @@ export default function registerMentorshipActions(registerLensAction) {
 
   registerLensAction("mentorship", "progressTrack", (ctx, artifact, _params) => {
     const data = artifact?.data || {};
+    // FAIL-CLOSED: a provided sessionsCompleted count that is poisoned
+    // (NaN/Infinity/1e308/-1) must reject rather than collapse to 0.
+    if (data.sessionsCompleted !== undefined && data.sessionsCompleted !== null && data.sessionsCompleted !== "") {
+      const sc = Number(data.sessionsCompleted);
+      if (!Number.isFinite(sc) || sc < 0) return { ok: false, error: "invalid_sessionsCompleted" };
+    }
     const goals = Array.isArray(data.goals) ? data.goals : [];
     // explicit sessions[] (component) OR a sessionsCompleted count (relation)
     const sessionsArr = Array.isArray(data.sessions) ? data.sessions : null;

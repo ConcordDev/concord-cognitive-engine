@@ -711,7 +711,15 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
    */
   registerLensAction("eco", "energy-estimate", (_ctx, _artifact, params = {}) => {
   try {
-    // Fail-CLOSED: every numeric is coerced to a finite value within physical
+    // Fail-CLOSED: reject poisoned numerics (NaN/Infinity/1e308/-1 out of range)
+    // outright instead of clamping onto a default and returning ok:true with a
+    // bogus kWh estimate. Each supplied field must be finite + within bounds.
+    if (params.lat != null) { const v = Number(params.lat); if (!Number.isFinite(v) || v < -90 || v > 90) return { ok: false, error: "invalid_lat" }; }
+    if (params.lng != null) { const v = Number(params.lng); if (!Number.isFinite(v) || v < -180 || v > 180) return { ok: false, error: "invalid_lng" }; }
+    if (params.systemKw != null) { const v = Number(params.systemKw); if (!Number.isFinite(v) || v <= 0 || v > 1e6) return { ok: false, error: "invalid_systemKw" }; }
+    if (params.tilt != null) { const v = Number(params.tilt); if (!Number.isFinite(v) || v < 0 || v > 90) return { ok: false, error: "invalid_tilt" }; }
+    if (params.azimuth != null) { const v = Number(params.azimuth); if (!Number.isFinite(v) || v < 0 || v > 360) return { ok: false, error: "invalid_azimuth" }; }
+    // Every numeric is coerced to a finite value within physical
     // bounds, so a poisoned Infinity/NaN/1e999 never leaks into the kWh totals.
     const lat = finiteNum(params.lat, 0, { min: -90, max: 90 });
     const lng = finiteNum(params.lng, 0, { min: -180, max: 180 });
