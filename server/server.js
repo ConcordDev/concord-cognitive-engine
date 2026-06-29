@@ -39299,6 +39299,13 @@ app.post("/api/lens/run", async (req, res) => {
     );
     if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
     const ctx = makeCtx(req);
+    // ConKay honest spine (Phase 2): let a genuinely multi-step macro report a
+    // real intermediate `macro:stage` tied to this run id. It only emits when a
+    // runId + resolved user exist (same gate as started/completed via
+    // emitMacroLife), so normal traffic and anon callers emit nothing. A macro
+    // calls ctx.emitMacroStage("judging") at a REAL sub-step — never a timer.
+    ctx.emitMacroStage = (stage, detail) =>
+      emitMacroLife("macro:stage", { stage: String(stage || ""), ...(detail ? { detail: String(detail) } : {}) });
     // H1: gate the whole dispatch (lens-action AND macro paths) for anonymous callers
     // in secured production — the runMacro ACL doesn't protect this surface (see
     // _lensActionForbiddenForAnon). Reads use the GET /api/lens/:domain[/:id] routes.

@@ -23,8 +23,10 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
 
 import { EVENT_SHAPES, validateEvent } from "../lib/event-shapes.js";
+import { verifyClaim } from "../lib/reason-verify.js";
 
 describe("ConKay macro lifecycle — EVENT_SHAPES registration", () => {
   it("registers macro:started, macro:stage, macro:completed", () => {
@@ -72,6 +74,33 @@ describe("ConKay macro lifecycle — payload validation (mirrors the handler emi
     const v = validateEvent("macro:completed", { runId: "r-1", domain: "math", action: "naturalQuery", ms: 5 });
     assert.equal(v.ok, false);
     assert.ok((v.missing || []).includes("ok"));
+  });
+});
+
+describe("ConKay macro lifecycle — reason.verify emits REAL macro:stage beats", () => {
+  it("verifyClaim reports the resolving_citations phase via onStage (Phase 2 wiring)", async () => {
+    const db = new Database(":memory:");
+    const stages = [];
+    // No citations + offline brains → only the always-real citation-resolution
+    // phase runs. The stage must fire from that real phase, not a timer.
+    const out = await verifyClaim(db, { claim: "2+2=4", citationIds: [], onStage: (s) => stages.push(s) });
+    assert.equal(out.ok, true);
+    assert.ok(stages.includes("resolving_citations"), `expected a resolving_citations beat, got ${JSON.stringify(stages)}`);
+    db.close();
+  });
+
+  it("a throwing onStage never breaks verification (decoration only)", async () => {
+    const db = new Database(":memory:");
+    const out = await verifyClaim(db, { claim: "x", citationIds: [], onStage: () => { throw new Error("boom"); } });
+    assert.equal(out.ok, true); // verdict still computed despite the bad hook
+    db.close();
+  });
+
+  it("the emitted stage names validate against the macro:stage event shape", () => {
+    for (const s of ["resolving_citations", "judging", "proving"]) {
+      const v = validateEvent("macro:stage", { runId: "r-1", domain: "reason", action: "verify", stage: s });
+      assert.equal(v.ok, true, `${s}: ${JSON.stringify(v)}`);
+    }
   });
 });
 
