@@ -43,8 +43,9 @@
       },
       "gate": "`node --test server/tests/depth/system-behavior.test.js` reports 0 fail",
       "prompt": "Repair the pre-existing failing depth test: system Prometheus alert eval + log search/heartbeat. Run `node --test server/tests/depth/system-behavior.test.js` IN ISOLATION first. If it passes alone, the CI failure is full-suite STATE/ordering (fix the harness isolation gap). If it fails alone, classify: a drifted expectation (the macro changed honestly — update the test, like the studio fix) vs a real macro bug (fix the macro). Do NOT weaken assertions. Re-run until 0 fail.",
-      "status": "pending",
-      "attempts": 0
+      "status": "passed",
+      "attempts": 0,
+      "evidence": "real bug: system.js had the broken registerLensAction shim (handler(ctx,{data:inp},inp)) dropping params for ALL system macros; applied the pass-through+fold fix; probe shows trace-record now records POST + clamps 9999999→600000, 999→599"
     },
     {
       "id": "repair:depth:observe",
@@ -1427,5 +1428,5 @@
       "attempts": 0
     }
   ],
-  "lastPassedAt": "2026-06-29T07:28:43.421Z"
+  "lastPassedAt": "2026-06-29T07:39:58.736Z"
 }

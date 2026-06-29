@@ -293,11 +293,26 @@ export default function registerSystemActions(register) {
   // (ctx, input) => ...)` registry call onto the verified `(ctx, artifact,
   // params)` handler bodies below, unchanged. `params` (and `artifact.data`)
   // carry the input — identical to what `/api/lens/run` would have built.
-  const registerLensAction = (domain, action, handler) =>
-    register(domain, action, (ctx, input = {}) => {
+  const registerLensAction = (domain, action, handler, ...extra) =>
+    register(domain, action, (ctx, input = {}, params) => {
+      // Every dispatcher (/api/lens/run, lens.run via runMacro, test/MCP runners)
+      // hands us a ready artifact envelope as arg1 (body under `.data`) PLUS the
+      // flat body as arg2; pass the envelope THROUGH (not re-wrapped) and fold the
+      // arg2 body INTO `.data` so the verified handlers — which read params.X and
+      // artifact.data?.X — see the input. (The prior shim re-wrapped as
+      // `{ data: inp }` and dropped arg2, so every params.X read undefined and the
+      // handlers fell to defaults — e.g. trace-record recorded method:"GET",
+      // durationMs:0 for any input via the lens.)
       const inp = input && typeof input === "object" ? input : {};
-      return handler(ctx, { data: inp }, inp);
-    });
+      const base = inp.artifact && typeof inp.artifact === "object"
+        ? inp.artifact
+        : (inp.data && typeof inp.data === "object"
+            ? inp
+            : { id: null, domain, type: "domain_action", data: inp, meta: {} });
+      const p = params && typeof params === "object" ? params : {};
+      const data = { ...(base.data && typeof base.data === "object" ? base.data : {}), ...p };
+      return handler(ctx, { ...base, data }, data);
+    }, ...extra);
 
   // 1. Live time-series — record one real process sample and return it.
   registerLensAction("system", "sample", (_ctx, _artifact, _params) => {
