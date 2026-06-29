@@ -41,12 +41,22 @@ export default function registerToolsActions(register) {
   // Legacy-convention shim: canonical register(ctx, input) → the verified
   // (ctx, artifact, params) handler bodies below, unchanged. `params` IS the
   // input; `artifact` is a virtual wrapper (no tools macro reads it).
-  const registerLensAction = (domain, action, handler) =>
-    register(domain, action, (ctx, input = {}) => {
+  const registerLensAction = (domain, action, handler, ...extra) =>
+    register(domain, action, (ctx, input = {}, params) => {
       const inp = input && typeof input === "object" ? input : {};
-      const artifact = { id: null, domain, type: "domain_action", data: inp, meta: {} };
-      return handler(ctx, artifact, inp);
-    });
+      // Dispatchers hand us a ready artifact envelope as arg1 (body under
+      // `.data`) + the flat body as arg2; pass the envelope through (not
+      // re-wrapped) and fold arg2 INTO `.data` so a caller that supplies the
+      // body only in arg2 (e.g. parity tests' fn(ctx,{data:{}},params)) is seen.
+      const base = inp.artifact && typeof inp.artifact === "object"
+        ? inp.artifact
+        : (inp.data && typeof inp.data === "object"
+            ? inp
+            : { id: null, domain, type: "domain_action", data: inp, meta: {} });
+      const p = params && typeof params === "object" ? params : {};
+      const data = { ...(base.data && typeof base.data === "object" ? base.data : {}), ...p };
+      return handler(ctx, { ...base, data }, data);
+    }, ...extra);
 
   // ── per-user STATE ───────────────────────────────────────────────
   function getToolsState() {

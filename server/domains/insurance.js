@@ -52,14 +52,30 @@ function badNumericField(input, keys) {
 export default function registerInsuranceActions(register) {
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
   // verified (ctx, artifact, params) handler bodies below, unchanged.
-  const registerLensAction = (domain, action, handler) =>
-    register(domain, action, (ctx, input = {}) => {
+  const registerLensAction = (domain, action, handler, ...extra) =>
+    register(domain, action, (ctx, input = {}, params) => {
       const inp = input && typeof input === "object" ? input : {};
-      const artifact = inp.artifact && typeof inp.artifact === "object"
+      // Every dispatcher (/api/lens/run, the in-process test/MCP runners, and
+      // the value-assertion harness) hands us a ready artifact envelope as arg1
+      // — { id, domain, type, data, meta } (live/test/MCP) or { domain, data }
+      // (harness) — with the caller's body under `.data`, plus the flat body as
+      // arg2. The verified handlers below read `artifact.data?.X` (and some
+      // merge `params`), so pass that envelope THROUGH, not re-wrapped, and fold
+      // the flat-body arg2 INTO `.data` so a caller that supplies the body only
+      // in arg2 (e.g. the *-domain-parity tests' `fn(ctx, {data:{}}, params)`)
+      // is still seen. (The prior shim always wrapped as `{ data: inp }`,
+      // double-nesting the body under artifact.data.data, so every
+      // `artifact.data?.X` read came back undefined and each handler silently
+      // fell to its defaults — e.g. riskScore returned 3×3=9 for any input.)
+      const base = inp.artifact && typeof inp.artifact === "object"
         ? inp.artifact
-        : { id: null, domain, type: "domain_action", data: inp, meta: {} };
-      return handler(ctx, artifact, inp);
-    });
+        : (inp.data && typeof inp.data === "object"
+            ? inp
+            : { id: null, domain, type: "domain_action", data: inp, meta: {} });
+      const p = params && typeof params === "object" ? params : {};
+      const data = { ...(base.data && typeof base.data === "object" ? base.data : {}), ...p };
+      return handler(ctx, { ...base, data }, data);
+    }, ...extra);
 
   registerLensAction("insurance", "coverageGap", (ctx, artifact, _params) => {
     const policies = artifact.data?.policies || [artifact.data];

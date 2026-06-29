@@ -76,7 +76,25 @@ const MODE_GUIDE = {
 
 const ALL_SEVERITIES = ["info", "warning", "alert", "critical"];
 
-export default function registerCognitionMacros(register) {
+export default function registerCognitionMacros(_register) {
+  // Canonical (ctx, input) handlers read a FLAT body. This module is registered
+  // on BOTH the MACROS path (runMacro → handler(ctx, body)) AND the LENS_ACTIONS
+  // path (domains/index.js → /api/lens/run → handler(ctx, virtualArtifact,
+  // body)). Normalise every dispatcher's call to hand the canonical handler the
+  // flat body — otherwise the lens-run path passes the artifact wrapper as
+  // `input` and every `input.X` reads undefined.
+  const register = (domain, action, handler, ...extra) =>
+    _register(domain, action, (ctx, input = {}, params) => {
+      const inp = input && typeof input === "object" ? input : {};
+      const p = params && typeof params === "object" ? params : {};
+      const isVirtual = inp.type === "domain_action" && inp.data && typeof inp.data === "object";
+      const isHarness = !isVirtual && typeof inp.domain === "string" && inp.data &&
+        typeof inp.data === "object" && Object.keys(inp).length === 2;
+      const body = (isVirtual || isHarness)
+        ? { ...inp.data, ...p }
+        : (Object.keys(p).length ? { ...inp, ...p } : inp);
+      return handler(ctx, body);
+    }, ...extra);
   // ── per-user STATE plumbing ───────────────────────────────────────────
   function getCogState() {
     const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
