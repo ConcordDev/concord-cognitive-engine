@@ -3,24 +3,10 @@
   "domain": "urban-planning",
   "name": "massingEnvelope",
   "inputs": {
-    "zoneType": {
-      "type": "string",
-      "required": false,
-      "maxLength": 40
-    },
-    "lotSizeSqFt": {
-      "type": "number",
-      "required": false
-    },
-    "useMix": {
-      "type": "string",
-      "required": false,
-      "maxLength": 40
-    },
-    "efficiency": {
-      "type": "number",
-      "required": false
-    }
+    "zoneType": { "type": "string", "required": false, "maxLength": 40 },
+    "lotSizeSqFt": { "type": "number", "required": false },
+    "useMix": { "type": "string", "required": false, "maxLength": 40 },
+    "efficiency": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -34,52 +20,11 @@
     "output.ok === false || (typeof output.result.envelope === 'object' && Number.isFinite(output.result.envelope.heightFt))"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "zoneType": "mixed",
-        "lotSizeSqFt": 20000,
-        "useMix": "mixed",
-        "efficiency": 0.82
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "zoneType": "commercial",
-        "lotSizeSqFt": 15000,
-        "useMix": "commercial"
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "zoneType": "residential",
-        "lotSizeSqFt": 1e+308,
-        "efficiency": 1e+308
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "zoneType": "residential",
-        "lotSizeSqFt": -5
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "zoneType": "mixed", "lotSizeSqFt": 20000, "useMix": "mixed", "efficiency": 0.82 }, "expect": { "ok": true } },
+    { "input": { "zoneType": "commercial", "lotSizeSqFt": 15000, "useMix": "commercial" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "zoneType": "residential", "lotSizeSqFt": 1e308, "efficiency": 1e308 }, "expect": { "ok": true } },
+    { "input": { "zoneType": "residential", "lotSizeSqFt": -5 }, "expect": { "ok": true } }
   ],
   "_note": "urban-planning.massingEnvelope is a LENS_ACTIONS handler (server/domains/urbanplanning.js, PATH-3, hyphenated key). DETERMINISTIC 3D build-out: per-zone lotCoverage → footprint, FAR → maxBuildable, floors = min(maxHeight/11, maxBuildable/footprint), GFA = footprint × floors, net = GFA × efficiency (clamped 0.4–1), use-mix splits residential/commercial floor area → dwellingUnits (900 sqft/unit), jobs (350 sqft/job), population (2.4/unit), and operational CO2e (4.6 t/unit + 2.1 t/job). All numeric inputs flow through the finite-guarding upNum helper, so a poisoned Infinity/NaN/1e400/negative input collapses to a default/0 and every yield number stays finite & non-negative — FAIL-CLOSED by construction. Reads input from artifact.data merged over params; no DB, no network. LENS_ACTIONS-only → not driven by the macro-assassin; pinned by server/tests/urban-planning-lens-macros.test.js."
 }

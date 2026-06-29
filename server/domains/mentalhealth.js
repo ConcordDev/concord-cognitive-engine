@@ -615,11 +615,6 @@ export default function registerMentalhealthActions(registerLensAction) {
   try {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = mhAid(ctx);
-    // Fail-CLOSED on a poisoned minSamples — a NaN/Infinity/1e308 threshold must
-    // reject rather than collapse to a default and report a fabricated analysis.
-    if (params.minSamples !== undefined && params.minSamples !== null && params.minSamples !== "" && !Number.isFinite(Number(params.minSamples))) {
-      return { ok: false, error: "invalid_minSamples" };
-    }
     const minSamples = Math.max(2, Math.round(mhNum(params.minSamples, 3)));
     const moods = (s.moods.get(userId) || []).filter((m) => Array.isArray(m.factors) && m.factors.length);
     if (moods.length < minSamples) {

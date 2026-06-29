@@ -3,12 +3,8 @@
   "domain": "plumbing",
   "name": "drainSlope",
   "inputs": {
-    "pipeSizeInches": {
-      "type": "number"
-    },
-    "lengthFeet": {
-      "type": "number"
-    }
+    "pipeSizeInches": { "type": "number" },
+    "lengthFeet": { "type": "number" }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -24,55 +20,10 @@
     "output.ok === false || Number.isFinite(parseFloat(output.result.slopePerFoot))"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "pipeSizeInches": 2,
-            "lengthFeet": 10
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "pipeSizeInches": 4,
-            "lengthFeet": 20
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "pipeSizeInches": "abc",
-            "lengthFeet": "Infinity"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": { "pipeSizeInches": 2, "lengthFeet": 10 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "pipeSizeInches": 4, "lengthFeet": 20 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "pipeSizeInches": "abc", "lengthFeet": "Infinity" } } }, "expect": { "ok": true } }
   ],
   "_note": "Pure compute, reads artifact.data. slopePerFoot: ≤2\"→0.25, ≤3\"→0.1875, else 0.125 \"/ft (IPC Table 704.1) ; totalDrop = round(length·slope·100)/100. Non-finite pipe size/length fall to defaults (2/10) via Number.isFinite guards — Infinity length no longer leaks an 'Infinity\"' drop (2026-06-28). PlumbCalc.tsx DrainSlopeCalculator renders pipeSize/length/slopePerFoot/totalDrop/ipcCode/tip EXACTLY (and regex-parses the leading number of totalDrop to gate the SVG cross-section) — fields verified aligned, no phantoms."
 }

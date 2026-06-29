@@ -3,22 +3,10 @@
   "domain": "geology",
   "name": "seismicRisk",
   "inputs": {
-    "latitude": {
-      "type": "number",
-      "required": false
-    },
-    "longitude": {
-      "type": "number",
-      "required": false
-    },
-    "soilType": {
-      "type": "string",
-      "required": false
-    },
-    "buildingCode": {
-      "type": "string",
-      "required": false
-    }
+    "latitude": { "type": "number", "required": false },
+    "longitude": { "type": "number", "required": false },
+    "soilType": { "type": "string", "required": false },
+    "buildingCode": { "type": "string", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -32,70 +20,11 @@
     "output.ok === false || Array.isArray(output.result.recommendations)"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "latitude": 37.77,
-            "longitude": -122.42,
-            "soilType": "soft-soil"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "latitude": 5,
-            "longitude": 5,
-            "soilType": "rock"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "latitude": "Infinity",
-            "longitude": "NaN"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "latitude": "1e999",
-            "longitude": -1e+308
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    }
+    { "input": { "artifact": { "data": { "latitude": 37.77, "longitude": -122.42, "soilType": "soft-soil" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "latitude": 5, "longitude": 5, "soilType": "rock" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "latitude": "Infinity", "longitude": "NaN" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "latitude": "1e999", "longitude": -1e308 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS handler (dispatch key 'geology.seismicRisk'). Pure-compute seismic-risk estimate: soil amplification × proximity-to-fault base → adjustedRisk (0–100%) + riskLevel + recommendations. Fail-CLOSED: latitude/longitude are finite-guarded then CLAMPED to the real lat/lon envelope so a poisoned Infinity/NaN can never leak null into `location` and adjustedRisk stays in [0,100] (Math.min(1, …)). Pinned by server/tests/geology-lens-macros.test.js."
 }

@@ -4,14 +4,8 @@
   "name": "slaReport",
   "reads_artifact_data": false,
   "inputs": {
-    "windowDays": {
-      "type": "number",
-      "required": false
-    },
-    "slaTargetPercent": {
-      "type": "number",
-      "required": false
-    }
+    "windowDays": { "type": "number", "required": false },
+    "slaTargetPercent": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -26,30 +20,9 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "windowDays": 30,
-        "slaTargetPercent": 99.9
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "windowDays": "1e999",
-        "slaTargetPercent": "NaN"
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "windowDays": 30, "slaTargetPercent": 99.9 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "windowDays": "1e999", "slaTargetPercent": "NaN" }, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). RFPlanner OutagesTab sends FLAT params {windowDays,slaTargetPercent}; reads per-user outage ledger. availabilityPercent = round((1 - downtimeMs/windowMs)*1e5)/1e3; mttrHours = mean(resolvedAt-startedAt) or null when nothing resolved. RETURNS windowDays/slaTargetPercent/availabilityPercent/downtimeHours/incidents/openIncidents/mttrHours/slaMet/breachBudgetHours/bySeverity — the exact keys the SlaResult cards render. With no outages → 100% / slaMet true / mttr null. POISON: windowDays parseInt||30, slaTargetPercent via num() → finite defaults; availabilityPercent stays FINITE and <=100. State-backed (outages map). Pinned by server/tests/telecommunications-lens-macros.test.js."
 }

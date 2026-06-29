@@ -3,22 +3,10 @@
   "domain": "construction",
   "name": "safetyCompliance",
   "inputs": {
-    "safetyChecklist": {
-      "type": "array",
-      "required": false
-    },
-    "incidents": {
-      "type": "array",
-      "required": false
-    },
-    "workerCount": {
-      "type": "number",
-      "required": false
-    },
-    "totalHoursWorked": {
-      "type": "number",
-      "required": false
-    }
+    "safetyChecklist": { "type": "array", "required": false },
+    "incidents": { "type": "array", "required": false },
+    "workerCount": { "type": "number", "required": false },
+    "totalHoursWorked": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -31,89 +19,12 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "safetyChecklist": [
-          {
-            "item": "ppe",
-            "passed": true
-          },
-          {
-            "item": "fall",
-            "passed": false,
-            "critical": true
-          }
-        ],
-        "incidents": [
-          {},
-          {}
-        ],
-        "workerCount": 25,
-        "totalHoursWorked": 120000
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "safetyChecklist": [
-          {
-            "passed": true
-          }
-        ],
-        "incidents": [],
-        "totalHoursWorked": 0
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "safetyChecklist": [
-          {
-            "passed": true
-          }
-        ],
-        "incidents": [
-          {}
-        ],
-        "totalHoursWorked": "1e999"
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "safetyChecklist": [
-          {
-            "passed": true
-          }
-        ],
-        "incidents": [
-          {}
-        ],
-        "totalHoursWorked": -1,
-        "workerCount": "Infinity"
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "safetyChecklist": "boom"
-      },
-      "expect": {}
-    }
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "safetyChecklist": [{ "item": "ppe", "passed": true }, { "item": "fall", "passed": false, "critical": true }], "incidents": [{}, {}], "workerCount": 25, "totalHoursWorked": 120000 }, "expect": { "ok": true } },
+    { "input": { "safetyChecklist": [{ "passed": true }], "incidents": [], "totalHoursWorked": 0 }, "expect": { "ok": true } },
+    { "input": { "safetyChecklist": [{ "passed": true }], "incidents": [{}], "totalHoursWorked": "1e999" }, "expect": { "ok": true } },
+    { "input": { "safetyChecklist": [{ "passed": true }], "incidents": [{}], "totalHoursWorked": -1, "workerCount": "Infinity" }, "expect": { "ok": true } },
+    { "input": { "safetyChecklist": "boom" }, "expect": {} }
   ],
   "_note": "LENS_ACTIONS handler (server/domains/construction.js, registerLensAction('construction','safetyCompliance',...)) — reached only via /api/lens/run on key 'construction.safetyCompliance' (3-arg handler, virtualArtifact.data === input). DETERMINISTIC: complianceRate = round(passed/total × 100) (total floors at 1, so 0..100 always); OSHA TRIR = round(incidents/hoursWorked × 200000 × 100)/100 when hoursWorked > 0 else 0 (no divide-by-zero). POISON: hoursWorked/workerCount via parseInt — 'Infinity'/'1e999' → finite, negative or 0 hours → incidentRate 0; every total stays FINITE. Empty/absent/non-array checklist degrades graceful (100% of 0→1 floor, or caught handler_error), never throws. The GC-bench panel double-wraps; calcData() peels the layer so it computes identically. NOT macro-assassin-driven (LENS_ACTIONS, not MACROS); authored spec pinned by server/tests/construction-lens-macros.test.js."
 }

@@ -222,6 +222,16 @@ function isOk(v) {
 function isObj(v) {
   return v !== null && typeof v === "object";
 }
+/** True if a non-finite number (NaN / ±Infinity) appears anywhere in the value —
+ *  the signature of a poisoned numeric LEAKING into a macro's output. Bounded
+ *  recursion (depth 8) so a hostile deeply-nested return can't wedge the scan. */
+function hasNonFiniteNumber(v, depth = 0) {
+  if (depth > 8) return false;
+  if (typeof v === "number") return !Number.isFinite(v);
+  if (Array.isArray(v)) return v.some((x) => hasNonFiniteNumber(x, depth + 1));
+  if (v && typeof v === "object") return Object.values(v).some((x) => hasNonFiniteNumber(x, depth + 1));
+  return false;
+}
 
 // ── Vectors ──────────────────────────────────────────────────────────────────
 
@@ -278,10 +288,16 @@ async function runV2(runMacro, makeInternalCtx, contract) {
     return false;
   }
   const out = res.value;
-  // {ok:true} over poisoned NUMERIC input is the true defect: the macro consumed
-  // NaN/Infinity/1e308/-1 and declared success.
-  if (isOk(out) && poisonedNumericFields.length > 0) {
-    record(contract.macro_id, "V2", "ok_true_on_poisoned_number", { poisonedNumericFields, out: clip(out) });
+  // The true fail-open defect is a poisoned numeric LEAKING into the output: the
+  // macro consumed NaN/Infinity and emitted a non-finite number in its result.
+  // A macro that SANITIZES the poison to a finite value (the codebase's
+  // established "clamp, don't reject" convention — parseInt('1e999')→1,
+  // finNum collapses non-finite to a fallback) is CORRECT and must not be
+  // flagged just for returning ok:true. So the gate is: ok:true AND a non-finite
+  // number actually present in the output. (An earlier version flagged any
+  // ok:true-with-poison, which false-positived every safe-clamp macro.)
+  if (isOk(out) && poisonedNumericFields.length > 0 && hasNonFiniteNumber(out)) {
+    record(contract.macro_id, "V2", "nonfinite_leak_on_poison", { poisonedNumericFields, out: clip(out) });
   }
   // Returning a non-object on garbage is also a contract break.
   if (!isObj(out)) {

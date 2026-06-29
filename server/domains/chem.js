@@ -871,6 +871,11 @@ export default function registerChemActions(registerLensAction) {
     } catch (_e) {
       return { ok: false, error: "could not parse formula" };
     }
+    // No parseable element (e.g. "x", lone lowercase/garbage) → reject rather
+    // than returning a zero-weight result that violates molecularWeight > 0.
+    if (!counts || Object.keys(counts).length === 0) {
+      return { ok: false, error: "no parseable element in formula" };
+    }
     let mw = 0;
     const components = [];
     for (const [sym, n] of Object.entries(counts)) {
@@ -884,10 +889,8 @@ export default function registerChemActions(registerLensAction) {
         contribution: Math.round(contribution * 1000) / 1000,
       });
     }
-    // FAIL-CLOSED: a formula with no resolvable atoms (e.g. "()", "0") yields a
-    // zero/non-positive weight — never claim a 0 g/mol molecule.
-    if (!Number.isFinite(mw) || mw <= 0 || components.length === 0) {
-      return { ok: false, error: "could not parse formula" };
+    if (!Number.isFinite(mw) || mw <= 0) {
+      return { ok: false, error: "no parseable element in formula" };
     }
     // Percent composition
     for (const c of components) {

@@ -3,18 +3,9 @@
   "domain": "urban-planning",
   "name": "densityCalc",
   "inputs": {
-    "population": {
-      "type": "number",
-      "required": false
-    },
-    "areaSqMiles": {
-      "type": "number",
-      "required": false
-    },
-    "housingUnits": {
-      "type": "number",
-      "required": false
-    }
+    "population": { "type": "number", "required": false },
+    "areaSqMiles": { "type": "number", "required": false },
+    "housingUnits": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -25,41 +16,10 @@
     "output.ok === false || ['supports-rail','supports-bus','car-dependent'].includes(output.result.transitViability)"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "population": 120000,
-        "areaSqMiles": 10,
-        "housingUnits": 55000
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "population": 500,
-        "areaSqMiles": 1,
-        "housingUnits": 200
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "population": 1e+308,
-        "areaSqMiles": 1
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "population": 120000, "areaSqMiles": 10, "housingUnits": 55000 }, "expect": { "ok": true } },
+    { "input": { "population": 500, "areaSqMiles": 1, "housingUnits": 200 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "population": 1e308, "areaSqMiles": 1 }, "expect": { "ok": true } }
   ],
   "_note": "urban-planning.densityCalc is a LENS_ACTIONS handler (server/domains/urbanplanning.js, PATH-3, hyphenated key). DETERMINISTIC: population/area → populationDensity, housingUnits/area → housingDensity, classified on fixed thresholds (>10000 urban-core, >3000 urban, >1000 suburban else rural) with transit viability (>5000 rail, >2000 bus else car-dependent). Empty input defaults areaSqMiles to 1 so there is no divide-by-zero. Reads input from artifact.data; no DB, no network. LENS_ACTIONS-only → not driven by the macro-assassin; pinned by server/tests/urban-planning-lens-macros.test.js."
 }

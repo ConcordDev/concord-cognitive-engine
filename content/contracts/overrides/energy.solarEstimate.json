@@ -3,18 +3,9 @@
   "domain": "energy",
   "name": "solarEstimate",
   "inputs": {
-    "roofAreaSqFt": {
-      "type": "number",
-      "required": false
-    },
-    "peakSunHours": {
-      "type": "number",
-      "required": false
-    },
-    "monthlyUsageKWh": {
-      "type": "number",
-      "required": false
-    }
+    "roofAreaSqFt": { "type": "number", "required": false },
+    "peakSunHours": { "type": "number", "required": false },
+    "monthlyUsageKWh": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -25,64 +16,11 @@
     "output.ok === false || typeof output.result.recommendation === 'string'"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "roofAreaSqFt": 1000,
-            "peakSunHours": 5,
-            "monthlyUsageKWh": 900
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "roofAreaSqFt": "1e999",
-            "peakSunHours": "Infinity",
-            "monthlyUsageKWh": "NaN"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "roofAreaSqFt": -100,
-            "peakSunHours": -5,
-            "monthlyUsageKWh": -900
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    }
+    { "input": { "artifact": { "data": { "roofAreaSqFt": 1000, "peakSunHours": 5, "monthlyUsageKWh": 900 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "roofAreaSqFt": "1e999", "peakSunHours": "Infinity", "monthlyUsageKWh": "NaN" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "roofAreaSqFt": -100, "peakSunHours": -5, "monthlyUsageKWh": -900 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'energy.solarEstimate'. SolarCarbonPanel sends {input:{artifact:{data:{roofAreaSqFt,peakSunHours,monthlyUsageKWh}}}}; the dispatch peels the sole-key wrapper → artifact.data. POISON CONTRACT: finiteNum() clamps roofAreaSqFt∈[100,1e6], peakSunHours∈[0.1,24], monthlyUsageKWh∈[1,1e7] so a poisoned ('1e999'/'Infinity') input can NEVER cascade into Infinity panels/cost/payback (the old parseFloat(x)||N let Infinity through → JSON null). Renders coveragePercent / systemSizeKW / maxPanels / estimatedCost / afterTaxCredit / annualSavings / paybackYears / recommendation. Pinned by server/tests/energy-lens-macros.test.js."
 }

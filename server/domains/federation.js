@@ -522,9 +522,6 @@ export default function registerFederationActions(registerLensAction) {
       const fs = fedState();
       const uid = userId(ctx);
       const samples = userMap(fs.metrics, uid, () => []);
-      if (p.sinceMs !== undefined && p.sinceMs !== null && !Number.isFinite(Number(p.sinceMs))) {
-        return { ok: false, error: "invalid_sinceMs" };
-      }
       const sinceMs = Number(p.sinceMs);
       const cutoff = Number.isFinite(sinceMs) && sinceMs > 0 ? now() - sinceMs : 0;
       const series = samples.filter((s) => s.at >= cutoff);

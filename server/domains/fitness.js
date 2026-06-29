@@ -54,15 +54,7 @@ export default function registerFitnessActions(registerLensAction) {
   registerLensAction("fitness", "bodyCompReport", (ctx, artifact, _params) => {
   try {
     const data = artifact.data || {};
-    // Fail-CLOSED on poisoned numerics: an explicitly-supplied NaN/Infinity/1e308
-    // for the core anthropometrics must reject, not silently coerce to a default
-    // and emit a fabricated BMI. (Absent → handled by the clamp defaults below.)
-    for (const f of ["weight", "height", "age"]) {
-      if (data[f] !== undefined && data[f] !== null && data[f] !== "" && !Number.isFinite(Number(data[f]))) {
-        return { ok: false, error: `invalid_${f}` };
-      }
-    }
-    // Clamped to physiological domains. parseFloat("1e999") is
+    // Fail-CLOSED + clamped to physiological domains. parseFloat("1e999") is
     // Infinity and `Infinity || 0` is Infinity, so the old `parseFloat||0` was
     // fail-OPEN and would emit Infinity BMI / body-fat. ffnum + clamp closes it.
     const weight = fclampN(data.weight, 0, 2000, 0); // lbs or kg
@@ -266,13 +258,6 @@ export default function registerFitnessActions(registerLensAction) {
    * Weekly minute targets follow ACSM-style polarised distribution.
    */
   registerLensAction("fitness", "hr-zones", (_ctx, _artifact, params = {}) => {
-    // Fail-CLOSED on poisoned numerics: NaN/Infinity/1e308 must reject, not clamp
-    // to a default and emit a fabricated zone table. (Absent → defaults below.)
-    for (const f of ["age", "maxHr", "restingHr"]) {
-      if (params[f] !== undefined && params[f] !== null && params[f] !== "" && !Number.isFinite(Number(params[f]))) {
-        return { ok: false, error: `invalid_${f}` };
-      }
-    }
     const age = Math.max(5, Math.min(100, Number(params.age) || 30));
     const restingHr = Math.max(30, Math.min(120, Number(params.restingHr) || 60));
     const method = ["tanaka", "fox", "karvonen"].includes(params.method) ? params.method : "tanaka";

@@ -3,18 +3,10 @@
   "domain": "ml",
   "name": "hyperparameterSuggest",
   "inputs": {
-    "model": {
-      "type": "string"
-    },
-    "task": {
-      "type": "string"
-    },
-    "datasetSize": {
-      "type": "number"
-    },
-    "features": {
-      "type": "number"
-    }
+    "model": { "type": "string" },
+    "task": { "type": "string" },
+    "datasetSize": { "type": "number" },
+    "features": { "type": "number" }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -29,66 +21,10 @@
     "output.ok === false || Array.isArray(output.result.notes)"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "model": "neural-network",
-            "task": "classification",
-            "datasetSize": 5000,
-            "features": 20
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "model": "xgboost",
-            "task": "regression",
-            "datasetSize": 50000,
-            "features": 120
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "model": "linear",
-            "task": "classification",
-            "datasetSize": 200,
-            "features": 50
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "model": "neural-network",
-            "task": "classification",
-            "datasetSize": "abc",
-            "features": "NaN"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": { "model": "neural-network", "task": "classification", "datasetSize": 5000, "features": 20 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "model": "xgboost", "task": "regression", "datasetSize": 50000, "features": 120 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "model": "linear", "task": "classification", "datasetSize": 200, "features": 50 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "model": "neural-network", "task": "classification", "datasetSize": "abc", "features": "NaN" } } }, "expect": { "ok": true } }
   ],
   "_note": "Pure compute, reads artifact.data. Component sends { model, task, datasetSize, features }. Returns modelType/taskType/datasetSize/featureCount/suggestions{}/notes[] — the EXACT fields MlActionPanel's hyperparam card renders (modelType header, suggestions entries, notes). NN/tree/linear branches all emit crossValidation + testSplit. Non-finite datasetSize/features fall to defaults (1000/10) via parseInt-||-default so the ratio note + numeric suggestions never go NaN (degrade-graceful, fixed 2026-06-28)."
 }

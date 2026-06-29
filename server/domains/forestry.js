@@ -38,13 +38,6 @@ export default function registerForestryActions(registerLensAction) {
   registerLensAction("forestry", "timberVolume", (ctx, artifact, params = {}) => {
     try {
       const src = (params && Object.keys(params).length ? params : artifact?.data) || {};
-      // Fail-CLOSED: reject poisoned numerics (Infinity/NaN/1e308/-1) up front so
-      // we never compute board-feet/valuation off garbage and still return ok:true.
-      for (const f of ["acres", "treeCount", "pricePerMBF"]) {
-        if (src[f] != null && !Number.isFinite(Number(src[f]))) return { ok: false, error: `invalid_${f}` };
-      }
-      const ageRaw = src.avgAgeYears ?? src.ageYears;
-      if (ageRaw != null && !Number.isFinite(Number(ageRaw))) return { ok: false, error: "invalid_avgAgeYears" };
       const species = String(src.species || "mixed");
       const acres = Math.max(0, frFinite(src.acres, 0));
       const ageYears = Math.max(0, frFinite(src.avgAgeYears ?? src.ageYears, 0));
@@ -77,18 +70,6 @@ export default function registerForestryActions(registerLensAction) {
   registerLensAction("forestry", "fireRisk", (ctx, artifact, params = {}) => {
     try {
       const src = (params && Object.keys(params).length ? params : artifact?.data) || {};
-      // Fail-CLOSED: reject poisoned numerics for any supplied weather field so a
-      // bogus Infinity/NaN can't silently land on a default and return ok:true.
-      const _firePairs = [
-        ["tempF", src.tempF ?? src.temperatureF],
-        ["humidity", src.humidity ?? src.humidityPercent],
-        ["windMph", src.windMph ?? src.windSpeedMph],
-        ["droughtIndex", src.droughtIndex],
-        ["fuelMoisturePercent", src.fuelMoisturePercent],
-      ];
-      for (const [name, v] of _firePairs) {
-        if (v != null && !Number.isFinite(Number(v))) return { ok: false, error: `invalid_${name}` };
-      }
       // Accept both the panel's (tempF/humidity/windMph) names AND the legacy
       // (temperatureF/humidityPercent/windSpeedMph) names; fail-closed to a sane
       // default for anything non-finite so the score never goes NaN.
@@ -127,11 +108,6 @@ export default function registerForestryActions(registerLensAction) {
   registerLensAction("forestry", "harvestPlan", (ctx, artifact, params = {}) => {
     try {
       const src = (params && Object.keys(params).length ? params : artifact?.data) || {};
-      // Fail-CLOSED: reject poisoned acres/age before building the schedule.
-      const acresRaw = src.acreage ?? src.acres;
-      if (acresRaw != null && !Number.isFinite(Number(acresRaw))) return { ok: false, error: "invalid_acres" };
-      const currentAgeRaw = src.currentAge ?? src.ageYears;
-      if (currentAgeRaw != null && !Number.isFinite(Number(currentAgeRaw))) return { ok: false, error: "invalid_currentAge" };
       const speciesRaw = String(src.species || "mixed");
       const acres = Math.max(0, frFinite(src.acreage ?? src.acres, 0));
       const currentAge = Math.max(0, frFinite(src.currentAge ?? src.ageYears, 0));
@@ -184,12 +160,6 @@ export default function registerForestryActions(registerLensAction) {
   registerLensAction("forestry", "carbonSequestration", (ctx, artifact, params = {}) => {
     try {
       const src = (params && Object.keys(params).length ? params : artifact?.data) || {};
-      // Fail-CLOSED: reject poisoned acres/age/density before estimating carbon.
-      const acresRaw = src.acreage ?? src.acres;
-      if (acresRaw != null && !Number.isFinite(Number(acresRaw))) return { ok: false, error: "invalid_acres" };
-      const ageRaw = src.standAge ?? src.ageYears;
-      if (ageRaw != null && !Number.isFinite(Number(ageRaw))) return { ok: false, error: "invalid_ageYears" };
-      if (src.treesPerAcre != null && !Number.isFinite(Number(src.treesPerAcre))) return { ok: false, error: "invalid_treesPerAcre" };
       const acres = Math.max(0, frFinite(src.acreage ?? src.acres, 0));
       const ageYears = Math.max(0, frFinite(src.standAge ?? src.ageYears, 0));
       const density = Math.max(0, Math.round(frFinite(src.treesPerAcre, 200)));

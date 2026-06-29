@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-06-29T02:19:12.593Z",
+  "generatedAt": "2026-06-29T03:26:48.524Z",
   "totals": {
     "macrosEnumerated": 14514,
     "headlessSafeDriven": 13422,
     "headlessUnsafeSkipped": 1092,
-    "violations": 13,
+    "violations": 12,
     "hardCrashes": 0
   },
   "byVector": {
     "V1": 0,
     "V2": 6,
-    "V3": 7,
+    "V3": 6,
     "META": 0,
     "HARD": 0
   },
@@ -65,20 +65,15 @@
       "vector": "V3",
       "reason": "invariant_input_timeout"
     },
-    "3dd5a99424fa011d": {
-      "macro_id": "forestry.nifc-fire-perimeters",
+    "b543bf6827d3f6c2": {
+      "macro_id": "government.budget-breakdown",
       "vector": "V3",
       "reason": "invariant_input_timeout"
     },
-    "5ca86dbe505713cb": {
-      "macro_id": "home-improvement.feed",
+    "d9ef3f3d839c7749": {
+      "macro_id": "travel.feed",
       "vector": "V2",
       "reason": "fuzz_timeout"
-    },
-    "0366ac880ed07828": {
-      "macro_id": "realestate.feed",
-      "vector": "V3",
-      "reason": "invariant_input_timeout"
     }
   }
 }

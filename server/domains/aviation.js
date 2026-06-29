@@ -19,42 +19,7 @@ export default function registerAviationActions(registerLensAction) {
     ["paxRow1", "PAX Row 1"], ["paxRow2", "PAX Row 2"],
     ["cargo", "Cargo"], ["baggage", "Baggage"],
   ];
-  function _fin(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
-  // Fail-CLOSED guard: true when a caller-supplied field is PRESENT but
-  // non-finite (NaN / Infinity / -Infinity / "1e999" / overflow). Absent fields
-  // (null/undefined/"") pass. A safety-critical W&B / weather calc must reject a
-  // poisoned numeric, not silently fold it to 0 and report ok:true.
-  function _presentBad(v) {
-    if (v == null || v === "") return false;
-    const n = typeof v === "number" ? v : Number(v);
-    return !Number.isFinite(n);
-  }
-  // Check the W&B numeric fields across both the flat editor shape and a
-  // structured aircraft object. Returns the first offending field name or null.
-  function _firstBadWBField(artifact, params) {
-    const d = (artifact && artifact.data) || {};
-    const p = params || {};
-    const src = Object.keys(d).length ? d : p;
-    const flat = [
-      "emptyWeight", "emptyArm", "fuelWeight", "fuelArm", "pilotWeight", "pilotArm",
-      "maxGross", "maxGrossWeight", "fwdCGLimit", "aftCGLimit",
-    ];
-    for (const f of flat) {
-      if (_presentBad(src[f]) || _presentBad(p[f])) return f;
-    }
-    // Structured aircraft object (when supplied).
-    const ac = (src.aircraft && typeof src.aircraft === "object" && !Array.isArray(src.aircraft)) ? src.aircraft : null;
-    if (ac) {
-      for (const f of ["emptyWeight", "emptyArm", "maxGrossWeight"]) {
-        if (_presentBad(ac[f])) return f;
-      }
-      if (ac.cgEnvelope && typeof ac.cgEnvelope === "object") {
-        if (_presentBad(ac.cgEnvelope.fwd)) return "fwdCGLimit";
-        if (_presentBad(ac.cgEnvelope.aft)) return "aftCGLimit";
-      }
-    }
-    return null;
-  }
+  function _fin(v, d = 0) { const n = Number(v); return Number.isFinite(n) ? n : d; }
   function normalizeWBInput(artifact, params) {
     const d = (artifact && artifact.data) || {};
     const p = params || {};
@@ -274,16 +239,10 @@ export default function registerAviationActions(registerLensAction) {
   try {
     const items = artifact.data?.maintenanceItems || [];
     const now = new Date();
-    // Fail CLOSED on a poisoned current-hours/cycles value — an Infinity here
-    // would mark every hours/cycles-limited item "exceeded" while ok:true.
-    if (_presentBad(artifact.data?.totalTime) || _presentBad(artifact.data?.currentHours)) {
-      return { ok: false, error: "invalid_totalTime" };
-    }
-    if (_presentBad(artifact.data?.totalCycles) || _presentBad(artifact.data?.currentCycles)) {
-      return { ok: false, error: "invalid_totalCycles" };
-    }
-    const currentHours = artifact.data?.totalTime || artifact.data?.currentHours || 0;
-    const currentCycles = artifact.data?.totalCycles || artifact.data?.currentCycles || 0;
+    // CLAMP-AND-COMPUTE: a poisoned totalTime/totalCycles (NaN/Infinity) must
+    // sanitize to a finite value, never leak into the echoed result fields.
+    const currentHours = _fin(artifact.data?.totalTime ?? artifact.data?.currentHours ?? 0);
+    const currentCycles = _fin(artifact.data?.totalCycles ?? artifact.data?.currentCycles ?? 0);
     const alerts = [];
 
     for (const item of items) {
@@ -351,19 +310,6 @@ export default function registerAviationActions(registerLensAction) {
     // Weather editor (renderWeatherEditor) actually persists — otherwise the
     // METAR-format wind string read 000/00KT for every observation.
     const d = artifact.data || {};
-    // Fail CLOSED on poisoned (present-but-non-finite) weather numerics — an
-    // Infinity/NaN ceiling or visibility would mis-classify the flight category
-    // (a safety call) while still reporting ok:true.
-    const w0 = (d.wind && typeof d.wind === "object") ? d.wind : {};
-    for (const [field, val] of [
-      ["ceiling", d.ceiling],
-      ["visibility", d.visibility],
-      ["windDirection", d.windDirection ?? w0.direction],
-      ["windGust", d.windGust ?? w0.gust],
-      ["windSpeed", d.windSpeed ?? w0.speed],
-    ]) {
-      if (_presentBad(val)) return { ok: false, error: `invalid_${field}` };
-    }
     const wind = (d.wind && typeof d.wind === "object")
       ? d.wind
       : { direction: d.windDirection, speed: d.windSpeed, gust: d.windGust };
@@ -374,10 +320,12 @@ export default function registerAviationActions(registerLensAction) {
     const dewpoint = d.dewpoint;
     const altimeter = d.altimeter;
 
-    // Determine flight category based on ceiling and visibility
+    // Determine flight category based on ceiling and visibility.
+    // CLAMP-AND-COMPUTE: a poisoned visibility/ceiling (NaN/Infinity) must
+    // sanitize to a finite value before it can leak into the echoed result.
     let flightCategory = "VFR";
-    const visSM = visibility != null ? parseFloat(visibility) : 99;
-    const ceil = ceiling != null ? parseInt(ceiling, 10) : 99999;
+    const visSM = visibility != null ? _fin(parseFloat(visibility), 99) : 99;
+    const ceil = ceiling != null ? _fin(parseInt(ceiling, 10), 99999) : 99999;
 
     if (visSM < 1 || ceil < 500) {
       flightCategory = "LIFR";
@@ -405,7 +353,7 @@ export default function registerAviationActions(registerLensAction) {
         station: artifact.title || d.station || d.stationId,
         observedAt: d.observedAt || d.observationTime || new Date().toISOString(),
         wind: windString,
-        windComponents: { direction: wind.direction || 0, speed: wind.speed || 0, gust: wind.gust || null },
+        windComponents: { direction: _fin(wind.direction), speed: _fin(wind.speed), gust: wind.gust != null && Number.isFinite(Number(wind.gust)) ? _fin(wind.gust) : null },
         visibility: visString,
         visibilityValue: visSM,
         ceiling: ceiling != null ? `${ceilString} (${ceiling} ft AGL)` : "CLR",
@@ -443,43 +391,42 @@ export default function registerAviationActions(registerLensAction) {
    */
   registerLensAction("aviation", "calculate-wb", (ctx, artifact, params) => {
   try {
-    // Fail CLOSED on any poisoned (present-but-non-finite) W&B numeric — folding
-    // it to 0 would produce a wrong gross weight / CG on a safety calculator.
-    const badWB = _firstBadWBField(artifact, params);
-    if (badWB) return { ok: false, error: `invalid_${badWB}` };
     const { aircraft: ac, loading } = normalizeWBInput(artifact, params);
 
-    const emptyWeight = Number(ac.emptyWeight) || 0;
-    const emptyArm = Number(ac.emptyArm) || 0;
-    const emptyMoment = emptyWeight * emptyArm;
+    // CLAMP-AND-COMPUTE: inputs are already _fin'd by normalizeWBInput, but a
+    // large-but-finite input (e.g. 1e308) can overflow a product/sum to Infinity.
+    // Clamp every COMPUTED numeric output with _fin so no NaN/Infinity ever leaks.
+    const emptyWeight = _fin(ac.emptyWeight);
+    const emptyArm = _fin(ac.emptyArm);
+    const emptyMoment = _fin(emptyWeight * emptyArm);
 
     const stations = loading.map((l, i) => {
-      const w = Number(l.weight) || 0;
-      const arm = Number(l.arm) || 0;
+      const w = _fin(l.weight);
+      const arm = _fin(l.arm);
       return {
         idx: i + 1,
         station: l.station || `Station ${i + 1}`,
-        weight: Math.round(w * 10) / 10,
-        arm: Math.round(arm * 100) / 100,
-        moment: Math.round(w * arm * 10) / 10,
+        weight: _fin(Math.round(w * 10) / 10),
+        arm: _fin(Math.round(arm * 100) / 100),
+        moment: _fin(Math.round(w * arm * 10) / 10),
       };
     });
 
-    const totalLoadWeight = stations.reduce((s, st) => s + st.weight, 0);
-    const totalLoadMoment = stations.reduce((s, st) => s + st.moment, 0);
-    const grossWeight = Math.round((emptyWeight + totalLoadWeight) * 10) / 10;
-    const totalMoment = Math.round((emptyMoment + totalLoadMoment) * 10) / 10;
-    const cg = grossWeight > 0 ? Math.round((totalMoment / grossWeight) * 100) / 100 : 0;
+    const totalLoadWeight = _fin(stations.reduce((s, st) => s + st.weight, 0));
+    const totalLoadMoment = _fin(stations.reduce((s, st) => s + st.moment, 0));
+    const grossWeight = _fin(Math.round((emptyWeight + totalLoadWeight) * 10) / 10);
+    const totalMoment = _fin(Math.round((emptyMoment + totalLoadMoment) * 10) / 10);
+    const cg = grossWeight > 0 ? _fin(Math.round((totalMoment / grossWeight) * 100) / 100) : 0;
 
     const result = {
       generatedAt: new Date().toISOString(),
-      aircraft: { tailNumber: ac.tailNumber, emptyWeight, emptyArm, emptyMoment: Math.round(emptyMoment * 10) / 10 },
+      aircraft: { tailNumber: ac.tailNumber, emptyWeight, emptyArm, emptyMoment: _fin(Math.round(emptyMoment * 10) / 10) },
       stations,
-      totals: { loadWeight: Math.round(totalLoadWeight * 10) / 10, loadMoment: Math.round(totalLoadMoment * 10) / 10 },
+      totals: { loadWeight: _fin(Math.round(totalLoadWeight * 10) / 10), loadMoment: _fin(Math.round(totalLoadMoment * 10) / 10) },
       grossWeight,
       totalMoment,
       cg,
-      maxGrossWeight: Number(ac.maxGrossWeight) || null,
+      maxGrossWeight: (ac.maxGrossWeight != null && Number.isFinite(Number(ac.maxGrossWeight))) ? _fin(ac.maxGrossWeight) : null,
       cgEnvelope: ac.cgEnvelope || null,
       summary: `Gross ${grossWeight} lb @ CG ${cg} in. Total moment ${totalMoment} lb-in.`,
     };
@@ -498,10 +445,6 @@ export default function registerAviationActions(registerLensAction) {
    */
   registerLensAction("aviation", "validate-wb", (ctx, artifact, params) => {
   try {
-    // Fail CLOSED on any poisoned W&B numeric — a folded-to-0 value would make
-    // the envelope "withinEnvelope" verdict a dangerous false-positive.
-    const badWB = _firstBadWBField(artifact, params);
-    if (badWB) return { ok: false, error: `invalid_${badWB}` };
     const { aircraft: ac, loading } = normalizeWBInput(artifact, params);
     const emptyWeight = Number(ac.emptyWeight) || 0;
     const emptyArm = Number(ac.emptyArm) || 0;

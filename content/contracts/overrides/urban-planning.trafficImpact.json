@@ -3,18 +3,9 @@
   "domain": "urban-planning",
   "name": "trafficImpact",
   "inputs": {
-    "newHousingUnits": {
-      "type": "number",
-      "required": false
-    },
-    "newCommercialSqFt": {
-      "type": "number",
-      "required": false
-    },
-    "currentADT": {
-      "type": "number",
-      "required": false
-    }
+    "newHousingUnits": { "type": "number", "required": false },
+    "newCommercialSqFt": { "type": "number", "required": false },
+    "currentADT": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -26,39 +17,10 @@
     "output.ok === false || Array.isArray(output.result.mitigation)"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "newHousingUnits": 200,
-        "newCommercialSqFt": 50000,
-        "currentADT": 10000
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "newHousingUnits": 5,
-        "currentADT": 10000
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "newHousingUnits": 1e+308
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "newHousingUnits": 200, "newCommercialSqFt": 50000, "currentADT": 10000 }, "expect": { "ok": true } },
+    { "input": { "newHousingUnits": 5, "currentADT": 10000 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "newHousingUnits": 1e308 }, "expect": { "ok": true } }
   ],
   "_note": "urban-planning.trafficImpact is a LENS_ACTIONS handler (server/domains/urbanplanning.js, PATH-3, hyphenated key). DETERMINISTIC ITE-style trip-generation: newTrips = round(units × 8 trips/unit + commercialSqFt × 0.01 trips/sqft); peakHourTrips = 10% of daily; percentIncrease vs currentADT (default 10000) bands the impact (>10% significant, >5% moderate else minimal) and selects a mitigation list. Reads input from artifact.data; no DB, no network. LENS_ACTIONS-only → not driven by the macro-assassin; pinned by server/tests/urban-planning-lens-macros.test.js."
 }

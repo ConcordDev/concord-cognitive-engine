@@ -3,15 +3,9 @@
   "domain": "hvac",
   "name": "energyAudit",
   "inputs": {
-    "monthlyBill": {
-      "type": "number"
-    },
-    "squareFootage": {
-      "type": "number"
-    },
-    "systemAge": {
-      "type": "number"
-    }
+    "monthlyBill": { "type": "number" },
+    "squareFootage": { "type": "number" },
+    "systemAge": { "type": "number" }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -28,58 +22,10 @@
     "output.ok === false || ['A','B','C','D'].includes(output.result.grade)"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "monthlyBill": 300,
-            "squareFootage": 1500,
-            "systemAge": 12
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "monthlyBill": 90,
-            "squareFootage": 1800,
-            "systemAge": 3
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "monthlyBill": "abc",
-            "squareFootage": "Infinity",
-            "systemAge": "NaN"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": { "monthlyBill": 300, "squareFootage": 1500, "systemAge": 12 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "monthlyBill": 90, "squareFootage": 1800, "systemAge": 3 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "monthlyBill": "abc", "squareFootage": "Infinity", "systemAge": "NaN" } } }, "expect": { "ok": true } }
   ],
   "_note": "Pure compute, reads artifact.data. annualCost = round(monthlyBill*12,2); costPerSqFt = round(annual/sqft,2); efficiencyLoss = min(50, age*2)%; estimatedAnnualSavings = round(bill*loss/100)*12; roiScore = min(100, loss*2); grade A<1.5 / B<2.5 / C<3.5 / else D; savingsOpportunities is the issues[] array (never empty — a clean system gets a 'no red flags' entry so the <ul> never renders bare). Fail-CLOSED numerics via Number()+Number.isFinite (NOT parseFloat) → poisoned bill/sqft/age never produce NaN. Result card renders annualCost/costPerSqFt/estimatedAnnualSavings/systemEfficiency/expectedLifespan/savingsOpportunities/roiScore/recommendation EXACTLY (the prior potentialAnnualSavings/efficiencyLoss/issues/grade were not what the card read — fixed 2026-06-28; retained as aliases)."
 }

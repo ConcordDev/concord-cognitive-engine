@@ -305,12 +305,6 @@ export default function registerRetailActions(registerLensAction) {
   try {
     const finNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
     const round2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
-    // Fail CLOSED on a present-but-poisoned numeric (rejects NaN/Infinity AND the
-    // finite poisons 1e308 / -1 that a bare Number.isFinite check would miss).
-    const _badQty = (v) => { if (v === undefined || v === null || v === "") return false; const n = Number(v); return !Number.isFinite(n) || n < 0 || n > 1e12; };
-    for (const _k of ["avgOrderValue", "purchaseFrequencyPerYear", "customerLifespanYears", "cac"]) {
-      if (_badQty(artifact.data?.[_k])) return { ok: false, error: `invalid_${_k}` };
-    }
 
     // ── Flat unit-economics branch (the live RetailActionPanel LTV card) ──
     // Component sends { avgOrderValue, purchaseFrequencyPerYear,
@@ -324,18 +318,6 @@ export default function registerRetailActions(registerLensAction) {
     const lifespan = finNum(artifact.data.customerLifespanYears);
     if (aov != null || freq != null || lifespan != null || artifact.data.cac != null) {
       if (!(artifact.data.customers && Array.isArray(artifact.data.customers) && artifact.data.customers.length)) {
-        // FAIL-CLOSED: a provided unit-economics field that is poisoned
-        // (NaN/Infinity/1e308/-1) must reject, not silently collapse to 0.
-        for (const [k, raw] of [
-          ["avgOrderValue", artifact.data.avgOrderValue],
-          ["purchaseFrequencyPerYear", artifact.data.purchaseFrequencyPerYear],
-          ["customerLifespanYears", artifact.data.customerLifespanYears],
-          ["cac", artifact.data.cac],
-        ]) {
-          if (raw === undefined || raw === null || raw === "") continue;
-          const n = Number(raw);
-          if (!Number.isFinite(n) || n < 0) return { ok: false, error: `invalid_${k}` };
-        }
         const avgOrderValue = Math.max(0, aov ?? 0);
         const purchaseFrequency = Math.max(0, freq ?? 0);
         const customerLifespanYears = Math.max(0, lifespan ?? 0);

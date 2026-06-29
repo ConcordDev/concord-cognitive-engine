@@ -11,14 +11,6 @@ export default function registerMarketingActions(registerLensAction) {
 
   registerLensAction("marketing", "campaignROI", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // FAIL-CLOSED: a provided metric that is poisoned (NaN/Infinity/1e308/-1)
-    // must reject rather than silently collapse to a default.
-    for (const k of ["spend", "revenue", "leads", "conversions"]) {
-      const raw = data[k];
-      if (raw === undefined || raw === null || raw === "") continue;
-      const n = Number(raw);
-      if (!Number.isFinite(n) || n < 0) return { ok: false, error: `invalid_${k}` };
-    }
     const spend = Math.max(0, finFloat(data.spend));
     const revenue = Math.max(0, finFloat(data.revenue));
     const leads = Math.max(0, finInt(data.leads));

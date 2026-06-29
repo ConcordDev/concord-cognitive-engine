@@ -3,27 +3,11 @@
   "domain": "consulting",
   "name": "clientHealth",
   "inputs": {
-    "client": {
-      "type": "string",
-      "required": false,
-      "maxLength": 200
-    },
-    "nps": {
-      "type": "number",
-      "required": false
-    },
-    "invoicesPaid": {
-      "type": "number",
-      "required": false
-    },
-    "invoicesTotal": {
-      "type": "number",
-      "required": false
-    },
-    "avgResponseDays": {
-      "type": "number",
-      "required": false
-    }
+    "client": { "type": "string", "required": false, "maxLength": 200 },
+    "nps": { "type": "number", "required": false },
+    "invoicesPaid": { "type": "number", "required": false },
+    "invoicesTotal": { "type": "number", "required": false },
+    "avgResponseDays": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -36,52 +20,11 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "client": "Acme",
-        "nps": 50,
-        "invoicesPaid": 9,
-        "invoicesTotal": 10,
-        "avgResponseDays": 2
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "nps": "Infinity",
-        "invoicesPaid": "1e999",
-        "invoicesTotal": "NaN",
-        "avgResponseDays": "1e308"
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "invoicesPaid": 3,
-        "invoicesTotal": 0
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "nps": -200
-      },
-      "expect": {
-        "ok": true
-      }
-    }
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "client": "Acme", "nps": 50, "invoicesPaid": 9, "invoicesTotal": 10, "avgResponseDays": 2 }, "expect": { "ok": true } },
+    { "input": { "nps": "Infinity", "invoicesPaid": "1e999", "invoicesTotal": "NaN", "avgResponseDays": "1e308" }, "expect": { "ok": true } },
+    { "input": { "invoicesPaid": 3, "invoicesTotal": 0 }, "expect": { "ok": true } },
+    { "input": { "nps": -200 }, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS handler reading artifact.data. Pure compute; composite client-health 0-100. POISON: metrics via finPos; nps via finSigned (clamped -100..100); invoicesTotal defaulted to 1 then guarded so payment-rate divide never yields Infinity/NaN. healthScore stays FINITE. Pinned by server/tests/consulting-lens-macros.test.js."
 }

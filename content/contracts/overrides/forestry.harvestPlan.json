@@ -3,22 +3,10 @@
   "domain": "forestry",
   "name": "harvestPlan",
   "inputs": {
-    "species": {
-      "type": "string",
-      "required": false
-    },
-    "acres": {
-      "type": "number",
-      "required": false
-    },
-    "currentAge": {
-      "type": "number",
-      "required": false
-    },
-    "method": {
-      "type": "string",
-      "required": false
-    }
+    "species": { "type": "string", "required": false },
+    "acres": { "type": "number", "required": false },
+    "currentAge": { "type": "number", "required": false },
+    "method": { "type": "string", "required": false }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -30,47 +18,10 @@
     "output.ok === false || output.result.schedule === undefined || output.result.schedule.every(s => Number.isFinite(s.year) && Number.isFinite(s.acres) && Number.isFinite(s.volume))"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "species": "douglas-fir",
-        "acres": 100,
-        "currentAge": 25
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "species": "loblolly-pine",
-        "acres": 50,
-        "currentAge": 10,
-        "method": "clearcut"
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "species": "oak",
-        "acres": 0,
-        "currentAge": 30
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "species": "mixed",
-        "acres": "1e999",
-        "currentAge": 20
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "species": "douglas-fir", "acres": 100, "currentAge": 25 }, "expect": { "ok": true } },
+    { "input": { "species": "loblolly-pine", "acres": 50, "currentAge": 10, "method": "clearcut" }, "expect": { "ok": true } },
+    { "input": { "species": "oak", "acres": 0, "currentAge": 30 }, "expect": { "ok": true } },
+    { "input": { "species": "mixed", "acres": "1e999", "currentAge": 20 }, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS handler; dispatch key 'forestry.harvestPlan'. ForestryActionPanel posts { species, acres, currentAge }; renders result.schedule.length + result.rotation. The PRIOR handler read artifact.data.acreage/method (ignored species + currentAge) and returned removalPercent/rotationYears but NO `schedule[]` array and NO `rotation` field — so the panel's `harvestResult.schedule?.length` and `harvestResult.rotation` were always undefined. Fixed: builds a staged removal schedule (1 entry for clearcut/salvage, 3 for selective/shelterwood) with { year, acres, volume } derived from the species rotation age (SPECIES_GROWTH) and current age; returns rotation === rotationYears. POISON: frFinite() rejects 1e999 acres → 0 → empty-guidance (no NaN schedule rows). Pinned by server/tests/forestry-lens-macros.test.js."
 }

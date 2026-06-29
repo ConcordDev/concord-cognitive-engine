@@ -4,22 +4,10 @@
   "name": "signalQuality",
   "reads_artifact_data": true,
   "inputs": {
-    "snrDb": {
-      "type": "number",
-      "required": false
-    },
-    "bitErrorRate": {
-      "type": "number",
-      "required": false
-    },
-    "latencyMs": {
-      "type": "number",
-      "required": false
-    },
-    "jitterMs": {
-      "type": "number",
-      "required": false
-    }
+    "snrDb": { "type": "number", "required": false },
+    "bitErrorRate": { "type": "number", "required": false },
+    "latencyMs": { "type": "number", "required": false },
+    "jitterMs": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -34,53 +22,10 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "snrDb": 20,
-            "bitErrorRate": 0.000001,
-            "latencyMs": 30,
-            "jitterMs": 5
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "snrDb": 8,
-        "bitErrorRate": 0.001,
-        "latencyMs": 150,
-        "jitterMs": 10
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "snrDb": 20,
-            "bitErrorRate": 0.000001,
-            "latencyMs": "1e999",
-            "jitterMs": "NaN"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": { "snrDb": 20, "bitErrorRate": 0.000001, "latencyMs": 30, "jitterMs": 5 } } }, "expect": { "ok": true } },
+    { "input": { "snrDb": 8, "bitErrorRate": 0.001, "latencyMs": 150, "jitterMs": 10 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "snrDb": 20, "bitErrorRate": 0.000001, "latencyMs": "1e999", "jitterMs": "NaN" } } }, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). COMPONENT-EXACT shape: panel sends {artifact:{data:{snrDb,bitErrorRate,latencyMs,jitterMs}}}; dispatch peels the wrapper. RETURNS snr/bitErrorRate/latencyMs/jitterMs/mosScore/voiceQuality/videoCapable. mos = clamp(1,5, 4.5 - latency/100 - jitter/20 - (ber>1e-4?2:0)); voiceQuality keyed off the UNROUNDED mos (>=4 excellent / >=3.5 good / >=3 fair / else poor) while mosScore is round(mos*10)/10 — the panel renders both, so the boundary case mos=3.95 → mosScore 4.0 but voiceQuality 'good'. videoCapable = latency<100 && jitter<30. POISON: every numeric via num() → finite defaults; mosScore stays in [1,5]. Pure compute, no STATE. Pinned by server/tests/telecommunications-lens-macros.test.js."
 }

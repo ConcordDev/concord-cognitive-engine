@@ -163,11 +163,6 @@ export default function registerMeditationActions(registerLensAction) {
   const medList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
 
   registerLensAction("meditation", "library", (_ctx, _a, params = {}) => {
-    // Fail-closed on a poisoned maxMinutes — a NaN/Infinity filter bound is meaningless.
-    if (params.maxMinutes !== undefined && params.maxMinutes !== null && params.maxMinutes !== "") {
-      const mm = Number(params.maxMinutes);
-      if (!Number.isFinite(mm)) return { ok: false, error: "invalid_maxMinutes" };
-    }
     let items = [...LIBRARY];
     if (params.category) items = items.filter((x) => x.category === String(params.category));
     if (params.goal) items = items.filter((x) => x.goal === String(params.goal));
@@ -234,11 +229,6 @@ export default function registerMeditationActions(registerLensAction) {
 
   registerLensAction("meditation", "breathwork", (_ctx, _a, params = {}) => {
     const key = ["box", "478", "coherent"].includes(String(params.pattern)) ? String(params.pattern) : "box";
-    // Fail-closed on poisoned numerics — reject NaN/Infinity/1e308 instead of silently clamping.
-    if (params.cycles !== undefined && params.cycles !== null && params.cycles !== "") {
-      const c = Number(params.cycles);
-      if (!Number.isFinite(c)) return { ok: false, error: "invalid_cycles" };
-    }
     const cycles = Math.max(1, Math.min(60, Math.round(Number(params.cycles) || 8)));
     const p = BREATH_PATTERNS[key];
     return { ok: true, result: { pattern: key, ...p, cycles, totalSeconds: p.cycleSeconds * cycles } };
@@ -618,10 +608,6 @@ export default function registerMeditationActions(registerLensAction) {
     const userId = medActor(ctx);
     const sessions = medList(s.sessions, userId);
     const moods = medList(s.moods, userId);
-    // Fail-closed: an explicitly-supplied non-finite hour is rejected (absent → current hour).
-    if (params.hour !== undefined && params.hour !== null && params.hour !== "" && !Number.isFinite(Number(params.hour))) {
-      return { ok: false, error: "invalid_hour" };
-    }
     const hour = Number.isFinite(Number(params.hour)) ? Math.max(0, Math.min(23, Math.round(Number(params.hour)))) : new Date().getHours();
     const recentMood = moods.length ? moods[moods.length - 1].mood : null;
     const playedIds = new Set(sessions.map((x) => x.sessionId));

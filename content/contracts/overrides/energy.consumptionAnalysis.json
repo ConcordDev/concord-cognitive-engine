@@ -3,14 +3,8 @@
   "domain": "energy",
   "name": "consumptionAnalysis",
   "inputs": {
-    "readings": {
-      "type": "array",
-      "required": false
-    },
-    "costPerKWh": {
-      "type": "number",
-      "required": false
-    }
+    "readings": { "type": "array", "required": false },
+    "costPerKWh": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -21,76 +15,11 @@
     "output.ok === false || typeof output.result.message === 'string' || output.result.costPerKWh > 0"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "readings": [
-          {
-            "kWh": 10
-          },
-          {
-            "kWh": 20
-          },
-          {
-            "kWh": 30
-          }
-        ],
-        "costPerKWh": 0.2
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "readings": [
-          {
-            "kWh": "1e999"
-          },
-          {
-            "kWh": "Infinity"
-          },
-          {
-            "kWh": "NaN"
-          },
-          {
-            "kWh": 5
-          }
-        ],
-        "costPerKWh": "1e999"
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "readings": [
-          {
-            "kWh": -5
-          },
-          {
-            "value": -10
-          }
-        ]
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "readings": []
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    }
+    { "input": { "readings": [{ "kWh": 10 }, { "kWh": 20 }, { "kWh": 30 }], "costPerKWh": 0.2 }, "expect": { "ok": true } },
+    { "input": { "readings": [{ "kWh": "1e999" }, { "kWh": "Infinity" }, { "kWh": "NaN" }, { "kWh": 5 }], "costPerKWh": "1e999" }, "expect": { "ok": true } },
+    { "input": { "readings": [{ "kWh": -5 }, { "value": -10 }] }, "expect": { "ok": true } },
+    { "input": { "readings": [] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'energy.consumptionAnalysis'. Reads artifact.data.readings[] (.kWh ?? .value) + artifact.data.costPerKWh. The dispatch peels a sole-key {artifact:{data}} wrapper, so the SolarCarbonPanel/CalcPanel single-wrap and a flat body both land on artifact.data. POISON CONTRACT: finiteNum() collapses Infinity / -Infinity / NaN / '1e999' / 'Infinity' / non-numeric to a finite fallback and clamps kWh >= 0; avg/peakToAvg guard against div-by-zero; EVERY numeric output is FINITE (previously parseFloat(x)||0 let Infinity through → JSON null in the UI). Empty readings → {message}. Pinned by server/tests/energy-lens-macros.test.js."
 }

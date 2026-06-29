@@ -31,15 +31,6 @@ export default function registerBillingActions(registerLensAction) {
     const lineItems = artifact.data.lineItems || [];
     const pricingTiers = artifact.data.pricingTiers || [];
     const discountRules = artifact.data.discountRules || [];
-    // Fail-CLOSED on poisoned taxRate (NaN/Infinity/1e308/negative) before any
-    // tax math — finNum would silently collapse these to 0; reject instead so a
-    // poisoned rate never produces a misleading ok:true invoice.
-    if (params.taxRate !== undefined && params.taxRate !== null && params.taxRate !== "") {
-      const tr = Number(params.taxRate);
-      if (!Number.isFinite(tr) || tr < 0) {
-        return { ok: false, error: "invalid_taxRate" };
-      }
-    }
     const taxRate = finNum(params.taxRate);
     const currency = params.currency || "USD";
     const exchangeRates = params.exchangeRates || {};
@@ -210,8 +201,10 @@ export default function registerBillingActions(registerLensAction) {
       summary: {
         lineItemCount: processedItems.length,
         totalQuantity,
-        avgUnitPrice: processedItems.length > 0
-          ? Math.round((subtotal / totalQuantity) * 10000) / 10000
+        // Guard the average: 0/0 (zero-priced poisoned line items with zero total
+        // quantity) yields NaN, which would leak into the output as JSON null.
+        avgUnitPrice: processedItems.length > 0 && totalQuantity > 0
+          ? finNum(Math.round((subtotal / totalQuantity) * 10000) / 10000)
           : 0,
       },
     };

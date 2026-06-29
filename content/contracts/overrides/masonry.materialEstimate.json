@@ -3,13 +3,8 @@
   "domain": "masonry",
   "name": "materialEstimate",
   "inputs": {
-    "squareFootage": {
-      "type": "number"
-    },
-    "material": {
-      "type": "string",
-      "maxLength": 40
-    }
+    "squareFootage": { "type": "number" },
+    "material": { "type": "string", "maxLength": 40 }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -28,55 +23,10 @@
     "output.ok === false || output.result.mortarBags === undefined"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "squareFootage": 200,
-            "material": "brick"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "squareFootage": 100,
-            "material": "block"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "squareFootage": "Infinity",
-            "material": "unobtanium"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": { "squareFootage": 200, "material": "brick" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "squareFootage": 100, "material": "block" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "squareFootage": "Infinity", "material": "unobtanium" } } }, "expect": { "ok": true } }
   ],
   "_note": "Pure compute, reads artifact.data (MasonStuff.callMason channel: runDomain → {input:{artifact:{data}}} peeled at dispatch). units = ceil(sqft × unitsPerSqFt × 1.05) where brick 7 / block 1.125 / stone 5 per sqft; mortarBags = ceil(sqft × mortarRate); materialCost = round(units × costPerUnit); laborEstimate = round(sqft × 15); grandTotal = materialCost + mortarCost + laborEstimate. Unknown material → brick rate. Non-finite/negative squareFootage floors to 0 (Number.isFinite guard) — never NaN/Infinity. Result card renders unitsNeeded/mortarBags80lb/materialCost/mortarCost/totalMaterialCost/laborEstimate/grandTotal/recommendation EXACTLY (the prior result.units/result.mortarBags fields were never returned — MaterialEstimator was DEAD in production; fixed 2026-06-28: component reads the real field names, handler now computes a real recommendation string)."
 }

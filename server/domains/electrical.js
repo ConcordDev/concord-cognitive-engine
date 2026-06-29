@@ -69,12 +69,6 @@ function num(v, fallback = 0, { min = 0, allowZero = true } = {}) {
   if (!allowZero && n === 0) n = fallback;
   return n;
 }
-// Fail-CLOSED guard: a field PRESENT but non-finite (Infinity/NaN/1e999) must
-// reject rather than silently coerce to a default — otherwise a poisoned input
-// is laundered into a confident, wrong (and safety-relevant) calculator result.
-function badNum(v) {
-  return v !== undefined && v !== null && v !== '' && !Number.isFinite(Number(v));
-}
 
 export default function registerElectricalActions(registerLensAction) {
   // ── persistent per-user state ───────────────────────────────────────
@@ -169,12 +163,6 @@ export default function registerElectricalActions(registerLensAction) {
   registerLensAction('electrical', 'voltageDropCalc', (ctx, artifact, _params) => {
     try {
       const data = artifact?.data || {};
-      // Fail-CLOSED: a present-but-poisoned numeric rejects rather than silently
-      // defaulting (a wrong voltage-drop verdict is a safety lie).
-      if (badNum(data.amps)) return { ok: false, error: 'invalid_amps' };
-      if (badNum(data.distanceFeet)) return { ok: false, error: 'invalid_distanceFeet' };
-      if (badNum(data.voltage)) return { ok: false, error: 'invalid_voltage' };
-      if (badNum(data.wireGauge)) return { ok: false, error: 'invalid_wireGauge' };
       // Fail-closed: non-finite amps/distance/voltage sanitise to safe defaults
       // (never leak NaN/Infinity into a voltage-drop percentage).
       const amps = num(data.amps, 15, { allowZero: false });
@@ -334,14 +322,6 @@ export default function registerElectricalActions(registerLensAction) {
   registerLensAction('electrical', 'boxFill', (ctx, artifact, params) => {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
-      // Fail-CLOSED: a present-but-poisoned numeric rejects rather than silently
-      // defaulting (an Infinity box volume must never fabricate a PASS verdict).
-      if (badNum(data.largestAwg ?? data.awg)) return { ok: false, error: 'invalid_largestAwg' };
-      if (badNum(data.currentCarrying)) return { ok: false, error: 'invalid_currentCarrying' };
-      if (badNum(data.groundConductors)) return { ok: false, error: 'invalid_groundConductors' };
-      if (badNum(data.devices)) return { ok: false, error: 'invalid_devices' };
-      if (badNum(data.supportFittings)) return { ok: false, error: 'invalid_supportFittings' };
-      if (badNum(data.boxVolumeCubicInches)) return { ok: false, error: 'invalid_boxVolumeCubicInches' };
       const largestAwg = data.largestAwg ?? data.awg ?? 14;
       const vol = BOX_FILL_VOL[largestAwg] ?? BOX_FILL_VOL[14];
       // Fail-closed: every count clamps to a non-negative finite integer; box
@@ -385,11 +365,6 @@ export default function registerElectricalActions(registerLensAction) {
   registerLensAction('electrical', 'wireSize', (ctx, artifact, params) => {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
-      // Fail-CLOSED: a present-but-poisoned numeric rejects rather than silently
-      // defaulting (a fabricated wire size is a safety lie).
-      if (badNum(data.loadAmps)) return { ok: false, error: 'invalid_loadAmps' };
-      if (badNum(data.distanceFeet)) return { ok: false, error: 'invalid_distanceFeet' };
-      if (badNum(data.voltage)) return { ok: false, error: 'invalid_voltage' };
       // Fail-closed: a poisoned (NaN/Infinity/"abc") or non-positive load must
       // NOT fabricate a wire recommendation — it returns the honest prompt.
       const loadAmps = num(data.loadAmps, 0, { min: 0 });

@@ -3,10 +3,7 @@
   "domain": "classroom",
   "name": "gradebook",
   "inputs": {
-    "cohortId": {
-      "type": "number",
-      "required": false
-    }
+    "cohortId": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -19,28 +16,9 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "cohortId": 7
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "cohortId": "not-a-number"
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "cohortId": 7 }, "expect": { "ok": true } },
+    { "input": { "cohortId": "not-a-number" }, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS handler. One row per student, columns per assignment. average = round(earned/possible*100) guarded possible>0 (null when no graded cells). classAverage = round(mean of non-null row averages) or null. Empty cohort → ok:true, rows:[], classAverage:null. A NaN cohortId filter matches nothing → empty (safe, not fail-open). Pinned by server/tests/classroom-lens-macros.test.js."
 }

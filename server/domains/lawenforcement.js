@@ -143,7 +143,8 @@ export default function registerLawEnforcementActions(registerLensAction) {
     return { ok: true, result: { reportId: `IR-${Date.now().toString(36).toUpperCase()}`, complete: missing.length === 0, missingFields: missing, type: data.type || "unspecified", date: data.date || new Date().toISOString(), location: data.location || "unspecified", severity: data.severity || "standard", status: "filed", chain_of_custody: { filed: new Date().toISOString(), officer: data.officer || ctx?.userId || "system" } } };
   });
   registerLensAction("law-enforcement", "crimeStats", (ctx, artifact, _params) => {
-    const incidents = Array.isArray(artifact.data?.incidents) ? artifact.data.incidents : [];
+    const rawIncidents = artifact.data?.incidents;
+    const incidents = Array.isArray(rawIncidents) ? rawIncidents : [];
     if (incidents.length === 0) return { ok: true, result: { message: "Add incident data to generate statistics." } };
     const byType = {};
     for (const i of incidents) { const t = i.type || "other"; byType[t] = (byType[t] || 0) + 1; }

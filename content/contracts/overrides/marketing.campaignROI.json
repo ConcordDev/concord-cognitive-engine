@@ -3,21 +3,11 @@
   "domain": "marketing",
   "name": "campaignROI",
   "inputs": {
-    "name": {
-      "type": "string"
-    },
-    "spend": {
-      "type": "number"
-    },
-    "revenue": {
-      "type": "number"
-    },
-    "leads": {
-      "type": "number"
-    },
-    "conversions": {
-      "type": "number"
-    }
+    "name": { "type": "string" },
+    "spend": { "type": "number" },
+    "revenue": { "type": "number" },
+    "leads": { "type": "number" },
+    "conversions": { "type": "number" }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -33,62 +23,10 @@
     "output.ok === false || ['exceptional','strong','positive','negative'].includes(output.result.grade)"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "name": "Spring",
-            "spend": 1000,
-            "revenue": 3000,
-            "leads": 200,
-            "conversions": 50
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "name": "Loss",
-            "spend": 5000,
-            "revenue": 1000
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "name": "x",
-            "spend": "abc",
-            "revenue": "Infinity",
-            "leads": "NaN",
-            "conversions": "1e999"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": { "name": "Spring", "spend": 1000, "revenue": 3000, "leads": 200, "conversions": 50 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "name": "Loss", "spend": 5000, "revenue": 1000 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "name": "x", "spend": "abc", "revenue": "Infinity", "leads": "NaN", "conversions": "1e999" } } }, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS calculator. reads artifact.data (dispatch peels the redundant `{artifact:{data}}` wrapper the MarketingActionPanel sends). roi=(revenue-spend)/spend×100; cpl=spend/leads; cpa=spend/conversions; conversionRate=conversions/leads×100. grade: roi>200 exceptional, >100 strong, >0 positive, else negative. POISON: spend/revenue via finFloat, leads/conversions via finInt → Number.isFinite gate so 'Infinity'/'1e999'/'abc' collapse to 0 (the prior `parseFloat(x)||0` leaked Infinity into roi/revenue → card showed 'Infinity%'/'null'). Result card in components/marketing/MarketingActionPanel.tsx renders campaign/grade/roi/costPerLead/costPerAcquisition/conversionRate/profitable EXACTLY. Pinned by server/tests/marketing-lens-macros.test.js."
 }

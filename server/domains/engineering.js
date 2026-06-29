@@ -257,14 +257,7 @@ export default function registerEngineeringActions(registerLensAction) {
       });
       const rss = Math.sqrt(sumSq);
       // The "gap" is the closing dimension of the chain.
-      const rawTargetGap = params?.targetGap ?? artifact?.data?.targetGap;
-      const targetGap = parseFloat(rawTargetGap);
-      // Fail CLOSED when targetGap was SUPPLIED but is non-finite (NaN /
-      // Infinity / "1e999"): silently dropping the fit verdict and returning
-      // ok:true would hide a poisoned gap from the caller.
-      if (rawTargetGap != null && rawTargetGap !== '' && !Number.isFinite(targetGap)) {
-        return { ok: false, error: 'invalid_targetGap' };
-      }
+      const targetGap = parseFloat(params?.targetGap ?? artifact?.data?.targetGap);
       let fitVerdict = null;
       if (Number.isFinite(targetGap)) {
         // Use rounded bounds so the verdict matches the displayed envelope and
@@ -907,17 +900,6 @@ export default function registerEngineeringActions(registerLensAction) {
         const n = parseInt(v, 10);
         return Number.isFinite(n) ? n : fb;
       };
-      // Fail CLOSED on a present-but-poisoned overheadRate / buildQty (NaN /
-      // Infinity / overflow) rather than substituting a default — those values
-      // scale every rolled-up cost, so a silent default returning ok:true lies.
-      if (params?.overheadRate != null) {
-        const n = parseFloat(params.overheadRate);
-        if (!Number.isFinite(n)) return { ok: false, error: 'invalid_overheadRate' };
-      }
-      if (params?.buildQty != null) {
-        const n = parseInt(params.buildQty, 10);
-        if (!Number.isFinite(n) || n <= 0) return { ok: false, error: 'invalid_buildQty' };
-      }
       const overheadRate = finiteOr(params?.overheadRate ?? 0.15, 0.15);
       const buildQty = Math.max(1, intOr(params?.buildQty ?? 1, 1));
       const r2 = (v) => (Number.isFinite(v) ? Math.round(v * 100) / 100 : 0);

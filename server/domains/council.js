@@ -45,17 +45,7 @@ export default function registerCouncilActions(registerLensAction) {
     for (const v of votes) { const pos = String((v && (v.vote ?? v.position)) ?? "abstain").toLowerCase(); if (pos === "for" || pos === "yes" || pos === "support") tally.for++; else if (pos === "against" || pos === "no" || pos === "oppose") tally.against++; else tally.abstain++; }
     const total = votes.length;
     const forPercent = total > 0 ? Math.round((tally.for / total) * 100) : 0;
-    // Fail-CLOSED: a poisoned quorum (NaN/±Infinity/1e308/-1) must not flip the
-    // quorumMet verdict (e.g. -1 would make every count "quorate"). Default when
-    // absent; reject when present-but-not-a-finite-non-negative number.
-    const qRaw = artifact.data?.quorum;
-    let quorum = 3;
-    if (qRaw !== undefined && qRaw !== null && qRaw !== "") {
-      quorum = Number(qRaw);
-      if (!Number.isFinite(quorum) || quorum < 0) return { ok: false, error: "invalid_quorum" };
-      quorum = Math.floor(quorum);
-    }
-    return { ok: true, result: { tally, total, forPercent, passed: forPercent >= 67, passThreshold: "67% supermajority", quorumMet: total >= quorum } };
+    return { ok: true, result: { tally, total, forPercent, passed: forPercent >= 67, passThreshold: "67% supermajority", quorumMet: total >= (parseInt(artifact.data?.quorum) || 3) } };
   });
   registerLensAction("council", "generateMinutes", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -561,19 +551,6 @@ export default function registerCouncilActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const title = String(params.title || "").trim();
     if (!title) return { ok: false, error: "title required" };
-    // Fail-CLOSED: poisoned vote tallies (NaN/±Infinity/1e308/-1) must not be
-    // silently coerced to 0 and archived as a real decision record. Default when
-    // absent; reject when present-but-not-a-finite-non-negative-integer.
-    const voteTally = (v, label) => {
-      if (v === undefined || v === null || v === "") return 0;
-      const n = Number(v);
-      if (!Number.isFinite(n) || n < 0) return { _invalid: label };
-      return Math.floor(n);
-    };
-    const votesFor = voteTally(params.votesFor, "votesFor");
-    if (votesFor && typeof votesFor === "object") return { ok: false, error: "invalid_votesFor" };
-    const votesAgainst = voteTally(params.votesAgainst, "votesAgainst");
-    if (votesAgainst && typeof votesAgainst === "object") return { ok: false, error: "invalid_votesAgainst" };
     const record = {
       id: cNextId("dec"),
       title,
@@ -581,8 +558,8 @@ export default function registerCouncilActions(registerLensAction) {
       outcome: String(params.outcome || "decided").trim(), // passed | rejected | tabled | decided
       proposalId: params.proposalId ? String(params.proposalId) : null,
       meetingId: params.meetingId ? String(params.meetingId) : null,
-      votesFor,
-      votesAgainst,
+      votesFor: Math.max(0, parseInt(params.votesFor) || 0),
+      votesAgainst: Math.max(0, parseInt(params.votesAgainst) || 0),
       tags: Array.isArray(params.tags) ? params.tags.map(t => String(t).trim()).filter(Boolean) : [],
       decidedAt: String(params.decidedAt || "").trim() || cNow(),
       createdAt: cNow(),

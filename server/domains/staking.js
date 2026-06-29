@@ -171,8 +171,6 @@ export default function registerStakingActions(registerLensAction) {
   // ── list_pools — multiple staking products at different risk tiers ──────
   registerLensAction("staking", "list_pools", (ctx, artifact, params = {}) => {
     try {
-      const bad = badNumericField(params, ["months"]);
-      if (bad) return { ok: false, error: `invalid_${bad}` };
       const now = Math.floor(Date.now() / 1000);
       const previewMonths = Math.max(1, Math.min(60, Math.floor(Number(params.months) || 12)));
       const pools = POOLS.map((p) => {
@@ -546,8 +544,6 @@ export default function registerStakingActions(registerLensAction) {
     try {
       const userId = ctx?.actor?.userId || ctx?.userId;
       if (!userId) return { ok: false, error: "no_actor" };
-      const bad = badNumericField(params, ["limit"]);
-      if (bad) return { ok: false, error: `invalid_${bad}` };
       const limit = Math.max(1, Math.min(500, Math.floor(Number(params.limit) || 100)));
       const led = userLedger(userId).slice(0, limit);
       const totalYield = led
@@ -584,8 +580,6 @@ export default function registerStakingActions(registerLensAction) {
   // ── apr_history — APR history per pool so users judge the variable rate ──
   registerLensAction("staking", "apr_history", (ctx, artifact, params = {}) => {
     try {
-      const bad = badNumericField(params, ["months"]);
-      if (bad) return { ok: false, error: `invalid_${bad}` };
       const poolId = String(params.poolId || "core");
       const pool = poolById(poolId);
       if (!pool) return { ok: false, error: "unknown_pool" };
@@ -680,8 +674,6 @@ export default function registerStakingActions(registerLensAction) {
     try {
       const userId = ctx?.actor?.userId || ctx?.userId;
       if (!userId) return { ok: false, error: "no_actor" };
-      const bad = badNumericField(params, ["windowDays"]);
-      if (bad) return { ok: false, error: `invalid_${bad}` };
       const now = Math.floor(Date.now() / 1000);
       const windowDays = Math.max(1, Math.min(365, Math.floor(Number(params.windowDays) || 30)));
       const windowEnd = now + windowDays * DAY;

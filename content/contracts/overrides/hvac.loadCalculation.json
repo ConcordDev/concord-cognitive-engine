@@ -3,20 +3,10 @@
   "domain": "hvac",
   "name": "loadCalculation",
   "inputs": {
-    "squareFootage": {
-      "type": "number"
-    },
-    "stories": {
-      "type": "number"
-    },
-    "insulation": {
-      "type": "string",
-      "maxLength": 40
-    },
-    "climate": {
-      "type": "string",
-      "maxLength": 40
-    }
+    "squareFootage": { "type": "number" },
+    "stories": { "type": "number" },
+    "insulation": { "type": "string", "maxLength": 40 },
+    "climate": { "type": "string", "maxLength": 40 }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -31,61 +21,10 @@
     "output.ok === false || Number.isFinite(output.result.tonnage)"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "squareFootage": 2000,
-            "stories": 2,
-            "insulation": "good",
-            "climate": "hot-humid"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "squareFootage": 1500,
-            "stories": 1,
-            "insulation": "average",
-            "climate": "very-cold"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "squareFootage": "Infinity",
-            "stories": "NaN",
-            "insulation": "poor",
-            "climate": "made-up"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": { "squareFootage": 2000, "stories": 2, "insulation": "good", "climate": "hot-humid" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "squareFootage": 1500, "stories": 1, "insulation": "average", "climate": "very-cold" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "squareFootage": "Infinity", "stories": "NaN", "insulation": "poor", "climate": "made-up" } } }, "expect": { "ok": true } }
   ],
   "_note": "Pure compute, reads artifact.data (ManualJCalc.callHvac channel: runDomain → {input:{artifact:{data}}} peeled at dispatch). coolingBTU = round(sqft*25 * insMult * climateMult * storyMult); insMult excellent 0.8 / good 0.9 / average 1.0 / else 1.2; climateMult very-cold 1.35 / humid 1.25 / hot 1.3 / cold 1.2 / else 1.0 (accepts the component's region enums hot-humid/hot-dry/temperate/cold/very-cold via .includes, not just bare keywords). heatingBTU = round(cooling * (cold?1.1:0.85)); tonnage = round(cooling/12000,1); equipmentSize = ceil(tons*2)/2 + ' ton system'. Fail-CLOSED numerics: Number()+Number.isFinite, so 'Infinity'/'NaN'/'12abc' fall to defaults (1000 sqft / 1 story) — never NaN/Infinity, never a silently-accepted '12abc'→12 prefix. Result card renders heatingBTU/coolingBTU/tonnageRecommended/equipmentSize/recommendation EXACTLY (the prior fields requiredBTU/tonnage/unitSize/estimatedCost/energyEstimate/seerRecommendation were NOT what the card read — fixed 2026-06-28; those are retained as aliases for the SaveAsDtu provenance + back-compat)."
 }

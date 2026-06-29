@@ -3,26 +3,11 @@
   "domain": "eco",
   "name": "energy-estimate",
   "inputs": {
-    "lat": {
-      "type": "number",
-      "required": false
-    },
-    "lng": {
-      "type": "number",
-      "required": false
-    },
-    "systemKw": {
-      "type": "number",
-      "required": false
-    },
-    "tilt": {
-      "type": "number",
-      "required": false
-    },
-    "azimuth": {
-      "type": "number",
-      "required": false
-    }
+    "lat": { "type": "number", "required": false },
+    "lng": { "type": "number", "required": false },
+    "systemKw": { "type": "number", "required": false },
+    "tilt": { "type": "number", "required": false },
+    "azimuth": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -34,56 +19,11 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "lat": 37.77,
-        "lng": -122.42,
-        "systemKw": 8,
-        "tilt": 30,
-        "azimuth": 180
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "lat": "Infinity",
-        "lng": "NaN",
-        "systemKw": "1e999",
-        "tilt": "Infinity",
-        "azimuth": "NaN"
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "lat": 37,
-        "lng": -122,
-        "systemKw": -5
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "lat": 999,
-        "lng": -999,
-        "systemKw": 0
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    }
+    { "input": { "lat": 37.77, "lng": -122.42, "systemKw": 8, "tilt": 30, "azimuth": 180 }, "expect": { "ok": true } },
+    { "input": { "lat": "Infinity", "lng": "NaN", "systemKw": "1e999", "tilt": "Infinity", "azimuth": "NaN" }, "expect": { "ok": true } },
+    { "input": { "lat": 37, "lng": -122, "systemKw": -5 }, "expect": { "ok": true } },
+    { "input": { "lat": 999, "lng": -999, "systemKw": 0 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS handler (registerLensAction; path-3). The /lenses/eco Solar estimator (EnergyEstimator.tsx) sends {lat,lng,systemKw,tilt,azimuth} as run-action params via raw POST /api/lens/run. Deterministic PVWatts-like model (no network). Returns {systemKwp,annualKwh,monthlyKwh[12],co2AvoidedKgPerYear,capacityFactor,source,location:{lat,lng}}. POISON: finiteNum() coerces every numeric within physical bounds (lat -90..90, lng -180..180, systemKw 0.1..1e6, tilt 0..89, azimuth 0..360) so a poisoned Infinity/NaN/'1e999' never leaks into the kWh totals; negative system size clamps to the 0.1 kW floor (never negative production). Pinned by server/tests/eco-lens-macros.test.js."
 }

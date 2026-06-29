@@ -384,11 +384,7 @@ export default function registerClassroomActions(registerLensAction) {
       const userId = uid(ctx);
       let assignments = state.assignments.get(userId) || [];
       if (params.cohortId !== undefined && params.cohortId !== null && params.cohortId !== "") {
-        // Fail-CLOSED: cohortId is matched numerically against stored a.cohortId.
-        // A poisoned value (NaN/±Infinity/1e308/-1) would silently filter to an
-        // empty/garbage gradebook while reporting ok:true — reject instead.
         const c = Number(params.cohortId);
-        if (!Number.isFinite(c)) return { ok: false, error: "invalid_cohortId" };
         assignments = assignments.filter((a) => a.cohortId === c);
       }
       const asgIds = new Set(assignments.map((a) => a.id));
@@ -558,11 +554,7 @@ export default function registerClassroomActions(registerLensAction) {
       const studentId = String(params.studentId || userId);
       let assignments = state.assignments.get(userId) || [];
       if (params.cohortId !== undefined && params.cohortId !== null && params.cohortId !== "") {
-        // Fail-CLOSED: cohortId is matched numerically against stored a.cohortId.
-        // A poisoned value (NaN/±Infinity/1e308/-1) would silently filter to an
-        // empty/garbage to-do list while reporting ok:true — reject instead.
         const c = Number(params.cohortId);
-        if (!Number.isFinite(c)) return { ok: false, error: "invalid_cohortId" };
         assignments = assignments.filter((a) => a.cohortId === c);
       }
       const subs = state.submissions.get(userId) || [];

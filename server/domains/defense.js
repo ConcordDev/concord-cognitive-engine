@@ -31,17 +31,9 @@ export default function registerDefenseActions(registerLensAction) {
   });
   registerLensAction("defense", "readinessScore", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Fail-CLOSED: reject poisoned numerics (NaN/Infinity/1e308/-1) outright
-    // rather than clamping onto a default and returning ok:true with a bogus
-    // readiness score. Counts must be finite & >= 0; percents finite in 0..100.
-    for (const f of ["personnelReady", "personnelTotal", "equipmentOperational", "equipmentTotal"]) {
-      if (data[f] != null) { const v = Number(data[f]); if (!Number.isFinite(v) || v < 0 || v > 1e9) return { ok: false, error: `invalid_${f}` }; }
-    }
-    for (const f of ["trainingCompletionPercent", "suppliesPercent"]) {
-      if (data[f] != null) { const v = Number(data[f]); if (!Number.isFinite(v) || v < 0 || v > 100) return { ok: false, error: `invalid_${f}` }; }
-    }
-    // Totals floor at 1 so the ratio never divides by zero; counts/percents
-    // clamp into sane ranges so a poisoned value can't leak into any number.
+    // Fail-closed: every metric is finite-clamped. Totals floor at 1 so the
+    // ratio never divides by zero; counts/percents clamp into sane ranges so a
+    // poisoned Infinity/NaN can't leak into any rendered readiness number.
     const personnel = finiteNum(data.personnelReady, 0, { min: 0 });
     const personnelTotal = finiteNum(data.personnelTotal, 1, { min: 1 });
     const equipment = finiteNum(data.equipmentOperational, 0, { min: 0 });

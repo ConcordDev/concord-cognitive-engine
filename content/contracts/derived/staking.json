@@ -54,7 +54,7 @@
         "typeof output.ok === 'boolean'",
         "output.ok === false || (Array.isArray(output.result.series) && output.result.points === output.result.series.length)",
         "output.ok === false || (typeof output.result.currentAprPct === 'number' && Number.isFinite(output.result.currentAprPct) && output.result.currentAprPct >= 0)",
-        "output.ok === false || typeof output.error === 'string'"
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "staking.apr_history",
       "name": "apr_history"

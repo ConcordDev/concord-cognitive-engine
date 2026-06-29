@@ -16,19 +16,6 @@ const NHTSA_API_BASE = "https://vpic.nhtsa.dot.gov/api/vehicles";
 const NHTSA_RECALLS_BASE = "https://api.nhtsa.gov/recalls/recallsByVehicle";
 
 export default function registerAutomotiveActions(registerLensAction) {
-  // Fail-CLOSED numeric guard: true when a caller-supplied field is PRESENT but
-  // non-finite (NaN / Infinity / -Infinity / "1e999" / overflow) — or, when
-  // requirePositive, present and <= 0. Absent fields pass so defaults still
-  // apply. Lets a handler reject poisoned input instead of substituting a
-  // default and returning ok:true.
-  const presentButBad = (v, requirePositive = false) => {
-    if (v == null || v === "") return false;
-    const n = typeof v === "number" ? v : Number(v);
-    if (!Number.isFinite(n)) return true;
-    if (requirePositive && n <= 0) return true;
-    return false;
-  };
-
   /**
    * resolveData — normalize the artifact-data payload for the calculator
    * macros that read `artifact.data.<field>`.
@@ -236,15 +223,15 @@ export default function registerAutomotiveActions(registerLensAction) {
   try {
     const data = resolveData(artifact, params);
     const rawMileage = data.mileage ?? data.odometer ?? data.currentMileage;
-    // Fail CLOSED on a SUPPLIED-but-poisoned mileage (NaN / Infinity / "1e999"):
-    // it drives every interval computation below.
-    if (presentButBad(rawMileage)) {
-      return { ok: false, error: "invalid_mileage" };
+    // Reject poisoned values that represent a non-finite number (e.g. "1e999"
+    // → Infinity, "NaN") fail-CLOSED; a clean numeric string parses normally.
+    const numMileage = Number(rawMileage);
+    const mileage = (rawMileage != null && rawMileage !== "" && Number.isFinite(numMileage))
+      ? (parseInt(rawMileage, 10) || 0)
+      : 0;
+    if (!Number.isFinite(mileage) || mileage <= 0) {
+      return { ok: false, error: "mileage required (odometer reading > 0)" };
     }
-    const mileage = Math.max(0, parseInt(rawMileage, 10) || 0);
-    // A maintenance schedule needs a real odometer reading to compute due items;
-    // an absent/zero mileage returns ok:false (the contract pins this).
-    if (mileage <= 0) return { ok: false, error: "mileage required (odometer reading > 0)" };
     const year = parseInt(data.year, 10) || null;
     const schedule = [
       { service: "Oil Change",            intervalMiles: 5000,  intervalMonths: 6,  priority: "high",   notes: "Synthetic per OEM spec; check owner's manual for OEM viscosity (5W-30, 0W-20, etc.)" },
@@ -336,9 +323,6 @@ export default function registerAutomotiveActions(registerLensAction) {
     if (repairs.length === 0) {
       return { ok: false, error: "add repair items with { name, partsCost, laborHours, laborRate?, priority? }" };
     }
-    // Fail CLOSED on a poisoned shopRate — an Infinity here would make every
-    // labor cost (and the grand total) a non-finite lie while reporting ok:true.
-    if (presentButBad(data.shopRate, true)) return { ok: false, error: "invalid_shopRate" };
     const shopRate = parseFloat(data.shopRate) || 120;
     const estimated = repairs.map((r) => {
       const partsCost = parseFloat(r.partsCost) || 0;
@@ -394,6 +378,8 @@ export default function registerAutomotiveActions(registerLensAction) {
   function aidAu(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function uidAu(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function isoAu() { return new Date().toISOString(); }
+  // Finite-or-fallback coercion: poisoned NaN/Infinity numerics clamp to `d`.
+  function finNumAu(v, d = 0) { const n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : d; }
   function dayAu() { return new Date().toISOString().slice(0, 10); }
   function listAu(map, k) { if (!map.has(k)) map.set(k, []); return map.get(k); }
   function ensureSeqAu(s, userId) {
@@ -417,10 +403,6 @@ export default function registerAutomotiveActions(registerLensAction) {
     const userId = aidAu(ctx);
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
-    // Fail CLOSED on a poisoned (present-but-non-finite) odometer/year rather
-    // than folding to 0/null and persisting a vehicle with a corrupt reading.
-    if (presentButBad(params.odometer)) return { ok: false, error: "invalid_odometer" };
-    if (presentButBad(params.year)) return { ok: false, error: "invalid_year" };
     const seq = ensureSeqAu(s, userId);
     const vehicle = {
       id: uidAu('veh'),
@@ -428,10 +410,14 @@ export default function registerAutomotiveActions(registerLensAction) {
       name,
       make: String(params.make || ''),
       model: String(params.model || ''),
-      year: Number(params.year) || null,
+      // CLAMP-AND-COMPUTE: poisoned year (NaN/Infinity) sanitizes to null
+      // (a real model year is finite), never leaks into the output.
+      year: Number.isFinite(Number(params.year)) ? Number(params.year) : null,
       vin: String(params.vin || ''),
       licensePlate: String(params.licensePlate || ''),
-      odometer: Math.max(0, Number(params.odometer) || 0),
+      // CLAMP-AND-COMPUTE: poisoned odometer (NaN/Infinity) sanitizes to a
+      // finite value, never leaks into the stored/returned vehicle record.
+      odometer: Math.max(0, finNumAu(params.odometer, 0)),
       odometerUnit: ['mi', 'km'].includes(params.odometerUnit) ? params.odometerUnit : 'mi',
       fuelUnit: ['gal', 'L'].includes(params.fuelUnit) ? params.fuelUnit : 'gal',
       color: String(params.color || ''),

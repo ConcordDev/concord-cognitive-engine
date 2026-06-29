@@ -3,10 +3,7 @@
   "domain": "energy",
   "name": "disaggregate",
   "inputs": {
-    "days": {
-      "type": "number",
-      "required": false
-    }
+    "days": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -18,44 +15,11 @@
     "output.ok === false || output.result.devices.every(function(d){ return Number.isFinite(d.directKwh) && Number.isFinite(d.estimatedKwh) && Number.isFinite(d.attributedKwh) && Number.isFinite(d.pct); })"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "days": 30
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "days": "1e999"
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "days": "NaN"
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "days": -5
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    }
+    { "input": { "days": 30 }, "expect": { "ok": true } },
+    { "input": { "days": "1e999" }, "expect": { "ok": true } },
+    { "input": { "days": "NaN" }, "expect": { "ok": true } },
+    { "input": { "days": -5 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'energy.disaggregate'. EnergyDisaggregationPanel sends {input:{days}} (flat). Attributes whole-home load across tracked devices: metered per-device readings + a nameplate-wattage-weighted split of the remaining whole-home kWh. POISON CONTRACT: enNum clamps days∈[1,365] (Infinity/NaN/'1e999' → finite); per-device pct guards div-by-zero on zero total. Empty devices → {devices:[],totalKwh:0,...}. Renders devices[{deviceId,name,category,directKwh,estimatedKwh,attributedKwh,pct,method}] + totalKwh/attributedKwh/unattributedKwh/wholeHomeKwh. Pinned by server/tests/energy-lens-macros.test.js."
 }

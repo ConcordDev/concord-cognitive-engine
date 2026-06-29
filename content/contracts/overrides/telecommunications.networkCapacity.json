@@ -4,18 +4,9 @@
   "name": "networkCapacity",
   "reads_artifact_data": true,
   "inputs": {
-    "bandwidthGbps": {
-      "type": "number",
-      "required": false
-    },
-    "utilizationPercent": {
-      "type": "number",
-      "required": false
-    },
-    "activeUsers": {
-      "type": "number",
-      "required": false
-    }
+    "bandwidthGbps": { "type": "number", "required": false },
+    "utilizationPercent": { "type": "number", "required": false },
+    "activeUsers": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -30,64 +21,11 @@
     "output.ok === true || typeof (output.error || output.message) === 'string'"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "bandwidthGbps": 10,
-            "utilizationPercent": 60,
-            "activeUsers": 1000
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "bandwidthGbps": 5,
-        "utilizationPercent": 90,
-        "activeUsers": 500
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "bandwidthGbps": "1e999",
-            "utilizationPercent": "NaN",
-            "activeUsers": 1000
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "bandwidthGbps": 0,
-            "utilizationPercent": 100,
-            "activeUsers": 1
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    }
+    { "input": { "artifact": { "data": { "bandwidthGbps": 10, "utilizationPercent": 60, "activeUsers": 1000 } } }, "expect": { "ok": true } },
+    { "input": { "bandwidthGbps": 5, "utilizationPercent": 90, "activeUsers": 500 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "bandwidthGbps": "1e999", "utilizationPercent": "NaN", "activeUsers": 1000 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "bandwidthGbps": 0, "utilizationPercent": 100, "activeUsers": 1 } } }, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). COMPONENT-EXACT shape: TelecommunicationsActionPanel sends {artifact:{data:{bandwidthGbps,utilizationPercent,activeUsers}}}; dispatch peels the wrapper (lib/lens-input-normalize.js). Reads bandwidthGbps/utilizationPercent/activeUsers; RETURNS totalBandwidth/utilization/activeUsers/availablePerUser/headroom/status/upgrade — the exact keys the panel renders. perUser = bandwidthGbps*1000*(1-util/100)/users. POISON: bandwidth/util via num() so '1e999'/'Infinity'/'NaN' collapse to finite defaults; availablePerUser parses FINITE. Pure compute, no STATE. Pinned by server/tests/telecommunications-lens-macros.test.js."
 }

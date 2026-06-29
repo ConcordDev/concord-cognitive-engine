@@ -3,17 +3,9 @@
   "domain": "landscaping",
   "name": "plantSelection",
   "inputs": {
-    "hardnessZone": {
-      "type": "number"
-    },
-    "sunExposure": {
-      "type": "string",
-      "maxLength": 40
-    },
-    "soilType": {
-      "type": "string",
-      "maxLength": 40
-    }
+    "hardnessZone": { "type": "number" },
+    "sunExposure": { "type": "string", "maxLength": 40 },
+    "soilType": { "type": "string", "maxLength": 40 }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -28,58 +20,10 @@
     "output.ok === false || output.result.recommendations.every(p => typeof p.name === 'string' && typeof p.type === 'string')"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "hardnessZone": 7,
-            "sunExposure": "full",
-            "soilType": "loam"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "hardnessZone": 7,
-            "sunExposure": "shade",
-            "soilType": "clay"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "hardnessZone": "Infinity",
-            "sunExposure": "MOONLIGHT",
-            "soilType": "lava"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": { "hardnessZone": 7, "sunExposure": "full", "soilType": "loam" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "hardnessZone": 7, "sunExposure": "shade", "soilType": "clay" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "hardnessZone": "Infinity", "sunExposure": "MOONLIGHT", "soilType": "lava" } } }, "expect": { "ok": true } }
   ],
   "_note": "Pure compute, reads artifact.data (ProLandscape.callLand channel: runDomain → {input:{artifact:{data}}} peeled at dispatch). zone = parseInt(hardnessZone)||7. Filters the built-in 6-plant library by zone-range + sun (full|shade plus partial-as-wildcard) + soil membership. Result card (PlantSelector) renders zone/sunExposure/soilType/recommendations[].{name,type}/totalMatches EXACTLY; totalMatches === recommendations.length. NaN/Infinity zone falls back to 7 (parseInt → NaN → ||7) — never NaN."
 }

@@ -5,16 +5,10 @@ export default function registerWeldingActions(registerLensAction) {
   // leak NaN/Infinity into a computed result. parseFloat alone passes Infinity
   // through ("Infinity" → Infinity), so Number.isFinite is the real guard.
   const wFinite = (v, dflt) => { const n = parseFloat(v); return Number.isFinite(n) ? n : dflt; };
-  // Fail-CLOSED guard: a field PRESENT but non-finite (Infinity/NaN/1e999) must
-  // reject rather than fall back to a default — otherwise a poisoned input is
-  // laundered into a confident, wrong calculator result.
-  const wBad = (v) => v !== undefined && v !== null && v !== "" && !Number.isFinite(Number(v));
 
   registerLensAction("welding", "jointStrength", (ctx, artifact, _params) => {
     try {
     const data = artifact.data || {};
-    if (wBad(data.thickness)) return { ok: false, error: "invalid_thickness" };
-    if (wBad(data.length)) return { ok: false, error: "invalid_length" };
     const thickness = wFinite(data.thickness, 6);
     const weldType = (data.weldType || "fillet").toLowerCase();
     const material = (data.material || "mild-steel").toLowerCase();
@@ -37,7 +31,6 @@ export default function registerWeldingActions(registerLensAction) {
     const baseMetal = (data.baseMetal || data.material || "mild-steel").toLowerCase();
     const position = (data.position || "flat").toLowerCase();
     const jointType = (data.jointType || "fillet").toLowerCase();
-    if (wBad(data.thickness)) return { ok: false, error: "invalid_thickness" };
     const thickness = wFinite(data.thickness, 6);
     const rodDatabase = {
       "mild-steel": [
@@ -66,10 +59,6 @@ export default function registerWeldingActions(registerLensAction) {
 
   registerLensAction("welding", "heatInput", (ctx, artifact, _params) => {
     try {
-    if (wBad(artifact.data?.voltage)) return { ok: false, error: "invalid_voltage" };
-    if (wBad(artifact.data?.amperage ?? artifact.data?.current)) return { ok: false, error: "invalid_amperage" };
-    if (wBad(artifact.data?.travelSpeed)) return { ok: false, error: "invalid_travelSpeed" };
-    if (wBad(artifact.data?.efficiency)) return { ok: false, error: "invalid_efficiency" };
     const voltage = wFinite(artifact.data?.voltage, 25);
     const amperage = wFinite(artifact.data?.amperage ?? artifact.data?.current, 150);
     const travelSpeedRaw = wFinite(artifact.data?.travelSpeed, 5);
@@ -78,10 +67,13 @@ export default function registerWeldingActions(registerLensAction) {
     const travelSpeed = travelSpeedRaw > 0 ? travelSpeedRaw : 5;
     const efficiency = wFinite(artifact.data?.efficiency, 0.8);
     const maxInterpass = wFinite(artifact.data?.maxInterpassTemp, 250);
-    const heatInputJmm = (voltage * amperage * efficiency) / travelSpeed;
-    const heatInputKJmm = Math.round(heatInputJmm / 1000 * 100) / 100;
+    // CLAMP-AND-COMPUTE: inputs are wFinite-clamped, but a large-but-finite
+    // input (e.g. 1e308) can overflow the product to Infinity. Clamp every
+    // COMPUTED numeric output so no NaN/Infinity ever leaks.
+    const heatInputJmm = wFinite((voltage * amperage * efficiency) / travelSpeed, 0);
+    const heatInputKJmm = wFinite(Math.round(heatInputJmm / 1000 * 100) / 100, 0);
     const risk = heatInputKJmm > 3.0 ? "high" : heatInputKJmm > 1.5 ? "moderate" : "low";
-    return { ok: true, result: { voltage: `${voltage}V`, amperage: `${amperage}A`, travelSpeed: `${travelSpeed} mm/s`, efficiency, heatInput: `${heatInputKJmm} kJ/mm`, heatInputJoules: Math.round(heatInputJmm), maxInterpassTemp: `${maxInterpass}°C`, distortionRisk: risk, recommendations: [heatInputKJmm > 2.5 ? "Reduce heat input — increase travel speed or reduce amperage" : null, heatInputKJmm < 0.5 ? "Low heat input — risk of incomplete fusion" : null, "Monitor interpass temperature between passes", risk === "high" ? "Use backstep welding technique to reduce distortion" : null].filter(Boolean) } };
+    return { ok: true, result: { voltage: `${voltage}V`, amperage: `${amperage}A`, travelSpeed: `${travelSpeed} mm/s`, efficiency, heatInput: `${heatInputKJmm} kJ/mm`, heatInputJoules: wFinite(Math.round(heatInputJmm), 0), maxInterpassTemp: `${maxInterpass}°C`, distortionRisk: risk, recommendations: [heatInputKJmm > 2.5 ? "Reduce heat input — increase travel speed or reduce amperage" : null, heatInputKJmm < 0.5 ? "Low heat input — risk of incomplete fusion" : null, "Monitor interpass temperature between passes", risk === "high" ? "Use backstep welding technique to reduce distortion" : null].filter(Boolean) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

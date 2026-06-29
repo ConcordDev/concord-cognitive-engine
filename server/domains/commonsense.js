@@ -473,11 +473,8 @@ export default function registerCommonsenseActions(registerLensAction) {
    */
   registerLensAction("commonsense", "defaultReasoning", (ctx, artifact, _params) => {
   try {
-    // Array-guard: a poisoned non-array `classes` (e.g. a string) must not be
-    // iterated char-by-char — treat malformed input as an empty hierarchy and
-    // degrade gracefully to the "no hierarchy" result.
     const classes = Array.isArray(artifact.data?.classes) ? artifact.data.classes : [];
-    const instance = (artifact.data?.instance && typeof artifact.data.instance === "object" && !Array.isArray(artifact.data.instance)) ? artifact.data.instance : {};
+    const instance = (artifact.data?.instance && typeof artifact.data.instance === "object") ? artifact.data.instance : {};
 
     if (classes.length === 0) {
       return { ok: true, result: { message: "No class hierarchy provided." } };
@@ -907,21 +904,8 @@ export default function registerCommonsenseActions(registerLensAction) {
   registerLensAction("commonsense", "inferChain", (ctx, _artifact, params = {}) => {
     try {
       const facts = [...factBucket(userIdOf(ctx)).values()];
-      // Fail-CLOSED: poisoned maxHops / minConfidence (NaN/±Infinity/1e308/-1) must
-      // not be silently clamped and reported ok:true. Default when absent; reject
-      // when present-but-not-finite.
-      let maxHops = 3;
-      if (params.maxHops !== undefined && params.maxHops !== null && params.maxHops !== "") {
-        maxHops = Number(params.maxHops);
-        if (!Number.isFinite(maxHops)) return { ok: false, error: "invalid_maxHops" };
-        maxHops = Math.max(1, Math.min(5, maxHops));
-      }
-      let minConf = 0.3;
-      if (params.minConfidence !== undefined && params.minConfidence !== null && params.minConfidence !== "") {
-        minConf = Number(params.minConfidence);
-        if (!Number.isFinite(minConf)) return { ok: false, error: "invalid_minConfidence" };
-        minConf = Math.max(0, Math.min(1, minConf));
-      }
+      const maxHops = Math.max(1, Math.min(5, Number(params.maxHops) || 3));
+      const minConf = Math.max(0, Math.min(1, Number(params.minConfidence) || 0.3));
       const relFilter = params.relation ? normTok(params.relation) : null;
 
       // Transitive relations only — these are the ones we can chain.
@@ -1163,15 +1147,7 @@ export default function registerCommonsenseActions(registerLensAction) {
       const subject = String(params.subject || "").trim();
       if (!subject) return { ok: false, error: "subject required" };
       const subjNorm = normTok(subject);
-      // Fail-CLOSED: a poisoned minConfidence (NaN/±Infinity/1e308/-1) must not be
-      // silently clamped into a valid threshold and reported ok:true. Default when
-      // absent; reject when present-but-not-finite.
-      let minConf = 0.5;
-      if (params.minConfidence !== undefined && params.minConfidence !== null && params.minConfidence !== "") {
-        minConf = Number(params.minConfidence);
-        if (!Number.isFinite(minConf)) return { ok: false, error: "invalid_minConfidence" };
-        minConf = Math.max(0, Math.min(1, minConf));
-      }
+      const minConf = Math.max(0, Math.min(1, Number(params.minConfidence) || 0.5));
       const relFilter = params.relation ? normTok(params.relation) : null;
 
       const facts = [...factBucket(userIdOf(ctx)).values()];

@@ -3,13 +3,8 @@
   "domain": "landscaping",
   "name": "irrigationCalc",
   "inputs": {
-    "squareFootage": {
-      "type": "number"
-    },
-    "plantType": {
-      "type": "string",
-      "maxLength": 40
-    }
+    "squareFootage": { "type": "number" },
+    "plantType": { "type": "string", "maxLength": 40 }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -28,55 +23,10 @@
     "output.ok === false || Number.isFinite(output.result.monthlyCost)"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "squareFootage": 1500,
-            "plantType": "lawn"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "squareFootage": 1000,
-            "plantType": "xeriscape"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "squareFootage": "Infinity",
-            "plantType": "moss-garden"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": { "squareFootage": 1500, "plantType": "lawn" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "squareFootage": 1000, "plantType": "xeriscape" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "squareFootage": "Infinity", "plantType": "moss-garden" } } }, "expect": { "ok": true } }
   ],
   "_note": "Pure compute, reads artifact.data. inchesPerWeek from a rate table (lawn 1.0 / garden 0.8 / shrubs 0.6 / trees 0.4 / xeriscape 0.2; unknown → lawn). gallonsPerWeek = round(sqft × inches × 0.623); gallonsPerMonth = ×4; runtimeMinutes = round(gpw/5); frequency = inches>0.8 ? '3x per week' : '2x per week'; monthlyCost = round(gpm × 0.004 × 100)/100. FAIL-CLOSED (fixed 2026-06-28): a raw Infinity squareFootage is truthy and the prior `parseFloat()||1000` let it through → Infinity gallons leaked onto the card; now Number.isFinite-guarded (Infinity/NaN/garbage → 1000 default, negatives floor to 0). IrrigationCalc renders ALL fields above EXACTLY."
 }

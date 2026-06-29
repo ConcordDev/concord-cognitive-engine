@@ -44,36 +44,20 @@ export default function registerCookingActions(registerLensAction) {
 
   registerLensAction("cooking", "scaleRecipe", (ctx, artifact, _params) => {
     const data = recipeData(artifact, _params) || {};
-    // Fail-closed on poisoned numerics: reject NaN/Infinity/non-positive servings.
-    if (data.servings !== undefined && data.servings !== null && data.servings !== "") {
-      const sv = Number(data.servings);
-      if (!Number.isFinite(sv) || sv <= 0) return { ok: false, error: "invalid_servings" };
-    }
-    const rawTarget = data.targetServings ?? _params?.targetServings;
-    if (rawTarget !== undefined && rawTarget !== null && rawTarget !== "") {
-      const tv = Number(rawTarget);
-      if (!Number.isFinite(tv) || tv <= 0) return { ok: false, error: "invalid_targetServings" };
-    }
-    const baseRaw = parseFloat(data.servings || data.baseYield);
-    const baseServings = Number.isFinite(baseRaw) && baseRaw > 0 ? baseRaw : 4;
-    const targetRaw = parseFloat(rawTarget);
-    const targetServings = Number.isFinite(targetRaw) && targetRaw > 0 ? targetRaw : 8;
-    // Guard: handler assumed an array — non-array ingredients threw `.map is not a function`.
+    const finNum = (v, d = 0) => { const n = typeof v === "number" ? v : parseFloat(v); return Number.isFinite(n) ? n : d; };
+    // Clamp servings to a finite, sane value so the scale factor never goes NaN/Infinity.
+    let baseServings = finNum(data.servings ?? data.baseYield, 4);
+    if (!(baseServings > 0)) baseServings = 4;
+    let targetServings = finNum(data.targetServings ?? _params?.targetServings, 8);
+    if (!(targetServings > 0)) targetServings = 8;
     const ingredients = Array.isArray(data.ingredients) ? data.ingredients : [];
-    const factor = targetServings / baseServings;
-    const scaled = ingredients.map(i => ({ name: i?.name, original: `${i?.quantity} ${i?.unit || ""}`, scaled: `${Math.round(parseFloat(i?.quantity || 0) * factor * 100) / 100} ${i?.unit || ""}` }));
+    const factor = baseServings > 0 ? targetServings / baseServings : 1;
+    const scaled = ingredients.map(i => ({ name: i.name, original: `${i.quantity} ${i.unit || ""}`, scaled: `${Math.round(finNum(i.quantity, 0) * factor * 100) / 100} ${i.unit || ""}` }));
     return { ok: true, result: { recipe: data.name || artifact?.title, baseServings, targetServings, scaleFactor: Math.round(factor * 100) / 100, ingredients: scaled } };
   });
   registerLensAction("cooking", "nutritionEstimate", (ctx, artifact, _params) => {
-    // Merge top-level params so a poisoned `servings` passed there (not only
-    // nested in artifact.data) is still seen by the guard below; nested wins.
-    const ndata = { ...(_params || {}), ...(recipeData(artifact, _params) || {}) };
-    // Fail-closed on poisoned servings — non-finite or non-positive yields NaN/Infinity/negative perServing.
-    if (ndata.servings !== undefined && ndata.servings !== null && ndata.servings !== "") {
-      const sv = Number(ndata.servings);
-      if (!Number.isFinite(sv) || sv <= 0 || sv > 1e6) return { ok: false, error: "invalid_servings" };
-    }
-    const ingredients = Array.isArray(ndata.ingredients) ? ndata.ingredients : [];
+    const ndata = recipeData(artifact, _params) || {};
+    const ingredients = ndata.ingredients || [];
     // Rough per-100g estimates
     const db = { flour: { cal: 364, protein: 10, carbs: 76, fat: 1 }, sugar: { cal: 387, protein: 0, carbs: 100, fat: 0 }, butter: { cal: 717, protein: 1, carbs: 0, fat: 81 }, egg: { cal: 155, protein: 13, carbs: 1, fat: 11 }, milk: { cal: 42, protein: 3, carbs: 5, fat: 1 }, chicken: { cal: 239, protein: 27, carbs: 0, fat: 14 }, rice: { cal: 130, protein: 3, carbs: 28, fat: 0 }, oil: { cal: 884, protein: 0, carbs: 0, fat: 100 }, cheese: { cal: 402, protein: 25, carbs: 1, fat: 33 }, potato: { cal: 77, protein: 2, carbs: 17, fat: 0 } };
     let totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
@@ -100,7 +84,6 @@ export default function registerCookingActions(registerLensAction) {
   });
   registerLensAction("cooking", "substitution", (ctx, artifact, _params) => {
     const sdata = recipeData(artifact, _params) || {};
-    // Guard: ingredient may arrive as a non-string (object/array/number) — coerce before .toLowerCase.
     const ingredient = String(sdata.ingredient ?? "").toLowerCase();
     const subs = { butter: [{ sub: "Coconut oil", ratio: "1:1" }, { sub: "Applesauce", ratio: "1:0.5", note: "For baking, reduces fat" }], egg: [{ sub: "Flax egg (1 tbsp ground flax + 3 tbsp water)", ratio: "1 egg" }, { sub: "Mashed banana", ratio: "1/4 cup per egg" }], milk: [{ sub: "Oat milk", ratio: "1:1" }, { sub: "Almond milk", ratio: "1:1" }], flour: [{ sub: "Almond flour", ratio: "1:1", note: "Gluten-free, denser" }, { sub: "Oat flour", ratio: "1:1" }], sugar: [{ sub: "Honey", ratio: "1:0.75", note: "Reduce liquid by 2 tbsp" }, { sub: "Maple syrup", ratio: "1:0.75" }], cream: [{ sub: "Coconut cream", ratio: "1:1" }, { sub: "Cashew cream", ratio: "1:1" }] };
     const match = Object.keys(subs).find(k => ingredient.includes(k));

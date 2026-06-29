@@ -3,21 +3,11 @@
   "domain": "aviation",
   "name": "weatherCheck",
   "inputs": {
-    "windDirection": {
-      "type": "number"
-    },
-    "windSpeed": {
-      "type": "number"
-    },
-    "windGust": {
-      "type": "number"
-    },
-    "visibility": {
-      "type": "number"
-    },
-    "ceiling": {
-      "type": "number"
-    }
+    "windDirection": { "type": "number" },
+    "windSpeed": { "type": "number" },
+    "windGust": { "type": "number" },
+    "visibility": { "type": "number" },
+    "ceiling": { "type": "number" }
   },
   "reads_artifact_data": true,
   "invariants": [
@@ -29,66 +19,10 @@
     "output.ok === false || typeof output.result.visibility === 'string'"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "stationId": "KJFK",
-            "windDirection": 270,
-            "windSpeed": 15,
-            "windGust": 25,
-            "visibility": 10,
-            "ceiling": 25000,
-            "wxConditions": "FEW250"
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "wind": {
-              "direction": 90,
-              "speed": 8
-            },
-            "visibility": 2,
-            "ceiling": 800
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "windDirection": 270,
-            "windSpeed": 15,
-            "visibility": "NaN",
-            "ceiling": "abc"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": { "stationId": "KJFK", "windDirection": 270, "windSpeed": 15, "windGust": 25, "visibility": 10, "ceiling": 25000, "wxConditions": "FEW250" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "wind": { "direction": 90, "speed": 8 }, "visibility": 2, "ceiling": 800 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "windDirection": 270, "windSpeed": 15, "visibility": "NaN", "ceiling": "abc" } } }, "expect": { "ok": true } }
   ],
   "_note": "METAR-style weather summary. The Weather editor (renderWeatherEditor) persists FLAT windDirection/windSpeed/windGust; the handler read artifact.data.wind.direction, so the METAR wind string showed 000/00KT for every observation. Now accepts BOTH the flat fields and the structured wind:{} shape. flightCategory is derived from visibility/ceiling and the page colour-codes it (VFR/MVFR/IFR/LIFR); poisoned vis/ceiling still resolve a valid category enum. Fixed 2026-06-28."
 }

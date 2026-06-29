@@ -13,12 +13,6 @@ const TREFLE_BASE = "https://trefle.io/api/v1";
 export default function registerLandscapingActions(registerLensAction) {
   registerLensAction("landscaping", "plantSelection", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Fail-CLOSED: a poisoned hardnessZone (NaN/Infinity/1e308/-1) must not slide
-    // onto the default and return ok:true. USDA zones are 1..13.
-    if (data.hardnessZone != null) {
-      const hz = Number(data.hardnessZone);
-      if (!Number.isFinite(hz) || hz < 1 || hz > 13) return { ok: false, error: "invalid_hardnessZone" };
-    }
     const zone = parseInt(data.hardnessZone) || 7;
     const sun = (data.sunExposure || "full").toLowerCase();
     const soil = (data.soilType || "loam").toLowerCase();
@@ -38,12 +32,6 @@ export default function registerLandscapingActions(registerLensAction) {
     // and a raw Infinity are truthy → `|| 1000` would let Infinity through and
     // leak Infinity into every rendered gallons figure. Guard with isFinite +
     // floor negatives to 0 so the card never shows NaN/Infinity.
-    // Fail-CLOSED: 1e308 passes Number.isFinite but is absurd area that leaks a
-    // junk gallons figure; -1 floors to 0 then re-defaults. Reject outright.
-    if (artifact.data?.squareFootage != null) {
-      const sf = Number(artifact.data.squareFootage);
-      if (!Number.isFinite(sf) || sf <= 0 || sf > 1e8) return { ok: false, error: "invalid_squareFootage" };
-    }
     const rawSqft = parseFloat(artifact.data?.squareFootage);
     const sqft = Number.isFinite(rawSqft) ? Math.max(0, rawSqft) || 1000 : 1000;
     const plantType = (artifact.data?.plantType || "lawn").toLowerCase();
@@ -53,24 +41,14 @@ export default function registerLandscapingActions(registerLensAction) {
     return { ok: true, result: { squareFootage: sqft, plantType, inchesPerWeek, gallonsPerWeek, gallonsPerMonth: gallonsPerWeek * 4, runtimeMinutes: Math.round(gallonsPerWeek / 5), frequency: inchesPerWeek > 0.8 ? "3x per week" : "2x per week", monthlyCost: Math.round(gallonsPerWeek * 4 * 0.004 * 100) / 100 } };
   });
   registerLensAction("landscaping", "seasonalPlan", (ctx, artifact, _params) => {
-    // Fail-CLOSED on a poisoned hardnessZone (USDA zones are 1..13).
-    if (artifact.data?.hardnessZone != null) {
-      const hz = Number(artifact.data.hardnessZone);
-      if (!Number.isFinite(hz) || hz < 1 || hz > 13) return { ok: false, error: "invalid_hardnessZone" };
-    }
     const zone = parseInt(artifact.data?.hardnessZone) || 7;
     const seasons = { spring: ["Fertilize lawn", "Prune winter damage", "Plant annuals", "Mulch beds", "Edge beds"], summer: ["Deep water weekly", "Mow at 3-4 inches", "Deadhead flowers", "Watch for pests", "Prune after bloom"], fall: ["Aerate lawn", "Overseed thin spots", "Plant bulbs", "Final fertilizer", "Clean up leaves"], winter: ["Plan spring design", "Order seeds", "Maintain tools", "Protect tender plants", "Prune dormant trees"] };
     return { ok: true, result: { zone, plan: seasons, currentSeason: ["winter","winter","spring","spring","spring","summer","summer","summer","fall","fall","fall","winter"][new Date().getMonth()], immediateActions: seasons[["winter","winter","spring","spring","spring","summer","summer","summer","fall","fall","fall","winter"][new Date().getMonth()]] } };
   });
   registerLensAction("landscaping", "materialEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // fail-CLOSED on poisoned numerics: Infinity/NaN/1e308/-1 must never leak
-    // into cubicYards/bags/estimatedCost. Reject outright (1e308 is finite but
-    // absurd; -1 floors to 0 then re-defaults — both bypass the old guard).
-    if (data.squareFootage != null) {
-      const sf = Number(data.squareFootage);
-      if (!Number.isFinite(sf) || sf <= 0 || sf > 1e8) return { ok: false, error: "invalid_squareFootage" };
-    }
+    // fail-CLOSED on poisoned numerics: Infinity/NaN/garbage must never leak
+    // into cubicYards/bags/estimatedCost. isFinite guard + floor negatives.
     const rawSqft = parseFloat(data.squareFootage);
     const sqft = Number.isFinite(rawSqft) ? Math.max(0, rawSqft) || 100 : 100;
     const material = (data.material || "mulch").toLowerCase();

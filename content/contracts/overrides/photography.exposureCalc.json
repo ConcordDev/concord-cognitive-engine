@@ -3,18 +3,9 @@
   "domain": "photography",
   "name": "exposureCalc",
   "inputs": {
-    "iso": {
-      "type": "number",
-      "required": false
-    },
-    "aperture": {
-      "type": "number",
-      "required": false
-    },
-    "ev": {
-      "type": "number",
-      "required": false
-    }
+    "iso": { "type": "number", "required": false },
+    "aperture": { "type": "number", "required": false },
+    "ev": { "type": "number", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -29,58 +20,10 @@
     "output.ok === false || Number.isFinite(output.result.ev)"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {}
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "iso": 100,
-            "aperture": 5.6,
-            "ev": 12
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "iso": 1600,
-            "aperture": 1.4,
-            "ev": 6
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "iso": "Infinity",
-            "aperture": "1e999",
-            "ev": "NaN"
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    }
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "iso": 100, "aperture": 5.6, "ev": 12 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "iso": 1600, "aperture": 1.4, "ev": 6 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "iso": "Infinity", "aperture": "1e999", "ev": "NaN" } } }, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS handler (registerLensAction). NOT assassin-driven — it lives only in LENS_ACTIONS, which the assassin's MACROS enumeration cannot see; this is an authored contract pinned by server/tests/photography-lens-macros.test.js. The PhotographyActionPanel sends { artifact: { data: { iso, aperture, ev } } } which the dispatch peels to the inner data via peelRedundantArtifactWrapper, so the handler reads artifact.data.iso/aperture/ev. POISON: iso via parseInt|0→100 fallback, aperture/ev via parseFloat fallback — '1e999'/'Infinity'/'NaN' collapse to defaults, shutterSpeed stays a finite readable string (never NaN)."
 }

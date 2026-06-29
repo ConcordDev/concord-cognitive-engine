@@ -41,23 +41,6 @@ export default function registerCognitiveReplayActions(registerLensAction) {
   const DAY_MS = 86400000;
   const HOUR_MS = 3600000;
 
-  // Fail-CLOSED reject of poisoned numeric inputs (NaN/Infinity/1e308/negative)
-  // BEFORE any aggregation. The `Number(x) || default` pattern silently masks a
-  // poisoned value (and a poisoned fromTs=Infinity even survives `|| null`),
-  // producing a misleading ok:true; this rejects it with an honest error. Reads
-  // through `param()` so both params and artifact.data inputs are guarded. An
-  // absent field is fine (the macro uses its default).
-  const POISON_MAX = 1e15; // timestamps are ms epoch (~1.7e12), so allow large
-  function badNumericField(artifact, params, keys) {
-    for (const k of keys) {
-      const raw = param(artifact, params, k);
-      if (raw === undefined || raw === null || raw === "") continue;
-      const n = Number(raw);
-      if (!Number.isFinite(n) || n < 0 || n > POISON_MAX) return k;
-    }
-    return null;
-  }
-
   // ── pull the live event corpus for a user ──────────────────────────
   // Mirrors chat.timeline's sweep so the lens shares one source of
   // truth. Returns chronologically-sorted events (oldest → newest).
@@ -155,8 +138,6 @@ export default function registerCognitiveReplayActions(registerLensAction) {
     try {
       const userId = uid(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
-      const badField = badNumericField(artifact, params, ["sinceDays"]);
-      if (badField) return { ok: false, error: `invalid_${badField}` };
       const sinceDays = Math.min(365, Math.max(1, Number(param(artifact, params, "sinceDays")) || 7));
       const all = collectEvents(userId);
       const cutoff = Date.now() - sinceDays * DAY_MS;
@@ -191,15 +172,22 @@ export default function registerCognitiveReplayActions(registerLensAction) {
     try {
       const userId = uid(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
-      const badField = badNumericField(artifact, params, ["fromTs", "toTs", "limit"]);
-      if (badField) return { ok: false, error: `invalid_${badField}` };
       const brain = param(artifact, params, "brain");
       const tool = param(artifact, params, "tool");
       const role = param(artifact, params, "role");
       const sessionId = param(artifact, params, "sessionId");
-      const fromTs = Number(param(artifact, params, "fromTs")) || null;
-      const toTs = Number(param(artifact, params, "toTs")) || null;
-      const limit = Math.min(1000, Math.max(1, Number(param(artifact, params, "limit")) || 300));
+      // Fail-CLOSED finite coercion: Number("Infinity")/Number(-Infinity) are
+      // truthy, so the old `Number(x) || null` pattern leaked ±Infinity into
+      // appliedFilters.{fromTs,toTs}. Clamp each timestamp to a finite, sane
+      // bound (fromTs floors at 0, toTs ceilings at now) and fall back to null
+      // when absent/non-finite so the filter still returns ok:true.
+      const _finTs = (v, fallback) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
+      const _fromRaw = _finTs(param(artifact, params, "fromTs"), null);
+      const fromTs = _fromRaw === null ? null : Math.max(0, _fromRaw);
+      const _toRaw = _finTs(param(artifact, params, "toTs"), null);
+      const toTs = _toRaw === null ? null : Math.min(Date.now(), Math.max(0, _toRaw));
+      const _limRaw = Number(param(artifact, params, "limit"));
+      const limit = Math.min(1000, Math.max(1, Number.isFinite(_limRaw) ? _limRaw : 300));
 
       let events = collectEvents(userId, { sessionId: sessionId || null });
       if (brain) events = events.filter((e) => e.brainsUsed.includes(brain));
@@ -239,8 +227,6 @@ export default function registerCognitiveReplayActions(registerLensAction) {
     try {
       const userId = uid(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
-      const badField = badNumericField(artifact, params, ["sinceDays"]);
-      if (badField) return { ok: false, error: `invalid_${badField}` };
       const sinceDays = Math.min(365, Math.max(1, Number(param(artifact, params, "sinceDays")) || 7));
       const cutoff = Date.now() - sinceDays * DAY_MS;
       const events = collectEvents(userId).filter((e) => !e.ts || e.ts >= cutoff);

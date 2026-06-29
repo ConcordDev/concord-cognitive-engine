@@ -105,11 +105,6 @@ export default function registerMlActions(registerLensAction) {
 
   registerLensAction("ml", "hyperparameterSuggest", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    for (const f of ["datasetSize", "features"]) {
-      if (data[f] !== undefined && data[f] !== null && !Number.isFinite(Number(data[f]))) {
-        return { ok: false, error: `invalid_${f}` };
-      }
-    }
     const modelType = (data.model || data.modelType || "neural-network").toLowerCase();
     const datasetSize = parseInt(data.datasetSize || data.rows) || 1000;
     const featureCount = parseInt(data.features || data.featureCount) || 10;

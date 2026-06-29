@@ -27,12 +27,9 @@ export default function registerConstructionActions(registerLensAction) {
   };
 
   registerLensAction("construction", "takeoffEstimate", (ctx, artifact, _params) => {
-    const cdata = { ...(_params || {}), ...calcData(artifact) };
+    const cdata = calcData(artifact);
     const items = Array.isArray(cdata.lineItems) ? cdata.lineItems : [];
     if (items.length === 0) return { ok: true, result: { message: "Add line items with quantity, unit, and unit cost." } };
-    // Fail-CLOSED on poisoned numerics: reject if present-but-non-finite.
-    if (cdata.laborPercent !== undefined && cdata.laborPercent !== null && (() => { const n = Number(cdata.laborPercent); return !Number.isFinite(n) || n < 0 || n > 1e12; })()) return { ok: false, error: "invalid_laborPercent" };
-    if (cdata.squareFootage !== undefined && cdata.squareFootage !== null && (() => { const n = Number(cdata.squareFootage); return !Number.isFinite(n) || n < 0 || n > 1e12; })()) return { ok: false, error: "invalid_squareFootage" };
     const estimated = items.map(item => {
       const qty = finNum(item.quantity, 0);
       const unitCost = finNum(item.unitCost, 0);
@@ -51,7 +48,8 @@ export default function registerConstructionActions(registerLensAction) {
   });
 
   registerLensAction("construction", "criticalPath", (ctx, artifact, _params) => {
-    const tasks = Array.isArray(calcData(artifact).tasks) ? calcData(artifact).tasks : [];
+    const rawTasks = calcData(artifact).tasks;
+    const tasks = Array.isArray(rawTasks) ? rawTasks : [];
     if (tasks.length === 0) return { ok: true, result: { message: "Add tasks with duration and dependencies." } };
     const taskMap = {};
     tasks.forEach(t => { taskMap[t.name || t.id] = { name: t.name || t.id, duration: parseInt(t.duration) || 1, deps: t.dependencies || [], earlyStart: 0, earlyFinish: 0, lateStart: 0, lateFinish: 0, slack: 0 }; });
@@ -75,14 +73,9 @@ export default function registerConstructionActions(registerLensAction) {
   });
 
   registerLensAction("construction", "safetyCompliance", (ctx, artifact, _params) => {
-    // Merge top-level params so a poisoned numeric passed there (not only nested
-    // in artifact.data) is still seen by the guards below; nested data wins.
-    const data = { ...(_params || {}), ...calcData(artifact) };
+    const data = calcData(artifact);
     const checklistItems = Array.isArray(data.safetyChecklist) ? data.safetyChecklist : [];
     const incidents = Array.isArray(data.incidents) ? data.incidents : [];
-    // Fail-CLOSED on poisoned numerics: reject if present-but-non-finite.
-    if (data.workerCount !== undefined && data.workerCount !== null && (() => { const n = Number(data.workerCount); return !Number.isFinite(n) || n < 0 || n > 1e12; })()) return { ok: false, error: "invalid_workerCount" };
-    if (data.totalHoursWorked !== undefined && data.totalHoursWorked !== null && (() => { const n = Number(data.totalHoursWorked); return !Number.isFinite(n) || n < 0 || n > 1e12; })()) return { ok: false, error: "invalid_totalHoursWorked" };
     const workers = parseInt(data.workerCount) || 1;
     const hoursWorked = parseInt(data.totalHoursWorked) || 0;
     const compliant = checklistItems.filter(c => c.passed || c.compliant).length;
@@ -93,7 +86,8 @@ export default function registerConstructionActions(registerLensAction) {
   });
 
   registerLensAction("construction", "progressReport", (ctx, artifact, _params) => {
-    const phases = Array.isArray(calcData(artifact).phases) ? calcData(artifact).phases : [];
+    const rawPhases = calcData(artifact).phases;
+    const phases = Array.isArray(rawPhases) ? rawPhases : [];
     if (phases.length === 0) return { ok: true, result: { message: "Add project phases with planned vs actual progress." } };
     const analyzed = phases.map(p => {
       const planned = finNum(p.plannedPercent, 0);

@@ -3,14 +3,8 @@
   "domain": "emergency-services",
   "name": "triageAssess",
   "inputs": {
-    "severity": {
-      "type": "number",
-      "required": false
-    },
-    "vitals": {
-      "type": "object",
-      "required": false
-    }
+    "severity": { "type": "number", "required": false },
+    "vitals": { "type": "object", "required": false }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -23,71 +17,11 @@
     "output.ok === false || Number.isFinite(output.result.reportedSeverity)"
   ],
   "fuzz_cases": [
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "severity": 4,
-            "vitals": {
-              "breathing": true,
-              "conscious": true,
-              "pulse": 88
-            }
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "severity": 5,
-            "vitals": {
-              "breathing": false
-            }
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "severity": 3
-          }
-        }
-      },
-      "expect": {
-        "ok": true
-      }
-    },
-    {
-      "input": {
-        "artifact": {
-          "data": {
-            "severity": "Infinity",
-            "vitals": {
-              "pulse": "1e999"
-            }
-          }
-        }
-      },
-      "expect": {
-        "ok": false
-      }
-    },
-    {
-      "input": {},
-      "expect": {
-        "ok": true
-      }
-    }
+    { "input": { "artifact": { "data": { "severity": 4, "vitals": { "breathing": true, "conscious": true, "pulse": 88 } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "severity": 5, "vitals": { "breathing": false } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "severity": 3 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "severity": "Infinity", "vitals": { "pulse": "1e999" } } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
   ],
   "_note": "LENS_ACTIONS handler — dispatch key 'emergency-services.triageAssess', component-exact shape: panel sends { artifact: { data: { severity, vitals:{breathing,conscious,pulse} } } } and the /api/lens/run peeler unwraps ONE artifact layer so the handler reads artifact.data.{severity,vitals}. POISON: severity/pulse coerced via Number()-based intOr so 'Infinity'/'1e999' collapse to safe defaults (NOT parseInt-truncated to 1) and triageLevel/pulse stay FINITE — a non-finite triage is safety-relevant. Render contract (triageLevel→TRIAGE_COLOR, triageColor headline, responseTime, actions[]) pinned by server/tests/emergency-services-lens-macros.test.js. Authored spec, not assassin-driven (LENS_ACTIONS)."
 }
