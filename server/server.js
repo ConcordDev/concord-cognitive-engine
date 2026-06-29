@@ -39235,19 +39235,26 @@ function _unwrapLensEnvelope(r) {
 }
 
 // Test-only faithful dispatcher for the Orchestrated Invariant Engine harness.
-// Mirrors the /api/lens/run dispatch EXACTLY: prefer LENS_ACTIONS (path-3
-// registerLensAction handlers), fall back to MACROS (path-2 register handlers),
-// and return the UNWRAPPED result the lens frontend actually receives. The bare
-// runMacro cannot see LENS_ACTIONS, so the macro-assassin needs this to drive
-// path-3-only handlers (the 23 super-lens domain modules + inline ones) through
-// the same code path production runs. No HTTP/auth — the harness supplies an
-// internal owner ctx. Side-effect-free aside from whatever the handler does.
+// Prefers LENS_ACTIONS (path-3 registerLensAction handlers), falls back to
+// MACROS (path-2). The bare runMacro cannot see LENS_ACTIONS, so the
+// macro-assassin needs this to drive path-3-only handlers (the 23 super-lens
+// domain modules + inline ones).
+//
+// Returns the handler's RAW envelope ({ok, result, ...}) — NOT the
+// _unwrapLensEnvelope'd inner result. The contract layer (derived + overrides)
+// references `output.ok` and `output.result.*`, the same WRAPPED shape bare
+// runMacro yields for path-2, so the two paths grade identically. (An earlier
+// version unwrapped here, which stripped {ok,result} and made every contract
+// reference resolve to undefined — a measurement artifact, not a domain bug.)
+// The /api/lens/run ROUTE still unwraps before sending to the frontend; that is
+// a transport concern, separate from how the macro layer is graded.
+// No HTTP/auth — the harness supplies an internal owner ctx.
 async function _dispatchLensRunForTest(domain, name, input, ctx) {
   const lensHandler = LENS_ACTIONS.get(`${domain}.${name}`);
   if (lensHandler) {
     const data = _peelRedundantArtifactWrapper(input || {});
     const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
-    return _unwrapLensEnvelope(await lensHandler(ctx, virtualArtifact, data));
+    return await lensHandler(ctx, virtualArtifact, data);
   }
   return await runMacro(domain, name, input || {}, ctx);
 }
