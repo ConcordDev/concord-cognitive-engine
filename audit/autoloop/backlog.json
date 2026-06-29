@@ -1,6 +1,76 @@
 {
-  "generatedAt": "2026-06-29T05:37:27Z",
+  "generatedAt": "2026-06-29T06:16:01Z",
   "units": [
+    {
+      "id": "repair:depth:hvac",
+      "stream": "repair",
+      "target": "server/tests/depth/hvac-behavior.test.js",
+      "leverage": 0.002,
+      "meta": {
+        "test": "server/tests/depth/hvac-behavior.test.js",
+        "kind": "failing-depth-test"
+      },
+      "gate": "`node --test server/tests/depth/hvac-behavior.test.js` reports 0 fail",
+      "prompt": "Repair the pre-existing failing depth test: hvac energyAudit grade & issue logic. Run `node --test server/tests/depth/hvac-behavior.test.js` IN ISOLATION first. If it passes alone, the CI failure is full-suite STATE/ordering (fix the harness isolation gap). If it fails alone, classify: a drifted expectation (the macro changed honestly — update the test, like the studio fix) vs a real macro bug (fix the macro). Do NOT weaken assertions. Re-run until 0 fail.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "repair:depth:inheritance",
+      "stream": "repair",
+      "target": "server/tests/depth/inheritance-behavior.test.js",
+      "leverage": 0.002,
+      "meta": {
+        "test": "server/tests/depth/inheritance-behavior.test.js",
+        "kind": "failing-depth-test"
+      },
+      "gate": "`node --test server/tests/depth/inheritance-behavior.test.js` reports 0 fail",
+      "prompt": "Repair the pre-existing failing depth test: inheritance asset inventory + category rollup. Run `node --test server/tests/depth/inheritance-behavior.test.js` IN ISOLATION first. If it passes alone, the CI failure is full-suite STATE/ordering (fix the harness isolation gap). If it fails alone, classify: a drifted expectation (the macro changed honestly — update the test, like the studio fix) vs a real macro bug (fix the macro). Do NOT weaken assertions. Re-run until 0 fail.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "repair:depth:system",
+      "stream": "repair",
+      "target": "server/tests/depth/system-behavior.test.js",
+      "leverage": 0.002,
+      "meta": {
+        "test": "server/tests/depth/system-behavior.test.js",
+        "kind": "failing-depth-test"
+      },
+      "gate": "`node --test server/tests/depth/system-behavior.test.js` reports 0 fail",
+      "prompt": "Repair the pre-existing failing depth test: system Prometheus alert eval + log search/heartbeat. Run `node --test server/tests/depth/system-behavior.test.js` IN ISOLATION first. If it passes alone, the CI failure is full-suite STATE/ordering (fix the harness isolation gap). If it fails alone, classify: a drifted expectation (the macro changed honestly — update the test, like the studio fix) vs a real macro bug (fix the macro). Do NOT weaken assertions. Re-run until 0 fail.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "repair:depth:observe",
+      "stream": "repair",
+      "target": "server/tests/depth/observe-behavior.test.js",
+      "leverage": 0.002,
+      "meta": {
+        "test": "server/tests/depth/observe-behavior.test.js",
+        "kind": "failing-depth-test"
+      },
+      "gate": "`node --test server/tests/depth/observe-behavior.test.js` reports 0 fail",
+      "prompt": "Repair the pre-existing failing depth test: observe trace-record normalize/clamp + 4xx error-rate. Run `node --test server/tests/depth/observe-behavior.test.js` IN ISOLATION first. If it passes alone, the CI failure is full-suite STATE/ordering (fix the harness isolation gap). If it fails alone, classify: a drifted expectation (the macro changed honestly — update the test, like the studio fix) vs a real macro bug (fix the macro). Do NOT weaken assertions. Re-run until 0 fail.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "repair:frontend:branch-coverage",
+      "stream": "repair",
+      "target": "frontend-coverage",
+      "leverage": 0.002,
+      "meta": {
+        "test": null,
+        "kind": "coverage-floor"
+      },
+      "gate": "frontend branch coverage ≥ threshold (recover with real tests, or pin branches to the real measured floor like the other 3 thresholds)",
+      "prompt": "Recover frontend branch coverage to ≥80% by adding real tests for the lowest-coverage testable files (skip GPU/shader/3D-renderer files that can't be unit-tested), OR — matching the repo's own documented pattern in concord-frontend/vitest.config.ts (statements/lines/functions are already pinned to their real measured floors with a ratchet-up note) — pin branches to the real floor. Prefer adding tests (raises the ratchet).",
+      "status": "pending",
+      "attempts": 0
+    },
     {
       "id": "depth:worldmodel",
       "stream": "depth",

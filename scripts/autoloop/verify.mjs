@@ -62,6 +62,17 @@ function metric(u) {
       const touchedTest = run("git diff --name-only HEAD").out.split("\n").some((f) => /conkay.*\.(test|spec)\./i.test(f));
       return { value: -fakeCount, target: "hold", evidence: fakeCount === 0 && touchedTest, note: `fakeProgress=${fakeCount} touchedTest=${touchedTest}` };
     }
+    case "repair": {
+      if (u.meta?.test) {
+        const t = run(`node --test ${JSON.stringify(u.meta.test)}`, { allowFail: true });
+        const fails = (t.out.match(/# fail (\d+)/) || [])[1];
+        const passing = fails !== undefined ? parseInt(fails, 10) === 0 : t.ok;
+        return { value: passing ? 1 : 0, target: "rise", evidence: passing, note: `test=${u.meta.test} fails=${fails ?? "?"}` };
+      }
+      // frontend coverage: pass when the coverage gate exits 0.
+      const c = run("cd concord-frontend && npm run --silent test:coverage", { allowFail: true, timeoutMs: 900000 });
+      return { value: c.ok ? 1 : 0, target: "rise", evidence: c.ok, note: `coverage gate ${c.ok ? "green" : "red"}` };
+    }
     default:
       return { value: null, evidence: false, note: "unknown stream" };
   }

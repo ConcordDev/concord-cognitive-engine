@@ -111,11 +111,40 @@ function seedConkay() {
   }));
 }
 
+// Pre-existing full-suite debt surfaced by PR #840 (see audit/autoloop/progress.md).
+// These are FAILING existing tests — a category the macro/wiring rankers don't
+// capture (they rank UNTESTED macros / ORPHAN wires). Declared explicitly so the
+// loop grinds them; each unit's worker runs the test in isolation, classifies
+// (drifted-expectation vs real bug vs full-suite ordering), and fixes. They carry
+// the highest leverage so CI un-reds first. Remove a line once it's passed.
+const REPAIR_UNITS = [
+  { id: "repair:depth:hvac", test: "server/tests/depth/hvac-behavior.test.js", what: "hvac energyAudit grade & issue logic" },
+  { id: "repair:depth:inheritance", test: "server/tests/depth/inheritance-behavior.test.js", what: "inheritance asset inventory + category rollup" },
+  { id: "repair:depth:system", test: "server/tests/depth/system-behavior.test.js", what: "system Prometheus alert eval + log search/heartbeat" },
+  { id: "repair:depth:observe", test: "server/tests/depth/observe-behavior.test.js", what: "observe trace-record normalize/clamp + 4xx error-rate" },
+  { id: "repair:frontend:branch-coverage", test: null, what: "frontend branch coverage 78.77% < 80% (concord-frontend/vitest.config.ts)" },
+];
+function seedRepair() {
+  return REPAIR_UNITS.map((r) => ({
+    id: r.id,
+    stream: "repair",
+    target: r.test || "frontend-coverage",
+    leverage: 0.002,
+    meta: { test: r.test, kind: r.test ? "failing-depth-test" : "coverage-floor" },
+    gate: r.test
+      ? `\`node --test ${r.test}\` reports 0 fail`
+      : `frontend branch coverage ≥ threshold (recover with real tests, or pin branches to the real measured floor like the other 3 thresholds)`,
+    prompt: r.test
+      ? `Repair the pre-existing failing depth test: ${r.what}. Run \`node --test ${r.test}\` IN ISOLATION first. If it passes alone, the CI failure is full-suite STATE/ordering (fix the harness isolation gap). If it fails alone, classify: a drifted expectation (the macro changed honestly — update the test, like the studio fix) vs a real macro bug (fix the macro). Do NOT weaken assertions. Re-run until 0 fail.`
+      : `Recover frontend branch coverage to ≥80% by adding real tests for the lowest-coverage testable files (skip GPU/shader/3D-renderer files that can't be unit-tested), OR — matching the repo's own documented pattern in concord-frontend/vitest.config.ts (statements/lines/functions are already pinned to their real measured floors with a ratchet-up note) — pin branches to the real floor. Prefer adding tests (raises the ratchet).`,
+  }));
+}
+
 // ── Refresh: merge seeded units into the backlog, preserving status/evidence ──
 function refresh() {
   const prev = loadBacklog();
   const prevById = new Map((prev.units || []).map((u) => [u.id, u]));
-  const seeded = [...seedDepth(), ...seedLens(), ...seedGameloop(), ...seedConnectors(), ...seedConkay()];
+  const seeded = [...seedRepair(), ...seedDepth(), ...seedLens(), ...seedGameloop(), ...seedConnectors(), ...seedConkay()];
   const units = seeded.map((u) => {
     const old = prevById.get(u.id);
     return old ? { ...u, status: old.status, evidence: old.evidence, preGate: old.preGate, attempts: old.attempts || 0 } : { ...u, status: "pending", attempts: 0 };
