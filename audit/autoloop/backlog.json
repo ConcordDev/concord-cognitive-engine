@@ -12,8 +12,10 @@
       },
       "gate": "`node --test server/tests/depth/hvac-behavior.test.js` reports 0 fail",
       "prompt": "Repair the pre-existing failing depth test: hvac energyAudit grade & issue logic. Run `node --test server/tests/depth/hvac-behavior.test.js` IN ISOLATION first. If it passes alone, the CI failure is full-suite STATE/ordering (fix the harness isolation gap). If it fails alone, classify: a drifted expectation (the macro changed honestly — update the test, like the studio fix) vs a real macro bug (fix the macro). Do NOT weaken assertions. Re-run until 0 fail.",
-      "status": "pending",
-      "attempts": 0
+      "status": "passed",
+      "attempts": 0,
+      "preGate": 0,
+      "evidence": "energyAudit all-clear note semantics: test corrected to macro's intentional contract (issues=[all-clear], no real flags); micro-verified by direct macro call (costPerSqFt 1.2, grade A, 1 all-clear issue)"
     },
     {
       "id": "repair:depth:inheritance",
@@ -1423,5 +1425,6 @@
       "status": "pending",
       "attempts": 0
     }
-  ]
+  ],
+  "lastPassedAt": "2026-06-29T06:43:39.968Z"
 }
