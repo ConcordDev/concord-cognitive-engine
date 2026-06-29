@@ -66,7 +66,7 @@ describe("tools — e-signature full workflow (create → sign → complete → 
     assert.match(env.documentHash, /^[0-9a-f]{64}$/);
 
     // list shows it, 0/2 signed
-    let listed = await call("esign-list", ctxA, {});
+    const listed = await call("esign-list", ctxA, {});
     assert.equal(listed.result.total, 1);
     assert.equal(listed.result.envelopes[0].signedCount, 0);
     assert.equal(listed.result.envelopes[0].partyCount, 2);

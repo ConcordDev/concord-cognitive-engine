@@ -192,7 +192,7 @@ describe("tournaments — check-in + start lifecycle", () => {
 
   it("openCheckin → checkIn → start auto-forfeits no-shows", () => {
     const id = seeded(ctxA, 4);
-    let t = call("get", ctxA, { id }).result.tournament;
+    const t = call("get", ctxA, { id }).result.tournament;
     const ids = t.entrants.map((e) => e.id);
 
     const open = call("openCheckin", ctxA, { id });
