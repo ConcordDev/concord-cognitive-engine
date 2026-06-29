@@ -28,3 +28,7 @@ domains, the depth harness, or frontend coverage-affecting code.
 PR #840's OWN gates are green (Adversarial Audit, detector ratchet, value-assertions, server
 lint/typecheck, frontend lint/typecheck, validate_lens_quality, build, every touched-domain
 parity/lens test). The studio depth test (the only failure #840 caused) is fixed in 18fdaab1.
+
+## Stage 3 — cron driver shipped
+
+- `2026-06-29` `.github/workflows/autoloop.yml` — scheduled (every 6h) + workflow_dispatch. One bounded iteration/fire: next.mjs selects → Claude Code headless (`claude -p`, one unit, max-turns 60) does the worker step → deterministic gates decide (verify.mjs PASS + guard.mjs clean → commit+push to `autoloop/main`; else discard + record attempt). Model never owns the commit. Honors AGENT_STOP; runs only on `autoloop/main`, never main. PREREQ (human): repo secret `ANTHROPIC_API_KEY` (or `CLAUDE_CODE_OAUTH_TOKEN`) + create branch `autoloop/main` off main once #840 merges. YAML validated; unit-id extraction verified against `next.mjs --json`.

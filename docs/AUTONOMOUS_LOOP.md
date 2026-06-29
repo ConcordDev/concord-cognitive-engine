@@ -79,3 +79,17 @@ the structural rail that must survive maximize-autonomy.
 
 The loop's wave commits land on a dedicated long-running branch off `main` (created once PR #840 is
 merged); this toolkit is authored on the current feature branch.
+
+## Stage 3 — hands-off cron driver (`.github/workflows/autoloop.yml`)
+
+A scheduled workflow runs ONE bounded iteration per fire: `next.mjs` selects the unit → Claude Code
+(headless, `claude -p`, one unit, `--max-turns 60`) does the intelligent worker step → the
+**deterministic gates decide if it lands**: `verify.mjs` must PASS (default-FAIL) and `guard.mjs` must
+be clean, or the changes are discarded (`git checkout`/`clean`) and the attempt recorded. The model
+never owns the commit. Safety: runs only on branch `autoloop/main` (never `main`), honors `AGENT_STOP`,
+one unit per run, `guard.mjs` hard-blocks grader/baseline/test-weakening/money-auth edits.
+
+**Human prerequisites (one-time):** (1) repo secret `ANTHROPIC_API_KEY` (or `CLAUDE_CODE_OAUTH_TOKEN`)
+— the loop can't self-provision model access; (2) the `autoloop/main` branch off `main`; (3) review +
+fast-forward `autoloop/main` → `main` periodically. Bump the cron (`0 */6 * * *`) once trusted, or drive
+on demand from the Actions tab (`workflow_dispatch`, `max_iterations` input).
