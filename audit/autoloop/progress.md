@@ -37,3 +37,4 @@ parity/lens test). The studio depth test (the only failure #840 caused) is fixed
 ## Loop learning — depth-test assertions must avoid `.test(`
 
 - `2026-06-29` The depth-test honesty guard (check-depth-tests.mjs) matches `\b(?:it|test)\s*\(`, so a regex `.test(x)` method call inside a depth test body is mis-parsed as an anonymous shape-only `test()` declaration and FAILS the Detector-suite ratchet on the changed file. Worker rule: in `server/tests/depth/*-behavior.test.js`, assert string membership with `.includes()` / `assert.match()`, never `regex.test()`. (Caught live on repair:depth:hvac → fixed in 0f5cb9b2; the gate working as designed — it flagged a real issue in the loop's own unit before merge.)
+- `2026-06-29T07:28:43.425Z` PASSED repair:depth:inheritance — negative valueCc fail-closed (badCc n<0), not clamped; test corrected to rejection contract + valid zero-value currency asset; probe-verified exact shapes

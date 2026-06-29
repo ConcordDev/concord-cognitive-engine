@@ -28,8 +28,9 @@
       },
       "gate": "`node --test server/tests/depth/inheritance-behavior.test.js` reports 0 fail",
       "prompt": "Repair the pre-existing failing depth test: inheritance asset inventory + category rollup. Run `node --test server/tests/depth/inheritance-behavior.test.js` IN ISOLATION first. If it passes alone, the CI failure is full-suite STATE/ordering (fix the harness isolation gap). If it fails alone, classify: a drifted expectation (the macro changed honestly — update the test, like the studio fix) vs a real macro bug (fix the macro). Do NOT weaken assertions. Re-run until 0 fail.",
-      "status": "pending",
-      "attempts": 0
+      "status": "passed",
+      "attempts": 0,
+      "evidence": "negative valueCc fail-closed (badCc n<0), not clamped; test corrected to rejection contract + valid zero-value currency asset; probe-verified exact shapes"
     },
     {
       "id": "repair:depth:system",
@@ -1426,5 +1427,5 @@
       "attempts": 0
     }
   ],
-  "lastPassedAt": "2026-06-29T06:43:39.968Z"
+  "lastPassedAt": "2026-06-29T07:28:43.421Z"
 }

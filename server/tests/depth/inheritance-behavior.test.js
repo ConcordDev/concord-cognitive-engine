@@ -131,14 +131,21 @@ describe("inheritance — asset inventory + category rollup (shared ctx)", () =>
   it("add_asset → list_assets totals value and groups by category", async () => {
     await lensRun("inheritance", "add_asset", { params: { label: "Manor", category: "property", valueCc: 1000 } }, ctx);
     await lensRun("inheritance", "add_asset", { params: { label: "Cottage", category: "property", valueCc: 250 } }, ctx);
-    const coin = await lensRun("inheritance", "add_asset", { params: { label: "Vault", category: "currency", valueCc: -50 } }, ctx);
+    // Fail-CLOSED: a negative valueCc is REJECTED (badCc, domains/inheritance.js:68 — n<0),
+    // consistent with the macro-assassin's poisoned-number contract (it poisons with -1).
+    // It is NOT silently clamped — the asset is not added.
+    const neg = await lensRun("inheritance", "add_asset", { params: { label: "Vault", category: "currency", valueCc: -50 } }, ctx);
+    assert.equal(neg.result.ok, false);
+    assert.equal(neg.result.error, "invalid numeric field: valueCc");
+    // A zero-value currency asset IS accepted (0 is a valid finite value).
+    const coin = await lensRun("inheritance", "add_asset", { params: { label: "Coffer", category: "currency", valueCc: 0 } }, ctx);
     assert.equal(coin.ok, true);
-    assert.equal(coin.result.asset.valueCc, 0);                  // negative value clamped to 0
+    assert.equal(coin.result.asset.valueCc, 0);
     assert.equal(coin.result.asset.category, "currency");
 
     const list = await lensRun("inheritance", "list_assets", {}, ctx);
     assert.equal(list.ok, true);
-    assert.equal(list.result.assets.length, 3);
+    assert.equal(list.result.assets.length, 3);                 // Manor, Cottage, Coffer (Vault rejected)
     assert.equal(list.result.totalValueCc, 1250);               // 1000 + 250 + 0
     assert.equal(list.result.byCategory.property.count, 2);
     assert.equal(list.result.byCategory.property.valueCc, 1250);
