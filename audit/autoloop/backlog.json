@@ -58,8 +58,9 @@
       },
       "gate": "`node --test server/tests/depth/observe-behavior.test.js` reports 0 fail",
       "prompt": "Repair the pre-existing failing depth test: observe trace-record normalize/clamp + 4xx error-rate. Run `node --test server/tests/depth/observe-behavior.test.js` IN ISOLATION first. If it passes alone, the CI failure is full-suite STATE/ordering (fix the harness isolation gap). If it fails alone, classify: a drifted expectation (the macro changed honestly — update the test, like the studio fix) vs a real macro bug (fix the macro). Do NOT weaken assertions. Re-run until 0 fail.",
-      "status": "pending",
-      "attempts": 0
+      "status": "passed",
+      "attempts": 0,
+      "evidence": "already clean: all 30 tests pass (39 ok/0 not-ok across 2 runs); exit-124 was post-test heartbeats keeping the process alive, not a failure; observe.js has no shim bug; not in the actual CI failure set (those trace lines were system.trace-record, now fixed)"
     },
     {
       "id": "repair:frontend:branch-coverage",
@@ -72,8 +73,9 @@
       },
       "gate": "frontend branch coverage ≥ threshold (recover with real tests, or pin branches to the real measured floor like the other 3 thresholds)",
       "prompt": "Recover frontend branch coverage to ≥80% by adding real tests for the lowest-coverage testable files (skip GPU/shader/3D-renderer files that can't be unit-tested), OR — matching the repo's own documented pattern in concord-frontend/vitest.config.ts (statements/lines/functions are already pinned to their real measured floors with a ratchet-up note) — pin branches to the real floor. Prefer adding tests (raises the ratchet).",
-      "status": "pending",
-      "attempts": 0
+      "status": "passed",
+      "attempts": 0,
+      "evidence": "pinned branches 80→78 (real measured floor 78.77, matching the other 3 thresholds' documented pin-to-reality + ratchet-up); server-only #840 cannot affect frontend coverage so this is pre-existing drift; recovery = lens-stream frontend tests"
     },
     {
       "id": "depth:worldmodel",
@@ -1428,5 +1430,5 @@
       "attempts": 0
     }
   ],
-  "lastPassedAt": "2026-06-29T07:39:58.736Z"
+  "lastPassedAt": "2026-06-29T08:28:29.921Z"
 }
