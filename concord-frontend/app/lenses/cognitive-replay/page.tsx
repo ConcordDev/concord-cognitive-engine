@@ -15,6 +15,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -177,12 +178,12 @@ export default function CognitiveReplayPage() {
           <BookOpen className="w-8 h-8 text-zinc-600 mb-2" />
           <h1 className="text-xl font-bold text-zinc-100">Cognitive Replay</h1>
           <p className="mt-2 text-zinc-400">No timeline events yet. Have a chat session and come back.</p>
-          <a
+          <Link
             href="/lenses/chat"
             className="mt-4 inline-block rounded-md border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20"
           >
             Start a chat session
-          </a>
+          </Link>
         </div>
       </LensShell>
     );
