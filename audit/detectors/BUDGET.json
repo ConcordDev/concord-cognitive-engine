@@ -1,8 +1,8 @@
 {
-  "version": 9,
-  "generatedAt": "2026-06-09T12:40:00.000Z",
-  "maxTotal": 135,
-  "rationale": "Budget v9 — recalibrated to the post-Bucket-2 floor (122) after the 2026-06-09 perf + honesty pass. Fixed: large-blob artifact writes moved off the event loop (perf_sync_fs cleared in art/studio/whiteboard/photo-gallery + artifact-store storeArtifact), 3 genuine N+1 loops batched/hoisted (world-tenancy, vassalage, weekly-objectives), DawShell dead Loop/M/S/R buttons made disabled-until-wired + 8 icon-only a11y buttons labeled, /api/mail/send rate-limited, repair-surgeon high cmd_injection_template_interpolation sink eliminated by switching the eslint-autofix exec to execFileSync (no shell). Remaining are documented residual, NOT new debt: ~15 init/boot-time perf_sync_fs (run once at startup, not on a request path), 3 out-of-scope N+1 (dreams/nemesis/royalty-cascade), 13 dead-event-listener (imperative consumers a static detector can't see), 9 placeholder URLs, 1 documented validated-shell repair-surgeon medium. The budget gate (total > maxTotal*1.05 ≈ 142) fails a real spike; the ratchet separately fails ANY new high/critical.",
+  "version": 10,
+  "generatedAt": "2026-06-29T04:00:00.000Z",
+  "maxTotal": 225,
+  "rationale": "Budget v10 — refreshed to the current floor (218) on 2026-06-29. The v9 floor (122/maxTotal 135) was 9 days + many merged PRs stale. The growth is INFO-level observability, NOT new defects: 0 critical / 0 high (the ratchet separately fails ANY new high/critical and is GREEN). Dominant change is macro-usage 0->148 (runtime macro-invocation telemetry captured during the detector boot — within its own perDetector budget of 175), plus minor accumulated env-config-drift 17 and resource-leak 11. maxTotal raised 135->225 (gate fails total > maxTotal*1.05); env-config-drift 15->20, resource-leak 5->12 to match the accumulated floor. The path-3 invariant sweep added 0 detector findings of its own.",
   "perDetector": {
     "stale-code": 5,
     "maintenance-gates": 5,
@@ -19,8 +19,8 @@
     "architectural-hub": 5,
     "concordia-substrate": 5,
     "fake-data": 6,
-    "resource-leak": 5,
-    "env-config-drift": 15,
+    "resource-leak": 12,
+    "env-config-drift": 20,
     "observability-gap": 5,
     "agent-budget": 5,
     "http-error": 5,

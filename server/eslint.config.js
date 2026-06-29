@@ -132,6 +132,17 @@ export default [
       'no-useless-return': 'off',
       'no-self-compare': 'off',
       'prefer-regex-literals': 'off',
+      // Adversarial behavioral tests deliberately feed poison values + edge
+      // fixtures: huge literals (1e308) to probe fail-closed numerics, javascript:
+      // URLs as XSS probes, NaN comparisons, constant-fold poison, and
+      // resolve-in-executor patterns. These are signal-free in test files.
+      'no-loss-of-precision': 'off',
+      'no-script-url': 'off',
+      'use-isnan': 'off',
+      'no-constant-binary-expression': 'off',
+      'no-promise-executor-return': 'off',
+      'prefer-const': 'off',
+      radix: 'off',
     },
   },
   {
