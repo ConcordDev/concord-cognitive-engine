@@ -1,0 +1,1357 @@
+{
+  "generatedAt": "2026-06-29T05:37:27Z",
+  "units": [
+    {
+      "id": "depth:worldmodel",
+      "stream": "depth",
+      "target": "worldmodel",
+      "leverage": 0.0008973639932697699,
+      "meta": {
+        "untested": 14,
+        "projProd": 11,
+        "projUtil": 3
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR worldmodel's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the worldmodel domain. Run `node scripts/depth-scaffold.mjs worldmodel` to generate the skeleton at server/tests/depth/worldmodel-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/worldmodel-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:agents",
+      "stream": "depth",
+      "target": "agents",
+      "leverage": 0.0006730229949523275,
+      "meta": {
+        "untested": 18,
+        "projProd": 6,
+        "projUtil": 12
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR agents's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the agents domain. Run `node scripts/depth-scaffold.mjs agents` to generate the skeleton at server/tests/depth/agents-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/agents-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:calendar",
+      "stream": "depth",
+      "target": "calendar",
+      "leverage": 0.0005608524957936063,
+      "meta": {
+        "untested": 9,
+        "projProd": 5,
+        "projUtil": 4
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR calendar's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the calendar domain. Run `node scripts/depth-scaffold.mjs calendar` to generate the skeleton at server/tests/depth/calendar-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/calendar-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:code",
+      "stream": "depth",
+      "target": "code",
+      "leverage": 0.0005608524957936063,
+      "meta": {
+        "untested": 17,
+        "projProd": 4,
+        "projUtil": 13
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR code's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the code domain. Run `node scripts/depth-scaffold.mjs code` to generate the skeleton at server/tests/depth/code-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/code-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:grounding",
+      "stream": "depth",
+      "target": "grounding",
+      "leverage": 0.000538418395961862,
+      "meta": {
+        "untested": 10,
+        "projProd": 7,
+        "projUtil": 3
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR grounding's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the grounding domain. Run `node scripts/depth-scaffold.mjs grounding` to generate the skeleton at server/tests/depth/grounding-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/grounding-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:mesh",
+      "stream": "depth",
+      "target": "mesh",
+      "leverage": 0.000538418395961862,
+      "meta": {
+        "untested": 10,
+        "projProd": 0,
+        "projUtil": 10
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR mesh's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the mesh domain. Run `node scripts/depth-scaffold.mjs mesh` to generate the skeleton at server/tests/depth/mesh-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/mesh-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:understanding",
+      "stream": "depth",
+      "target": "understanding",
+      "leverage": 0.000538418395961862,
+      "meta": {
+        "untested": 14,
+        "projProd": 0,
+        "projUtil": 14
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR understanding's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the understanding domain. Run `node scripts/depth-scaffold.mjs understanding` to generate the skeleton at server/tests/depth/understanding-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/understanding-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:paper",
+      "stream": "depth",
+      "target": "paper",
+      "leverage": 0.0004935501962983734,
+      "meta": {
+        "untested": 8,
+        "projProd": 5,
+        "projUtil": 3
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR paper's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the paper domain. Run `node scripts/depth-scaffold.mjs paper` to generate the skeleton at server/tests/depth/paper-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/paper-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:welding",
+      "stream": "depth",
+      "target": "welding",
+      "leverage": 0.00047111609646662933,
+      "meta": {
+        "untested": 15,
+        "projProd": 3,
+        "projUtil": 12
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR welding's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the welding domain. Run `node scripts/depth-scaffold.mjs welding` to generate the skeleton at server/tests/depth/welding-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/welding-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:insurance",
+      "stream": "depth",
+      "target": "insurance",
+      "leverage": 0.0004711160964666293,
+      "meta": {
+        "untested": 15,
+        "projProd": 2,
+        "projUtil": 13
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR insurance's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the insurance domain. Run `node scripts/depth-scaffold.mjs insurance` to generate the skeleton at server/tests/depth/insurance-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/insurance-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:ml",
+      "stream": "depth",
+      "target": "ml",
+      "leverage": 0.0004711160964666293,
+      "meta": {
+        "untested": 11,
+        "projProd": 4,
+        "projUtil": 7
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR ml's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the ml domain. Run `node scripts/depth-scaffold.mjs ml` to generate the skeleton at server/tests/depth/ml-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/ml-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:repos",
+      "stream": "depth",
+      "target": "repos",
+      "leverage": 0.0004711160964666293,
+      "meta": {
+        "untested": 9,
+        "projProd": 6,
+        "projUtil": 3
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR repos's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the repos domain. Run `node scripts/depth-scaffold.mjs repos` to generate the skeleton at server/tests/depth/repos-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/repos-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:tools",
+      "stream": "depth",
+      "target": "tools",
+      "leverage": 0.0004711160964666293,
+      "meta": {
+        "untested": 11,
+        "projProd": 5,
+        "projUtil": 6
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR tools's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the tools domain. Run `node scripts/depth-scaffold.mjs tools` to generate the skeleton at server/tests/depth/tools-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/tools-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:artistry",
+      "stream": "depth",
+      "target": "artistry",
+      "leverage": 0.0004711160964666292,
+      "meta": {
+        "untested": 7,
+        "projProd": 7,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR artistry's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the artistry domain. Run `node scripts/depth-scaffold.mjs artistry` to generate the skeleton at server/tests/depth/artistry-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/artistry-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:attention",
+      "stream": "depth",
+      "target": "attention",
+      "leverage": 0.0004711160964666292,
+      "meta": {
+        "untested": 9,
+        "projProd": 6,
+        "projUtil": 3
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR attention's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the attention domain. Run `node scripts/depth-scaffold.mjs attention` to generate the skeleton at server/tests/depth/attention-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/attention-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:fashion",
+      "stream": "depth",
+      "target": "fashion",
+      "leverage": 0.0004711160964666292,
+      "meta": {
+        "untested": 9,
+        "projProd": 1,
+        "projUtil": 8
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR fashion's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the fashion domain. Run `node scripts/depth-scaffold.mjs fashion` to generate the skeleton at server/tests/depth/fashion-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/fashion-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:goals",
+      "stream": "depth",
+      "target": "goals",
+      "leverage": 0.0004711160964666292,
+      "meta": {
+        "untested": 7,
+        "projProd": 6,
+        "projUtil": 1
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR goals's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the goals domain. Run `node scripts/depth-scaffold.mjs goals` to generate the skeleton at server/tests/depth/goals-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/goals-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:government",
+      "stream": "depth",
+      "target": "government",
+      "leverage": 0.0004711160964666292,
+      "meta": {
+        "untested": 7,
+        "projProd": 7,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR government's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the government domain. Run `node scripts/depth-scaffold.mjs government` to generate the skeleton at server/tests/depth/government-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/government-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:market",
+      "stream": "depth",
+      "target": "market",
+      "leverage": 0.0004711160964666292,
+      "meta": {
+        "untested": 9,
+        "projProd": 6,
+        "projUtil": 3
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR market's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the market domain. Run `node scripts/depth-scaffold.mjs market` to generate the skeleton at server/tests/depth/market-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/market-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:pharmacy",
+      "stream": "depth",
+      "target": "pharmacy",
+      "leverage": 0.0004711160964666292,
+      "meta": {
+        "untested": 7,
+        "projProd": 7,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR pharmacy's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the pharmacy domain. Run `node scripts/depth-scaffold.mjs pharmacy` to generate the skeleton at server/tests/depth/pharmacy-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/pharmacy-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:transfer",
+      "stream": "depth",
+      "target": "transfer",
+      "leverage": 0.0004711160964666292,
+      "meta": {
+        "untested": 7,
+        "projProd": 7,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR transfer's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the transfer domain. Run `node scripts/depth-scaffold.mjs transfer` to generate the skeleton at server/tests/depth/transfer-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/transfer-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:vote",
+      "stream": "depth",
+      "target": "vote",
+      "leverage": 0.0004711160964666292,
+      "meta": {
+        "untested": 9,
+        "projProd": 6,
+        "projUtil": 3
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR vote's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the vote domain. Run `node scripts/depth-scaffold.mjs vote` to generate the skeleton at server/tests/depth/vote-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/vote-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:household",
+      "stream": "depth",
+      "target": "household",
+      "leverage": 0.000448681996634885,
+      "meta": {
+        "untested": 12,
+        "projProd": 4,
+        "projUtil": 8
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR household's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the household domain. Run `node scripts/depth-scaffold.mjs household` to generate the skeleton at server/tests/depth/household-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/household-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:classroom",
+      "stream": "depth",
+      "target": "classroom",
+      "leverage": 0.00042624789680314074,
+      "meta": {
+        "untested": 9,
+        "projProd": 5,
+        "projUtil": 4
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR classroom's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the classroom domain. Run `node scripts/depth-scaffold.mjs classroom` to generate the skeleton at server/tests/depth/classroom-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/classroom-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:food",
+      "stream": "depth",
+      "target": "food",
+      "leverage": 0.00042624789680314074,
+      "meta": {
+        "untested": 7,
+        "projProd": 5,
+        "projUtil": 2
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR food's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the food domain. Run `node scripts/depth-scaffold.mjs food` to generate the skeleton at server/tests/depth/food-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/food-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:game",
+      "stream": "depth",
+      "target": "game",
+      "leverage": 0.00042624789680314074,
+      "meta": {
+        "untested": 7,
+        "projProd": 6,
+        "projUtil": 1
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR game's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the game domain. Run `node scripts/depth-scaffold.mjs game` to generate the skeleton at server/tests/depth/game-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/game-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:questmarket",
+      "stream": "depth",
+      "target": "questmarket",
+      "leverage": 0.00042624789680314074,
+      "meta": {
+        "untested": 9,
+        "projProd": 5,
+        "projUtil": 4
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR questmarket's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the questmarket domain. Run `node scripts/depth-scaffold.mjs questmarket` to generate the skeleton at server/tests/depth/questmarket-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/questmarket-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:srs",
+      "stream": "depth",
+      "target": "srs",
+      "leverage": 0.00042624789680314074,
+      "meta": {
+        "untested": 13,
+        "projProd": 2,
+        "projUtil": 11
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR srs's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the srs domain. Run `node scripts/depth-scaffold.mjs srs` to generate the skeleton at server/tests/depth/srs-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/srs-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:research",
+      "stream": "depth",
+      "target": "research",
+      "leverage": 0.00040381379697139653,
+      "meta": {
+        "untested": 14,
+        "projProd": 0,
+        "projUtil": 14
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR research's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the research domain. Run `node scripts/depth-scaffold.mjs research` to generate the skeleton at server/tests/depth/research-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/research-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:thread",
+      "stream": "depth",
+      "target": "thread",
+      "leverage": 0.00040381379697139653,
+      "meta": {
+        "untested": 10,
+        "projProd": 2,
+        "projUtil": 8
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR thread's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the thread domain. Run `node scripts/depth-scaffold.mjs thread` to generate the skeleton at server/tests/depth/thread-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/thread-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:astronomy",
+      "stream": "depth",
+      "target": "astronomy",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 6,
+        "projProd": 6,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR astronomy's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the astronomy domain. Run `node scripts/depth-scaffold.mjs astronomy` to generate the skeleton at server/tests/depth/astronomy-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/astronomy-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:automotive",
+      "stream": "depth",
+      "target": "automotive",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 8,
+        "projProd": 5,
+        "projUtil": 3
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR automotive's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the automotive domain. Run `node scripts/depth-scaffold.mjs automotive` to generate the skeleton at server/tests/depth/automotive-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/automotive-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:collab",
+      "stream": "depth",
+      "target": "collab",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 6,
+        "projProd": 1,
+        "projUtil": 5
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR collab's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the collab domain. Run `node scripts/depth-scaffold.mjs collab` to generate the skeleton at server/tests/depth/collab-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/collab-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:commonsense",
+      "stream": "depth",
+      "target": "commonsense",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 6,
+        "projProd": 6,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR commonsense's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the commonsense domain. Run `node scripts/depth-scaffold.mjs commonsense` to generate the skeleton at server/tests/depth/commonsense-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/commonsense-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:crypto",
+      "stream": "depth",
+      "target": "crypto",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 6,
+        "projProd": 6,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR crypto's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the crypto domain. Run `node scripts/depth-scaffold.mjs crypto` to generate the skeleton at server/tests/depth/crypto-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/crypto-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:eco",
+      "stream": "depth",
+      "target": "eco",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 6,
+        "projProd": 6,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR eco's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the eco domain. Run `node scripts/depth-scaffold.mjs eco` to generate the skeleton at server/tests/depth/eco-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/eco-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:genesis",
+      "stream": "depth",
+      "target": "genesis",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 6,
+        "projProd": 0,
+        "projUtil": 6
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR genesis's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the genesis domain. Run `node scripts/depth-scaffold.mjs genesis` to generate the skeleton at server/tests/depth/genesis-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/genesis-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:lab",
+      "stream": "depth",
+      "target": "lab",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 6,
+        "projProd": 6,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR lab's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the lab domain. Run `node scripts/depth-scaffold.mjs lab` to generate the skeleton at server/tests/depth/lab-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/lab-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:linguistics",
+      "stream": "depth",
+      "target": "linguistics",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 6,
+        "projProd": 6,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR linguistics's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the linguistics domain. Run `node scripts/depth-scaffold.mjs linguistics` to generate the skeleton at server/tests/depth/linguistics-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/linguistics-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:marketplace",
+      "stream": "depth",
+      "target": "marketplace",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 6,
+        "projProd": 4,
+        "projUtil": 2
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR marketplace's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the marketplace domain. Run `node scripts/depth-scaffold.mjs marketplace` to generate the skeleton at server/tests/depth/marketplace-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/marketplace-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:system",
+      "stream": "depth",
+      "target": "system",
+      "leverage": 0.0004038137969713965,
+      "meta": {
+        "untested": 6,
+        "projProd": 6,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR system's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the system domain. Run `node scripts/depth-scaffold.mjs system` to generate the skeleton at server/tests/depth/system-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/system-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:history",
+      "stream": "depth",
+      "target": "history",
+      "leverage": 0.0003813796971396523,
+      "meta": {
+        "untested": 13,
+        "projProd": 2,
+        "projUtil": 11
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR history's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the history domain. Run `node scripts/depth-scaffold.mjs history` to generate the skeleton at server/tests/depth/history-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/history-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:retail",
+      "stream": "depth",
+      "target": "retail",
+      "leverage": 0.00038137969713965226,
+      "meta": {
+        "untested": 11,
+        "projProd": 3,
+        "projUtil": 8
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR retail's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the retail domain. Run `node scripts/depth-scaffold.mjs retail` to generate the skeleton at server/tests/depth/retail-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/retail-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:anon",
+      "stream": "depth",
+      "target": "anon",
+      "leverage": 0.0003813796971396522,
+      "meta": {
+        "untested": 7,
+        "projProd": 4,
+        "projUtil": 3
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR anon's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the anon domain. Run `node scripts/depth-scaffold.mjs anon` to generate the skeleton at server/tests/depth/anon-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/anon-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:daily",
+      "stream": "depth",
+      "target": "daily",
+      "leverage": 0.0003813796971396522,
+      "meta": {
+        "untested": 7,
+        "projProd": 3,
+        "projUtil": 4
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR daily's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the daily domain. Run `node scripts/depth-scaffold.mjs daily` to generate the skeleton at server/tests/depth/daily-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/daily-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:diy",
+      "stream": "depth",
+      "target": "diy",
+      "leverage": 0.0003813796971396522,
+      "meta": {
+        "untested": 7,
+        "projProd": 5,
+        "projUtil": 2
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR diy's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the diy domain. Run `node scripts/depth-scaffold.mjs diy` to generate the skeleton at server/tests/depth/diy-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/diy-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:ingest",
+      "stream": "depth",
+      "target": "ingest",
+      "leverage": 0.0003813796971396522,
+      "meta": {
+        "untested": 15,
+        "projProd": 1,
+        "projUtil": 14
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR ingest's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the ingest domain. Run `node scripts/depth-scaffold.mjs ingest` to generate the skeleton at server/tests/depth/ingest-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/ingest-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:sim",
+      "stream": "depth",
+      "target": "sim",
+      "leverage": 0.0003813796971396522,
+      "meta": {
+        "untested": 7,
+        "projProd": 2,
+        "projUtil": 5
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR sim's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the sim domain. Run `node scripts/depth-scaffold.mjs sim` to generate the skeleton at server/tests/depth/sim-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/sim-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:aviation",
+      "stream": "depth",
+      "target": "aviation",
+      "leverage": 0.000358945597307908,
+      "meta": {
+        "untested": 8,
+        "projProd": 4,
+        "projUtil": 4
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR aviation's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the aviation domain. Run `node scripts/depth-scaffold.mjs aviation` to generate the skeleton at server/tests/depth/aviation-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/aviation-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:creative",
+      "stream": "depth",
+      "target": "creative",
+      "leverage": 0.000358945597307908,
+      "meta": {
+        "untested": 12,
+        "projProd": 1,
+        "projUtil": 11
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR creative's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the creative domain. Run `node scripts/depth-scaffold.mjs creative` to generate the skeleton at server/tests/depth/creative-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/creative-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:alliance",
+      "stream": "depth",
+      "target": "alliance",
+      "leverage": 0.00035894559730790794,
+      "meta": {
+        "untested": 6,
+        "projProd": 5,
+        "projUtil": 1
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR alliance's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the alliance domain. Run `node scripts/depth-scaffold.mjs alliance` to generate the skeleton at server/tests/depth/alliance-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/alliance-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:federation",
+      "stream": "depth",
+      "target": "federation",
+      "leverage": 0.00035894559730790794,
+      "meta": {
+        "untested": 8,
+        "projProd": 0,
+        "projUtil": 8
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR federation's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the federation domain. Run `node scripts/depth-scaffold.mjs federation` to generate the skeleton at server/tests/depth/federation-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/federation-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:finance",
+      "stream": "depth",
+      "target": "finance",
+      "leverage": 0.00035894559730790794,
+      "meta": {
+        "untested": 6,
+        "projProd": 4,
+        "projUtil": 2
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR finance's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the finance domain. Run `node scripts/depth-scaffold.mjs finance` to generate the skeleton at server/tests/depth/finance-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/finance-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:music",
+      "stream": "depth",
+      "target": "music",
+      "leverage": 0.00035894559730790794,
+      "meta": {
+        "untested": 6,
+        "projProd": 4,
+        "projUtil": 2
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR music's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the music domain. Run `node scripts/depth-scaffold.mjs music` to generate the skeleton at server/tests/depth/music-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/music-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:reasoning",
+      "stream": "depth",
+      "target": "reasoning",
+      "leverage": 0.00035894559730790794,
+      "meta": {
+        "untested": 6,
+        "projProd": 4,
+        "projUtil": 2
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR reasoning's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the reasoning domain. Run `node scripts/depth-scaffold.mjs reasoning` to generate the skeleton at server/tests/depth/reasoning-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/reasoning-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:forestry",
+      "stream": "depth",
+      "target": "forestry",
+      "leverage": 0.0003365114974761638,
+      "meta": {
+        "untested": 7,
+        "projProd": 4,
+        "projUtil": 3
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR forestry's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the forestry domain. Run `node scripts/depth-scaffold.mjs forestry` to generate the skeleton at server/tests/depth/forestry-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/forestry-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:accounting",
+      "stream": "depth",
+      "target": "accounting",
+      "leverage": 0.00033651149747616373,
+      "meta": {
+        "untested": 5,
+        "projProd": 5,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR accounting's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the accounting domain. Run `node scripts/depth-scaffold.mjs accounting` to generate the skeleton at server/tests/depth/accounting-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/accounting-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:cooking",
+      "stream": "depth",
+      "target": "cooking",
+      "leverage": 0.00033651149747616373,
+      "meta": {
+        "untested": 5,
+        "projProd": 5,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR cooking's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the cooking domain. Run `node scripts/depth-scaffold.mjs cooking` to generate the skeleton at server/tests/depth/cooking-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/cooking-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:council",
+      "stream": "depth",
+      "target": "council",
+      "leverage": 0.00033651149747616373,
+      "meta": {
+        "untested": 7,
+        "projProd": 2,
+        "projUtil": 5
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR council's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the council domain. Run `node scripts/depth-scaffold.mjs council` to generate the skeleton at server/tests/depth/council-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/council-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "depth:dtus",
+      "stream": "depth",
+      "target": "dtus",
+      "leverage": 0.00033651149747616373,
+      "meta": {
+        "untested": 5,
+        "projProd": 5,
+        "projUtil": 0
+      },
+      "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR dtus's untested set shrinks with substantive assertions; check-depth-tests clean",
+      "prompt": "Add REAL behavioral tests for the dtus domain. Run `node scripts/depth-scaffold.mjs dtus` to generate the skeleton at server/tests/depth/dtus-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/dtus-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:codex",
+      "stream": "lens",
+      "target": "codex",
+      "leverage": 0.0006,
+      "meta": {
+        "tier": "raw",
+        "loc": 131
+      },
+      "gate": "ux-polish.json tier for codex improves (raw→up) AND global weightedScore holds",
+      "prompt": "Raise the codex lens from \"raw\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm codex's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:ledger",
+      "stream": "lens",
+      "target": "ledger",
+      "leverage": 0.0006,
+      "meta": {
+        "tier": "raw",
+        "loc": 90
+      },
+      "gate": "ux-polish.json tier for ledger improves (raw→up) AND global weightedScore holds",
+      "prompt": "Raise the ledger lens from \"raw\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm ledger's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:move-builder",
+      "stream": "lens",
+      "target": "move-builder",
+      "leverage": 0.0006,
+      "meta": {
+        "tier": "raw",
+        "loc": 21
+      },
+      "gate": "ux-polish.json tier for move-builder improves (raw→up) AND global weightedScore holds",
+      "prompt": "Raise the move-builder lens from \"raw\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm move-builder's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:repair-telemetry",
+      "stream": "lens",
+      "target": "repair-telemetry",
+      "leverage": 0.0006,
+      "meta": {
+        "tier": "raw",
+        "loc": 100
+      },
+      "gate": "ux-polish.json tier for repair-telemetry improves (raw→up) AND global weightedScore holds",
+      "prompt": "Raise the repair-telemetry lens from \"raw\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm repair-telemetry's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:spectate",
+      "stream": "lens",
+      "target": "spectate",
+      "leverage": 0.0006,
+      "meta": {
+        "tier": "raw",
+        "loc": 98
+      },
+      "gate": "ux-polish.json tier for spectate improves (raw→up) AND global weightedScore holds",
+      "prompt": "Raise the spectate lens from \"raw\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm spectate's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:translation",
+      "stream": "lens",
+      "target": "translation",
+      "leverage": 0.0006,
+      "meta": {
+        "tier": "raw",
+        "loc": 185
+      },
+      "gate": "ux-polish.json tier for translation improves (raw→up) AND global weightedScore holds",
+      "prompt": "Raise the translation lens from \"raw\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm translation's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:achievements",
+      "stream": "lens",
+      "target": "achievements",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 170
+      },
+      "gate": "ux-polish.json tier for achievements improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the achievements lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm achievements's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:announcements",
+      "stream": "lens",
+      "target": "announcements",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 122
+      },
+      "gate": "ux-polish.json tier for announcements improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the announcements lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm announcements's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:art",
+      "stream": "lens",
+      "target": "art",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 4361
+      },
+      "gate": "ux-polish.json tier for art improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the art lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm art's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:auction",
+      "stream": "lens",
+      "target": "auction",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 437
+      },
+      "gate": "ux-polish.json tier for auction improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the auction lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm auction's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:careers",
+      "stream": "lens",
+      "target": "careers",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 132
+      },
+      "gate": "ux-polish.json tier for careers improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the careers lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm careers's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:civic-bonds",
+      "stream": "lens",
+      "target": "civic-bonds",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 147
+      },
+      "gate": "ux-polish.json tier for civic-bonds improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the civic-bonds lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm civic-bonds's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:courtship",
+      "stream": "lens",
+      "target": "courtship",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 183
+      },
+      "gate": "ux-polish.json tier for courtship improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the courtship lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm courtship's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:detective",
+      "stream": "lens",
+      "target": "detective",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 153
+      },
+      "gate": "ux-polish.json tier for detective improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the detective lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm detective's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:housing",
+      "stream": "lens",
+      "target": "housing",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 343
+      },
+      "gate": "ux-polish.json tier for housing improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the housing lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm housing's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:lfg",
+      "stream": "lens",
+      "target": "lfg",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 190
+      },
+      "gate": "ux-polish.json tier for lfg improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the lfg lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm lfg's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:mail",
+      "stream": "lens",
+      "target": "mail",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 345
+      },
+      "gate": "ux-polish.json tier for mail improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the mail lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm mail's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:message",
+      "stream": "lens",
+      "target": "message",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 3941
+      },
+      "gate": "ux-polish.json tier for message improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the message lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm message's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:narrative-walk",
+      "stream": "lens",
+      "target": "narrative-walk",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 129
+      },
+      "gate": "ux-polish.json tier for narrative-walk improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the narrative-walk lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm narrative-walk's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:photos",
+      "stream": "lens",
+      "target": "photos",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 145
+      },
+      "gate": "ux-polish.json tier for photos improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the photos lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm photos's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:studio",
+      "stream": "lens",
+      "target": "studio",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 10229
+      },
+      "gate": "ux-polish.json tier for studio improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the studio lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm studio's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:whiteboard",
+      "stream": "lens",
+      "target": "whiteboard",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 3994
+      },
+      "gate": "ux-polish.json tier for whiteboard improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the whiteboard lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm whiteboard's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "lens:world",
+      "stream": "lens",
+      "target": "world",
+      "leverage": 0.0003,
+      "meta": {
+        "tier": "functional",
+        "loc": 32601
+      },
+      "gate": "ux-polish.json tier for world improves (functional→up) AND global weightedScore holds",
+      "prompt": "Raise the world lens from \"functional\" toward \"polished\": add a real empty-state CTA, loading + error UI, accessible native buttons/keyboard handlers, and the rival-shape silhouette per its lens-features manifest entry. Re-run `npm run score-lenses` (writes audit/ux-polish.json) and confirm world's tier rose. Presentation only — do not weaken any macro or test.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "gameloop:sweep",
+      "stream": "gameloop",
+      "target": "concordia-loops",
+      "leverage": 0.0008,
+      "meta": {
+        "kind": "sweep"
+      },
+      "gate": "audit-emergent-wiring orphan==0 AND check-orphaned-events clean AND any newly-found reward-without-grant has a behavioral test proving the grant lands",
+      "prompt": "Sweep one Concordia loop for a broken wire: run `node scripts/audit-emergent-wiring.mjs` and `node scripts/check-orphaned-events.mjs`, pick one orphan-emit / dead-listener / reward-without-grant, wire the real consequence, and add a behavioral test that it lands (e.g. the wallet is actually credited). If both audits are already clean and no reward-without-grant remains, mark this unit passed with that evidence.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "connector:slack",
+      "stream": "connector",
+      "target": "slack",
+      "leverage": 0.0006,
+      "meta": {
+        "goLive": "escalate"
+      },
+      "gate": "slack contract tests pass (injected fetch) AND lens-broken-calls --ci 0 holds; live-creds/go-live ESCALATED",
+      "prompt": "Build the slack connector mirroring the Gmail/Calendar template: add egress helpers on the SSRF-guarded connectorFetch chokepoint (server/lib/connector-client.js), token handling via server/lib/connector-tokens.js, a server/domains/slack.js with read+write macros, and contract tests using an INJECTED fetch (no live network). Do NOT wire live OAuth secrets — that go-live step is escalated to a human.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "connector:sheets",
+      "stream": "connector",
+      "target": "sheets",
+      "leverage": 0.0006,
+      "meta": {
+        "goLive": "escalate"
+      },
+      "gate": "sheets contract tests pass (injected fetch) AND lens-broken-calls --ci 0 holds; live-creds/go-live ESCALATED",
+      "prompt": "Build the sheets connector mirroring the Gmail/Calendar template: add egress helpers on the SSRF-guarded connectorFetch chokepoint (server/lib/connector-client.js), token handling via server/lib/connector-tokens.js, a server/domains/sheets.js with read+write macros, and contract tests using an INJECTED fetch (no live network). Do NOT wire live OAuth secrets — that go-live step is escalated to a human.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "connector:github",
+      "stream": "connector",
+      "target": "github",
+      "leverage": 0.0006,
+      "meta": {
+        "goLive": "escalate"
+      },
+      "gate": "github contract tests pass (injected fetch) AND lens-broken-calls --ci 0 holds; live-creds/go-live ESCALATED",
+      "prompt": "Build the github connector mirroring the Gmail/Calendar template: add egress helpers on the SSRF-guarded connectorFetch chokepoint (server/lib/connector-client.js), token handling via server/lib/connector-tokens.js, a server/domains/github.js with read+write macros, and contract tests using an INJECTED fetch (no live network). Do NOT wire live OAuth secrets — that go-live step is escalated to a human.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "connector:notion",
+      "stream": "connector",
+      "target": "notion",
+      "leverage": 0.0006,
+      "meta": {
+        "goLive": "escalate"
+      },
+      "gate": "notion contract tests pass (injected fetch) AND lens-broken-calls --ci 0 holds; live-creds/go-live ESCALATED",
+      "prompt": "Build the notion connector mirroring the Gmail/Calendar template: add egress helpers on the SSRF-guarded connectorFetch chokepoint (server/lib/connector-client.js), token handling via server/lib/connector-tokens.js, a server/domains/notion.js with read+write macros, and contract tests using an INJECTED fetch (no live network). Do NOT wire live OAuth secrets — that go-live step is escalated to a human.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "conkay:run-started",
+      "stream": "conkay",
+      "target": "run-started",
+      "leverage": 0.0004,
+      "meta": {
+        "order": 0
+      },
+      "gate": "no setInterval/fake-progress under components/conkay/ (grep gate holds) AND a test asserts the element reacts to the real socket event",
+      "prompt": "ConKay Phase 2 beat \"run-started\": core powers on + rings spin up on macro:started. Bind ONE scene element in concord-frontend/components/conkay/ to the real socket event via conkayHudStore — honest by construction, NO setInterval/fake-progress. Add a test asserting the element reacts to the real event. This stream is sequential; do this beat only if all lower-order conkay beats are passed.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "conkay:tool-call",
+      "stream": "conkay",
+      "target": "tool-call",
+      "leverage": 0.00039,
+      "meta": {
+        "order": 1
+      },
+      "gate": "no setInterval/fake-progress under components/conkay/ (grep gate holds) AND a test asserts the element reacts to the real socket event",
+      "prompt": "ConKay Phase 2 beat \"tool-call\": a part pulses (selective bloom) on a real tool-call event. Bind ONE scene element in concord-frontend/components/conkay/ to the real socket event via conkayHudStore — honest by construction, NO setInterval/fake-progress. Add a test asserting the element reacts to the real event. This stream is sequential; do this beat only if all lower-order conkay beats are passed.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "conkay:tool-result",
+      "stream": "conkay",
+      "target": "tool-result",
+      "leverage": 0.00038,
+      "meta": {
+        "order": 2
+      },
+      "gate": "no setInterval/fake-progress under components/conkay/ (grep gate holds) AND a test asserts the element reacts to the real socket event",
+      "prompt": "ConKay Phase 2 beat \"tool-result\": a telemetry panel renders the REAL returned value. Bind ONE scene element in concord-frontend/components/conkay/ to the real socket event via conkayHudStore — honest by construction, NO setInterval/fake-progress. Add a test asserting the element reacts to the real event. This stream is sequential; do this beat only if all lower-order conkay beats are passed.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "conkay:verify-verdict",
+      "stream": "conkay",
+      "target": "verify-verdict",
+      "leverage": 0.00037,
+      "meta": {
+        "order": 3
+      },
+      "gate": "no setInterval/fake-progress under components/conkay/ (grep gate holds) AND a test asserts the element reacts to the real socket event",
+      "prompt": "ConKay Phase 2 beat \"verify-verdict\": the trust badge resolves Grounded vs Reasoned—verify from reason.verify. Bind ONE scene element in concord-frontend/components/conkay/ to the real socket event via conkayHudStore — honest by construction, NO setInterval/fake-progress. Add a test asserting the element reacts to the real event. This stream is sequential; do this beat only if all lower-order conkay beats are passed.",
+      "status": "pending",
+      "attempts": 0
+    },
+    {
+      "id": "conkay:run-finished",
+      "stream": "conkay",
+      "target": "run-finished",
+      "leverage": 0.00036,
+      "meta": {
+        "order": 4
+      },
+      "gate": "no setInterval/fake-progress under components/conkay/ (grep gate holds) AND a test asserts the element reacts to the real socket event",
+      "prompt": "ConKay Phase 2 beat \"run-finished\": the part re-assembles into the core on macro:completed. Bind ONE scene element in concord-frontend/components/conkay/ to the real socket event via conkayHudStore — honest by construction, NO setInterval/fake-progress. Add a test asserting the element reacts to the real event. This stream is sequential; do this beat only if all lower-order conkay beats are passed.",
+      "status": "pending",
+      "attempts": 0
+    }
+  ]
+}
