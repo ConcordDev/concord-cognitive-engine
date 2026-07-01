@@ -40,6 +40,17 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
   const { username = 'testuser', role = 'user', walletBalance = 0 } = opts;
   const userId = `usr_${username}`;
 
+  // THE load-bearing line (root cause of the 9 deterministic E2E failures):
+  // middleware.ts gates every non-public path on the concord_auth/concord_refresh
+  // COOKIE — a server-side check on the document request that page.route() API
+  // mocks can never intercept. Without it, every /lenses/* navigation 307s to
+  // /login before the page mounts ("Admin access required" never renders; the
+  // NEC-Calculators click burns the full 120s actionTimeout). Mirrors the
+  // explicit-cookie pattern the passing middleware spec uses (auth.spec.ts).
+  await page.context().addCookies([
+    { name: 'concord_refresh', value: 'e2e-mock-refresh-token', domain: 'localhost', path: '/' },
+  ]);
+
   // Pre-dismiss the first-run overlays BEFORE any page script runs. The
   // OnboardingWizard renders a full-screen `fixed inset-0 z-50 bg-black/80`
   // modal whenever `concord-onboarding-completed` is unset (and its
