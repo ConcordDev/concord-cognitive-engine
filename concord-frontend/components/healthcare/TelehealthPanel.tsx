@@ -4,7 +4,11 @@
  * TelehealthPanel — video visit scheduling + room lifecycle.
  * Backend: healthcare.telehealth-create / telehealth-list /
  * telehealth-update-status. A real Daily.co room is minted when
- * DAILY_API_KEY is set; otherwise the concord-webrtc join token is used.
+ * DAILY_API_KEY is set; otherwise the in-lens concord-webrtc path is
+ * used (TelehealthVideoCall joins the socket.io signalling room
+ * `webrtc:<visitId>` — no token, room privacy comes from the
+ * unguessable visit id). When neither is available the backend says so
+ * honestly (videoReady:false + note) and only the appointment exists.
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -19,7 +23,9 @@ interface TeleVisit {
   scheduledAt: string;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
   roomProvider: string; roomUrl: string | null; roomName?: string;
-  joinToken: string; startedAt?: string; endedAt?: string;
+  videoReady?: boolean; note?: string;
+  join?: { transport: string; joinEvent: string; room: string; visitId: string; component: string };
+  startedAt?: string; endedAt?: string;
 }
 
 const STATUS_STYLE: Record<TeleVisit['status'], string> = {
@@ -133,6 +139,7 @@ export function TelehealthPanel({ patientId }: { patientId: string }) {
                   <div className="text-sm text-white truncate">{patientName(v.patientId)}{v.provider && <span className="text-[10px] text-gray-400"> · {v.provider}</span>}</div>
                   <div className="text-[10px] text-gray-400 truncate">
                     {new Date(v.scheduledAt).toLocaleString()} · {v.roomProvider}
+                    {v.videoReady === false && <span className="text-amber-400/80"> · video not configured</span>}
                   </div>
                 </div>
                 {/* External-client fallback for visits using a Daily.co room URL.

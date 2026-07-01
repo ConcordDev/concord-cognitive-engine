@@ -149,23 +149,26 @@ describe("services — CRUD round-trips + validation (shared owner ctx)", () => 
     assert.equal(cancel.result.promotedFromWaitlist.status, "offered");
   });
 
-  it("paymentCapture computes total (subtotal+tax+tip-discount) and a card on '0000' is declined", async () => {
+  it("paymentCapture computes total (subtotal+tax+tip-discount); card sales are honest pay-on-site (no processor → never 'captured')", async () => {
     const ok = await lensRun("services", "paymentCapture", {
       params: { client: "Quinn", subtotal: 100, taxRate: 0.08, tip: 15, discount: 5, method: "card", cardLast4: "4242" },
     }, ctx);
     assert.equal(ok.ok, true);
     assert.equal(ok.result.payment.tax, 0.08);   // round(100*0.08)/100
     assert.equal(ok.result.payment.total, 110.08); // 100 + 0.08 + 15 - 5
-    assert.equal(ok.result.payment.status, "captured");
+    assert.equal(ok.result.authStatus, "unprovisioned");
+    assert.equal(ok.result.paymentStatus, "pay_on_site");
+    assert.equal(ok.result.payment.status, "unprovisioned");
 
-    const declined = await lensRun("services", "paymentCapture", {
+    // The old '0000' magic-decline simulation is gone — same honest shape.
+    const zeros = await lensRun("services", "paymentCapture", {
       params: { client: "Rae", subtotal: 50, method: "card", cardLast4: "0000" },
     }, ctx);
-    // decline returns {ok:false,error,result:{payment}} — because it HAS a
-    // `result` key, lens.run unwraps to that {payment}; assert on the payment.
-    assert.equal(declined.result.payment.status, "declined");
-    assert.equal(declined.result.payment.total, 50);
-    assert.equal(declined.result.payment.cardLast4, "0000");
+    assert.equal(zeros.ok, true);
+    assert.notEqual(zeros.result.payment.status, "declined");
+    assert.notEqual(zeros.result.payment.status, "captured");
+    assert.equal(zeros.result.payment.total, 50);
+    assert.equal(zeros.result.payment.cardLast4, "0000");
   });
 
   it("paymentRefund: a captured payment refunds in full, then a second refund is rejected", async () => {
@@ -416,21 +419,23 @@ describe("services — CRUD round-trips (extended, shared owner ctx)", () => {
 
   it("paymentList aggregates gross/tips/byMethod over captured payments only", async () => {
     const pctx = await depthCtx("services-paylist");
+    // Card sales record honestly as unprovisioned pay-on-site (no processor)
+    // and must NOT count toward gross/tips — nothing was charged.
     await lensRun("services", "paymentCapture", {
       params: { client: "P1", subtotal: 100, tip: 20, method: "card", cardLast4: "1111" },
     }, pctx);
     await lensRun("services", "paymentCapture", {
       params: { client: "P2", subtotal: 50, tip: 5, method: "cash" },
     }, pctx);
-    // a declined payment must NOT count toward gross/tips
     await lensRun("services", "paymentCapture", {
       params: { client: "P3", subtotal: 999, tip: 99, method: "card", cardLast4: "0000" },
     }, pctx);
     const list = await lensRun("services", "paymentList", {}, pctx);
     assert.equal(list.ok, true);
-    assert.equal(list.result.gross, 175);  // (100+20) + (50+5), declined excluded
-    assert.equal(list.result.tips, 25);    // 20 + 5
-    assert.equal(list.result.byMethod.card, 120);
+    assert.equal(list.result.count, 3);    // all rows listed, honest statuses
+    assert.equal(list.result.gross, 55);   // cash (50+5) only — no card was charged
+    assert.equal(list.result.tips, 5);     // cash tip only
+    assert.equal(list.result.byMethod.card, undefined); // unprovisioned ≠ captured
     assert.equal(list.result.byMethod.cash, 55);
   });
 

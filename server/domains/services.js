@@ -480,10 +480,51 @@ export default function registerServicesActions(registerLensAction) {
       const total = Math.round((subtotal + tax + tip - discount) * 100) / 100;
       if (total < 0) return { ok: false, error: "discount exceeds total" };
       const method = String(p.method || "card");
-      // Simulated card-auth: deterministic from card last4 — declines on "0000".
       const last4 = String(p.cardLast4 || "").slice(-4);
-      let authStatus = "captured";
-      if (method === "card" && last4 === "0000") authStatus = "declined";
+
+      // HONEST PAYMENT GATE — card tenders require a real payment processor.
+      // A previous build "captured" any card (declining only a magic last4 of
+      // "0000") with NO processor behind it — a fabricated charge + receipt.
+      // Per "everything must be real" (see domains/retail.js Stripe POS and
+      // domains/healthcare.js copay for the env-gated pattern): Concord never
+      // claims a charge it did not make. This macro receives only a card
+      // last4 — never a confirmable payment token — so even with Stripe
+      // configured it cannot honestly capture; card sales are recorded as
+      // pay-on-site until a client-side Stripe confirmation flow (Elements /
+      // Terminal, like retail's cart-create-payment-intent) is wired here.
+      if (method === "card") {
+        const payment = {
+          id: svcId("pmt"),
+          receiptNumber: `RCP-${Date.now().toString(36).toUpperCase().slice(-6)}`,
+          client: String(p.client || "Walk-in"),
+          bookingId: p.bookingId ? String(p.bookingId) : null,
+          staff: String(p.staff || ""),
+          lineItems: Array.isArray(p.lineItems) ? p.lineItems : [],
+          subtotal, tax, tip, discount, total,
+          method, cardLast4: last4 || null,
+          status: "unprovisioned",
+          paymentStatus: "pay_on_site",
+          capturedAt: null,
+          recordedAt: new Date().toISOString(),
+        };
+        svcList(s.payments, userId).push(payment);
+        // The BOOKING itself is real (a recorded row) — link the pending
+        // payment record, but never mark it completed/paid: no funds moved.
+        if (payment.bookingId) {
+          const bk = svcList(s.bookings, userId).find(b => b.id === payment.bookingId);
+          if (bk) bk.pendingPaymentId = payment.id;
+        }
+        const note = process.env.STRIPE_SECRET_KEY
+          ? "Stripe is configured, but this POS surface has no client-side card confirmation flow yet — booking recorded without charge; collect payment on site."
+          : "Card processing not configured — booking recorded without charge. Configure Stripe to enable payments.";
+        return {
+          ok: true,
+          result: { authStatus: "unprovisioned", booked: true, paymentStatus: "pay_on_site", payment, note },
+        };
+      }
+
+      // Non-card tenders (cash / gift_card / other) record funds physically
+      // received at the point of sale — an honest capture, no processor claim.
       const payment = {
         id: svcId("pmt"),
         receiptNumber: `RCP-${Date.now().toString(36).toUpperCase().slice(-6)}`,
@@ -493,13 +534,10 @@ export default function registerServicesActions(registerLensAction) {
         lineItems: Array.isArray(p.lineItems) ? p.lineItems : [],
         subtotal, tax, tip, discount, total,
         method, cardLast4: last4 || null,
-        status: authStatus,
+        status: "captured",
         capturedAt: new Date().toISOString(),
       };
       svcList(s.payments, userId).push(payment);
-      if (authStatus === "declined") {
-        return { ok: false, error: "card declined", result: { payment } };
-      }
       // Mark linked booking completed.
       if (payment.bookingId) {
         const bk = svcList(s.bookings, userId).find(b => b.id === payment.bookingId);

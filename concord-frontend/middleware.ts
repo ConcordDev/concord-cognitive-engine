@@ -13,6 +13,7 @@ const PUBLIC_PATHS = new Set([
   '/login',
   '/register',
   '/forgot-password',
+  '/reset-password',  // token arrives via ?token= — the page itself must be public
   '/onboarding',
 ]);
 
