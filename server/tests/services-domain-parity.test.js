@@ -97,19 +97,23 @@ describe("services — online self-booking", () => {
 });
 
 describe("services — POS payment capture", () => {
-  it("captures a card payment with tax + tip", () => {
+  it("records a card sale honestly as pay-on-site (no processor → never 'captured')", () => {
     const r = call("paymentCapture", ctxA, { client: "Ada", subtotal: 100, taxRate: 10, tipPercent: 20, method: "card", cardLast4: "4242" });
     assert.equal(r.ok, true);
     assert.equal(r.result.payment.tax, 10);
     assert.equal(r.result.payment.tip, 20);
     assert.equal(r.result.payment.total, 130);
-    assert.equal(r.result.payment.status, "captured");
+    assert.equal(r.result.authStatus, "unprovisioned");
+    assert.equal(r.result.paymentStatus, "pay_on_site");
+    assert.equal(r.result.payment.status, "unprovisioned");
   });
 
-  it("declines a card ending 0000", () => {
+  it("the '0000' magic-decline simulation is gone — same honest shape as any card", () => {
     const r = call("paymentCapture", ctxA, { client: "Ada", subtotal: 50, method: "card", cardLast4: "0000" });
-    assert.equal(r.ok, false);
-    assert.equal(r.result.payment.status, "declined");
+    assert.equal(r.ok, true);
+    assert.equal(r.result.authStatus, "unprovisioned");
+    assert.notEqual(r.result.payment.status, "declined");
+    assert.notEqual(r.result.payment.status, "captured");
   });
 
   it("rejects a non-positive subtotal", () => {
@@ -124,13 +128,15 @@ describe("services — POS payment capture", () => {
     assert.equal(r.result.payment.status, "refunded");
   });
 
-  it("aggregates payments by method", () => {
+  it("aggregates captured payments by method — pay-on-site card records never count as captured", () => {
     call("paymentCapture", ctxA, { client: "Ada", subtotal: 100, method: "card", cardLast4: "1111" });
     call("paymentCapture", ctxA, { client: "Bea", subtotal: 50, method: "cash" });
     const l = call("paymentList", ctxA, {});
     assert.equal(l.ok, true);
     assert.equal(l.result.count, 2);
-    assert.ok(l.result.byMethod.card > 0 && l.result.byMethod.cash > 0);
+    assert.equal(l.result.gross, 50);              // cash only — no card was charged
+    assert.ok(l.result.byMethod.cash > 0);
+    assert.equal(l.result.byMethod.card, undefined); // unprovisioned ≠ captured
   });
 });
 

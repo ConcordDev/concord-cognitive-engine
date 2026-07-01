@@ -10,7 +10,6 @@ export * from './types';
 export * from './validation-engine';
 export * from './simulation-domains';
 export * from './concordia-types';
-export * from './npc-system';
 export { MATERIALS_CATALOG } from './material-seed';
 export { DEMO_DISTRICT } from './district-seed';
 
