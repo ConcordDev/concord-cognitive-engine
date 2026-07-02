@@ -124,7 +124,7 @@ export default function MoveBuilderLensPage() {
 
   return (
     <LensShell lensId="move-builder">
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px', color: '#e8e4dc' }}>
+      <div className="px-4 sm:px-6" style={{ maxWidth: 720, margin: '0 auto', paddingTop: 24, paddingBottom: 24, color: '#e8e4dc' }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>System · Move Builder</h1>
         <p style={{ opacity: 0.7, fontSize: 13, marginBottom: 20 }}>
           Compose a move — element, kind, and a diminishing-returns modifier budget — preview how it animates, then mint it.
@@ -162,7 +162,7 @@ export default function MoveBuilderLensPage() {
                 />
               </label>
 
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div className="flex flex-col sm:flex-row" style={{ gap: 12 }}>
                 <label style={lbl}>
                   <span>Element</span>
                   <select value={element} onChange={(e) => setElement(e.target.value)} aria-label="Element" style={inp}>
@@ -187,9 +187,9 @@ export default function MoveBuilderLensPage() {
                 {ASPECTS.map((a) => (
                   <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ width: 90, textTransform: 'capitalize' }}>{a}</span>
-                    <button type="button" onClick={() => setAspect(a, alloc[a] - 1)} aria-label={`Decrease ${a}`} style={stepBtn}>−</button>
+                    <button type="button" onClick={() => setAspect(a, alloc[a] - 1)} aria-label={`Decrease ${a}`} className="transition-colors hover:brightness-125" style={stepBtn}>−</button>
                     <span style={{ width: 24, textAlign: 'center' }} aria-label={`${a} points`}>{alloc[a]}</span>
-                    <button type="button" onClick={() => setAspect(a, alloc[a] + 1)} aria-label={`Increase ${a}`} style={stepBtn}>+</button>
+                    <button type="button" onClick={() => setAspect(a, alloc[a] + 1)} aria-label={`Increase ${a}`} className="transition-colors hover:brightness-125" style={stepBtn}>+</button>
                     <span style={{ opacity: 0.5, fontSize: 12 }}>eff {composed?.budget?.effective?.[a] ?? 0}</span>
                   </div>
                 ))}
@@ -214,6 +214,7 @@ export default function MoveBuilderLensPage() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <button type="button" onClick={() => void mint()} disabled={!canMint}
+                className="transition-colors"
                 style={{ ...primaryBtn, opacity: canMint ? 1 : 0.5, cursor: canMint ? 'pointer' : 'not-allowed' }}>
                 {minting ? 'Minting…' : 'Mint move'}
               </button>
