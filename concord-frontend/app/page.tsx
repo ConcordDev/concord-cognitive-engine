@@ -50,7 +50,7 @@ export default function HomePage() {
             </span>
           </h1>
 
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-8 text-center">
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8 text-center">
             A sovereign knowledge operating system that grows with you.
             Your thoughts never leave your control.
           </p>
@@ -73,31 +73,31 @@ export default function HomePage() {
               <span className="px-4 py-2 rounded-lg bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-center">No data extraction.</span>
               <span className="px-4 py-2 rounded-lg bg-neon-green/10 border border-neon-green/20 text-neon-green text-center">Free for all services.</span>
             </div>
-            <p className="text-xs text-gray-400 mt-2">Not a promise — it&apos;s architecture. The sovereignty lock makes it mathematically enforced.</p>
+            <p className="text-xs text-gray-300 mt-2">Not a promise — it&apos;s architecture. The sovereignty lock makes it mathematically enforced.</p>
           </div>
 
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-20">
             <div className="bg-lattice-surface border border-lattice-border rounded-xl p-6">
               <h3 className="text-lg font-semibold text-white mb-2">259 Domain Lenses</h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-300 text-sm">
                 Healthcare, education, legal, trades, manufacturing, creative arts, science, AI, and 250+ more specialized lenses.
               </p>
             </div>
             <div className="bg-lattice-surface border border-lattice-border rounded-xl p-6">
               <h3 className="text-lg font-semibold text-white mb-2">DTU-Based Memory</h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-300 text-sm">
                 Discrete Thought Units with epistemic scoring, lattice governance, and provenance tracking.
               </p>
             </div>
             <div className="bg-lattice-surface border border-lattice-border rounded-xl p-6">
               <h3 className="text-lg font-semibold text-white mb-2">Local-First AI</h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-300 text-sm">
                 Hybrid local/cloud AI pipeline. Works offline with Ollama, optionally enhances with cloud LLMs.
               </p>
             </div>
             <div className="bg-lattice-surface border border-lattice-border rounded-xl p-6">
               <h3 className="text-lg font-semibold text-white mb-2">Sovereign by Design</h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-300 text-sm">
                 70% sovereignty lock. No telemetry, no ads, no secret monitoring. You own every byte.
               </p>
             </div>
@@ -108,25 +108,25 @@ export default function HomePage() {
             <dl className="space-y-4">
               <div className="bg-lattice-surface border border-lattice-border rounded-xl p-4">
                 <dt className="font-semibold text-neon-cyan">Lattice Governance</dt>
-                <dd className="text-gray-400 text-sm mt-1">
+                <dd className="text-gray-300 text-sm mt-1">
                   Chicken2 reality gates, council-based promotion, credibility-weighted voting, and anti-gaming protection.
                 </dd>
               </div>
               <div className="bg-lattice-surface border border-lattice-border rounded-xl p-4">
                 <dt className="font-semibold text-neon-blue">Macro-Max Engine</dt>
-                <dd className="text-gray-400 text-sm mt-1">
+                <dd className="text-gray-300 text-sm mt-1">
                   All logic expressed as deterministic macros. Event-sourced, replayable, auditable.
                 </dd>
               </div>
               <div className="bg-lattice-surface border border-lattice-border rounded-xl p-4">
                 <dt className="font-semibold text-neon-purple">Epistemic Framework</dt>
-                <dd className="text-gray-400 text-sm mt-1">
+                <dd className="text-gray-300 text-sm mt-1">
                   Domain-typed knowledge with formal, empirical, historical, interpretive, and model-based epistemic classes.
                 </dd>
               </div>
               <div className="bg-lattice-surface border border-lattice-border rounded-xl p-4">
                 <dt className="font-semibold text-neon-green">Grounded Recursive Closure</dt>
-                <dd className="text-gray-400 text-sm mt-1">
+                <dd className="text-gray-300 text-sm mt-1">
                   GRC v1 output spec ensures all AI responses are lattice-anchored, reality-gated, and recursively deepening.
                 </dd>
               </div>

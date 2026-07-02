@@ -114,7 +114,7 @@ export default function LensHubPage() {
               <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">
                 Lens Explorer
               </h1>
-              <p className="text-gray-400 max-w-2xl text-sm lg:text-base">
+              <p className="text-gray-300 max-w-2xl text-sm lg:text-base">
                 {totalCount} lenses across {categoryCount} domains.
                 Every lens is a specialized workspace — from AI reasoning to healthcare management.
               </p>
@@ -228,7 +228,7 @@ export default function LensHubPage() {
                     <span className="text-xs text-gray-400">({displayLenses.length})</span>
                   </div>
                   {desc && !search && (
-                    <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                    <p className="text-xs text-gray-300 mt-0.5">{desc}</p>
                   )}
                 </div>
               </div>
@@ -303,7 +303,7 @@ function CoreLensHeroCard({ core }: { core: CoreLensConfig }) {
         <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
       </div>
 
-      <p className="text-xs text-gray-400 mb-3 line-clamp-2">{core.description}</p>
+      <p className="text-xs text-gray-300 mb-3 line-clamp-2">{core.description}</p>
 
       {absorbed.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-auto">
@@ -342,7 +342,7 @@ function LensCard({ lens }: { lens: LensEntry }) {
             </span>
           )}
         </div>
-        <p className="text-xs text-gray-400 truncate mt-0.5">{lens.description}</p>
+        <p className="text-xs text-gray-300 truncate mt-0.5">{lens.description}</p>
       </div>
     </Link>
   );

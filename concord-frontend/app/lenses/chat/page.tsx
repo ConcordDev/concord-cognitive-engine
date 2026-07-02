@@ -3011,7 +3011,7 @@ export default function ChatLensPage() {
                           />
                           <div className="text-left">
                             <p className="font-medium text-white">{mode.name}</p>
-                            <p className="text-xs text-gray-400">{mode.description}</p>
+                            <p className="text-xs text-gray-300">{mode.description}</p>
                           </div>
                         </button>
                       ))}
@@ -3079,7 +3079,7 @@ export default function ChatLensPage() {
                           />
                           <div className="text-left">
                             <p className="font-medium text-white">{persona.name}</p>
-                            <p className="text-xs text-gray-400">{persona.description}</p>
+                            <p className="text-xs text-gray-300">{persona.description}</p>
                           </div>
                           {selectedPersona.id === persona.id && (
                             <Check className="w-4 h-4 text-neon-purple ml-auto mt-0.5 flex-shrink-0" />
@@ -3641,7 +3641,7 @@ export default function ChatLensPage() {
                             />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-mono text-white">{cmd.label}</p>
-                              <p className="text-xs text-gray-400">{cmd.description}</p>
+                              <p className="text-xs text-gray-300">{cmd.description}</p>
                             </div>
                           </button>
                         ))}

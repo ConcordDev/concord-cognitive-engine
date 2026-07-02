@@ -883,7 +883,7 @@ export default function MathLensPage() {
                             <p className="font-mono text-lg tracking-wide">{renderFormula(item.data.latex)}</p>
                           </div>
                           {item.data.description && (
-                            <p className="text-xs text-gray-400">{item.data.description}</p>
+                            <p className="text-xs text-gray-300">{item.data.description}</p>
                           )}
                         </motion.div>
                       );
