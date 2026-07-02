@@ -22,6 +22,20 @@
 // The scene + any HUD readouts are READ-ONLY consumers (selectors / getState).
 // If you find yourself calling a mutator from anywhere other than that socket
 // adapter, you are about to fake something — stop.
+//
+// Unit F2 extension — `lastVerify` + `runDtuRefs` (substrate for the upcoming
+// K3 verification panels): these two fields are the exception to "socket
+// adapter only", and it's a narrow one. reason.verify's verdict does NOT flow
+// over the macro:* socket events (macro:completed only carries {domain,
+// action, ok, ms}) — it's the direct `lensRun('reason','verify',...)` return
+// that ConKayOverlay's `verifyMessage` already uses to stamp a message's
+// `verifyVerdict`/`verifyMode`/`verifyConfidence`. So `setLastVerify` /
+// `setRunDtuRefs` are called ONLY from inside that same `verifyMessage`
+// function, right where it computes those message fields — never a new
+// arbitrary write site, just the one legitimate producer of a real verify
+// result also mirroring the fact into the store. `runDtuRefs` carries the
+// exact `{id, title, tier}` shape ConKay skills already attach to messages
+// as `dtuRefs` (see `conkay-skills.ts#ConKaySkillResult`) — not re-invented.
 
 import { create } from 'zustand';
 
@@ -55,6 +69,24 @@ interface MacroStageEvent {
   detail?: string;
 }
 
+/** The real reason.verify verdict — straight from the macro's return, never a guess. */
+export interface ConkayVerifyVerdict {
+  /** grounded | citations_resolve | unsupported | fabricated_citation | unverified | proven | refuted */
+  verdict: string;
+  /** How the verdict was reached ('council' | 'proof' | 'deterministic'), or null if unreported. */
+  mode: string | null;
+  /** The council/proof confidence [0..1] the macro reported, or null. */
+  confidence: number | null;
+}
+
+/** A DTU reference in the exact shape ConKay skills already attach to messages
+ *  (`conkay-skills.ts#ConKaySkillResult.dtuRefs`) — reused verbatim, not re-shaped. */
+export interface ConkayDtuRef {
+  id: string;
+  title: string | null;
+  tier: string | null;
+}
+
 interface ConkayHudState {
   /** Count of ConKay macro runs the backend currently reports in flight. */
   inFlight: number;
@@ -73,6 +105,12 @@ interface ConkayHudState {
   stage: string | null;
   /** Internal: the set of run ids currently in flight (dedupes repeat events). */
   _runIds: Set<string>;
+  /** The most recent real `reason.verify` verdict, or null until one has
+   *  completed. Substrate for the upcoming K3 verification panels. */
+  lastVerify: ConkayVerifyVerdict | null;
+  /** The DTU refs the most recent verify call checked the claim against — the
+   *  real refs a message already carries, mirrored here for the cockpit. */
+  runDtuRefs: ConkayDtuRef[];
 
   // ── single-writer adapter actions (CALL ONLY FROM the macro:* socket adapter) ──
   /** A real `macro:started` arrived for one of ConKay's runs. */
@@ -83,6 +121,14 @@ interface ConkayHudState {
   macroCompleted: (d: MacroDoneEvent) => void;
   /** Clear all HUD state (call when ConKay closes so rings don't persist). */
   reset: () => void;
+
+  // ── single-writer extension (CALL ONLY FROM ConKayOverlay's `verifyMessage`,
+  //    right after it computes the real reason.verify return — see the file
+  //    header for why this is a narrow, documented exception) ──
+  /** The real reason.verify verdict just returned for the live claim. */
+  setLastVerify: (v: ConkayVerifyVerdict | null) => void;
+  /** The real DTU refs the live verify call was checked against. */
+  setRunDtuRefs: (refs: ConkayDtuRef[]) => void;
 }
 
 const labelOf = (d: { domain?: string; action?: string }) =>
@@ -99,6 +145,8 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
   startedAt: null,
   stage: null,
   _runIds: new Set<string>(),
+  lastVerify: null,
+  runDtuRefs: [],
 
   macroStarted: (d) =>
     set((s) => {
@@ -162,5 +210,10 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
       startedAt: null,
       stage: null,
       _runIds: new Set<string>(),
+      lastVerify: null,
+      runDtuRefs: [],
     })),
+
+  setLastVerify: (v) => set(() => ({ lastVerify: v })),
+  setRunDtuRefs: (refs) => set(() => ({ runDtuRefs: Array.isArray(refs) ? refs : [] })),
 }));

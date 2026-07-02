@@ -71,3 +71,58 @@ describe('conkayHudStore macro:stage (honest sub-step)', () => {
     expect(store().telemetry).toEqual([]);
   });
 });
+
+describe('conkayHudStore lastVerify + runDtuRefs (Unit F2 — verify substrate)', () => {
+  it('starts null/empty', () => {
+    expect(store().lastVerify).toBeNull();
+    expect(store().runDtuRefs).toEqual([]);
+  });
+
+  it('setLastVerify records the real reason.verify verdict', () => {
+    store().setLastVerify({ verdict: 'grounded', mode: 'council', confidence: 0.87 });
+    expect(store().lastVerify).toEqual({ verdict: 'grounded', mode: 'council', confidence: 0.87 });
+  });
+
+  it('setLastVerify accepts null (e.g. a fresh reset)', () => {
+    store().setLastVerify({ verdict: 'grounded', mode: 'council', confidence: 0.87 });
+    store().setLastVerify(null);
+    expect(store().lastVerify).toBeNull();
+  });
+
+  it('setRunDtuRefs records the real dtuRefs shape (id/title/tier)', () => {
+    const refs = [
+      { id: 'dtu-1', title: 'Federation poll cadence', tier: 'regular' },
+      { id: 'dtu-2', title: null, tier: 'mega' },
+    ];
+    store().setRunDtuRefs(refs);
+    expect(store().runDtuRefs).toEqual(refs);
+  });
+
+  it('setRunDtuRefs defensively coerces a non-array to empty (never throws)', () => {
+    // @ts-expect-error — deliberately calling with a malformed value to pin the guard
+    store().setRunDtuRefs(null);
+    expect(store().runDtuRefs).toEqual([]);
+  });
+
+  it('reset clears both lastVerify and runDtuRefs', () => {
+    store().setLastVerify({ verdict: 'unsupported', mode: 'council', confidence: 0.4 });
+    store().setRunDtuRefs([{ id: 'dtu-1', title: 'x', tier: 'regular' }]);
+    store().reset();
+    expect(store().lastVerify).toBeNull();
+    expect(store().runDtuRefs).toEqual([]);
+  });
+
+  it('are ONLY settable via their documented actions — no other action mutates them', () => {
+    // Pin the single-writer contract the same way the rest of this file does:
+    // exercise every OTHER mutator and confirm lastVerify/runDtuRefs are untouched.
+    store().setLastVerify({ verdict: 'grounded', mode: 'proof', confidence: 1 });
+    store().setRunDtuRefs([{ id: 'dtu-9', title: 'pinned', tier: 'regular' }]);
+    store().macroStarted({ runId: 'r1', domain: 'reason', action: 'verify' });
+    store().macroStage({ runId: 'r1', stage: 'judging' });
+    store().macroCompleted({ runId: 'r1', domain: 'reason', action: 'verify', ok: true, ms: 5 });
+    // Untouched by any of the socket-adapter actions above.
+    expect(store().lastVerify).toEqual({ verdict: 'grounded', mode: 'proof', confidence: 1 });
+    expect(store().runDtuRefs).toEqual([{ id: 'dtu-9', title: 'pinned', tier: 'regular' }]);
+    // reset() is the one exception (it clears everything), pinned separately above.
+  });
+});

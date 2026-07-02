@@ -246,7 +246,17 @@ export function ConKayOverlay() {
   // never a heuristic guess. "Verification IS the product." Rides the honest
   // event spine (a runId) like any other macro call; degrades silently to the
   // heuristic badge if the macro is unavailable.
-  const verifyMessage = useCallback(async (msgId: string, claim: string, citationIds: string[]) => {
+  const verifyMessage = useCallback(async (
+    msgId: string,
+    claim: string,
+    citationIds: string[],
+    // The full DTU refs the claim was cited against, in the same shape ConKay
+    // skills already attach to messages (id/title/tier) — passed through so
+    // the HUD store's `runDtuRefs` mirrors the real refs this call checks,
+    // never a re-derivation. Optional: callers that only have bare ids (none
+    // currently do) still get a working verdict, just an empty refs mirror.
+    dtuRefs: Array<{ id: string; title: string | null; tier: string | null }> = [],
+  ) => {
     // Run when there are citations to check OR when the claim is proof-amenable
     // (so the Z3 gate can fire and earn "Proven ✓" even for an uncited theorem).
     if (!citationIds.length && !looksProvable(claim)) return;
@@ -262,6 +272,12 @@ export function ConKayOverlay() {
       const mode = res && typeof res.mode === 'string' ? res.mode : undefined;
       const confidence = res && typeof res.confidence === 'number' ? res.confidence : null;
       setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: verdict, verifyMode: mode, verifyConfidence: confidence } : m)));
+      // Unit F2 — mirror the same real verdict + the refs it was checked against
+      // into the HUD store, for the upcoming K3 cockpit panels. This is the one
+      // documented exception to "socket adapter only" (see the store's header):
+      // still the single legitimate producer of a verify result, not a new site.
+      useConkayHudStore.getState().setLastVerify({ verdict, mode: mode ?? null, confidence });
+      useConkayHudStore.getState().setRunDtuRefs(dtuRefs);
     } catch {
       // verification unavailable → drop the pending state, fall back to the heuristic badge
       setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: undefined } : m)));
@@ -359,7 +375,7 @@ export function ConKayOverlay() {
       setStep('render', 'done', 'Done');
       // Phase 1: verify the cited DTUs through the real reason.verify macro.
       const citeIds = (result.dtuRefs || []).map((d) => d.id).filter(Boolean);
-      if (citeIds.length || looksProvable(result.spoken)) verifyMessage(aid, result.spoken, citeIds);
+      if (citeIds.length || looksProvable(result.spoken)) verifyMessage(aid, result.spoken, citeIds, result.dtuRefs || []);
       persistArtifact(`Skill: ${match.skill.label}`, { task: text, skill: match.skill.id, spoken: result.spoken, viz: result.viz ?? null });
       if (result.navigate) { const dest = result.navigate; setTimeout(() => { window.location.href = dest; }, 900); }
     } catch {
