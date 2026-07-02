@@ -1,5 +1,11 @@
 # Concord continuation plan — Depth sweep (to ceiling) + ConKay honest hologram
 
+> **2026-07-02 handoff note:** arc sequencing has moved to **`docs/NEXT_ARC_PLAN.md`** —
+> read that first; this file remains the ConKay (Track B) DESIGN source. One correction:
+> the Phase-2 "needs `@react-three/postprocessing`" blocker below is **stale** — the
+> dependency is installed in `concord-frontend/package.json` (`^3.0.4`), so the deferred
+> Bloom + in-scene telemetry panels are unblocked.
+
 > **This is the live master plan. The `/root/.claude/plans/` copy is container-ephemeral —
 > THIS file is the durable source of truth.** Two independent tracks (run both in parallel).
 

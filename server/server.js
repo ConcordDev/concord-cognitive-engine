@@ -32786,7 +32786,7 @@ const _startWorldClock = () => {
     _worldClockStop = startWorldClockBroadcast(REALTIME);
     structuredLog("info", "world_clock_broadcast_started", { dayLengthMs: WORLD_CLOCK_CONSTANTS.dayLengthMs });
   } else {
-    setTimeout(_startWorldClock, 1000);
+    _unrefInTest(setTimeout(_startWorldClock, 1000));
   }
 };
 _startWorldClock();
