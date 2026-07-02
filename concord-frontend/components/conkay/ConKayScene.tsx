@@ -18,6 +18,8 @@ import { CONKAY_STATE_COLOR } from './ConKayHud';
 import { useConkayHudStore } from './conkayHudStore';
 import HolographicMaterial from './HolographicMaterial';
 import LatticeGlobe from './LatticeGlobe';
+import { computeOrbitalRingsTarget } from './orbital-rings-motion';
+import { emissiveIntensityForGlow, BLOOM_LUMINANCE_THRESHOLD } from './conkay-bloom';
 
 // Cosmic palette for the galaxy-discs (the lattice canopy).
 const GALAXY_PALETTE = ['#22d3ee', '#a855f7', '#34d399', '#fb7185', '#7dd3fc', '#c084fc', '#5eead4', '#f0abfc'];
@@ -260,19 +262,27 @@ function OrbitalRings() {
 
   useFrame((_, dt) => {
     const inFlight = useConkayHudStore.getState().inFlight;
-    const working = inFlight > 0;
-    // Spin target scales gently with concurrent real runs; idle → exactly 0.
-    const targetVel = working ? 0.6 + Math.min(inFlight, 4) * 0.18 : 0;
-    const targetGlow = working ? Math.min(1, 0.35 + inFlight * 0.18) : 0.0;
+    // Honest targets — velocity + glow are BOTH 0 when no real macro is in
+    // flight (pure fn, unit-tested in orbital-rings-motion.test.ts).
+    const { velocity: targetVel, glowIntensity: targetGlow } = computeOrbitalRingsTarget(inFlight);
     vel.current += (targetVel - vel.current) * Math.min(1, dt * 3);
     glow.current += (targetGlow - glow.current) * Math.min(1, dt * 3);
     if (group.current) group.current.rotation.z += vel.current * dt;
+    // Selective-bloom (F8/K6b): the rings bloom because THEIR emissive is hot,
+    // not because the scene is generally bright. emissiveIntensity is the eased
+    // real glow mapped into HDR emissive space — idle glow 0 → emissive 0 (dark,
+    // no bloom), working glow ≥ 0.53 → emissive ≥ 1.48 (> the near-1 threshold →
+    // blooms). Kill the backend mid-run and glow decays to 0, so this goes dark.
+    const emissive = emissiveIntensityForGlow(glow.current);
     rings.current.forEach((m, i) => {
       if (!m) return;
       // Counter-rotate alternate rings for the gyroscope read; all gated by vel.
       m.rotation.z += (i % 2 === 0 ? 1 : -1.4) * vel.current * dt;
-      const mat = m.material as THREE.MeshBasicMaterial;
-      mat.opacity = glow.current * (0.55 + 0.12 * i);
+      const mat = m.material as THREE.MeshStandardMaterial;
+      // Black base + additive → at emissive 0 the ring contributes nothing
+      // (invisible at idle) with no scene light needed; a small per-ring factor
+      // (floor 0.85) keeps the inner ring bright enough to bloom while working.
+      mat.emissiveIntensity = emissive * (0.85 + 0.12 * i);
     });
   });
 
@@ -285,10 +295,15 @@ function OrbitalRings() {
           ref={(el) => { if (el) rings.current[i] = el; }}
         >
           <torusGeometry args={[r, 0.012 + i * 0.004, 8, 128]} />
-          <meshBasicMaterial
-            color={i === 1 ? '#fbbf24' : '#22d3ee'}
+          {/* Emissive-only: base color black so brightness is carried entirely by
+              emissive (no light rig required); toneMapped=false so the hot
+              emissive survives into the Bloom pass instead of being clamped to 1. */}
+          <meshStandardMaterial
+            color="#000000"
+            emissive={i === 1 ? '#fbbf24' : '#22d3ee'}
+            emissiveIntensity={0}
+            toneMapped={false}
             transparent
-            opacity={0}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
           />
@@ -377,7 +392,18 @@ export function ConKayScene({ state, amplitudeRef, className, bloom }: {
         <Scene stateRef={stateRef} amplitudeRef={amplitudeRef} />
         {enableBloom && (
           <EffectComposer>
-            <Bloom mipmapBlur luminanceThreshold={0.15} luminanceSmoothing={0.4} intensity={0.7} />
+            {/* SELECTIVE bloom (F8/K6b): threshold raised to ~1 so nothing blooms
+                by default — only the toneMapped=false HDR-emissive elements
+                (OrbitalRings + LatticeGlobe) whose brightness tracks a REAL
+                inFlight/DTU-ref signal exceed it. Every other element is
+                tone-mapped (clamped ≤ 1) and stays below, so it no longer glows
+                just for being generally bright. */}
+            <Bloom
+              mipmapBlur
+              luminanceThreshold={BLOOM_LUMINANCE_THRESHOLD}
+              luminanceSmoothing={0.4}
+              intensity={0.9}
+            />
           </EffectComposer>
         )}
       </Canvas>
