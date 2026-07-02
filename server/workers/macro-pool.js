@@ -71,6 +71,11 @@ export function initPool() {
   for (let i = 0; i < POOL_SIZE; i++) {
     const workerPath = path.join(__dirname, "macro-executor.js");
     const w = new Worker(workerPath, { workerData: { workerId: i } });
+    // Test hygiene: unref pooled workers under NODE_ENV=test so they don't keep
+    // the node:test process alive after a suite finishes (they still process
+    // dispatched tasks while the loop is alive). Lets the runner exit WITHOUT
+    // --test-force-exit, which was masking this handle. Production untouched.
+    if (String(process.env.NODE_ENV).toLowerCase() === "test") w.unref();
     w._id = i;
     w._busy = false;
     w._task = null;
@@ -247,6 +252,7 @@ function handleWorkerExit(worker, code) {
     if (idx >= 0) {
       const workerPath = path.join(__dirname, "macro-executor.js");
       const newWorker = new Worker(workerPath, { workerData: { workerId: worker._id } });
+      if (String(process.env.NODE_ENV).toLowerCase() === "test") newWorker.unref();
       newWorker._id = worker._id;
       newWorker._busy = false;
       newWorker._task = null;

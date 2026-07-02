@@ -78,6 +78,10 @@ function _spawnWorker(workerId) {
       dbPath: _mainCtxRef?.dbPath ?? null,
     },
   });
+  // Test hygiene: unref under NODE_ENV=test so the pool doesn't keep the
+  // node:test process alive after a suite finishes (see macro-pool.js). Prod
+  // untouched.
+  if (String(process.env.NODE_ENV).toLowerCase() === "test") w.unref();
   w._id = workerId;
   w._busy = false;
   w._task = null;

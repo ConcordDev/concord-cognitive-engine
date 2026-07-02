@@ -30801,6 +30801,10 @@ async function mergeCognitiveResults(results) {
 function spawnCognitiveWorker() {
   const workerPath = new URL("./workers/cognitive-worker.js", import.meta.url).pathname;
   cognitiveWorker = new Worker(workerPath);
+  // Test hygiene: unref under NODE_ENV=test so it doesn't keep the node:test
+  // process alive after a suite finishes (see workers/macro-pool.js). The
+  // worker still answers requests while the loop is alive; prod untouched.
+  if (String(process.env.NODE_ENV).toLowerCase() === "test") cognitiveWorker.unref();
   cognitiveWorkerReady = false;
   _cognitiveWorkerStartTime = Date.now();
 

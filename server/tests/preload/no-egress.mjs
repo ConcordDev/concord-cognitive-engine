@@ -1,29 +1,16 @@
 // Test-only preload (wired via `node --test --import`).
 //
-// ── Clean-exit timer hygiene (replaces the --test-force-exit crutch) ──────────
-// Booting the live server starts ~90 module-level setInterval/setTimeout cycles
-// (governor heartbeat, GC sweeps, cache cleanups, …) that keep the event loop
-// alive forever, so the runner needed --test-force-exit — which also MASKS real
-// handle leaks. A preload runs BEFORE any server/module code, so patching the
-// global timer constructors here to auto-.unref() catches EVERY timer (server.js
-// body + all imported libs). unref'd timers still FIRE while the loop is alive
-// (awaited delays in tests keep working) — they simply stop BLOCKING process
-// exit once the suite finishes, letting `node --test` exit on its own. Test-only
-// (this preload is only loaded by the test runner); production timers untouched.
-// A leak that is NOT a timer (an open socket/DB handle) now surfaces as a hang
-// instead of being force-killed — which is the point: real leaks stay visible.
-if (String(process.env.NODE_ENV).toLowerCase() === "test") {
-  for (const name of ["setInterval", "setTimeout"]) {
-    const orig = globalThis[name];
-    if (typeof orig === "function") {
-      globalThis[name] = function autoUnref(...args) {
-        const t = orig.apply(this, args);
-        try { t?.unref?.(); } catch { /* primitive timer id (unlikely) */ }
-        return t;
-      };
-    }
-  }
-}
+// NOTE on --test-force-exit (server/package.json): the runner still uses it
+// because booting the live server leaves several REF'd handles open that would
+// otherwise block a clean exit. Runtime introspection (process.getActiveResources
+// Info(), 2026-07-02) identified them precisely: ~57 background timers, 4 pooled
+// worker threads (macro-pool/heartbeat-pool/cognitive — now .unref()'d under
+// NODE_ENV=test at their creation sites), and 2 TCP sockets (source not yet
+// traced). A prior attempt to globally monkeypatch setInterval/setTimeout to
+// auto-unref here was reverted: it's too blunt (interacts with node:test's own
+// internal timers) and is moot while the sockets still block. Finishing the
+// crutch removal = trace + close/unref those TCP sockets (async_hooks stack
+// trace on TCPWrap init), then drop --test-force-exit. Scoped follow-up.
 //
 // ── No-egress fetch guard ─────────────────────────────────────────────────────
 // The behavior smoke suite + many integration tests boot the live server, which
