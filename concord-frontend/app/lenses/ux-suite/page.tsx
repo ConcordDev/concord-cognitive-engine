@@ -133,7 +133,14 @@ export default function UxSuiteLensPage() {
 
           {GROUPS.map((g) => {
             const items = COMPONENTS.filter((c) => c.group === g.id);
-            if (!items.length) return null;
+            if (!items.length) {
+              return (
+                <div key={g.id} className="mb-6">
+                  <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{g.label}</h2>
+                  <p className="text-[11px] text-slate-500 italic">Nothing here yet — no components assigned to this group.</p>
+                </div>
+              );
+            }
             return (
               <div key={g.id} className="mb-6">
                 <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{g.label}</h2>
