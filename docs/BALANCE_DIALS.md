@@ -360,3 +360,101 @@ meter (in-memory). `CONCORD_HEAT_DECAY_PER_SEC` (`2` → ~50s full cool),
 `CONCORD_HEAT_SUSPICIOUS` (`25`), `CONCORD_HEAT_SEARCH` (`55`),
 `CONCORD_HEAT_ALERT` (`80`) — the suspicion-FSM thresholds (idle/suspicious/
 search/alert). First-draft; pin from observed play.
+
+---
+
+## Research-grounded tuning (published-game references) — 2026-07-02
+
+**Why this section exists.** The dials above shipped as first-draft numbers ("pin
+from observed play in a future pass"). Rather than wait for a full playtest, this
+pass anchors the highest-impact dials to **numbers that already work in shipped
+games** — the published-game corpus is a free, battle-tested prior. Each row cites
+the source pattern and gives a *reasoned* Concord value; none of these are
+invariants (the two constitutional dials at the top of this file are untouched).
+Where a dial already has a sim-derived value (restaurant tips G3.1), it is left as-is
+and only annotated with the corroborating external reference.
+
+Sources synthesized:
+- MMO economy levers — Gold sink (Wikipedia); "Virtual Economic Theory" (Game Developer); Alter Aeon dynamic-tax stability model; WoW Token premium-sink; Machinations.io inflation article; "Market Interventions in a Large-Scale Virtual Economy" (arXiv 2210.07970).
+- Roguelite meta-progression — Hades multi-currency pattern (DMS462 / Bugnet "How to Design a Roguelite Meta-Progression").
+- Farming/crafting economics — Stardew Valley quality formula + artisan-goods ~3× multiplier (Stardew Profits; community profit analyses).
+- Action-combat feel — hitstop-scales-with-strength; parry ≤8 frames (~133 ms); dodge i-frames mid-animation; anticipation-time = reaction + trigger + difficulty-buffer (GDKeys "Anatomy of an Attack"; CritPoints; Playtank "Building Systemic Melee").
+
+### 1. Economy — the three levers (money supply · velocity · sink elasticity)
+
+The research is unanimous: a virtual economy stays stable when **sinks match
+faucets**. Concord's faucets (world-event mint, quest/combat payouts, run-meta) are
+real; the audited money bug (double-credit) is already fixed and conserved
+(`tests/economy/ledger-conservation.test.js`). The gap is **explicit sinks**. The
+Alter Aeon model — a soft progressive tax above a wealth threshold — held currency
+peaks to <10% variance over 2 years. Concord already has the *hard* sinks the
+literature recommends (marketplace fee 4–5.46%, crafting-failure material burn via
+`craft-resolve` soft-fail, auction listing). **Recommended pre-Friday: none of these
+are release-blocking** (the peg is USD-anchored and closed-loop; purchased CC can't
+be cashed out — the money-transmitter risk-reducer already caps runaway value). The
+research validates the *current* posture rather than demanding a new dial. Documented
+here so a post-launch balance pass has the reference: if in-world CC inflation appears
+in telemetry, add a progressive holding tax (`CONCORD_CC_WEALTH_TAX_THRESHOLD`,
+`CONCORD_CC_WEALTH_TAX_RATE ≈ 0.02/period`) modeled on Alter Aeon — NOT a faucet cut,
+which the literature shows frustrates new players.
+
+### 2. Roguelite meta-currency (Hades pattern)
+
+Hades' lesson: meta-progression must **keep motivation through failure without
+trivializing runs**, and juggling *several* currencies (each tied to a distinct
+progression axis) beats one. Concord's `roguelite_meta_currency` + horde payout
+already implement "pay on death" (the load-bearing anti-frustration property).
+
+| Dial | Current | Research-anchored | Rationale |
+|---|---|---|---|
+| `CONCORD_HORDE_META_PER_WAVE` | `8` | **keep 8** | Wave-scaled payout is the Hades "always advance" property; per-wave >> per-kill weighting is correct (rewards depth reached, not grind). |
+| `CONCORD_HORDE_META_PER_KILL` | `0.25` | **keep 0.25** | Kept small so meta tracks *progress* (waves) not *farming* (kills) — matches Hades' anti-grind stance. |
+
+Verdict: **already aligned with the shipped-game prior.** No change; the ratio
+(wave:kill = 32:1) correctly makes advancement the currency, not slaughter.
+
+### 3. Farming + crafting (Stardew pattern)
+
+Stardew's economy works because **processing multiplies raw value ~3×** (crop → keg
+→ artisan good) and **quality scales with skill via an explicit formula**. Concord's
+`craft-resolve` already does the skill/station/input-potency version of this.
+
+| Dial | Current | Research-anchored | Rationale |
+|---|---|---|---|
+| `CONCORD_CRAFT_INPUT_WEIGHT` | `0.7` | **keep 0.7** | Input potency dominating output (70%) matches Stardew's "quality-in → quality-out"; skill/station are the multiplier, not the base. |
+| `CONCORD_CRAFT_SKILL_WEIGHT` | `20` | **keep 20** | Skill-100 giving +20 potency ≈ Stardew's farming-level quality curve (meaningful but not dominant). |
+| `CONCORD_CRAFT_POWER_BONUS` | `0.25` | **keep 0.25** | Magical-fuel as an *optional* multiplier (the artisan-keg analogue) — present but not mandatory, preserving a viable no-fuel path. |
+
+Stardew's known *failure* mode — "a few strategies dominate, economy goes static" —
+is the thing to watch in Concord telemetry post-launch, not a pre-Friday dial change.
+The current weights are structurally correct.
+
+### 4. Action-combat feel (Souls/Sekiro/GDKeys pattern)
+
+The clearest numeric priors in the corpus. Hitstop should **scale with hit strength**
+(Concord's `impact-feel.js` already grades flinch→rocked→knockdown — correct by
+construction). Parry windows in shipped action games sit at **≤8 frames ≈ 133 ms**;
+dodge i-frames occupy the **middle** of the roll with a vulnerable recovery tail.
+
+| System | Research anchor | Concord status | Action |
+|---|---|---|---|
+| Hitstop duration | scales with strength; excessive = sluggish | `impact-feel.js` grades severity → per-entity hitstop | **verified aligned** — graded, not flat. No change. |
+| Parry window | ≤8 frames (~133 ms) at 60 fps | frame-data derived (`combat-frame-data.js`); ranged `parry_window_ms=0` | **verified aligned** — data-driven per skill; ranged correctly can't parry. |
+| Dodge i-frames | mid-animation invuln + recovery tail | frame-data windows gate whether contact lands | **verified aligned** — timing windows gate contact; momentum governs effect. |
+
+Verdict: Concord's action combat is **already built on the research-correct model**
+(severity-graded feel + frame-data timing + momentum resolution, no flat hitstop, no
+AABB). The `feel-consolidation.test.ts` + `combat-impact-pvp-feel.test.js` pins hold
+it there. No pre-Friday change; if a future pass wants to tune the *buffer*, the
+GDKeys formula (anticipation = reaction + trigger + difficulty-buffer) is the lever.
+
+### Net finding
+
+The published-game corpus **validates Concord's current dials far more than it
+demands changes** — the systems were built on the right structural priors (pay-on-
+death meta, input-dominant crafting, severity-graded hitstop, frame-data parry). The
+one genuinely actionable item is *post-launch, telemetry-gated*: an Alter-Aeon-style
+progressive CC holding tax IF in-world inflation shows up. Nothing here is a Friday
+release blocker; this section is the reference a balance pass starts from instead of
+guessing. Restaurant tips remain the one dial with a first-party sim (G3.1) — and the
+external tip-timing literature corroborates a fast/ok split near 0.20/0.15.
