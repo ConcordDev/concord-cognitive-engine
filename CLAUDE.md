@@ -65,6 +65,50 @@ No tier definition was loosened beyond what spot-checks defended. No macros were
 
 ---
 
+## How we work here — the method (read this before you build)
+
+This project runs on **one principle: don't trust, check** — the same "verification IS the product" thesis, turned inward on the development process. Concord is only buildable at this scale by few people because verification does the trust that a large team normally does through review. The practices below are load-bearing; they are why 2.16M lines can be touched without rotting. Follow them.
+
+### 1. Runtime-truth over source-guessing (instrument, don't grep)
+When you need to know what's *actually* happening, make the running system tell you — don't infer it from a static read. Static grep repeatedly produced **false** conclusions this project has been bitten by (a "dead" event that was consumed via a `subscribe(evt.name)` data array; an "orphan" emit whose doc-suggested removal would have deleted a live gameplay HUD). The runtime is the authority:
+- **Open handles / "why won't the process exit":** `process.getActiveResourcesInfo()` + an `async_hooks` init hook capturing `new Error().stack` on `TCPWRAP`/`Timeout` construction names the exact leak site in one boot (this is how the `--test-force-exit` handles were found: worker MessagePorts + undici keep-alive pool sockets + raw module-scope timers — see `server/tests/preload/no-egress.mjs`).
+- **Event wiring liveness:** run `server/lib/detectors/dead-event-listener-detector.js`, not a raw-string grep — the abstraction (shared `const` event names, subscribe-over-array) defeats grep.
+- Rule: if a claim is checkable at runtime, check it at runtime before you write it down or act on it.
+
+### 2. Compute-don't-guess — use Concord's own engines as an oracle (Concord builds Concord)
+Concord's ~9,600 macros include deterministic engines an LLM is *unreliable* at reproducing (CAS `domains/math.js`, beam-frame FEA `lib/simulation/fea-solver.js`, glyph algebra, craft-resolve, royalty cascade, economy conservation, combat-impact). **Boot the server and call them instead of doing the math in your head.** The harness makes this one function call:
+```js
+import { lensRun } from "./server/tests/depth/_harness.js"; // boots server.js once, in-memory
+const r = await lensRun("astronomy", "celestialPosition", { data: { name: "Rigel", rightAscension: 5.5, declination: -8.2 } });
+// r.result.ra === "5.242h" — the engine is the spec, not your arithmetic
+```
+Use this to **generate/verify test expected-values** (the depth-test methodology's "verify the formula, don't paste output" — the engine is how you do it right), to check economy conservation, to validate any computed claim. When authoring a depth test, the correct expected value comes from the engine, hand-checked for sanity — never from an LLM's own arithmetic. The full deterministic set works in-sandbox (no brains needed); LLM-gated macros need Ollama and degrade honestly.
+
+### 3. Honest by construction — fabrication must leave fingerprints
+No fake/mock/simulated data in a shipped path. A surface that can't do the real thing returns an **honest failure** (`{ ok:false, reason:'no_token' }`, a "pending"/loading state, an explicit "not yet wired" note) — never a fabricated success. When wiring a UI to a substrate, wire **only** the fields a real backend produces; sections with no substrate stay unrendered with a documented reason (see `DailyRituals`/`SecretsDiscovery` — most sections are honestly left off). This rule holds for subagents working unsupervised too: if you can't source it truthfully, don't render it, and write down why.
+
+### 4. Metrics you can't game (the anti-cheat)
+`scripts/autoloop/guard.mjs` PROTECTs the graders/baselines/harnesses (`grade-ux-polish.mjs`, `grade-macro-depth.mjs`, detector baselines) — editing them is a hard stop, and money/auth invariants are human-escalation. **The temptation to move the goalpost instead of clearing it is the #1 failure mode; the guard makes it impossible.** If a grader is genuinely wrong (a false negative, e.g. an idiom its regex misses), fixing it is allowed — but only as a **bidirectional correctness fix with a pinning test** (prove it now catches the real cases AND still fails a truly-empty one) and with explicit human authorization. Never soften a checker to make output pass; fix the code, or fix the checker's correctness with proof.
+
+### 5. Docs are a build artifact, not prose (kill drift)
+The narrative layer rots fastest and misleads worst. Numbers and structural claims must be **derived, not asserted**:
+- Every `**N** … (`reproduction command`)` claim in `CLAUDE.md` + `docs/*.md` is re-run and drift-gated by `scripts/check-doc-claims-all.mjs --ci` (blocking in `.github/workflows/detectors-cartography.yml`). A count-changing PR refreshes the doc in the same commit.
+- Every "pinned by `tests/…`" invariant link must resolve to a real file — `scripts/verify-invariant-test-links.mjs --ci` (a rotted proof means the invariant silently stopped being enforced).
+- `docs/WIRING.md` is **generated** (`scripts/generate-wiring-doc.mjs`) from live verifier runs, with a `--check` drift gate. When you add a load-bearing doc claim, either make it generated or give it a reproduction command — never hand-type a number that has a command.
+- Intent/rationale (the one irreducibly-hand-written layer) belongs **next to the code** and its load-bearing form is **pinned by a test**, so violating the intent turns a named test red.
+
+### 6. Orchestration & safety discipline (how to run parallel work)
+- Delegate well-specified, **disjoint-file** units to parallel subagents; keep the honest-failure rules + gates in every prompt. Subagents can and do refuse to fabricate — trust that, and give them the honesty rules explicitly.
+- **One heavy Node process at a time on a single box** (a full `next build` + a full `node --test` together OOM and corrupt `.next`). Never run a build against a live agent's working tree.
+- Stage only the **named files** you changed (`git add <paths>`, never `-A`) — a shared worktree may have another actor's in-flight edits.
+- **Salvage discipline:** if an agent dies mid-unit (container hiccup), its edits are on disk — verify them (run its tests, eslint, `node --check`) and commit the unit properly; don't discard complete work or commit half-work.
+- Verify before you claim done: run the affected flow, not just the typecheck. Transient regenerated artifacts (`audit/macro-depth*.json`, `reports/*.json`) are `git checkout`-reverted after a suite run, never committed.
+
+### 7. When the plan is big: audit → research → re-audit → execute
+For substantial gap-closure, the proven loop is: (a) parallel **read-only** audits of the claims (they will be wrong in *both* directions — items already done, and real gaps you didn't list); (b) **web-research** the external standard (WCAG ratios, Node handle doctrine, living-docs practice) so decisions are grounded in fact not vibes; (c) a **synthesized re-audit** cross-checking findings against the standard; (d) execute with honest, pre-agreed **stop-points** (e.g. "if the async_hooks trace can't name the sockets, ship the safe subset + document"). This is how the W/G/H-series ran — the audit repeatedly *prevented* regressions and corrected the plan's own assumptions.
+
+---
+
 ## Commands
 
 ### Backend (`server/`)
@@ -131,7 +175,7 @@ The server requires `JWT_SECRET` in production. Without it, the boot log prints 
 ## Architecture
 
 ### The monolith: `server/server.js`
-**76,977 lines** (`wc -l server/server.js`, re-verified 2026-06-26). All routes, middleware, startup, and tick logic live here. It is intentionally monolithic (comment in code: "for IP protection"). Adding new routes means adding them directly to this file. It imports from `server/lib/`, `server/emergent/`, `server/domains/`, and `server/routes/`.
+**77,276 lines** (`wc -l server/server.js`, re-verified 2026-07-02). All routes, middleware, startup, and tick logic live here. It is intentionally monolithic (comment in code: "for IP protection"). Adding new routes means adding them directly to this file. It imports from `server/lib/`, `server/emergent/`, `server/domains/`, and `server/routes/`.
 
 **Boot-order TDZ hazard.** `const app = express()` is at `server.js:27554` and `const LENS_ACTIONS = new Map()` is at `server.js:36537` — code at the top of the file that references either at module-eval time hits a temporal-dead-zone ReferenceError. Two mount blocks (`mountChatAgentStream`, `mountMcpServer`) sat ~4k–13k lines too early and silently dead-mounted `/api/chat-agent/stream` + `/mcp` for months until commit `7e83685` moved them to right after `LENS_ACTIONS`. Sprint 18.5 had deferred the `__concordLensActions` globalThis assignment for the same reason. **New code that references `app` or `LENS_ACTIONS` at top-level must sit after their declaration, or be wrapped in a function that runs post-boot.**
 
@@ -213,12 +257,12 @@ Direct-grep counts **re-verified 2026-06-02** (via `npm run check-doc-claims`, w
 |---|---|---|
 | Frontend lens directories | **261** | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
 | Lens backend wiring | **256 WIRED / 0 broken / 2 by-design** (re-run 2026-06-07) | `node scripts/verify-lens-backends.mjs` |
-| Backend domain files | **385** | `ls server/domains/*.js \| wc -l` |
+| Backend domain files | **405** | `ls server/domains/*.js \| wc -l` |
 | Numbered migrations | **349 files** (highest number `350`) | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **132** | `ls server/routes/*.js \| wc -l` |
 | Emergent modules | **219** | `ls server/emergent/*.js \| wc -l` |
-| Lib modules | **616** top-level (`ls server/lib/*.js \| wc -l`) · **912** recursive (`find server/lib -name "*.js" \| wc -l`) | — |
-| `server/server.js` line count | **76,977** | `wc -l server/server.js` |
+| Lib modules | **617** top-level (`ls server/lib/*.js \| wc -l`) · **916** recursive (`find server/lib -name "*.js" \| wc -l`) | — |
+| `server/server.js` line count | **77,276** | `wc -l server/server.js` |
 | HTTP routes (server.js + routes/*.js) | **~3,353 total** (1,397 + 1,956) | `grep -cE "^\\s*(app\|router)\\.(get\|post\|put\|delete\|patch\|all)\\(['\"]/" …` |
 | Unique macro domains | **478** (verifier `macroDomains`) | see "macro system" section above |
 | Unique `(domain, macro)` pairs | **9,623** | `grep -rhoE "\\b(register\|registerLensAction)\\(['\"][a-zA-Z0-9_.\\-]+['\"]\\s*,\\s*['\"][a-zA-Z0-9_.\\-]+['\"]" server/ \| sed ... \| sort -u \| wc -l` |

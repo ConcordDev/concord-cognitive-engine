@@ -29,6 +29,13 @@ const JSON_OUT = argv.includes("--json");
 // by design. Everything else in docs/ is treated as live.
 const SKIP = new Set([
   "docs/AUDIT_2026-05-10.md",
+  // AUDIT_INVENTORY.md is explicitly SUPERSEDED: CLAUDE.md's own inventory
+  // section declares it stale ("if the inventory disagrees, the inventory is
+  // the stale one") and points to CLAUDE.md's live table + `check-doc-claims`
+  // as the source of truth. Re-running its snapshot counts against today's
+  // tree is the category error this allowlist exists for. The LIVE inventory
+  // (CLAUDE.md) IS gated.
+  "docs/AUDIT_INVENTORY.md",
 ]);
 
 const targets = [
