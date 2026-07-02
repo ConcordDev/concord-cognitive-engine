@@ -1,5 +1,19 @@
 'use client';
 
+// H3 audit note — secrets discovery is deliberately NOT wired here.
+// This panel renders DialogueState from useDialogue, whose payload is
+// freeform LLM text from /api/chat (plus parsed suggestedResponses /
+// skillCheckOptions) — it carries NO secret id or secret field. The worlds
+// dialogue endpoint (/api/worlds/:worldId/npcs/:npcId/dialogue, consumed by
+// components/world/NPCDialogue.tsx, not this panel) likewise never ships
+// `secrets`-table ids: the narrative-bridge invariant keeps NPC secrets out
+// of LLM prompts and the route returns only presence-flag-derived prose +
+// `weaponiseFired` revelation DTUs. Until a dialogue payload carries a real
+// secretId from the backend, triggering useDiscovery().checkDiscovery from
+// dialogue would manufacture discoveries client-side — dishonest. Wire it
+// only when the server actually surfaces a secret (e.g. a future dialogue
+// response field or a secrets.surveillance_roll result).
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { DialogueState, SkillCheckOption } from '@/hooks/useDialogue';
 import { SPECIALStats } from '@/lib/concordia/player-stats';
