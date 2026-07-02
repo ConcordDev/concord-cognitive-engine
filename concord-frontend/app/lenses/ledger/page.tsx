@@ -158,7 +158,7 @@ export default function LedgerLensPage() {
 
   return (
     <LensShell lensId="ledger">
-      <div className="min-h-screen bg-black text-zinc-200 p-6">
+      <div className="min-h-screen bg-black text-zinc-200 p-4 sm:p-6">
         <header className="mb-6">
           <h1 className="text-xl font-semibold text-emerald-300">The Ledger</h1>
           <p className="text-sm text-zinc-400">
@@ -167,7 +167,7 @@ export default function LedgerLensPage() {
         </header>
 
         {/* ── Workspace controls ─────────────────────────────────────── */}
-        <div className="mb-6 flex flex-wrap items-center gap-3" role="group" aria-label="Ledger controls">
+        <div className="mb-6 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center" role="group" aria-label="Ledger controls">
           <label className="text-xs text-zinc-400">
             World&nbsp;
             <select
@@ -185,7 +185,7 @@ export default function LedgerLensPage() {
           <button
             type="button"
             onClick={() => void load()}
-            className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 hover:bg-zinc-800"
+            className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 transition-colors hover:bg-zinc-800"
           >
             Refresh
           </button>
@@ -194,7 +194,7 @@ export default function LedgerLensPage() {
             type="button"
             onClick={toggleWatch}
             aria-pressed={isWatched}
-            className="rounded border border-emerald-700/50 bg-emerald-900/20 px-3 py-1 text-sm text-emerald-200 hover:bg-emerald-900/40"
+            className="rounded border border-emerald-700/50 bg-emerald-900/20 px-3 py-1 text-sm text-emerald-200 transition-colors hover:bg-emerald-900/40"
           >
             {isWatched ? 'Unwatch this world' : 'Watch this world'}
           </button>
@@ -205,7 +205,7 @@ export default function LedgerLensPage() {
             type="button"
             onClick={exportJson}
             disabled={!hasFlows}
-            className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 hover:bg-zinc-800 disabled:opacity-40"
+            className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 transition-colors hover:bg-zinc-800 disabled:opacity-40"
           >
             Export JSON
           </button>
@@ -213,7 +213,7 @@ export default function LedgerLensPage() {
             type="button"
             onClick={exportCsv}
             disabled={!hasFlows}
-            className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 hover:bg-zinc-800 disabled:opacity-40"
+            className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 transition-colors hover:bg-zinc-800 disabled:opacity-40"
           >
             Export CSV
           </button>
