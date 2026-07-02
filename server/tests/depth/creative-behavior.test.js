@@ -15,7 +15,9 @@ import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
 
 describe("creative — artifact calc contracts (exact computed values)", () => {
-  it("budgetTrack: computes spent / remaining / percentUsed / byCategory / overBudget", async () => {
+  it("budgetTrack: rolls budget + expenses into per-category lines with variance", async () => {
+    // 2 categories → perCatBudget = 1000/2 = 500; Gear actual 500 (300+200),
+    // Travel actual 100; totals derived from the lines.
     const r = await lensRun("creative", "budgetTrack", {
       data: {
         budget: 1000,
@@ -27,11 +29,17 @@ describe("creative — artifact calc contracts (exact computed values)", () => {
       },
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.totalSpent, 600);
-    assert.equal(r.result.remaining, 400);          // 1000 − 600
-    assert.equal(r.result.percentUsed, 60);         // round(600/1000*100)
-    assert.equal(r.result.byCategory.Gear, 500);    // 300 + 200
-    assert.equal(r.result.byCategory.Travel, 100);
+    const gear = r.result.lines.find((l) => l.category === "Gear");
+    assert.equal(gear.budgeted, 500);
+    assert.equal(gear.actual, 500);
+    assert.equal(gear.variance, 0);
+    assert.equal(gear.status, "ok");
+    const travel = r.result.lines.find((l) => l.category === "Travel");
+    assert.equal(travel.actual, 100);
+    assert.equal(travel.variance, 400);
+    assert.equal(r.result.totalBudgeted, 1000);
+    assert.equal(r.result.totalActual, 600);
+    assert.equal(r.result.totalVariance, 400);      // 1000 − 600
     assert.equal(r.result.overBudget, false);
   });
 
@@ -40,42 +48,91 @@ describe("creative — artifact calc contracts (exact computed values)", () => {
       data: { budget: 100, expenses: [{ amount: 150, category: "Post" }] },
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.remaining, -50);
+    assert.equal(r.result.totalVariance, -50);      // 100 − 150
     assert.equal(r.result.overBudget, true);
-    assert.equal(r.result.percentUsed, 150);
+    assert.equal(r.result.lines[0].status, "over"); // Post line is over its 100 budget
+  });
+
+  it("budgetTrack: explicit line-item shape computes per-line variance", async () => {
+    const r = await lensRun("creative", "budgetTrack", {
+      data: { lines: [{ category: "Camera", budgeted: 400, actual: 450 }, { category: "Sound", budgeted: 200, actual: 100 }] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.lines[0].variance, -50);
+    assert.equal(r.result.lines[0].status, "over");
+    assert.equal(r.result.lines[1].variance, 100);
+    assert.equal(r.result.totalBudgeted, 600);
+    assert.equal(r.result.totalActual, 550);
+    assert.equal(r.result.overBudget, false);       // 600 − 550 = +50
   });
 
   it("shotListGenerate: video type yields the 6-shot video plan, numbered 1..6", async () => {
     const r = await lensRun("creative", "shotListGenerate", { data: { type: "video" } });
     assert.equal(r.ok, true);
-    assert.equal(r.result.count, 6);
+    assert.equal(r.result.totalShots, 6);
     assert.ok(r.result.shots.some((sh) => sh.description === "Wide establishing shot"));
-    assert.equal(r.result.shots[0].number, 1);
-    assert.equal(r.result.shots[5].number, 6);
+    assert.equal(r.result.shots[0].shotNumber, 1);
+    assert.equal(r.result.shots[5].shotNumber, 6);
     assert.equal(r.result.shots[0].status, "planned");
+    // 12+8+5+6+10+9 = 50s → round(50/60) = 1 minute
+    assert.equal(r.result.estimatedRuntime, 1);
+    assert.deepEqual(r.result.equipmentList, ["tripod", "gimbal", "dolly"]);
   });
 
-  it("assetOrganize: buckets assets by type and counts per category", async () => {
+  it("shotListGenerate: scenes[] drives one shot per scene with defaults filled", async () => {
+    const r = await lensRun("creative", "shotListGenerate", {
+      data: { type: "video", scenes: [{ type: "wide", duration: 30, description: "Opening" }, {}] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalShots, 2);
+    assert.equal(r.result.shots[0].duration, 30);
+    assert.equal(r.result.shots[0].description, "Opening");
+    assert.equal(r.result.shots[1].type, "medium");     // video default shot type
+    assert.equal(r.result.shots[1].duration, 8);        // video default duration
+    assert.equal(r.result.shots[1].description, "Scene 2");
+    assert.equal(r.result.estimatedRuntime, 1);         // round(38/60)
+  });
+
+  it("assetOrganize: buckets assets by type/status and lists not-ready as missing", async () => {
     const r = await lensRun("creative", "assetOrganize", {
       data: {
         assets: [
-          { type: "photo" }, { type: "photo" }, { type: "video" }, {},
+          { type: "photo" }, { type: "photo", status: "ready" }, { type: "video", status: "final" }, {},
         ],
       },
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.totalAssets, 4);
-    assert.ok(r.result.categories.some((c) => c.type === "photo" && c.count === 2));
-    assert.ok(r.result.categories.some((c) => c.type === "video" && c.count === 1));
-    assert.ok(r.result.categories.some((c) => c.type === "uncategorized" && c.count === 1));
+    assert.equal(r.result.byType.photo, 2);
+    assert.equal(r.result.byType.video, 1);
+    assert.equal(r.result.byType.uncategorized, 1);
+    assert.equal(r.result.byStatus.pending, 2);          // no status → pending
+    assert.equal(r.result.ready, 2);                     // ready + final both count
+    assert.equal(r.result.missing.length, 2);
+    assert.ok(r.result.missing.every((m) => m.status === "pending"));
   });
 
-  it("distributionChecklist: podcast type yields the 7-platform podcast checklist", async () => {
+  it("distributionChecklist: podcast type yields the 5-item podcast checklist", async () => {
     const r = await lensRun("creative", "distributionChecklist", { data: { type: "podcast" } });
     assert.equal(r.ok, true);
-    assert.equal(r.result.total, 7);
-    assert.equal(r.result.type, "podcast");
-    assert.ok(r.result.checklist.some((c) => c.platform === "Apple Podcasts" && c.status === "pending"));
+    assert.equal(r.result.total, 5);
+    assert.equal(r.result.readyCount, 0);
+    assert.equal(r.result.percent, 0);
+    assert.ok(r.result.checklist.some((c) => c.item === "Apple Podcasts" && c.ready === false));
+    assert.equal(r.result.platform, "General");          // no platform given
+    assert.equal(r.result.deliveryDate, "TBD");
+  });
+
+  it("distributionChecklist: provided items compute readyCount + percent", async () => {
+    const r = await lensRun("creative", "distributionChecklist", {
+      data: { platform: "Vimeo", items: [{ item: "Master upload", ready: true }, { name: "Captions" }] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.platform, "Vimeo");
+    assert.equal(r.result.total, 2);
+    assert.equal(r.result.readyCount, 1);
+    assert.equal(r.result.percent, 50);
+    assert.equal(r.result.checklist[1].item, "Captions"); // name → item fallback
   });
 
   it("project_summary: rolls up array counts + derives in_production status from deliverables", async () => {

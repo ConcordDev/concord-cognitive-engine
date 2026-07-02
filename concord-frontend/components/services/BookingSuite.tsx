@@ -53,7 +53,7 @@ interface Payment {
   total: number;
   method: string;
   status: string;
-  capturedAt: string;
+  capturedAt: string | null;
 }
 interface Reminder {
   id: string;
@@ -335,9 +335,14 @@ function POSPayments() {
   const capture = async () => {
     setErr(null); setMsg(null);
     if (form.subtotal <= 0) { setErr('subtotal must be positive'); return; }
-    const { result, error } = await svc<{ payment: Payment }>('paymentCapture', form);
+    const { result, error } = await svc<{ payment: Payment; authStatus?: string; note?: string }>('paymentCapture', form);
     if (!result) { setErr(error || 'payment failed'); load(); return; }
-    setMsg(`Captured ${result.payment.receiptNumber} — $${result.payment.total}`);
+    if (result.authStatus === 'unprovisioned') {
+      // Honest state: no processor charge was made — sale recorded, pay on site.
+      setMsg(`Booked — payment on site (${result.payment.receiptNumber}, $${result.payment.total}). ${result.note || 'Card processing not configured.'}`);
+    } else {
+      setMsg(`Captured ${result.payment.receiptNumber} — $${result.payment.total}`);
+    }
     setForm({ ...form, client: '', subtotal: 0, cardLast4: '' });
     load();
   };
@@ -370,7 +375,7 @@ function POSPayments() {
             <input className={ds.input} placeholder="Card last4" maxLength={4} value={form.cardLast4} onChange={e => setForm({ ...form, cardLast4: e.target.value })} />
           )}
         </div>
-        <p className="text-[11px] text-gray-400">Card auth is simulated — last4 of <code>0000</code> declines.</p>
+        <p className="text-[11px] text-gray-400">Card charges require Stripe — until configured, card sales are recorded as pay-on-site (no charge is made).</p>
         <button onClick={capture} className={ds.btnPrimary}><CreditCard className="w-4 h-4" /> Charge</button>
         {err && <p className="text-xs text-red-400"><AlertTriangle className="w-3 h-3 inline mr-1" />{err}</p>}
         {msg && <p className="text-xs text-green-400"><Check className="w-3 h-3 inline mr-1" />{msg}</p>}
@@ -394,7 +399,7 @@ function POSPayments() {
           <div key={p.id} className="flex items-center gap-3 p-2.5 rounded bg-lattice-elevated/40 text-sm">
             <span className={cn('font-mono text-xs', ds.textMuted)}>{p.receiptNumber}</span>
             <span className="flex-1 truncate">{p.client}</span>
-            <span className={ds.badge(p.status === 'captured' ? 'green-400' : p.status === 'declined' ? 'red-400' : 'gray-400')}>{p.status}</span>
+            <span className={ds.badge(p.status === 'captured' ? 'green-400' : p.status === 'unprovisioned' ? 'yellow-400' : p.status === 'declined' ? 'red-400' : 'gray-400')}>{p.status === 'unprovisioned' ? 'pay on site' : p.status}</span>
             <span className="text-green-400 font-bold">${p.total}</span>
             {p.status === 'captured' && (
               <button onClick={() => refund(p.id)} className="text-red-400 text-xs hover:underline">Refund</button>

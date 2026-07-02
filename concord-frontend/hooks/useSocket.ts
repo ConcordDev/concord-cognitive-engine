@@ -15,6 +15,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import { useQueryClient, QueryClient } from '@tanstack/react-query';
 import { getSocket } from '@/lib/realtime/socket';
+import { nextConnectionStatus, type ConnectionStatus } from '@/lib/realtime/connection-status';
 import { emitEvent } from '@/lib/realtime/event-bus';
 import { useLatticeStore } from '@/store/lattice';
 import { useSystemStore } from '@/store/system';
@@ -212,6 +213,12 @@ interface UseSocketOptions {
 interface UseSocketReturn {
   socket: Socket | null;
   isConnected: boolean;
+  /**
+   * Honest connection status with a terminal state: 'offline' once the
+   * socket.io manager exhausts its reconnectionAttempts (reconnect_failed) —
+   * consumers must stop showing "Connecting…" at that point.
+   */
+  status: ConnectionStatus;
   connect: () => void;
   disconnect: () => void;
   emit: (event: string, data?: unknown) => void;
@@ -229,6 +236,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
 
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const listenersRef = useRef<Set<string>>(new Set());
   const qc = useQueryClient();
 
@@ -236,16 +244,42 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
   useEffect(() => {
     const socket = getSocket();
 
-    const onConnect = () => setIsConnected(true);
-    const onDisconnect = () => setIsConnected(false);
+    const onConnect = () => {
+      setIsConnected(true);
+      setStatus((prev) => nextConnectionStatus(prev, 'connect'));
+    };
+    const onDisconnect = () => {
+      setIsConnected(false);
+      setStatus((prev) => nextConnectionStatus(prev, 'disconnect'));
+    };
     const onConnectError = (error: Error) => {
       console.error('[Socket] Connection error:', error.message);
       setIsConnected(false);
+      setStatus((prev) => nextConnectionStatus(prev, 'connect_error'));
+    };
+    // Manager-level (socket.io) reconnection lifecycle — the ONLY honest
+    // source for the terminal Offline state: after `reconnectionAttempts`
+    // (socket.ts: 5) are exhausted the manager emits `reconnect_failed` and
+    // stops trying, so "Connecting…" would otherwise show forever.
+    const onReconnectFailed = () => {
+      setStatus((prev) => nextConnectionStatus(prev, 'reconnect_failed'));
+    };
+    const onReconnectAttempt = () => {
+      setStatus((prev) => nextConnectionStatus(prev, 'reconnect_attempt'));
     };
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('connect_error', onConnectError);
+    // Defensive access: `socket.io` is the Manager on a real socket, but test
+    // doubles may not model it — degrade to no terminal detection, not a crash.
+    type ManagerLike = {
+      on?: (event: string, cb: () => void) => void;
+      off?: (event: string, cb: () => void) => void;
+    };
+    const manager = (socket as unknown as { io?: ManagerLike }).io;
+    manager?.on?.('reconnect_failed', onReconnectFailed);
+    manager?.on?.('reconnect_attempt', onReconnectAttempt);
 
     // ── Universal event forwarder (registered ONCE globally) ───
     if (!_globalListenersRegistered) {
@@ -289,6 +323,8 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('connect_error', onConnectError);
+      manager?.off?.('reconnect_failed', onReconnectFailed);
+      manager?.off?.('reconnect_attempt', onReconnectAttempt);
       socketRef.current = null;
       listeners.clear();
       setIsConnected(false);
@@ -334,6 +370,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
   return {
     socket: socketRef.current,
     isConnected,
+    status,
     connect,
     disconnect,
     emit,

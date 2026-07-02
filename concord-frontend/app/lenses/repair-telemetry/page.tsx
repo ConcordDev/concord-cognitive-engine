@@ -18,6 +18,7 @@ import { LensShell } from '@/components/lens/LensShell';
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { lensRun, isForbidden } from '@/lib/api/client';
 import { AdminRequiredState } from '@/components/common/EmptyState';
 
@@ -64,28 +65,26 @@ export default function RepairTelemetryPage() {
 
   if (forbidden) return <AdminRequiredState roles={['admin']} />;
 
+  const isLoading = state === 'loading';
+  const isError = state === 'error';
   const isEmpty = state === 'ready' && log.length === 0 && escalations.length === 0
     && (!mem || (mem.totalPatterns === 0 && mem.totalRepairs === 0));
 
   return (
     <LensShell lensId="repair-telemetry">
-    <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 16px', color: '#e8e4dc' }}>
+    <div className="px-4 sm:px-6 md:px-8" style={{ maxWidth: 920, margin: '0 auto', paddingTop: 24, paddingBottom: 24, color: '#e8e4dc' }}>
       <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4 }}>Repair Telemetry</h1>
       <p style={{ opacity: 0.7, marginBottom: 20 }}>What the world repaired — and what it refused to decide — while you were away.</p>
 
-      {state === 'loading' && (
+      {isLoading && (
         <div role="status" aria-live="polite" aria-busy="true"
           style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '48px 0', opacity: 0.7 }}>
-          <span style={{
-            width: 20, height: 20, border: '2px solid #2a2a35', borderTopColor: '#e0a030',
-            borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite',
-          }} aria-hidden="true" />
+          <Loader2 className="animate-spin" size={20} aria-hidden="true" style={{ color: '#e0a030' }} />
           <span style={{ fontSize: 13 }}>Loading repair telemetry…</span>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
 
-      {state === 'error' && (
+      {isError && (
         <div role="alert"
           style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '48px 0', textAlign: 'center' }}>
           <span aria-hidden="true" style={{ fontSize: 22 }}>⚠</span>

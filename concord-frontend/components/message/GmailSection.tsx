@@ -311,8 +311,8 @@ function ComposeModal({ onClose, onSent }: { onClose: () => void; onSent: () => 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-t-lg sm:rounded-lg border border-white/10 bg-[#0d1117] p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+    <div role="dialog" aria-modal="true" aria-label="New message" tabIndex={-1} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={onClose} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+      <div tabIndex={-1} className="w-full max-w-lg rounded-t-lg sm:rounded-lg border border-white/10 bg-[#0d1117] p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-white">New message</h3>
           <button aria-label="Close" onClick={onClose} className="p-1 rounded hover:bg-white/10 text-gray-400"><X className="w-4 h-4" /></button>

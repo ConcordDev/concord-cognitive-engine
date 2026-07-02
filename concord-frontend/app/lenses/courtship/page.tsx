@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { Heart, Crown, Baby, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useUIStore } from '@/store/ui';
 
 interface Courtship {
   partner_kind: string;
@@ -62,6 +63,7 @@ export default function CourtshipLensPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [engageThreshold, setEngageThreshold] = useState(DEFAULT_ENGAGE_THRESHOLD);
   const [marryThreshold, setMarryThreshold] = useState(DEFAULT_MARRY_THRESHOLD);
+  const addToast = useUIStore((s) => s.addToast);
 
   // Pull the canonical propose/marry floors from the engine once.
   useEffect(() => {
@@ -108,8 +110,9 @@ export default function CourtshipLensPage() {
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Could not load your courtships.');
       setLoadState('error');
+      addToast({ type: 'error', message: 'Could not load your courtships' });
     }
-  }, []);
+  }, [addToast]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -125,14 +128,16 @@ export default function CourtshipLensPage() {
       const j = await r.json().catch(() => ({ ok: false }));
       if (!r.ok || j?.ok === false) {
         setErrorMsg(j?.reason ? `Action failed: ${j.reason}` : `Action failed (${r.status}).`);
+        addToast({ type: 'error', message: 'Action failed' });
       }
       await refresh();
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Action failed.');
+      addToast({ type: 'error', message: 'Action failed' });
     } finally {
       setPending(false);
     }
-  }, [refresh]);
+  }, [refresh, addToast]);
 
   const interact = (c: Courtship, sentiment: number) =>
     act('/api/courtship/interact', { partnerKind: c.partner_kind, partnerId: c.partner_id, sentiment });
@@ -145,7 +150,7 @@ export default function CourtshipLensPage() {
 
   return (
     <LensShell lensId="courtship">
-      <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <header>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-pink-200">
             <Heart size={22} aria-hidden="true" /> Courtships
@@ -156,7 +161,9 @@ export default function CourtshipLensPage() {
         {/* LOADING state */}
         {loadState === 'loading' && (
           <div
+            data-testid="courtship-loading"
             role="status"
+            aria-busy="true"
             aria-live="polite"
             className="flex items-center gap-2 rounded-lg border border-pink-500/20 bg-zinc-900/40 p-6 text-sm text-pink-200/80"
           >
@@ -168,6 +175,7 @@ export default function CourtshipLensPage() {
         {/* ERROR state — honest + retry */}
         {loadState === 'error' && (
           <div
+            data-testid="courtship-error"
             role="alert"
             className="space-y-3 rounded-lg border border-red-500/40 bg-red-950/30 p-6"
           >
@@ -176,6 +184,8 @@ export default function CourtshipLensPage() {
             </div>
             <p className="text-xs text-red-300/80">{errorMsg || 'Something went wrong.'}</p>
             <button
+              type="button"
+              aria-label="Retry loading courtships"
               onClick={refresh}
               className="inline-flex items-center gap-1 rounded bg-red-500/30 px-3 py-1.5 text-xs text-red-100 hover:bg-red-500/50"
             >
@@ -198,12 +208,12 @@ export default function CourtshipLensPage() {
                 Active courtships ({courtships.length})
               </h2>
               {courtships.length === 0 ? (
-                <p className="text-xs text-zinc-500">
+                <p data-testid="courtship-empty" className="text-xs text-zinc-500">
                   No active courtships yet. Initiate one from an NPC&apos;s context menu in the world,
                   then return here to track affinity, propose, and wed.
                 </p>
               ) : (
-                <ul className="space-y-2">
+                <ul data-testid="courtship-list" className="space-y-2">
                   {courtships.map((c) => {
                     const pct = Math.round((c.affinity || 0) * 100);
                     const canPropose =
@@ -212,7 +222,7 @@ export default function CourtshipLensPage() {
                     const canWed = c.status === 'engaged' && c.affinity >= marryThreshold;
                     return (
                       <li key={`${c.partner_kind}:${c.partner_id}`} className="rounded-lg border border-pink-500/30 bg-zinc-900/50 p-3">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                           <div>
                             <div className="font-mono text-sm text-pink-100">{c.partner_kind}:{c.partner_id.slice(0, 14)}</div>
                             <div className="text-[10px] text-pink-300/60">status: {c.status}</div>
@@ -228,17 +238,17 @@ export default function CourtshipLensPage() {
                         >
                           <div className="h-full bg-pink-500 transition-all" style={{ width: `${Math.max(0, pct)}%` }} />
                         </div>
-                        <div className="mt-2 flex gap-1">
-                          <button onClick={() => interact(c, 1)} disabled={pending} className="flex-1 rounded bg-pink-500/30 px-2 py-1 text-[10px] text-pink-100 hover:bg-pink-500/50 disabled:opacity-50">
+                        <div className="mt-2 flex flex-col gap-1 sm:flex-row">
+                          <button type="button" aria-label={`Interact positively with ${c.partner_id}`} onClick={() => interact(c, 1)} disabled={pending} className="flex-1 rounded bg-pink-500/30 px-2 py-1 text-[10px] text-pink-100 hover:bg-pink-500/50 disabled:opacity-50">
                             Interact (+)
                           </button>
                           {canPropose && (
-                            <button onClick={() => propose(c)} disabled={pending} className="rounded bg-amber-500/40 px-2 py-1 text-[10px] text-amber-100 hover:bg-amber-500/60 disabled:opacity-50">
+                            <button type="button" aria-label={`Propose to ${c.partner_id}`} onClick={() => propose(c)} disabled={pending} className="rounded bg-amber-500/40 px-2 py-1 text-[10px] text-amber-100 hover:bg-amber-500/60 disabled:opacity-50">
                               Propose
                             </button>
                           )}
                           {canWed && (
-                            <button onClick={() => wed(c)} disabled={pending} className="rounded bg-amber-500/50 px-2 py-1 text-[10px] font-bold text-amber-50 hover:bg-amber-500/70 disabled:opacity-50">
+                            <button type="button" aria-label={`Wed ${c.partner_id}`} onClick={() => wed(c)} disabled={pending} className="rounded bg-amber-500/50 px-2 py-1 text-[10px] font-bold text-amber-50 hover:bg-amber-500/70 disabled:opacity-50">
                               ⚭ Wed
                             </button>
                           )}
@@ -262,7 +272,7 @@ export default function CourtshipLensPage() {
               ) : (
                 <ul className="space-y-1">
                   {marriages.map((m) => (
-                    <li key={m.id} className="flex justify-between rounded border border-amber-500/30 bg-amber-950/30 p-2 text-xs">
+                    <li key={m.id} className="flex flex-col gap-1 rounded border border-amber-500/30 bg-amber-950/30 p-2 text-xs sm:flex-row sm:justify-between">
                       <span className="font-mono text-amber-100">{m.partner_kind}:{m.partner_id.slice(0, 14)}</span>
                       <span className="text-amber-300/70">since {new Date(m.married_at * 1000).toLocaleDateString()}</span>
                     </li>
@@ -280,7 +290,7 @@ export default function CourtshipLensPage() {
               ) : (
                 <ul className="space-y-1">
                   {children.map((c) => (
-                    <li key={c.id} className="flex justify-between rounded border border-emerald-500/30 bg-emerald-950/30 p-2 text-xs">
+                    <li key={c.id} className="flex flex-col gap-1 rounded border border-emerald-500/30 bg-emerald-950/30 p-2 text-xs sm:flex-row sm:justify-between">
                       <span className="font-mono text-emerald-100">{c.name || c.id.slice(0, 16)}</span>
                       <span className="text-emerald-300/70">{c.maturity}</span>
                     </li>

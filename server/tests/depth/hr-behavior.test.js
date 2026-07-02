@@ -16,87 +16,142 @@ import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
 
 describe("hr — pure-compute calc contracts (exact computed values)", () => {
-  it("compensationBenchmark: applies experience + location multipliers and bands the percentile", async () => {
-    // 7y exp → 1.15, SF → 1.3 → benchmark = round(100000*1.15*1.3) = 149500
+  it("compensationBenchmark: role-keyword base × location multiplier, market bands", async () => {
+    // "Engineer" → base 110 × 1.15 (engineer) = 126.5; "SF Bay Area" → ×1.3
+    // market50 = round(164.45) = 164; market75 = round(164×1.18) = 194
+    // rangeLow = round(164×0.78) = 128; rangeHigh = round(164×1.22) = 200
+    // offer = round((164+194)/2) = 179
     const r = await lensRun("hr", "compensationBenchmark", {
-      data: { salary: 100000, role: "Engineer", yearsExperience: 7, location: "SF Bay Area" },
+      data: { role: "Engineer", location: "SF Bay Area" },
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.benchmarkSalary, 149500);
-    // 100000 < 149500*0.9 (134550) → percentile 25 → below-market
-    assert.equal(r.result.percentile, 25);
-    assert.equal(r.result.competitive, "below-market");
     assert.equal(r.result.role, "Engineer");
-    assert.equal(r.result.yearsExperience, 7);
+    assert.equal(r.result.market50, 164);
+    assert.equal(r.result.market75, 194);
+    assert.equal(r.result.rangeLow, 128);
+    assert.equal(r.result.rangeHigh, 200);
+    assert.equal(r.result.offerSuggestion, 179);
   });
 
-  it("compensationBenchmark: a market-rate remote salary lands at the 50th percentile", async () => {
-    // 3y exp → 1.0, remote → 0.9 → benchmark = round(120000*1.0*0.9) = 108000
-    // 120000 >= 108000*1.1 (118800) → percentile 75 → competitive
+  it("compensationBenchmark: seniority + discipline + city multipliers compose", async () => {
+    // "Junior Recruiter" → base 85 (junior) × 0.8 (recruit) = 68; Seattle ×1.12
+    // market50 = round(76.16) = 76; market75 = round(89.68) = 90; offer = round(83) = 83
     const r = await lensRun("hr", "compensationBenchmark", {
-      data: { salary: 120000, yearsExperience: 3, location: "remote" },
+      data: { role: "Junior Recruiter", location: "Seattle" },
     });
-    assert.equal(r.result.benchmarkSalary, 108000);
-    assert.equal(r.result.percentile, 75);
-    assert.equal(r.result.competitive, "competitive");
+    assert.equal(r.result.market50, 76);
+    assert.equal(r.result.market75, 90);
+    assert.equal(r.result.offerSuggestion, 83);
   });
 
-  it("turnoverAnalysis: rate, cost and risk band are derived from the inputs", async () => {
+  it("compensationBenchmark: missing role is rejected; missing location reads national", async () => {
+    const bad = await lensRun("hr", "compensationBenchmark", { data: { location: "NYC" } });
+    assert.equal(bad.result.ok, false);
+    assert.ok(String(bad.result.error).includes("role required"));
+    const nat = await lensRun("hr", "compensationBenchmark", { data: { role: "Designer" } });
+    assert.equal(nat.ok, true);
+    assert.equal(nat.result.location, "national");
+    assert.equal(nat.result.market50, 116);   // round(110 × 1.05 design × 1.0)
+  });
+
+  it("turnoverAnalysis: BLS avg-headcount rate + band + band-derived top reason", async () => {
+    // avgHeadcount = 200 + 50/2 = 225 → ratePct = round1(50/225×100) = 22.2
+    // 22.2 > 13 (benchmark) but not > 25 → elevated → "Limited career growth"
     const r = await lensRun("hr", "turnoverAnalysis", {
-      data: { totalEmployees: 200, departuresThisYear: 50, avgSalary: 80000, avgTenureYears: 2 },
+      data: { headcount: 200, leaversLast12Months: 50 },
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.turnoverRate, 25);            // round(50/200*100)
-    assert.equal(r.result.costPerDeparture, 40000);     // 80000 * 0.5
-    assert.equal(r.result.annualCost, 2000000);         // 50 * 40000
-    assert.equal(r.result.aboveIndustry, true);         // 25 > 15
-    assert.equal(r.result.riskLevel, "elevated");       // 25 not > 25, but > 15
-    assert.ok(r.result.recommendations.includes("Compensation review"));
+    assert.equal(r.result.ratePct, 22.2);
+    assert.equal(r.result.benchmarkPct, 13);
+    assert.equal(r.result.band, "elevated");
+    assert.equal(r.result.topReason, "Limited career growth");
   });
 
-  it("turnoverAnalysis: a low-turnover org is healthy with the steady-state recommendation", async () => {
-    const r = await lensRun("hr", "turnoverAnalysis", {
-      data: { totalEmployees: 100, departuresThisYear: 5, avgSalary: 60000 },
+  it("turnoverAnalysis: low-turnover org bands low; critical band above 25%", async () => {
+    // 5 leavers on 100 → 5/102.5 = 4.9% → low (≤6)
+    const low = await lensRun("hr", "turnoverAnalysis", {
+      data: { headcount: 100, leaversLast12Months: 5 },
     });
-    assert.equal(r.result.turnoverRate, 5);
-    assert.equal(r.result.riskLevel, "healthy");
-    assert.equal(r.result.aboveIndustry, false);
-    assert.deepEqual(r.result.recommendations, ["Continue current retention strategies"]);
+    assert.equal(low.result.ratePct, 4.9);
+    assert.equal(low.result.band, "low");
+    // Source maps band "low" → "Stable tenure" (domains/hr.js:80); "Voluntary
+    // relocation" is the "healthy"-band fallback, not the low band.
+    assert.equal(low.result.topReason, "Stable tenure");
+    // 40 leavers on 100 → 40/120 = 33.3% → critical
+    const crit = await lensRun("hr", "turnoverAnalysis", {
+      data: { headcount: 100, leaversLast12Months: 40 },
+    });
+    assert.equal(crit.result.ratePct, 33.3);
+    assert.equal(crit.result.band, "critical");
+    assert.equal(crit.result.topReason, "Compensation below market");
   });
 
-  it("interviewScorecard: weighted overall score, sorting, and hire recommendation", async () => {
+  it("turnoverAnalysis: zero headcount is rejected", async () => {
+    const r = await lensRun("hr", "turnoverAnalysis", { data: { headcount: 0, leaversLast12Months: 1 } });
+    assert.equal(r.result.ok, false);
+    assert.ok(String(r.result.error).includes("headcount must be > 0"));
+  });
+
+  it("interviewScorecard: dimension mean scales to 0-100 with strengths/weaknesses", async () => {
+    // scores {technical:5, cultural:4, communication:4, experience:3} → mean 4 → 80 → hire
     const r = await lensRun("hr", "interviewScorecard", {
-      data: { candidates: [
-        { name: "Alice", technical: 5, cultural: 4, communication: 4, experience: 3 }, // 4.2 strong-hire
-        { name: "Bob", technical: 2, cultural: 2, communication: 2, experience: 2 },   // 2.0 no-hire
-      ] },
+      data: { candidate: "Alice", scores: { technical: 5, cultural: 4, communication: 4, experience: 3 } },
     });
     assert.equal(r.ok, true);
-    // round((5*.35+4*.25+4*.2+3*.2)*10)/10 = round(41.5)/10 = 4.2
-    assert.equal(r.result.candidates[0].overall, 4.2);
-    assert.equal(r.result.candidates[0].recommendation, "strong-hire");
-    assert.equal(r.result.topCandidate, "Alice");       // sorted desc by overall
-    assert.equal(r.result.candidates[1].name, "Bob");
-    assert.equal(r.result.candidates[1].recommendation, "no-hire"); // 2.0 < 2.5
-    assert.equal(r.result.strongHires, 1);
-    assert.equal(r.result.avgScore, 3.1);               // round((4.2+2.0)/2*10)/10
+    assert.equal(r.result.candidate, "Alice");
+    assert.equal(r.result.totalScore, 80);
+    assert.equal(r.result.passingScore, 70);
+    assert.equal(r.result.recommendation, "hire");
+    assert.deepEqual(r.result.topStrengths, ["technical", "cultural", "communication"]); // ≥4, score-desc
+    assert.deepEqual(r.result.topWeaknesses, []);
   });
 
-  it("interviewScorecard: no candidates → guidance message, not a crash", async () => {
-    const r = await lensRun("hr", "interviewScorecard", { data: { candidates: [] } });
+  it("interviewScorecard: strong-hire at ≥88 and no-hire below 55", async () => {
+    // {a:5,b:5,c:4} → mean 4.667 → round(93.33) = 93 → strong-hire
+    const strong = await lensRun("hr", "interviewScorecard", {
+      data: { candidate: "Star", scores: { a: 5, b: 5, c: 4 } },
+    });
+    assert.equal(strong.result.totalScore, 93);
+    assert.equal(strong.result.recommendation, "strong-hire");
+    // {technical:2, cultural:2} → mean 2 → 40 → no-hire, both weaknesses
+    const weak = await lensRun("hr", "interviewScorecard", {
+      data: { candidate: "Bob", scores: { technical: 2, cultural: 2 } },
+    });
+    assert.equal(weak.result.totalScore, 40);
+    assert.equal(weak.result.recommendation, "no-hire");
+    assert.deepEqual(weak.result.topWeaknesses, ["technical", "cultural"]);
+  });
+
+  it("interviewScorecard: no scores → guidance message; no candidate → rejected", async () => {
+    const r = await lensRun("hr", "interviewScorecard", { data: { candidate: "Empty", scores: {} } });
     assert.equal(r.ok, true);
-    assert.ok(String(r.result.message).includes("candidates"));
+    assert.ok(String(r.result.message).includes("scores"));
+    const bad = await lensRun("hr", "interviewScorecard", { data: { scores: { a: 3 } } });
+    assert.equal(bad.result.ok, false);
+    assert.ok(String(bad.result.error).includes("candidate required"));
   });
 
-  it("ptoBalance: remaining = total - used - pending", async () => {
+  it("ptoBalance: month-prorated accrual with zero used on a fresh workspace", async () => {
+    // accrued = round1((annualDays/12) × monthsElapsed) — mirror the same clock.
+    const monthsElapsed = new Date().getMonth() + 1;
+    const expectAccrued = Math.round((24 / 12) * monthsElapsed * 10) / 10;
     const r = await lensRun("hr", "ptoBalance", {
-      data: { totalPTO: 25, usedPTO: 8, pendingRequests: 2 },
+      data: { employeeId: "emp-x", annualDays: 24 },
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.totalPTO, 25);
-    assert.equal(r.result.used, 8);
-    assert.equal(r.result.pending, 2);
-    assert.equal(r.result.remaining, 15);               // 25 - 8 - 2
+    assert.equal(r.result.accrued, expectAccrued);
+    assert.equal(r.result.used, 0);                    // no approved PTO in this workspace
+    assert.equal(r.result.remaining, expectAccrued);
+    assert.equal(r.result.rolloverDate, `${new Date().getFullYear() + 1}-01-01`);
+  });
+
+  it("ptoBalance: validation — employeeId and positive annualDays required", async () => {
+    const noEmp = await lensRun("hr", "ptoBalance", { data: { annualDays: 10 } });
+    assert.equal(noEmp.result.ok, false);
+    assert.ok(String(noEmp.result.error).includes("employeeId required"));
+    const noDays = await lensRun("hr", "ptoBalance", { data: { employeeId: "e1", annualDays: 0 } });
+    assert.equal(noDays.result.ok, false);
+    assert.ok(String(noDays.result.error).includes("annualDays must be > 0"));
   });
 });
 

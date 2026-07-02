@@ -671,8 +671,13 @@ export default function registerPharmacyActions(registerLensAction) {
 
   registerLensAction("pharmacy", "journal-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const entries = [...(s.journal.get(raid(ctx)) || [])]
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    // Newest-first. createdAt is millisecond ISO — two adds in the same ms tie,
+    // and a stable sort would then surface the OLDER entry first. Break ties by
+    // insertion position (later push = newer) so the ordering is deterministic.
+    const entries = (s.journal.get(raid(ctx)) || [])
+      .map((e, i) => [e, i])
+      .sort((a, b) => b[0].createdAt.localeCompare(a[0].createdAt) || (b[1] - a[1]))
+      .map(([e]) => e);
     return { ok: true, result: { entries, count: entries.length } };
   });
 

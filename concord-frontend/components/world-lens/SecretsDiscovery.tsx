@@ -1,7 +1,8 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ds } from '@/lib/design-system';
+import { lensRun } from '@/lib/api/client';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -146,6 +147,53 @@ const RARITY_GLOW: Record<Discovery['rarity'], string> = {
   legendary: 'shadow-yellow-500/40',
 };
 
+/* ── Server substrate (H3) ────────────────────────────────────── */
+
+// The ONLY discovery type with a real server substrate is 'npc-secret'
+// (tables `secrets` + `secret_discoveries`; macros secrets.list_discovered /
+// secrets.discover — the same substrate SecretsCodex.tsx reads). The other
+// five types (terrain-feature / famous-structure-match / perfect-validation /
+// material-composition / easter-egg) have NO server substrate: they stay
+// session-only and reset on reload by design — nothing is persisted for
+// them, so nothing is re-displayed (honest-by-construction).
+
+/** Row shape of secrets.list_discovered (see server/domains/secrets.js). */
+interface DiscoveredSecretRow {
+  id: string;
+  holder_npc_id?: string;
+  subject_kind?: string;
+  subject_id?: string;
+  kind?: string;
+  body?: string;
+  discovered_at?: number; // unix SECONDS (SQLite unixepoch())
+  via?: string;
+}
+
+/** Map a real discovered-secret row onto the journal shape — real fields only. */
+function secretRowToJournalEntry(row: DiscoveredSecretRow): JournalEntry {
+  const discoveredMs =
+    Number(row.discovered_at) > 0 ? Number(row.discovered_at) * 1000 : Date.now();
+  const kindLabel = row.kind ? row.kind.replace(/_/g, ' ') : 'secret';
+  return {
+    discovery: {
+      id: `sec_${row.id}`,
+      type: 'npc-secret',
+      title: row.holder_npc_id ? `Secret held by ${row.holder_npc_id}` : 'Discovered secret',
+      // `body` is the real secret text (includeBody:true). When absent we
+      // describe only real row fields (kind + via) — never invented content.
+      description:
+        row.body || `A ${kindLabel} secret${row.via ? `, uncovered via ${row.via}` : ''}.`,
+      discoveredAt: new Date(discoveredMs).toISOString(),
+      // Display classification only (matches this component's existing
+      // npc-secret styling) — no rarity substrate exists server-side.
+      rarity: 'rare',
+      // No reward substrate exists server-side — [] is honest.
+      rewards: [],
+    },
+    timestamp: discoveredMs,
+  };
+}
+
 /* ── Context ──────────────────────────────────────────────────── */
 
 const SecretsDiscoveryContext = createContext<SecretsDiscoveryAPI>({
@@ -179,6 +227,43 @@ export default function SecretsDiscovery({ children, userId: _userId }: SecretsD
       return [...prev, { discovery, timestamp: Date.now(), location }];
     });
   }, []);
+
+  // H3 hydration — re-load persisted npc-secret discoveries from the real
+  // `secret_discoveries` substrate on mount, so they survive reload. Guarded
+  // on the entered flag + a resolved userId (mirrors the Providers.tsx
+  // post-enter gate) so anonymous sessions make no backend calls.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!window.localStorage.getItem('concord_entered')) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        let userId = _userId;
+        if (!userId) {
+          const me = await lensRun<{ userId?: string }>('auth', 'whoami');
+          userId = me.data?.result?.userId;
+        }
+        if (!userId || cancelled) return;
+        const r = await lensRun<{ secrets?: DiscoveredSecretRow[] }>(
+          'secrets', 'list_discovered', { includeBody: true, limit: 100 },
+        );
+        const maybeRows = r.data?.result?.secrets;
+        const rows: DiscoveredSecretRow[] = Array.isArray(maybeRows) ? maybeRows : [];
+        if (cancelled || rows.length === 0) return;
+        setJournal((prev) => {
+          const known = new Set(prev.map((e) => e.discovery.id));
+          const hydrated = rows
+            .filter((row) => row && row.id != null && !known.has(`sec_${row.id}`))
+            .map(secretRowToJournalEntry);
+          return hydrated.length ? [...prev, ...hydrated] : prev;
+        });
+      } catch {
+        // Hydration is best-effort — on failure the journal just starts
+        // empty for this session; nothing is fabricated.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [_userId]);
 
   const checkDiscovery = useCallback(
     (context: { type: DiscoveryType; data: Record<string, unknown> }): Discovery | null => {
@@ -270,6 +355,35 @@ export default function SecretsDiscovery({ children, userId: _userId }: SecretsD
         }
 
         case 'npc-secret': {
+          // H3 — server-backed path. Only fires when the BACKEND actually
+          // surfaced a secret (a real `secrets` row id in data.secretId);
+          // callers must never manufacture secretIds client-side. Content
+          // comes from the payload the server shipped — nothing is invented.
+          const secretId = typeof data.secretId === 'string' && data.secretId ? data.secretId : null;
+          if (secretId) {
+            const npcName = (data.npcName as string) || (data.npcId as string) || '';
+            const discovery: Discovery = {
+              id: `sec_${secretId}`, // matches hydration ids → reload dedupes cleanly
+              type: 'npc-secret',
+              title: npcName ? `${npcName}'s Secret` : 'Discovered secret',
+              description:
+                (data.secret as string) || (data.body as string) || 'A secret has been uncovered.',
+              discoveredAt: new Date().toISOString(),
+              rarity: 'rare',
+              rewards: [], // no reward substrate server-side
+            };
+            // Fire-and-forget persistence — secrets.discover is idempotent
+            // server-side, so re-discovery never double-records.
+            void lensRun('secrets', 'discover', {
+              secretId,
+              via: (data.via as string) || 'dialogue',
+            });
+            addToJournal(discovery, data.location as { district: string; cell?: string });
+            setActiveNotification(discovery);
+            setTimeout(() => setActiveNotification(null), 5000);
+            return discovery;
+          }
+          // Legacy demo path (session-only, no substrate) — unchanged.
           const npcId = data.npcId as string;
           const npc = NPC_SECRETS_DB.find((n) => n.npcId === npcId);
           if (!npc || npc.unlocked) return null;

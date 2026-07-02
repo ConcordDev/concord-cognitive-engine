@@ -251,15 +251,22 @@ export function mintSpell(db, { userId, worldId, componentIds, name, fuelItemIds
     // Consume one of each owned fuel item (FIFO, world-scoped). Guarded — the
     // ownership was verified above; this only debits.
     if (fuel) {
+      // USER-GLOBAL inventory invariant: fuel ownership was verified globally by
+      // (user_id, item_id) above, so consume the SAME way. The prior query added
+      // `AND world_id = ?`, so a fuel item ACQUIRED in another world passed the
+      // (global) ownership SUM check but matched no slot here → it was never
+      // debited: the player kept the fuel AND still got the boost (a free-boost
+      // dupe on a world hop). world_id is acquisition metadata, never a
+      // consumption filter — consume by (user_id, item_id), FIFO by acquired_at.
       const selFuelSlot = db.prepare(`
           SELECT id, quantity FROM player_inventory
-          WHERE user_id = ? AND world_id = ? AND item_id = ? AND quantity > 0
+          WHERE user_id = ? AND item_id = ? AND quantity > 0
           ORDER BY acquired_at ASC LIMIT 1
         `);
       const decFuelSlot = db.prepare(`UPDATE player_inventory SET quantity = quantity - 1 WHERE id = ?`);
       const delFuelSlot = db.prepare(`DELETE FROM player_inventory WHERE id = ?`);
       for (const itemId of fuel.items) {
-        const slot = selFuelSlot.get(userId, worldId, itemId);
+        const slot = selFuelSlot.get(userId, itemId);
         if (!slot) continue;
         if (slot.quantity > 1) {
           decFuelSlot.run(slot.id);

@@ -87,15 +87,25 @@ jobs:
         # asserts could fraudulently inflate the honest floor. Cheap static check.
         run: node scripts/check-depth-tests.mjs --ci
 
-      - name: Doc-claim freshness (non-blocking — surfaces stale counts)
-        # Re-runs every reproduction command embedded in CLAUDE.md and reports
-        # drift. Non-blocking by design: the counts legitimately grow with the
-        # code, so this SURFACES drift (refresh with `npm run check-doc-claims`)
-        # rather than blocking every count-changing PR. For a hard gate on a
-        # specific doc, run `node scripts/check-doc-claims.mjs --ci` locally.
-        continue-on-error: true
+      - name: Doc-claim freshness (BLOCKING — repo-wide docs-as-build-artifact gate)
+        # H5.1: re-runs every `**N** … (`cmd`)` reproduction command embedded in
+        # CLAUDE.md AND every docs/*.md (historical snapshots allowlisted inside
+        # the wrapper) and FAILS on drift. A number in a doc must be derived
+        # (carry its command), never merely asserted — a count-changing PR
+        # refreshes the doc in the same commit (`npm run check-doc-claims` /
+        # node scripts/check-doc-claims-all.mjs). Was advisory before 2026-07-02;
+        # verified 84/84 files clean at flip time.
         run: |
-          node scripts/check-doc-claims.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+          node scripts/check-doc-claims-all.mjs --ci | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Invariant test-link integrity (BLOCKING)
+        # H5.2: every "pinned by `tests/…`" claim in CLAUDE.md + docs/*.md must
+        # point at a test file that exists on disk — the link is what keeps the
+        # narrative honest (violate the invariant → a named test goes red). Rot
+        # here means the proof silently stopped existing. Planned/`(planned)`
+        # acceptance criteria are exempt. 91/91 resolved at introduction.
+        run: |
+          node scripts/verify-invariant-test-links.mjs --ci | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Diff detector findings vs prior run
         run: |

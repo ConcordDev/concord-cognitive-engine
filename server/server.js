@@ -2068,8 +2068,11 @@ const _MARKETPLACE_ABUSE = {
   }
 };
 
+// Test hygiene: timers must not block a clean node:test exit (see tests/preload/no-egress.mjs header). @resource-leak-ok
+const _unrefInTest = (t) => { if (String(process.env.NODE_ENV).toLowerCase() === "test") t?.unref?.(); return t; };
+
 // Cleanup marketplace abuse tracking hourly
-setInterval(() => _MARKETPLACE_ABUSE.cleanup(), 3600000);
+_unrefInTest(setInterval(() => _MARKETPLACE_ABUSE.cleanup(), 3600000));
 
 // ── Enhanced Wash Trading Detection ─────────────────────────────────────────
 // Checks: same IP, accounts created within 1 hour, > 3 trades between same pair in 30 days
@@ -4690,7 +4693,7 @@ function cleanupShadowDTUs() {
 
 // Run shadow cleanup periodically (every 6 hours)
 throttledInterval(() => cleanupShadowDTUs(), 6 * 60 * 60 * 1000, "shadow_dtu_cleanup");
-setTimeout(() => cleanupShadowDTUs(), 60000); // Initial cleanup after 1 min
+_unrefInTest(setTimeout(() => cleanupShadowDTUs(), 60000)); // Initial cleanup after 1 min
 
 // ---- Index Reconciliation (Category 3: Data Integrity) ----
 // Ensures lens domain index stays consistent with artifact store
@@ -4743,7 +4746,7 @@ function reconcileIndices() {
 
 // Run index reconciliation every 4 hours
 throttledInterval(() => reconcileIndices(), 4 * 60 * 60 * 1000, "index_reconciliation");
-setTimeout(() => reconcileIndices(), 120000); // 2 min after startup
+_unrefInTest(setTimeout(() => reconcileIndices(), 120000)); // 2 min after startup
 
 // ---- End semantic query expansion ----
 
@@ -5912,7 +5915,7 @@ const _TOKEN_BLACKLIST = {
 };
 
 // Cleanup in-memory blacklist every hour (Redis keys expire via TTL automatically)
-setInterval(() => _TOKEN_BLACKLIST.cleanup(), 3600000);
+_unrefInTest(setInterval(() => _TOKEN_BLACKLIST.cleanup(), 3600000));
 
 // ---- Refresh Token Family Tracking (detects token theft via reuse) ----
 // SQLite-backed so theft detection survives server restarts.
@@ -5992,7 +5995,7 @@ function clearLockerKey(userId) { _LOCKER_KEYS.delete(userId); }
 function getLockerKey(userId) { return _LOCKER_KEYS.get(userId) || null; }
 
 // Cleanup expired refresh families every 6 hours
-setInterval(() => {
+_unrefInTest(setInterval(() => {
   _REFRESH_FAMILIES.cleanup();
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
   if (_REFRESH_FAMILIES._fallback) {
@@ -6000,7 +6003,7 @@ setInterval(() => {
       if (!family.rotatedAt || family.rotatedAt < cutoff) _REFRESH_FAMILIES._fallback.delete(key);
     }
   }
-}, 6 * 60 * 60 * 1000); // every 6 hours
+}, 6 * 60 * 60 * 1000)); // every 6 hours
 
 function hashPassword(password) {
   if (!bcrypt) return null;
@@ -7347,7 +7350,7 @@ function metricsMiddleware(req, res, next) {
 }
 
 // Update gauges periodically (30s — no need to update faster, these are scraped on demand)
-setInterval(() => {
+_unrefInTest(setInterval(() => {
   // Report real DTU count (excluding shadow/repair/system DTUs) to Prometheus
   if (METRICS.gauges.dtuCount) {
     const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
@@ -7384,7 +7387,7 @@ setInterval(() => {
       METRICS.gauges.worldShardActiveCount.set(active);
     }
   } catch { /* density gauges best-effort */ }
-}, 30_000);
+}, 30_000));
 
 // ---- Backup & Restore ----
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(DATA_DIR, "backups");
@@ -7736,7 +7739,7 @@ const _SLIDING_WINDOW = {
     }
   }
 };
-setInterval(() => _SLIDING_WINDOW.cleanup(), 300000);
+_unrefInTest(setInterval(() => _SLIDING_WINDOW.cleanup(), 300000));
 
 // ============================================================================
 // END WAVE 1: PRODUCTION READINESS
@@ -7766,7 +7769,7 @@ const _IDEMPOTENCY = {
   }
 };
 
-setInterval(() => _IDEMPOTENCY.cleanup(), 300000); // cleanup every 5 minutes
+_unrefInTest(setInterval(() => _IDEMPOTENCY.cleanup(), 300000)); // cleanup every 5 minutes
 
 function idempotencyMiddleware(req, res, next) {
   const key = req.headers["idempotency-key"];
@@ -10072,14 +10075,14 @@ function saveStateCritical() {
 // Ensures state is persisted periodically even if the debounce
 // timer already fired and silent mutations accumulated (e.g. tick loops).
 const PERIODIC_SAVE_INTERVAL_MS = 120_000; // 2 min — debounced save handles immediate needs
-const _periodicSaveTimer = setInterval(() => {
+const _periodicSaveTimer = _unrefInTest(setInterval(() => {
   try {
     saveStateSync();
     structuredLog("debug", "periodic_state_save", { interval: PERIODIC_SAVE_INTERVAL_MS });
   } catch (e) {
     structuredLog("error", "periodic_save_failed", { error: String(e?.message || e) });
   }
-}, PERIODIC_SAVE_INTERVAL_MS);
+}, PERIODIC_SAVE_INTERVAL_MS));
 _periodicSaveTimer.unref(); // Don't keep process alive just for saves
 
 // ---- beforeExit handler (supplements SIGTERM/SIGINT) ----
@@ -16021,7 +16024,7 @@ function setLLMPipelineMode(mode) {
 }
 
 // Initialize on startup
-setTimeout(() => initLLMPipeline(), 100);
+_unrefInTest(setTimeout(() => initLLMPipeline(), 100));
 
 // ── LLM Queue + Circuit Breakers ──────────────────────────────────────────
 const _llmQueue = createLLMQueue({
@@ -16319,7 +16322,7 @@ globalThis._concordBRAIN = BRAIN;
 globalThis._concordSTATE = STATE;
 globalThis._repairObserve = observe;
 // Stagger: repair loop at T+180s ±30s jitter (avoids deterministic alignment with other 900s tasks)
-setTimeout(() => startRepairLoop(), 180_000 + Math.floor(Math.random() * 60_000) - 30_000);
+_unrefInTest(setTimeout(() => startRepairLoop(), 180_000 + Math.floor(Math.random() * 60_000) - 30_000));
 
 // ── Ghost Fleet: Wire 18 Dormant Emergent Modules ─────────────────────────
 // Every module lazy-loaded, macros registered, ticks wired. Silent failure everywhere.
@@ -17299,7 +17302,7 @@ if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
 
 // ── Artifact Garbage Collection Timer (weekly) ──────────────────────────
 // Starts after a short delay so STATE and db are fully ready
-setTimeout(async () => {
+_unrefInTest(setTimeout(async () => {
   try {
     const { initGarbageCollectionTimer: _initGC } = await import("./lib/artifact-gc.js");
     _initGC(STATE, db);
@@ -17307,11 +17310,11 @@ setTimeout(async () => {
   } catch (e) {
     structuredLog("warn", "artifact_gc_timer_init_failed", { error: String(e?.message || e) });
   }
-}, 12000);
+}, 12000));
 
 // ── LLM Fallback Initialization ─────────────────────────────────────────
 // Wire fallback layers into the LLM fallback chain
-setTimeout(async () => {
+_unrefInTest(setTimeout(async () => {
   try {
     const fallback = await import("./lib/llm-fallback.js");
     // Wire semantic cache if available
@@ -17328,11 +17331,11 @@ setTimeout(async () => {
   } catch (e) {
     structuredLog("warn", "llm_fallback_init_failed", { error: String(e?.message || e) });
   }
-}, 5000);
+}, 5000));
 
 // ── Semantic Intelligence Layer Initialization ────────────────────────────
 // Initialize after brains come online (embeddings use Ollama)
-setTimeout(async () => {
+_unrefInTest(setTimeout(async () => {
   try {
     // Gather all Ollama URLs (three brains + default)
     const ollamaUrls = [
@@ -17370,7 +17373,7 @@ setTimeout(async () => {
   } catch (e) {
     structuredLog("warn", "semantic_intelligence_init_error", { error: String(e?.message || e) });
   }
-}, 5000); // Wait 5s for Ollama to be ready
+}, 5000)); // Wait 5s for Ollama to be ready
 
 /**
  * Call a specific brain (Ollama instance).
@@ -19133,7 +19136,7 @@ function _checkDTUAccess(dtuId, userId, action = "view") {
 const SHARE_LINKS = new Map(); // token -> { dtuId, createdBy, createdAt, expiresAt, accessCount, maxAccess }
 
 // Cleanup expired / stale share links — prevents unbounded growth
-setInterval(() => {
+_unrefInTest(setInterval(() => {
   const now = new Date().toISOString();
   const staleCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   for (const [token, link] of SHARE_LINKS) {
@@ -19144,7 +19147,7 @@ setInterval(() => {
     // Remove links that hit their max access count
     if (link.maxAccess && link.accessCount >= link.maxAccess) SHARE_LINKS.delete(token);
   }
-}, 6 * 60 * 60 * 1000); // every 6 hours
+}, 6 * 60 * 60 * 1000)); // every 6 hours
 
 function createShareLink(dtuId, createdBy, options = {}) {
   const dtu = STATE.dtus.get(dtuId);
@@ -30541,7 +30544,7 @@ import { minorAgentScheduler } from "./emergent/minor-agent-scheduler.js";
 minorAgentScheduler.db = db;
 minorAgentScheduler.realtimeEmit = realtimeEmit;
 // Initialize agents for existing emergents after a short delay to avoid blocking boot
-setTimeout(async () => {
+_unrefInTest(setTimeout(async () => {
   try {
     const emergentsMap = STATE?.__emergent?.emergents;
     await minorAgentScheduler.initialize(emergentsMap);
@@ -30550,7 +30553,7 @@ setTimeout(async () => {
   } catch (e) {
     structuredLog("warn", "minor_agent_scheduler_failed", { error: e.message });
   }
-}, 5000);
+}, 5000));
 
 import { register as registerHook } from "./lib/agentic/hooks.js";
 import { checkSovereigntyInvariants } from "./grc/sovereignty-invariants.js";
@@ -30801,6 +30804,10 @@ async function mergeCognitiveResults(results) {
 function spawnCognitiveWorker() {
   const workerPath = new URL("./workers/cognitive-worker.js", import.meta.url).pathname;
   cognitiveWorker = new Worker(workerPath);
+  // Test hygiene: unref under NODE_ENV=test so it doesn't keep the node:test
+  // process alive after a suite finishes (see workers/macro-pool.js). The
+  // worker still answers requests while the loop is alive; prod untouched.
+  if (String(process.env.NODE_ENV).toLowerCase() === "test") cognitiveWorker.unref();
   cognitiveWorkerReady = false;
   _cognitiveWorkerStartTime = Date.now();
 
@@ -30831,7 +30838,7 @@ function spawnCognitiveWorker() {
     else _cognitiveWorkerRestartCount = Math.max(0, _cognitiveWorkerRestartCount - 1);
     const backoffMs = Math.min(5000 * Math.pow(2, _cognitiveWorkerRestartCount), 300_000);
     log("heartbeat.worker", `Restarting cognitive worker after crash (backoff ${backoffMs}ms, attempt ${_cognitiveWorkerRestartCount})`);
-    setTimeout(() => spawnCognitiveWorker(), backoffMs);
+    _unrefInTest(setTimeout(() => spawnCognitiveWorker(), backoffMs));
   });
 
   cognitiveWorker.on("exit", (code) => {
@@ -30842,9 +30849,15 @@ function spawnCognitiveWorker() {
       if (uptime < 10_000) _cognitiveWorkerRestartCount++;
       else _cognitiveWorkerRestartCount = Math.max(0, _cognitiveWorkerRestartCount - 1);
       const backoffMs = Math.min(5000 * Math.pow(2, _cognitiveWorkerRestartCount), 300_000);
-      setTimeout(() => spawnCognitiveWorker(), backoffMs);
+      _unrefInTest(setTimeout(() => spawnCognitiveWorker(), backoffMs));
     }
   });
+
+  // Test hygiene (@resource-leak-ok): the unref above happens BEFORE the
+  // 'message' listener attaches, which re-refs the worker's MessagePort
+  // (Node re-refs kPublicPort on newListener). Re-unref now that all
+  // listeners are attached so the worker can't block a clean test exit.
+  _unrefInTest(cognitiveWorker);
 }
 
 function startHeartbeat() {
@@ -30866,7 +30879,7 @@ function startHeartbeat() {
   let _heartbeatTickCount = 0;
   heartbeatTimer = setInterval(async () => {
     if (!STATE.settings.heartbeatEnabled) return;
-    _heartbeatTickCount++;
+    _heartbeatTickCount++; // (timer unref'd in test below)
     // Broadcast heartbeat tick to frontend
     realtimeEmit("heartbeat:tick", {
       tickCount: _heartbeatTickCount,
@@ -31088,6 +31101,7 @@ function startHeartbeat() {
     // Qualia hook: emergent heartbeat tick (system-level)
     try { globalThis.qualiaHooks?.hookEmergentTick("system", { growthRate: STATE.dtus?.size ? 0.5 : 0 }); } catch (_e) { logger.debug('server', 'silent', { error: _e?.message }); }
   }, ms);
+  _unrefInTest(heartbeatTimer);
   log("heartbeat", "Local scope tick started", { ms, workerEnabled: !!cognitiveWorker });
 
   // ── Entity Exploration Window (:50-:59 of each 10-minute cycle) ──────────
@@ -31098,7 +31112,7 @@ function startHeartbeat() {
   const explorationMs = 1_200_000; // 20 min — avoids 900s collision cluster (repair+chicken3+initiative)
   let explorationTimer = null;
   // Stagger: exploration starts 45s after heartbeat so brain has time to process
-  setTimeout(() => {
+  _unrefInTest(setTimeout(() => {
   explorationTimer = setInterval(async () => {
     if (!STATE.settings.heartbeatEnabled) return;
     if (STATE.settings.explorationEnabled === false) return;
@@ -31300,15 +31314,16 @@ function startHeartbeat() {
       structuredLog("warn", "exploration_window_error", { error: String(err?.message || err) });
     }
   }, explorationMs);
+  _unrefInTest(explorationTimer);
   log("heartbeat", "Exploration window timer started", { intervalMs: explorationMs });
-  }, 45_000); // Close exploration stagger — starts 45s after heartbeat
+  }, 45_000)); // Close exploration stagger — starts 45s after heartbeat
 
   // ── Global Scope Tick (15 minutes — slow, deliberate synthesis) ──
   // Global tick can: generate DTU candidates from existing Global DTUs, update resonance.
   // Global tick cannot: ingest local or marketplace DTUs, respond to local activity.
   const globalMs = clamp(Number(STATE.settings.globalTickMs || 900000), 300000, 3600000);
   // Stagger: global tick starts 90s after heartbeat so brain has processed exploration
-  setTimeout(() => {
+  _unrefInTest(setTimeout(() => {
   globalTickTimer = setInterval(async () => {
     if (!STATE.settings.heartbeatEnabled) return;
     try {
@@ -31374,13 +31389,14 @@ function startHeartbeat() {
       } catch (_e) { logger.debug('server', 'district evaluation is non-critical', { error: _e?.message }); }
     } catch (err) { console.error('[system] Global scope tick error:', err); }
   }, globalMs);
+  _unrefInTest(globalTickTimer);
   log("heartbeat", "Global scope tick started", { ms: globalMs });
-  }, 90_000); // Close global tick stagger — starts 90s after heartbeat
+  }, 90_000)); // Close global tick stagger — starts 90s after heartbeat
 
   // Marketplace: ❌ No heartbeat — marketplace never generates DTUs, never mutates knowledge
 }
 // Stagger: heartbeat starts at T+45s (LLM-heavy, needs breathing room)
-setTimeout(() => startHeartbeat(), 45_000);
+_unrefInTest(setTimeout(() => startHeartbeat(), 45_000));
 
 // Phase 12 audit fix — wire the registry-pattern heartbeat dispatcher.
 // `_startGovernorHeartbeat()` schedules `governorTick()` on a setInterval;
@@ -31393,14 +31409,14 @@ setTimeout(() => startHeartbeat(), 45_000);
 // late-loading ghost-fleet modules land first.
 // Read-only replicas never run the governor heartbeat — the writer owns all
 // emergent simulation + writes. A replica only serves reads.
-if (!READ_REPLICA) {setTimeout(() => {
+if (!READ_REPLICA) {_unrefInTest(setTimeout(() => {
   try {
     const result = _startGovernorHeartbeat();
     structuredLog("info", "governor_heartbeat_boot", result || { ok: false });
   } catch (e) {
     structuredLog("warn", "governor_heartbeat_boot_failed", { error: String(e?.message || e) });
   }
-}, 50_000);}
+}, 50_000));}
 
 // ---- Operations Endpoints (extracted to routes/operations.js) ----
 registerOperationRoutes(app, {
@@ -31425,10 +31441,11 @@ function startWeeklyCouncil() {
     const ctx = makeInternalCtx("system");
     await runMacro("council","weeklyDebateTick",{ topic: STATE.settings.weeklyDebateTopic || "Concord Weekly Synthesis" }, ctx).catch(()=>{});
   }, weekMs);
+  _unrefInTest(weeklyTimer);
   log("council.weekly", "Weekly Council scheduler started", { everyMs: weekMs });
 }
 // Stagger: weekly council at T+270s (6th autonomous task, 45s after ghost fleet)
-setTimeout(() => startWeeklyCouncil(), 270_000);
+_unrefInTest(setTimeout(() => startWeeklyCouncil(), 270_000));
 
 
 // ---- listen ----
@@ -33164,7 +33181,7 @@ app.use("/api/world-travel", createWorldTravelRouter({ requireAuth, db, emitToUs
 
 // Bootstrap CC0 asset sources at startup. Best-effort — if network is
 // unavailable, the registry stays at whatever's already there.
-setTimeout(() => {
+_unrefInTest(setTimeout(() => {
   (async () => {
     try {
       const { bootstrapAllSources } = await import("./lib/evo-asset/source-loaders.js");
@@ -33187,7 +33204,7 @@ setTimeout(() => {
       structuredLog("warn", "evo_asset_bootstrap_failed", { error: String(e?.message || e) });
     }
   })();
-}, 30_000); // wait 30s after boot so the rest of the platform has settled
+}, 30_000)); // wait 30s after boot so the rest of the platform has settled
 
 // ===== CONCORDIA LIVING WORLD (portals, player inventory, arena, leaderboards, crafting) =====
 import createLensPortalsRouter from "./routes/lens-portals.js";
@@ -33205,9 +33222,9 @@ app.use("/api/crafting",          createCraftingRouter({ requireAuth, db }));
 import createWorldNarrativeRouter, { buildLore } from "./routes/world-narrative.js";
 app.use("/api/world/narrative", createWorldNarrativeRouter({ requireAuth, requireRole, db }));
 // Synthesize lore every 10 minutes in the background
-setInterval(() => {
+_unrefInTest(setInterval(() => {
   buildLore("concordia-hub").catch(e => logger.warn({ err: e.message }, "lore_interval_failed"));
-}, 10 * 60 * 1000);
+}, 10 * 60 * 1000));
 
 // ===== CONNECTIVE TISSUE (economy wiring, DTU pipeline, CRETI, compression, fork, preview, search, emergent/bot auth) =====
 import createConnectiveTissueRouter from "./routes/connective-tissue.js";
@@ -33714,7 +33731,7 @@ function startChicken3Cron() {
   try {
     if (!STATE.__chicken3?.enabled || !STATE.__chicken3?.cronEnabled) return { ok:false, reason:"disabled" };
     const ms = clamp(Number(STATE.__chicken3?.cronIntervalMs ?? 900000), 300000, 3600000);
-    setInterval(() => { latticeAutonomousTick(); }, ms);
+    _unrefInTest(setInterval(() => { latticeAutonomousTick(); }, ms));
     structuredLog("info", "chicken3_cron_active", { intervalMin: (ms/60000).toFixed(2) });
     return { ok:true, intervalMs: ms };
   } catch (e) {
@@ -35033,10 +35050,10 @@ function _startGovernorHeartbeat() {
     const s = STATE.settings || {};
     const ms = clamp(Number(s.heartbeatMs ?? 60000), 15000, 10*60*1000);
     if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
-    __governorTimer = setInterval(() => { governorTick("interval").catch(()=>{}); }, ms);
+    __governorTimer = _unrefInTest(setInterval(() => { governorTick("interval").catch(()=>{}); }, ms));
     structuredLog("info", "governor_heartbeat_active", { intervalSec: (ms/1000).toFixed(2) });
     // fire once on boot (after a short delay so macros/STATE are warmed)
-    setTimeout(() => { governorTick("boot").catch(()=>{}); }, 2000);
+    _unrefInTest(setTimeout(() => { governorTick("boot").catch(()=>{}); }, 2000));
     return { ok:true, intervalMs: ms };
   } catch (e) {
     console.warn("[Governor] failed to start:", String(e?.message||e));
@@ -35047,9 +35064,9 @@ function _startGovernorHeartbeat() {
 
 // Start Chicken3 services on boot (additive)
 // Stagger: chicken3 cron at T+315s (7th autonomous task, 45s after weekly council)
-setTimeout(() => {
+_unrefInTest(setTimeout(() => {
   try { startChicken3Cron(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-}, 315_000);
+}, 315_000));
 try { startChicken3Federation(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 // ===== END CHICKEN3: Cron + Federation =====
 
@@ -36149,7 +36166,7 @@ const _ALERTING = {
 };
 
 // Evaluate alerts every 2 minutes — system-health checks don't need 30s cadence
-setInterval(() => _ALERTING.evaluate(), 120_000);
+_unrefInTest(setInterval(() => _ALERTING.evaluate(), 120_000));
 
 app.get("/api/alerts", (req, res) => {
   res.json({ ok: true, alerts: _ALERTING.stats() });
@@ -37648,7 +37665,7 @@ const DEFAULT_SCHEMAS = [
   { name: "Claim", kind: "claim", fields: [{ name: "statement", type: "string", required: true }, { name: "type", type: "string", required: true, validation: { enum: ["fact", "opinion", "inference", "speculation"] } }, { name: "sources", type: "array", required: false }, { name: "verifiable", type: "boolean", required: true }] },
   { name: "Evidence", kind: "evidence", fields: [{ name: "description", type: "string", required: true }, { name: "type", type: "string", required: true, validation: { enum: ["empirical", "testimonial", "documentary", "statistical", "analogical"] } }, { name: "strength", type: "number", required: true, validation: { min: 0, max: 1 } }, { name: "source", type: "string", required: true }] }
 ];
-setTimeout(() => { for (const s of DEFAULT_SCHEMAS) { if (!SCHEMA_REGISTRY.has(s.name)) SCHEMA_REGISTRY.set(s.name, { ...s, id: uid("schema"), version: 1, createdAt: nowISO(), usageCount: 0, evolves: true }); } }, 100);
+_unrefInTest(setTimeout(() => { for (const s of DEFAULT_SCHEMAS) { if (!SCHEMA_REGISTRY.has(s.name)) SCHEMA_REGISTRY.set(s.name, { ...s, id: uid("schema"), version: 1, createdAt: nowISO(), usageCount: 0, evolves: true }); } }, 100));
 
 app.post("/api/schema", validate("schemaCreate"), asyncHandler(async (req, res) => res.json(await runMacro("schema", "create", req.body, makeCtx(req)))));
 app.get("/api/schema", asyncHandler(async (req, res) => res.json(await runMacro("schema", "list", {}, makeCtx(req)))));
@@ -48167,7 +48184,7 @@ app.get("/api/db/indexes", (req, res) => {
 });
 app.get("/api/redis/stats", async (req, res) => res.json(await runMacro("redis", "stats", {}, makeCtx(req))));
 
-setTimeout(async () => {
+_unrefInTest(setTimeout(async () => {
   if (PG_CONFIG.enabled) { const pg = await initPostgres(); if (pg.ok) await runMigrations(); }
   // Hydrate blacklist from persistent storage
   _TOKEN_BLACKLIST.syncFromSQLite();
@@ -48175,7 +48192,7 @@ setTimeout(async () => {
     await initRedis();
     if (redisClient) await _TOKEN_BLACKLIST.syncFromRedis();
   }
-}, 1000);
+}, 1000));
 
 structuredLog("info", "module_loaded", { module: "Wave 9: Database Integrations" });
 
@@ -56139,7 +56156,7 @@ throttledInterval(() => {
 }, 600000, "global_marketplace_heartbeat");
 
 // ---- Map Cleanup Sweep (runs hourly — evicts stale entries from unbounded Maps) ----
-setInterval(() => {
+_unrefInTest(setInterval(() => {
   const now = Date.now();
   const nowIso = new Date().toISOString();
   const stale24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
@@ -56185,7 +56202,7 @@ setInterval(() => {
   }
 
   if (cleaned > 0) log("cleanup", `Map sweep: evicted ${cleaned} stale entries`);
-}, 3600000); // every hour
+}, 3600000)); // every hour
 
 structuredLog("info", "module_loaded", { detail: "Atlas Global + Platform v2: All endpoints registered" });
 structuredLog("info", "module_loaded", { detail: "New modules: Atlas Epistemic Engine, Autogen v2, Council Protocol, Social Layer, Collaboration, RBAC, Analytics, Webhook" });
@@ -56654,6 +56671,18 @@ try {
   });
   setHeartbeatPool({ exec: execHeartbeatWorker });
   structuredLog("info", "module_loaded", { detail: `Heartbeat Worker Pool: ${getHeartbeatPoolStats().poolSize} workers initialized` });
+  // Test hygiene (@resource-leak-ok): both pools unref their Workers under
+  // NODE_ENV=test, but attaching the 'message' listener AFTERWARDS re-refs each
+  // worker's MessagePort (Node re-refs kPublicPort on newListener). workers/*
+  // is owned elsewhere, so re-unref the pool ports from this init call site —
+  // at this boot moment the only live MessagePorts are the pool workers'.
+  if (String(process.env.NODE_ENV).toLowerCase() === "test") {
+    try {
+      for (const h of process._getActiveHandles?.() || []) {
+        if (h?.constructor?.name === "MessagePort") h.unref?.();
+      }
+    } catch { /* best-effort */ }
+  }
 } catch (e) {
   console.warn("[Concord] Heartbeat worker pool failed to initialize:", e.message);
 }
@@ -63646,8 +63675,8 @@ try {
       _promoRunning = false;
     }
   };
-  setTimeout(() => _runPromotion({ maxNewMegas: 3, maxNewHypers: 1 }), 15_000);
-  setInterval(() => _runPromotion({ maxNewMegas: 2, maxNewHypers: 0 }), 6 * 60 * 60 * 1000);
+  _unrefInTest(setTimeout(() => _runPromotion({ maxNewMegas: 3, maxNewHypers: 1 }), 15_000));
+  _unrefInTest(setInterval(() => _runPromotion({ maxNewMegas: 2, maxNewHypers: 0 }), 6 * 60 * 60 * 1000));
 } catch (e) {
   structuredLog("warn", "auto_promotion_setup_failed", { error: String(e?.message || e) });
 }
@@ -73633,7 +73662,7 @@ async function syncAllDTUsToLenses() {
 }
 
 // ── Run retroactive tagging on startup (delayed to avoid blocking boot) ──────
-setTimeout(async () => {
+_unrefInTest(setTimeout(async () => {
   try {
     structuredLog("info", "retro_tag_starting", {});
     const result = await retroTagAllDTUs();
@@ -73641,7 +73670,7 @@ setTimeout(async () => {
   } catch (e) {
     console.error("[RetroTag] Startup error:", String(e?.message || e));
   }
-}, 30000); // 30s after startup
+}, 30000)); // 30s after startup
 
 // ── Periodic lens sync (every 2 hours) ──────────────────────────────────────
 throttledInterval(() => syncAllDTUsToLenses(), 2 * 60 * 60 * 1000, "lens_sync");
@@ -74462,8 +74491,8 @@ function runBackup() {
 }
 
 // Run backup on startup (delayed) and periodically
-setTimeout(() => { try { runBackup(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }, 60000); // 1 min after start
-setInterval(() => { try { runBackup(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }, _BACKUP_INTERVAL_MS);
+_unrefInTest(setTimeout(() => { try { runBackup(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }, 60000)); // 1 min after start
+_unrefInTest(setInterval(() => { try { runBackup(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } }, _BACKUP_INTERVAL_MS));
 
 register("admin", "backup", (ctx, _input = {}) => {
   const denied = requireAdminRole(ctx); if (denied) return denied;

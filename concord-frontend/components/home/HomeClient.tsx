@@ -16,6 +16,8 @@ import { api, apiHelpers } from '@/lib/api/client';
 import dynamic from 'next/dynamic';
 import { MyDashboard } from '@/components/home/MyDashboard';
 import { useDashboardPrefs } from '@/lib/hooks/useDashboardPrefs';
+import { PageHeader } from '@/components/common/PageHeader';
+import { SkeletonStats, SkeletonCard, SkeletonGraph } from '@/components/common/Skeleton';
 const KnowledgeSpace3D = dynamic(
   () =>
     import('@/components/graphs/KnowledgeSpace3DCanvas').then((mod) => ({
@@ -176,11 +178,19 @@ function HomeClient() {
     return <LandingPage onEnter={handleEnter} />;
   }
 
-  // Wait for auth check before rendering dashboard
+  // Wait for auth check before rendering dashboard. Skeleton (not a bare
+  // spinner) — research: on a content-heavy surface a shape-matching skeleton
+  // reads ~30-50% faster than a spinner at identical load time, because it
+  // says "the page is here, content is coming" rather than "wait". This gates
+  // the whole dashboard, so mirror its shape: a stat row + a card grid.
   if (!authChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 animate-pulse">Loading...</div>
+      <div className="min-h-screen p-6 max-w-6xl mx-auto" role="status" aria-busy="true" aria-label="Loading your dashboard">
+        <SkeletonStats count={4} className="mb-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+        <span className="sr-only">Loading your dashboard…</span>
       </div>
     );
   }
@@ -490,37 +500,37 @@ function DashboardPage() {
   return (
     <div className="px-3 py-3 sm:p-3 lg:p-4 space-y-3 sm:space-y-3 max-w-[1600px] mx-auto">
       {/* Header */}
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white">Concordos Dashboard</h1>
-          <p className="text-gray-400 mt-1 text-sm">
-            {statusLoading ? (
-              <span className="animate-pulse">Connecting to lattice...</span>
-            ) : (
-              <>
-                {status?.version || 'v5.0'} &middot; {dtuCount.toLocaleString()} DTUs &middot;{' '}
-                {status?.llm?.enabled ? 'LLM Active' : 'Local Mode'} &middot;{' '}
-                {healthData?.status === 'ok' ? (
-                  <span className="text-neon-green">Healthy</span>
-                ) : (
-                  <span className="text-amber-400">Checking...</span>
-                )}
-              </>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <ScopeIndicator />
-          <CoherenceBadge score={events.length} />
-          <Link
-            href="/hub"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-surface border border-lattice-border hover:border-neon-cyan/50 transition-all text-sm text-gray-400 hover:text-white"
-          >
-            <Compass className="w-4 h-4" />
-            <span className="hidden sm:inline">Explore Lenses</span>
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title="Concordos Dashboard"
+        subtitle={
+          statusLoading ? (
+            <span className="animate-pulse">Connecting to lattice...</span>
+          ) : (
+            <>
+              {status?.version || 'v5.0'} &middot; {dtuCount.toLocaleString()} DTUs &middot;{' '}
+              {status?.llm?.enabled ? 'LLM Active' : 'Local Mode'} &middot;{' '}
+              {healthData?.status === 'ok' ? (
+                <span className="text-neon-green">Healthy</span>
+              ) : (
+                <span className="text-amber-400">Checking...</span>
+              )}
+            </>
+          )
+        }
+        actions={
+          <div className="flex items-center gap-3">
+            <ScopeIndicator />
+            <CoherenceBadge score={events.length} />
+            <Link
+              href="/hub"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-surface border border-lattice-border hover:border-neon-cyan/50 transition-all text-sm text-gray-400 hover:text-white"
+            >
+              <Compass className="w-4 h-4" />
+              <span className="hidden sm:inline">Explore Lenses</span>
+            </Link>
+          </div>
+        }
+      />
 
       {/* Context Resurrection — welcome-back cognitive context banner */}
       <LensErrorBoundary name="Context Resurrection">
@@ -671,11 +681,9 @@ function DashboardPage() {
             </div>
             <div className="h-[420px]">
               {graphLoading ? (
-                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                  <div className="text-center">
-                    <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                    Loading resonance graph...
-                  </div>
+                <div className="h-full" role="status" aria-busy="true" aria-label="Loading resonance graph">
+                  <SkeletonGraph className="h-full" />
+                  <span className="sr-only">Loading resonance graph…</span>
                 </div>
               ) : graphData?.nodes?.length ? (
                 <ResonanceEmpireGraph

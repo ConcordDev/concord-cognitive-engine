@@ -104,6 +104,77 @@ export default function UnifiedSelfLensPage() {
     },
   });
 
+  // ── Rituals tab wiring (H2) — honest-by-construction ──────────────────
+  // DailyRituals receives ONLY props with a real backend substrate:
+  //   • streak          ← self.streaks (the same in-STATE metric ledger the
+  //                       Streaks tab reads; `overall` is the consecutive
+  //                       any-metric logging streak).
+  //   • suggestedAction ← beats.list (mig-129 `player_beats` — the personal
+  //                       beat scheduler's open prompts; top open beat only).
+  // Everything else stays undefined ON PURPOSE (no substrate — per audit):
+  //   checkIn / overnightSummary / communityUpdates / npcMemories /
+  //   weatherForecast / dailyChallenge — no login-diff, overnight-digest,
+  //   community-board, forecast, or daily-challenge substrate exists.
+  //   newspaper — SKIPPED despite a real route (/api/world/events/calendar/
+  //   :cityId): only 5 of its 14 event types map onto the component's
+  //   category enum (construction/disaster/competition/governance/economy/
+  //   social) and no importance field exists (rsvpCount thresholds would be
+  //   invented), so the mapping would silently distort — left unwired.
+  type StreaksMacroResult = {
+    overall?: number;
+    loggedToday?: boolean;
+    perMetric?: Array<{ longest?: number }>;
+  };
+  const ritualsStreak = useQuery({
+    queryKey: ['self-rituals-streak', refreshKey],
+    queryFn: async () => {
+      const r = (await safeRunDomain('self', 'streaks')) as StreaksMacroResult | null;
+      if (!r || typeof r.overall !== 'number') return null;
+      const perMetricLongest = (r.perMetric ?? []).map((m) => Number(m?.longest) || 0);
+      return {
+        currentStreak: r.overall,
+        // No overall-longest is stored server-side; max(current overall, best
+        // per-metric longest) is a true lower bound derived from the ledger
+        // (a per-metric run implies an overall run of at least that length).
+        longestStreak: Math.max(r.overall, ...perMetricLongest, 0),
+        todayCheckedIn: r.loggedToday === true,
+        // No streak-reward substrate exists — [] is honest; the component
+        // renders nothing for an empty rewards list.
+        rewards: [] as { day: number; reward: string; claimed: boolean }[],
+      };
+    },
+  });
+
+  type BeatRow = {
+    id?: string;
+    prose?: string;
+    surfaced_at?: number; // unix seconds (mig 129 unixepoch())
+    completed_at?: number | null;
+    outcome?: string | null;
+  };
+  const ritualsBeat = useQuery({
+    queryKey: ['self-rituals-beat'],
+    queryFn: async () => {
+      // beats.list returns { ok, beats } (no `result` wrapper) — safeRunDomain
+      // hands back that envelope, so read `.beats` directly.
+      const r = (await safeRunDomain('beats', 'list', { limit: 20 })) as { beats?: BeatRow[] } | null;
+      const open = (r?.beats ?? []).find(
+        (b) => b && !b.completed_at && !b.outcome && typeof b.prose === 'string' && b.prose.trim().length > 0,
+      );
+      if (!open) return null; // no open beats → component hides the section (honest)
+      return {
+        action: (open.prose as string).trim(),
+        // player_beats carries no separate "why" field — the honest reason is
+        // real metadata: where the prompt came from and when it surfaced.
+        reason: open.surfaced_at
+          ? `Open personal beat, surfaced ${new Date(open.surfaced_at * 1000).toLocaleDateString()}`
+          : 'Open personal beat from your world activity',
+        // district: omitted — player_beats has world_id (a world, not a
+        // district), so there is no honest district to navigate to.
+      };
+    },
+  });
+
   type ServerAch = {
     id: string;
     name: string;
@@ -376,7 +447,13 @@ export default function UnifiedSelfLensPage() {
           )}
           {activeTab === 'rituals' && (
             <Section k="rituals">
-              <DailyRituals />
+              {/* H2 — only substrate-backed props are passed (see the wiring
+                  comment above the ritualsStreak/ritualsBeat queries). Failed
+                  or empty queries pass undefined — never fabricated data. */}
+              <DailyRituals
+                streak={ritualsStreak.data ?? undefined}
+                suggestedAction={ritualsBeat.data ?? undefined}
+              />
             </Section>
           )}
           {activeTab === 'achievements' && (

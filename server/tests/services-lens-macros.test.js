@@ -256,6 +256,14 @@ describe("services — commissionCalc", () => {
 // ── dailyCloseReport (revenue split + fail-closed) ──
 
 describe("services — dailyCloseReport", () => {
+  // NOTE on the input shape: `date` must live INSIDE artifact.data (the
+  // canonical sole-key shape — the peel makes data double as params, so
+  // params.date === data.date). The previous shape put `date` as a SIBLING of
+  // data inside artifact; peelRedundantArtifactWrapper drops artifact-level
+  // siblings, so params.date was undefined, the handler fell back to TODAY,
+  // and the test failed every day except 2026-06-28 (a time-bomb, not a source
+  // bug — the real BookingActionDock sends params.date via the artifact-run
+  // path and works). Pinned here in the shape production's peel path uses.
   it("splits service vs product revenue for the target date", () => {
     const date = "2026-06-28";
     const r = call("dailyCloseReport", ctxA, { artifact: { data: {
@@ -265,7 +273,8 @@ describe("services — dailyCloseReport", () => {
         { provider: "Ana", price: 80,  status: "completed", date: "2026-06-27" }, // wrong day
       ],
       productsSold: [{ price: 30, quantity: 2 }],
-    }, date } });
+      date,
+    } } });
     assert.equal(r.ok, true);
     assert.equal(r.result.date, date);
     assert.equal(r.result.completedCount, 1);
@@ -282,7 +291,8 @@ describe("services — dailyCloseReport", () => {
         { provider: "Ana", price: "Infinity", status: "completed", date },
         { provider: "Ana", price: 90,         status: "completed", date },
       ],
-    }, date } });
+      date,
+    } } });
     assert.equal(r.ok, true);
     assert.ok(Number.isFinite(r.result.serviceRevenue));
     assert.ok(Number.isFinite(r.result.totalRevenue));

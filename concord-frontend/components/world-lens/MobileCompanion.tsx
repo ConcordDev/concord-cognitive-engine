@@ -168,6 +168,21 @@ export default function MobileCompanion() {
   const [cameraZoom, setCameraZoom] = useState(1);
   const [cameraAngle, setCameraAngle] = useState(0);
   const [showQuietHours, setShowQuietHours] = useState(false);
+  // Real browser connectivity (navigator.onLine + online/offline events) — the
+  // status dot used to be a hardcoded green "Synced", which claimed a sync that
+  // doesn't exist. Honest signal: Online/Offline.
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const update = () => setIsOnline(navigator.onLine);
+    update();
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+    };
+  }, []);
 
   // ── Live data from the companion lens-action domain ────────────────
   useEffect(() => {
@@ -597,12 +612,12 @@ export default function MobileCompanion() {
 
   return (
     <div className="flex flex-col h-full max-w-md mx-auto bg-black/90 text-white">
-      {/* Status bar mock */}
+      {/* Status bar — driven by real browser connectivity (navigator.onLine) */}
       <div className="flex items-center justify-between px-4 py-2 bg-black/60 border-b border-white/5">
         <span className="text-xs font-semibold text-white/60">World Lens Companion</span>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-400" />
-          <span className="text-[10px] text-white/40">Synced</span>
+        <div className="flex items-center gap-2" title="Browser network connectivity (navigator.onLine)">
+          <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-gray-500'}`} />
+          <span className="text-[10px] text-white/40">{isOnline ? 'Online' : 'Offline'}</span>
         </div>
       </div>
 

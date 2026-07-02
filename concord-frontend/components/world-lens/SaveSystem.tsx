@@ -65,23 +65,40 @@ export default function SaveSystem({ saveState, offlineCalcs, worldPersistence, 
   const [showPersistence, setShowPersistence] = useState(false);
   const [showOffline, setShowOffline] = useState(offlineCalcs !== null);
 
+  // Honest header: derived purely from the subsystem statuses in props —
+  // never claim "All changes saved" while status is still being fetched
+  // (pending) or the status probe failed (error).
+  const anyPending = saveState.subsystems.some((s) => s.status === 'pending');
+  const anyError = saveState.subsystems.some((s) => s.status === 'error');
+  const headline = saveState.autoSaving
+    ? 'Saving...'
+    : anyError
+      ? 'Save status unavailable'
+      : anyPending
+        ? 'Checking save status…'
+        : 'All changes saved';
+
   return (
     <div className="space-y-4">
       {/* Auto-save indicator */}
       <div className={`${panel} px-4 py-3 flex items-center justify-between`}>
         <div className="flex items-center gap-3">
-          {saveState.autoSaving ? (
+          {saveState.autoSaving || anyPending ? (
             <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+          ) : anyError ? (
+            <Cloud className="w-4 h-4 text-red-400" />
           ) : (
             <Check className="w-4 h-4 text-green-400" />
           )}
           <div>
-            <p className="text-sm text-white/80">
-              {saveState.autoSaving ? 'Saving...' : 'All changes saved'}
+            <p className="text-sm text-white/80" role="status" aria-live="polite">
+              {headline}
             </p>
-            <p className="text-[10px] text-white/40">
-              Last saved: {saveState.lastSaveTime}
-            </p>
+            {saveState.lastSaveTime ? (
+              <p className="text-[10px] text-white/40">
+                Last saved: {saveState.lastSaveTime}
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="flex items-center gap-2">

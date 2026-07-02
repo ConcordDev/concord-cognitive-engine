@@ -63,8 +63,8 @@ export function NPCTraitInspector() {
   if (!npcId) return null;
 
   return (
-    <div className="concordia-hud-fade fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur" onClick={close}>
-      <div className="w-full max-w-lg rounded-xl border border-zinc-700 bg-zinc-950/95 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div role="dialog" aria-modal="true" tabIndex={-1} className="concordia-hud-fade fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur" onClick={close} onKeyDown={(e) => { if (e.key === 'Escape') close(); }}>
+      <div tabIndex={-1} className="w-full max-w-lg rounded-xl border border-zinc-700 bg-zinc-950/95 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <header className="mb-3 flex items-center justify-between border-b border-zinc-700 pb-2">
           <div>
             <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">

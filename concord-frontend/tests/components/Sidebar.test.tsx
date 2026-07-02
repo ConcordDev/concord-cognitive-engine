@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
 // Mock next/navigation
 const mockPathname = vi.fn().mockReturnValue('/');
@@ -255,6 +258,23 @@ describe('Sidebar', () => {
       // Should render without error with non-sovereign role — the brand
       // wordmark still renders, proving the store-driven render path ran.
       expect(screen.getByText('CONCORD')).toBeInTheDocument();
+    });
+  });
+
+  // Purge-safety regression guard (CLAUDE.md Part 5 #7): Tailwind's JIT only
+  // emits class names it can see as complete literals in source. A
+  // `bg-${core.color}/20` interpolation is never a literal string, so the
+  // active-nav highlight silently vanishes in the PRODUCTION build (it works
+  // in dev because dev compiles on-demand). jsdom doesn't purge, so a render
+  // test can't catch this — assert on the source instead.
+  describe('active-highlight classes are purge-safe literals', () => {
+    it('Sidebar.tsx has no interpolated bg-/text-/border- color classes', () => {
+      const here = dirname(fileURLToPath(import.meta.url));
+      const src = readFileSync(resolve(here, '../../components/shell/Sidebar.tsx'), 'utf8');
+      // Strip comments so the doc-comment describing the antipattern doesn't
+      // trip the guard.
+      const code = src.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      expect(code).not.toMatch(/(?:bg|text|border)-\$\{/);
     });
   });
 });

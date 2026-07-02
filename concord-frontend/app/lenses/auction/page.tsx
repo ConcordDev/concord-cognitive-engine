@@ -81,9 +81,15 @@ export default function AuctionLensPage() {
       if (r?.ok) setBuyOrders(r.buyOrders || []);
       else throw new Error(r?.error || 'buy-orders load failed');
     } catch { failed = true; }
-    setLoadError(failed ? 'Could not reach the auction house. Check your connection and retry.' : null);
+    if (failed) {
+      const msg = 'Could not reach the auction house. Check your connection and retry.';
+      setLoadError(msg);
+      showFlash('err', msg);
+    } else {
+      setLoadError(null);
+    }
     setLoading(false);
-  }, []);
+  }, [showFlash]);
 
   const handlePlaceBuyOrder = useCallback(async () => {
     if (!buyForm.itemDescriptor.trim()) return;
@@ -241,6 +247,7 @@ export default function AuctionLensPage() {
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
           {!loading && loadError && (
             <div
+              data-testid="auction-error"
               role="alert"
               className="mb-3 flex flex-col items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-6 text-center text-[12px] text-rose-200"
             >
@@ -256,12 +263,12 @@ export default function AuctionLensPage() {
               </button>
             </div>
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy={loading}>
+          <div data-testid="auction-grid" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy={loading}>
             {loading && Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-xl border border-white/5 bg-white/5" aria-hidden="true" />
+              <div key={i} data-testid="auction-loading" className="h-28 animate-pulse rounded-xl border border-white/5 bg-white/5" aria-hidden="true" />
             ))}
             {!loading && !loadError && auctions.length === 0 && (
-              <p className="col-span-full px-4 py-8 text-center text-[12px] text-slate-500">No active auctions. Post one yourself.</p>
+              <p data-testid="auction-empty" className="col-span-full px-4 py-8 text-center text-[12px] text-slate-500">No active auctions. Post one yourself.</p>
             )}
             {auctions.map((a) => {
               const timeLeft = fmtTime(a.endsAt);
@@ -396,8 +403,22 @@ export default function AuctionLensPage() {
 
         {/* Bid modal */}
         {bidTarget && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur" onClick={() => setBidTarget(null)}>
-            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl border border-amber-500/40 bg-slate-950 p-4">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Close bid dialog"
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur"
+            onClick={() => setBidTarget(null)}
+            onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setBidTarget(null); }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+              aria-label={`Bid on ${bidTarget.title || bidTarget.itemId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-xl border border-amber-500/40 bg-slate-950 p-4"
+            >
               <header className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-amber-100">Bid on {bidTarget.title || bidTarget.itemId}</h2>
                 <button onClick={() => setBidTarget(null)} aria-label="Close" className="rounded p-1 text-slate-400 hover:bg-slate-800"><X className="h-3.5 w-3.5" /></button>
@@ -422,8 +443,22 @@ export default function AuctionLensPage() {
 
         {/* Create modal */}
         {showCreate && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur" onClick={() => setShowCreate(false)}>
-            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl border border-amber-500/40 bg-slate-950 p-4">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Close listing dialog"
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur"
+            onClick={() => setShowCreate(false)}
+            onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setShowCreate(false); }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+              aria-label="List an item"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-xl border border-amber-500/40 bg-slate-950 p-4"
+            >
               <header className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-amber-100">List an item</h2>
                 <button onClick={() => setShowCreate(false)} aria-label="Close" className="rounded p-1 text-slate-400 hover:bg-slate-800"><X className="h-3.5 w-3.5" /></button>

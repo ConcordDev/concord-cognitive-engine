@@ -1782,10 +1782,19 @@ Use only facts present in the input — never invent. If a section has no data, 
 });
 
   // ── Telehealth video visit integration ─────────────────────────
-  // Creates a video room. Real provider would wire a WebRTC/SFU
-  // provider key (Daily, Twilio Video). With a key set we mint a real
-  // room; without one we return a join token bound to the visit id so
-  // the platform's own WebRTC signalling can host it.
+  // Creates a video visit. With DAILY_API_KEY set we mint a real
+  // Daily.co room (external client via roomUrl). Otherwise the
+  // platform's OWN WebRTC path is used: the in-lens
+  // TelehealthVideoCall component (simple-peer) joins the socket.io
+  // signalling room `webrtc:<visitId>` — relay handlers in
+  // server/lib/webrtc-signalling.js, attached to the realtime io in
+  // server.js. That path is token-free by design (room privacy
+  // derives from the unguessable visit id), so we return an honest
+  // `join` descriptor mirroring the exact contract the client uses —
+  // never a fabricated credential. If neither Daily nor the realtime
+  // layer is available, the appointment is still scheduled but the
+  // result says plainly that video isn't provisioned
+  // (videoReady:false + note). POLISH_AUDIT T1.3.
 
   registerLensAction("healthcare", "telehealth-create", async (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1801,9 +1810,9 @@ Use only facts present in the input — never invent. If a section has no data, 
       provider: String(params.provider || ""),
       scheduledAt,
       status: "scheduled",
-      roomProvider: "concord-webrtc",
+      roomProvider: "none",
       roomUrl: null,
-      joinToken: uidH("jt"),
+      videoReady: false,
       createdAt: isoH(),
     };
     if (process.env.DAILY_API_KEY) {
@@ -1824,8 +1833,33 @@ Use only facts present in the input — never invent. If a section has no data, 
           visit.roomProvider = "daily";
           visit.roomUrl = data.url;
           visit.roomName = data.name || null;
+          visit.videoReady = true;
         }
-      } catch (_e) { /* fall back to concord-webrtc room */ }
+      } catch (_e) { /* fall through to the concord-webrtc check below */ }
+    }
+    if (!visit.videoReady) {
+      // Concord's own in-lens WebRTC path is only claimed when the
+      // socket signalling layer is genuinely mounted (server.js sets
+      // globalThis._concordREALTIME right before attaching
+      // attachWebRTCSignalling to it). No realtime → no video claim.
+      const rt = globalThis._concordREALTIME || globalThis.__CONCORD_REALTIME__;
+      if (rt?.ready && rt?.io) {
+        visit.roomProvider = "concord-webrtc";
+        visit.videoReady = true;
+        // The real join contract consumed by TelehealthVideoCall.tsx:
+        // it emits `webrtc:join { visitId }` on the main socket.io
+        // connection and the server relays SDP/ICE inside the room
+        // `webrtc:<visitId>`. No token exists on this path.
+        visit.join = {
+          transport: "socket.io",
+          joinEvent: "webrtc:join",
+          room: `webrtc:${visit.id}`,
+          visitId: visit.id,
+          component: "TelehealthVideoCall",
+        };
+      } else {
+        visit.note = "Video calling requires configuration — appointment scheduled; video room not yet available.";
+      }
     }
     bucketH(s.telehealth, userId).push(visit);
     saveStateIfAvailable();

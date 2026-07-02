@@ -90,9 +90,12 @@ export function PublishAsBlueprintDialog({ boardId, svgDataUrl, onClose }: Publi
   return (
     <div
       role="dialog"
+      aria-modal="true"
       aria-label="Publish board as Concordia blueprint"
+      tabIndex={-1}
       className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
     >
       <div className="bg-zinc-950 border border-zinc-800 rounded-lg w-full max-w-xl p-5 text-zinc-200">
         <div className="flex items-baseline justify-between mb-4">

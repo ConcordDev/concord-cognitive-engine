@@ -165,7 +165,7 @@ describe("marketing.marketing-dashboard", () => {
  * ════════════════════════════════════════════════════════════════════ */
 
 describe("marketing.email builder + send engine", () => {
-  it("creates, lists, sends and tracks deterministic open/click stats", () => {
+  it("creates, lists, and sends HONESTLY without a provider (no fabricated analytics)", async () => {
     const e = call("email-create", ctxA, {
       name: "Welcome", subject: "Hi there",
       blocks: [{ type: "heading", content: "Welcome!" }, { type: "text", content: "Body" }],
@@ -175,20 +175,24 @@ describe("marketing.email builder + send engine", () => {
     const list = call("email-list", ctxA, {});
     assert.equal(list.result.count, 1);
     assert.equal(list.result.emails[0].blockCount, 2);
-    const send = call("email-send", ctxA, { id: e.id, recipients: ["a@x.com", "b@x.com", "c@x.com"] });
+    // HONEST contract (no SMTP in tests): recorded, nothing sent, no invented engagement.
+    const send = await call("email-send", ctxA, { id: e.id, recipients: ["a@x.com", "b@x.com", "c@x.com"] });
     assert.equal(send.ok, true);
-    assert.equal(send.result.sent, 3);
-    assert.ok(send.result.opened >= 0 && send.result.opened <= 3);
-    // deterministic: same recipients → same outcome
-    assert.equal(call("email-list", ctxA, {}).result.emails[0].stats.sent, 3);
+    assert.equal(send.result.status, "queued_no_provider");
+    assert.equal(send.result.recipients, 3);
+    assert.equal(send.result.delivered, 0);
+    assert.equal(send.result.opened, null);   // never synthesized
+    assert.equal(send.result.clicked, null);  // never synthesized
+    // list stats honestly show 0 sent for a queued-no-provider campaign.
+    assert.equal(call("email-list", ctxA, {}).result.emails[0].stats.sent, 0);
     assert.equal(call("email-delete", ctxA, { id: e.id }).ok, true);
   });
 
-  it("rejects sends with no blocks or no recipients", () => {
+  it("rejects sends with no blocks or no recipients", async () => {
     const empty = call("email-create", ctxA, { name: "Empty" }).result.email;
-    assert.equal(call("email-send", ctxA, { id: empty.id, recipients: ["x@x.com"] }).ok, false);
+    assert.equal((await call("email-send", ctxA, { id: empty.id, recipients: ["x@x.com"] })).ok, false);
     const ok = call("email-create", ctxA, { name: "OK", blocks: [{ type: "text", content: "hi" }] }).result.email;
-    assert.equal(call("email-send", ctxA, { id: ok.id, recipients: [] }).ok, false);
+    assert.equal((await call("email-send", ctxA, { id: ok.id, recipients: [] })).ok, false);
   });
 
   it("create requires a name", () => {
@@ -257,7 +261,7 @@ describe("marketing.landing pages + forms", () => {
 });
 
 describe("marketing.social scheduler", () => {
-  it("schedules, lists, publishes with deterministic reach", () => {
+  it("schedules, lists, and publish HONESTLY saves a draft (no provider → no fabricated reach)", () => {
     const post = call("social-schedule", ctxA, {
       body: "New launch!", channels: ["twitter", "linkedin"],
     }).result.post;
@@ -265,11 +269,15 @@ describe("marketing.social scheduler", () => {
     assert.equal(post.status, "scheduled");
     const list = call("social-list", ctxA, {});
     assert.equal(list.result.scheduled, 1);
+    // HONEST contract: no social provider is connected, so nothing is
+    // "published" and reach is never invented.
     const pub = call("social-publish", ctxA, { id: post.id });
     assert.equal(pub.ok, true);
-    assert.equal(pub.result.post.status, "published");
-    assert.ok(pub.result.post.reach.twitter.impressions > 0);
-    assert.equal(call("social-publish", ctxA, { id: post.id }).ok, false); // already published
+    assert.equal(pub.result.status, "draft_saved");
+    assert.equal(pub.result.impressions, null);
+    assert.equal(pub.result.engagements, null);
+    assert.equal(pub.result.post.status, "draft");
+    assert.equal("reach" in pub.result.post, false); // no fabricated reach object
     assert.equal(call("social-delete", ctxA, { id: post.id }).ok, true);
   });
 

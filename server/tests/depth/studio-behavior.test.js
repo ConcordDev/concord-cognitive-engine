@@ -215,8 +215,15 @@ describe("studio — CRUD round-trips + validation (shared ctx)", () => {
     // download URL — never a faked "completed". (A real completed render needs the
     // client to POST audioDataUrl; that path is covered by studio-bounce-honest.test.js.)
     const b = await lensRun("studio", "bounce", { params: { projectId, format: "mp3_320", sampleRate: 96000, durationSec: 60 } }, ctx);
-    assert.equal(b.ok, false); // pending ≠ completed — honest, not a fabricated success
-    assert.equal(b.result.render.status, "pending");
+    // Dispatch contract (this file's header): lens.run's top-level ok is
+    // DISPATCH success; the handler's verdict lives in the unwrapped result.
+    // (The handler itself returns ok:false for a pending render — see
+    // domains/studio.js bounce `ok: render.status === "completed"` — but the
+    // envelope unwrap keeps only `result`, so honesty is asserted on the
+    // render facts below, which are what the BouncePanel actually renders.)
+    assert.equal(b.ok, true); // dispatch succeeded
+    assert.equal(b.result.render.status, "pending"); // pending ≠ completed — honest
+    assert.equal(b.result.render.reason, "needs_client_render"); // explicit honest reason
     assert.ok(!b.result.render.downloadUrl && !b.result.render.url); // no fabricated URL
     assert.equal(b.result.render.format, "mp3_320");
     assert.equal(b.result.render.sampleRate, 96000);
@@ -673,13 +680,17 @@ describe("studio EXTEND — export-stems + dashboard summary", () => {
   it("export-stems emits one stem per track with validated format + logs a render", async () => {
     const r = await lensRun("studio", "export-stems", { params: { projectId, format: "flac", sampleRate: 96000 } }, ctx);
     // D1 honesty fix: with no client-supplied stem buffers every track is reported
-    // status:"pending" (producedCount 0); the job is "completed"/ok only when EVERY
+    // status:"pending" (producedCount 0); the job is "completed" only when EVERY
     // track produced a real artifact. So a server-side export with no audio is an
     // honest pending, not a faked success.
-    assert.equal(r.ok, false);
+    // Dispatch contract (this file's header): top-level ok is DISPATCH success;
+    // the handler's ok:false verdict is unwrapped away, so honesty is asserted
+    // on the job facts (status/producedCount/per-stem reason) below.
+    assert.equal(r.ok, true); // dispatch succeeded
     assert.equal(r.result.job.status, "pending");
     assert.equal(r.result.job.producedCount, 0);
     assert.equal(r.result.job.stemCount, 2);   // 2 tracks → 2 stems (all pending)
+    assert.ok(r.result.job.stems.every((s) => s.status === "pending" && s.reason === "needs_client_render"));
     assert.equal(r.result.job.format, "flac");
     assert.equal(r.result.job.sampleRate, 96000);
     // invalid format falls back to wav_24

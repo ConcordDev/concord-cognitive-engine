@@ -79,6 +79,17 @@ describe('BouncePanel', () => {
     await waitFor(() => expect(getByTestId('publish-dialog')).toBeInTheDocument());
   });
 
+  it('publish row discloses the placeholder reference tone', async () => {
+    lensRun.mockResolvedValue(envelope([]));
+    const { getByText, getByTitle } = render(<BouncePanel projectId="p1" />);
+    await waitFor(() => expect(getByText(/No bounces yet/i)).toBeInTheDocument());
+    // Visible one-line note next to the publish row — the published artifact's
+    // reference audio is a generated tone, not the project mix.
+    expect(getByText(/generated reference tone — in-browser mix rendering coming soon/i)).toBeInTheDocument();
+    // Tooltip on the button explains the placeholder.
+    expect(getByTitle(/generated placeholder tone/i)).toBeInTheDocument();
+  });
+
   it('no projectId: hides the bounce form + publish row', async () => {
     lensRun.mockResolvedValue(envelope([]));
     const { queryByText } = render(<BouncePanel />);

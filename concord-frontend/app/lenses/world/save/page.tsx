@@ -55,30 +55,44 @@ function resolveIcon(name?: string): LucideIcon {
   return (name && ICON_BY_NAME[name]) || Database;
 }
 
-const DEFAULT_SAVE_STATE: SaveState = {
+// Honest pre-fetch seed: every subsystem starts PENDING with no timestamp —
+// the page must never claim "saved just now" before /api/save/status (a real
+// endpoint — server/routes/save.js reads genuine MAX(timestamp) freshness)
+// has actually reported. The prior seed fabricated status:'saved' +
+// lastSaved:now, which rendered as live state before anything was known.
+const PENDING_SAVE_STATE: SaveState = {
   autoSaving: false,
-  lastSaveTime: new Date().toISOString(),
+  lastSaveTime: '',
   subsystems: [
-    { name: 'Player inventory', status: 'saved', lastSaved: new Date().toISOString() },
-    { name: 'World buildings', status: 'saved', lastSaved: new Date().toISOString() },
-    { name: 'Skill progression', status: 'saved', lastSaved: new Date().toISOString() },
-    { name: 'Wallet ledger', status: 'saved', lastSaved: new Date().toISOString() },
+    { name: 'Player inventory', status: 'pending', lastSaved: '—' },
+    { name: 'World buildings', status: 'pending', lastSaved: '—' },
+    { name: 'Skill progression', status: 'pending', lastSaved: '—' },
+    { name: 'Wallet ledger', status: 'pending', lastSaved: '—' },
   ],
 };
 
-const DEFAULT_PERSISTENCE: WorldPersistence = {
+// Same honesty rule for the persistence panel: no invented lastUpdated.
+const PENDING_PERSISTENCE: WorldPersistence = {
   entries: [
-    { label: 'World snapshot', lastUpdated: new Date().toISOString(), icon: Globe },
-    { label: 'NPC state', lastUpdated: new Date().toISOString(), icon: Users },
-    { label: 'Wallet', lastUpdated: new Date().toISOString(), icon: Coins },
-    { label: 'DTU substrate', lastUpdated: new Date().toISOString(), icon: Database },
+    { label: 'World snapshot', lastUpdated: '—', icon: Globe },
+    { label: 'NPC state', lastUpdated: '—', icon: Users },
+    { label: 'Wallet', lastUpdated: '—', icon: Coins },
+    { label: 'DTU substrate', lastUpdated: '—', icon: Database },
   ],
+};
+
+// Fetch failed: statuses are UNKNOWN, shown as an explicit error — never as
+// a green "saved".
+const ERROR_SAVE_STATE: SaveState = {
+  autoSaving: false,
+  lastSaveTime: '',
+  subsystems: PENDING_SAVE_STATE.subsystems.map((s) => ({ ...s, status: 'error' as SubsystemStatus })),
 };
 
 export default function SaveSystemPage() {
-  const [saveState, setSaveState] = useState<SaveState>(DEFAULT_SAVE_STATE);
+  const [saveState, setSaveState] = useState<SaveState>(PENDING_SAVE_STATE);
   const [offlineCalcs, setOfflineCalcs] = useState<OfflineCalc[] | null>(null);
-  const [worldPersistence, setWorldPersistence] = useState<WorldPersistence>(DEFAULT_PERSISTENCE);
+  const [worldPersistence, setWorldPersistence] = useState<WorldPersistence>(PENDING_PERSISTENCE);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +119,10 @@ export default function SaveSystemPage() {
         }
       })
       .catch(() => {
-        // Endpoint not live yet; defaults already in state.
+        // The endpoint IS live (server/routes/save.js) — a failure here means
+        // the status is genuinely unknown. Show an honest error, never a
+        // fabricated green "saved".
+        if (!cancelled) setSaveState(ERROR_SAVE_STATE);
       });
     return () => {
       cancelled = true;
@@ -116,10 +133,14 @@ export default function SaveSystemPage() {
     setSaveState((prev) => ({ ...prev, autoSaving: true }));
     try {
       await api.post('/api/save/manual');
+      // The manual snapshot genuinely succeeded — marking subsystems saved
+      // NOW is honest (unlike the old pre-fetch seed, this follows a real
+      // 2xx from /api/save/manual).
+      const now = new Date().toISOString();
       setSaveState((prev) => ({
-        ...prev,
         autoSaving: false,
-        lastSaveTime: new Date().toISOString(),
+        lastSaveTime: now,
+        subsystems: prev.subsystems.map((s) => ({ ...s, status: 'saved' as SubsystemStatus, lastSaved: now })),
       }));
     } catch {
       setSaveState((prev) => ({ ...prev, autoSaving: false }));

@@ -8,10 +8,17 @@ import registerExpeditionJournalActions from "../domains/expedition-journal.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
+// The domain registers through the CANONICAL 2-arg convention —
+// register(domain, action, (ctx, input)) — with an internal shim mapping
+// input → (artifact, params) (that migration is what fixed the lens page's
+// `unknown_macro`; see the domain header). The old 3-arg call here passed the
+// fake artifact AS input, so every handler saw params.worldId === undefined:
+// "rejects unknown world" phantom-passed against the concordia-hub default
+// and every real-flow test failed. Invoke the canonical shape.
 function call(name, ctx, params = {}) {
   const fn = ACTIONS.get(`expedition-journal.${name}`);
   if (!fn) throw new Error(`expedition-journal.${name} not registered`);
-  return fn(ctx, { id: null, data: {}, meta: {} }, params);
+  return fn(ctx, params);
 }
 
 before(() => { registerExpeditionJournalActions(register); });

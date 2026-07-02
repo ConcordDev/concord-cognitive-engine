@@ -167,12 +167,15 @@ export async function sendPasswordResetEmail(userId, email, username) {
 
   const resetUrl = `${APP_URL}/reset-password?token=${token}`;
 
-  return sendEmail({
+  const sent = await sendEmail({
     to: email,
     subject: "Reset your Concord password",
     text: _templates.passwordResetText(username, resetUrl),
     html: _templates.passwordResetHtml(username, resetUrl),
   });
+  // Surface the minted token to the CALLER (the auth route / tests) — it is
+  // never sent to the requesting client, only embedded in the email link.
+  return { ...sent, token };
 }
 
 /**

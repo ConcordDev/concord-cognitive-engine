@@ -532,8 +532,12 @@ export default function registerMarketingActions(registerLensAction) {
   }
 
   // ── Email builder + send engine ─────────────────────────────────────
-  // An email is a block-based document. Sending simulates per-recipient
-  // delivery with deterministic open/click outcomes so analytics are real.
+  // An email is a block-based document. Sending is HONEST: with SMTP_*
+  // configured it attempts real delivery via lib/email-service.js and
+  // reports real delivered/failed counts; without a provider it records
+  // the campaign as queued_no_provider and sends nothing. Open/click
+  // engagement is NEVER synthesized — there are no tracking pixels, so
+  // opened/clicked are reported as null (unknown), not invented rates.
   const EMAIL_BLOCK_TYPES = ["heading", "text", "image", "button", "divider", "spacer"];
 
   registerLensAction("marketing", "email-create", (ctx, _a, params = {}) => {
@@ -610,15 +614,21 @@ export default function registerMarketingActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id } };
   });
 
-  // Deterministic 0..1 hash so the same recipient always gets the same
-  // outcome — no Math.random, sends are reproducible and testable.
+  // Deterministic 0..1 hash — no Math.random, so workflow branch
+  // decisions are reproducible and testable. (No longer used to
+  // fabricate email/social engagement — see email-send/social-publish.)
   function strHash01(str) {
     let h = 2166136261;
     for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
     return ((h >>> 0) % 10000) / 10000;
   }
 
-  registerLensAction("marketing", "email-send", (ctx, _a, params = {}) => {
+  // Honest delivery: attempts real SMTP delivery when a provider is
+  // configured; otherwise records the campaign as queued and sends
+  // NOTHING. Never fabricates opened/clicked — no tracking exists, so
+  // engagement is null (unknown), not a synthesized rate.
+  const EMAIL_SEND_MAX_RECIPIENTS = 500;
+  registerLensAction("marketing", "email-send", async (ctx, _a, params = {}) => {
   try {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const e = (s.emails.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
@@ -629,15 +639,53 @@ export default function registerMarketingActions(registerLensAction) {
       : [];
     if (recipients.length === 0) return { ok: false, error: "at least one recipient required" };
     const at = mkNow();
+
+    if (!process.env.SMTP_HOST) {
+      // No email provider configured — do NOT pretend delivery happened
+      // and do NOT synthesize analytics. Persist the campaign record
+      // with an honest status and report exactly what occurred: nothing.
+      e.status = "queued_no_provider";
+      e.lastQueuedAt = at;
+      e.lastQueueAttempt = { at, recipients: recipients.length, status: "queued_no_provider" };
+      saveMktState();
+      return {
+        ok: true,
+        result: {
+          emailId: e.id,
+          status: "queued_no_provider",
+          recipients: recipients.length,
+          delivered: 0,
+          opened: null,
+          clicked: null,
+          note: "No email provider configured — campaign recorded, nothing was sent. Set SMTP_* to enable delivery.",
+        },
+      };
+    }
+
+    // SMTP configured — attempt real delivery per recipient (bounded).
+    const { sendEmail } = await import("../lib/email-service.js");
+    const batch = recipients.slice(0, EMAIL_SEND_MAX_RECIPIENTS);
+    const skipped = recipients.length - batch.length;
+    const text = e.blocks.map((b) => b.content).filter(Boolean).join("\n\n");
     const sends = mkListB(s.emailSends, e.id);
-    let opened = 0, clicked = 0;
-    for (const to of recipients) {
-      const seed = e.id + "|" + to;
-      const willOpen = strHash01(seed + "|o") < 0.62;
-      const willClick = willOpen && strHash01(seed + "|c") < 0.34;
-      if (willOpen) opened++;
-      if (willClick) clicked++;
-      sends.push({ id: mkId("snd"), to, sentAt: at, opened: willOpen, clicked: willClick });
+    let delivered = 0, failed = 0;
+    const failures = [];
+    for (const to of batch) {
+      try {
+        const r = await sendEmail({ to, subject: e.subject, text });
+        if (r && r.ok) {
+          delivered++;
+          // opened/clicked are unknown (no tracking pixels) — stored as
+          // null so downstream stats count them as 0, never as invented.
+          sends.push({ id: mkId("snd"), to, sentAt: at, opened: null, clicked: null });
+        } else {
+          failed++;
+          failures.push({ to, error: String(r?.error || "send failed") });
+        }
+      } catch (err) {
+        failed++;
+        failures.push({ to, error: String(err?.message || err) });
+      }
     }
     e.status = "sent";
     e.lastSentAt = at;
@@ -645,9 +693,16 @@ export default function registerMarketingActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        emailId: e.id, sent: recipients.length, opened, clicked,
-        openRate: Math.round((opened / recipients.length) * 1000) / 10,
-        clickRate: Math.round((clicked / recipients.length) * 1000) / 10,
+        emailId: e.id,
+        status: "sent",
+        recipients: batch.length,
+        delivered,
+        failed,
+        ...(skipped > 0 ? { skipped } : {}),
+        ...(failures.length > 0 ? { failures: failures.slice(0, 20) } : {}),
+        opened: null,
+        clicked: null,
+        note: "engagement tracking not implemented",
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -938,24 +993,28 @@ export default function registerMarketingActions(registerLensAction) {
     };
   });
 
+  // Honest publish: no social provider integration exists, so nothing
+  // can actually be posted to Twitter/LinkedIn/etc. The post is saved
+  // as a draft and the API says so. Impressions/engagements are never
+  // fabricated — they are null until a real provider reports them.
   registerLensAction("marketing", "social-publish", (ctx, _a, params = {}) => {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const p = (s.socialPosts.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
     if (!p) return { ok: false, error: "post not found" };
     if (p.status === "published") return { ok: false, error: "post already published" };
-    p.status = "published";
-    p.publishedAt = mkNow();
-    // deterministic per-channel reach so social analytics are real
-    p.reach = {};
-    for (const ch of p.channels) {
-      const seed = p.id + "|" + ch;
-      p.reach[ch] = {
-        impressions: 200 + Math.round(strHash01(seed + "i") * 4800),
-        engagements: 5 + Math.round(strHash01(seed + "e") * 295),
-      };
-    }
+    p.status = "draft";
+    p.draftSavedAt = mkNow();
     saveMktState();
-    return { ok: true, result: { post: p } };
+    return {
+      ok: true,
+      result: {
+        status: "draft_saved",
+        note: "No social provider connected — post saved as draft, not published. Connect a provider to publish.",
+        impressions: null,
+        engagements: null,
+        post: p,
+      },
+    };
   });
 
   registerLensAction("marketing", "social-delete", (ctx, _a, params = {}) => {

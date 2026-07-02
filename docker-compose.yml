@@ -39,6 +39,56 @@ services:
       - LOG_FORMAT=${LOG_FORMAT:-json}
       - SHUTDOWN_TIMEOUT_MS=${SHUTDOWN_TIMEOUT_MS:-10000}
       - CONCORD_WS_ENABLED=${CONCORD_WS_ENABLED:-true}
+      # ── Living-layer prod manifest (mirrors .env.runpod §2) ────────────────
+      # Without these, a compose deploy silently ships the default-OFF systems
+      # inert: no LLM dialogue/dreams/forward-sim, agent asleep, CSRF loose —
+      # brains healthy, zero errors, world "feels scripted". Defaults here are
+      # the PROD-ON posture; override via env when needed. Verify with:
+      #   node server/scripts/verify-prod-flags.mjs   (the runpod-up.sh gate)
+      # 2a. Default-OFF features → ON
+      - CONCORD_CIVIC_BONDS=${CONCORD_CIVIC_BONDS:-1}
+      - CONCORD_VIABILITY=${CONCORD_VIABILITY:-1}
+      - CONCORD_VIABILITY_ETHICS=${CONCORD_VIABILITY_ETHICS:-1}
+      - CONCORD_SOCIAL_LIFE=${CONCORD_SOCIAL_LIFE:-1}
+      - CONCORD_SOCIAL_EVENTS=${CONCORD_SOCIAL_EVENTS:-1}
+      - CONCORD_SKILL_FORGE=${CONCORD_SKILL_FORGE:-1}
+      - CONCORD_CHILD_REFUSAL=${CONCORD_CHILD_REFUSAL:-1}
+      - CONCORD_EXPRESSION=${CONCORD_EXPRESSION:-1}
+      - CONCORD_REALM_CONTROL=${CONCORD_REALM_CONTROL:-1}
+      - CONCORD_COLLAPSE_CASCADE=${CONCORD_COLLAPSE_CASCADE:-1}
+      - CONCORD_EVO_ASSET_GAMEPLAY=${CONCORD_EVO_ASSET_GAMEPLAY:-1}
+      - CONCORD_GOSSIP=${CONCORD_GOSSIP:-1}
+      - CONCORD_WORLD_DENSITY=${CONCORD_WORLD_DENSITY:-1}
+      - CONCORD_LIVING_CAREER=${CONCORD_LIVING_CAREER:-1}
+      - CONCORD_REPUTATION=${CONCORD_REPUTATION:-1}
+      - CONCORD_FTUE_TELEMETRY=${CONCORD_FTUE_TELEMETRY:-1}
+      # client-config polarity partners (server default-ON; the browser needs =1)
+      - CONCORD_ADAPTIVE_SCORE=${CONCORD_ADAPTIVE_SCORE:-1}
+      - CONCORD_WORLD_AUDIO=${CONCORD_WORLD_AUDIO:-1}
+      - CONCORD_ART_ATMOSPHERE=${CONCORD_ART_ATMOSPHERE:-1}
+      - CONCORD_ART_UI=${CONCORD_ART_UI:-1}
+      - CONCORD_LINK_SYSTEM=${CONCORD_LINK_SYSTEM:-1}
+      # 2b. LLM-gated features (deterministic fallbacks — safe when brains are down)
+      - CONCORD_SKILL_EVOLUTION_LLM=${CONCORD_SKILL_EVOLUTION_LLM:-true}
+      - CONCORD_NPC_DIALOGUE_LLM=${CONCORD_NPC_DIALOGUE_LLM:-true}
+      - CONCORD_QUEST_DIALOGUE_LLM=${CONCORD_QUEST_DIALOGUE_LLM:-true}
+      - CONCORD_DREAM_LLM=${CONCORD_DREAM_LLM:-true}
+      - CONCORD_FORWARD_SIM_LLM=${CONCORD_FORWARD_SIM_LLM:-true}
+      - CONCORD_PROCGEN_BACKSTORY_LLM=${CONCORD_PROCGEN_BACKSTORY_LLM:-true}
+      - CONCORD_FITNESS_PLAN_LLM=${CONCORD_FITNESS_PLAN_LLM:-true}
+      # Agent + awareness stack (guardrails enforced regardless: allowlist,
+      # Sparks-only, per-actor cap, disclosure, kill-switch)
+      - CONCORD_AGENT_ENABLED=${CONCORD_AGENT_ENABLED:-1}
+      - CONCORD_AWARENESS_LOOP=${CONCORD_AWARENESS_LOOP:-1}
+      - CONCORD_SPEED_AOI=${CONCORD_SPEED_AOI:-true}
+      - CONCORD_TEMPERAMENT=${CONCORD_TEMPERAMENT:-1}
+      # 2d. Security HARDENING (protections, not features)
+      - CONCORD_ENFORCE_CSRF=${CONCORD_ENFORCE_CSRF:-true}
+      # NOT defaulted on (deliberate): CONCORD_AUTOFIX_LOOP (autonomous code
+      # self-modification — enable only where the repair sandbox is trusted),
+      # CONCORD_AP_REQUIRE_SIGNATURE (only when federating), CONCORD_OTEL_ENABLED
+      # (needs a collector endpoint). Never set the footguns (DISABLE_CSRF,
+      # RATE_LIMIT_BYPASS, CHAOS_ENABLED, WEBHOOK_ALLOW_OPEN, FEDERATION_ALLOW_LOOPBACK).
       # Four-Brain Cognitive Architecture
       # Four-brain models. Defaults bumped for the RTX PRO 4500 (32GB
       # VRAM): conscious goes 14B → 32B at q4_K_M (~18GB), leaving ~14GB
@@ -380,7 +430,10 @@ services:
     volumes:
       - redis-data:/data
     networks:
-      - concord-net
+      # was `concord-net` — an UNDEFINED network (only concord-network exists at
+      # the bottom of this file), which isolated redis from the backend: Socket.IO
+      # cross-replica fan-out + the session cache silently degraded to in-process.
+      - concord-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

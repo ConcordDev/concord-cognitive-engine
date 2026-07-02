@@ -34,7 +34,7 @@ describe("wellness — calc contracts (exact computed values)", () => {
   it("sleepScore: rejects missing minutesAsleep", async () => {
     const r = await lensRun("wellness", "sleepScore", { params: { minutesAsleep: 0 } });
     assert.equal(r.result.ok, false);
-    assert.match(r.result.reason, /minutesAsleep required/);
+    assert.match(r.result.error, /minutesAsleep required/);
   });
 
   it("strainLog: zone minutes fold to a logarithmic 0-21 strain", async () => {
@@ -64,14 +64,16 @@ describe("wellness — calc contracts (exact computed values)", () => {
   it("recoveryReport: rejects when hrvMs/rhrBpm absent", async () => {
     const r = await lensRun("wellness", "recoveryReport", { params: { hrvMs: 0, rhrBpm: 0 } });
     assert.equal(r.result.ok, false);
-    assert.match(r.result.reason, /hrvMs and rhrBpm required/);
+    assert.match(r.result.error, /hrvMs and rhrBpm required/);
   });
 
   it("hrvTrend: ascending readings yield improving trend + exact stats", async () => {
     const readings = [40, 45, 50, 55, 60, 65, 70, 75].map((v, i) => ({
       date: `2026-06-0${i + 1}`, hrvMs: v,
     }));
-    const r = await lensRun("wellness", "hrvTrend", { data: { readings } });
+    // params (not artifact.data): the canonical wellness handlers read a FLAT
+    // body; the lens-run adapter merges params over the artifact wrapper.
+    const r = await lensRun("wellness", "hrvTrend", { params: { readings } });
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 8);
     assert.equal(r.result.average, 57.5);     // 460/8

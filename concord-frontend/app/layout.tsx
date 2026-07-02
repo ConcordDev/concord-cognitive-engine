@@ -1,6 +1,24 @@
 import './globals.css';
 import { Providers } from '@/components/Providers';
 import type { Metadata, Viewport } from 'next';
+import { DM_Sans, JetBrains_Mono } from 'next/font/google';
+
+/**
+ * Self-hosted fonts via next/font — no render-blocking @import in globals.css.
+ * DM Sans is the body + display face; JetBrains Mono is the code face.
+ * Exposed as CSS variables so globals.css `--font-*` tokens + tailwind
+ * `font-sans`/`font-mono` resolve to the same locally-served files.
+ */
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-dm-sans',
+  display: 'swap',
+});
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains-mono',
+  display: 'swap',
+});
 
 /**
  * Root layout — Server Component.
@@ -73,7 +91,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${dmSans.variable} ${jetbrainsMono.variable}`}>
       <head>
         {/* iOS Smart App Banner — surfaces the native app on /dtu/, /quest/,
             /event/, /listing/ pages and deep-links into the matching screen. */}

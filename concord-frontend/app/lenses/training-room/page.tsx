@@ -136,7 +136,7 @@ export default function TrainingRoomPage() {
           <aside className="rounded-xl border border-cyan-500/20 bg-zinc-950/60 p-3">
             <h2 className="mb-2 text-[11px] uppercase tracking-wider text-cyan-300/60">Skills &amp; weapons</h2>
             {listLoading ? (
-              <div className="space-y-2" aria-busy="true" aria-label="Loading skills" data-testid="skills-loading">
+              <div className="space-y-2" role="status" aria-busy="true" aria-label="Loading skills" data-testid="skills-loading">
                 {[0, 1, 2].map((i) => <div key={i} className="h-10 animate-pulse rounded-lg border border-white/5 bg-white/5" />)}
               </div>
             ) : listError ? (
@@ -186,7 +186,7 @@ export default function TrainingRoomPage() {
                 Select a skill or weapon to see its frame data.
               </div>
             ) : frameStatus === 'loading' ? (
-              <div className="space-y-3" aria-busy="true" aria-label="Loading frame data" data-testid="frame-loading">
+              <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading frame data" data-testid="frame-loading">
                 <div className="h-6 w-1/3 animate-pulse rounded bg-white/5" />
                 <div className="grid grid-cols-3 gap-2">
                   {[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded bg-white/5" />)}

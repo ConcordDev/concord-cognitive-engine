@@ -609,7 +609,11 @@ describe("astronomy — celestialPosition deterministic formatting + visibility"
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.object, "Rigel");
-    assert.equal(r.result.ra, "5.5h");
+    // Contract (domains/astronomy.js:20): a NAMED object resolves to its
+    // catalog position, overriding any raw RA/Dec typed alongside — so Rigel
+    // returns its real RA 5.242h (5h14m), not the passed 5.5. (Dec -8.2° here
+    // coincides with Rigel's real declination.)
+    assert.equal(r.result.ra, "5.242h");
     assert.equal(r.result.dec, "-8.2°");
     assert.equal(r.result.observerLocation.lat, 40.7);  // default observer
     assert.equal(r.result.observerLocation.lon, -74.0);

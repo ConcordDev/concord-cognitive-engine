@@ -132,6 +132,11 @@ describe('design-system tokens', () => {
       expect(ds.textMuted).toContain('text-gray-400');
     });
 
+    it('textBody is the AA-passing body-copy tone (gray-300, not the muted gray-400)', () => {
+      expect(ds.textBody).toContain('text-gray-300');
+      expect(ds.textBody).not.toContain('text-gray-400');
+    });
+
     it('textMono uses monospace font', () => {
       expect(ds.textMono).toContain('font-mono');
       expect(ds.textMono).toContain('text-sm');
@@ -239,7 +244,7 @@ describe('design-system tokens', () => {
         'panel', 'panelHover',
         'btnBase', 'btnPrimary', 'btnSecondary', 'btnDanger', 'btnGhost', 'btnSmall', 'btnNeon',
         'input', 'textarea', 'select',
-        'label', 'heading1', 'heading2', 'heading3', 'textMuted', 'textMono',
+        'label', 'heading1', 'heading2', 'heading3', 'textMuted', 'textBody', 'textMono',
         'badge',
         'pageContainer', 'sectionHeader', 'grid2', 'grid3', 'grid4',
         'tabBar', 'tabActive', 'tabInactive',
@@ -256,7 +261,7 @@ describe('design-system tokens', () => {
       const stringKeys = [
         'panel', 'panelHover', 'btnBase', 'btnPrimary', 'btnSecondary',
         'btnDanger', 'btnGhost', 'btnSmall', 'input', 'textarea', 'select',
-        'label', 'heading1', 'heading2', 'heading3', 'textMuted', 'textMono',
+        'label', 'heading1', 'heading2', 'heading3', 'textMuted', 'textBody', 'textMono',
         'pageContainer', 'sectionHeader', 'grid2', 'grid3', 'grid4',
         'tabBar', 'tabInactive', 'focusRing',
         'modalBackdrop', 'modalContainer', 'modalPanel',

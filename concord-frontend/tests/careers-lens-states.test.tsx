@@ -1,11 +1,11 @@
 /**
- * /lenses/careers — four-UX-state contract.
+ * /lenses/careers — five-UX-state contract.
  *
- * Pins that the Careers lens renders genuine loading / error (with a working
- * Retry) / empty / populated states against the real macro surface
- * (lensRun('careers', …) → POST /api/lens/run), plus a11y (the track select +
- * skill slider carry accessible names; loading is role=status; error is
- * role=alert).
+ * Pins that the Careers lens renders genuine loading (role=status, aria-busy) /
+ * error (role=alert + a working Retry) / disabled / empty / populated states
+ * against the real macro surface (lensRun('careers', …) → POST /api/lens/run),
+ * plus a11y (the track select + skill slider + buttons carry accessible names),
+ * and that the success/failure paths surface a toast through the global UI store.
  *
  * No fabricated data: every state is driven by a mocked lensRun standing in for
  * the real backend, exactly the shape server/domains/careers.js returns. The
@@ -20,6 +20,12 @@ import React from 'react';
 const lensRun = vi.fn();
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRun(...args),
+}));
+
+// ── toast store: capture addToast calls without a real Zustand store ─────────
+const addToast = vi.fn();
+vi.mock('@/store/ui', () => ({
+  useUIStore: (selector: (s: { addToast: typeof addToast }) => unknown) => selector({ addToast }),
 }));
 
 // ── headless shell: render-only stub ────────────────────────────────────────
@@ -57,10 +63,10 @@ const CONTRACT = {
   base_wage_sparks: 40, status: 'active', employer_id: 'emp', worker_id: 'me',
 };
 
-beforeEach(() => { lensRun.mockReset(); });
+beforeEach(() => { lensRun.mockReset(); addToast.mockReset(); });
 
-describe('careers lens — four UX states', () => {
-  it('LOADING: shows a role=status indicator while tracks are in flight', async () => {
+describe('careers lens — five UX states', () => {
+  it('LOADING: shows a role=status indicator (aria-busy) while tracks are in flight', async () => {
     // tracks never resolves → page stays in the loading state.
     lensRun.mockImplementation((_d: string, name: string) => {
       if (name === 'tracks') return new Promise(() => {});
@@ -68,7 +74,9 @@ describe('careers lens — four UX states', () => {
     });
     const { getByText, container } = render(<CareersLens />);
     await waitFor(() => expect(getByText(/Loading careers/i)).toBeInTheDocument());
-    expect(container.querySelector('[role="status"]')).toBeTruthy();
+    const status = container.querySelector('[role="status"]');
+    expect(status).toBeTruthy();
+    expect(status).toHaveAttribute('aria-busy', 'true');
   });
 
   it('DISABLED: shows the honest disabled-by-config note when the career system is off', async () => {
@@ -81,11 +89,13 @@ describe('careers lens — four UX states', () => {
   it('EMPTY: shows the honest "no professions" CTA when tracks === 0', async () => {
     lensRun.mockImplementation((_d: string, name: string) =>
       name === 'tracks' ? reply({ ok: true, tracks: [] }) : reply({ ok: true, contracts: [] }));
-    const { getByText } = render(<CareersLens />);
+    const { getByText, getByLabelText } = render(<CareersLens />);
     await waitFor(() => expect(getByText(/No professions available yet/i)).toBeInTheDocument());
+    // the empty-state Refresh CTA is a real, accessible button
+    expect(getByLabelText('Refresh professions')).toBeInTheDocument();
   });
 
-  it('ERROR: a failed tracks load shows role=alert + a working Retry that re-fetches', async () => {
+  it('ERROR: a failed tracks load shows role=alert + toast + a working Retry that re-fetches', async () => {
     let fail = true;
     lensRun.mockImplementation((_d: string, name: string) => {
       if (name === 'tracks') {
@@ -94,35 +104,41 @@ describe('careers lens — four UX states', () => {
       }
       return reply({ ok: true, contracts: [] });
     });
-    const { getByText, container } = render(<CareersLens />);
+    const { getByText, getByLabelText, container } = render(<CareersLens />);
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
-    expect(getByText(/network down/i)).toBeInTheDocument();
+    // human-readable message includes the underlying cause (no raw code)
+    expect(container.querySelector('[role="alert"]')!.textContent).toMatch(/network down/i);
+    // failure path surfaced an error toast
+    await waitFor(() => expect(addToast).toHaveBeenCalled());
+    expect(addToast.mock.calls.some((c) => c[0]?.type === 'error')).toBe(true);
 
     const before = lensRun.mock.calls.filter((c) => c[1] === 'tracks').length;
     fail = false;
-    await act(async () => { fireEvent.click(getByText('Retry')); });
+    await act(async () => { fireEvent.click(getByLabelText('Retry loading careers')); });
     await waitFor(() =>
       expect(lensRun.mock.calls.filter((c) => c[1] === 'tracks').length).toBeGreaterThan(before));
     // recovers to populated
     await waitFor(() => expect(getByText('Work a shift')).toBeInTheDocument());
   });
 
-  it('a11y: the track select and skill slider carry accessible names', async () => {
+  it('a11y: the track select, skill slider, and shift button carry accessible names', async () => {
     lensRun.mockImplementation((_d: string, name: string) =>
       name === 'tracks' ? reply({ ok: true, tracks: TRACKS }) : reply({ ok: true, contracts: [] }));
     const { getByLabelText } = render(<CareersLens />);
     await waitFor(() => expect(getByLabelText('Profession track')).toBeInTheDocument());
     expect(getByLabelText(/skill/i)).toBeInTheDocument();
+    expect(getByLabelText('Play a work shift')).toBeInTheDocument();
+    expect(getByLabelText('Refresh careers')).toBeInTheDocument();
   });
 
-  it('POPULATED: renders professions, contracts, and a real "work a shift" round-trip crediting sparks', async () => {
+  it('POPULATED: renders professions, contracts, and a real "work a shift" round-trip crediting sparks + a success toast', async () => {
     lensRun.mockImplementation((_d: string, name: string) => {
       if (name === 'tracks') return reply({ ok: true, tracks: TRACKS });
       if (name === 'contracts') return reply({ ok: true, contracts: [CONTRACT] });
       if (name === 'work') return reply({ ok: true, trackId: 'chef', tier: 5, performanceScore: 0.82, wage: 38, xp: 12, paid: true });
       return reply({ ok: true });
     });
-    const { getByText, getAllByText } = render(<CareersLens />);
+    const { getByText, getByLabelText, getAllByText } = render(<CareersLens />);
     await waitFor(() => expect(getByText('Work a shift')).toBeInTheDocument());
 
     // taxonomy + contract row from real macro data
@@ -130,10 +146,25 @@ describe('careers lens — four UX states', () => {
     expect(getByText(/My contracts \(1\)/)).toBeInTheDocument();
     expect(getByText(/40 sparks · active/)).toBeInTheDocument();
 
-    // play a shift → the work macro fires and the wage shows
-    await act(async () => { fireEvent.click(getByText('Play shift')); });
+    // play a shift → the work macro fires, the wage shows, and a success toast surfaces
+    await act(async () => { fireEvent.click(getByLabelText('Play a work shift')); });
     await waitFor(() => expect(getByText(/earned 38 sparks/i)).toBeInTheDocument());
     expect(lensRun.mock.calls.some((c) => c[1] === 'work')).toBe(true);
+    expect(addToast.mock.calls.some((c) => c[0]?.type === 'success')).toBe(true);
+  });
+
+  it('POPULATED (failed shift): an unsuccessful work macro surfaces the reason + an error toast', async () => {
+    lensRun.mockImplementation((_d: string, name: string) => {
+      if (name === 'tracks') return reply({ ok: true, tracks: TRACKS });
+      if (name === 'contracts') return reply({ ok: true, contracts: [] });
+      if (name === 'work') return reply({ ok: false, reason: 'exhausted' });
+      return reply({ ok: true });
+    });
+    const { getByText, getByLabelText } = render(<CareersLens />);
+    await waitFor(() => expect(getByText('Work a shift')).toBeInTheDocument());
+    await act(async () => { fireEvent.click(getByLabelText('Play a work shift')); });
+    await waitFor(() => expect(getByText(/exhausted/i)).toBeInTheDocument());
+    expect(addToast.mock.calls.some((c) => c[0]?.type === 'error')).toBe(true);
   });
 
   it('POPULATED (empty contracts): shows the honest "no active contracts" hint', async () => {

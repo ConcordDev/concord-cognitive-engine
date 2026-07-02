@@ -103,7 +103,7 @@ export default function RegisterPage() {
             </div>
             <span className="text-3xl font-bold text-white">Concordos</span>
           </Link>
-          <p className="text-gray-400 mt-3">Create your sovereign account</p>
+          <p className="text-gray-300 mt-3">Create your sovereign account</p>
           <div className="flex items-center justify-center gap-3 mt-4 text-xs font-semibold">
             <span className="px-2.5 py-1 rounded bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan">No ads</span>
             <span className="px-2.5 py-1 rounded bg-neon-blue/10 border border-neon-blue/20 text-neon-blue">No subscriptions</span>
@@ -180,7 +180,7 @@ export default function RegisterPage() {
                 aria-describedby="dob-hint"
                 className="w-full px-4 py-3 bg-lattice-deep border border-lattice-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-neon-blue/50 focus:ring-1 focus:ring-neon-blue/30 transition-colors [color-scheme:dark]"
               />
-              <p id="dob-hint" className="text-gray-400 text-xs mt-1">You must be 18 or older. Concordia contains mature, violent content.</p>
+              <p id="dob-hint" className="text-gray-300 text-xs mt-1">You must be 18 or older. Concordia contains mature, violent content.</p>
             </div>
 
             <div>

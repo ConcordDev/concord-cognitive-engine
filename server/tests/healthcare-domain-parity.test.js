@@ -615,7 +615,11 @@ describe("healthcare — telehealth video visits", () => {
     const created = await call("telehealth-create", ctxA, { patientId: p.id, provider: "Dr. Ng" });
     assert.equal(created.ok, true);
     assert.equal(created.result.visit.status, "scheduled");
-    assert.ok(created.result.visit.joinToken);
+    // Honesty (POLISH_AUDIT T1.3): no fabricated joinToken — the concord-webrtc
+    // path is token-free (room = webrtc:<visitId>). With no realtime layer in
+    // this harness (and no DAILY_API_KEY), video is honestly not provisioned.
+    assert.equal("joinToken" in created.result.visit, false);
+    assert.equal(created.result.visit.videoReady, false);
     const list = call("telehealth-list", ctxA, { patientId: p.id });
     assert.equal(list.result.visits.length, 1);
     const started = call("telehealth-update-status", ctxA, { id: created.result.visit.id, status: "in_progress" });

@@ -75,8 +75,12 @@ export function BrawlMatchmakingQueue() {
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      tabIndex={-1}
       className="concordia-hud-fade fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur"
       onClick={(e) => { if (e.currentTarget === e.target) setOpen(false); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
     >
       <div className="w-80 rounded-xl border border-rose-500/40 bg-zinc-950/95 p-4 shadow-2xl">
         <header className="mb-3 flex items-center justify-between border-b border-rose-500/20 pb-2">

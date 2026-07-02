@@ -7,6 +7,12 @@ import crypto from "crypto";
 import logger from '../logger.js';
 import { isEmailBanned, scanUsername as scanUsernameGuard } from "../lib/content-guard.js";
 import { deriveLockerKey, generateLockerSalt } from "../lib/personal-locker/crypto.js";
+import {
+  sendPasswordResetEmail,
+  verifyResetToken,
+  consumeResetToken,
+  getEmailServiceStatus,
+} from "../lib/email-service.js";
 
 // ── Auth rate limiters (defense-in-depth) ────────────────────────────────────
 // Two independent buckets:
@@ -839,6 +845,75 @@ export default function createAuthRouter({
     structuredLog("info", "password_changed", { userId: req.user.id });
 
     res.json({ ok: true, message: "Password changed successfully" });
+  });
+
+  // ── Password recovery: forgot → emailed token → reset ──────────────────────
+  // The token machinery lives in lib/email-service.js (1h expiry, single-use).
+  // NON-ENUMERATING by design: /forgot-password returns the IDENTICAL 200 body
+  // whether or not the email exists, so the endpoint can't be used to discover
+  // accounts. HONEST when SMTP isn't configured: `emailConfigured:false` rides
+  // the response so the UI tells the user delivery isn't set up (the service
+  // console-logs the reset link in dev) instead of pretending an email is on
+  // its way — never a fake "sent".
+  router.post("/forgot-password", authRateLimitMiddleware, async (req, res) => {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    if (!email || !email.includes("@") || email.length > 254) {
+      return res.status(400).json({ ok: false, error: "A valid email is required" });
+    }
+    // Per-mailbox limiter (reuses the per-account bucket) so one address can't
+    // be spammed with reset mail even from many IPs.
+    if (!checkAccountRateLimit(`pwreset:${email}`)) {
+      return res.status(429).json({ ok: false, error: "Too many reset requests — try again later" });
+    }
+    const generic = {
+      ok: true,
+      message: "If an account exists for that email, a reset link has been sent.",
+      emailConfigured: !!getEmailServiceStatus()?.configured,
+    };
+    try {
+      const user = AuthDB.getUserByEmail(email);
+      if (user) {
+        await sendPasswordResetEmail(user.id, email, user.username);
+        auditLog("auth", "password_reset_requested", { userId: user.id, ip: req.ip, requestId: req.id });
+      }
+    } catch (e) {
+      // Still return the generic body — a provider hiccup must not enumerate.
+      structuredLog("error", "password_reset_request_failed", { error: String(e?.message || e) });
+    }
+    return res.json(generic);
+  });
+
+  router.post("/reset-password", authRateLimitMiddleware, (req, res) => {
+    const token = String(req.body?.token || "");
+    const newPassword = String(req.body?.newPassword || "");
+    if (!token) return res.status(400).json({ ok: false, error: "Reset token required" });
+    if (newPassword.length < 12) {
+      return res.status(400).json({ ok: false, error: "New password must be at least 12 characters" });
+    }
+    const entry = verifyResetToken(token); // { valid, userId?, email? } — ALWAYS an object
+    const user = entry?.valid ? AuthDB.getUser(entry.userId) : null;
+    if (!entry?.valid || !user) {
+      // Same message for expired/unknown token and vanished user — no oracle.
+      return res.status(400).json({ ok: false, error: "Invalid or expired reset link — request a new one" });
+    }
+    if (db) {
+      db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(newPassword), user.id);
+    } else {
+      user.passwordHash = hashPassword(newPassword);
+      saveAuthData();
+    }
+    consumeResetToken(token); // single-use — a leaked link dies on first redemption
+    // Security best practice: a password reset invalidates every outstanding
+    // session (the attacker who prompted the reset may hold one).
+    try {
+      _TOKEN_BLACKLIST.revokeAllForUser(user.id);
+      for (const [family, fam] of _REFRESH_FAMILIES) {
+        if (fam.userId === user.id) _REFRESH_FAMILIES.delete(family);
+      }
+    } catch { /* revocation is defense-in-depth; the reset itself already succeeded */ }
+    auditLog("auth", "password_reset_completed", { userId: user.id, ip: req.ip, requestId: req.id });
+    structuredLog("info", "password_reset_completed", { userId: user.id });
+    return res.json({ ok: true, message: "Password reset — you can now sign in with your new password." });
   });
 
   return router;

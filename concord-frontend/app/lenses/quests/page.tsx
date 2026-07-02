@@ -141,7 +141,7 @@ export default function QuestsLensPage() {
 
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
           {state === 'loading' ? (
-            <ul className="space-y-3" aria-busy="true" aria-label="Loading quests">
+            <ul className="space-y-3" role="status" aria-busy="true" aria-label="Loading quests">
               {[0, 1, 2].map((i) => <li key={i} className="h-16 animate-pulse rounded-xl border border-amber-500/15 bg-amber-500/5" />)}
             </ul>
           ) : state === 'error' ? (

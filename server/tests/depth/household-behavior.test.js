@@ -158,7 +158,8 @@ describe("household — STATE-backed CRUD round-trips + math", () => {
       params: { description: "Free", amount: 0, paidBy: "Alice", splitAmong: ["Alice", "Bob"] },
     }, ctx);
     assert.equal(r.result.ok, false);
-    assert.match(String(r.result.error), /amount must be > 0/i);
+    // Current contract fails closed on non-finite too: "amount must be a finite number > 0".
+    assert.match(String(r.result.error), /amount must be a finite number > 0/i);
   });
 
   it("expense-balances: nets a 90/3 split into a single settle-up transfer", async () => {

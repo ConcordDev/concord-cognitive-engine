@@ -80,15 +80,23 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
         </div>
       )}
       {projectId && (
-        <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between text-xs text-gray-400">
-          <span>Publish as adaptive music for Concordia regions</span>
+        <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between gap-2 text-xs text-gray-400">
+          <div className="min-w-0">
+            <span>Publish as adaptive music for Concordia regions</span>
+            {/* Honest disclosure: the reference audio is a generated placeholder tone,
+                not the project mix — see bouncePlaceholder() above. */}
+            <div className="text-[10px] text-gray-500">
+              Publishes with a generated reference tone — in-browser mix rendering coming soon.
+            </div>
+          </div>
           <button
             onClick={async () => {
               const buf = await bouncePlaceholder();
               setBouncedBuffer(buf);
               setPublishOpen(true);
             }}
-            className="px-2 py-1 text-xs rounded bg-violet-600/30 border border-violet-500/40 text-violet-100 hover:bg-violet-500/40 inline-flex items-center gap-1"
+            title="The reference audio attached to this publish is a generated placeholder tone (4s, 220Hz), not your project mix. In-browser mix rendering is coming soon."
+            className="px-2 py-1 text-xs rounded bg-violet-600/30 border border-violet-500/40 text-violet-100 hover:bg-violet-500/40 inline-flex items-center gap-1 shrink-0"
           >
             <Upload className="w-3 h-3" /> Publish
           </button>
