@@ -215,6 +215,7 @@ export default function CodexLensPage() {
                   const isBookmarked = bookmarkByLoreId.has(e.id);
                   return (
                     <article key={e.id}
+                      className="transition-colors hover:border-violet-500/40"
                       style={{ padding: '10px 14px', borderRadius: 10, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
                         <button
@@ -229,6 +230,7 @@ export default function CodexLensPage() {
                           aria-pressed={isBookmarked}
                           onClick={() => toggleBookmark(e)}
                           title={isBookmarked ? 'Bookmarked' : 'Bookmark'}
+                          className="transition-colors"
                           style={{ background: 'none', border: 'none', color: isBookmarked ? '#cbb4ff' : COLORS.fg, opacity: isBookmarked ? 1 : 0.45, cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>
                           {isBookmarked ? '★' : '☆'}
                         </button>
