@@ -50,16 +50,36 @@ export function scoreDreamCandidate(candidate) {
 }
 
 /**
- * Promote a single dream-produced DTU to the marketplace if it clears the
- * repair-brain floor and the score threshold.
+ * Kind-agnostic promote/list seam. Any "X-as-DTU" promotion pipeline (dream
+ * cycle today; future candidates — recipes, quotes, whatever) can reuse this
+ * without duplicating the repair-brain gate + listing-shape boilerplate.
  *
- * @returns {Promise<{ promoted: boolean, listingId?: string, score?: number, repair?: object, reason?: string }>}
+ * Kind-specific behavior is supplied via `opts`:
+ *   - scoreFn(candidate)          -> number 0..100 (defaults to scoreDreamCandidate
+ *                                     for back-compat with the dream caller)
+ *   - scoreFloor                  -> minimum score to promote (default 50)
+ *   - repairFloor                 -> minimum repair-brain score (default DREAM_PROMOTION_FLOOR)
+ *   - sellerLabel                 -> string written to listing.sellerId (default "system_dream_cycle")
+ *   - idPrefix                    -> string prefix for the generated listing id (default "dream-listing")
+ *   - promotionSource             -> string written to listing.promotionSource (default "dream_cycle")
+ *   - dtuType                     -> optional string written to listing.dtuType (metadata only; undefined by default)
+ *   - licenseTerms                -> optional metadata object copied onto the listing verbatim (default undefined)
+ *   - userPrice                   -> optional caller-supplied price; when omitted, listing.price stays 0
+ *                                     (byte-identical to the pre-refactor dream behavior)
+ *   - listingDefaults             -> optional object of extra fields shallow-merged onto the listing
+ *
+ * This function does NOT call into server/economy/* — price/licenseTerms are
+ * metadata on the listing row only. Royalty distribution remains whatever it
+ * already was (the citation cascade, unchanged, out of scope for this seam).
+ *
+ * @returns {Promise<{ promoted: boolean, listingId?: string, score?: number, repair?: object, reason?: string, listing?: object }>}
  */
-export async function promoteDreamDTU(STATE, candidate, opts = {}) {
+export async function promoteCandidateAsDTU(STATE, candidate, opts = {}) {
   const dtu = STATE?.dtus?.get?.(candidate.dtuId);
   if (!dtu) return { promoted: false, reason: "dtu_not_found" };
 
-  const promotionScore = scoreDreamCandidate(candidate);
+  const scoreFn = opts.scoreFn ?? scoreDreamCandidate;
+  const promotionScore = scoreFn(candidate);
   if (promotionScore < (opts.scoreFloor ?? 50)) {
     return { promoted: false, score: promotionScore, reason: "score_below_floor" };
   }
@@ -70,23 +90,28 @@ export async function promoteDreamDTU(STATE, candidate, opts = {}) {
     tags: dtu.meta?.tags || [],
     content: dtu.content,
   });
-  if (repair?.score !== null && repair?.score < DREAM_PROMOTION_FLOOR) {
+  const repairFloor = opts.repairFloor ?? DREAM_PROMOTION_FLOOR;
+  if (repair?.score !== null && repair?.score < repairFloor) {
     return { promoted: false, score: promotionScore, repair, reason: "repair_below_floor" };
   }
 
-  // Generate listing id locally (dream-produced listings carry "dream:" prefix
-  // so creator dashboards can surface them as algorithmically promoted).
-  const listingId = `dream-listing-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const idPrefix = opts.idPrefix ?? "dream-listing";
+  const sellerLabel = opts.sellerLabel ?? "system_dream_cycle";
+  const promotionSource = opts.promotionSource ?? "dream_cycle";
+
+  // Generate listing id locally (promoted listings carry a kind-specific
+  // prefix so creator dashboards can surface them as algorithmically promoted).
+  const listingId = `${idPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const listing = {
     id: listingId,
     sourceDtuId: candidate.dtuId,
-    sellerId: "system_dream_cycle",
+    sellerId: sellerLabel,
     scope: "marketplace",
     title: dtu.title,
     domain: dtu.domain,
     description: dtu.human?.summary || "",
     artifact: dtu.artifact ? { ...dtu.artifact } : null,
-    price: 0, // Dream-promoted DTUs are free; royalties cascade via citations.
+    price: opts.userPrice ?? 0, // Free unless the caller supplies a price; royalties cascade via citations.
     currency: "concord_coin",
     listedAt: new Date().toISOString(),
     downloads: 0,
@@ -95,14 +120,37 @@ export async function promoteDreamDTU(STATE, candidate, opts = {}) {
     repairScore: repair?.score ?? null,
     repairFlags: repair?.flags ?? [],
     promotionScore,
-    promotionSource: "dream_cycle",
+    promotionSource,
     consolidatedFrom: candidate.consolidatedFrom ?? [],
+    ...(opts.dtuType !== undefined ? { dtuType: opts.dtuType } : {}),
+    ...(opts.licenseTerms !== undefined ? { licenseTerms: opts.licenseTerms } : {}),
+    ...(opts.listingDefaults || {}),
   };
 
   if (!STATE.marketplaceListings) STATE.marketplaceListings = new Map();
   STATE.marketplaceListings.set(listing.id, listing);
 
   return { promoted: true, listingId, score: promotionScore, repair, listing };
+}
+
+/**
+ * Promote a single dream-produced DTU to the marketplace if it clears the
+ * repair-brain floor and the score threshold.
+ *
+ * Thin wrapper over `promoteCandidateAsDTU` with dream-specific opts baked
+ * in — behaves exactly as before for any existing caller.
+ *
+ * @returns {Promise<{ promoted: boolean, listingId?: string, score?: number, repair?: object, reason?: string }>}
+ */
+export async function promoteDreamDTU(STATE, candidate, opts = {}) {
+  return promoteCandidateAsDTU(STATE, candidate, {
+    scoreFn: scoreDreamCandidate,
+    scoreFloor: opts.scoreFloor ?? 50,
+    repairFloor: DREAM_PROMOTION_FLOOR,
+    sellerLabel: "system_dream_cycle",
+    idPrefix: "dream-listing",
+    promotionSource: "dream_cycle",
+  });
 }
 
 /**
