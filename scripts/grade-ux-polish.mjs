@@ -34,7 +34,16 @@ const COMPONENTS_DIR = path.join(FRONTEND, 'components');
 // ---- 1. Signal regexes ----
 
 // Loading: explicit loader UI shown while async data is pending.
-const LOADING_RE = /<(Loader2|Loading|Spinner|Skeleton|LoadingTransitions|CircularProgress)\b|isLoading|\bloading\b\s*[?&]|status\s*===\s*['"]loading['"]/;
+// Broadened (2026-07-02, user-authorized correctness fix) to recognize the
+// codebase's namespaced-enum idiom for load state — `mineState === 'loading'`,
+// `frameStatus === 'loading'`, `loadState === 'loading'` — in addition to the
+// literal `status`/`isLoading` tokens. Several lenses (housing/quests/
+// training-room/narrative-walk) render REAL loading UI via a `\w*(State|Status)`
+// enum the old `status`-exact regex could not see, so they scored a false
+// hasLoading:false. `\w*(?:[Ss]tate|[Ss]tatus)` matches the enum var generically;
+// `aria-busy` is also a genuine loading signal. Pinned bidirectionally by
+// tests/grade-ux-polish-idiom.test.mjs.
+const LOADING_RE = /<(Loader2|Loading|Spinner|Skeleton|LoadingTransitions|CircularProgress)\b|isLoading|\bloading\b\s*[?&]|\w*(?:[Ss]tate|[Ss]tatus)\s*===\s*['"]loading['"]|\baria-busy\s*=/;
 
 // Empty state: rendered helpful UI for "no data" not just blank.
 const EMPTY_STATE_RE = /<EmptyState\b|<EmptyStateCTA\b|EmptyStateCTA|'No\s|"No\s+\w|length\s*===\s*0|!\w+\?\.length|items\.length\s*===\s*0/;
@@ -46,7 +55,13 @@ const EMPTY_STATE_RE = /<EmptyState\b|<EmptyStateCTA\b|EmptyStateCTA|'No\s|"No\s
 // callbacks, and `addToast({type:'error',...})` calls. Without
 // these the audit was reporting 56% error coverage when the real
 // number is ~95% — the gap was detector miss, not impl miss.
-const ERROR_UI_RE = /<(?:ErrorBoundary|LensErrorBoundary|OperatorErrorBanner|ErrorState|ErrorBanner|ErrorMessage|ErrorAlert|ErrorDisplay|ErrorView)\b|setError\s*\(|if\s*\(\s*error\s*\)|error\s*&&\s*<|\bisError\b|\bonError\s*[:(]|addToast\s*\(\s*\{[^}]*type\s*:\s*['"]error['"]|toast\.error\s*\(|notify\.error\s*\(/;
+// Broadened (2026-07-02, user-authorized correctness fix) to also recognize
+// `role="alert"` (the WCAG-canonical error surface the lenses actually use),
+// the namespaced-enum idiom `\w*(State|Status) === 'error'`, and namespaced
+// setters like `setMineError(`/`setListError(`. Same false-negative class the
+// LOADING_RE fix addresses. Pinned bidirectionally by
+// tests/grade-ux-polish-idiom.test.mjs.
+const ERROR_UI_RE = /<(?:ErrorBoundary|LensErrorBoundary|OperatorErrorBanner|ErrorState|ErrorBanner|ErrorMessage|ErrorAlert|ErrorDisplay|ErrorView)\b|\bset\w*Error\s*\(|if\s*\(\s*error\s*\)|error\s*&&\s*<|\bisError\b|\bonError\s*[:(]|addToast\s*\(\s*\{[^}]*type\s*:\s*['"]error['"]|toast\.error\s*\(|notify\.error\s*\(|role\s*=\s*["']alert["']|\w*(?:[Ss]tate|[Ss]tatus)\s*===\s*['"]error['"]/;
 
 // Accessibility: ARIA + alt + role attrs.
 const ARIA_ATTR_RE = /\baria-(label|labelledby|describedby|hidden|expanded|live|controls|disabled|pressed|selected|current|checked|invalid|busy|haspopup|atomic|relevant)=/;

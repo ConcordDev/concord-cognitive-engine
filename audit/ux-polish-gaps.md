@@ -1,6 +1,6 @@
 # UX Polish Audit
 
-Generated: 2026-07-02T11:08:12.746Z
+Generated: 2026-07-02T13:04:32.990Z
 
 Lenses scanned: 260
 
@@ -10,18 +10,18 @@ Lenses scanned: 260
 | Tier | Count | % | Weight |
 |---|---:|---:|---:|
 | raw | 0 | 0.0% | 0.2 |
-| functional | 4 | 1.5% | 0.6 |
-| polished | 256 | 98.5% | 1 |
+| functional | 0 | 0.0% | 0.6 |
+| polished | 260 | 100.0% | 1 |
 
-**Weighted UX polish score: 0.994** (1.0 = all polished)
+**Weighted UX polish score: 1** (1.0 = all polished)
 
 ## Signal coverage (% of lenses)
 
 | Signal | Lenses with it | % |
 |---|---:|---:|
-| loading | 255 | 98.1% |
+| loading | 260 | 100.0% |
 | emptyState | 259 | 99.6% |
-| errorUI | 248 | 95.4% |
+| errorUI | 260 | 100.0% |
 | aria | 258 | 99.2% |
 | keyboardHandlers | 172 | 66.2% |
 | nativeButtons | 260 | 100.0% |
@@ -45,10 +45,6 @@ Sorted by smallest gap first. Items with anti-patterns surface first within each
 
 | Lens | Pillars | Missing | Anti-patterns |
 |---|---:|---|---:|
-| `housing` | 3/5 | loading, error | 0 |
-| `narrative-walk` | 3/5 | loading, error | 0 |
-| `quests` | 3/5 | loading, error | 0 |
-| `training-room` | 3/5 | loading, error | 0 |
 
 ## What this audit does NOT measure
 
