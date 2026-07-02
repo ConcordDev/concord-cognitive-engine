@@ -71,10 +71,12 @@ export function restoreWorld(db, envelope) {
     for (const [t, rows] of Object.entries(tables)) {
       if (!tableExists(db, t) || !hasWorldId(db, t)) continue;
       db.prepare(`DELETE FROM ${t} WHERE world_id = ?`).run(worldId);
+      if (!rows.length) continue;
+      const cols = Object.keys(rows[0]);
+      const ph = cols.map(() => "?").join(",");
+      const insert = db.prepare(`INSERT INTO ${t} (${cols.map((c) => `"${c}"`).join(",")}) VALUES (${ph})`);
       for (const row of rows) {
-        const cols = Object.keys(row);
-        const ph = cols.map(() => "?").join(",");
-        db.prepare(`INSERT INTO ${t} (${cols.map((c) => `"${c}"`).join(",")}) VALUES (${ph})`).run(...cols.map((c) => row[c]));
+        insert.run(...cols.map((c) => row[c]));
         restored++;
       }
     }

@@ -120,11 +120,21 @@ function _processSchemeBetrayals(db, worldId, opts) {
       LIMIT 100
     `).all(cutoff, worldId);
 
+    let opinionByPair = new Map();
+    if (rows.length) {
+      const actorIds = [...new Set(rows.map((r) => r.actor_npc_id))];
+      const targetIds = [...new Set(rows.map((r) => r.target_npc_id))];
+      const actorPh = actorIds.map(() => "?").join(",");
+      const targetPh = targetIds.map(() => "?").join(",");
+      const opinionRows = db.prepare(`
+        SELECT npc_id, target_id, score FROM character_opinions
+        WHERE target_kind = 'npc' AND npc_id IN (${actorPh}) AND target_id IN (${targetPh})
+      `).all(...actorIds, ...targetIds);
+      opinionByPair = new Map(opinionRows.map((o) => [`${o.npc_id}:${o.target_id}`, o]));
+    }
+
     for (const row of rows) {
-      const op = db.prepare(`
-        SELECT score FROM character_opinions
-        WHERE npc_id = ? AND target_kind = 'npc' AND target_id = ?
-      `).get(row.actor_npc_id, row.target_npc_id);
+      const op = opinionByPair.get(`${row.actor_npc_id}:${row.target_npc_id}`);
 
       if (op && op.score < -50) {
         const r = formRelationship(
