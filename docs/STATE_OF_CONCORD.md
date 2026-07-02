@@ -49,21 +49,32 @@ depth (destinations built deep by composition; the novel primitives in §5) is a
 **different axis the grader doesn't measure.** Cite 0.687 for "how much is
 behaviorally tested," cite 1.0 / the novelty inventory for "is it real + deep."
 
-## 4. Code health (reproduce: `cd server && node scripts/run-detectors.js`)
+## 4. Code health (reproduce: `cd server && node scripts/run-detectors.js`; ratchet `… --diff --ci`)
 
-- **980 findings** total (2 critical → **1 fixed this pass**, 73 high, 850 medium,
-  21 low) — **under** the ~1,131 baseline floor.
-- **Fixed (2026-06-09):** a real `cmd_injection` critical — `execSync()` with
-  interpolated `CONCORD_WORKER_CORES` in `workers/cognitive-worker.js` → switched to
-  `execFileSync` (no shell) + format-validated. Security consumer now **0 critical**.
-- **Remaining high (perf backlog, not security):** 73 — `perf_sync_fs_in_handler`
-  (sync fs in async paths: art/studio/whiteboard) + `perf_uncaught_sql_loop` (N+1:
-  dreams/nemesis/royalty-cascade/concordia-cycles/mount-behavior). Track + fix
-  incrementally; none are correctness or security.
-- **Clean:** 0 secret leaks (7,286 files scanned) · 0 DTU-lineage issues · 0 orphan
-  modules · 0 dormant modules · 0 decorative-state lens issues.
-- 1 remaining "critical" renders as `undefined/undefined` under invariant-guardian —
-  a detector-output bug to triage (not a confirmed code defect).
+> **Code-health re-verified 2026-07-02.** The 2026-06-09 "73 high perf backlog" that
+> stood here is **CLOSED** — a fresh run reports **0 high**. That 73 predated the
+> 2026-06-29 baseline refresh; don't cite it.
+
+- **0 critical · 0 high.** The committed baseline (`audit/detectors/BASELINE.json`,
+  v1, 2026-06-29, 30 detectors) totals `{critical:0, high:0, medium:27, low:15,
+  info:176} = 218`; `BUDGET.json` (v10, maxTotal 225) states plainly "0 critical /
+  0 high," and the info bulk is runtime macro-usage telemetry (148), not defects. A
+  fresh `--diff --ci` run (2026-07-02) **PASSES** — 0 new high/critical.
+- **The perf backlog is closed, and its named sites were largely false-positives.**
+  art/studio/whiteboard carry only module-scope `fs.existsSync` (runs once at boot —
+  the detector explicitly exempts sync-fs outside a handler body); `dream-engine.js`
+  uses the correct `.all()`-then-iterate (one query, not an N+1). The 2026-06-09
+  `cmd_injection` critical fix (`workers/cognitive-worker.js` `execSync`→`execFileSync`
+  + format-validated) still holds → **0 critical**.
+- **Genuine residual (all medium, tracked — none high, none corrupt data):** one real
+  query-in-loop `emergent/nemesis-cycle.js:123-127` + one `db_prepare_in_loop`; **2
+  medium `command-injection`** (e.g. `scripts/autoloop/lib.mjs:21`, dev-script scope —
+  the real security-relevant signal); `env-config-drift` hardcoded connector URLs
+  (Notion); `listener_without_remove`; `route_empty_render`.
+- **Clean:** 0 secret leaks · 0 DTU-lineage issues · 0 orphan modules · 0 dormant
+  modules · 0 decorative-state lens issues.
+- The prior "980 findings / 1,131 floor" line was the 2026-06-09 pre-refresh snapshot
+  (info-heavy). Trust the committed baseline + the ratchet, not that number.
 
 ## 5. What's genuinely novel
 
