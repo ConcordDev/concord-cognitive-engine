@@ -4,10 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## 🟢 ACTIVE CONTINUATION — read `docs/CONKAY_HONEST_HOLOGRAM_PLAN.md` first
+## 🟢 ACTIVE CONTINUATION — read `docs/NEXT_ARC_PLAN.md` first
 
-There is an **in-progress initiative** with a live handoff. Before starting work, open
-**`docs/CONKAY_HONEST_HOLOGRAM_PLAN.md`** (the "🟢 HANDOFF — start here" block at the top).
+The v1 release arc is merged (PR #841, 2026-07-02). The live arc is now
+**`docs/NEXT_ARC_PLAN.md`** (the "🟢 HANDOFF — start here" block at the top): Wave 1 =
+**ConKay JARVIS flagship** (spatial FUI cockpit, honest stage-beats, artifact→interactive-3D)
++ **shared primitives** (provenance-stamped ingest, X-as-DTU listing, lattice-fork object,
+governance design doc), with the audited 45-idea backlog behind it. The ConKay design detail
+still lives in `docs/CONKAY_HONEST_HOLOGRAM_PLAN.md` (Track-B design source; note its Phase-2
+`@react-three/postprocessing` blocker is STALE — the dependency is installed now).
 
 - **Honest depth floor:** **0.688** (`node scripts/grade-macro-depth.mjs --honest`), climbing toward the ~0.73 ceiling. Read this number precisely: **100% of macros carry shape/smoke coverage** (the CI harness derives a case per macro) and **~70% of the non-`utility` macros stand on a real behavioral test**; 0.688 is a *weighted* score that taxes correctly-small utility code at 0.6 by design — it is NOT "31% untested."
 - **Strategic companion:** `docs/SCIFI_FEASIBILITY_MAP.md` — code-grounded audit (2026-06-08). It corrected two load-bearing facts: engineering **CAS + beam-frame FEA are a real STRENGTH**, and external **connectors were scaffold** (only MCP + OAuth-signin were real → was **Track C**). **Update 2026-06-09: Track C done — Gmail + Google Calendar are now real two-way** (send/push + read/inbox/pull on the SSRF-guarded `connectorFetch` chokepoint, encrypted per-user tokens, polished GmailSection inbox client; live use needs only a Google OAuth client — `docs/CONNECTORS_GO_LIVE.md`). Slack/Sheets/GitHub/Notion are the next thin adds.
