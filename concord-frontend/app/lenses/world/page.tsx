@@ -38,6 +38,13 @@ import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
+import { connectionLabel, connectionDotClass } from '@/lib/realtime/connection-status';
+import {
+  deriveWorldDataState,
+  initialWorldFetchOutcomes,
+  type WorldFetchOutcome,
+  type WorldDataSource,
+} from '@/lib/world-lens/world-data-state';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { coerceMaterial } from '@/lib/world-lens/building-silhouette';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
@@ -1179,7 +1186,7 @@ interface StreamEvent {
 // ── City Streaming Section ─────────────────────────────────────
 
 function CityStreamingSection() {
-  const { on, off, isConnected } = useSocket({ autoConnect: true });
+  const { on, off, isConnected, status: connStatus } = useSocket({ autoConnect: true });
 
   // Creator controls
   const [myStream, setMyStream] = useState<CityStream | null>(null);
@@ -1361,12 +1368,13 @@ function CityStreamingSection() {
       {/* Phase 1: globally-listening skill evolution modal */}
       <EvolutionModal />
 
-      {/* Connection status */}
-      <div className="flex items-center gap-2 text-xs text-gray-400">
+      {/* Connection status — honest terminal 'Offline' once the socket.io
+          manager exhausts its reconnection attempts (never eternal "Connecting…"). */}
+      <div className="flex items-center gap-2 text-xs text-gray-400" role="status" aria-live="polite">
         <div
-          className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}
+          className={`w-1.5 h-1.5 rounded-full ${connectionDotClass(connStatus)}`}
         />
-        {isConnected ? 'Live connection' : 'Connecting...'}
+        {connectionLabel(connStatus)}
       </div>
 
       {/* ── Creator Controls ──────────────────────────────── */}
@@ -1925,6 +1933,29 @@ export default function WorldLensPage() {
   // only when WebGL is unavailable (see webglAvailable + the effect below).
   const [viewMode, setViewMode] = useState<ViewMode>('explore');
   const [activeDistrict, setActiveDistrict] = useState<District>(DEMO_DISTRICT);
+
+  // ── World-data honesty (W4) ────────────────────────────────────────────────
+  // The scene boots on DEMO_DISTRICT seed geometry; the player must never
+  // mistake that for live world state. Each live world fetch reports its
+  // outcome here and the derived state drives a non-blocking overlay.
+  // See lib/world-lens/world-data-state.ts.
+  const [worldFetchOutcomes, setWorldFetchOutcomes] = useState<
+    Record<WorldDataSource, WorldFetchOutcome>
+  >(initialWorldFetchOutcomes);
+  const markWorldFetch = useCallback(
+    (source: WorldDataSource, outcome: WorldFetchOutcome) => {
+      setWorldFetchOutcomes((prev) =>
+        prev[source] === outcome ? prev : { ...prev, [source]: outcome }
+      );
+    },
+    []
+  );
+  // Reset to all-pending whenever the world changes so the overlay honestly
+  // re-reports loading for the new world's fetches.
+  useEffect(() => {
+    setWorldFetchOutcomes(initialWorldFetchOutcomes());
+  }, [activeDistrict.id]);
+  const worldDataState = deriveWorldDataState(worldFetchOutcomes);
   const [creationMode, setCreationMode] = useState<CreationMode | null>(null);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState<0 | 1 | 2 | 3>(0);
@@ -2462,11 +2493,15 @@ export default function WorldLensPage() {
   useEffect(() => {
     const loadBags = () => {
       fetch(`/api/worlds/${activeDistrict.id}/loot-bags`)
-        .then((r) => (r.ok ? r.json() : null))
+        .then((r) => {
+          if (!r.ok) throw new Error(`loot-bags ${r.status}`);
+          return r.json();
+        })
         .then((d) => {
           if (d?.bags) setLootBags(d.bags);
+          markWorldFetch('lootBags', 'ok');
         })
-        .catch(() => {});
+        .catch(() => markWorldFetch('lootBags', 'error'));
     };
     loadBags();
     const interval = setInterval(loadBags, 8_000);
@@ -2537,25 +2572,33 @@ export default function WorldLensPage() {
   // Load all surface nodes for map dots (once per world)
   useEffect(() => {
     fetch(`/api/worlds/${activeDistrict.id}/nodes`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!r.ok) throw new Error(`nodes ${r.status}`);
+        return r.json();
+      })
       .then((d) => {
         if (d?.nodes) setResourceNodes(d.nodes);
+        markWorldFetch('nodes', 'ok');
       })
-      .catch(() => {});
+      .catch(() => markWorldFetch('nodes', 'error'));
   }, [activeDistrict.id]);
 
   // Load buildings (seed city + player-placed)
   useEffect(() => {
     fetch(`/api/worlds/${activeDistrict.id}/buildings`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!r.ok) throw new Error(`buildings ${r.status}`);
+        return r.json();
+      })
       .then((d) => {
         // Boundary transform: server [0,2000] world frame → origin-centred scene
         // frame, ONCE on the way in, so every downstream consumer (3D render,
         // terrain zones, the 2D enter-pills, the minimap, the station prompt)
         // works in one frame and lines up with the player/NPCs/terrain.
         if (d?.buildings) setWorldBuildings(d.buildings.map(worldToScene));
+        markWorldFetch('buildings', 'ok');
       })
-      .catch(() => {});
+      .catch(() => markWorldFetch('buildings', 'error'));
   }, [activeDistrict.id]);
 
   // Sync active district to SoundscapeEngine ambient audio via window event
@@ -2652,8 +2695,12 @@ export default function WorldLensPage() {
   useEffect(() => {
     const loadNPCs = () => {
       fetch(`/api/worlds/${activeDistrict.id}/npcs`)
-        .then((r) => (r.ok ? r.json() : null))
+        .then((r) => {
+          if (!r.ok) throw new Error(`npcs ${r.status}`);
+          return r.json();
+        })
         .then((d) => {
+          markWorldFetch('npcs', 'ok');
           if (!d?.npcs) return;
           // Store both avatar-mapped and raw NPC data
           setWorldNPCs(d.npcs.map(_mapNPCToAvatarData));
@@ -2684,7 +2731,7 @@ export default function WorldLensPage() {
             })
           );
         })
-        .catch(() => {});
+        .catch(() => markWorldFetch('npcs', 'error'));
     };
     loadNPCs();
     const interval = setInterval(loadNPCs, 10_000);
@@ -4350,7 +4397,31 @@ export default function WorldLensPage() {
           }
           data-fullscreen={isFullscreen ? 'true' : undefined}
           data-pointer-locked={isPointerLocked ? 'true' : undefined}
+          data-world-data-state={worldDataState}
         >
+          {/* World-data honesty overlay (W4): the scene boots on DEMO_DISTRICT
+              seed geometry — never let the player mistake it for live state.
+              Non-blocking (pointer-events-none), auto-clears once any real
+              world fetch resolves. */}
+          {worldDataState !== 'live' && (
+            <div
+              className="absolute top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none"
+              role="status"
+              aria-live="polite"
+            >
+              {worldDataState === 'loading' ? (
+                <div className="flex items-center gap-2 bg-black/70 border border-white/10 rounded-full px-4 py-1.5 text-xs text-white/80 backdrop-blur">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Entering Concordia…
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-amber-950/80 border border-amber-500/40 rounded-full px-4 py-1.5 text-xs text-amber-200 backdrop-blur">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  World data unavailable — showing local preview
+                </div>
+              )}
+            </div>
+          )}
           {/* Fullscreen + pointer-lock toggle. Mounted absolute so it
               floats above the canvas in either windowed or fullscreen
               mode. Skyrim-shape immersion: F to toggle full, P to
