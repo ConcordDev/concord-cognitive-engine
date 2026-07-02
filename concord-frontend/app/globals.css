@@ -7,15 +7,14 @@
    Apple meets a living system. Clean surfaces, organic warmth.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Typography — Display: Satoshi, Body: DM Sans, Mono: JetBrains Mono */
-@import url('https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&f[]=general-sans@600,500,400&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Typography — DM Sans (display + body) + JetBrains Mono (code), self-hosted
+   via next/font (see app/layout.tsx). No render-blocking @import here. */
 
 :root {
-  /* ── Typography ── */
-  --font-display: 'Satoshi', 'General Sans', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* ── Typography — resolve to the next/font CSS variables ── */
+  --font-display: var(--font-dm-sans), 'system-ui', sans-serif;
+  --font-body: var(--font-dm-sans), 'system-ui', sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'JetBrains Mono', monospace;
 
   /* ── Backgrounds — layered, not flat ── */
   --bg-base: #0C0C0E;

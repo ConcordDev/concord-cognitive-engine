@@ -44,8 +44,8 @@ module.exports = {
         },
       },
       fontFamily: {
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-jetbrains-mono)', 'JetBrains Mono', 'Fira Code', 'monospace'],
+        sans: ['var(--font-dm-sans)', 'system-ui', 'sans-serif'],
       },
       animation: {
         'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
