@@ -47,9 +47,12 @@ describe('ConKayCockpit grid host', () => {
     expect(screen.getByText('42 ms')).toBeInTheDocument();
   });
 
-  it('an unregistered panel id (standing in for a not-yet-built F4/F5/F7 panel) renders nothing, not a crash', () => {
+  it('an unregistered panel id (standing in for a not-yet-built F5/F7 panel) renders nothing, not a crash', () => {
+    // 'conkay.macro-library' landed (F4) and is now a real registry entry —
+    // use 'conkay.forward-sim' (still planned, per panel-registry.ts) as the
+    // unregistered stand-in instead.
     const { container } = render(
-      <ConKayCockpit leftPanelIds={['conkay.macro-library']} rightPanelIds={[]}>
+      <ConKayCockpit leftPanelIds={['conkay.forward-sim']} rightPanelIds={[]}>
         <div>transcript</div>
       </ConKayCockpit>,
     );

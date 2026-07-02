@@ -216,11 +216,21 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: 'Recent real macro:completed backend runs',
     load: lazyNamed(() => import('@/components/conkay/panels/ConKayTelemetryPanel'), 'ConKayTelemetryPanel'),
   },
-  // NOT YET REGISTERED — panel files do not exist yet, so no `load` thunk is
-  // added until the file lands (a thunk pointing at a nonexistent module would
-  // be a dead import that crashes the build the moment it's ever mounted):
-  //   'conkay.macro-library'  — planned by unit F4
-  //   'conkay.provenance'     — planned by unit F5
+  'conkay.macro-library': {
+    id: 'conkay.macro-library', label: 'Macro Library', scope: 'global',
+    keywords: ['conkay', 'macro', 'library', 'actions', 'lens-actions'],
+    description: 'Real registered macros for the active domain (live / AI-backed / compute)',
+    load: lazyNamed(() => import('@/components/conkay/panels/MacroLibraryPanel'), 'MacroLibraryPanel'),
+  },
+  'conkay.provenance': {
+    id: 'conkay.provenance', label: 'DTU Provenance', scope: 'global',
+    keywords: ['conkay', 'provenance', 'verify', 'citation', 'dtu', 'graph'],
+    description: 'The real reason.verify verdict + the DTU refs it checked',
+    load: lazyNamed(() => import('@/components/conkay/panels/ProvenancePanel'), 'ProvenancePanel'),
+  },
+  // NOT YET REGISTERED — panel file does not exist yet, so no `load` thunk is
+  // added until it lands (a thunk pointing at a nonexistent module would be a
+  // dead import that crashes the build the moment it's ever mounted):
   //   'conkay.forward-sim'    — planned by unit F7
   // ConKayCockpit's panel slots already treat an unregistered id as "render
   // nothing" (honest, not a crash), so cockpit callers can reference these ids

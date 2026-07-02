@@ -25,6 +25,9 @@ export interface GraphNode {
   group?: string;
   /** 0..1 scaling on the rendered radius. */
   weight?: number;
+  /** Marks the node as flagged/invalid (e.g. a fabricated-citation verdict) —
+   *  renders red and prominent, overriding group tinting. Never hidden. */
+  flagged?: boolean;
 }
 
 export interface GraphEdge {
@@ -32,6 +35,9 @@ export interface GraphEdge {
   target: string;
   /** "parent" / "citation" / "sibling" / etc — drives stroke style. */
   kind?: string;
+  /** Marks the edge as flagged/invalid — renders red + bold, overriding the
+   *  usual citation/plain stroke styling. Never hidden. */
+  flagged?: boolean;
 }
 
 interface GraphViewProps {
@@ -173,12 +179,18 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
       // Draw.
       ctx.clearRect(0, 0, W, H);
       // Edges first (back layer).
-      ctx.lineWidth = 0.6;
       for (const e of es) {
         const a = indexById.get(e.source);
         const b = indexById.get(e.target);
         if (!a || !b) continue;
-        ctx.strokeStyle = e.kind === 'citation' ? 'rgba(245, 158, 11, 0.35)' : 'rgba(255, 255, 255, 0.12)';
+        // Flagged (e.g. fabricated-citation) edges render red + bold — this
+        // overrides the usual citation/plain styling and is never hidden.
+        ctx.lineWidth = e.flagged ? 2 : 0.6;
+        ctx.strokeStyle = e.flagged
+          ? 'rgba(244, 63, 94, 0.9)'
+          : e.kind === 'citation'
+            ? 'rgba(245, 158, 11, 0.35)'
+            : 'rgba(255, 255, 255, 0.12)';
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
@@ -193,15 +205,17 @@ export function GraphView({ nodes, edges, onNodeClick, focusedId, className }: G
         const isHover = dx * dx + dy * dy < (r + 4) * (r + 4);
         if (isHover) hover = n;
         const isFocused = focusedId === n.id;
-        const fill = colorForGroup(n.group, '#7dd3fc');
+        // Flagged nodes render red, overriding group tinting — prominent and
+        // never hidden (e.g. a fabricated-citation verdict).
+        const fill = n.flagged ? '#f43f5e' : colorForGroup(n.group, '#7dd3fc');
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r + (isFocused ? 4 : 0) + (isHover ? 2 : 0), 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, r + (isFocused ? 4 : 0) + (isHover ? 2 : 0) + (n.flagged ? 2 : 0), 0, Math.PI * 2);
         ctx.fillStyle = fill;
         ctx.globalAlpha = isFocused ? 1 : isHover ? 0.95 : 0.85;
         ctx.fill();
-        if (isFocused) {
+        if (isFocused || n.flagged) {
           ctx.lineWidth = 2;
-          ctx.strokeStyle = '#fff';
+          ctx.strokeStyle = n.flagged ? '#fecdd3' : '#fff';
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
