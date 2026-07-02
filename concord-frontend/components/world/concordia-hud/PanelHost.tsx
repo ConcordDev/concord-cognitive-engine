@@ -151,14 +151,14 @@ export function PanelHost() {
       role="dialog"
       aria-label={label}
       onClick={(e) => { if (e.target === e.currentTarget) setActiveId(null); }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-      <div className="w-[28rem] max-w-[90vw] max-h-[80vh] bg-zinc-950 border border-zinc-700/60 rounded-lg shadow-2xl flex flex-col">
-        <header className="flex items-center justify-between px-4 py-2 border-b border-zinc-800">
-          <h2 className="text-sm font-bold text-zinc-100">{label}</h2>
+      <div className="w-[28rem] max-w-[90vw] max-h-[80vh] bg-lattice-void border border-lattice-border rounded-lg shadow-2xl flex flex-col">
+        <header className="flex items-center justify-between px-4 py-2 border-b border-lattice-border">
+          <h2 className="text-sm font-bold text-white">{label}</h2>
           <button
             type="button"
             onClick={() => setActiveId(null)}
             aria-label="Close panel"
-            className="text-xs text-zinc-400 hover:text-zinc-200"
+            className="text-xs text-gray-300 hover:text-white"
           >✕ Esc</button>
         </header>
         <div className="flex-1 overflow-auto p-3">
