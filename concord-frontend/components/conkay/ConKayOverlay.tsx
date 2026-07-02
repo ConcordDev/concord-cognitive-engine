@@ -21,7 +21,7 @@ import { ConKayMessage, type ConKayReplyFields } from './ConKayViz';
 import { useConKayVoice } from './useConKayVoice';
 import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
 import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
-import { useConkayHudStore } from './conkayHudStore';
+import { useConkayHudStore, feaResultFromRun } from './conkayHudStore';
 import { ConKayCockpit } from './ConKayCockpit';
 import { CONKAY_SIGNATURE_GREETING, type ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
@@ -397,6 +397,15 @@ export function ConKayOverlay() {
       liveRunRef.current = rid;
       const { data } = await lensRun(domain, macro, inputObj, rid);
       const ok = !!data?.ok;
+      // Forward-Sim substrate (F7): a real engineering.runFEA solve is the one
+      // completed-run payload the Forward-Sim panel embeds. This is the sole
+      // site where the REAL solver return AND its input model both exist, so
+      // mirror the reshaped result into the HUD store here (feaResultFromRun
+      // returns null unless both halves are real — no fabrication).
+      if (ok && domain === 'engineering' && macro === 'runFEA') {
+        const fea = feaResultFromRun(inputObj, data?.result);
+        if (fea) useConkayHudStore.getState().setLastFea(fea);
+      }
       const resultStr = data?.result != null ? JSON.stringify(data.result, null, 2) : (ok ? '(done)' : (data?.error || 'no result'));
       const spoken = ok ? `Done — ran ${macro} on the ${domain} lens.` : `${macro} on ${domain} returned: ${data?.error || 'an error'}.`;
       const body = resultStr.length > 1200 ? resultStr.slice(0, 1200) + '\n…' : resultStr;

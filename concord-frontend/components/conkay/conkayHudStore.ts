@@ -37,6 +37,21 @@
 // exact `{id, title, tier}` shape ConKay skills already attach to messages
 // as `dtuRefs` (see `conkay-skills.ts#ConKaySkillResult`) — not re-invented.
 
+// Unit F7 extension — `lastFea` (substrate for the K3 Forward-Sim panel): a
+// third narrow single-writer exception, same spirit as F2's. A completed FEA
+// solve's full result (displacements / utilization / stresses) does NOT flow
+// over the macro:* socket events either — `macro:completed` carries only
+// {domain, action, ok, ms}. The real payload comes back ONLY on the direct
+// `lensRun('engineering','runFEA',...)` return inside ConKayOverlay's
+// `executeMacro`, which is ALSO the one place the run's INPUT model (nodes +
+// members) still exists. So `setLastFea` is called ONLY from there, right where
+// both halves are in hand — never a new arbitrary write site. `feaResultFromRun`
+// (exported below, pinned by a test) does the pure, deterministic reshape of
+// {input model} + {real solver return} into the exact shape FEAResultViewer's
+// props want; it returns null unless BOTH halves are real, so a partial or
+// failed run can never produce a half-real preview. No fabrication — the panel
+// renders the solver's own numbers or nothing.
+
 import { create } from 'zustand';
 
 export interface ConkayTelemetry {
@@ -87,6 +102,21 @@ export interface ConkayDtuRef {
   tier: string | null;
 }
 
+/** A completed FEA solve reshaped for the Forward-Sim panel's FEAResultViewer
+ *  embed — structurally the exact shape that component's props expect
+ *  (`FEANode` / `FEAMember` / `FEADisplacement`). Every value here is real
+ *  solver output (see `feaResultFromRun`), never fabricated. */
+export interface ConkayFeaResult {
+  /** Structural geometry, straight from the run's input model. */
+  nodes: { id: string; x: number; y: number; z: number }[];
+  /** Input connectivity merged with the solver's real utilization + stress. */
+  members: { id: string; nodeI: string; nodeJ: string; utilization: number; stress: number }[];
+  /** Per-node deflection, straight from the solver return (1:1 shape). */
+  displacements: { nodeId: string; dx: number; dy: number; dz: number }[];
+  /** The solver's own summary (maxUtilization / allPass / …), or null. */
+  summary: Record<string, unknown> | null;
+}
+
 interface ConkayHudState {
   /** Count of ConKay macro runs the backend currently reports in flight. */
   inFlight: number;
@@ -111,6 +141,11 @@ interface ConkayHudState {
   /** The DTU refs the most recent verify call checked the claim against — the
    *  real refs a message already carries, mirrored here for the cockpit. */
   runDtuRefs: ConkayDtuRef[];
+  /** The most recent completed `engineering.runFEA` result, reshaped for the
+   *  Forward-Sim panel's FEAResultViewer embed, or null until one lands. Set
+   *  ONLY from ConKayOverlay's `executeMacro` (see header — the one site where
+   *  the real return + its input model both exist). */
+  lastFea: ConkayFeaResult | null;
 
   // ── single-writer adapter actions (CALL ONLY FROM the macro:* socket adapter) ──
   /** A real `macro:started` arrived for one of ConKay's runs. */
@@ -129,6 +164,9 @@ interface ConkayHudState {
   setLastVerify: (v: ConkayVerifyVerdict | null) => void;
   /** The real DTU refs the live verify call was checked against. */
   setRunDtuRefs: (refs: ConkayDtuRef[]) => void;
+  /** The real FEA solve just returned by `engineering.runFEA` (or null to
+   *  clear). Called ONLY from ConKayOverlay's `executeMacro`. */
+  setLastFea: (r: ConkayFeaResult | null) => void;
 }
 
 const labelOf = (d: { domain?: string; action?: string }) =>
@@ -147,6 +185,7 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
   _runIds: new Set<string>(),
   lastVerify: null,
   runDtuRefs: [],
+  lastFea: null,
 
   macroStarted: (d) =>
     set((s) => {
@@ -212,8 +251,71 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
       _runIds: new Set<string>(),
       lastVerify: null,
       runDtuRefs: [],
+      lastFea: null,
     })),
 
   setLastVerify: (v) => set(() => ({ lastVerify: v })),
   setRunDtuRefs: (refs) => set(() => ({ runDtuRefs: Array.isArray(refs) ? refs : [] })),
+  setLastFea: (r) => set(() => ({ lastFea: r })),
 }));
+
+// ── FEA reshape (pure, exported for pinning) ─────────────────────────────────
+// Map an `engineering.runFEA` INPUT model + its REAL return into the exact
+// FEAResultViewer prop shape. Defensive by construction: returns null unless
+// BOTH halves carry the arrays it needs, so a partial/failed run can never
+// produce a half-real preview. Mirrors the backend's own `model = data.model
+// || data` convention (server/domains/engineering.js#runFEA) and the solver's
+// row shapes (server/lib/simulation/fea-solver.js): displacements are 1:1
+// (nodeId/dx/dy/dz), member utilization + stress are joined by member id from
+// the solver's `utilization[]` and `stresses[].combinedStress`.
+
+function num(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+}
+
+function asRecordArray(v: unknown): Record<string, unknown>[] {
+  return Array.isArray(v) ? (v.filter((x) => x && typeof x === 'object') as Record<string, unknown>[]) : [];
+}
+
+export function feaResultFromRun(input: unknown, result: unknown): ConkayFeaResult | null {
+  const inObj = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
+  // Backend does `model = data.model || data` — mirror it exactly.
+  const modelRaw = (inObj.model && typeof inObj.model === 'object' ? inObj.model : inObj) as Record<string, unknown>;
+  const res = result && typeof result === 'object' ? (result as Record<string, unknown>) : {};
+
+  const inNodes = asRecordArray(modelRaw.nodes);
+  const inMembers = asRecordArray(modelRaw.members);
+  const displacements = asRecordArray(res.displacements);
+  const utilization = asRecordArray(res.utilization);
+  const stresses = asRecordArray(res.stresses);
+
+  // Both halves must be real: an input geometry AND a solver return. Otherwise
+  // there's nothing honest to preview.
+  if (inNodes.length === 0 || inMembers.length === 0 || displacements.length === 0) return null;
+
+  const utilById = new Map<string, number>();
+  for (const u of utilization) utilById.set(String(u.id), num(u.utilization));
+  const stressById = new Map<string, number>();
+  for (const s of stresses) stressById.set(String(s.id), num(s.combinedStress));
+
+  const nodes = inNodes.map((n) => ({ id: String(n.id), x: num(n.x), y: num(n.y), z: num(n.z) }));
+  const members = inMembers.map((m) => {
+    const id = String(m.id);
+    return {
+      id,
+      nodeI: String(m.nodeI),
+      nodeJ: String(m.nodeJ),
+      utilization: utilById.get(id) ?? 0,
+      stress: stressById.get(id) ?? 0,
+    };
+  });
+  const disp = displacements.map((d) => ({
+    nodeId: String(d.nodeId),
+    dx: num(d.dx),
+    dy: num(d.dy),
+    dz: num(d.dz),
+  }));
+  const summary = res.summary && typeof res.summary === 'object' ? (res.summary as Record<string, unknown>) : null;
+
+  return { nodes, members, displacements: disp, summary };
+}

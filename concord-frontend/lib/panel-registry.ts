@@ -228,13 +228,16 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: 'The real reason.verify verdict + the DTU refs it checked',
     load: lazyNamed(() => import('@/components/conkay/panels/ProvenancePanel'), 'ProvenancePanel'),
   },
-  // NOT YET REGISTERED — panel file does not exist yet, so no `load` thunk is
-  // added until it lands (a thunk pointing at a nonexistent module would be a
-  // dead import that crashes the build the moment it's ever mounted):
-  //   'conkay.forward-sim'    — planned by unit F7
-  // ConKayCockpit's panel slots already treat an unregistered id as "render
-  // nothing" (honest, not a crash), so cockpit callers can reference these ids
-  // ahead of time and the lane will simply skip them until each unit lands.
+  'conkay.forward-sim': {
+    id: 'conkay.forward-sim', label: 'Forward Sim', scope: 'global',
+    keywords: ['conkay', 'forward', 'sim', 'fea', 'simulation', 'stage', 'progress'],
+    description: 'Real FEA solve stages (assembling → solving → postprocess) + the computed preview',
+    load: lazyNamed(() => import('@/components/conkay/panels/ForwardSimPanel'), 'ForwardSimPanel'),
+  },
+  // All four planned ConKay cockpit panels (F1/F4/F5/F7) are now registered.
+  // ConKayCockpit's panel slots treat an unregistered id as "render nothing"
+  // (honest, not a crash), so cockpit callers may reference future ids ahead
+  // of time and the lane will simply skip them until each unit lands.
 };
 
 export function getPanelById(id: string): PanelEntry | undefined {
