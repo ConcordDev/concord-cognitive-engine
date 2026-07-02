@@ -16,6 +16,7 @@ import { api, apiHelpers } from '@/lib/api/client';
 import dynamic from 'next/dynamic';
 import { MyDashboard } from '@/components/home/MyDashboard';
 import { useDashboardPrefs } from '@/lib/hooks/useDashboardPrefs';
+import { PageHeader } from '@/components/common/PageHeader';
 const KnowledgeSpace3D = dynamic(
   () =>
     import('@/components/graphs/KnowledgeSpace3DCanvas').then((mod) => ({
@@ -490,37 +491,37 @@ function DashboardPage() {
   return (
     <div className="px-3 py-3 sm:p-3 lg:p-4 space-y-3 sm:space-y-3 max-w-[1600px] mx-auto">
       {/* Header */}
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white">Concordos Dashboard</h1>
-          <p className="text-gray-400 mt-1 text-sm">
-            {statusLoading ? (
-              <span className="animate-pulse">Connecting to lattice...</span>
-            ) : (
-              <>
-                {status?.version || 'v5.0'} &middot; {dtuCount.toLocaleString()} DTUs &middot;{' '}
-                {status?.llm?.enabled ? 'LLM Active' : 'Local Mode'} &middot;{' '}
-                {healthData?.status === 'ok' ? (
-                  <span className="text-neon-green">Healthy</span>
-                ) : (
-                  <span className="text-amber-400">Checking...</span>
-                )}
-              </>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <ScopeIndicator />
-          <CoherenceBadge score={events.length} />
-          <Link
-            href="/hub"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-surface border border-lattice-border hover:border-neon-cyan/50 transition-all text-sm text-gray-400 hover:text-white"
-          >
-            <Compass className="w-4 h-4" />
-            <span className="hidden sm:inline">Explore Lenses</span>
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title="Concordos Dashboard"
+        subtitle={
+          statusLoading ? (
+            <span className="animate-pulse">Connecting to lattice...</span>
+          ) : (
+            <>
+              {status?.version || 'v5.0'} &middot; {dtuCount.toLocaleString()} DTUs &middot;{' '}
+              {status?.llm?.enabled ? 'LLM Active' : 'Local Mode'} &middot;{' '}
+              {healthData?.status === 'ok' ? (
+                <span className="text-neon-green">Healthy</span>
+              ) : (
+                <span className="text-amber-400">Checking...</span>
+              )}
+            </>
+          )
+        }
+        actions={
+          <div className="flex items-center gap-3">
+            <ScopeIndicator />
+            <CoherenceBadge score={events.length} />
+            <Link
+              href="/hub"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-surface border border-lattice-border hover:border-neon-cyan/50 transition-all text-sm text-gray-400 hover:text-white"
+            >
+              <Compass className="w-4 h-4" />
+              <span className="hidden sm:inline">Explore Lenses</span>
+            </Link>
+          </div>
+        }
+      />
 
       {/* Context Resurrection — welcome-back cognitive context banner */}
       <LensErrorBoundary name="Context Resurrection">

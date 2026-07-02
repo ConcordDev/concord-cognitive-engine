@@ -26,6 +26,7 @@ import { ChartKit } from '@/components/viz/ChartKit';
 import { PresenceIndicator } from '@/components/social/PresenceIndicator';
 import { QuickPostComposer } from '@/components/social/QuickPostComposer';
 import { useDashboardPrefs, DASHBOARD_WIDGETS, type DashboardWidget } from '@/lib/hooks/useDashboardPrefs';
+import { PageHeader } from '@/components/common/PageHeader';
 
 // Resilient GET — any failure yields a safe empty value so a widget degrades to
 // its empty state instead of crashing the dashboard.
@@ -334,22 +335,22 @@ export function MyDashboard({ dash: dashProp }: { dash?: ReturnType<typeof useDa
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-5">
       {/* Header */}
-      <div className="relative mb-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">My Dashboard</h1>
-          <p className="text-[12px] text-gray-500">{greeting}{name} — here’s your corner of the universe.</p>
-        </div>
-        <div className="relative flex items-center gap-2">
-          <Link href="/lenses/world" className="hidden items-center gap-1.5 rounded-xl border border-lattice-border bg-lattice-surface px-3 py-1.5 text-[12px] text-gray-300 hover:border-neon-purple/40 sm:flex">
-            <Trophy className="h-3.5 w-3.5 text-amber-300" /> Concordia
-          </Link>
-          <button onClick={() => setCustomizing((v) => !v)}
-            className="flex items-center gap-1.5 rounded-xl border border-lattice-border bg-lattice-surface px-3 py-1.5 text-[12px] text-gray-300 hover:border-neon-purple/40">
-            <Settings2 className="h-3.5 w-3.5" /> Customize
-          </button>
-          {customizing && <Customize {...dash} onClose={() => setCustomizing(false)} />}
-        </div>
-      </div>
+      <PageHeader
+        title="My Dashboard"
+        subtitle={<>{greeting}{name} — here’s your corner of the universe.</>}
+        actions={
+          <div className="relative flex items-center gap-2">
+            <Link href="/lenses/world" className="hidden items-center gap-1.5 rounded-xl border border-lattice-border bg-lattice-surface px-3 py-1.5 text-[12px] text-gray-300 hover:border-neon-purple/40 sm:flex">
+              <Trophy className="h-3.5 w-3.5 text-amber-300" /> Concordia
+            </Link>
+            <button onClick={() => setCustomizing((v) => !v)}
+              className="flex items-center gap-1.5 rounded-xl border border-lattice-border bg-lattice-surface px-3 py-1.5 text-[12px] text-gray-300 hover:border-neon-purple/40">
+              <Settings2 className="h-3.5 w-3.5" /> Customize
+            </button>
+            {customizing && <Customize {...dash} onClose={() => setCustomizing(false)} />}
+          </div>
+        }
+      />
 
       {/* Two-zone body: main column + right comms rail */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
