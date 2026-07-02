@@ -136,7 +136,17 @@ const balanceDoc = (() => {
   catch { return ""; }
 })();
 // CONCORD_SOMETHING is the doc's how-to placeholder, not a real dial.
-const CONST_IGNORE = new Set(["CONCORD_SOMETHING"]);
+// CONCORD_CC_WEALTH_TAX_* are named in BALANCE_DIALS.md §1 as an explicitly
+// FUTURE, telemetry-triggered recommendation ("if in-world CC inflation appears
+// in telemetry, add a progressive holding tax … Recommended pre-Friday: none")
+// — a reference for a post-launch balance pass, never a shipped dial (doc-only
+// since commit 180046cf; no server code has ever read them). Remove from this
+// ignore list if/when the holding tax actually ships.
+const CONST_IGNORE = new Set([
+  "CONCORD_SOMETHING",
+  "CONCORD_CC_WEALTH_TAX_THRESHOLD",
+  "CONCORD_CC_WEALTH_TAX_RATE",
+]);
 const documentedConsts = new Set(
   Array.from(balanceDoc.matchAll(/`?(CONCORD_[A-Z0-9_]+)`?/g)).map((x) => x[1])
     .filter((c) => !CONST_IGNORE.has(c)),

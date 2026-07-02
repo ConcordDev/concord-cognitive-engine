@@ -15,37 +15,40 @@ import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
 
 describe("forestry — pure-compute calc contracts (exact computed values)", () => {
-  it("timberVolume: board feet, logs, value derived from DBH × height", async () => {
-    // bf = 0.00545415 * dbh^2 * height * 0.5
-    //   dbh 20, h 80 → 0.00545415*400*80*0.5 = 87.2664 → round 87 ; logs = floor(80/16)=5
+  it("timberVolume: species×age yield model — oak stand exact board feet + valuation", async () => {
+    // bfPerTree = round(220 × factor(oak 0.85) × (0.15 + 0.85 × (1 − e^(−age/35))))
+    //   age 35 → 1 − e^(−1) = 0.6321206 → round(187 × 0.6873025) = round(128.5256) = 129
+    // boardFeet = 129 × 100 = 12900; cubicFeet = round(12900/6) = 2150
+    // valuation = round(12.9 × 500) = 6450; mbf = 12.9
     const r = await lensRun("forestry", "timberVolume", {
-      data: { trees: [{ dbhInches: 20, heightFeet: 80, species: "oak" }], pricePerMBF: 500 },
+      data: { species: "oak", acres: 10, avgAgeYears: 35, treeCount: 100, pricePerMBF: 500 },
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.totalTrees, 1);
-    assert.equal(r.result.trees[0].boardFeet, 87);
-    assert.equal(r.result.trees[0].logs, 5);
-    assert.equal(r.result.totalBoardFeet, 87);
-    assert.equal(r.result.avgBFPerTree, 87);
-    // estimatedValue = round(87/1000 * 500) = round(43.5) = 44
-    assert.equal(r.result.estimatedValue, 44);
+    assert.equal(r.result.species, "oak");
+    assert.equal(r.result.treeCount, 100);
+    assert.equal(r.result.boardFeetPerTree, 129);
+    assert.equal(r.result.boardFeet, 12900);
+    assert.equal(r.result.cubicFeet, 2150);
+    assert.equal(r.result.valuation, 6450);
+    assert.equal(r.result.mbf, 12.9);
     assert.equal(r.result.pricePerMBF, 500);
   });
 
-  it("timberVolume: defaults applied per-tree when measurements omitted", async () => {
-    // missing dbh/height → 12 / 60 → 0.00545415*144*60*0.5 = 23.561928 → 24 ; logs floor(60/16)=3
-    const r = await lensRun("forestry", "timberVolume", { data: { trees: [{}] } });
-    assert.equal(r.result.trees[0].dbhInches, 12);
-    assert.equal(r.result.trees[0].heightFeet, 60);
-    assert.equal(r.result.trees[0].boardFeet, 24);
-    assert.equal(r.result.trees[0].logs, 3);
-    assert.equal(r.result.pricePerMBF, 400); // default
+  it("timberVolume: age-0 stand uses the 0.15 seedling floor + default price", async () => {
+    // mixed factor 1.0, age 0 → bfPerTree = round(220 × 0.15) = 33
+    const r = await lensRun("forestry", "timberVolume", { data: { acres: 1, treeCount: 10 } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.avgAgeYears, 0);
+    assert.equal(r.result.boardFeetPerTree, 33);
+    assert.equal(r.result.boardFeet, 330);
+    assert.equal(r.result.pricePerMBF, 400);   // default
+    assert.equal(r.result.valuation, 132);     // round(0.33 × 400)
   });
 
-  it("timberVolume: no trees → guidance message, ok:true", async () => {
-    const r = await lensRun("forestry", "timberVolume", { data: { trees: [] } });
+  it("timberVolume: no acres/treeCount → guidance message, ok:true", async () => {
+    const r = await lensRun("forestry", "timberVolume", { data: {} });
     assert.equal(r.ok, true);
-    assert.ok(r.result.message.includes("DBH"));
+    assert.ok(r.result.message.includes("tree count"));
   });
 
   it("fireRisk: extreme conditions saturate the score at 100", async () => {
@@ -69,12 +72,18 @@ describe("forestry — pure-compute calc contracts (exact computed values)", () 
     assert.deepEqual(r.result.actions, ["Normal operations"]);
   });
 
-  it("harvestPlan: clearcut method drives removal %, rotation, road requirement", async () => {
+  it("harvestPlan: clearcut method drives removal %, species rotation, staged schedule", async () => {
+    // species defaults to mixed → SPECIES_GROWTH.mixed rotation 65; clearcut = 1 entry;
+    // volPerAcre = round(280 × min(65,55)/55) = 280 → schedule volume 280 × 200 = 56000.
     const r = await lensRun("forestry", "harvestPlan", { data: { acreage: 200, method: "ClearCut" } });
     assert.equal(r.ok, true);
     assert.equal(r.result.removalPercent, 100);
-    assert.equal(r.result.rotationYears, 60);
+    assert.equal(r.result.rotationYears, 65);          // mixed-species rotation
     assert.equal(r.result.estimatedHarvestAcres, 200); // round(200*100/100)
+    assert.equal(r.result.schedule.length, 1);         // clearcut = single final cut
+    assert.equal(r.result.schedule[0].year, 65);       // currentAge 0 → full rotation out
+    assert.equal(r.result.schedule[0].acres, 200);
+    assert.equal(r.result.schedule[0].volume, 56000);
     assert.ok(r.result.roadRequired.startsWith("Yes"));
     assert.equal(r.result.impactLevel, "high");
   });
@@ -83,20 +92,22 @@ describe("forestry — pure-compute calc contracts (exact computed values)", () 
     const r = await lensRun("forestry", "harvestPlan", { data: { acreage: 40, method: "bogus" } });
     assert.equal(r.result.removalPercent, 30);       // selective default
     assert.equal(r.result.estimatedHarvestAcres, 12); // round(40*30/100)
+    assert.equal(r.result.schedule.length, 3);        // selective stages over 3 entries
     assert.ok(!r.result.roadRequired.startsWith("Yes")); // acreage <= 50
   });
 
   it("carbonSequestration: young stand sequesters 2.5 t/ac/yr with credit value + car equivalent", async () => {
-    // age 10 (<20 → 2.5); annual = 100*2.5 = 250 ; stored = 100*200*0.015*10 = 3000
+    // age 10 (<20 → 2.5); tonsPerYear = 100*2.5 = 250 ; lifetime = 100*200*0.015*10 = 3000
     // creditValue = round(250*25) = 6250 ; cars = round(250/4.6) = 54
     const r = await lensRun("forestry", "carbonSequestration", {
       data: { acreage: 100, standAge: 10, treesPerAcre: 200 },
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.annualSequestration, "250 tons CO2/year");
-    assert.equal(r.result.totalCarbonStored, "3000 tons CO2");
+    assert.equal(r.result.tonsPerYear, 250);
+    assert.equal(r.result.lifetimeTons, 3000);
+    assert.equal(r.result.totalCarbonStored, 3000);
     assert.equal(r.result.carbonCreditsPerYear, 250);
-    assert.equal(r.result.estimatedCreditValue, "$6250/year");
+    assert.equal(r.result.estimatedCreditValue, 6250);
     assert.equal(r.result.equivalentCars, 54);
   });
 
