@@ -170,6 +170,11 @@ export async function grantAdminData(page: Page) {
   await page.route('**/api/guidance/**', ok({ ok: true, items: [] }));
   await page.route('**/api/perf/**', ok({ ok: true, samples: [] }));
   await page.route('**/api/events**', ok({ ok: true, events: [] }));
+  // Generic lens-data (useLensData → GET /api/lens/:domain). Lens pages gate
+  // their main render on this query's isLoading; without a mock it hangs on a
+  // dead backend and the page is stuck on a spinner (e.g. /lenses/lock's
+  // historyLoading gate). Empty items resolve the query so the controls render.
+  await page.route('**/api/lens/**', ok({ ok: true, items: [] }));
 }
 
 /**
