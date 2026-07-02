@@ -88,7 +88,7 @@ describe('CivicBondsLens — domain wiring + four UX states', () => {
     expect(screen.getByText(/needs 110%/i)).toBeInTheDocument();
     // Pledge control + its labelled amount input are present.
     expect(screen.getByLabelText(/pledge amount/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^pledge$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^pledge to /i })).toBeInTheDocument();
   });
 
   it('DISABLED: shows the coming-soon note when the kill-switch reports disabled', async () => {
@@ -106,7 +106,7 @@ describe('CivicBondsLens — domain wiring + four UX states', () => {
     const input = screen.getByLabelText(/pledge amount/i) as HTMLInputElement;
     // 150 is not a multiple of the 100 denomination → guard trips.
     fireEvent.change(input, { target: { value: '150' } });
-    const pledgeBtn = screen.getByRole('button', { name: /^pledge$/i }) as HTMLButtonElement;
+    const pledgeBtn = screen.getByRole('button', { name: /^pledge to /i }) as HTMLButtonElement;
     expect(pledgeBtn).toBeDisabled();
     const callsBefore = lensRunMock.mock.calls.length;
     fireEvent.click(pledgeBtn);
