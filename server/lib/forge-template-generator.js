@@ -1489,8 +1489,15 @@ export function generateForgeApp(options = {}) {
     config = {},
     domainTables = [],
     enabledSections = null,
+    onStage = null,
   } = options;
 
+  // Honest ConKay HUD beat (K1): report the real generation phases
+  // (resolve template → compose sections) to the caller's macro:stage stream.
+  // Best-effort — a throwing hook never affects the generated code.
+  const stage = (s) => { try { onStage?.(s); } catch { /* decoration only */ } };
+
+  stage("resolving_template");
   const template = FORGE_TEMPLATES[templateId] || FORGE_TEMPLATES.blank;
   const mergedConfig = deepMerge(JSON.parse(JSON.stringify(FORGE_DEFAULT_CONFIG)), config);
 
@@ -1504,6 +1511,7 @@ export function generateForgeApp(options = {}) {
 
   const activeSections = enabledSections || template.sections;
 
+  stage("composing");
   const parts = [];
   parts.push(generateBanner(mergedConfig.appName));
 

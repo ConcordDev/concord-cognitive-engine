@@ -293,7 +293,13 @@ export function checkUtilization(stresses, members) {
 // ── Top-level FEA ─────────────────────────────────────────────────────────────
 
 export function runFEA(input) {
-  const { nodes = [], members = [], loads = [], supports = [] } = input;
+  const { nodes = [], members = [], loads = [], supports = [], onStage = null } = input;
+
+  // Honest ConKay HUD beat (K1): emit a real `macro:stage` at each phase the
+  // solve actually reaches (assemble → solve → postprocess). Best-effort — a
+  // throwing hook never affects the solve; the beats are pure decoration bound
+  // to the true internal structure, never a timer.
+  const stage = (s) => { try { onStage?.(s); } catch { /* decoration only */ } };
 
   if (nodes.length === 0 || members.length === 0) {
     return { ok: false, error: 'Model must have at least one node and one member' };
@@ -301,6 +307,7 @@ export function runFEA(input) {
 
   const size = nodes.length * DOF_PER_NODE;
 
+  stage('assembling');
   // Build global stiffness matrix
   const { K } = buildStiffnessMatrix(members, nodes);
 
@@ -320,6 +327,7 @@ export function runFEA(input) {
   // Apply boundary conditions
   const constrained = applyBoundaryConditions(K, F, nodes, supports, size);
 
+  stage('solving');
   // Solve
   const u = solveSystem(K, F, size);
 
@@ -354,6 +362,7 @@ export function runFEA(input) {
     reactions.push({ nodeId: nodes[nodeIdx].id, dof: dofName, nodeIdx, dofLocal });
   }
 
+  stage('postprocess');
   // Member forces and stresses
   const memberForces = computeMemberForces(u, members, nodes);
   const stresses     = computeStresses(memberForces, members);

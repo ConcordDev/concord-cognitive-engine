@@ -29,7 +29,7 @@ reclassifies 8 data-modules (168k lines, e.g. the deprecated 145k-line
 | Numbered migrations | **349** | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **132** | `ls server/routes/*.js \| wc -l` |
 | Lib modules | **617** top (`ls server/lib/*.js \| wc -l`) · **916** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
-| `server/server.js` | **77,276 lines** | `wc -l server/server.js` |
+| `server/server.js` | **77,286 lines** | `wc -l server/server.js` |
 | DB tables (cartographer) | **690** | `npm run cartograph:static` |
 | Socket events | **277** | cartographer |
 | Heartbeats (registered) | **105 static** | cartographer / detector summary |

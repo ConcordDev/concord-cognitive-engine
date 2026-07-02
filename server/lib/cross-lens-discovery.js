@@ -32,6 +32,10 @@ export function searchDtus(db, query, opts = {}) {
   if (q.length < 2) return { ok: false, reason: "query_too_short" };
   if (q.length > 200) return { ok: false, reason: "query_too_long" };
 
+  // Honest ConKay HUD beat (K1): the keyword/metadata prefilter is a real
+  // step in both the keyword-only and semantic paths. Best-effort decoration.
+  try { opts.onStage?.("searching"); } catch { /* decoration only */ }
+
   const limit = Math.min(MAX_RESULTS, Math.max(1, Number(opts.limit) || 30));
   const requesterId = opts.requesterId || null;
 
@@ -147,6 +151,10 @@ export async function semanticSearchDtus(db, query, opts = {}) {
     return { ok: true, results: base.results.slice(0, limit), count: Math.min(base.results.length, limit), query: base.query, semantic: false };
   }
 
+  // Honest ConKay HUD beat (K1): the embedding re-rank only fires when it
+  // actually runs (>1 candidate). The result's `semantic` flag reports which
+  // path won; this beat mirrors that truthfully. Best-effort decoration.
+  try { opts.onStage?.("reranking"); } catch { /* decoration only */ }
   try {
     const { semanticSearch } = await import("../embeddings.js");
     const candidates = base.results.map((r) => ({ id: r.id, title: r.title, _row: r }));

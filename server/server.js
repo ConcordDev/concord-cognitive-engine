@@ -20997,6 +20997,11 @@ register("dtu", "create", async (ctx, input) => {
   // caller can't forge `authorId` in the body to look like the parent's
   // owner and bypass the gate.
   const _creatorId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
+  // Honest ConKay HUD beats (K1): dtu.create runs a real three-phase pipeline
+  // (validate/consent → persist → cite). Report each real phase to the caller's
+  // macro:stage stream. Guarded so a throwing hook can never break the macro.
+  const _beat = (s) => { try { ctx?.emitMacroStage?.(s); } catch { /* decoration only */ } };
+  _beat("validating");
   const _lineageViolations = [];
   const _lineageUnlockedByLicense = new Set();
   for (const parentRef of lineage) {
@@ -21267,6 +21272,7 @@ register("dtu", "create", async (ctx, input) => {
   // though the row never landed in STATE.dtus — and an immediate dtu.get then
   // reported "DTU not found". The headline "create a thought" verb silently lost
   // data. Now we check the commit result and fail honestly when it didn't persist.
+  _beat("persisting");
   const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true });
   if (!_commit || _commit.ok === false) {
     ctx.log("dtu.create.reject", `DTU not committed: ${title}`, { id: dtu.id, reason: _commit?.error });
@@ -21338,6 +21344,8 @@ register("dtu", "create", async (ctx, input) => {
           if (id) parentIds.push(id);
         }
       }
+      // K1: the "citing" beat only fires when there is real lineage to register.
+      if (parentIds.length) _beat("citing");
       for (const parentId of parentIds) {
         const parentDtu = STATE.dtus.get(parentId);
         if (!parentDtu?.ownerId) continue;
@@ -31895,9 +31903,11 @@ register("forge", "validate", (_ctx, input = {}) => {
     return { ok: true, ..._forgeValidate(config) };
   } catch (e) { return { ok: false, error: String(e?.message || e) }; }
 });
-register("forge", "generate", (_ctx, input = {}) => {
+register("forge", "generate", (ctx, input = {}) => {
   try {
-    const out = _forgeGenerate(input);
+    // K1: forward the real generation phases (resolve template → compose) to
+    // the caller's macro:stage stream when run via /api/lens/run.
+    const out = _forgeGenerate({ ...input, onStage: ctx?.emitMacroStage });
     return { ok: true, ...out };
   } catch (e) { return { ok: false, error: String(e?.message || e) }; }
 });
