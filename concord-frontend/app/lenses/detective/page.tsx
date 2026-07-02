@@ -75,6 +75,11 @@ export default function DetectiveLensPage() {
     loadEvidence(selected);
   }, [selected, loadEvidence]);
 
+  // Derived load flags — keep the render conditionals readable and make the
+  // loading / error states explicit.
+  const isLoading = crimesState === 'loading';
+  const isError = crimesState === 'error';
+
   const submit = useCallback(async () => {
     if (!selected || !form.suspectId.trim()) return;
     setBusy(true);
@@ -121,14 +126,14 @@ export default function DetectiveLensPage() {
           <aside className="rounded-xl border border-amber-500/20 bg-zinc-950/60 p-3" aria-label="Open cases">
             <h2 className="mb-2 text-[11px] uppercase tracking-wider text-amber-300/60">Open cases</h2>
 
-            {crimesState === 'loading' ? (
+            {isLoading ? (
               <div data-testid="cases-loading" aria-busy="true" className="space-y-1.5" role="status">
                 <span className="sr-only">Loading open cases…</span>
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="h-9 animate-pulse rounded bg-slate-800/50" />
                 ))}
               </div>
-            ) : crimesState === 'error' ? (
+            ) : isError ? (
               <div data-testid="cases-error" role="alert" className="rounded border border-rose-500/40 bg-rose-500/10 p-3 text-center">
                 <AlertTriangle className="mx-auto mb-1 h-4 w-4 text-rose-300" />
                 <p className="text-[12px] text-rose-200">Couldn&apos;t load cases.</p>
