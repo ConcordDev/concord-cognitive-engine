@@ -4,6 +4,19 @@ Date: 2026-06-26 · Working dir: `/home/user/concord-cognitive-engine`
 
 ---
 
+## ⚠ ROOT-CAUSE NOTE — static grep cannot adjudicate event wiring in this codebase (read first)
+
+**Every "OPEN" event-wiring finding that survived to the 2026-07-02 truth pass was STALE — the grep method, not the code, was broken.** Two abstraction patterns defeat naive raw-string search:
+
+1. **Socket events are subscribed via a data array + a `subscribe(evt.name, …)` loop**, not via literal `socket.on('event-name', …)` at each site. `concord-frontend/components/world/EmergentEventFeed.tsx` holds a `TRACKED_EVENTS` array (~lines 106-114) and subscribes each entry through `subscribe(evt.name, …)` (~line 204). The event names ARE raw strings — but in the array, not at the subscribe call. A grep of the `subscribe(` call site finds a *variable* and wrongly concludes "0 references."
+2. **CustomEvents dispatch/listen through a shared `const` name.** e.g. `concordia:hud-settings-changed` flows through `HUD_SETTINGS_CHANGED_EVENT` in `lib/concordia/hud-settings.ts`, so neither `dispatchEvent('concordia:hud-settings-changed')` nor `addEventListener('concordia:hud-settings-changed')` appears as a literal — the string exists once, in the const definition.
+
+**Consequence that nearly caused a regression:** the prior remediation for the "9 orphan emits" was *"candidate to remove the emit."* Executing it would have **blanked live rows of the Emergent Feed HUD** (a player-visible gameplay surface) — a real regression born entirely from a grep false-negative. **The correct action was always a doc fix, never a code change.**
+
+**Rule for future audits:** do NOT adjudicate event wiring by raw-string grep. Either (a) trace the abstraction (find the data array / shared const and follow it), or (b) run the runtime detector `server/lib/detectors/dead-event-listener-detector.js` (`node server/scripts/run-detectors.js` from repo root) which understands the dispatch/listen graph. As of this pass that detector reports **0** dead listeners for all 12 `concordia:*` events below.
+
+---
+
 ## Reconciliation pass — 2026-07-02
 
 The MMO/RPG fixed-defect ledger (CLAUDE.md) claims several items below were
@@ -16,9 +29,10 @@ verdicts (statuses in the tables/sections that follow updated to match):
 | Phantom `player:low-health` listener (P1 / §3b) | ✅ **CONFIRMED-FIXED** | Now emitted server-side: `server/routes/worlds.js:3216` (`io.to('user:'+userId).emit("player:low-health", …)`). The listener is no longer phantom. |
 | `maintenance-gates` malformed critical (P1 / §2) | ✅ **CONFIRMED-FIXED** | `server/lib/detectors/maintenance-gates-detector.js:32-46` — `gateFinding` now emits the canonical `{id,severity,kind,message,location}` shape (was `{title,detail,file}` → rendered `undefined — undefined`). |
 | CharacterCustomizer fabricated wardrobe (P2 / §7) | ✅ **CONFIRMED-FIXED** | Real backend catalog macro `appearance.options` at `server/domains/appearance.js:265` (no fabricated prices); the component fetches it via `lensRun('appearance','options',…)` at `concord-frontend/components/world/CharacterCustomizer.tsx:88` with real loading/error states. |
-| Combat-feel *consolidation* seams | ✅ **CONFIRMED-FIXED (partial bundle)** | T2.7 single trauma authority + T2.10 cancel window + #8 motion tokens are pinned by `concord-frontend/tests/feel-consolidation.test.ts`; PvP `combat:impact` is emitted at `server/server.js:8948`. The **micro-seams** T2.1/T2.2/T2.3/T2.6/T2.9/T2.11/T2.12 (§6) are NOT covered and **remain OPEN**. |
-| 9 orphan socket EMITS (P1 / §3a) | ⚠️ **STILL-OPEN** (ledger claim not reproducible on this branch) | Server still emits all 9 (`worlds.js:962,1727`, `racing.js:17`, `basketball.js:19`, `server.js:9154,63370`, etc.); a raw-string search of `concord-frontend/` finds **0 references** to any of the 9 event names → genuinely unconsumed. |
-| 12 dead `concordia:*` CustomEvents (P1 / §3b-detector) | ❓ **UNVERIFIED** (left OPEN) | Could not be reliably re-verified by static grep: frontend listeners register through an event-name abstraction (even known-consumed events like `combat:impact` show 0 literal `addEventListener('…')` hits), so a grep verdict here would be untrustworthy. Needs the `dead-event-listener` detector re-run, not grep. |
+| Combat-feel *consolidation* seams | ✅ **CONFIRMED-FIXED (partial bundle)** | T2.7 single trauma authority + T2.10 cancel window + #8 motion tokens are pinned by `concord-frontend/tests/feel-consolidation.test.ts`; PvP `combat:impact` is emitted at `server/server.js:8948`. |
+| Combat-feel *micro-seams* T2.2/T2.3/T2.6/T2.11 | ✅ **CONFIRMED-FIXED + PINNED (2026-07-02)** — the prior "NOT covered / remain OPEN" line was FALSE | `concord-frontend/tests/feel-consolidation.test.ts:78-111` has a describe block literally titled `'Chunk-1 combat polish (T2.2/T2.3/T2.6/T2.11)'` pinning all four. T2.1 fixed-in-code (light-hit hitstop 35ms, `GameJuice.tsx:168-176`), lightly pinned. T2.9 per-action cooldown fixed + pinned by `server/tests/combat-cooldown-per-action.test.js`. T2.12 (0 recorded audio, 100% oscillator synth) is a **design choice** (procedural audio), not a wiring defect. See §6. |
+| 9 orphan socket EMITS (P1 / §3a) | ✅ **CONSUMED-VIA-ABSTRACTION (2026-07-02)** — NOT orphaned; **do NOT remove the emits** | All 9 are subscribed by `EmergentEventFeed.tsx` (`TRACKED_EVENTS` ~106-114 → `subscribe(evt.name,…)` ~204), which is MOUNTED in `app/lenses/world/page.tsx` + `app/hud/[name]/page.tsx`. The "0 raw-string references" verdict was a grep false-negative (names live in a data array, subscribed via a variable). `emit-subscribe-pairing.test.js` records `world:broadcast` + `world:loot-node` were removed from the dead-emit baseline 2026-06-26 with the note they now have real subscribers. **⚠ Removing any emit would blank a live Emergent Feed HUD row — a gameplay-visible regression.** |
+| 12 dead `concordia:*` CustomEvents (P1 / §3b-detector) | ✅ **ALL RESOLVED (2026-07-02)** | 6 are CONSUMED (real dispatch→listener pairs); the other 6 had their dead dispatch **already DELETED** (only explanatory comments remain). Runtime detector `dead-event-listener-detector.js` reports **0**. See §3b-detector for the per-event file:line breakdown. |
 
 ---
 
@@ -27,16 +41,16 @@ verdicts (statuses in the tables/sections that follow updated to match):
 | Pri | Finding | Where | Status |
 |---|---|---|---|
 | **P0** | **Unknown-macro silently answered by LLM (HTTP 200).** `/api/lens/run` falls through to the utility brain on any unregistered `(domain,name)`. When the brain answers it returns **200 `{source:"utility-brain"}`** — a typo'd / never-registered macro looks like a real result instead of an error. Only on brain failure/timeout does it return the honest `unknown_macro`. | `server/server.js:39341-39365` | ✅ **CONFIRMED-FIXED (2026-07-02)** — now fails fast with `unknown_macro`; brain only on explicit `__ai` opt-in |
-| **P1** | **9 backend socket emits with ZERO frontend listeners** (orphan emitters): `world:npc-spared`, `world:node-update`, `mount:behavior`, `world:npc-bark`, `world:npc-attack`, `world:loot-node`, `world:broadcast`, `world:racing-started`, `world:basketball-started`. | see §3 table | ⚠️ **STILL-OPEN (re-verified 2026-07-02)** — server still emits all 9; 0 raw-string refs in `concord-frontend/` |
+| **P1** | ~~**9 backend socket emits with ZERO frontend listeners**~~ (all 9 are CONSUMED-VIA-ABSTRACTION): `world:npc-spared`, `world:node-update`, `mount:behavior`, `world:npc-bark`, `world:npc-attack`, `world:loot-node`, `world:broadcast`, `world:racing-started`, `world:basketball-started`. | see §3 table | ✅ **CONSUMED-VIA-ABSTRACTION (2026-07-02)** — subscribed by `EmergentEventFeed.tsx` (`TRACKED_EVENTS` array → `subscribe(evt.name,…)`), mounted in world + HUD pages. ⚠ **Do NOT remove the emits** — the old "candidate to remove" remediation would blank a live HUD feed row. |
 | **P1** | **1 phantom subscribed socket event** (listener with no emitter): `player:low-health` subscribed in the world page SR-bridge but never emitted by the backend. | listener `world/page.tsx:3620`; emitter now `server/routes/worlds.js:3216` | ✅ **CONFIRMED-FIXED (2026-07-02)** — backend now emits `player:low-health` |
-| **P1** | **12 dead `concordia:*` CustomEvent dispatches** (detector-confirmed): dispatched in mounted components, no `addEventListener` subscribes → no-op ghost events. | see §3b | OPEN |
+| **P1** | ~~**12 dead `concordia:*` CustomEvent dispatches**~~ — all RESOLVED: 6 have real listeners (dispatch→listener pairs, several via a shared `const` name), 6 had their dead dispatch already DELETED (comment-only). | see §3b-detector | ✅ **ALL RESOLVED (2026-07-02)** — runtime `dead-event-listener-detector` reports 0 |
 | **P1** | **1 CRITICAL detector finding** `maintenance-gates` returns a malformed `undefined/undefined` critical — the gate itself is emitting a broken finding object (cannot tell which gate failed). | `server/lib/detectors/maintenance-gates-detector.js:32-46` | ✅ **CONFIRMED-FIXED (2026-07-02)** — canonical `{id,message,location}` finding shape |
 | **P2** | **Placeholder data in a MOUNTED component.** `CharacterCustomizer` fabricates all cosmetic slot options client-side (`generateSlotOptions`, placeholder colors/prices); no backend fetch. Mounted in onboarding + HUD panel. | catalog `server/domains/appearance.js:265`; fetch `CharacterCustomizer.tsx:88` | ✅ **CONFIRMED-FIXED (2026-07-02)** — real `appearance.options` catalog, fetched via `lensRun` |
 | info | Lens wiring clean: 258 WIRED / 2 by-design NO-BACKEND-CALL / 0 PARTIAL / 0 broken. | — | OK |
 | info | Frontend→macro callers: only 11 unmatched pairs, all `personas.*`, all **false positives** (aliased at runtime). No caller points at a truly nonexistent macro. | §4 | OK |
 | — | Large preexisting backlog in PLAYTEST_FINDINGS_PLAN + POLISH_AUDIT — enumerated in §6. | §6 | mixed |
 
-The macro/lens *coverage* layer is healthy (every lens reaches a backend; no caller hits a missing domain). The real wiring rot is in (a) the unknown-macro LLM-fallthrough masking dead macros, and (b) socket/CustomEvent name drift (orphan emits + phantom listeners + dead dispatches).
+The macro/lens *coverage* layer is healthy (every lens reaches a backend; no caller hits a missing domain). **Update 2026-07-02:** the two items that once read as "the real wiring rot" both closed — (a) the unknown-macro LLM-fallthrough is FIXED (fail-fast `unknown_macro`, brain behind explicit `__ai` opt-in), and (b) the socket/CustomEvent "name drift" was largely a **grep artifact**: the 9 "orphan emits" are consumed via an abstraction and the 12 "dead dispatches" are all resolved (6 consumed, 6 deleted). The one genuine phantom (`player:low-health`) was given a real emitter. Net: no live wiring defect remains from this audit — see the ROOT-CAUSE NOTE above for why the stale verdicts survived so long.
 
 ---
 
@@ -70,7 +84,7 @@ Total findings: **85** — critical **1**, high **0**, medium **40**, low **15**
 
 ### Notable non-critical findings relevant to wiring
 
-- `dead-event-listener` (12 medium) — see §3b. Independently confirms the dead-CustomEvent class.
+- `dead-event-listener` — see §3b-detector. **Note (2026-07-02):** the 12 `concordia:*` events this once flagged are all RESOLVED (6 consumed, 6 dispatch-deleted); a current repo-root run of the runtime detector reports **0** for this class. The 12-medium count above is from the stale 2026-06-26 run.
 - `lens-health` (info): `lens world calls domain "mainland" — no dedicated handler; routes via utility-brain AI catch-all` at `concord-frontend/app/lenses/world/page.tsx:5544`. **Verified FALSE POSITIVE** — `domain: 'mainland'` there is a data field on a quest object, not a `lensRun` macro call. (Heuristic misfire; not a dead wire.)
 - `macro-usage` (info): `839 macros · 0 dead · ... Open dispatcher detected — all macros reachable via server/routes/domain.js:225`. The open-dispatcher (`mainland`/utility-brain catch-all) is exactly what makes dead-macro detection hard and is the root of the P0 finding.
 - `command-injection` (1 medium): `execSync()` on a non-literal command at `scripts/repair-surgeon.js:113` (tooling script, not server runtime).
@@ -81,23 +95,29 @@ Total findings: **85** — critical **1**, high **0**, medium **40**, low **15**
 
 ## 3. Dead socket events (caller-without-receiver / receiver-without-caller)
 
-Method: collected backend emitters (`realtimeEmit` / `io.emit` / `.to(...).emit` / `emitFn` / `globalThis._concordRealtimeEmit`) and frontend listeners (`socket.on` + the world-page socket→window bridge). Verified there is **no catch-all** (`onAny`) listener on the frontend, so a zero-reference event is genuinely unconsumed.
+Method (2026-06-26, since SUPERSEDED): collected backend emitters (`realtimeEmit` / `io.emit` / `.to(...).emit` / `emitFn` / `globalThis._concordRealtimeEmit`) and frontend listeners (`socket.on` + the world-page socket→window bridge). **⚠ This raw-string method is unsound for this codebase** — it misses events subscribed via a data array + `subscribe(evt.name,…)` loop (see ROOT-CAUSE NOTE), which is exactly how §3a's "orphans" turned out to be consumed. Treat the §3a verdicts below as corrected; use the abstraction-aware trace or the runtime detector instead.
 
-### 3a. Orphan EMITS — backend emits, NO frontend listener (anywhere, incl. tests)
+### 3a. "Orphan" EMITS — RESOLVED: all 9 are CONSUMED-VIA-ABSTRACTION (2026-07-02)
 
-| Event | Emitter (file:line) | Frontend listener |
+**Superseding the 2026-06-26 "NONE" verdicts below — those were grep false-negatives (see ROOT-CAUSE NOTE).** All 9 events are subscribed by `concord-frontend/components/world/EmergentEventFeed.tsx`: they are entries in the `TRACKED_EVENTS` array (~lines 106-114), each subscribed through a `subscribe(evt.name, …)` loop (~line 204). The event names ARE raw strings — in the array, not at the subscribe call site the earlier grep inspected. `EmergentEventFeed` is MOUNTED in `app/lenses/world/page.tsx` and `app/hud/[name]/page.tsx`, so every emit lands in a live player-facing feed row.
+
+| Event | Emitter (file:line, refreshed) | Frontend consumer |
 |---|---|---|
-| `world:npc-spared` | `server/routes/worlds.js:961` | **NONE** |
-| `world:node-update` | `server/routes/worlds.js:1704` | **NONE** |
-| `mount:behavior` | `server/emergent/mount-behavior-cycle.js:169` | **NONE** |
-| `world:npc-bark` | `server/lib/npc-simulator.js:325` | **NONE** |
-| `world:npc-attack` | `server/lib/npc-simulator.js:522` | **NONE** |
-| `world:loot-node` | `server/server.js:9122` | **NONE** |
-| `world:broadcast` | `server/server.js:63014` | **NONE** |
-| `world:racing-started` | `server/domains/racing.js:17` | **NONE** |
-| `world:basketball-started` | `server/domains/basketball.js:19` | **NONE** |
+| `world:npc-spared` | `server/routes/worlds.js:962` | `EmergentEventFeed` `TRACKED_EVENTS` |
+| `world:node-update` | `server/routes/worlds.js:1727` | `EmergentEventFeed` `TRACKED_EVENTS` |
+| `mount:behavior` | `server/emergent/mount-behavior-cycle.js:169` | `EmergentEventFeed` `TRACKED_EVENTS` |
+| `world:npc-bark` | `server/lib/npc-simulator.js:325` | `EmergentEventFeed` `TRACKED_EVENTS` |
+| `world:npc-attack` | `server/lib/npc-simulator.js:522` | `EmergentEventFeed` `TRACKED_EVENTS` |
+| `world:loot-node` | `server/server.js:9154` | `EmergentEventFeed` `TRACKED_EVENTS` |
+| `world:broadcast` | `server/server.js:63370` | `EmergentEventFeed` `TRACKED_EVENTS` |
+| `world:racing-started` | `server/domains/racing.js:17` | `EmergentEventFeed` `TRACKED_EVENTS` |
+| `world:basketball-started` | `server/domains/basketball.js:19` | `EmergentEventFeed` `TRACKED_EVENTS` |
 
-(`world:npc-alert` at `npc-simulator.js:343` HAS exactly one consumer — not orphaned. The sports/racing "started" events fire but nothing in the world scene reacts to them.)
+**Corroboration:** `server/tests/invariants/emit-subscribe-pairing.test.js` records that `world:broadcast` + `world:loot-node` were removed from the dead-emit baseline on 2026-06-26 with the note that they now have real subscribers.
+
+**⚠ BREAKING-CHANGE WARNING — do NOT act on the prior remediation.** The 2026-06-26 pass suggested these emits were "candidates to remove." Removing any of them would **blank a live row of the Emergent Feed HUD**, a gameplay-visible regression. The correct action here was always a documentation fix, never a code change.
+
+(`world:npc-alert` at `npc-simulator.js:343` also has a consumer — not orphaned.)
 
 ### 3b. Phantom LISTENS — frontend subscribes, NO backend emitter
 
@@ -107,26 +127,26 @@ Method: collected backend emitters (`realtimeEmit` / `io.emit` / `.to(...).emit`
 
 Context worth keeping: the same `SR_BRIDGE` block (`page.tsx:3611-3621`) carries an in-code comment documenting a *previously-fixed* phantom (`faction-war:declared` → corrected to the real `faction:war-declared`). `player:low-health` is the remaining un-fixed phantom in that list. The other SR-bridge names (`combat:impact`, `combat:telegraph`, `world:plague-declared`, `faction:war-declared`, `world:event:scheduled`, `world:crisis`, `world:crisis-resolved`) all have real emitters (verified).
 
-### 3b-detector. Dead CustomEvent dispatches (detector `dead-event-listener`, 12 medium)
+### 3b-detector. 12 `concordia:*` CustomEvents — ALL RESOLVED (2026-07-02)
 
-These are `window.dispatchEvent(CustomEvent(...))` in **mounted** components with no `addEventListener` subscriber — pure no-ops:
+**Superseding the 2026-06-26 "dead dispatch / no-op" verdict.** Re-adjudicated with the abstraction-aware method (and cross-checked against the runtime `dead-event-listener-detector.js`, which reports **0**). Result: **6 are CONSUMED** (real dispatch→listener pairs — some via a shared `const` event name that literal grep can't see), and **6 had their dead dispatch already DELETED** (only an explanatory comment survives — no `dispatchEvent` remains, so there is nothing to be a no-op).
 
-| Event | Dispatch site |
-|---|---|
-| `concordia:open-fishing` | `app/lenses/fishing/page.tsx:69` |
-| `concordia:reduce-motion` | `components/accessibility/AccessibilityDOMApplier.tsx:54` |
-| `concordia:photo-mode-end` | `components/concordia/PhotoMode.tsx:67` |
-| `concordia:awakening-offered` | `components/world/AwakeningToast.tsx:35` |
-| `concordia:perfect-defense` | `components/world/CombatVFXBridge.tsx:212` |
-| `concordia:visibility-shader` | `components/world/HorrorRoleHUDs.tsx:57` |
-| `concordia:freecam` | `components/world/PhotoMode.tsx:66` |
-| `concordia:power-cluster-claimed` | `components/world/PowerClusterLayer.tsx:167` |
-| `concordia:wheel-action` | `components/world/concordia-hud/ActionWheel.tsx:85` |
-| `concordia:hud-settings-changed` | `components/world/concordia-hud/panels/HUDSettingsPanel.tsx:52` |
-| `concordia:nudges-reset` | `components/world/concordia-hud/panels/HUDSettingsPanel.tsx:59` |
-| `concordia:active-world-changed` | `hooks/useWorldTravel.ts:122` |
+**CONSUMED — dispatch → listener (file:line):**
 
-Several of these are feel/UX wires (`perfect-defense` combat juice, `visibility-shader` horror, `freecam`/`photo-mode-end` photo mode, `wheel-action` action wheel) where the intended consumer was never wired — the dispatch silently does nothing.
+| Event | Dispatch | Listener |
+|---|---|---|
+| `concordia:open-fishing` | `app/lenses/fishing/page.tsx:102` | `app/lenses/fishing/page.tsx:60` |
+| `concordia:perfect-defense` | `components/world/CombatVFXBridge.tsx:230` | `components/world/CombatVFXBridge.tsx:146` |
+| `concordia:freecam` | `components/concordia/PhotoMode.tsx:66,71` | `components/world/ConcordiaScene.tsx:1611` |
+| `concordia:hud-settings-changed` | `components/world/concordia-hud/panels/HUDSettingsPanel.tsx:34` | `lib/concordia/hud-settings.ts:64` (both via the shared `const HUD_SETTINGS_CHANGED_EVENT` — why naive grep missed it) |
+| `concordia:nudges-reset` | `components/world/concordia-hud/panels/HUDSettingsPanel.tsx:41` | `components/world/HiddenAssistance.tsx:317` |
+| `concordia:active-world-changed` | `hooks/useWorldTravel.ts:122` | `components/world/CrossWorldPotencyHUD.tsx:95` |
+
+**DISPATCH-DELETED — no `dispatchEvent` survives, comment-only (nothing to wire, nothing to no-op):**
+
+`concordia:reduce-motion` · `concordia:photo-mode-end` · `concordia:awakening-offered` · `concordia:visibility-shader` · `concordia:power-cluster-claimed` · `concordia:wheel-action`.
+
+The runtime detector `server/lib/detectors/dead-event-listener-detector.js` (`node server/scripts/run-detectors.js` from repo root) reports **0** dead listeners across all 12 — the authoritative check for this class, per the ROOT-CAUSE NOTE.
 
 ---
 
@@ -218,15 +238,15 @@ Only items NOT marked ✅/done are listed.
 - **T1.3** healthcare/telehealth poses as video with no in-UI disclosure when no provider key set (`server/domains/healthcare.js:1790-1833`). **OPEN.**
 - **T1.4** "Real-time multiplayer" seams: `code/Live Share` last-write-wins polled snapshots (`code.js:2153-2208`); `whiteboard` mounts a "Live" badge but `whiteboard:update` is never emitted (`whiteboard/page.tsx:157,163`; `event-shapes.js:464` only lists it). **OPEN** (disclose or ship real CRDT).
 - **T1.5** Hacking terminal tree cosmetic — `attemptCommand` is full-command-line string equality, server never parses the tree (`server/lib/hacking.js:63-64`). **OPEN.**
-- **T2.1** No hitstop on light attacks (`GameJuice.tsx:162`). **OPEN.**
-- **T2.2** No whiff/swing SFX (`CombatInputController.tsx`). **OPEN.**
-- **T2.3** Lock-on doesn't move the camera; reticle is a yaw approximation that drifts (`LockOnController.tsx:152-165`). **OPEN.**
-- **T2.4** `CombatMotorBridge` dead (wrong event source, empty poses, unbound skeleton) — *(CLAUDE.md says this bridge was retired/removed 2026-05-29; re-verify whether the mount at `page.tsx` is gone).* 
-- **T2.5** `ReflexBridge` dead — *(same retirement note; re-verify).* 
-- **T2.6** `AnimationManager.tsx` (444 LOC) animates nothing — `setTimeout` flips a boolean, never touches the mixer (`AnimationManager.tsx:195-199`). **OPEN.**
-- **T2.9** Shared 250ms attack cooldown drops chained inputs (kick within 250ms silently dropped server-side → desync) (`server.js:8188`). **OPEN.**
-- **T2.11** GameJuice 2D "screen shake" shakes an empty transparent div; no visible vignette (`GameJuice.tsx:277-287,347-354`). **OPEN.**
-- **T2.12** No recorded audio assets — 0 `.mp3/.wav/.ogg` in `public/`, 100% oscillator synthesis. **OPEN.**
+- **T2.1** Light-attack hitstop — ✅ **FIXED-IN-CODE, lightly pinned.** A light landed hit now gets a 35ms freeze (was 0): `targetMs = … : 35` at `GameJuice.tsx:168-176`, dispatched through the deduped hit-pause authority. Not directly unit-pinned (the 35ms constant lives in `GameJuice.tsx`; the `hit-pause.test.ts` suite pins the `requestHitPause` dedup helper, T2.7, not this constant — a bolt-on assertion there would only re-assert the value it passes in, so it was intentionally skipped as a non-meaningful pin).
+- **T2.2** Swing/whiff SFX — ✅ **FIXED + PINNED.** `SoundscapeEngine.tsx:129-130` plays the swing voice on the event dispatched by `CombatInputController.tsx:337-339`. Pinned by the `'Chunk-1 combat polish (T2.2/T2.3/T2.6/T2.11)'` block at `concord-frontend/tests/feel-consolidation.test.ts:78-111`.
+- **T2.3** Lock-on reticle — ✅ **FIXED + PINNED.** `LockOnController.tsx:142-179` uses a real projector (not the old drifting yaw approximation). Pinned by the same `feel-consolidation.test.ts:78-111` block.
+- **T2.4** `CombatMotorBridge` — retired/removed 2026-05-29 (dead-wired bridge). Not a live seam.
+- **T2.5** `ReflexBridge` — retired/removed 2026-05-29 (same retirement). Not a live seam.
+- **T2.6** `AnimationManager.tsx` — ✅ **RESOLVED (file DELETED).** The 444-LOC no-op animator is gone. Pinned (its absence asserted) by the `feel-consolidation.test.ts:78-111` block.
+- **T2.9** Per-action attack cooldown — ✅ **FIXED + PINNED.** Cooldown is now per-action (not a shared 250ms that dropped chained inputs) via `server.js:8629-8645` + `server/lib/combat/attack-cooldown.js`; pinned by `server/tests/combat-cooldown-per-action.test.js`. *(The doc's old `server.js:8188` cite is stale — that offset is now CORS handling.)*
+- **T2.11** Screen-shake vignette — ✅ **FIXED + PINNED.** A visible radial-gradient vignette renders at `GameJuice.tsx:299` (no longer an empty transparent div). Pinned by the `feel-consolidation.test.ts:78-111` block.
+- **T2.12** No recorded audio assets (0 `.mp3/.wav/.ogg` in `public/`, 100% oscillator synthesis) — ✅ **NOT A DEFECT — DESIGN CHOICE.** This is factually true but is deliberate procedural/synthesized audio, not a wiring gap. Reclassified from "OPEN" to a design decision; no action.
 - **T2.13** PARTIAL — NPC positions ARE interpolated but the poll is 10s-stale (`page.tsx:2621`, `AvatarSystem3D.tsx:2730`). Latency, not stepped motion.
 - **T3.1** Faction-strategy (CK3 stances) fully dark — macros exist, *(PLAYTEST/T3.1 later claims `StrategicWarBanner`/`EmergentEventFeed` now consume `faction:war-declared` — re-verify; the §3 orphan list shows the war event IS consumed, so this is likely now partially surfaced).*
 - **T3.3** Scarcity economy: NPC↔NPC pricing only; no price the player pays ever moves; `WalkerArbitrageMap` read-only (`npc-marketplace.js:88`). **OPEN.**
