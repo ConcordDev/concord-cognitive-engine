@@ -17,6 +17,7 @@ import type { ConKayState } from './conkay-persona';
 import { CONKAY_STATE_COLOR } from './ConKayHud';
 import { useConkayHudStore } from './conkayHudStore';
 import HolographicMaterial from './HolographicMaterial';
+import LatticeGlobe from './LatticeGlobe';
 
 // Cosmic palette for the galaxy-discs (the lattice canopy).
 const GALAXY_PALETTE = ['#22d3ee', '#a855f7', '#34d399', '#fb7185', '#7dd3fc', '#c084fc', '#5eead4', '#f0abfc'];
@@ -344,6 +345,7 @@ function Scene({ stateRef, amplitudeRef }: {
       <HoloShell stateRef={stateRef} />
       <GalaxyCanopy stateRef={stateRef} amplitudeRef={amplitudeRef} tex={tex} />
       <OrbitalRings />
+      <LatticeGlobe />
     </group>
   );
 }
