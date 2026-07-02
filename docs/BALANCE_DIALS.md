@@ -19,7 +19,7 @@ These two are locked by economic + legal contract. They're hardcoded in source a
 | Dial | File | Value | Reason |
 |---|---|---|---|
 | `MAX_ROYALTY_RATE` | `server/economy/royalty-cascade.js` | `0.30` | Seller-keeps-≥64.54% guarantee. Test `tests/royalty-cascade.test.js`. |
-| `WITHDRAWAL_HOLD_HOURS` | `server/economy/withdrawals.js` | `48` | Anti-refund-exploit gate. Test `tests/economy/48h-hold.test.js`. |
+| `WITHDRAWAL_HOLD_HOURS` | `server/economy/withdrawals.js` | `48` | Anti-refund-exploit gate. Test `tests/economy/withdrawal-earned-policy.test.js`. |
 
 ## Tunable dials
 

@@ -231,7 +231,7 @@ Heartbeat wiring → `emergent/lattice-orchestrator.js`, `heartbeat-registry.js`
 ## Verification (per tier as built)
 - Tier 0: each revived engine ticks (heartbeat counter) or responds to its macro; a `tests/<engine>-wire.test.js` round-trip.
 - Tier 1: `runMacro('literary','resonance')` feeds consolidation/narrative; `/api/resonance/graph` returns nodes/edges; GraphView renders; music corpus search returns `semantic:true`.
-- Tier 2: an end-to-end R&D run (goal → hypothesis → compute → closure-check → DTU) with provenance, pinned by `tests/rnd-orchestrator.test.js`.
+- Tier 2: an end-to-end R&D run (goal → hypothesis → compute → closure-check → DTU) with provenance, to be pinned by `tests/rnd-orchestrator.test.js` (planned — capability not yet built).
 - Global gates each push: `cd server && npm test`; detectors ratchet (0 new high/crit); `check-doc-claims`; `schema-drift --ci`; frontend `type-check` + `validate-routes`.
 
 ## Invariants / constraints
