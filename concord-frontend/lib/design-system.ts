@@ -72,6 +72,12 @@ const heading1 = 'text-2xl font-bold text-white';
 const heading2 = 'text-xl font-semibold text-white';
 const heading3 = 'text-lg font-semibold text-white';
 const textMuted = 'text-sm text-gray-400';
+/**
+ * Canonical BODY-COPY style — multi-sentence prose on dark surfaces.
+ * gray-300 clears WCAG AA (≥4.5:1) on lattice-void with comfortable margin (~12:1);
+ * gray-400 (textMuted, ~7.5:1) stays the muted/meta tone.
+ */
+const textBody = 'text-gray-300';
 const textMono = 'font-mono text-sm';
 
 /** Status badges */
@@ -126,6 +132,7 @@ export const ds = {
   heading2,
   heading3,
   textMuted,
+  textBody,
   textMono,
   badge,
   pageContainer,

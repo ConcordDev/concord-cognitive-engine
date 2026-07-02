@@ -173,7 +173,7 @@ function ConcordiaEvents() {
       <CardHead title="Concordia Events" action={<Link href="/lenses/world" className="text-xs text-neon-purple hover:underline">Enter world</Link>} />
       <div className="px-3 pb-3">
         {events.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-lattice-border px-3 py-6 text-center text-[12px] text-gray-500">
+          <div className="rounded-xl border border-dashed border-lattice-border px-3 py-6 text-center text-[12px] text-gray-400">
             No live events right now — <Link href="/lenses/world" className="text-neon-purple hover:underline">start one</Link> in Concordia.
           </div>
         ) : (
@@ -217,7 +217,7 @@ function PresenceCard() {
         <Link href="/lenses/chat" className="rounded-lg bg-neon-purple/20 px-2.5 py-1 text-xs font-medium text-fuchsia-200 hover:bg-neon-purple/30">Ask Concord</Link>
       </div>
       {users.length === 0
-        ? <div className="text-[12px] text-gray-500">Quiet right now. You could be the spark.</div>
+        ? <div className="text-[12px] text-gray-400">Quiet right now. You could be the spark.</div>
         : <PresenceIndicator users={users} maxVisible={6} />}
     </Card>
   );
@@ -237,7 +237,7 @@ function MessagesCard() {
       <CardHead title="Messages" action={<Link href="/lenses/message" className="text-xs text-neon-purple hover:underline">Open</Link>} />
       <div className="px-2 pb-2">
         {convos.length === 0 ? (
-          <div className="px-2 py-4 text-[12px] text-gray-500">No messages yet.</div>
+          <div className="px-2 py-4 text-[12px] text-gray-400">No messages yet.</div>
         ) : (
           <ul>
             {convos.map((c, i) => (
@@ -275,7 +275,7 @@ function NewsCard() {
       <CardHead title="Update News" action={<Radio className="h-3.5 w-3.5 text-gray-500" />} />
       <div className="px-3 pb-3">
         {items.length === 0 ? (
-          <div className="text-[12px] text-gray-500">All quiet on the substrate.</div>
+          <div className="text-[12px] text-gray-400">All quiet on the substrate.</div>
         ) : (
           <ul className="space-y-2">
             {items.map((n, i) => (
@@ -360,7 +360,7 @@ export function MyDashboard({ dash: dashProp }: { dash?: ReturnType<typeof useDa
           {isVisible('activityChart') && <ActivityChart />}
           {isVisible('concordiaEvents') && <ConcordiaEvents />}
           {!isVisible('featureCards') && !isVisible('activityChart') && !isVisible('concordiaEvents') && (
-            <Card className="p-8 text-center text-[13px] text-gray-500">
+            <Card className="p-8 text-center text-[13px] text-gray-400">
               <Activity className="mx-auto mb-2 h-5 w-5 text-gray-600" />
               Everything’s hidden. <button onClick={() => setCustomizing(true)} className="text-neon-purple hover:underline">Customize</button> to bring widgets back.
             </Card>
