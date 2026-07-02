@@ -32,6 +32,16 @@ export interface ConKayReplyFields {
    * When present it drives the TrustBadge instead of the local heuristic.
    */
   verifyVerdict?: string;
+  /**
+   * Phase 4 (multibrain loop) — HOW reason.verify reached the verdict, straight
+   * from the macro's return: 'council' (the multi-brain council judged),
+   * 'proof' (Z3 machine-checked), or a deterministic floor. Surfaced so the
+   * multi-brain work is visible, never implied. Real value or undefined — never
+   * a guess.
+   */
+  verifyMode?: string;
+  /** The council/proof confidence [0..1] reason.verify reported, or null. */
+  verifyConfidence?: number | null;
 }
 
 // Map a raw backend source/model id to a friendly brain label. Returns null for
@@ -212,9 +222,27 @@ function ToolCalls({ toolCalls }: { toolCalls: unknown }) {
  * it isn't verified, so check it before relying on it. (ConKay organizes and
  * accelerates — it does not certify; especially not real-world/physics claims.)
  */
+// Phase 4 — an honest "how it was judged" annotation. The council verdicts
+// (grounded/unsupported) were reached by the multi-brain council; when the
+// macro reported a real confidence we show it. Pure function of the macro's
+// returned mode+confidence — rendered only when they're genuinely present.
+function JudgedBy({ mode, confidence }: { mode?: string; confidence?: number | null }) {
+  if (mode !== 'council') return null; // 'proof' is already self-labelled (Proven/Refuted); floor has no judge
+  const pct = typeof confidence === 'number' ? ` ${Math.round(confidence * 100)}%` : '';
+  return (
+    <span
+      className="ml-1 inline-flex items-center text-[9px] text-cyan-300/60"
+      title={`Judged by the multi-brain council (subconscious-led, self-scaling to conscious on close calls)${pct ? ` — ${pct.trim()} confidence` : ''}.`}
+    >
+      · council{pct}
+    </span>
+  );
+}
+
 // Render one of the REAL reason.verify verdicts. Each maps 1:1 to the macro's
 // output — the badge IS the verification result, never a guess.
-function VerdictBadge({ verdict }: { verdict: string }) {
+function VerdictBadge({ verdict, mode, confidence }: { verdict: string; mode?: string; confidence?: number | null }) {
+  const judged = <JudgedBy mode={mode} confidence={confidence} />;
   switch (verdict) {
     case "proven":
       // The STRONGEST badge: a math/logic claim machine-checked valid by Z3 (the
@@ -243,7 +271,7 @@ function VerdictBadge({ verdict }: { verdict: string }) {
     case "grounded":
       return (
         <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/90" title="The multi-brain council confirmed the cited sources support this claim.">
-          <ShieldCheck className="h-3 w-3" /> Grounded
+          <ShieldCheck className="h-3 w-3" /> Grounded{judged}
         </span>
       );
     case "citations_resolve":
@@ -255,7 +283,7 @@ function VerdictBadge({ verdict }: { verdict: string }) {
     case "unsupported":
       return (
         <span className="inline-flex items-center gap-1 text-[10px] text-amber-400/90" title="The cited sources resolve, but the council judged they do NOT back this claim. Verify before relying on it.">
-          <AlertTriangle className="h-3 w-3" /> Unsupported
+          <AlertTriangle className="h-3 w-3" /> Unsupported{judged}
         </span>
       );
     case "fabricated_citation":
@@ -276,7 +304,7 @@ function VerdictBadge({ verdict }: { verdict: string }) {
 function TrustBadge({ fields }: { fields: ConKayReplyFields }) {
   // Phase 1: when the reply's citations were run through the reason.verify macro,
   // the badge shows that REAL verdict (the verification IS the product).
-  if (fields.verifyVerdict) return <VerdictBadge verdict={fields.verifyVerdict} />;
+  if (fields.verifyVerdict) return <VerdictBadge verdict={fields.verifyVerdict} mode={fields.verifyMode} confidence={fields.verifyConfidence} />;
 
   // Otherwise fall back to the local heuristic: grounded when backed by a real
   // artifact (cited DTU, web source, completed action, or computed data).

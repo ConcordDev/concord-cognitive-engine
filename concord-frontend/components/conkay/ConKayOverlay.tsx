@@ -277,9 +277,13 @@ export function ConKayOverlay() {
       const rid = newRunId();
       liveRunRef.current = rid;
       const { data } = await lensRun('reason', 'verify', { claim, citations: citationIds }, rid);
-      const res = data?.result as { verdict?: string } | null;
+      const res = data?.result as { verdict?: string; mode?: string; confidence?: number | null } | null;
       const verdict = res && typeof res === 'object' && res.verdict ? String(res.verdict) : 'unverified';
-      setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: verdict } : m)));
+      // Phase 4 — carry the REAL multibrain signals (how the verdict was reached +
+      // the council/proof confidence) so the badge can surface the judging honestly.
+      const mode = res && typeof res.mode === 'string' ? res.mode : undefined;
+      const confidence = res && typeof res.confidence === 'number' ? res.confidence : null;
+      setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: verdict, verifyMode: mode, verifyConfidence: confidence } : m)));
     } catch {
       // verification unavailable → drop the pending state, fall back to the heuristic badge
       setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: undefined } : m)));
