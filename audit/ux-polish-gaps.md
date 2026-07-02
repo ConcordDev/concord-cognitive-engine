@@ -1,6 +1,6 @@
 # UX Polish Audit
 
-Generated: 2026-07-01T21:52:23.498Z
+Generated: 2026-07-02T11:08:12.746Z
 
 Lenses scanned: 260
 
@@ -9,37 +9,35 @@ Lenses scanned: 260
 
 | Tier | Count | % | Weight |
 |---|---:|---:|---:|
-| raw | 1 | 0.4% | 0.2 |
-| functional | 13 | 5.0% | 0.6 |
-| polished | 246 | 94.6% | 1 |
+| raw | 0 | 0.0% | 0.2 |
+| functional | 4 | 1.5% | 0.6 |
+| polished | 256 | 98.5% | 1 |
 
-**Weighted UX polish score: 0.977** (1.0 = all polished)
+**Weighted UX polish score: 0.994** (1.0 = all polished)
 
 ## Signal coverage (% of lenses)
 
 | Signal | Lenses with it | % |
 |---|---:|---:|
-| loading | 253 | 97.3% |
+| loading | 255 | 98.1% |
 | emptyState | 259 | 99.6% |
-| errorUI | 246 | 94.6% |
+| errorUI | 248 | 95.4% |
 | aria | 258 | 99.2% |
 | keyboardHandlers | 172 | 66.2% |
 | nativeButtons | 260 | 100.0% |
-| responsive | 255 | 98.1% |
-| animation | 256 | 98.5% |
+| responsive | 258 | 99.2% |
+| animation | 260 | 100.0% |
 | toasts | 63 | 24.2% |
 | altOnImages | 260 | 100.0% |
 
 ## Anti-patterns
 
-- Lenses with at least one `<div onClick>` (missing keyboard handler / role / tabIndex): **5** (total instances: 18)
+- Lenses with at least one `<div onClick>` (missing keyboard handler / role / tabIndex): **0** (total instances: 0)
 - Lenses with inline hex colours (bypassing design tokens): **0** (total instances: 0)
 
 ## Raw-tier lenses (need work)
 
-| Lens | Pillars | Missing | Files |
-|---|---:|---|---:|
-| `repair-telemetry` | 2/5 | loading, error, responsive | 1 |
+_None — every lens has at least 3 of 5 structural pillars._
 
 ## Functional-tier lenses (one pillar away from polished)
 
@@ -47,15 +45,6 @@ Sorted by smallest gap first. Items with anti-patterns surface first within each
 
 | Lens | Pillars | Missing | Anti-patterns |
 |---|---:|---|---:|
-| `art` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
-| `message` | 5/5 | anti-patterns(2 div-button, 0 inline-hex) | 1 |
-| `studio` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
-| `whiteboard` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
-| `world` | 5/5 | anti-patterns(13 div-button, 0 inline-hex) | 1 |
-| `codex` | 5/5 |  | 0 |
-| `ledger` | 4/5 | responsive | 0 |
-| `move-builder` | 4/5 | responsive | 0 |
-| `detective` | 3/5 | loading, error | 0 |
 | `housing` | 3/5 | loading, error | 0 |
 | `narrative-walk` | 3/5 | loading, error | 0 |
 | `quests` | 3/5 | loading, error | 0 |
