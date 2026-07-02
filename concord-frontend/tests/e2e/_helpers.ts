@@ -20,6 +20,12 @@ export interface AuthMockOptions {
   username?: string;
   /** Role surfaced by /api/auth/me. Default: "user". */
   role?: string;
+  /**
+   * Permission scopes surfaced by /api/auth/me (useAuth reads `user.scopes`).
+   * Default: []. Admin/operator surfaces gate server-side, but a complete
+   * elevated user payload keeps any client-side scope check honest too.
+   */
+  scopes?: string[];
   /** Spark/CC balance surfaced by various wallet probes. Default: 0. */
   walletBalance?: number;
 }
@@ -37,7 +43,7 @@ export interface AuthMockOptions {
  *   });
  */
 export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
-  const { username = 'testuser', role = 'user', walletBalance = 0 } = opts;
+  const { username = 'testuser', role = 'user', scopes = [], walletBalance = 0 } = opts;
   const userId = `usr_${username}`;
 
   // THE load-bearing line (root cause of the 9 deterministic E2E failures):
@@ -106,6 +112,7 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
           id: userId,
           username,
           role,
+          scopes,
           email: `${username}@test.local`,
           createdAt: new Date().toISOString(),
         },
@@ -123,6 +130,61 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
       body: JSON.stringify({ ok: true, balance: walletBalance, sparks: walletBalance }),
     })
   );
+}
+
+/**
+ * Grant the admin/operator data surface (the inverse of the 403 gate the
+ * admin-gated-lenses spec exercises).
+ *
+ * The operator lenses (ops-telemetry, admin, psyops, crisis-ops, …) render
+ * their controls only when the FIRST admin data probe returns 2xx; a 403 flips
+ * them to the friendly <AdminRequiredState> gate. The gate is purely
+ * response-driven — there is NO client-side role check hiding the controls —
+ * so to walk an ELEVATED user THROUGH the controls we 200-mock the admin data
+ * endpoints + the sovereignty status probe. Call AFTER mockSovereignAuth (or
+ * mockAuthSuccess with an elevated role) so the identity + the data agree.
+ */
+export async function grantAdminData(page: Page) {
+  const ok = (body: unknown) => (route: import('@playwright/test').Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+
+  // Sovereignty controls (use70Lock → /api/sovereignty/status). Shape mirrors
+  // hooks/use70Lock.ts SovereigntyStatus: lockPercentage, invariants[], etc.
+  await page.route('**/api/sovereignty/status', ok({
+    ok: true,
+    lockPercentage: 72,
+    isHealthy: true,
+    lastAudit: new Date().toISOString(),
+    invariants: [
+      { id: 'royalty_cap', name: 'Royalty cap ≤ 30%', status: 'enforced' },
+      { id: 'withdrawal_hold', name: '48h withdrawal hold', status: 'enforced' },
+      { id: 'personal_dtu_leak', name: 'Personal DTUs never leak', status: 'enforced' },
+    ],
+  }));
+  await page.route('**/api/sovereignty/audit', ok({ ok: true, lockPercentage: 72 }));
+
+  // Generic admin data — a permissive 200 keeps the operator lenses off the
+  // 403 gate. Individual specs still override specific endpoints with richer
+  // fixtures (backup/CDN widgets do this) — later route() wins in Playwright.
+  await page.route('**/api/admin/**', ok({ ok: true }));
+  await page.route('**/api/guidance/**', ok({ ok: true, items: [] }));
+  await page.route('**/api/perf/**', ok({ ok: true, samples: [] }));
+  await page.route('**/api/events**', ok({ ok: true, events: [] }));
+}
+
+/**
+ * Sign in as an elevated (sovereign + admin + operator) user AND grant the
+ * admin data surface — the one call an admin/sovereign walkthrough needs.
+ * Keeps the non-admin 403-gate path (mockAuthSuccess role:'user') untouched.
+ */
+export async function mockSovereignAuth(page: Page, opts: AuthMockOptions = {}) {
+  await mockAuthSuccess(page, {
+    username: 'sovereign',
+    role: 'sovereign',
+    scopes: ['admin', 'operator', 'sovereign'],
+    ...opts,
+  });
+  await grantAdminData(page);
 }
 
 /**
