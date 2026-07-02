@@ -453,7 +453,7 @@ const DestinationsSection = memo(function DestinationsSection({ pathname }: { pa
     <div className="space-y-2 mb-4">
       {groups.map((group) => (
         <div key={group.group}>
-          <p className={cn('px-3 py-0.5 text-[10px] uppercase tracking-wider font-semibold', group.color)}>
+          <p className={cn('px-3 py-0.5 text-xs uppercase tracking-wider font-semibold', group.color)}>
             {group.label}
           </p>
           <div className="space-y-0.5">
@@ -592,7 +592,7 @@ const CategoryGroupedExtensions = memo(function CategoryGroupedExtensions({
                 )}
               />
               <span className={group.color}>{group.category}</span>
-              <span className="ml-auto text-gray-600 text-[10px] font-mono">
+              <span className="ml-auto text-gray-600 text-xs font-mono">
                 {group.lenses.length}
               </span>
             </button>
@@ -794,7 +794,7 @@ const SubLensTreeNodeItem = memo(function SubLensTreeNodeItem({
         >
           <Layers className="w-3.5 h-3.5 flex-shrink-0" />
           <span className="truncate">{parentLabel}</span>
-          <span className="ml-auto text-[10px] font-mono text-gray-400">
+          <span className="ml-auto text-xs font-mono text-gray-400">
             {childCount}
           </span>
         </Link>
@@ -830,7 +830,7 @@ const SubLensTreeNodeItem = memo(function SubLensTreeNodeItem({
                 key={child.id}
                 href={href}
                 className={cn(
-                  'block px-2 py-1 rounded text-[11px] truncate transition-all',
+                  'block px-2 py-1 rounded text-xs truncate transition-all',
                   isActive
                     ? 'text-neon-purple bg-neon-purple/10'
                     : 'text-gray-400 hover:text-gray-300 hover:bg-lattice-elevated',

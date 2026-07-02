@@ -75,7 +75,7 @@ function FeatureCards() {
             </div>
             <ul className="space-y-1.5">
               {a.bullets.map((b) => (
-                <li key={b} className="flex items-start gap-1.5 text-[11px] text-gray-300">
+                <li key={b} className="flex items-start gap-1.5 text-xs text-gray-300">
                   <span className={`mt-1 h-1 w-1 shrink-0 rounded-full ${a.accent}`} />{b}
                 </li>
               ))}
@@ -133,7 +133,7 @@ function ActivityChart() {
           <div className="flex items-center gap-1 rounded-lg bg-lattice-elevated p-0.5">
             {(['Daily', 'Weekly', 'Monthly'] as Range[]).map((r) => (
               <button key={r} onClick={() => setRange(r)}
-                className={`rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${range === r ? 'bg-neon-purple/20 text-fuchsia-200' : 'text-gray-300 hover:text-gray-200'}`}>{r}</button>
+                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${range === r ? 'bg-neon-purple/20 text-fuchsia-200' : 'text-gray-300 hover:text-gray-200'}`}>{r}</button>
             ))}
           </div>
         }
@@ -143,13 +143,13 @@ function ActivityChart() {
           <div className="m-2 rounded-xl border border-dashed border-lattice-border px-4 py-10 text-center">
             <Sparkles className="mx-auto mb-2 h-5 w-5 text-fuchsia-300/70" />
             <div className="text-[13px] text-gray-300">No thoughts minted yet</div>
-            <div className="mt-1 text-[11px] text-gray-500">
+            <div className="mt-1 text-xs text-gray-500">
               Your creation rhythm shows up here. <Link href="/lenses/studio" className="text-neon-purple hover:underline">Mint your first thought</Link>.
             </div>
           </div>
         ) : (
           <>
-            <div className="px-2 pb-1 text-[11px] text-gray-500">{total} thoughts minted · your creation rhythm</div>
+            <div className="px-2 pb-1 text-xs text-gray-500">{total} thoughts minted · your creation rhythm</div>
             <ChartKit kind="area" data={chartData} xKey="bucket"
               series={[{ key: 'count', label: 'DTUs', color: '#a855f7' }]} height={220} />
           </>
@@ -170,7 +170,7 @@ function ConcordiaEvents() {
   const events = (data?.events ?? []).slice(0, 6);
   return (
     <Card>
-      <CardHead title="Concordia Events" action={<Link href="/lenses/world" className="text-[11px] text-neon-purple hover:underline">Enter world</Link>} />
+      <CardHead title="Concordia Events" action={<Link href="/lenses/world" className="text-xs text-neon-purple hover:underline">Enter world</Link>} />
       <div className="px-3 pb-3">
         {events.length === 0 ? (
           <div className="rounded-xl border border-dashed border-lattice-border px-3 py-6 text-center text-[12px] text-gray-500">
@@ -183,9 +183,9 @@ function ConcordiaEvents() {
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-neon-purple/10 text-fuchsia-300"><CalendarClock className="h-4 w-4" /></span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px] font-medium text-white">{e.name || e.title || 'World event'}</div>
-                  <div className="truncate text-[11px] text-gray-500">{e.type || 'event'}{typeof e.participant_count === 'number' ? ` · ${e.participant_count} joined` : ''}</div>
+                  <div className="truncate text-xs text-gray-500">{e.type || 'event'}{typeof e.participant_count === 'number' ? ` · ${e.participant_count} joined` : ''}</div>
                 </div>
-                <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">Active</span>
+                <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300">Active</span>
               </li>
             ))}
           </ul>
@@ -212,9 +212,9 @@ function PresenceCard() {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <div className="text-sm font-semibold text-white">Who’s around</div>
-          <div className="text-[11px] text-gray-500">{users.length} active in the commons</div>
+          <div className="text-xs text-gray-500">{users.length} active in the commons</div>
         </div>
-        <Link href="/lenses/chat" className="rounded-lg bg-neon-purple/20 px-2.5 py-1 text-[11px] font-medium text-fuchsia-200 hover:bg-neon-purple/30">Ask Concord</Link>
+        <Link href="/lenses/chat" className="rounded-lg bg-neon-purple/20 px-2.5 py-1 text-xs font-medium text-fuchsia-200 hover:bg-neon-purple/30">Ask Concord</Link>
       </div>
       {users.length === 0
         ? <div className="text-[12px] text-gray-500">Quiet right now. You could be the spark.</div>
@@ -234,7 +234,7 @@ function MessagesCard() {
   const convos = (data?.conversations ?? []).slice(0, 5);
   return (
     <Card>
-      <CardHead title="Messages" action={<Link href="/lenses/message" className="text-[11px] text-neon-purple hover:underline">Open</Link>} />
+      <CardHead title="Messages" action={<Link href="/lenses/message" className="text-xs text-neon-purple hover:underline">Open</Link>} />
       <div className="px-2 pb-2">
         {convos.length === 0 ? (
           <div className="px-2 py-4 text-[12px] text-gray-500">No messages yet.</div>
@@ -243,14 +243,14 @@ function MessagesCard() {
             {convos.map((c, i) => (
               <li key={c.id || c.conversationId || i}>
                 <Link href="/lenses/message" className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-lattice-elevated/60">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-neon-purple/15 text-[11px] font-semibold text-fuchsia-200">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-neon-purple/15 text-xs font-semibold text-fuchsia-200">
                     {(c.withName || c.otherName || c.displayName || '·').slice(0, 1).toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[12px] font-medium text-gray-200">{c.withName || c.otherName || c.displayName || 'Direct message'}</span>
-                    <span className="block truncate text-[11px] text-gray-500">{c.lastMessage || c.preview || '—'}</span>
+                    <span className="block truncate text-xs text-gray-500">{c.lastMessage || c.preview || '—'}</span>
                   </span>
-                  {!!c.unread && <span className="shrink-0 rounded-full bg-rose-500/80 px-1.5 text-[10px] font-semibold text-white">{c.unread}</span>}
+                  {!!c.unread && <span className="shrink-0 rounded-full bg-rose-500/80 px-1.5 text-xs font-semibold text-white">{c.unread}</span>}
                 </Link>
               </li>
             ))}
@@ -311,8 +311,8 @@ function Customize({ prefs, isVisible, toggle, setClassic, reset, onClose }:
         ))}
       </div>
       <div className="mt-2 flex items-center justify-between border-t border-lattice-border pt-2">
-        <button onClick={reset} className="text-[11px] text-gray-500 hover:text-gray-300">Reset</button>
-        <button onClick={() => setClassic(!prefs.classic)} className="text-[11px] text-neon-purple hover:underline">
+        <button onClick={reset} className="text-xs text-gray-500 hover:text-gray-300">Reset</button>
+        <button onClick={() => setClassic(!prefs.classic)} className="text-xs text-neon-purple hover:underline">
           {prefs.classic ? 'New view' : 'Classic view'}
         </button>
       </div>
@@ -372,7 +372,7 @@ export function MyDashboard({ dash: dashProp }: { dash?: ReturnType<typeof useDa
           {isVisible('presence') && <PresenceCard />}
           {isVisible('messages') && <MessagesCard />}
           {isVisible('news') && (
-            <div className="flex items-center gap-1.5 px-1 pt-0.5 text-[11px] font-medium uppercase tracking-wide text-gray-600">
+            <div className="flex items-center gap-1.5 px-1 pt-0.5 text-xs font-medium uppercase tracking-wide text-gray-600">
               <Newspaper className="h-3 w-3" /> Latest
             </div>
           )}
