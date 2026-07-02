@@ -30,6 +30,27 @@ import {
 import { getDestinationsByGroup, isDestination, type DestinationDef } from '@/lib/destinations';
 import { cn } from '@/lib/utils';
 
+/**
+ * Static active-highlight classes per core color.
+ *
+ * These MUST be complete literal class strings, not `bg-${core.color}/20`
+ * template interpolations — Tailwind's JIT scans source for whole class names,
+ * so interpolated classes are never generated and get purged in the production
+ * build, leaving the active-nav highlight INVISIBLE in prod (it only appeared
+ * in dev because the dev server compiles on-demand). See CLAUDE.md Part 5 #7.
+ */
+const CORE_COLOR_ACTIVE: Record<string, { top: string; sub: string }> = {
+  'neon-cyan': { top: 'bg-neon-cyan/20 text-neon-cyan', sub: 'text-neon-cyan bg-neon-cyan/10' },
+  'neon-purple': { top: 'bg-neon-purple/20 text-neon-purple', sub: 'text-neon-purple bg-neon-purple/10' },
+  'neon-green': { top: 'bg-neon-green/20 text-neon-green', sub: 'text-neon-green bg-neon-green/10' },
+  'neon-blue': { top: 'bg-neon-blue/20 text-neon-blue', sub: 'text-neon-blue bg-neon-blue/10' },
+  'neon-pink': { top: 'bg-neon-pink/20 text-neon-pink', sub: 'text-neon-pink bg-neon-pink/10' },
+};
+const DEFAULT_CORE_ACTIVE = { top: 'bg-neon-blue/20 text-neon-blue', sub: 'text-neon-blue bg-neon-blue/10' };
+function coreActiveClasses(color: string): { top: string; sub: string } {
+  return CORE_COLOR_ACTIVE[color] ?? DEFAULT_CORE_ACTIVE;
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const {
@@ -370,7 +391,7 @@ const CoreLensNavItem = memo(function CoreLensNavItem({
           className={cn(
             'flex-1 flex items-center gap-3 px-3 py-2 rounded-lg transition-all',
             isHighlighted
-              ? `bg-${core.color}/20 text-${core.color}`
+              ? coreActiveClasses(core.color).top
               : 'text-gray-400 hover:bg-lattice-elevated hover:text-white',
             !showLabel && 'justify-center'
           )}
@@ -409,7 +430,7 @@ const CoreLensNavItem = memo(function CoreLensNavItem({
                 className={cn(
                   'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all',
                   isSubActive
-                    ? `text-${core.color} bg-${core.color}/10`
+                    ? coreActiveClasses(core.color).sub
                     : 'text-gray-400 hover:text-gray-300 hover:bg-lattice-elevated'
                 )}
                 aria-current={isSubActive ? 'page' : undefined}
