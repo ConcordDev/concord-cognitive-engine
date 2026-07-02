@@ -92,6 +92,26 @@ export default function registerGlyphSpellMacros(register) {
       if (!licensed) return { ok: false, reason: "not_owner_or_licensed" };
     }
 
+    // #12 — sanctuary/safe-zone gate. A cast lands in the world like an attack,
+    // so a 'safe'/'sanctuary' zone (or the hardcoded hub) must refuse it exactly
+    // the way the /combat/attack route does (routes/worlds.js → combatRuleFor).
+    // Without this, casting a fire spell in the no-violence concordia-hub
+    // succeeded while a melee attack at the same spot 403'd — a hole in the
+    // constitutional no-violence guarantee. Best-effort: no zone / no
+    // world_zones table → world default (allowed).
+    try {
+      const { combatRuleFor } = await import("../lib/world-zones.js");
+      const rule = combatRuleFor(db, worldId, Number(x) || 0, Number(z) || 0);
+      if (!rule.combatAllowed) {
+        return {
+          ok: false,
+          reason: "zone_combat_refusal",
+          zone: rule.zone || null,
+          message: `Spellcasting is refused in ${rule.zone?.name || "this sanctuary"}.`,
+        };
+      }
+    } catch { /* zone gate best-effort — falls through to world default */ }
+
     // The spell's element is stored authoritatively at mint time (dominant
     // element of the composed chain), so read it directly.
     const element = spell.element || "physical";
@@ -113,7 +133,24 @@ export default function registerGlyphSpellMacros(register) {
         maxLevel: 100,
       });
     } catch { /* cross-world layer optional */ }
-    const effectiveMagnitude = (Number(magnitude) || 1) * xwMul;
+
+    // #13 — env coupling: potency follows the DESTINATION world's live signals
+    // the same way the combat route does (routes/worlds.js applies
+    // elementalEnvBoost to melee/skill damage). A frost spell hits harder in a
+    // cold cell and weaker in heat; fire the inverse. Reads the destination
+    // world's signals AT the cast cell (not a stale/other-world baseline).
+    // elementalEnvBoost degrades to 1.0× when no baseline exists
+    // (signals.hasData === false), so a world without a sensor isn't penalised.
+    let envBoost = 1.0;
+    try {
+      const { signalsForWorld } = await import("../lib/embodied/signals.js");
+      const { elementalEnvBoost } = await import("../lib/embodied/skill-environment.js");
+      const sig = signalsForWorld(db, worldId, { x: Number(x) || 0, z: Number(z) || 0 });
+      const b = elementalEnvBoost(element, sig);
+      if (Number.isFinite(b) && b > 0) envBoost = b;
+    } catch { envBoost = 1.0; }
+
+    const effectiveMagnitude = (Number(magnitude) || 1) * xwMul * envBoost;
 
     let feedbackApplied = 0;
     try {
@@ -165,6 +202,7 @@ export default function registerGlyphSpellMacros(register) {
       magnitude: effectiveMagnitude,
       requestedMagnitude: Number(magnitude) || 1,
       crossWorldMultiplier: Math.round(xwMul * 1000) / 1000,
+      envBoost: Math.round(envBoost * 1000) / 1000,
       feedbackApplied,
       cumulativeNote: "embodied signals fold recency-weighted; repeated casts compound in cell",
     };
