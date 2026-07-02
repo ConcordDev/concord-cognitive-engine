@@ -31,6 +31,11 @@ const SCHEMA_BASE = "https://concord.dev/schemas/dtu";
 const VALID_DTU_TYPES = new Set([
   "component", "structure", "material", "npc", "quest", "policy",
   "environment", "vehicle", "item", "zone", "event",
+  // "ingest" — an externally-sourced record captured through the
+  // provenance-stamped ingest path (data.gov, USAspending, ...). It has no
+  // required content fields (see REQUIRED_FIELDS_BY_TYPE); its trustworthiness
+  // comes from the C2PA-style metadata.provenance assertion, not a fixed shape.
+  "ingest",
 ]);
 
 const REQUIRED_ENVELOPE_FIELDS = ["$schema", "dtuVersion", "id", "type", "creator", "content", "citations", "metadata"];
@@ -53,7 +58,25 @@ function nowISO() {
 }
 
 function canonicalStringify(content) {
-  return JSON.stringify(content, Object.keys(content).sort());
+  // Deterministic, order-independent JSON with keys sorted at EVERY nesting
+  // level. We use a replacer FUNCTION (not an array): a JSON.stringify array
+  // replacer is a property ALLOWLIST applied recursively, so the previous
+  // `Object.keys(content).sort()` array silently DROPPED every nested key that
+  // didn't also appear at the top level — e.g. `{record:{amount:1}}` hashed as
+  // `{record:{}}`. That broke content-hash tamper detection for any nested
+  // payload (the whole point of the provenance contentSha256 anchor, and of
+  // dedup by content hash). The function form below re-emits each plain object
+  // with its own keys sorted, leaving arrays (whose order is significant) and
+  // primitives untouched. This matches the correct recursive canonicalizer
+  // already used in lib/dtu-portability.js.
+  return JSON.stringify(content, (_key, value) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const sorted = {};
+      for (const k of Object.keys(value).sort()) sorted[k] = value[k];
+      return sorted;
+    }
+    return value;
+  });
 }
 
 function computeContentHash(content) {
@@ -63,6 +86,13 @@ function computeContentHash(content) {
 function generateId(contentHash, type) {
   const prefix = type ? type.slice(0, 4) : "dtu";
   return `dtu_${prefix}_${contentHash.slice(0, 16)}`;
+}
+
+const SHA256_HEX_RE = /^[a-f0-9]{64}$/;
+
+// A provenance value must be a string or null (never any other type).
+function isStringOrNull(v) {
+  return v === null || typeof v === "string";
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -148,6 +178,56 @@ class DTUProtocol {
       attachedAt: nowISO(),
     });
     if (dtu.metadata) dtu.metadata.updatedAt = nowISO();
+    return dtu;
+  }
+
+  /**
+   * Stamp a C2PA-style provenance assertion onto an existing DTU.
+   *
+   * This records WHERE a DTU's content came from (source URL/id), WHEN it was
+   * fetched, an optional media timecode, an optional signer, and — crucially —
+   * a `contentSha256` computed from the DTU's OWN `content` via the existing
+   * `computeContentHash`. That hash is the tamper-evidence anchor: if anyone
+   * edits `content` after stamping, `verify()` will detect the mismatch.
+   *
+   * APPEND-SAFE: provenance lives in `metadata.provenance`, a sibling of the
+   * existing `metadata.contentHash`. `id` is derived at creation from the
+   * content hash + type (see `generateId`) and is NOT touched here — stamping
+   * provenance on a valid DTU never changes its identity. This makes the field
+   * strictly additive: DTUs created before provenance existed keep validating.
+   *
+   * @param {object} dtu - an existing DTU envelope (must have `content` + `metadata`)
+   * @param {object} [provenanceInput]
+   * @param {string|null} [provenanceInput.sourceUrl]  - the fetched URL, if any
+   * @param {string|null} [provenanceInput.sourceId]   - upstream record id, if any
+   * @param {string|null} [provenanceInput.timecode]   - media timecode, if any
+   * @param {string|null} [provenanceInput.fetchedAt]  - ISO fetch time (defaults to now)
+   * @param {string|null} [provenanceInput.signer]     - signing identity, if any
+   * @returns {object} the same DTU, with `metadata.provenance` set
+   */
+  stampProvenance(dtu, provenanceInput = {}) {
+    if (!dtu || typeof dtu !== "object") throw new Error("dtu must be an object");
+    if (!dtu.content) throw new Error("Cannot stamp provenance on a DTU without content");
+    if (!dtu.metadata || typeof dtu.metadata !== "object") {
+      throw new Error("Cannot stamp provenance on a DTU without metadata");
+    }
+
+    // The provenance content hash is computed from the DTU's own content using
+    // the SAME canonical hash function the rest of the protocol uses — so it is
+    // deterministic and independently reproducible by any verifier.
+    const contentSha256 = computeContentHash(dtu.content);
+
+    dtu.metadata.provenance = {
+      sourceUrl: provenanceInput.sourceUrl ?? null,
+      sourceId: provenanceInput.sourceId ?? null,
+      contentSha256,
+      timecode: provenanceInput.timecode ?? null,
+      fetchedAt: provenanceInput.fetchedAt ?? nowISO(),
+      signer: provenanceInput.signer ?? null,
+    };
+    dtu.metadata.updatedAt = nowISO();
+    // NOTE: `dtu.id` and `dtu.metadata.contentHash` are intentionally left
+    // untouched — provenance is metadata, not part of the semantic identity.
     return dtu;
   }
 
@@ -309,6 +389,29 @@ class DTUProtocol {
   }
 
   /**
+   * Create an Ingest DTU wrapping an externally-sourced record. The record's
+   * trust anchor is the provenance assertion added by `stampProvenance`, not a
+   * fixed content schema — so any JSON-shaped upstream record is admissible.
+   *
+   * @param {object} config
+   * @param {string} [config.name]        - human label for the ingested record
+   * @param {object} [config.source]      - { url, id } of the upstream record
+   * @param {*}      [config.record]      - the raw/shaped upstream record payload
+   * @param {string} [config.ingestKind]  - e.g. "open-data"
+   * @param {object} [config.creator]     - { name, id }
+   * @returns {object} Ingest DTU (call stampProvenance() next)
+   */
+  createIngest(config = {}) {
+    const content = {
+      name: config.name || "Ingested Record",
+      ingestKind: config.ingestKind || "external",
+      source: config.source || { url: null, id: null },
+      record: config.record ?? {},
+    };
+    return this._buildEnvelope("ingest", content, config.creator);
+  }
+
+  /**
    * Validate a DTU document against the protocol schema.
    *
    * @param {object} dtu
@@ -387,6 +490,25 @@ class DTUProtocol {
       if (!dtu.metadata.contentHash) errors.push("Metadata must include 'contentHash'");
       if (!dtu.metadata.version) errors.push("Metadata must include 'version'");
       if (!dtu.metadata.createdAt) errors.push("Metadata must include 'createdAt'");
+
+      // Provenance is OPTIONAL — pre-provenance DTUs without the field stay
+      // valid (strictly additive). When present, its shape is validated:
+      // `contentSha256` is required + must be 64-hex; the rest may be null.
+      if (dtu.metadata.provenance !== undefined) {
+        const prov = dtu.metadata.provenance;
+        if (!prov || typeof prov !== "object" || Array.isArray(prov)) {
+          errors.push("Metadata provenance must be an object");
+        } else {
+          if (typeof prov.contentSha256 !== "string" || !SHA256_HEX_RE.test(prov.contentSha256)) {
+            errors.push("Provenance 'contentSha256' must be a 64-char lowercase hex string");
+          }
+          for (const f of ["sourceUrl", "sourceId", "timecode", "fetchedAt", "signer"]) {
+            if (f in prov && !isStringOrNull(prov[f])) {
+              errors.push(`Provenance '${f}' must be a string or null`);
+            }
+          }
+        }
+      }
     }
 
     return { valid: errors.length === 0, errors };
@@ -438,8 +560,18 @@ class DTUProtocol {
   /**
    * Verify that a DTU's stored content hash matches its actual content.
    *
+   * When `metadata.provenance` is present, this ADDITIONALLY verifies that the
+   * provenance `contentSha256` still matches the live content hash — tamper
+   * detection: if `content` was edited after the provenance was stamped, the
+   * mismatch is the signal. The `provenance` sub-object in the return reports
+   * that check independently; overall `verified` is true only when BOTH the
+   * metadata content-hash and (if present) the provenance hash match.
+   *
+   * When provenance is absent, the return shape and semantics are EXACTLY as
+   * before (no `provenance` key) — strictly backward compatible.
+   *
    * @param {object} dtu
-   * @returns {{ verified: boolean, expected: string, actual: string }}
+   * @returns {{ verified: boolean, expected: string|null, actual: string|null, provenance?: object }}
    */
   verify(dtu) {
     if (!dtu || !dtu.content || !dtu.metadata || !dtu.metadata.contentHash) {
@@ -448,11 +580,30 @@ class DTUProtocol {
 
     const actual = computeContentHash(dtu.content);
     const expected = dtu.metadata.contentHash;
+    const metadataHashMatch = actual === expected;
+
+    // No provenance → behave exactly as today.
+    if (dtu.metadata.provenance === undefined) {
+      return { verified: metadataHashMatch, expected, actual };
+    }
+
+    // Provenance present → verify its content hash too and report both checks.
+    const prov = dtu.metadata.provenance;
+    const provExpected = prov && typeof prov === "object" ? (prov.contentSha256 ?? null) : null;
+    const provMatch = provExpected === actual;
 
     return {
-      verified: actual === expected,
+      verified: metadataHashMatch && provMatch,
       expected,
       actual,
+      provenance: {
+        present: true,
+        expected: provExpected,
+        actual,
+        match: provMatch,
+        // Which checks passed, for callers that want a per-check breakdown.
+        checks: { metadataContentHash: metadataHashMatch, provenanceContentHash: provMatch },
+      },
     };
   }
 

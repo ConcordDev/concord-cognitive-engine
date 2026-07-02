@@ -1,3 +1,6 @@
+import { fetchPublicUrl } from "../lib/public-fetch.js";
+import { stampIngestedRecord } from "../lib/provenance-ingest.js";
+
 export default function registerGovernmentActions(registerLensAction) {
   registerLensAction("government", "permitTimeline", (ctx, artifact, _params) => {
     const applicationDate = artifact.data?.applicationDate ? new Date(artifact.data.applicationDate) : null;
@@ -779,6 +782,59 @@ export default function registerGovernmentActions(registerLensAction) {
     }
   });
 
+  // ── Provenance-stamped open-data ingest (P-A) ───────────────
+  // Fetch ONE real data.gov record (by dataset id, or the top search hit for a
+  // query) and wrap it in a provenance-stamped Ingest DTU — a C2PA-style
+  // assertion recording sourceUrl + contentSha256 + fetchedAt. The returned
+  // `dtu` is ready to hand to `dtu.create`. Unlike `open-data-search` (which
+  // returns a result LIST and mints no DTU), this is the ingest consumer: it
+  // proves the fetch → stamp → validate → verify path end-to-end.
+  registerLensAction("government", "open-data-ingest", async (_ctx, _a, params = {}) => {
+    const datasetId = String(params.id || params.datasetId || "").trim();
+    const query = String(params.query || "").trim();
+    if (!datasetId && !query) return { ok: false, error: "id or query required" };
+    try {
+      const url = datasetId
+        ? `https://catalog.data.gov/api/3/action/package_show?id=${encodeURIComponent(datasetId)}`
+        : `https://catalog.data.gov/api/3/action/package_search?q=${encodeURIComponent(query)}&rows=1`;
+      const data = await fetchJsonGov(url);
+      const record = datasetId ? data?.result : data?.result?.results?.[0];
+      if (!record || typeof record !== "object") {
+        return { ok: false, error: "no data.gov record found for that id/query" };
+      }
+      // Shape a stable, minimal subset (deterministic content → deterministic hash).
+      const shaped = {
+        id: record.id || datasetId || null,
+        name: record.name || null,
+        title: record.title || null,
+        organization: record.organization?.title || null,
+        notes: record.notes ? String(record.notes).slice(0, 500) : null,
+        resourceCount: Array.isArray(record.resources) ? record.resources.length : 0,
+        firstResourceUrl: record.resources?.[0]?.url || null,
+        lastModified: record.metadata_modified || null,
+      };
+      const dtu = stampIngestedRecord({
+        sourceUrl: url,
+        sourceId: shaped.id,
+        record: shaped,
+        recordName: shaped.title || shaped.name || "data.gov record",
+        ingestKind: "open-data",
+        fetchedAt: new Date().toISOString(),
+      });
+      return {
+        ok: true,
+        result: {
+          dtu,
+          readyForDtuCreate: true,
+          source: "data.gov CKAN API",
+          provenance: dtu.metadata?.provenance || null,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `data.gov ingest failed: ${e instanceof Error ? e.message : "network"}` };
+    }
+  });
+
   // ─────────────────────────────────────────────────────────────
   // Parity backlog — 7 buildable civic-portal features.
   // All persist in globalThis._concordSTATE.governmentLens, per-user.
@@ -1478,12 +1534,16 @@ export default function registerGovernmentActions(registerLensAction) {
   });
 };
 
-async function fetchJsonGov(url, headers = {}) {
-  if (typeof fetch !== "function") throw new Error("fetch unavailable");
+async function fetchJsonGov(url, headers = {}, opts = {}) {
+  // Route through the SSRF-guarded keyless fetch (public-fetch.js) instead of a
+  // bare fetch(). This closes the prior bypass: the URL is now validated
+  // (scheme allowlist + private-IP block + DNS-rebinding pin) before any
+  // egress. Signature/behavior (headers, 6s timeout, JSON parse, error
+  // propagation) are unchanged — only the transport is guarded now.
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), 6000);
   try {
-    const r = await fetch(url, { signal: ac.signal, headers });
+    const r = await fetchPublicUrl(url, { signal: ac.signal, headers }, opts);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return await r.json();
   } finally {
