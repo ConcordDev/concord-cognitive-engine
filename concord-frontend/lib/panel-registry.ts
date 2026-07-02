@@ -208,6 +208,23 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: 'People directory',
     load: lazyNamed(() => import('@/components/message/DirectoryPanel'), 'DirectoryPanel'),
   },
+
+  // — ConKay cockpit panel lane (F1, docs/NEXT_ARC_PLAN.md Wave 1 / K2) —
+  'conkay.telemetry': {
+    id: 'conkay.telemetry', label: 'System Work', scope: 'global',
+    keywords: ['conkay', 'telemetry', 'macro', 'backend', 'work'],
+    description: 'Recent real macro:completed backend runs',
+    load: lazyNamed(() => import('@/components/conkay/panels/ConKayTelemetryPanel'), 'ConKayTelemetryPanel'),
+  },
+  // NOT YET REGISTERED — panel files do not exist yet, so no `load` thunk is
+  // added until the file lands (a thunk pointing at a nonexistent module would
+  // be a dead import that crashes the build the moment it's ever mounted):
+  //   'conkay.macro-library'  — planned by unit F4
+  //   'conkay.provenance'     — planned by unit F5
+  //   'conkay.forward-sim'    — planned by unit F7
+  // ConKayCockpit's panel slots already treat an unregistered id as "render
+  // nothing" (honest, not a crash), so cockpit callers can reference these ids
+  // ahead of time and the lane will simply skip them until each unit lands.
 };
 
 export function getPanelById(id: string): PanelEntry | undefined {

@@ -22,6 +22,7 @@ import { useConKayVoice } from './useConKayVoice';
 import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
 import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
 import { useConkayHudStore } from './conkayHudStore';
+import { ConKayCockpit } from './ConKayCockpit';
 import type { ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
 import { lensRun } from '@/lib/api/client';
@@ -108,33 +109,10 @@ function ConKayTelemetryChip() {
   return null;
 }
 
-// Phase-2 telemetry panel — a small ledger of the most recent REAL macro runs
-// (domain.action · ok/failed · elapsed ms). Every row is a `macro:completed`
-// fact from the HUD store; there is no ambient/placeholder content, so the
-// panel is empty until the backend actually reports a completed run.
-function ConKayTelemetryPanel() {
-  const telemetry = useConkayHudStore((s) => s.telemetry);
-  if (!telemetry.length) return null;
-  return (
-    <div className="mx-auto mt-2 max-w-2xl rounded-xl border border-cyan-400/15 bg-black/30 p-2">
-      <div className="px-1 pb-1 text-[10px] uppercase tracking-wide text-cyan-300/50">recent system work</div>
-      <ul className="space-y-1">
-        {telemetry.map((t, i) => (
-          <li
-            key={`${t.domain}.${t.action}-${i}`}
-            className="flex items-center justify-between rounded-lg px-2 py-1 text-[11px]"
-          >
-            <span className="truncate text-cyan-100/80">{t.domain}.{t.action}</span>
-            <span className="flex items-center gap-2">
-              {t.ms != null && <span className="text-cyan-300/50">{t.ms} ms</span>}
-              <span className={t.ok ? 'text-emerald-300' : 'text-rose-300'}>{t.ok ? 'ok' : 'failed'}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+// Phase-2 telemetry panel — moved to `./panels/ConKayTelemetryPanel.tsx` (F1)
+// so it can also be registered in `lib/panel-registry.ts` as `conkay.telemetry`
+// and lazy-mounted in the cockpit's right panel lane below. It is still the
+// same self-contained "recent system work" ledger, unchanged.
 
 export function ConKayOverlay() {
   const pathname = usePathname();
@@ -590,8 +568,10 @@ export function ConKayOverlay() {
         </div>
       </div>
 
-      {/* transcript */}
-      <div className="flex-1 overflow-y-auto px-5">
+      {/* transcript, now hosted inside the F1 cockpit grid — left/right panel
+          lanes (e.g. conkay.telemetry) flank the SAME transcript content,
+          unchanged. The lanes hide below `lg` so mobile keeps full width. */}
+      <ConKayCockpit>
         <div className="mx-auto max-w-2xl space-y-3 py-2">
           {messages.length === 0 && (
             <div className="mt-10 text-center text-sm text-cyan-100/70">
@@ -613,11 +593,9 @@ export function ConKayOverlay() {
           ))}
           {/* JARVIS "you can see it building" — live arc-reactor + step spine */}
           <ConKayWorkStatus phase={conkayState} status={workStatus} steps={steps} active={running} />
-          {/* Phase-2 honest telemetry — real macro:completed facts only */}
-          <ConKayTelemetryPanel />
           <div ref={bottomRef} aria-hidden />
         </div>
-      </div>
+      </ConKayCockpit>
 
       {/* command bar */}
       <form onSubmit={onSubmitForm} className="px-5 pb-5 pt-2">
