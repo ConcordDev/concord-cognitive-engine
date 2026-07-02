@@ -2946,6 +2946,7 @@ export default function ChatLensPage() {
                 state={conkayState}
                 listening={conkayVoice.listening}
                 muted={conkayMuted}
+                ttsAmplitudeRef={conkayVoice.ttsAmplitudeRef}
                 className="pointer-events-none absolute inset-0 -z-10"
               />
               <ConKayHud

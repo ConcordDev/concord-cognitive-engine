@@ -47,4 +47,26 @@ export const CONKAY_VOICE_HINTS = [
   'google us english', 'microsoft', 'female',
 ];
 
+// A single pinned Piper voice identity for ConKay, so she sounds like the same
+// person across sessions/browsers instead of drifting with whatever
+// PIPER_VOICE the server happens to be configured with. 'en_US-amy-medium' is
+// a real, commonly-shipped voice in the public Piper voice catalog
+// (rhasspy/piper-voices) — calm, female, English — chosen to match the
+// CONKAY_VOICE_HINTS profile above. PLACEHOLDER CAVEAT: this repo has no
+// checked-in Piper voice manifest to confirm which .onnx models are actually
+// installed on the deployment box, and the current `voice.tts` macro
+// (server.js) only honors the server-side `PIPER_VOICE` env var — it does not
+// yet read a per-request voice id. Confirm this id against the real installed
+// catalog (or wire the macro to accept `input.voice`) before relying on it to
+// change the sound in production; until then this is the identity the
+// frontend REQUESTS, honestly threaded through, not a guaranteed audible
+// change server-side.
+export const CONKAY_VOICE_ID = 'en_US-amy-medium';
+
+// Terse, non-overclaiming line ConKay speaks the moment she's first summoned
+// in a session. ConKayOverlay appends lens-specific context after this (see
+// the greeting effect there). Deliberately just states presence/availability
+// — no claim of omniscience, autonomy, or capability beyond what she has.
+export const CONKAY_SIGNATURE_GREETING = 'Kay, online.';
+
 export type ConKayState = 'idle' | 'listening' | 'processing' | 'presenting' | 'acting';

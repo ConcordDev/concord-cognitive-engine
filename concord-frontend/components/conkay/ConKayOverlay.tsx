@@ -23,7 +23,7 @@ import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
 import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
 import { useConkayHudStore } from './conkayHudStore';
 import { ConKayCockpit } from './ConKayCockpit';
-import type { ConKayState } from './conkay-persona';
+import { CONKAY_SIGNATURE_GREETING, type ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
 import { lensRun } from '@/lib/api/client';
 import { subscribe, connectSocket } from '@/lib/realtime/socket';
@@ -326,7 +326,7 @@ export function ConKayOverlay() {
     if (greetedRef.current) return;
     greetedRef.current = true;
     const where = lens && !onChatLens ? ` I'm on the ${lens.name} lens with you — tell me what to do, or say "brief me".` : " Ask me anything, or say \"brief me\".";
-    if (!muted) voice.speak(`Kay here.${where}`);
+    if (!muted) voice.speak(`${CONKAY_SIGNATURE_GREETING}${where}`);
   }, [open, lens, onChatLens, muted, voice]);
 
   const conkayState: ConKayState =
@@ -544,7 +544,7 @@ export function ConKayOverlay() {
   return (
     <div className="fixed inset-0 z-[80] flex flex-col" role="dialog" aria-modal="true" aria-label="ConKay">
       {/* world-tree presence */}
-      <ConKayBackdrop state={conkayState} listening={voice.listening} muted={muted} className="pointer-events-none absolute inset-0 -z-10" />
+      <ConKayBackdrop state={conkayState} listening={voice.listening} muted={muted} ttsAmplitudeRef={voice.ttsAmplitudeRef} className="pointer-events-none absolute inset-0 -z-10" />
       <div className="absolute inset-0 -z-10 bg-black/55 backdrop-blur-sm" aria-hidden onClick={() => setOpen(false)} />
 
       {/* Phase 3 — exploded view of a real artifact (over the backdrop, interactive) */}
