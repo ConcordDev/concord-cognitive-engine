@@ -1154,3 +1154,46 @@ jobs:
           if [ -f server/server.pid ]; then
             kill $(cat server/server.pid) 2>/dev/null || true
           fi
+
+  # ── Server clean-exit canary (informational) ──────────────────────────────
+  # Runs the full server suite WITHOUT --test-force-exit. The main suite
+  # force-exits because module-scope timers historically kept the process
+  # alive after the last test; those timers are now unref'd under
+  # NODE_ENV=test (see server.js `_unrefInTest` + tests/preload/no-egress.mjs
+  # header). This canary proves each test file's child process exits on its
+  # own. Informational (`continue-on-error: true`) until it has a green
+  # streak — promotion to blocking (and dropping --test-force-exit from
+  # test:main) happens only after the canary proves itself in CI.
+  server-clean-exit-canary:
+    name: Server Clean-Exit Canary
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        working-directory: ./server
+        run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+
+      - name: Run server suite without force-exit
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
+          ADMIN_PASSWORD: testpassword123
+          OLLAMA_HOST: http://127.0.0.1:11434
+          BRAIN_CONSCIOUS_URL: http://127.0.0.1:11434
+          BRAIN_SUBCONSCIOUS_URL: http://127.0.0.1:11434
+          BRAIN_UTILITY_URL: http://127.0.0.1:11434
+          BRAIN_REPAIR_URL: http://127.0.0.1:11434
+        run: npm run test:clean-exit

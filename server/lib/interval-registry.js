@@ -123,8 +123,10 @@ export function startAllIntervals(structuredLog) {
     delay += STAGGER_MS;
 
     const startDelay = delay;
-    setTimeout(() => {
-      const id = setInterval(() => {
+    // Test hygiene: timers must not block a clean node:test exit (see tests/preload/no-egress.mjs header). @resource-leak-ok
+    const _unrefInTest = (t) => { if (String(process.env.NODE_ENV).toLowerCase() === "test") t?.unref?.(); return t; };
+    _unrefInTest(setTimeout(() => {
+      const id = _unrefInTest(setInterval(() => {
         try {
           const result = handler();
           // Handle async handlers
@@ -140,7 +142,7 @@ export function startAllIntervals(structuredLog) {
             structuredLog("error", "interval_error", { name, error: err.message });
           }
         }
-      }, intervalMs);
+      }, intervalMs));
 
       _registeredIntervals.set(name, {
         id,
@@ -156,7 +158,7 @@ export function startAllIntervals(structuredLog) {
           delayMs: startDelay,
         });
       }
-    }, startDelay);
+    }, startDelay));
   }
 
   return { scheduled: Object.keys(INTERVALS).filter(n => _taskHandlers.has(n)).length };
