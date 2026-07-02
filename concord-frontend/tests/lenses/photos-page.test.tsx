@@ -69,7 +69,10 @@ describe('PhotosLensPage — four UX states', () => {
     await waitFor(() => expect(screen.getByText('Summit at dawn')).toBeInTheDocument());
     expect(screen.getByText('Shared vista')).toBeInTheDocument();
     // The unshared photo offers a Share button; the shared one shows the badge.
-    expect(screen.getByRole('button', { name: /share/i })).toBeInTheDocument();
+    // Match the share ACTION specifically — /share/i alone also matches the
+    // shared photo's "Delete photo Shared vista" label (its caption contains
+    // "Shared"), now that each control has a descriptive per-photo aria-label.
+    expect(screen.getByRole('button', { name: /share photo/i })).toBeInTheDocument();
     expect(screen.getByText(/dtu minted/i)).toBeInTheDocument();
     // a11y: tabs are toggle buttons with aria-pressed.
     expect(screen.getByRole('button', { name: /my photos/i })).toHaveAttribute('aria-pressed', 'true');
