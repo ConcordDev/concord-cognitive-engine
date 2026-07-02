@@ -4,16 +4,34 @@ Date: 2026-06-26 · Working dir: `/home/user/concord-cognitive-engine`
 
 ---
 
+## Reconciliation pass — 2026-07-02
+
+The MMO/RPG fixed-defect ledger (CLAUDE.md) claims several items below were
+closed. Re-verified each against the current tree (grep + read). Ground-truth
+verdicts (statuses in the tables/sections that follow updated to match):
+
+| Item | Verdict | Evidence |
+|---|---|---|
+| Unknown-macro LLM fallthrough (P0 / §5 / #3/#25/#27) | ✅ **CONFIRMED-FIXED** | `server/server.js:39341-39365` — dispatcher now FAILS FAST with `{ok:false,error:"unknown_macro"}` by default; the utility-brain path is behind an EXPLICIT opt-in (`input.__ai===true` / `ai:true`). A plain game-macro call can no longer be masked as a brain success. |
+| Phantom `player:low-health` listener (P1 / §3b) | ✅ **CONFIRMED-FIXED** | Now emitted server-side: `server/routes/worlds.js:3216` (`io.to('user:'+userId).emit("player:low-health", …)`). The listener is no longer phantom. |
+| `maintenance-gates` malformed critical (P1 / §2) | ✅ **CONFIRMED-FIXED** | `server/lib/detectors/maintenance-gates-detector.js:32-46` — `gateFinding` now emits the canonical `{id,severity,kind,message,location}` shape (was `{title,detail,file}` → rendered `undefined — undefined`). |
+| CharacterCustomizer fabricated wardrobe (P2 / §7) | ✅ **CONFIRMED-FIXED** | Real backend catalog macro `appearance.options` at `server/domains/appearance.js:265` (no fabricated prices); the component fetches it via `lensRun('appearance','options',…)` at `concord-frontend/components/world/CharacterCustomizer.tsx:88` with real loading/error states. |
+| Combat-feel *consolidation* seams | ✅ **CONFIRMED-FIXED (partial bundle)** | T2.7 single trauma authority + T2.10 cancel window + #8 motion tokens are pinned by `concord-frontend/tests/feel-consolidation.test.ts`; PvP `combat:impact` is emitted at `server/server.js:8948`. The **micro-seams** T2.1/T2.2/T2.3/T2.6/T2.9/T2.11/T2.12 (§6) are NOT covered and **remain OPEN**. |
+| 9 orphan socket EMITS (P1 / §3a) | ⚠️ **STILL-OPEN** (ledger claim not reproducible on this branch) | Server still emits all 9 (`worlds.js:962,1727`, `racing.js:17`, `basketball.js:19`, `server.js:9154,63370`, etc.); a raw-string search of `concord-frontend/` finds **0 references** to any of the 9 event names → genuinely unconsumed. |
+| 12 dead `concordia:*` CustomEvents (P1 / §3b-detector) | ❓ **UNVERIFIED** (left OPEN) | Could not be reliably re-verified by static grep: frontend listeners register through an event-name abstraction (even known-consumed events like `combat:impact` show 0 literal `addEventListener('…')` hits), so a grep verdict here would be untrustworthy. Needs the `dead-event-listener` detector re-run, not grep. |
+
+---
+
 ## Prioritized summary (fix-order)
 
 | Pri | Finding | Where | Status |
 |---|---|---|---|
-| **P0** | **Unknown-macro silently answered by LLM (HTTP 200).** `/api/lens/run` falls through to the utility brain on any unregistered `(domain,name)`. When the brain answers it returns **200 `{source:"utility-brain"}`** — a typo'd / never-registered macro looks like a real result instead of an error. Only on brain failure/timeout does it return the honest `unknown_macro`. | `server/server.js:39008-39041` | **OPEN** (documented #3 in PLAYTEST_FINDINGS_PLAN; the honest path is half-wired) |
-| **P1** | **9 backend socket emits with ZERO frontend listeners** (orphan emitters): `world:npc-spared`, `world:node-update`, `mount:behavior`, `world:npc-bark`, `world:npc-attack`, `world:loot-node`, `world:broadcast`, `world:racing-started`, `world:basketball-started`. | see §3 table | OPEN |
-| **P1** | **1 phantom subscribed socket event** (listener with no emitter): `player:low-health` subscribed in the world page SR-bridge but never emitted by the backend. | `concord-frontend/app/lenses/world/page.tsx:3620` | OPEN |
+| **P0** | **Unknown-macro silently answered by LLM (HTTP 200).** `/api/lens/run` falls through to the utility brain on any unregistered `(domain,name)`. When the brain answers it returns **200 `{source:"utility-brain"}`** — a typo'd / never-registered macro looks like a real result instead of an error. Only on brain failure/timeout does it return the honest `unknown_macro`. | `server/server.js:39341-39365` | ✅ **CONFIRMED-FIXED (2026-07-02)** — now fails fast with `unknown_macro`; brain only on explicit `__ai` opt-in |
+| **P1** | **9 backend socket emits with ZERO frontend listeners** (orphan emitters): `world:npc-spared`, `world:node-update`, `mount:behavior`, `world:npc-bark`, `world:npc-attack`, `world:loot-node`, `world:broadcast`, `world:racing-started`, `world:basketball-started`. | see §3 table | ⚠️ **STILL-OPEN (re-verified 2026-07-02)** — server still emits all 9; 0 raw-string refs in `concord-frontend/` |
+| **P1** | **1 phantom subscribed socket event** (listener with no emitter): `player:low-health` subscribed in the world page SR-bridge but never emitted by the backend. | listener `world/page.tsx:3620`; emitter now `server/routes/worlds.js:3216` | ✅ **CONFIRMED-FIXED (2026-07-02)** — backend now emits `player:low-health` |
 | **P1** | **12 dead `concordia:*` CustomEvent dispatches** (detector-confirmed): dispatched in mounted components, no `addEventListener` subscribes → no-op ghost events. | see §3b | OPEN |
-| **P1** | **1 CRITICAL detector finding** `maintenance-gates` returns a malformed `undefined/undefined` critical — the gate itself is emitting a broken finding object (cannot tell which gate failed). | `server/lib/detectors/*maintenance-gates*` | OPEN |
-| **P2** | **Placeholder data in a MOUNTED component.** `CharacterCustomizer` fabricates all cosmetic slot options client-side (`generateSlotOptions`, placeholder colors/prices); no backend fetch. Mounted in onboarding + HUD panel. | `concord-frontend/components/world/CharacterCustomizer.tsx:49-65,104` | OPEN |
+| **P1** | **1 CRITICAL detector finding** `maintenance-gates` returns a malformed `undefined/undefined` critical — the gate itself is emitting a broken finding object (cannot tell which gate failed). | `server/lib/detectors/maintenance-gates-detector.js:32-46` | ✅ **CONFIRMED-FIXED (2026-07-02)** — canonical `{id,message,location}` finding shape |
+| **P2** | **Placeholder data in a MOUNTED component.** `CharacterCustomizer` fabricates all cosmetic slot options client-side (`generateSlotOptions`, placeholder colors/prices); no backend fetch. Mounted in onboarding + HUD panel. | catalog `server/domains/appearance.js:265`; fetch `CharacterCustomizer.tsx:88` | ✅ **CONFIRMED-FIXED (2026-07-02)** — real `appearance.options` catalog, fetched via `lensRun` |
 | info | Lens wiring clean: 258 WIRED / 2 by-design NO-BACKEND-CALL / 0 PARTIAL / 0 broken. | — | OK |
 | info | Frontend→macro callers: only 11 unmatched pairs, all `personas.*`, all **false positives** (aliased at runtime). No caller points at a truly nonexistent macro. | §4 | OK |
 | — | Large preexisting backlog in PLAYTEST_FINDINGS_PLAN + POLISH_AUDIT — enumerated in §6. | §6 | mixed |
@@ -47,7 +65,7 @@ Total findings: **85** — critical **1**, high **0**, medium **40**, low **15**
 
 | Sev | Consumer | Title | Detail |
 |---|---|---|---|
-| 🛑 critical | `maintenance-gates` | `undefined` | The finding object is malformed — title and message both render as `undefined` (`server/server.js`-level report shows `🛑 **critical** `undefined` — undefined`). The gate is firing a critical but not populating it; either a verify-*.mjs gate is failing and the finding builder is dropping its fields, or the gate's own output shape regressed. Needs investigation — a real critical is hiding behind a broken finding. |
+| 🛑 critical | `maintenance-gates` | `undefined` | **✅ CONFIRMED-FIXED (2026-07-02).** The malformed shape was the bug itself: `gateFinding` emitted `{title,detail,file}` which the renderer read as `undefined — undefined`. It now emits the canonical `{id,severity,kind,message,location}` (`server/lib/detectors/maintenance-gates-detector.js:32-46`), so a failing gate names itself (`"<gate> gate failed — <message>"`). A malformed critical can no longer hide a real one. |
 | (high) | — | _none_ | 0 high findings. |
 
 ### Notable non-critical findings relevant to wiring
@@ -85,7 +103,7 @@ Method: collected backend emitters (`realtimeEmit` / `io.emit` / `.to(...).emit`
 
 | Event | Listener (file:line) | Backend emitter |
 |---|---|---|
-| `player:low-health` | `concord-frontend/app/lenses/world/page.tsx:3620` (in `SR_BRIDGE_EVENTS`) | **NONE** — never emitted server-side. The screen-reader low-health announce + `concordia:player-low-health` window event never fire. |
+| `player:low-health` | `concord-frontend/app/lenses/world/page.tsx:3620` (in `SR_BRIDGE_EVENTS`) | ✅ **CONFIRMED-FIXED (2026-07-02)** — now emitted at `server/routes/worlds.js:3216` (`io.to('user:'+userId).emit("player:low-health", …)`). No longer phantom. |
 
 Context worth keeping: the same `SR_BRIDGE` block (`page.tsx:3611-3621`) carries an in-code comment documenting a *previously-fixed* phantom (`faction-war:declared` → corrected to the real `faction:war-declared`). `player:low-health` is the remaining un-fixed phantom in that list. The other SR-bridge names (`combat:impact`, `combat:telegraph`, `world:plague-declared`, `faction:war-declared`, `world:event:scheduled`, `world:crisis`, `world:crisis-resolved`) all have real emitters (verified).
 
@@ -151,7 +169,7 @@ Outcomes:
 - **Brain times out** → `:39030`: `return res.status(200).json({ ok:false, error:"unknown_macro", reason:"brain_catchall_timeout", ... })`.
 - **Brain unavailable / `!aiResult.ok`** → `:39038`: `return res.status(200).json({ ok:false, error:"unknown_macro", reason:"macro_unavailable", ... })`.
 
-**Verdict:** The dispatcher does NOT fail-fast with a non-200 `unknown_macro`. It only surfaces `unknown_macro` when the brain *fails* — and even then it returns **HTTP 200** (deliberately, to avoid axios retry-storms on 502/503/504). When the brain succeeds, an unregistered macro is indistinguishable from a real result. This is the systemic masking mechanism described as the root cause in `docs/PLAYTEST_FINDINGS_PLAN.md` (#3/#11/#25/#27). The honest path was partially built (`error:"unknown_macro"` strings exist) but it still (a) attempts the LLM first rather than rejecting an unknown pair up front, and (b) never returns a non-200. **Still OPEN.**
+**Verdict (2026-07-02): ✅ CONFIRMED-FIXED.** The dispatcher (now at `server/server.js:39341-39365`) FAILS FAST: any unregistered `(domain,action)` returns `{ok:false, error:"unknown_macro"}` **without invoking the brain**. The utility-brain escape hatch is preserved only behind an EXPLICIT opt-in (`input.__ai===true` or top-level `ai:true`), so a plain game-macro call can never again be masked as a `{source:"utility-brain"}` success. HTTP 200 + `ok:false` is retained deliberately (keeps `unknown_macro` out of the axios `RETRY_STATUS_CODES {502,503,504}` so a dead macro degrades cleanly without a retry-storm). The systemic masking mechanism (#3/#11/#25/#27) is closed. *(Superseded — was OPEN in the 2026-06-26 pass.)*
 
 ---
 
@@ -162,18 +180,18 @@ Only items NOT marked ✅/done are listed.
 ### docs/PLAYTEST_FINDINGS_PLAN.md — OPEN
 
 **P0 / P1 substrate:**
-- **#3/#25/#27** — unknown-macro LLM fallthrough, HTTP 200, ~96s hang on brain backoff. (`server/server.js:39008-39041`.) — the §5 finding. **OPEN.**
-- **#11** — ~36 ghost-fleet macros (`agents.*`, `quest.*`, `religion.*`, `research.*`, `city.*`, …) log "loaded" but aren't in `MACROS` at dispatch → every action LLM-fallthroughs. `initGhostFleet()` async registration race. **OPEN.**
+- **#3/#25/#27** — unknown-macro LLM fallthrough, HTTP 200, ~96s hang on brain backoff. (`server/server.js:39341-39365`.) — the §5 finding. ✅ **CONFIRMED-FIXED (2026-07-02)** — fail-fast `unknown_macro`; brain behind explicit `__ai` opt-in; catch-all bounded by `CONCORD_LENS_CATCHALL_TIMEOUT_MS`.
+- **#11** — ~36 ghost-fleet macros (`agents.*`, `quest.*`, `religion.*`, `research.*`, `city.*`, …) log "loaded" but aren't in `MACROS` at dispatch → every action LLM-fallthroughs. `initGhostFleet()` async registration race. ✅ **CONFIRMED-SAFE-BY-DESIGN (2026-07-02)** — `initGhostFleet` registers all ~246 bus macros SYNCHRONOUSLY as each module imports (0 `register()` deferred behind a timer); `validateRegistry(MACROS)` runs in the post-init `.then()`. Once init resolves every macro is present; the only absence window is the intentional T+20s boot delay (`CONCORD_GHOST_FLEET_DELAY_MS`). Pinned by `server/tests/ghost-fleet-registration-sync.test.js`.
 - **#32** — `dtu.create` returns `{ok:true, dtu:{id}}` but the row never lands in `STATE.dtus`/SQLite → immediate `dtu.get` says "not found". Headline "create a thought" verb silently loses data. **OPEN — flagged highest-priority investigation.**
 - **#15/#16** — `dtu.gapPromote` circular-JSON throw (downstream of the now-fixed #19/#20) + Chicken2 valence guard THROWS `c2_guard_reject` instead of returning `{ok:false}`/skipping. **#16 OPEN** (guard should return a structured skip).
 
 **P1 user paths:**
-- **#30** — `glyph_spells.cast` license check is only CRASH-GUARDED; the genuine "did this user purchase a license" check still needs a real grant ledger (not the `dtu_citations` aggregate). **Partially open.**
+- **#30** — `glyph_spells.cast` license check is only CRASH-GUARDED; the genuine "did this user purchase a license" check still needs a real grant ledger (not the `dtu_citations` aggregate). ✅ **CONFIRMED-FIXED (2026-07-02)** — cast reads the real `dtu_licenses` grant ledger (mig 034, `domains/glyph-spells.js:85-90`), the same ledger the marketplace purchase path writes via `grantLicense`. Pinned by `server/tests/glyph-spells-license-cast.test.js` + `glyph-spells-license-ledger.test.js`.
 - **#1** — `/dialogue/respond` has no deterministic fallback (LLM-off returns flat `"<name> responds to your choice."`); the opener was fixed but the respond path wasn't. `routes/worlds.js:1236`. **OPEN.**
 
 **P2 correctness:**
-- **#12** — `glyph_spells.cast` of a FIRE spell succeeds in the no-violence `concordia-hub` (combat route 403s; spell-cast doesn't). Needs the `world-zones.js` sanctuary gate on the spell macro. **OPEN.**
-- **#13** — Pillar-3 cross-world spell potency unimplemented: `mintSpell` never stamps `native_world`; native cast returns 0.85 not 1.0. **OPEN.**
+- **#12** — `glyph_spells.cast` of a FIRE spell succeeds in the no-violence `concordia-hub` (combat route 403s; spell-cast doesn't). Needs the `world-zones.js` sanctuary gate on the spell macro. ✅ **CONFIRMED-FIXED (2026-07-02)** — the cast now consults `combatRuleFor` and returns `{ok:false,reason:"zone_combat_refusal"}` in a safe/sanctuary zone (`domains/glyph-spells.js`). Pinned by `server/tests/glyph-spells-sanctuary-gate.test.js`.
+- **#13** — Pillar-3 cross-world spell potency: `mintSpell` never stamps `native_world`; native cast returns 0.85 not 1.0. **PARTIAL (re-verified 2026-07-02).** `mintSpell` *does* stamp `meta.nativeWorld` (via `stampMoveMeta`), and the cast now couples potency to the destination world's live env signals via `elementalEnvBoost` (`domains/glyph-spells.js`; `glyph-spells-env-coupling.test.js`). The remaining gap: the cast's cross-world multiplier still uses `effectivenessMultiplier` (affinity/level), not the `nativeWorld===targetWorld → 1.0` semantics of `crossWorldPotency`; a native cast can still read < 1.0. **Native=1.0 potency remains OPEN.**
 - **#14** — `effectivenessMultiplier` reads the wrong world-rules key (`skill_affinity` vs real `skill_effectiveness_rules`/`skill_resistance`) → magic world nerfs magic to 0.70. **OPEN.**
 - **#23/24** — `/api/reasoning/run` rejects `mode=constraint_check` (breaks DC7 DriftAlertToast), advertises UPPERCASE but validates lowercase, returns 200 on validation fail. **OPEN.**
 - **#29** — DTU injection detector fires 100% false-positive (empty `patterns:[]` treated as a match) → quarantines legit autogen DTUs. **OPEN.**
@@ -225,7 +243,7 @@ Grepped `app/lenses/world/`, `components/world/`, `components/concordia/`, `comp
 
 | Component | Issue | Mounted at |
 |---|---|---|
-| `components/world/CharacterCustomizer.tsx:49-65,104` | All cosmetic slot options are **client-fabricated placeholder data** via `generateSlotOptions()` (placeholder hex colors, synthetic names `Body 1..N`, fake prices `(i+1)*50`). No backend fetch (`grep` shows zero `fetch`/`lensRun`/`apiClient`/`/api/`). The customizer renders fake wardrobe inventory. | `app/onboarding/character/page.tsx`, `components/world/concordia-hud/PanelHost.tsx` → `panels/CharacterCustomizerPanel.tsx` |
+| `components/world/CharacterCustomizer.tsx:88` | ✅ **CONFIRMED-FIXED (2026-07-02).** No longer fabricated — the component now fetches the real backend catalog via `lensRun('appearance','options',{})` (with genuine loading/error states) against the `appearance.options` macro (`server/domains/appearance.js:265`), a per-slot renderable-enum catalog with no fabricated prices (base options free/owned). `generateSlotOptions()` is gone. | `app/onboarding/character/page.tsx`, `components/world/concordia-hud/PanelHost.tsx` → `panels/CharacterCustomizerPanel.tsx` |
 
 Honest-empty-state references (NOT defects, listed so they aren't re-flagged): `AgentBuilder.tsx:130`, `CombatSystem.tsx:84`, `MarketplacePalette.tsx:32`, `StandardsLibrary.tsx:161`, `DistrictTimeline.tsx:24`, `PlayerPresence.tsx:29,115` — all explicitly "never fabricate / honest empty on error".
 
