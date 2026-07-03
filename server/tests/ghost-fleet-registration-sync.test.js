@@ -44,7 +44,7 @@ function ghostFleetBody() {
 
 test("initGhostFleet registers a substantial set of bus macros", () => {
   const body = ghostFleetBody();
-  const pairs = [...body.matchAll(/register\(\s*["']([\w.\-]+)["']\s*,\s*["']([\w.\-]+)["']/g)]
+  const pairs = [...body.matchAll(/register\(\s*["']([\w.-]+)["']\s*,\s*["']([\w.-]+)["']/g)]
     .map((m) => `${m[1]}.${m[2]}`);
   const unique = new Set(pairs);
   // The #11 finding cited "~36 macros"; the real fleet is far larger. Pin a
