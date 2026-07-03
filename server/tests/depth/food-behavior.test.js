@@ -9,12 +9,22 @@
 // NB: lens.run UNWRAPS the handler's { ok, result } → callers read r.result.<f>.
 //     A handler-level {ok:false,error} surfaces as r.result.ok === false.
 //
-// SKIPPED (network/LLM/vision — not deterministic, gated by no-egress preload):
-//   vision, vision-identify, recipe-substitute, recipe-import-url,
-//   meal-plan-generate (Spoonacular / brain).
+// SKIPPED (LLM/vision — not deterministic, gated by no-egress preload):
+//   vision, vision-identify, recipe-substitute.
+//
+// recipe-import-url, meal-plan-generate (Spoonacular), and feed (Open Food
+// Facts) all fetch external hosts and were previously skipped as
+// network-flaky. Their fetches now route through the SSRF-guarded
+// fetchPublicUrl (server/lib/public-fetch.js) instead of a bare fetch(), so
+// the describe block at the end of this file exercises them deterministically
+// via `__setPublicFetchTestTransport` (public-fetch.js's own test seam, no
+// real egress) — plus the genuine SSRF-rejection proof for recipe-import-url,
+// the one caller-supplied-URL surface in this domain.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { lensRun, depthCtx } from "./_harness.js";
+import { __setPublicFetchTestTransport } from "../../lib/public-fetch.js";
 
 describe("food — calc contracts (exact computed values)", () => {
   it("scaleRecipe: doubling 4→8 servings scales each ingredient by factor 2 with kitchen rounding", async () => {
@@ -731,6 +741,122 @@ describe("food — meal-plan-list + grocery-list-build (date-range reads)", () =
         assert.equal(typeof item.name, "string");
         assert.equal(item.unit, "item");
       }
+    }
+  });
+});
+
+// ── network macros — now SSRF-guarded via fetchPublicUrl ───────────────────
+describe("food network macros — routed through the SSRF-guarded fetchPublicUrl", () => {
+  it("meal-plan-generate parses a real Spoonacular-shaped response via the guarded transport", async () => {
+    const ctx = await depthCtx(`food-spoon-${randomUUID()}`);
+    const priorKey = process.env.SPOONACULAR_API_KEY;
+    process.env.SPOONACULAR_API_KEY = "test-key-not-real";
+    __setPublicFetchTestTransport(async (url) => {
+      assert.match(url, /api\.spoonacular\.com\/mealplanner\/generate/);
+      return {
+        ok: true,
+        json: async () => ({
+          week: {
+            monday: {
+              meals: [
+                { id: 101, title: "Oatmeal bowl", servings: 1 },
+                { id: 102, title: "Chicken salad", servings: 1 },
+                { id: 103, title: "Sheet-pan salmon", servings: 1 },
+              ],
+              nutrients: { calories: 1800, protein: 90, carbohydrates: 180, fat: 60 },
+            },
+          },
+        }),
+      };
+    });
+    try {
+      const r = await lensRun("food", "meal-plan-generate",
+        { params: { startDate: "2026-09-01", days: 1, mealsPerDay: 3 } }, ctx);
+      assert.equal(r.result.meals.length, 3, `expected 3 spoonacular meals, got ${JSON.stringify(r.result)}`);
+      assert.ok(r.result.meals.every((m) => m.source === "spoonacular"));
+      assert.deepEqual(r.result.meals.map((m) => m.title), ["Oatmeal bowl", "Chicken salad", "Sheet-pan salmon"]);
+    } finally {
+      __setPublicFetchTestTransport(null);
+      if (priorKey === undefined) delete process.env.SPOONACULAR_API_KEY;
+      else process.env.SPOONACULAR_API_KEY = priorKey;
+    }
+  });
+
+  it("recipe-import-url extracts a JSON-LD Recipe from a fetched page via the guarded transport", async () => {
+    const ctx = await depthCtx(`food-import-${randomUUID()}`);
+    const html = `<html><head>
+      <script type="application/ld+json">${JSON.stringify({
+        "@type": "Recipe",
+        name: "Test Lentil Soup",
+        recipeYield: "4",
+        recipeIngredient: ["2 cups lentils", "1 onion, diced"],
+        recipeInstructions: ["Simmer lentils 20 min", "Add onion, cook 5 min"],
+      })}</script>
+    </head><body></body></html>`;
+    __setPublicFetchTestTransport(async (url) => {
+      assert.equal(url, "https://example.com/recipe");
+      return { ok: true, status: 200, text: async () => html };
+    });
+    try {
+      const r = await lensRun("food", "recipe-import-url", { params: { url: "https://example.com/recipe" } }, ctx);
+      assert.equal(r.result.source, "jsonld");
+      assert.equal(r.result.recipe.title, "Test Lentil Soup");
+      assert.equal(r.result.recipe.servings, 4);
+      assert.equal(r.result.recipe.ingredients.length, 2);
+    } finally {
+      __setPublicFetchTestTransport(null);
+    }
+  });
+
+  // The security proof for the highest-priority fix in this batch:
+  // recipe-import-url takes a CALLER-SUPPLIED url — before this hardening, a
+  // caller could point the server at an internal address (cloud metadata,
+  // localhost, an RFC1918 IP) and the server would fetch it directly. No test
+  // transport is installed here — this exercises the REAL SSRF guard
+  // (validateSafeFetchUrl) with no network egress required (private-IP and
+  // metadata-hostname checks are pure range checks; the "localhost" case
+  // resolves via the local resolver only).
+  it("recipe-import-url REJECTS caller-supplied private/internal URLs (SSRF guard, no test transport installed)", async () => {
+    const ctx = await depthCtx(`food-import-ssrf-${randomUUID()}`);
+
+    const metadata = await lensRun("food", "recipe-import-url",
+      { params: { url: "http://169.254.169.254/latest/meta-data/iam/security-credentials/" } }, ctx);
+    assert.equal(metadata.result.ok, false, "cloud-metadata URL must be rejected");
+    assert.equal(metadata.result.error, "url not allowed");
+    assert.equal(metadata.result.recipe, undefined, "a blocked fetch must never carry a fabricated recipe");
+
+    const privateIp = await lensRun("food", "recipe-import-url",
+      { params: { url: "http://10.0.0.1/internal-recipe" } }, ctx);
+    assert.equal(privateIp.result.ok, false, "RFC1918 private IP must be rejected");
+    assert.equal(privateIp.result.error, "url not allowed");
+
+    const localhost = await lensRun("food", "recipe-import-url",
+      { params: { url: "http://localhost/admin/recipe" } }, ctx);
+    assert.equal(localhost.result.ok, false, "localhost must be rejected");
+    assert.equal(localhost.result.error, "url not allowed");
+  });
+
+  it("feed ingests Open Food Facts products into DTUs via the guarded transport", async () => {
+    const ctx = await depthCtx(`food-feed-${randomUUID()}`);
+    __setPublicFetchTestTransport(async (url) => {
+      assert.match(url, /world\.openfoodfacts\.org\/category\//);
+      return {
+        ok: true,
+        json: async () => ({
+          products: [
+            { code: "1111111111111", product_name: "Test Granola Bar", brands: "TestBrand", nutriscore_grade: "b" },
+            { code: "2222222222222", product_name: "Test Sparkling Water", brands: "TestBrand", nutriscore_grade: "a" },
+          ],
+        }),
+      };
+    });
+    try {
+      const r = await lensRun("food", "feed", { params: { limit: 2 } }, ctx);
+      assert.equal(r.result.ingested, 2, `feed must ingest 2 products, got ${JSON.stringify(r.result)}`);
+      assert.equal(r.result.source, "openfoodfacts-products");
+      assert.equal(r.result.dtuIds.length, 2);
+    } finally {
+      __setPublicFetchTestTransport(null);
     }
   });
 });

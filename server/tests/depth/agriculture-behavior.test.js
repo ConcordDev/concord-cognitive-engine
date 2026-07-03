@@ -7,8 +7,14 @@
 // macro-depth grader credits it as a behavioral invocation.
 //
 // SKIPPED (network/LLM — fail under no-egress preload): weather-for-field,
-// satellite-ndvi-fetch, spray-window-advisor, feed (all call external fetch /
-// Open-Meteo / World Bank). None are tested here.
+// satellite-ndvi-fetch, spray-window-advisor (all call external fetch /
+// Open-Meteo). None are tested here.
+//
+// `feed` (World Bank crop-yield ingest) IS tested below via
+// `__setPublicFetchTestTransport` (public-fetch.js's own test seam), now that
+// its fetch is routed through the SSRF-guarded fetchPublicUrl instead of a
+// bare fetch() — the seam proves the routed transport deterministically with
+// no real network egress.
 //
 // WRAPPING NOTE: lens.run nests the handler return under `.result`, so a handler
 // that returns {ok:true,result:{…}} surfaces here as r.result.{…} (single nest;
@@ -18,6 +24,7 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { lensRun, depthCtx } from "./_harness.js";
+import { __setPublicFetchTestTransport } from "../../lib/public-fetch.js";
 
 describe("agriculture — agronomic calc contracts (exact computed values)", () => {
   it("yieldAnalysis: variance and totals are computed exactly for one field", async () => {
@@ -874,5 +881,33 @@ describe("agriculture — list-read macros over their stores (wave 13 · round-t
     const bad = await lensRun("agriculture", "satellite-ndvi-delete", { params: { id: "ghost" } }, c);
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /layer not found/);
+  });
+});
+
+// ── feed — World Bank crop-yield ingest, now SSRF-guarded via fetchPublicUrl ──
+describe("agriculture.feed — routed through the SSRF-guarded fetchPublicUrl", () => {
+  it("ingests World Bank crop-yield rows into DTUs via the guarded transport", async () => {
+    const c = await depthCtx(`agri-feed-${randomUUID()}`);
+    __setPublicFetchTestTransport(async (url) => {
+      assert.match(url, /api\.worldbank\.org\/v2\/country\/all\/indicator\/AG\.YLD\.CREL\.KG/);
+      return {
+        ok: true,
+        json: async () => ([
+          { page: 1, pages: 1 },
+          [
+            { countryiso3code: "USA", country: { value: "United States" }, date: "2022", value: 8500.4 },
+            { countryiso3code: "BRA", country: { value: "Brazil" }, date: "2022", value: 5900.1 },
+          ],
+        ]),
+      };
+    });
+    try {
+      const r = await lensRun("agriculture", "feed", { params: { limit: 2 } }, c);
+      assert.equal(r.result.ingested, 2, `feed must ingest 2 rows, got ${JSON.stringify(r.result)}`);
+      assert.equal(r.result.source, "worldbank-crop-yields");
+      assert.equal(r.result.dtuIds.length, 2);
+    } finally {
+      __setPublicFetchTestTransport(null);
+    }
   });
 });

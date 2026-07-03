@@ -2,6 +2,8 @@
 // Domain actions for ecology and sustainability: carbon footprint calculation,
 // biodiversity index computation, and multi-criteria sustainability assessment.
 
+import { fetchPublicUrl } from "../lib/public-fetch.js";
+
 export default function registerEcoActions(registerLensAction) {
   /**
    * carbonFootprint
@@ -1301,11 +1303,17 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
 // ─── helpers ─────────────────────────────────────────────────────────────
 
 async function safeFetchJson(url) {
-  if (typeof fetch !== "function") throw new Error("fetch unavailable");
+  // Routed through the SSRF-guarded keyless fetch (public-fetch.js) instead of
+  // a bare fetch() — this is a SHARED helper (7 call sites: weather-forecast,
+  // aqi-current, observation-feed, species-suggest, environmental-alerts, ...)
+  // so fixing it once closes the bypass for every caller, the same bypass
+  // class fetchJsonGov (government.js) closed. Signature/behavior (timeout,
+  // headers, JSON parse, error propagation) are unchanged — only the
+  // transport is guarded now.
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), 6000);
   try {
-    const r = await fetch(url, { signal: ac.signal, headers: { "user-agent": "ConcordEcoLens/1.0" } });
+    const r = await fetchPublicUrl(url, { signal: ac.signal, headers: { "user-agent": "ConcordEcoLens/1.0" } });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return await r.json();
   } finally {
