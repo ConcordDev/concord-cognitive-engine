@@ -21368,6 +21368,14 @@ register("dtu", "create", async (ctx, input) => {
           // is its natural site. awardXP is the hoisted module fn.
           try { awardCitationXP(awardXP, { ownerId: parentDtu.ownerId, dtuId: parentId, citedById: dtu.ownerId }); }
           catch { /* XP best-effort — never blocks the cascade */ }
+          // Persistent DTU confidence layer (migration 354, server/lib/
+          // dtu-confidence.js) — being cited is weak positive evidence for
+          // the CITED (parent) DTU. Observed here, from the CALLER of
+          // economyRegisterCitation, specifically so this file never opens
+          // server/economy/royalty-cascade.js — see CLAUDE.md's
+          // constitutionally-protected-files list.
+          try { updateDtuConfidence(db, parentId, 0.05, "cited"); }
+          catch { /* confidence update best-effort — never blocks the cascade */ }
         } else if (result?.error !== "citation_cycle_detected") {
           // Non-fatal — log and continue. Lineage on the DTU itself is
           // still recorded even if the royalty ledger insert failed.
@@ -27191,6 +27199,29 @@ register("dtu", "causal-trace", (ctx, input = {}) => {
     return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
   }
 }, { description: "Read causal edges touching a DTU, or trace a causal path between two DTUs." });
+
+// ── Persistent DTU confidence layer (migration 354 `dtu_confidence`) ───────
+// A SEPARATE, additive belief score per DTU — see server/lib/dtu-confidence.js
+// header comment for the honest-unknown-vs-confirmed-neutral distinction, the
+// documented simplification (NOT a real Bayesian posterior), and the three
+// real event sources that move it (citation success, drift-monitor
+// unexplained-contradiction, lazy read-time age decay). CONSTITUTIONAL
+// BOUNDARY: never imports from server/economy/**; the citation-success nudge
+// above (dtu.create's citation-lineage block) observes economyRegisterCitation
+// from its CALLER, never from inside royalty-cascade.js itself.
+import { getConfidence as getDtuConfidence, updateConfidence as updateDtuConfidence } from "./lib/dtu-confidence.js";
+
+register("dtu", "confidence", (ctx, input = {}) => {
+  try {
+    const db = ctx?.db || STATE?.db;
+    const dtuId = input.dtuId || input.id;
+    if (!db) return { ok: false, error: "no_db" };
+    if (!dtuId) return { ok: false, error: "missing_dtuId" };
+    return { ok: true, ...getDtuConfidence(db, dtuId) };
+  } catch (e) {
+    return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
+  }
+}, { description: "Read a DTU's persistent, revisable confidence score — honest-unknown when no evidence has moved it yet." });
 
 // ── Unified Context Engine ─────────────────────────────────────────────────
 // Every lens, entity, and chat interaction uses this to retrieve knowledge

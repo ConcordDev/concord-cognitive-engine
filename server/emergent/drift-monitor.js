@@ -24,6 +24,7 @@
 
 import { getEmergentState } from "./store.js";
 import { directCausalEdgeBetween } from "../lib/causal-edges.js";
+import { updateConfidence } from "../lib/dtu-confidence.js";
 
 // ── Drift Categories ────────────────────────────────────────────────────────
 
@@ -37,6 +38,12 @@ export const DRIFT_TYPES = Object.freeze({
 });
 
 export const ALL_DRIFT_TYPES = Object.freeze(Object.values(DRIFT_TYPES));
+
+// Confidence-layer nudge for an unexplained contradiction (see
+// detectContradictionCausalContext below). Small by design — a single
+// contradiction is weak evidence, not proof; server/lib/dtu-confidence.js's
+// diminishing-influence update already tempers repeated nudges further.
+const SMALL_DOWNVOTE = 0.05;
 
 // ── Alert Severities ────────────────────────────────────────────────────────
 
@@ -405,6 +412,16 @@ function detectContradictionCausalContext(STATE, es, _store) {
           `${a} and ${b} contradict each other via no causal edge — unexplained contradiction`,
           { dtuA: a, dtuB: b, causalEdgeId: null, causalEdgeType: null, expected: false },
         ));
+        // An UNEXPLAINED contradiction (no causal edge accounting for it) is
+        // weak evidence AGAINST validity for both DTUs in the pair — nudge
+        // the persistent confidence layer (migration 354, server/lib/
+        // dtu-confidence.js). Additive, best-effort: never lets a confidence
+        // update failure break the drift scan. Deliberately NOT applied to
+        // the "expected" (corrects/prevents) or "unusual" branches above —
+        // those contradictions are already causally accounted for, so they
+        // aren't evidence of an actual truth-value problem.
+        try { updateConfidence(db, a, -SMALL_DOWNVOTE, "contradicted"); } catch { /* confidence update best-effort */ }
+        try { updateConfidence(db, b, -SMALL_DOWNVOTE, "contradicted"); } catch { /* confidence update best-effort */ }
       }
     } catch {
       // best-effort enrichment only — a lookup failure must never break the scan.
