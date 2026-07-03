@@ -1167,7 +1167,17 @@ jobs:
   server-clean-exit-canary:
     name: Server Clean-Exit Canary
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Bumped 15->45 (matches audits.yml's structural-audits budget for a
+    # comparable full-suite run): now that the Node-22 fix above lets this
+    # job actually FIND its test files instead of failing in ~1s on Node 20,
+    # it needs real time to run the whole suite WITHOUT --test-force-exit
+    # (that's the entire point of the canary — proving every child process
+    # exits on its own, which takes longer than the force-exit variant).
+    # Confirmed empirically: the prior 15-minute budget was hit mid-run
+    # (job cancelled while node/npm processes were still actively executing
+    # tests, not stuck) once the glob fix let it progress past instant
+    # failure.
+    timeout-minutes: 45
     continue-on-error: true
 
     steps:
