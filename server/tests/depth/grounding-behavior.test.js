@@ -18,6 +18,7 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
+import { stampIngestedRecord } from "../../lib/provenance-ingest.js";
 
 describe("grounding — factCheck (deterministic stance + verdict)", () => {
   it("factCheck: support-word evidence yields supporting verdict", async () => {
@@ -526,6 +527,96 @@ describe("grounding — sourceCredibility (cross-source consistency + recommenda
     assert.equal(s.credibilityLabel, "unreliable");
     assert.ok(r.result.recommendations.some((rec) => rec.includes("rated unreliable")));
     assert.equal(r.result.overallAssessment, "low reliability pool");
+  });
+});
+
+describe("grounding — sourceCredibility (misinformation provenance shield)", () => {
+  // Shared fixture: a single "blog" source (authority 35) with no date (→
+  // recencyScore default 50), no bias words (→ biasScore 100), a single
+  // source (→ consistencyScore default 50), no affiliations/funding
+  // (→ transparencyScore 60). Baseline composite (no provenance):
+  //   round(35*0.30 + 50*0.15 + 100*0.25 + 50*0.20 + 60*0.10)
+  //   = round(10.5 + 7.5 + 25 + 10 + 6) = round(59) = 59
+  const baseSource = { name: "SomeBlog", type: "blog", claims: ["measured effect calmly"] };
+
+  function stampedRecord() {
+    // Real P-A pipeline call (no network needed — content is caller-supplied,
+    // exactly as `government.open-data-ingest` does after its own fetch).
+    return stampIngestedRecord({
+      sourceUrl: "https://catalog.data.gov/api/3/action/package_show?id=example",
+      sourceId: "example-dataset",
+      record: { title: "Example Dataset", organization: "Example Agency" },
+      recordName: "Example Dataset",
+      ingestKind: "open-data",
+      fetchedAt: "2026-01-01T00:00:00.000Z",
+    });
+  }
+
+  it("no `provenance` field → scores EXACTLY as the pre-shield formula (backward-compat regression)", async () => {
+    const r = await lensRun("grounding", "sourceCredibility", {
+      data: { sources: [baseSource] },
+    });
+    assert.equal(r.ok, true);
+    const s = r.result.sources[0];
+    assert.equal(s.components.authority, 35);
+    assert.equal(s.components.recency, 50);
+    assert.equal(s.components.bias, 100);
+    assert.equal(s.components.consistency, 50);
+    assert.equal(s.components.transparency, 60);
+    assert.equal(s.credibilityScore, 59);
+    // Honest-by-construction: unstamped sources are explicitly marked
+    // unverified, never silently equated with a verified one.
+    assert.equal(s.provenanceVerified, false);
+    assert.equal(s.provenanceDetail, "absent");
+    assert.equal(s.components.provenanceBonus, 0);
+  });
+
+  it("a genuine, verifiable provenance stamp (real stampIngestedRecord output) boosts authority + is labeled verified", async () => {
+    const dtu = stampedRecord();
+    const r = await lensRun("grounding", "sourceCredibility", {
+      data: { sources: [{ ...baseSource, provenance: dtu }] },
+    });
+    assert.equal(r.ok, true);
+    const s = r.result.sources[0];
+    // Raw authority component is unchanged (35); the bonus is reported
+    // separately so the caller can see exactly what moved the score.
+    assert.equal(s.components.authority, 35);
+    assert.equal(s.components.provenanceBonus, 15);
+    assert.equal(s.provenanceVerified, true);
+    assert.equal(s.provenanceDetail, "verified");
+    // effectiveAuthority 50 → round(50*0.30+50*0.15+100*0.25+50*0.20+60*0.10)
+    // = round(15+7.5+25+10+6) = round(63.5) = 64
+    assert.equal(s.credibilityScore, 64);
+    assert.ok(s.credibilityScore > 59, "verified provenance must outscore the unstamped baseline");
+  });
+
+  it("a forged provenance stamp (contentSha256 doesn't match the claimed content) is caught, not trusted", async () => {
+    const dtu = stampedRecord();
+    // Tamper ONLY the provenance's claimed hash — content + the DTU's own
+    // metadata.contentHash stay valid, isolating the check to the
+    // provenance-specific tamper-detection path in DTUProtocol#verify().
+    dtu.metadata.provenance.contentSha256 = "0".repeat(64);
+    const r = await lensRun("grounding", "sourceCredibility", {
+      data: { sources: [{ ...baseSource, provenance: dtu }] },
+    });
+    assert.equal(r.ok, true);
+    const s = r.result.sources[0];
+    assert.equal(s.provenanceVerified, false);
+    assert.equal(s.provenanceDetail, "invalid");
+    assert.equal(s.components.provenanceBonus, 0);
+    // No undeserved boost: identical to the no-provenance baseline score.
+    assert.equal(s.credibilityScore, 59);
+  });
+
+  it("a non-object `provenance` field is treated as absent, not a crash", async () => {
+    const r = await lensRun("grounding", "sourceCredibility", {
+      data: { sources: [{ ...baseSource, provenance: "not-a-dtu" }] },
+    });
+    assert.equal(r.ok, true);
+    const s = r.result.sources[0];
+    assert.equal(s.provenanceVerified, false);
+    assert.equal(s.provenanceDetail, "absent");
+    assert.equal(s.credibilityScore, 59);
   });
 });
 

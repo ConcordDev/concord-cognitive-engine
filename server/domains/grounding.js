@@ -2,6 +2,47 @@
 // Domain actions for knowledge grounding and fact-checking: claim verification,
 // source credibility scoring, and compound claim decomposition.
 
+import { ingestProtocol } from "../lib/provenance-ingest.js";
+
+// ── Misinformation provenance shield (docs/NEXT_ARC_PLAN.md §D.2) ──────────
+// `sourceCredibility` (below) previously trusted a caller-supplied `type`
+// string ("peer-reviewed", "government", ...) with zero verification — any
+// caller could just claim a type. A source MAY now optionally carry a
+// `provenance` field shaped like the DTU envelope `stampIngestedRecord`
+// produces (P-A, server/lib/provenance-ingest.js) — the same object the
+// `government.open-data-ingest` macro returns as `result.dtu`, carrying a
+// `metadata.provenance.contentSha256` anchor computed from the DTU's own
+// content at fetch time.
+//
+// We reuse the EXISTING `DTUProtocol#verify()` tamper check (recomputes the
+// content hash from `provenance.content` and compares against the stamped
+// `contentSha256`) instead of re-implementing hash verification here — a
+// forged/tampered stamp is caught exactly the way `dtu.create`'s own
+// round-trip would catch it. No new verify logic was added to
+// provenance-ingest.js because `DTUProtocol#verify()` already does this.
+//
+// Honest-by-construction: absent `provenance` → scored exactly as before
+// (byte-identical composite score); present + verifiable → a bounded
+// authority bonus + `provenanceVerified: true`; present + tampered/invalid →
+// NO bonus and `provenanceVerified: false`, same as absent, so a forged claim
+// can never outscore an honestly-unstamped source.
+const PROVENANCE_VERIFIED_AUTHORITY_BONUS = 15;
+
+function checkSourceProvenance(provenance) {
+  if (!provenance || typeof provenance !== "object") {
+    return { verified: false, detail: "absent" };
+  }
+  try {
+    const result = ingestProtocol.verify(provenance);
+    if (result.verified && result.provenance?.present) {
+      return { verified: true, detail: "verified" };
+    }
+    return { verified: false, detail: "invalid" };
+  } catch {
+    return { verified: false, detail: "invalid" };
+  }
+}
+
 export default function registerGroundingActions(registerLensAction) {
   /**
    * factCheck
@@ -276,9 +317,17 @@ export default function registerGroundingActions(registerLensAction) {
       const hasFunding = (source.fundingSources || []).length > 0;
       const transparencyScore = (hasAffiliations ? 20 : 0) + (hasFunding ? 20 : 0) + 60;
 
+      // 6. Provenance verification (optional, additive — see the module-level
+      // comment above `checkSourceProvenance`). No `provenance` field, or an
+      // unverifiable one, contributes exactly 0 bonus so the composite score
+      // is byte-identical to the pre-provenance formula.
+      const { verified: provenanceVerified, detail: provenanceDetail } = checkSourceProvenance(source.provenance);
+      const provenanceBonus = provenanceVerified ? PROVENANCE_VERIFIED_AUTHORITY_BONUS : 0;
+      const effectiveAuthorityScore = Math.min(100, authorityScore + provenanceBonus);
+
       // Composite credibility score
       const compositeScore = Math.round(
-        authorityScore * 0.30 +
+        effectiveAuthorityScore * 0.30 +
         recencyScore * 0.15 +
         biasScore * 0.25 +
         consistencyScore * 0.20 +
@@ -297,7 +346,10 @@ export default function registerGroundingActions(registerLensAction) {
           bias: Math.round(biasScore),
           consistency: consistencyScore,
           transparency: transparencyScore,
+          provenanceBonus,
         },
+        provenanceVerified,
+        provenanceDetail,
         biasIndicators: biasScores,
         biasDensity: Math.round(biasDensity * 10000) / 10000,
         claimCount: (source.claims || []).length,
