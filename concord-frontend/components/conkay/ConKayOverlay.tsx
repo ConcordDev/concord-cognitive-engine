@@ -22,6 +22,7 @@ import { useConKayVoice } from './useConKayVoice';
 import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
 import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
 import { useConkayHudStore, feaResultFromRun } from './conkayHudStore';
+import { detectArtifact } from '@/lib/conkay/artifact-kinds';
 import { ConKayCockpit } from './ConKayCockpit';
 import { CONKAY_SIGNATURE_GREETING, type ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
@@ -415,6 +416,19 @@ export function ConKayOverlay() {
       if (ok && domain === 'engineering' && macro === 'runFEA') {
         const fea = feaResultFromRun(inputObj, data?.result);
         if (fea) useConkayHudStore.getState().setLastFea(fea);
+      }
+      // Artifact→3D substrate (F9/K5): the SAME honest capture point, generalized
+      // across macro kinds. Run the real return through the pure `detectArtifact`
+      // registry; if it normalizes to a real ConkayArtifact (ar.render scene /
+      // runFEA solve / foundry.preview world / forge.sandbox app / a
+      // building-shaped result), mirror it into the store for the cockpit's
+      // Artifact Viewer panel. detectArtifact returns null unless the result
+      // genuinely matches a kind's real shape — no fabrication. This is ADDITIVE
+      // to the FEA block above (which stays as-is for the untouched ForwardSimPanel);
+      // a runFEA run populates BOTH from the same pure feaResultFromRun.
+      if (ok) {
+        const artifact = detectArtifact(domain, macro, inputObj, data?.result);
+        if (artifact) useConkayHudStore.getState().setLastArtifact(artifact);
       }
       const resultStr = data?.result != null ? JSON.stringify(data.result, null, 2) : (ok ? '(done)' : (data?.error || 'no result'));
       const spoken = ok ? `Done — ran ${macro} on the ${domain} lens.` : `${macro} on ${domain} returned: ${data?.error || 'an error'}.`;

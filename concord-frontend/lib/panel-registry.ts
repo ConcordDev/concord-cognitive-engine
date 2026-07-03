@@ -234,7 +234,13 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: 'Real FEA solve stages (assembling → solving → postprocess) + the computed preview',
     load: lazyNamed(() => import('@/components/conkay/panels/ForwardSimPanel'), 'ForwardSimPanel'),
   },
-  // All four planned ConKay cockpit panels (F1/F4/F5/F7) are now registered.
+  'conkay.artifact-viewer': {
+    id: 'conkay.artifact-viewer', label: 'Artifact Viewer', scope: 'global',
+    keywords: ['conkay', 'artifact', '3d', 'render', 'ar', 'fea', 'foundry', 'forge', 'building', 'inspect'],
+    description: 'The last real macro artifact (ar.render / runFEA / foundry.preview / forge.sandbox) as interactive 3D',
+    load: lazyNamed(() => import('@/components/conkay/panels/ArtifactViewerPanel'), 'ArtifactViewerPanel'),
+  },
+  // The ConKay cockpit panels (F1/F4/F5/F7/F9) are now registered.
   // ConKayCockpit's panel slots treat an unregistered id as "render nothing"
   // (honest, not a crash), so cockpit callers may reference future ids ahead
   // of time and the lane will simply skip them until each unit lands.

@@ -8,6 +8,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useConkayHudStore } from './conkayHudStore';
+import type { ConkayArtifact } from '@/lib/conkay/artifact-kinds';
 
 const store = () => useConkayHudStore.getState();
 
@@ -124,5 +125,54 @@ describe('conkayHudStore lastVerify + runDtuRefs (Unit F2 — verify substrate)'
     expect(store().lastVerify).toEqual({ verdict: 'grounded', mode: 'proof', confidence: 1 });
     expect(store().runDtuRefs).toEqual([{ id: 'dtu-9', title: 'pinned', tier: 'regular' }]);
     // reset() is the one exception (it clears everything), pinned separately above.
+  });
+});
+
+describe('conkayHudStore lastArtifact (Unit F9 — artifact→3D substrate)', () => {
+  const AR_ARTIFACT: ConkayArtifact = {
+    kind: 'ar-render',
+    title: 'Beacon',
+    drawList: [{ id: 'core', kind: 'model', transform: { position: { x: 0, y: 0, z: 0 }, scale: 1 } }],
+    components: [{ id: 'core', label: 'core', kind: 'model' }],
+    sourceDomain: 'ar',
+    sourceMacro: 'render',
+  };
+
+  it('starts null', () => {
+    expect(store().lastArtifact).toBeNull();
+  });
+
+  it('setLastArtifact records the real detected artifact', () => {
+    store().setLastArtifact(AR_ARTIFACT);
+    expect(store().lastArtifact).toEqual(AR_ARTIFACT);
+  });
+
+  it('setLastArtifact accepts null (clear)', () => {
+    store().setLastArtifact(AR_ARTIFACT);
+    store().setLastArtifact(null);
+    expect(store().lastArtifact).toBeNull();
+  });
+
+  it('reset clears lastArtifact', () => {
+    store().setLastArtifact(AR_ARTIFACT);
+    store().reset();
+    expect(store().lastArtifact).toBeNull();
+  });
+
+  it('is ONLY settable via setLastArtifact — the socket-adapter actions never touch it', () => {
+    store().setLastArtifact(AR_ARTIFACT);
+    store().macroStarted({ runId: 'r1', domain: 'ar', action: 'render' });
+    store().macroStage({ runId: 'r1', stage: 'rendering' });
+    store().macroCompleted({ runId: 'r1', domain: 'ar', action: 'render', ok: true, ms: 9 });
+    expect(store().lastArtifact).toEqual(AR_ARTIFACT);
+  });
+
+  it('markConnectionLost KEEPS lastArtifact (it is real completed history, not in-flight state)', () => {
+    store().setLastArtifact(AR_ARTIFACT);
+    store().macroStarted({ runId: 'r1', domain: 'ar', action: 'render' });
+    store().markConnectionLost();
+    expect(store().inFlight).toBe(0); // in-flight state cleared
+    expect(store().connectionLost).toBe(true);
+    expect(store().lastArtifact).toEqual(AR_ARTIFACT); // real history preserved
   });
 });

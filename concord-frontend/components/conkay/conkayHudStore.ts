@@ -52,7 +52,23 @@
 // failed run can never produce a half-real preview. No fabrication — the panel
 // renders the solver's own numbers or nothing.
 
+// Unit F9 extension — `lastArtifact` (substrate for the K5 Artifact Viewer
+// panel): a fourth narrow single-writer exception, same spirit as F2's/F7's. A
+// real macro artifact (an ar.render scene / a runFEA solve / a foundry.preview
+// world / a forge.sandbox app) does NOT flow over the macro:* socket events —
+// those carry only {domain, action, ok, ms}. The real payload comes back ONLY on
+// the direct `lensRun(...)` return inside ConKayOverlay's `executeMacro`, which
+// is ALSO the one place the run's INPUT object still exists (the fea-frame kind
+// needs it for geometry). So `setLastArtifact` is called ONLY from there, right
+// after a real return, via the pure `detectArtifact(domain, macro, input,
+// result)` registry (lib/conkay/artifact-kinds.ts) — which returns null unless
+// the result genuinely matches a kind's real shape, so a non-artifact run can
+// never produce a fabricated preview. FEA is one of the registry's kinds, so a
+// runFEA run populates BOTH `lastFea` (for the untouched ForwardSimPanel) and
+// `lastArtifact` from the SAME pure `feaResultFromRun` — no divergence.
+
 import { create } from 'zustand';
+import type { ConkayArtifact } from '@/lib/conkay/artifact-kinds';
 
 export interface ConkayTelemetry {
   /** Macro domain the backend ran (e.g. "math"). */
@@ -146,6 +162,13 @@ interface ConkayHudState {
    *  ONLY from ConKayOverlay's `executeMacro` (see header — the one site where
    *  the real return + its input model both exist). */
   lastFea: ConkayFeaResult | null;
+  /** The most recent real macro artifact normalized into the canonical
+   *  `ConkayArtifact` shape (ar.render / runFEA / foundry.preview /
+   *  forge.sandbox / a building-shaped result), or null until one lands.
+   *  Substrate for the K5 Artifact Viewer panel. Set ONLY from ConKayOverlay's
+   *  `executeMacro` (see header — the one site where the real return + its input
+   *  object both exist), via the pure `detectArtifact` registry. */
+  lastArtifact: ConkayArtifact | null;
   /** True once the socket has been confirmed disconnected past its grace period
    *  (a real backend death, not a transient blip — see socket.ts's
    *  `onConnectionLost`). Set by `markConnectionLost` / cleared by
@@ -174,6 +197,9 @@ interface ConkayHudState {
   /** The real FEA solve just returned by `engineering.runFEA` (or null to
    *  clear). Called ONLY from ConKayOverlay's `executeMacro`. */
   setLastFea: (r: ConkayFeaResult | null) => void;
+  /** The real macro artifact just detected from a `lensRun` return (or null to
+   *  clear). Called ONLY from ConKayOverlay's `executeMacro`. */
+  setLastArtifact: (a: ConkayArtifact | null) => void;
 
   // ── connection-lifecycle actions (CALL ONLY FROM the socket-lifecycle
   //    adapter in ConKayOverlay — the `onConnectionLost`/`onReconnected`
@@ -203,6 +229,7 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
   lastVerify: null,
   runDtuRefs: [],
   lastFea: null,
+  lastArtifact: null,
   connectionLost: false,
 
   macroStarted: (d) =>
@@ -273,19 +300,22 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
       lastVerify: null,
       runDtuRefs: [],
       lastFea: null,
+      lastArtifact: null,
       connectionLost: false,
     })),
 
   setLastVerify: (v) => set(() => ({ lastVerify: v })),
   setRunDtuRefs: (refs) => set(() => ({ runDtuRefs: Array.isArray(refs) ? refs : [] })),
   setLastFea: (r) => set(() => ({ lastFea: r })),
+  setLastArtifact: (a) => set(() => ({ lastArtifact: a })),
 
   markConnectionLost: () =>
     set((s) => ({
       // Confirmed backend death: clear ALL in-progress state so the scene's
       // rings stop (motion ⟺ real in-flight work). Completed telemetry facts
-      // (`last`, `telemetry`, `lastVerify`, `runDtuRefs`, `lastFea`) are REAL
-      // history — they stay, because clearing them would lose truth for no
+      // (`last`, `telemetry`, `lastVerify`, `runDtuRefs`, `lastFea`,
+      // `lastArtifact`) are REAL history — they stay (preserved by the `...s`
+      // spread), because clearing them would lose truth for no
       // honesty gain. The flag records WHY motion stopped.
       ...s,
       inFlight: 0,
