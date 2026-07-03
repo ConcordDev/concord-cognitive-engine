@@ -73,6 +73,27 @@ describe('ConKayCockpit grid host', () => {
     expect(screen.getByTestId('transcript-probe')).toBeInTheDocument();
   });
 
+  it('REGRESSION — with NO explicit panelIds (the real ConKayOverlay mount site), every registered conkay.* panel actually renders somewhere', async () => {
+    // Bug this pins: F1's original defaults were hardcoded to only
+    // ['conkay.telemetry'] because that was the only panel that existed yet.
+    // F4/F5/F7 each registered a new panel in panel-registry.ts but nothing
+    // ever updated these defaults (or passed explicit ids at the real
+    // ConKayOverlay.tsx mount site, which calls <ConKayCockpit> with NO
+    // panelIds props at all) — so macro-library/provenance/forward-sim were
+    // fully built, tested, and registered, yet never actually reachable in
+    // the live cockpit. Every individual unit's own test passed because each
+    // one explicitly passed its own id — this test is the one that exercises
+    // the REAL, prop-free mount shape and would have caught the gap.
+    render(
+      <ConKayCockpit>
+        <div>transcript</div>
+      </ConKayCockpit>,
+    );
+    for (const id of ['conkay.telemetry', 'conkay.macro-library', 'conkay.provenance', 'conkay.forward-sim']) {
+      await waitFor(() => expect(screen.getByTestId(`ck-cockpit-panel-${id}`)).toBeInTheDocument());
+    }
+  });
+
   it('panel rendering is backdrop-agnostic — same panel output whether the 2D ConKaySurface fallback is mounted alongside it or not', async () => {
     useConkayHudStore.getState().macroStarted({ runId: 'r2', domain: 'reason', action: 'verify' });
     useConkayHudStore.getState().macroCompleted({ runId: 'r2', domain: 'reason', action: 'verify', ok: true, ms: 7 });
