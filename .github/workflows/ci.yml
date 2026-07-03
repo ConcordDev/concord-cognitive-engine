@@ -1177,7 +1177,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          # MUST be 22, not the workflow-wide NODE_VERSION (20): `node --test`
+          # only expands glob-pattern file arguments ('tests/**/*.test.js' /
+          # 'tests/**/*-tests.js' below, via test:clean-exit) on Node >= 21 —
+          # on Node 20 it fails immediately with "Could not find '<literal
+          # glob string>'" instead of matching any files (confirmed
+          # empirically: identical command, identical Node 20.20.2 build,
+          # reproduces every time). Same root cause + fix already applied in
+          # .github/workflows/audits.yml's structural-audits job. This job is
+          # continue-on-error, so the bug was silent rather than blocking —
+          # but it also meant the canary could never build the green streak
+          # its own header comment says gates promoting it to blocking.
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: server/package-lock.json
 

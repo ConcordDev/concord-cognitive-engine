@@ -855,6 +855,7 @@ export default function createAuthRouter({
   // the response so the UI tells the user delivery isn't set up (the service
   // console-logs the reset link in dev) instead of pretending an email is on
   // its way — never a fake "sent".
+  // AUTH: public — a locked-out user has no session to present; protected by authRateLimitMiddleware + a per-mailbox limiter, and non-enumerating (see the block comment above).
   router.post("/forgot-password", authRateLimitMiddleware, async (req, res) => {
     const email = String(req.body?.email || "").trim().toLowerCase();
     if (!email || !email.includes("@") || email.length > 254) {
@@ -883,6 +884,7 @@ export default function createAuthRouter({
     return res.json(generic);
   });
 
+  // AUTH: public — auth here is the single-use reset token itself (verifyResetToken), not a session; protected by authRateLimitMiddleware.
   router.post("/reset-password", authRateLimitMiddleware, (req, res) => {
     const token = String(req.body?.token || "");
     const newPassword = String(req.body?.newPassword || "");
