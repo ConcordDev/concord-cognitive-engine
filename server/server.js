@@ -34288,7 +34288,8 @@ async function governorTick(reason="heartbeat") {
           if (forgetMod?.runForgettingCycle) {
             await forgetMod.runForgettingCycle(false, {
               maxForget: FORGETTING.MAX_FORGET_PER_CYCLE,
-              threshold: computeAdaptiveThreshold()
+              threshold: computeAdaptiveThreshold(),
+              db, // enables the additive SM-2 review-scheduling pass (mig 353)
             });
           }
         });
