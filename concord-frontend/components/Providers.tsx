@@ -20,6 +20,7 @@ import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { reportClientError } from '@/hooks/useBugContext';
 import AccessibilityDOMApplier from '@/components/accessibility/AccessibilityDOMApplier';
+import { safeGetItem, safeSetItem } from '@/lib/safe-storage';
 
 /**
  * Client-side providers wrapper.
@@ -61,21 +62,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // Splash screen auto-hide on first paint settled.
   // Skip splash if the user has already entered the world this session.
   useEffect(() => {
-    const seenThisSession = sessionStorage.getItem('concord_splash_seen');
+    const seenThisSession = safeGetItem(sessionStorage, 'concord_splash_seen');
     if (seenThisSession) {
       setSplashVisible(false);
       return;
     }
     const id = setTimeout(() => {
       setSplashVisible(false);
-      sessionStorage.setItem('concord_splash_seen', '1');
+      safeSetItem(sessionStorage, 'concord_splash_seen', '1');
     }, 1400);
     return () => clearTimeout(id);
   }, []);
 
   // Connect WebSocket and fetch user scopes on mount (if authenticated)
   useEffect(() => {
-    const entered = localStorage.getItem('concord_entered');
+    const entered = safeGetItem(localStorage, 'concord_entered');
     if (!entered) return;
 
     let cancelled = false;
