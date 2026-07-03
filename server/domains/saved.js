@@ -16,10 +16,17 @@
 // (the dispatcher's `_unwrapLensEnvelope` strips the `result` layer so the
 // frontend reads `r.data.result.<field>`).
 //
-// Persistence: globalThis._concordSTATE.savedLens — two Maps keyed by
-// userId:
-//   items[userId]   -> Map(itemId -> savedItem)
-//   folders[userId] -> Map(folderId -> folder)
+// Persistence: a DURABLE per-user relational store (migration 356 —
+// saved_items + saved_folders) reached via ctx.db. When ctx.db is absent or the
+// table doesn't exist (minimal/test builds), the store transparently falls back
+// to the legacy in-memory globalThis._concordSTATE.savedLens Maps — the same
+// db-or-memory facade pattern domains/ar.js uses (mig 332). The running server
+// always has ctx.db, so saved quotes/clips survive a restart; the in-memory
+// path only backs bare-unit-test/minimal builds. Either way the store exposes
+// an identical interface so every handler's filter/sort/round-trip logic is
+// byte-identical across both backends.
+//   items   -> saved_items   (per (user_id, id))
+//   folders -> saved_folders (per (user_id, id))
 //
 // Every handler self-scopes by ctx.actor.userId; anonymous calls return
 // { ok:false, error:'no_user' } so nothing leaks across users. Handlers
@@ -29,6 +36,10 @@ const MAX_TAG_LEN = 40;
 const MAX_TAGS = 24;
 const MAX_NOTE_LEN = 2000;
 const MAX_TITLE_LEN = 400;
+// Generous upper bound for a clip timecode in milliseconds (~11.5 days) — long
+// enough for any real A/V source, tight enough to fail-CLOSED on poisoned input
+// (Infinity/NaN/1e308/negative all reject).
+const MAX_CLIP_MS = 1e9;
 const VALID_KINDS = ["post", "dtu", "article", "artifact", "link", "other"];
 const VALID_STATES = ["unread", "read", "archived"];
 
@@ -45,6 +56,19 @@ function badNumericField(input, keys) {
     if (input[k] === undefined || input[k] === null) continue;
     const n = Number(input[k]);
     if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
+// Same fail-CLOSED PATTERN for the additive clip-timecode fields: a provided
+// clip_start_ms/clip_end_ms must be a non-negative integer within MAX_CLIP_MS.
+// An absent/null field is fine (a plain bookmark has no timecodes). Returns null
+// when clean, else the offending key.
+function badClipField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isInteger(n) || n < 0 || n > MAX_CLIP_MS) return k;
   }
   return null;
 }
@@ -80,6 +104,219 @@ function actorId(ctx) {
   return ctx?.actor?.userId || ctx?.userId || null;
 }
 
+// ── db handle + durable/in-memory store selection ──────────────────────────
+// Returns a live better-sqlite3 handle iff one is reachable AND the saved_items
+// table exists (migration 356 applied); otherwise null → in-memory fallback.
+function getDb(ctx) {
+  const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+  if (!db) return null;
+  try { db.prepare("SELECT 1 FROM saved_items LIMIT 1").get(); }
+  catch { return null; }
+  return db;
+}
+
+function safeParseArray(json) {
+  try { const v = JSON.parse(json); return Array.isArray(v) ? v : []; }
+  catch { return []; }
+}
+
+function safeParseObj(json) {
+  if (json === null || json === undefined) return null;
+  try { const v = JSON.parse(json); return v && typeof v === "object" ? v : null; }
+  catch { return null; }
+}
+
+function rowToItem(r) {
+  return {
+    id: r.id,
+    kind: r.kind,
+    refId: r.ref_id,
+    title: r.title,
+    url: r.url,
+    author: r.author,
+    excerpt: r.excerpt,
+    mediaType: r.media_type,
+    folderId: r.folder_id,
+    tags: safeParseArray(r.tags_json),
+    note: r.note,
+    state: r.state,
+    sourceLens: r.source_lens,
+    clipStartMs: r.clip_start_ms === null || r.clip_start_ms === undefined ? null : Number(r.clip_start_ms),
+    clipEndMs: r.clip_end_ms === null || r.clip_end_ms === undefined ? null : Number(r.clip_end_ms),
+    provenance: safeParseObj(r.provenance_json),
+    savedAt: r.saved_at,
+    updatedAt: r.updated_at,
+    readAt: r.read_at || null,
+  };
+}
+
+function itemToParams(item, userId) {
+  return {
+    id: item.id,
+    user_id: userId,
+    kind: item.kind,
+    ref_id: item.refId ?? null,
+    title: item.title ?? null,
+    url: item.url ?? null,
+    author: item.author ?? null,
+    excerpt: item.excerpt ?? null,
+    media_type: item.mediaType ?? null,
+    folder_id: item.folderId ?? null,
+    tags_json: JSON.stringify(Array.isArray(item.tags) ? item.tags : []),
+    note: item.note ?? "",
+    state: item.state,
+    source_lens: item.sourceLens ?? null,
+    clip_start_ms: item.clipStartMs ?? null,
+    clip_end_ms: item.clipEndMs ?? null,
+    provenance_json: item.provenance == null ? null : JSON.stringify(item.provenance),
+    saved_at: item.savedAt ?? null,
+    updated_at: item.updatedAt ?? null,
+    read_at: item.readAt ?? null,
+  };
+}
+
+const UPSERT_ITEM_SQL = `
+  INSERT INTO saved_items
+    (id, user_id, kind, ref_id, title, url, author, excerpt, media_type,
+     folder_id, tags_json, note, state, source_lens, clip_start_ms, clip_end_ms,
+     provenance_json, saved_at, updated_at, read_at)
+  VALUES
+    (@id, @user_id, @kind, @ref_id, @title, @url, @author, @excerpt, @media_type,
+     @folder_id, @tags_json, @note, @state, @source_lens, @clip_start_ms, @clip_end_ms,
+     @provenance_json, @saved_at, @updated_at, @read_at)
+  ON CONFLICT(id) DO UPDATE SET
+    kind = excluded.kind, ref_id = excluded.ref_id, title = excluded.title,
+    url = excluded.url, author = excluded.author, excerpt = excluded.excerpt,
+    media_type = excluded.media_type, folder_id = excluded.folder_id,
+    tags_json = excluded.tags_json, note = excluded.note, state = excluded.state,
+    source_lens = excluded.source_lens, clip_start_ms = excluded.clip_start_ms,
+    clip_end_ms = excluded.clip_end_ms, provenance_json = excluded.provenance_json,
+    updated_at = excluded.updated_at, read_at = excluded.read_at
+`;
+
+function dbItemStore(db, userId) {
+  return {
+    all() {
+      return db.prepare("SELECT * FROM saved_items WHERE user_id = ? ORDER BY rowid")
+        .all(userId).map(rowToItem);
+    },
+    get(id) {
+      const r = db.prepare("SELECT * FROM saved_items WHERE user_id = ? AND id = ?").get(userId, id);
+      return r ? rowToItem(r) : undefined;
+    },
+    findByRef(kind, refId) {
+      const r = db.prepare(
+        "SELECT * FROM saved_items WHERE user_id = ? AND kind = ? AND ref_id = ? ORDER BY rowid LIMIT 1",
+      ).get(userId, kind, refId);
+      return r ? rowToItem(r) : undefined;
+    },
+    has(id) {
+      return !!db.prepare("SELECT 1 FROM saved_items WHERE user_id = ? AND id = ?").get(userId, id);
+    },
+    put(item) { db.prepare(UPSERT_ITEM_SQL).run(itemToParams(item, userId)); },
+    delete(id) {
+      return db.prepare("DELETE FROM saved_items WHERE user_id = ? AND id = ?").run(userId, id).changes > 0;
+    },
+    unfileFolder(folderId, nowIso) {
+      return db.prepare(
+        "UPDATE saved_items SET folder_id = NULL, updated_at = ? WHERE user_id = ? AND folder_id = ?",
+      ).run(nowIso, userId, folderId).changes;
+    },
+  };
+}
+
+function memItemStore(userId) {
+  const m = userItems(userId);
+  return {
+    all() { return [...m.values()]; },
+    get(id) { return m.get(id); },
+    findByRef(kind, refId) {
+      for (const it of m.values()) if (it.kind === kind && it.refId === refId) return it;
+      return undefined;
+    },
+    has(id) { return m.has(id); },
+    put(item) { m.set(item.id, item); },
+    delete(id) { return m.delete(id); },
+    unfileFolder(folderId, nowIso) {
+      let n = 0;
+      for (const it of m.values()) {
+        if (it.folderId === folderId) { it.folderId = null; it.updatedAt = nowIso; n++; }
+      }
+      return n;
+    },
+  };
+}
+
+function rowToFolder(r) {
+  return { id: r.id, name: r.name, color: r.color, description: r.description, createdAt: r.created_at };
+}
+
+const UPSERT_FOLDER_SQL = `
+  INSERT INTO saved_folders (id, user_id, name, color, description, created_at)
+  VALUES (@id, @user_id, @name, @color, @description, @created_at)
+  ON CONFLICT(id) DO UPDATE SET
+    name = excluded.name, color = excluded.color, description = excluded.description
+`;
+
+function dbFolderStore(db, userId) {
+  return {
+    all() {
+      return db.prepare("SELECT * FROM saved_folders WHERE user_id = ? ORDER BY rowid")
+        .all(userId).map(rowToFolder);
+    },
+    get(id) {
+      const r = db.prepare("SELECT * FROM saved_folders WHERE user_id = ? AND id = ?").get(userId, id);
+      return r ? rowToFolder(r) : undefined;
+    },
+    has(id) {
+      return !!db.prepare("SELECT 1 FROM saved_folders WHERE user_id = ? AND id = ?").get(userId, id);
+    },
+    findByNameCI(name) {
+      const lc = String(name).toLowerCase();
+      return this.all().find((f) => String(f.name).toLowerCase() === lc);
+    },
+    put(f) {
+      db.prepare(UPSERT_FOLDER_SQL).run({
+        id: f.id, user_id: userId, name: f.name,
+        color: f.color ?? null, description: f.description ?? null, created_at: f.createdAt ?? null,
+      });
+    },
+    delete(id) {
+      return db.prepare("DELETE FROM saved_folders WHERE user_id = ? AND id = ?").run(userId, id).changes > 0;
+    },
+    get size() {
+      return db.prepare("SELECT COUNT(*) AS n FROM saved_folders WHERE user_id = ?").get(userId).n;
+    },
+  };
+}
+
+function memFolderStore(userId) {
+  const m = userFolders(userId);
+  return {
+    all() { return [...m.values()]; },
+    get(id) { return m.get(id); },
+    has(id) { return m.has(id); },
+    findByNameCI(name) {
+      const lc = String(name).toLowerCase();
+      for (const f of m.values()) if (String(f.name).toLowerCase() === lc) return f;
+      return undefined;
+    },
+    put(f) { m.set(f.id, f); },
+    delete(id) { return m.delete(id); },
+    get size() { return m.size; },
+  };
+}
+
+function itemStore(ctx, userId) {
+  const db = getDb(ctx);
+  return db ? dbItemStore(db, userId) : memItemStore(userId);
+}
+
+function folderStore(ctx, userId) {
+  const db = getDb(ctx);
+  return db ? dbFolderStore(db, userId) : memFolderStore(userId);
+}
+
 function cleanTags(raw) {
   if (!Array.isArray(raw)) return [];
   const seen = new Set();
@@ -109,10 +346,21 @@ function publicItem(it) {
     note: it.note,
     state: it.state,
     sourceLens: it.sourceLens,
+    clipStartMs: it.clipStartMs ?? null,
+    clipEndMs: it.clipEndMs ?? null,
+    provenance: it.provenance ?? null,
     savedAt: it.savedAt,
     updatedAt: it.updatedAt,
     readAt: it.readAt || null,
   };
+}
+
+// Normalise a caller-supplied provenance stamp. Honest-by-construction: we
+// never fabricate one — a non-object (or absent) value becomes null; a real
+// object (e.g. provenance-ingest.js#stampIngestedRecord output) passes through
+// unchanged and is stored/round-tripped as-is.
+function cleanProvenance(raw) {
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
 }
 
 export default function registerSavedMacros(_register) {
@@ -149,17 +397,24 @@ export default function registerSavedMacros(_register) {
       if (!title && !p.refId && !p.url) {
         return { ok: false, error: "need_title_or_ref" };
       }
-      const items = userItems(userId);
+      // Additive clip-timecode validation (fail-CLOSED on poisoned input).
+      const badClip = badClipField(p, ["clipStartMs", "clipEndMs"]);
+      if (badClip) return { ok: false, error: `invalid_${badClip}` };
+      const clipStartMs = p.clipStartMs == null ? null : Number(p.clipStartMs);
+      const clipEndMs = p.clipEndMs == null ? null : Number(p.clipEndMs);
+      if (clipStartMs != null && clipEndMs != null && clipEndMs <= clipStartMs) {
+        return { ok: false, error: "invalid_clip_range" };
+      }
+      const items = itemStore(ctx, userId);
       const refId = p.refId ? String(p.refId) : null;
       // Dedupe by (kind, refId) when a refId is supplied.
       if (refId) {
-        for (const existing of items.values()) {
-          if (existing.kind === kind && existing.refId === refId) {
-            return { ok: true, result: { item: publicItem(existing), deduped: true } };
-          }
+        const existing = items.findByRef(kind, refId);
+        if (existing) {
+          return { ok: true, result: { item: publicItem(existing), deduped: true } };
         }
       }
-      const folders = userFolders(userId);
+      const folders = folderStore(ctx, userId);
       const folderId = p.folderId && folders.has(p.folderId) ? p.folderId : null;
       const now = new Date().toISOString();
       const item = {
@@ -176,11 +431,14 @@ export default function registerSavedMacros(_register) {
         note: p.note ? String(p.note).slice(0, MAX_NOTE_LEN) : "",
         state: VALID_STATES.includes(p.state) ? p.state : "unread",
         sourceLens: p.sourceLens ? String(p.sourceLens).slice(0, 60) : null,
+        clipStartMs,
+        clipEndMs,
+        provenance: cleanProvenance(p.provenance),
         savedAt: now,
         updatedAt: now,
         readAt: null,
       };
-      items.set(item.id, item);
+      items.put(item);
       persist();
       return { ok: true, result: { item: publicItem(item), deduped: false } };
     } catch (e) {
@@ -197,7 +455,7 @@ export default function registerSavedMacros(_register) {
       if (!userId) return { ok: false, error: "no_user" };
       const id = String(input?.id || "");
       if (!id) return { ok: false, error: "need_id" };
-      const items = userItems(userId);
+      const items = itemStore(ctx, userId);
       if (!items.has(id)) return { ok: false, error: "not_found" };
       items.delete(id);
       persist();
@@ -217,17 +475,28 @@ export default function registerSavedMacros(_register) {
       if (!userId) return { ok: false, error: "no_user" };
       const id = String(input?.id || "");
       if (!id) return { ok: false, error: "need_id" };
-      const items = userItems(userId);
+      const items = itemStore(ctx, userId);
       const item = items.get(id);
       if (!item) return { ok: false, error: "not_found" };
       const p = input || {};
+      // Validate the additive clip-timecode patch BEFORE any mutation so a
+      // poisoned value fails-CLOSED without leaving a partial write behind.
+      const badClip = badClipField(p, ["clipStartMs", "clipEndMs"]);
+      if (badClip) return { ok: false, error: `invalid_${badClip}` };
+      let newStart = item.clipStartMs ?? null;
+      let newEnd = item.clipEndMs ?? null;
+      if ("clipStartMs" in p) newStart = p.clipStartMs == null ? null : Number(p.clipStartMs);
+      if ("clipEndMs" in p) newEnd = p.clipEndMs == null ? null : Number(p.clipEndMs);
+      if (newStart != null && newEnd != null && newEnd <= newStart) {
+        return { ok: false, error: "invalid_clip_range" };
+      }
       if (typeof p.title === "string") {
         item.title = p.title.trim().slice(0, MAX_TITLE_LEN) || item.title;
       }
       if (typeof p.note === "string") item.note = p.note.slice(0, MAX_NOTE_LEN);
       if (Array.isArray(p.tags)) item.tags = cleanTags(p.tags);
       if ("folderId" in p) {
-        const folders = userFolders(userId);
+        const folders = folderStore(ctx, userId);
         item.folderId = p.folderId && folders.has(p.folderId) ? p.folderId : null;
       }
       if (p.state && VALID_STATES.includes(p.state)) {
@@ -236,7 +505,13 @@ export default function registerSavedMacros(_register) {
           ? new Date().toISOString()
           : null;
       }
+      if ("clipStartMs" in p || "clipEndMs" in p) {
+        item.clipStartMs = newStart;
+        item.clipEndMs = newEnd;
+      }
+      if ("provenance" in p) item.provenance = cleanProvenance(p.provenance);
       item.updatedAt = new Date().toISOString();
+      items.put(item);
       persist();
       return { ok: true, result: { item: publicItem(item) } };
     } catch (e) {
@@ -257,7 +532,7 @@ export default function registerSavedMacros(_register) {
       const p = input || {};
       const badNum = badNumericField(p, ["limit", "offset"]);
       if (badNum) return { ok: false, error: `invalid_${badNum}` };
-      let rows = [...userItems(userId).values()];
+      let rows = itemStore(ctx, userId).all();
       const total = rows.length;
 
       const query = String(p.query || "").trim().toLowerCase();
@@ -329,7 +604,7 @@ export default function registerSavedMacros(_register) {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
-      const rows = [...userItems(userId).values()];
+      const rows = itemStore(ctx, userId).all();
       const byState = { unread: 0, read: 0, archived: 0 };
       const byKind = {};
       const byMediaType = {};
@@ -342,7 +617,7 @@ export default function registerSavedMacros(_register) {
         ok: true,
         result: {
           total: rows.length,
-          folders: userFolders(userId).size,
+          folders: folderStore(ctx, userId).size,
           byState,
           byKind,
           byMediaType,
@@ -361,7 +636,7 @@ export default function registerSavedMacros(_register) {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
       const counts = new Map();
-      for (const it of userItems(userId).values()) {
+      for (const it of itemStore(ctx, userId).all()) {
         for (const t of it.tags) counts.set(t, (counts.get(t) || 0) + 1);
       }
       const tags = [...counts.entries()]
@@ -382,11 +657,9 @@ export default function registerSavedMacros(_register) {
       if (!userId) return { ok: false, error: "no_user" };
       const name = String(input?.name || "").trim().slice(0, 120);
       if (!name) return { ok: false, error: "need_name" };
-      const folders = userFolders(userId);
-      for (const f of folders.values()) {
-        if (f.name.toLowerCase() === name.toLowerCase()) {
-          return { ok: false, error: "duplicate_name" };
-        }
+      const folders = folderStore(ctx, userId);
+      if (folders.findByNameCI(name)) {
+        return { ok: false, error: "duplicate_name" };
       }
       const now = new Date().toISOString();
       const folder = {
@@ -397,7 +670,7 @@ export default function registerSavedMacros(_register) {
           ? String(input.description).slice(0, 400) : "",
         createdAt: now,
       };
-      folders.set(folder.id, folder);
+      folders.put(folder);
       persist();
       return { ok: true, result: { folder } };
     } catch (e) {
@@ -411,7 +684,7 @@ export default function registerSavedMacros(_register) {
       if (!userId) return { ok: false, error: "no_user" };
       const id = String(input?.id || "");
       if (!id) return { ok: false, error: "need_id" };
-      const folders = userFolders(userId);
+      const folders = folderStore(ctx, userId);
       const folder = folders.get(id);
       if (!folder) return { ok: false, error: "not_found" };
       if (typeof input.name === "string" && input.name.trim()) {
@@ -423,6 +696,7 @@ export default function registerSavedMacros(_register) {
       if (typeof input.description === "string") {
         folder.description = input.description.slice(0, 400);
       }
+      folders.put(folder);
       persist();
       return { ok: true, result: { folder } };
     } catch (e) {
@@ -436,18 +710,11 @@ export default function registerSavedMacros(_register) {
       if (!userId) return { ok: false, error: "no_user" };
       const id = String(input?.id || "");
       if (!id) return { ok: false, error: "need_id" };
-      const folders = userFolders(userId);
+      const folders = folderStore(ctx, userId);
       if (!folders.has(id)) return { ok: false, error: "not_found" };
       folders.delete(id);
       // Unfile any items that referenced it.
-      let unfiled = 0;
-      for (const it of userItems(userId).values()) {
-        if (it.folderId === id) {
-          it.folderId = null;
-          it.updatedAt = new Date().toISOString();
-          unfiled++;
-        }
-      }
+      const unfiled = itemStore(ctx, userId).unfileFolder(id, new Date().toISOString());
       persist();
       return { ok: true, result: { deleted: id, unfiled } };
     } catch (e) {
@@ -459,8 +726,8 @@ export default function registerSavedMacros(_register) {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
-      const items = [...userItems(userId).values()];
-      const folders = [...userFolders(userId).values()].map((f) => ({
+      const items = itemStore(ctx, userId).all();
+      const folders = folderStore(ctx, userId).all().map((f) => ({
         ...f,
         itemCount: items.filter((it) => it.folderId === f.id).length,
       }));
@@ -480,10 +747,10 @@ export default function registerSavedMacros(_register) {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
-      const items = [...userItems(userId).values()]
+      const items = itemStore(ctx, userId).all()
         .sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1))
         .map(publicItem);
-      const folders = [...userFolders(userId).values()];
+      const folders = folderStore(ctx, userId).all();
       const format = input?.format === "csv" ? "csv" : "json";
       const exportedAt = new Date().toISOString();
 
