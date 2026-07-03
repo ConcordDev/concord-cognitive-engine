@@ -341,6 +341,56 @@ export function recalculateCRETI(db, dtuId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// CONSOLIDATION CANDIDATE RANKING — citation-count-weighted (v1)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// `compressToDMega`/`compressToHyper` below accept a caller-supplied
+// `childDtuIds` array with zero server-side selection logic — the caller
+// picks exactly which DTUs go in, in whatever order, and `child_order` is
+// literally the array index. This helper is an OPTIONAL pre-filter a caller
+// MAY use to get a better-ordered candidate list; it does not change either
+// compress function and every existing caller keeps working unmodified.
+//
+// Scope: this is CITATION-COUNT-WEIGHTED ranking only — a flat count of how
+// many `royalty_lineage` rows cite each candidate as a parent (the same
+// citation-count query `recalculateCRETI` above already uses), sorted
+// descending. It is deliberately NOT flow-weighted / PageRank-style graph
+// diffusion — that is out of scope for this unit and reserved for a
+// separate, larger, future unit. Do not extend this into a graph walk.
+//
+// Example opt-in usage (not wired into any existing call site):
+//   const ranked = rankConsolidationCandidates(db, poolIds);
+//   const result = compressToDMega(db, { creatorId, title, lensId,
+//     childDtuIds: ranked.slice(0, 8) });
+
+/**
+ * Rank candidate DTU ids for consolidation by real citation count
+ * (most-cited-as-parent first). Read-only — never writes.
+ *
+ * @param {object} db - better-sqlite3 handle
+ * @param {string[]} poolIds - candidate DTU ids under consideration
+ * @returns {string[]} poolIds sorted descending by citation count. Ties
+ *   (including the all-zero-citations case) are broken by stable original
+ *   pool order, so the result is deterministic for a given input + DB state.
+ */
+export function rankConsolidationCandidates(db, poolIds) {
+  if (!Array.isArray(poolIds) || poolIds.length === 0) return [];
+
+  const countStmt = db.prepare(
+    "SELECT COUNT(*) as c FROM royalty_lineage WHERE parent_id = ?"
+  );
+  const counted = poolIds.map((id, idx) => ({
+    id,
+    idx,
+    count: countStmt.get(id)?.c || 0,
+  }));
+
+  counted.sort((a, b) => b.count - a.count || a.idx - b.idx);
+
+  return counted.map((c) => c.id);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // DTU COMPRESSION — DTU → Mega → Hyper
 // ═══════════════════════════════════════════════════════════════════════════
 
