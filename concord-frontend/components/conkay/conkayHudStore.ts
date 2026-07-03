@@ -146,6 +146,13 @@ interface ConkayHudState {
    *  ONLY from ConKayOverlay's `executeMacro` (see header — the one site where
    *  the real return + its input model both exist). */
   lastFea: ConkayFeaResult | null;
+  /** True once the socket has been confirmed disconnected past its grace period
+   *  (a real backend death, not a transient blip — see socket.ts's
+   *  `onConnectionLost`). Set by `markConnectionLost` / cleared by
+   *  `markReconnected` (and by a fresh `macroStarted`). Lets the HUD say WHY the
+   *  rings stopped rather than silently going idle — going idle on a real
+   *  backend death without saying so is itself a small honesty gap. */
+  connectionLost: boolean;
 
   // ── single-writer adapter actions (CALL ONLY FROM the macro:* socket adapter) ──
   /** A real `macro:started` arrived for one of ConKay's runs. */
@@ -167,6 +174,16 @@ interface ConkayHudState {
   /** The real FEA solve just returned by `engineering.runFEA` (or null to
    *  clear). Called ONLY from ConKayOverlay's `executeMacro`. */
   setLastFea: (r: ConkayFeaResult | null) => void;
+
+  // ── connection-lifecycle actions (CALL ONLY FROM the socket-lifecycle
+  //    adapter in ConKayOverlay — the `onConnectionLost`/`onReconnected`
+  //    subscriptions, siblings of the macro:* adapter) ──
+  /** The backend was confirmed gone (grace period elapsed with no reconnect):
+   *  clear all in-progress state so the scene's rings stop, and flag WHY. */
+  markConnectionLost: () => void;
+  /** The socket reconnected — clear the connection-lost flag. In-progress state
+   *  stays whatever the real macro:* events since have made it. */
+  markReconnected: () => void;
 }
 
 const labelOf = (d: { domain?: string; action?: string }) =>
@@ -186,6 +203,7 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
   lastVerify: null,
   runDtuRefs: [],
   lastFea: null,
+  connectionLost: false,
 
   macroStarted: (d) =>
     set((s) => {
@@ -202,6 +220,9 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
         activeLabel: labelOf(d),
         startedAt: typeof performance !== 'undefined' ? performance.now() : Date.now(),
         stage: null, // a fresh run starts with no sub-step reported yet
+        // A real macro started ⟹ the backend is reachable — any prior
+        // connection-lost flag is stale.
+        connectionLost: false,
       };
     }),
 
@@ -252,11 +273,30 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
       lastVerify: null,
       runDtuRefs: [],
       lastFea: null,
+      connectionLost: false,
     })),
 
   setLastVerify: (v) => set(() => ({ lastVerify: v })),
   setRunDtuRefs: (refs) => set(() => ({ runDtuRefs: Array.isArray(refs) ? refs : [] })),
   setLastFea: (r) => set(() => ({ lastFea: r })),
+
+  markConnectionLost: () =>
+    set((s) => ({
+      // Confirmed backend death: clear ALL in-progress state so the scene's
+      // rings stop (motion ⟺ real in-flight work). Completed telemetry facts
+      // (`last`, `telemetry`, `lastVerify`, `runDtuRefs`, `lastFea`) are REAL
+      // history — they stay, because clearing them would lose truth for no
+      // honesty gain. The flag records WHY motion stopped.
+      ...s,
+      inFlight: 0,
+      activeLabel: null,
+      startedAt: null,
+      stage: null,
+      _runIds: new Set<string>(),
+      connectionLost: true,
+    })),
+
+  markReconnected: () => set(() => ({ connectionLost: false })),
 }));
 
 // ── FEA reshape (pure, exported for pinning) ─────────────────────────────────

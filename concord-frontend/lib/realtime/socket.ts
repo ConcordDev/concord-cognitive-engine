@@ -34,6 +34,77 @@ function getAuthCredentials(): { apiKey?: string } {
   };
 }
 
+// ---- Connection-lifecycle grace period (Unit F10) ----
+// A hard backend death (kill -9, not a graceful shutdown) drops the socket
+// WITHOUT a clean `macro:completed`, so any ConKay run left in flight would keep
+// its rings spinning forever — contradicting the honest-by-construction rule
+// ("kill the server mid-run → all motion stops"). But socket.io auto-reconnects
+// on a brief blip, so the disconnect handler waits out a grace period before
+// declaring the backend gone.
+//
+// Duration reasoning: the manager here retries 5× at ~1s base delay (see
+// getSocket's reconnection opts), so a normal Wi-Fi flap or server
+// restart-in-place almost always recovers on the first attempt or two (~1–3s).
+// 6s is comfortably longer than that (absorbs the blip) yet short enough that a
+// genuine backend death resolves within a reasonable demo/test window rather
+// than waiting for the full ~17s reconnect-exhaustion. Motion stopping a few
+// seconds after a real kill is honest; wiping in-flight work on a 1s flap is not.
+const CONNECTION_LOST_GRACE_MS = 6000;
+let _connectionLostTimer: ReturnType<typeof setTimeout> | null = null;
+const _connectionLostListeners = new Set<() => void>();
+const _reconnectedListeners = new Set<() => void>();
+
+function _clearConnectionLostTimer(): void {
+  if (_connectionLostTimer) {
+    clearTimeout(_connectionLostTimer);
+    _connectionLostTimer = null;
+  }
+}
+
+function _notify(listeners: Set<() => void>): void {
+  listeners.forEach((cb) => {
+    // A listener throwing must never break the socket lifecycle.
+    try {
+      cb();
+    } catch (err) {
+      console.debug('[Socket] connection-lifecycle listener threw:', err);
+    }
+  });
+}
+
+/**
+ * Subscribe to a CONFIRMED connection loss — fired only when the socket has been
+ * disconnected continuously past the grace period (a real backend death, not a
+ * transient blip that socket.io recovers from). Returns an unsubscribe fn.
+ *
+ * Purpose-built for connection-lifecycle concerns (e.g. ConKay stopping its
+ * rings when the backend dies mid-run) and deliberately kept OUTSIDE the typed
+ * `SocketEvent` / `subscribe()` surface: 'connect'/'disconnect' aren't
+ * server-emitted events, and other `subscribe()` consumers shouldn't have the
+ * union widened under them for this one lifecycle need.
+ */
+export function onConnectionLost(callback: () => void): () => void {
+  _connectionLostListeners.add(callback);
+  // Ensure the socket + its lifecycle handlers exist so the timer can fire.
+  getSocket();
+  return () => {
+    _connectionLostListeners.delete(callback);
+  };
+}
+
+/**
+ * Subscribe to a reconnect. Fires on every `connect` (including the first), so
+ * consumers that flipped into a "connection lost" state can clear it once the
+ * backend is reachable again. Returns an unsubscribe fn.
+ */
+export function onReconnected(callback: () => void): () => void {
+  _reconnectedListeners.add(callback);
+  getSocket();
+  return () => {
+    _reconnectedListeners.delete(callback);
+  };
+}
+
 export function getSocket(): Socket {
   if (!socket) {
     const auth = getAuthCredentials();
@@ -53,12 +124,31 @@ export function getSocket(): Socket {
     // Connection event handlers
     socket.on('connect', () => {
       console.debug('[Socket] Connected:', socket?.id);
+      // A (re)connect within the grace window means the prior disconnect was a
+      // transient blip, not a real backend death — cancel the pending
+      // "connection lost" so legitimately in-flight work is never wrongly wiped.
+      _clearConnectionLostTimer();
+      _notify(_reconnectedListeners);
       // Reset sequence tracking on reconnect
       Object.keys(_lastSeq).forEach((k) => delete _lastSeq[k]);
     });
 
     socket.on('disconnect', (reason) => {
       console.debug('[Socket] Disconnected:', reason);
+      // Debounced grace period (Unit F10): start (or restart) the "is the
+      // backend actually gone?" timer. socket.io auto-reconnects on a brief
+      // Wi-Fi flap or a server restart-in-place, so a blind disconnect→reset
+      // would wipe legitimately in-flight work on every transient blip. Only a
+      // disconnect that OUTLASTS CONNECTION_LOST_GRACE_MS is treated as a real
+      // backend death and fires the connection-lost listeners (e.g. the ConKay
+      // HUD stopping its rings — "kill the server mid-run → all motion stops").
+      // cancel-and-restart, never stack: repeated blips can't queue multiple
+      // pending fires.
+      _clearConnectionLostTimer();
+      _connectionLostTimer = setTimeout(() => {
+        _connectionLostTimer = null;
+        _notify(_connectionLostListeners);
+      }, CONNECTION_LOST_GRACE_MS);
     });
 
     socket.on('connect_error', (error) => {

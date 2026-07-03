@@ -26,7 +26,7 @@ import { ConKayCockpit } from './ConKayCockpit';
 import { CONKAY_SIGNATURE_GREETING, type ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
 import { lensRun } from '@/lib/api/client';
-import { subscribe, connectSocket } from '@/lib/realtime/socket';
+import { subscribe, connectSocket, onConnectionLost, onReconnected } from '@/lib/realtime/socket';
 import MessageRenderer from '@/components/chat/MessageRenderer';
 
 // A correlation id for one macro run. Passed to lensRun → sent as
@@ -223,9 +223,19 @@ export function ConKayOverlay() {
         useConkayHudStore.getState().macroCompleted({ runId: d.runId, domain: d.domain, action: d.action, ok: d.ok, ms: d.ms });
       },
     );
+    // Honest disconnect grace period (Unit F10): a HARD backend death drops the
+    // socket without a clean `macro:completed`, which would otherwise leave
+    // `inFlight` stuck non-zero and the scene's rings spinning forever. The
+    // socket layer only fires this after the grace period elapses with no
+    // reconnect (a transient blip cancels it), so a real "kill the server
+    // mid-run" clears in-flight state and flags WHY — all motion stops, honestly.
+    const offLost = onConnectionLost(() => useConkayHudStore.getState().markConnectionLost());
+    // A reconnect clears the connection-lost flag; real macro:* events resume
+    // driving the rings from there.
+    const offReconnected = onReconnected(() => useConkayHudStore.getState().markReconnected());
     // Resetting on teardown clears any in-flight count so the rings never spin
     // after ConKay closes (no orphaned "work" with nothing running).
-    return () => { offStart(); offStage(); offDone(); useConkayHudStore.getState().reset(); };
+    return () => { offStart(); offStage(); offDone(); offLost(); offReconnected(); useConkayHudStore.getState().reset(); };
   }, [open]);
 
   const append = useCallback((m: OverlayMsg) => setMessages((prev) => [...prev, m]), []);
