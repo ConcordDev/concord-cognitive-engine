@@ -1,9 +1,36 @@
 # Governance Design — economy-touching Wave-1 questions (design-before-code)
 
-**Status:** DESIGN ONLY. Nothing here is implemented. This document exists so the
-repo owner can approve (or reject) a *design* before any code touches the
-constitutional economy invariants. Every recommendation below is a **proposed
-default for owner sign-off**, not a settled decision.
+**Status: OWNER-APPROVED (2026-07-03).** The owner reviewed §2–§6 and approved
+every recommended default in this document as-is, with §5 (fork rental)
+explicitly delegated to whichever shape this document itself proposed. The
+decisions below are now settled for Wave-1 purposes; nothing in §2–§6
+requires further sign-off unless a future backlog pull needs a DIFFERENT
+shape than what's approved here (in which case that specific delta needs its
+own owner review, not a re-litigation of what's already decided).
+
+## Owner sign-off record (2026-07-03)
+
+| § | Question | Owner decision | What this unlocks / still blocks |
+|---|---|---|---|
+| §2 | Consent model for phenomenal/personal data | **Approved as written.** Gate (a) — `allow_phenomenal_influence` — may be implemented now. Gates (b)/(c) — fork consent + monetization consent — are approved as *designed* but monetized reenactment does **not** ship in Wave 1. | Unblocks any Wave-1 feature that needs (a) or a plain `allow_phenomenal_monetization` consent gate (e.g. listing a dream DTU for sale, once P-B's licensing metadata is present). Does **not** unblock monetized reenactment / paid fork rental — that's still gated by §5. |
+| §3 | Joint DTU ownership vs. single-`creator_id` cascade | **Approved: DEFER.** No joint-ownership schema/algorithm change ships in Wave 1. | Any backlog item whose delta is "needs joint/multi-party ownership" (e.g. Mesh Soul Binding) stays blocked. Single-creator-with-citation remains the only supported model. |
+| §4 | Retroactive / cross-temporal royalties | **Approved: REJECT.** Flat reject, including the "fundable variant" sketch in §4.4 — not adopted, not even as a future default. | Cross-Temporal Citation (D.1) and any similar idea stay blocked/deprioritized; this is a durable rejection, not a Wave-1-only deferral, unless a future owner review explicitly revisits it with a real funded-reserve proposal. |
+| §5 | Fork rental terms | **Approved as written, in full** — 5.1 (blanket existence/non-commercial consent at fork-creation + a *separate*, revocable monetization consent for paid rental), 5.3 (merge-back insights default to the original person as sole `creator_id`, renter's contribution captured as a citation — explicitly avoiding the §3 joint-ownership build), 5.4 (a rented fork auto-suspends from rental, not killed, on a `value_drift` flag per migration 330), and 5.5 (**no monetary fork rental ships in Wave 1** — sandboxes stay non-commercial/preview-only). | Preview-only forks (existence + non-commercial sandbox via S6's `lattice-fork.js`, disclosed via `is_agent`) are approved to build/extend. A *rental market* (paid access) does not ship until a future review — the terms above are pre-approved for whenever that build happens, so that later work doesn't need a fresh consent-shape debate, only the actual implementation. |
+| §6 | Shadow Parliament advisory → auto-execute | **Approved: advisory-forever.** No auto-execute capability ships; §6.2's criteria remain a recorded menu, not a green light. | Shadow Parliament continues producing `shadow_reasoning` DTUs only. Any future request to let it *act* needs a fresh, explicit owner review against §6.2's criteria — this sign-off does not pre-approve that. |
+
+**How to use this table when pulling a backlog item:** check the item's stated
+blocker against this table before treating it as "P-D gates it, therefore
+blocked." If the blocker matches an APPROVED default above (e.g. "needs
+`allow_phenomenal_monetization`" or "needs the S6 preview-only fork
+substrate"), it is unblocked. If it needs something explicitly deferred or
+rejected above (joint ownership, retroactive royalties, paid fork rental,
+Shadow Parliament auto-execute), it stays blocked regardless of how close the
+rest of its substrate is.
+
+---
+
+**Original document below is unchanged** (the design rationale that produced
+the above decisions — kept for reference and for any future re-review).
 
 **Author's note on method:** every factual claim about current behavior is
 grounded in code I read while writing this. File paths and line numbers are
