@@ -399,6 +399,23 @@ export function mergeBackDryRun(forkObjectId, edits, db) {
     }
   }
 
+  // Batch the DTU lookup into ONE query instead of one SELECT per edit (was a
+  // real N+1 — flagged by the perf detector: server/lib/lattice-fork.js:403).
+  // Only in-bounds ids are worth fetching at all, so filter first, then fetch
+  // the whole in-bounds set in a single `WHERE id IN (...)` round-trip.
+  const inBoundsIds = [...new Set(perDtu.filter(([dtuId]) => dtuIdSet.has(dtuId)).map(([dtuId]) => dtuId))];
+  const rowById = new Map();
+  if (inBoundsIds.length > 0) {
+    try {
+      const placeholders = inBoundsIds.map(() => "?").join(",");
+      const rows = db.prepare(`SELECT * FROM dtus WHERE id IN (${placeholders})`).all(...inBoundsIds);
+      for (const row of rows) rowById.set(String(row.id), row);
+    } catch {
+      // Leave rowById empty on a query failure — every id then honestly
+      // reports dtu_not_found below, matching the prior per-row try/catch.
+    }
+  }
+
   const reports = [];
   for (const [dtuId, fields] of perDtu) {
     if (!dtuIdSet.has(dtuId)) {
@@ -410,12 +427,7 @@ export function mergeBackDryRun(forkObjectId, edits, db) {
       });
       continue;
     }
-    let row = null;
-    try {
-      row = db.prepare("SELECT * FROM dtus WHERE id = ?").get(dtuId);
-    } catch {
-      row = null;
-    }
+    const row = rowById.get(dtuId);
     if (!row) {
       reports.push({ dtuId, ok: false, error: "dtu_not_found" });
       continue;
