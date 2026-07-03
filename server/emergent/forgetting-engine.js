@@ -39,6 +39,12 @@ const DTU_TARGET_RATIO = parseFloat(process.env.DTU_TARGET_RATIO || "0.65"); // 
 const DTU_TARGET_COUNT = Math.round(DTU_MEMORY_CEILING * DTU_TARGET_RATIO); // ~110,500
 // Max DTUs to forget per cycle to prevent batch-delete lag
 const MAX_FORGET_PER_CYCLE = parseInt(process.env.MAX_FORGET_PER_CYCLE || "50", 10);
+// Second-chance / CLOCK-style grace window: a DTU that crosses below the
+// forget threshold isn't tombstoned in the same cycle it's first found low.
+// It gets GRACE_CYCLES real (non-dry-run) cycles to recover (e.g. via a
+// fresh citation/access bumping retentionScore back up) before it's
+// actually forgotten.
+const GRACE_CYCLES = parseInt(process.env.FORGETTING_GRACE_CYCLES || "3", 10);
 
 // ── Module State ────────────────────────────────────────────────────────────
 
@@ -48,6 +54,9 @@ let _lastRun = null;
 let _lastResult = null;
 let _lifetimeForgotten = 0;
 let _lifetimeTombstones = 0;
+// Advances by 1 on every real (non-dry-run) runForgettingCycle call. Pure
+// bookkeeping for the grace-window mechanism below — not a general clock.
+let _cycleCount = 0;
 
 // ── Protection Rules ────────────────────────────────────────────────────────
 
@@ -197,14 +206,47 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
       ? Math.min(_threshold * (1 + (liveDTUs - DTU_TARGET_COUNT) / DTU_TARGET_COUNT), 0.5)
       : _threshold;
 
-    // Score all DTUs
+    // Grace-window bookkeeping only advances on real cycles — a dry-run
+    // preview must never move a DTU closer to being forgotten.
+    if (!dryRun) _cycleCount++;
+
+    // Score all DTUs. Unprotected DTUs that drop below threshold don't go
+    // straight to `candidates` (immediate tombstone) — they get a
+    // second-chance grace window first (CLOCK/second-chance-eviction
+    // style): the first cycle a DTU is found below threshold, it's given
+    // `_graceUntil = _cycleCount + GRACE_CYCLES` and spared this cycle. If
+    // it recovers above threshold on a later cycle (e.g. a fresh citation),
+    // `_graceUntil` is cleared — clean slate, no partial credit. If it's
+    // still below threshold once `_cycleCount` reaches `_graceUntil`, THEN
+    // it's added to `candidates` for the existing forgetDTU path below.
+    // Dry runs report every currently-below-threshold DTU (independent of
+    // grace state) since they're a preview, not a mutation.
     for (const dtu of allDTUs) {
       if (dtu.type === "tombstone") continue;
       const score = retentionScore(dtu, STATE);
       dtu._retentionScore = score;
 
-      if (score < effectiveThreshold && !isProtected(dtu)) {
-        candidates.push({ dtu, score });
+      if (isProtected(dtu)) continue; // protected DTUs never enter the grace mechanism
+
+      const belowThreshold = score < effectiveThreshold;
+
+      if (dryRun) {
+        if (belowThreshold) candidates.push({ dtu, score });
+        continue;
+      }
+
+      if (belowThreshold) {
+        if (dtu._graceUntil == null) {
+          // First time crossing below threshold — start the grace window.
+          dtu._graceUntil = _cycleCount + GRACE_CYCLES;
+        } else if (_cycleCount >= dtu._graceUntil) {
+          // Still below threshold once the grace window has elapsed.
+          candidates.push({ dtu, score });
+        }
+        // else: still within its grace window — wait for a later cycle.
+      } else if (dtu._graceUntil != null) {
+        // Recovered above threshold during grace — clear it.
+        delete dtu._graceUntil;
       }
     }
 
