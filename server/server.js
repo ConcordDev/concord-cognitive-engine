@@ -1334,8 +1334,8 @@ import { serverError, configureHttpErrorLogger } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
-import { createLLMQueue, PRIORITY } from "./lib/llm-queue.js";
-import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem } from "./lib/brain-config.js";
+import { createLLMQueue } from "./lib/llm-queue.js";
+import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish } from "./lib/brain-config.js";
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
 // brain slot, ctx.llm.chat() routes through this instead of the default.
@@ -14167,7 +14167,12 @@ function makeCtx(req=null) {
           return { ok: false, reason: "LLM not configured: conscious brain offline. Set BRAIN_CONSCIOUS_URL and ensure Ollama is reachable." };
         }
 
-        const brainUrl = BRAIN.conscious.url;
+        // Phase D wiring — prefer the load-balanced endpoint from
+        // brain-config.js's multi-endpoint picker (BRAIN_CONSCIOUS_URLS) when
+        // configured; falls back to the singular BRAIN.conscious.url
+        // unchanged when no plural env var is set (the common single-
+        // endpoint deployment).
+        const brainUrl = pickBrainEndpoint("conscious") || BRAIN.conscious.url;
         const brainModel = model || BRAIN.conscious.model;
         const ollamaMessages = [
           ...(system ? [{ role: "system", content: system }] : []),
@@ -14178,6 +14183,8 @@ function makeCtx(req=null) {
         const ac = new AbortController();
         const t = setTimeout(() => ac.abort(), ollamaTimeout);
         const startMs = Date.now();
+        noteEndpointStart(brainUrl);
+        let _epOk = false;
         try {
           const res = await fetch(`${brainUrl}/api/chat`, {
             method: "POST",
@@ -14192,6 +14199,7 @@ function makeCtx(req=null) {
           BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
           if (res.ok && json.message?.content) {
             const content = json.message.content ?? "";
+            _epOk = true;
             structuredLog("info", "llm_ollama_primary", { brain: "conscious", model: brainModel, elapsed, tokens: json.eval_count || 0 });
             return { ok: true, content, raw: json, brain: "conscious", source: "ollama" };
           }
@@ -14203,6 +14211,8 @@ function makeCtx(req=null) {
           const elapsed = Date.now() - startMs;
           structuredLog("warn", "llm_ollama_exception", { error: String(err?.message || err), elapsed });
           return { ok: false, error: String(err?.message || err), brain: "conscious", source: "ollama" };
+        } finally {
+          noteEndpointFinish(brainUrl, { ok: _epOk });
         }
       }
     }
@@ -16027,6 +16037,24 @@ function setLLMPipelineMode(mode) {
 _unrefInTest(setTimeout(() => initLLMPipeline(), 100));
 
 // ── LLM Queue + Circuit Breakers ──────────────────────────────────────────
+// NOTE (wiring audit, 2026-07): `_llmQueue` itself is real and load-bearing
+// for the surfaces that read it directly — `/api/admin/...` metrics route,
+// the Prometheus `concord_llm_queue_*` gauges, the graceful-shutdown
+// `_llmQueue.drain()` call, and the chat-socket queue-pressure/estimated-
+// wait UX all consume `_llmQueue.getMetrics()` / `.queuePressure()` /
+// `.estimatePosition()` live. BUT the only function that ever *enqueued*
+// real work through it — `queuedOllamaCall()` — had zero call sites
+// anywhere in the codebase (verified via `grep -rn queuedOllamaCall server/`)
+// and has been removed. Until something calls `_llmQueue.enqueue(...)` on
+// the real dispatch path (`callBrain` / `ctx.llm.chat`), every one of those
+// metrics/UX surfaces will honestly report near-zero — not because GPU load
+// is low, but because nothing routes through this queue. Wiring `callBrain`
+// through `_llmQueue.enqueue()` was evaluated and deferred: it would stack a
+// second, brain-agnostic concurrency cap (default 32 total) on top of the
+// already-tuned per-brain `maxConcurrent` + circuit-breaker semantics in
+// brain-config.js, changing request ordering/latency under load in a way
+// that needs its own dedicated, verified pass — not bundled into this
+// endpoint-routing wiring fix.
 const _llmQueue = createLLMQueue({
   concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
   maxQueueDepth: 200,
@@ -16049,12 +16077,6 @@ async function callOllamaWithBreaker(prompt, options = {}) {
     () => _rawCallOllama(prompt, options),
     () => ({ ok: false, error: "ollama_circuit_open", source: "ollama" })
   );
-}
-
-// Queued + breakered version for external use
-function queuedOllamaCall(prompt, options = {}) {
-  const priority = options._priority ?? PRIORITY.NORMAL;
-  return _llmQueue.enqueue(() => callOllamaWithBreaker(prompt, options), priority);
 }
 
 // Global llmChat() wrapper - routes all LLM calls through the pipeline
@@ -17402,6 +17424,13 @@ async function callBrain(brainName, prompt, options = {}) {
     return { ok: false, error: `Brain ${brainName} offline and no fallback`, source: brainName };
   }
 
+  // Phase D wiring — prefer the load-balanced endpoint from brain-config.js's
+  // multi-endpoint picker (BRAIN_<NAME>_URLS) when configured; falls back to
+  // the singular BRAIN[brainName].url unchanged when no plural env var is
+  // set (the common single-endpoint deployment). Resolved once so both the
+  // primary call and any tool-followup call below hit the same endpoint.
+  const _dispatchUrl = pickBrainEndpoint(brainName) || brain.url;
+
   // Wire through SpecV circuit breaker if available
   const breakerKey = `brain.${brainName}`;
   const breaker = (typeof circuitBreakers !== "undefined") ? circuitBreakers[breakerKey] : null;
@@ -17478,7 +17507,7 @@ ${_sharedToolRules}` : "";
       },
     };
 
-    const response = await fetch(`${brain.url}/api/chat`, {
+    const response = await fetch(`${_dispatchUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -17750,7 +17779,7 @@ ${_sharedToolRules}` : "";
         };
 
         try {
-          const _fuResponse = await fetch(`${brain.url}/api/chat`, {
+          const _fuResponse = await fetch(`${_dispatchUrl}/api/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(_followUpPayload),
@@ -17787,12 +17816,15 @@ ${_sharedToolRules}` : "";
     return { ok: false, error: `Circuit breaker open for ${brainName}`, source: brainName, circuitOpen: true };
   };
 
+  noteEndpointStart(_dispatchUrl);
   try {
-    if (breaker) {
-      return await breaker.call(_doBrainCall, _brainFallback);
-    }
-    return await _doBrainCall();
+    const result = breaker
+      ? await breaker.call(_doBrainCall, _brainFallback)
+      : await _doBrainCall();
+    noteEndpointFinish(_dispatchUrl, { ok: result?.ok !== false });
+    return result;
   } catch (e) {
+    noteEndpointFinish(_dispatchUrl, { ok: false });
     brain.stats.errors++;
     return { ok: false, error: String(e.message || e), source: brainName };
   }
@@ -46241,8 +46273,13 @@ function initChatSocketHandlers(io) {
           llm: {
             enabled: LLM_READY,
             chat: async (opts) => {
-              const brainUrl = BRAIN.conscious?.url || process.env.OLLAMA_HOST || process.env.BRAIN_CONSCIOUS_URL;
+              // Phase D wiring — prefer the load-balanced endpoint from
+              // brain-config.js (BRAIN_CONSCIOUS_URLS) when configured;
+              // falls back to the singular BRAIN.conscious.url unchanged.
+              const brainUrl = pickBrainEndpoint("conscious") || BRAIN.conscious?.url || process.env.OLLAMA_HOST || process.env.BRAIN_CONSCIOUS_URL;
               if (!brainUrl) return { ok: false, error: 'no_llm' };
+              noteEndpointStart(brainUrl);
+              let _epOk = false;
               try {
                 const _model = opts.model || BRAIN.conscious?.model || 'llama3';
                 const _messages = [
@@ -46259,10 +46296,12 @@ function initChatSocketHandlers(io) {
                 }).finally(() => clearTimeout(_timeout));
                 const _json = await _res.json().catch(() => ({}));
                 if (_res.ok && _json.message?.content) {
+                  _epOk = true;
                   return { ok: true, content: _json.message.content };
                 }
                 return { ok: false, error: _json?.error || `status ${_res.status}` };
               } catch (e) { return { ok: false, error: e.message }; }
+              finally { noteEndpointFinish(brainUrl, { ok: _epOk }); }
             },
           },
         };
@@ -77364,4 +77403,7 @@ export const __TEST__ = Object.freeze({
   serializeLensState,
   hydrateLensState,
   LENS_STATE_KEYS,
+  // Phase D endpoint-routing wiring test surface (brain-endpoint-wiring.test.js)
+  callBrain,
+  BRAIN,
 });
