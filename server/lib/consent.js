@@ -89,6 +89,18 @@ export const CONSENT_ACTIONS = {
     scope: "emergent",
   },
 
+  // Phenomenal data — monetizing artifacts derived from personal/phenomenal
+  // records (e.g. AI-composed dream DTUs). See docs/GOVERNANCE_DESIGN.md §2.2.
+  // Monetization is a strictly higher bar than existence: a dream DTU can
+  // already be listed for free/citation without this gate; only a genuine
+  // priced listing requires it.
+  allow_phenomenal_monetization: {
+    prompt: "Allow phenomenal-derived artifacts (like AI-composed dreams) to be listed for sale.",
+    required: true,
+    revocable: true, // revoking blocks future priced listings only — past sales/listings stand
+    scope: "phenomenal",
+  },
+
   // Concord system usage
   allow_global_dtu_creation: {
     prompt: "Allow Concord to include your cited work in global knowledge DTUs. Your attribution and royalties are preserved.",

@@ -22,6 +22,7 @@
  */
 
 import { vetDTUForPublish } from "./repair-brain.js";
+import { requireConsent } from "./consent.js";
 
 const DREAM_PROMOTION_FLOOR = 60;
 // Bumped 8 → 50 for 32GB / RTX PRO 4500 deployments. Override via env.
@@ -66,17 +67,46 @@ export function scoreDreamCandidate(candidate) {
  *   - licenseTerms                -> optional metadata object copied onto the listing verbatim (default undefined)
  *   - userPrice                   -> optional caller-supplied price; when omitted, listing.price stays 0
  *                                     (byte-identical to the pre-refactor dream behavior)
+ *   - userId                      -> the user attempting the listing; REQUIRED whenever userPrice is a
+ *                                     real positive price, since a priced listing of a phenomenal-derived
+ *                                     artifact (a dream DTU) requires the `allow_phenomenal_monetization`
+ *                                     consent gate (docs/GOVERNANCE_DESIGN.md §2.2). Not needed for free
+ *                                     (price 0/undefined) listings.
  *   - listingDefaults             -> optional object of extra fields shallow-merged onto the listing
  *
  * This function does NOT call into server/economy/* — price/licenseTerms are
  * metadata on the listing row only. Royalty distribution remains whatever it
  * already was (the citation cascade, unchanged, out of scope for this seam).
  *
+ * Consent gate: a real, positive `opts.userPrice` is monetization, not mere
+ * listing — it requires `requireConsent(STATE.db, opts.userId, "allow_phenomenal_monetization")`
+ * to pass BEFORE anything else runs. Missing db/userId, or consent not
+ * granted, is an honest `{ promoted: false, reason: "consent_required" }` —
+ * never a silent priced listing. Free listings (price 0/undefined) are
+ * unaffected and need no consent, matching the existing dream-cycle default.
+ *
  * @returns {Promise<{ promoted: boolean, listingId?: string, score?: number, repair?: object, reason?: string, listing?: object }>}
  */
 export async function promoteCandidateAsDTU(STATE, candidate, opts = {}) {
   const dtu = STATE?.dtus?.get?.(candidate.dtuId);
   if (!dtu) return { promoted: false, reason: "dtu_not_found" };
+
+  const isMonetized = typeof opts.userPrice === "number" && Number.isFinite(opts.userPrice) && opts.userPrice > 0;
+  if (isMonetized) {
+    const db = STATE?.db;
+    const userId = opts.userId;
+    if (!db || !userId) {
+      return {
+        promoted: false,
+        reason: "consent_required",
+        consentRequired: { action: "allow_phenomenal_monetization" },
+      };
+    }
+    const consent = requireConsent(db, userId, "allow_phenomenal_monetization");
+    if (!consent.allowed) {
+      return { promoted: false, reason: "consent_required", consentRequired: consent.consentRequired };
+    }
+  }
 
   const scoreFn = opts.scoreFn ?? scoreDreamCandidate;
   const promotionScore = scoreFn(candidate);
