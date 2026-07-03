@@ -23,6 +23,7 @@
  */
 
 import { getEmergentState } from "./store.js";
+import { directCausalEdgeBetween } from "../lib/causal-edges.js";
 
 // ── Drift Categories ────────────────────────────────────────────────────────
 
@@ -137,6 +138,7 @@ export function runDriftScan(STATE) {
   alerts.push(...detectSelfReference(STATE, es, store));
   alerts.push(...detectEchoChamber(STATE, es, store, snapshot));
   alerts.push(...detectMetricDivergence(STATE, es, store, snapshot));
+  alerts.push(...detectContradictionCausalContext(STATE, es, store));
 
   // Store alerts
   for (const alert of alerts) {
@@ -333,6 +335,79 @@ function detectSelfReference(STATE, es, _store) {
           { dtuA: dtuId, dtuB: refId }
         ));
       }
+    }
+  }
+
+  return alerts;
+}
+
+/**
+ * Enrich detected DTU-DTU contradictions with causal context.
+ *
+ * `es._edges` (server/emergent/edges.js, in-memory lattice edges) already
+ * identifies contradicting DTU pairs — any edge with edgeType === "contradicts"
+ * — and `takeSnapshot` above folds them into an aggregate `contradictionDensity`
+ * metric. That aggregate can't tell a governance reader WHY a given pair
+ * contradicts. This detector cross-references each contradicting pair against
+ * the SEPARATE, persisted causal-edge layer (server/lib/causal-edges.js,
+ * migration 352 `dtu_causal_edges` — deliberately independent of the
+ * citation/royalty graph, never touches royalty_lineage/dtu_citations) and
+ * turns a bare contradiction flag into an interpretable signal:
+ *
+ *   - a `corrects` or `prevents` causal edge between the pair means the
+ *     contradiction is EXPECTED (B is deliberately correcting/preventing A)
+ *     — informational, not anomalous.
+ *   - a `causes`/`enables`/`analogizes` edge between a contradicting pair is
+ *     unusual (those relationships don't normally produce direct
+ *     contradiction) and is flagged as a WARNING for a human to look at.
+ *   - no causal edge at all between a contradicting pair is an UNEXPLAINED
+ *     contradiction — the actual reasoning payoff: it tells governance which
+ *     contradictions are worth investigating vs. which are already accounted
+ *     for by an authored causal claim.
+ *
+ * Best-effort + additive: any failure (missing causal-edges table on a
+ * minimal build, a malformed edge, STATE without a `db`) is swallowed so this
+ * enrichment can never break the drift scan — same "heartbeat modules must
+ * never throw" discipline the rest of the emergent layer follows.
+ */
+function detectContradictionCausalContext(STATE, es, _store) {
+  const alerts = [];
+  const edgeStore = es._edges;
+  const db = STATE?.db;
+  if (!edgeStore?.edges || !db) return alerts;
+
+  const seenPairs = new Set();
+  for (const edge of edgeStore.edges.values()) {
+    if (edge?.edgeType !== "contradicts") continue;
+    const a = edge.sourceId;
+    const b = edge.targetId;
+    if (!a || !b) continue;
+    const pairKey = [a, b].sort().join("|");
+    if (seenPairs.has(pairKey)) continue;
+    seenPairs.add(pairKey);
+
+    try {
+      const causal = directCausalEdgeBetween(db, a, b);
+      if (causal) {
+        const expected = causal.edge_type === "corrects" || causal.edge_type === "prevents";
+        alerts.push(makeAlert(
+          DRIFT_TYPES.MEMETIC_DRIFT,
+          expected ? DRIFT_SEVERITY.INFO : DRIFT_SEVERITY.WARNING,
+          expected
+            ? `${causal.child_id} contradicts ${causal.parent_id} via a \`${causal.edge_type}\` edge — expected`
+            : `${a} and ${b} contradict each other via a \`${causal.edge_type}\` causal edge — unusual, worth a look`,
+          { dtuA: a, dtuB: b, causalEdgeId: causal.id, causalEdgeType: causal.edge_type, expected },
+        ));
+      } else {
+        alerts.push(makeAlert(
+          DRIFT_TYPES.MEMETIC_DRIFT,
+          DRIFT_SEVERITY.WARNING,
+          `${a} and ${b} contradict each other via no causal edge — unexplained contradiction`,
+          { dtuA: a, dtuB: b, causalEdgeId: null, causalEdgeType: null, expected: false },
+        ));
+      }
+    } catch {
+      // best-effort enrichment only — a lookup failure must never break the scan.
     }
   }
 

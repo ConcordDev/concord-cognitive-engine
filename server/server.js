@@ -27143,6 +27143,55 @@ register("dtu", "protocol_validate", (_ctx, input = {}) => {
   } catch (e) { return { ok: false, error: String(e?.message || e) }; }
 }, { description: "Validate an external DTU against the canonical envelope spec; returns errors + canonical content hash." });
 
+// ── DW1: causal-edge layer (Pearl-style causal DAG typing) ─────────────────
+// A SEPARATE, additive graph from the citation/royalty graph — see
+// server/lib/causal-edges.js header comment for the constitutional boundary
+// (never touches royalty_lineage/dtu_citations/economy) and the
+// parent-causes-child directionality convention.
+import {
+  addCausalEdge as _addCausalEdge,
+  causalEdgesFor as _causalEdgesFor,
+  traceCausalPath as _traceCausalPath,
+} from "./lib/causal-edges.js";
+
+register("dtu", "causal-link", (ctx, input = {}) => {
+  try {
+    const db = ctx?.db || STATE?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const edge = _addCausalEdge(db, {
+      childId: input.childId,
+      parentId: input.parentId,
+      edgeType: input.edgeType,
+      confidence: input.confidence,
+    });
+    return { ok: true, edge };
+  } catch (e) {
+    return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
+  }
+}, { description: "Create a typed causal edge (causes/enables/prevents/corrects/analogizes) between two DTUs — a reasoning-layer graph separate from citations/royalty." });
+
+// dtu.causal-trace — read path, two input shapes:
+//   { fromId, toId, maxDepth? } -> BFS causal chain fromId..toId (traceCausalPath)
+//   { dtuId }                    -> all causal edges touching dtuId (causalEdgesFor)
+register("dtu", "causal-trace", (ctx, input = {}) => {
+  try {
+    const db = ctx?.db || STATE?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    if (input.fromId && input.toId) {
+      const maxDepthNum = Number(input.maxDepth);
+      const opts = Number.isFinite(maxDepthNum) && maxDepthNum > 0 ? { maxDepth: maxDepthNum } : undefined;
+      const path = _traceCausalPath(db, input.fromId, input.toId, opts);
+      return { ok: true, mode: "path", fromId: input.fromId, toId: input.toId, path, found: path !== null };
+    }
+    const dtuId = input.dtuId || input.fromId;
+    if (!dtuId) return { ok: false, error: "missing_dtuId_or_fromId_toId" };
+    const edges = _causalEdgesFor(db, dtuId);
+    return { ok: true, mode: "edges", dtuId, ...edges };
+  } catch (e) {
+    return { ok: false, error: e?.code || "handler_error", message: String(e?.message || e) };
+  }
+}, { description: "Read causal edges touching a DTU, or trace a causal path between two DTUs." });
+
 // ── Unified Context Engine ─────────────────────────────────────────────────
 // Every lens, entity, and chat interaction uses this to retrieve knowledge
 // across all tiers with diversity guarantees.
