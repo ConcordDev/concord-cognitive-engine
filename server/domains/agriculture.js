@@ -2,6 +2,7 @@
 // Domain actions for agriculture: crop rotation, yield analysis, equipment, irrigation.
 
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
 
 export default function registerAgricultureActions(registerLensAction) {
   /**
@@ -2073,7 +2074,11 @@ export default function registerAgricultureActions(registerLensAction) {
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
     try {
-      const r = await fetch(`https://api.worldbank.org/v2/country/all/indicator/AG.YLD.CREL.KG?format=json&date=2022&per_page=${limit * 3}`);
+      // Routed through the SSRF-guarded keyless fetch (public-fetch.js) instead
+      // of a bare fetch() — closes the same bypass class fetchJsonGov
+      // (government.js) closed. Behavior (JSON parse, error propagation) is
+      // unchanged — only the transport is guarded now.
+      const r = await fetchPublicUrl(`https://api.worldbank.org/v2/country/all/indicator/AG.YLD.CREL.KG?format=json&date=2022&per_page=${limit * 3}`);
       if (!r.ok) return { ok: false, error: `worldbank ${r.status}` };
       const data = await r.json();
       const rows = (Array.isArray(data) && Array.isArray(data[1]) ? data[1] : [])
@@ -2084,9 +2089,21 @@ export default function registerAgricultureActions(registerLensAction) {
         if (s.feedSeen.has(id)) { skipped++; continue; }
         const country = row.country?.value || row.countryiso3code || "?";
         const title = `Cereal yield: ${country} (${row.date})`;
+        // Real, non-fabricated `core.claims` — every entry traces directly
+        // to a field already present on `row`/`country`. Without this,
+        // dtu.create scores 0 structured fields and councilGate rejects the
+        // write (>=2 required for a system/automated caller), so
+        // `ingested` silently never increments (same class of bug as the
+        // food.js feed handler).
+        const coreClaims = [
+          `Country: ${country}`,
+          `Year: ${row.date}`,
+          `Cereal yield: ${Math.round(row.value)} kg per hectare`,
+        ];
         const res = await ctx.macro.run("dtu", "create", {
           title,
           creti: `${title}\n\nCereal yield: ${Math.round(row.value)} kg per hectare\nSource: World Bank Open Data (AG.YLD.CREL.KG)`,
+          core: { claims: coreClaims },
           tags: ["agriculture", "feed", "crop-yield", "worldbank"],
           source: "worldbank-feed",
           meta: { country, year: row.date, yieldKgHa: row.value },

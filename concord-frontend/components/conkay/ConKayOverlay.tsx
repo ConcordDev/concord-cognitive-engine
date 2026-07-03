@@ -21,11 +21,13 @@ import { ConKayMessage, type ConKayReplyFields } from './ConKayViz';
 import { useConKayVoice } from './useConKayVoice';
 import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
 import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
-import { useConkayHudStore } from './conkayHudStore';
-import type { ConKayState } from './conkay-persona';
+import { useConkayHudStore, feaResultFromRun } from './conkayHudStore';
+import { detectArtifact } from '@/lib/conkay/artifact-kinds';
+import { ConKayCockpit } from './ConKayCockpit';
+import { CONKAY_SIGNATURE_GREETING, type ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
 import { lensRun } from '@/lib/api/client';
-import { subscribe, connectSocket } from '@/lib/realtime/socket';
+import { subscribe, connectSocket, onConnectionLost, onReconnected } from '@/lib/realtime/socket';
 import MessageRenderer from '@/components/chat/MessageRenderer';
 
 // A correlation id for one macro run. Passed to lensRun → sent as
@@ -108,33 +110,10 @@ function ConKayTelemetryChip() {
   return null;
 }
 
-// Phase-2 telemetry panel — a small ledger of the most recent REAL macro runs
-// (domain.action · ok/failed · elapsed ms). Every row is a `macro:completed`
-// fact from the HUD store; there is no ambient/placeholder content, so the
-// panel is empty until the backend actually reports a completed run.
-function ConKayTelemetryPanel() {
-  const telemetry = useConkayHudStore((s) => s.telemetry);
-  if (!telemetry.length) return null;
-  return (
-    <div className="mx-auto mt-2 max-w-2xl rounded-xl border border-cyan-400/15 bg-black/30 p-2">
-      <div className="px-1 pb-1 text-[10px] uppercase tracking-wide text-cyan-300/50">recent system work</div>
-      <ul className="space-y-1">
-        {telemetry.map((t, i) => (
-          <li
-            key={`${t.domain}.${t.action}-${i}`}
-            className="flex items-center justify-between rounded-lg px-2 py-1 text-[11px]"
-          >
-            <span className="truncate text-cyan-100/80">{t.domain}.{t.action}</span>
-            <span className="flex items-center gap-2">
-              {t.ms != null && <span className="text-cyan-300/50">{t.ms} ms</span>}
-              <span className={t.ok ? 'text-emerald-300' : 'text-rose-300'}>{t.ok ? 'ok' : 'failed'}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+// Phase-2 telemetry panel — moved to `./panels/ConKayTelemetryPanel.tsx` (F1)
+// so it can also be registered in `lib/panel-registry.ts` as `conkay.telemetry`
+// and lazy-mounted in the cockpit's right panel lane below. It is still the
+// same self-contained "recent system work" ledger, unchanged.
 
 export function ConKayOverlay() {
   const pathname = usePathname();
@@ -245,9 +224,19 @@ export function ConKayOverlay() {
         useConkayHudStore.getState().macroCompleted({ runId: d.runId, domain: d.domain, action: d.action, ok: d.ok, ms: d.ms });
       },
     );
+    // Honest disconnect grace period (Unit F10): a HARD backend death drops the
+    // socket without a clean `macro:completed`, which would otherwise leave
+    // `inFlight` stuck non-zero and the scene's rings spinning forever. The
+    // socket layer only fires this after the grace period elapses with no
+    // reconnect (a transient blip cancels it), so a real "kill the server
+    // mid-run" clears in-flight state and flags WHY — all motion stops, honestly.
+    const offLost = onConnectionLost(() => useConkayHudStore.getState().markConnectionLost());
+    // A reconnect clears the connection-lost flag; real macro:* events resume
+    // driving the rings from there.
+    const offReconnected = onReconnected(() => useConkayHudStore.getState().markReconnected());
     // Resetting on teardown clears any in-flight count so the rings never spin
     // after ConKay closes (no orphaned "work" with nothing running).
-    return () => { offStart(); offStage(); offDone(); useConkayHudStore.getState().reset(); };
+    return () => { offStart(); offStage(); offDone(); offLost(); offReconnected(); useConkayHudStore.getState().reset(); };
   }, [open]);
 
   const append = useCallback((m: OverlayMsg) => setMessages((prev) => [...prev, m]), []);
@@ -268,7 +257,17 @@ export function ConKayOverlay() {
   // never a heuristic guess. "Verification IS the product." Rides the honest
   // event spine (a runId) like any other macro call; degrades silently to the
   // heuristic badge if the macro is unavailable.
-  const verifyMessage = useCallback(async (msgId: string, claim: string, citationIds: string[]) => {
+  const verifyMessage = useCallback(async (
+    msgId: string,
+    claim: string,
+    citationIds: string[],
+    // The full DTU refs the claim was cited against, in the same shape ConKay
+    // skills already attach to messages (id/title/tier) — passed through so
+    // the HUD store's `runDtuRefs` mirrors the real refs this call checks,
+    // never a re-derivation. Optional: callers that only have bare ids (none
+    // currently do) still get a working verdict, just an empty refs mirror.
+    dtuRefs: Array<{ id: string; title: string | null; tier: string | null }> = [],
+  ) => {
     // Run when there are citations to check OR when the claim is proof-amenable
     // (so the Z3 gate can fire and earn "Proven ✓" even for an uncited theorem).
     if (!citationIds.length && !looksProvable(claim)) return;
@@ -284,6 +283,12 @@ export function ConKayOverlay() {
       const mode = res && typeof res.mode === 'string' ? res.mode : undefined;
       const confidence = res && typeof res.confidence === 'number' ? res.confidence : null;
       setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: verdict, verifyMode: mode, verifyConfidence: confidence } : m)));
+      // Unit F2 — mirror the same real verdict + the refs it was checked against
+      // into the HUD store, for the upcoming K3 cockpit panels. This is the one
+      // documented exception to "socket adapter only" (see the store's header):
+      // still the single legitimate producer of a verify result, not a new site.
+      useConkayHudStore.getState().setLastVerify({ verdict, mode: mode ?? null, confidence });
+      useConkayHudStore.getState().setRunDtuRefs(dtuRefs);
     } catch {
       // verification unavailable → drop the pending state, fall back to the heuristic badge
       setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: undefined } : m)));
@@ -332,7 +337,7 @@ export function ConKayOverlay() {
     if (greetedRef.current) return;
     greetedRef.current = true;
     const where = lens && !onChatLens ? ` I'm on the ${lens.name} lens with you — tell me what to do, or say "brief me".` : " Ask me anything, or say \"brief me\".";
-    if (!muted) voice.speak(`Kay here.${where}`);
+    if (!muted) voice.speak(`${CONKAY_SIGNATURE_GREETING}${where}`);
   }, [open, lens, onChatLens, muted, voice]);
 
   const conkayState: ConKayState =
@@ -381,7 +386,7 @@ export function ConKayOverlay() {
       setStep('render', 'done', 'Done');
       // Phase 1: verify the cited DTUs through the real reason.verify macro.
       const citeIds = (result.dtuRefs || []).map((d) => d.id).filter(Boolean);
-      if (citeIds.length || looksProvable(result.spoken)) verifyMessage(aid, result.spoken, citeIds);
+      if (citeIds.length || looksProvable(result.spoken)) verifyMessage(aid, result.spoken, citeIds, result.dtuRefs || []);
       persistArtifact(`Skill: ${match.skill.label}`, { task: text, skill: match.skill.id, spoken: result.spoken, viz: result.viz ?? null });
       if (result.navigate) { const dest = result.navigate; setTimeout(() => { window.location.href = dest; }, 900); }
     } catch {
@@ -403,6 +408,28 @@ export function ConKayOverlay() {
       liveRunRef.current = rid;
       const { data } = await lensRun(domain, macro, inputObj, rid);
       const ok = !!data?.ok;
+      // Forward-Sim substrate (F7): a real engineering.runFEA solve is the one
+      // completed-run payload the Forward-Sim panel embeds. This is the sole
+      // site where the REAL solver return AND its input model both exist, so
+      // mirror the reshaped result into the HUD store here (feaResultFromRun
+      // returns null unless both halves are real — no fabrication).
+      if (ok && domain === 'engineering' && macro === 'runFEA') {
+        const fea = feaResultFromRun(inputObj, data?.result);
+        if (fea) useConkayHudStore.getState().setLastFea(fea);
+      }
+      // Artifact→3D substrate (F9/K5): the SAME honest capture point, generalized
+      // across macro kinds. Run the real return through the pure `detectArtifact`
+      // registry; if it normalizes to a real ConkayArtifact (ar.render scene /
+      // runFEA solve / foundry.preview world / forge.sandbox app / a
+      // building-shaped result), mirror it into the store for the cockpit's
+      // Artifact Viewer panel. detectArtifact returns null unless the result
+      // genuinely matches a kind's real shape — no fabrication. This is ADDITIVE
+      // to the FEA block above (which stays as-is for the untouched ForwardSimPanel);
+      // a runFEA run populates BOTH from the same pure feaResultFromRun.
+      if (ok) {
+        const artifact = detectArtifact(domain, macro, inputObj, data?.result);
+        if (artifact) useConkayHudStore.getState().setLastArtifact(artifact);
+      }
       const resultStr = data?.result != null ? JSON.stringify(data.result, null, 2) : (ok ? '(done)' : (data?.error || 'no result'));
       const spoken = ok ? `Done — ran ${macro} on the ${domain} lens.` : `${macro} on ${domain} returned: ${data?.error || 'an error'}.`;
       const body = resultStr.length > 1200 ? resultStr.slice(0, 1200) + '\n…' : resultStr;
@@ -550,7 +577,7 @@ export function ConKayOverlay() {
   return (
     <div className="fixed inset-0 z-[80] flex flex-col" role="dialog" aria-modal="true" aria-label="ConKay">
       {/* world-tree presence */}
-      <ConKayBackdrop state={conkayState} listening={voice.listening} muted={muted} className="pointer-events-none absolute inset-0 -z-10" />
+      <ConKayBackdrop state={conkayState} listening={voice.listening} muted={muted} ttsAmplitudeRef={voice.ttsAmplitudeRef} className="pointer-events-none absolute inset-0 -z-10" />
       <div className="absolute inset-0 -z-10 bg-black/55 backdrop-blur-sm" aria-hidden onClick={() => setOpen(false)} />
 
       {/* Phase 3 — exploded view of a real artifact (over the backdrop, interactive) */}
@@ -590,8 +617,10 @@ export function ConKayOverlay() {
         </div>
       </div>
 
-      {/* transcript */}
-      <div className="flex-1 overflow-y-auto px-5">
+      {/* transcript, now hosted inside the F1 cockpit grid — left/right panel
+          lanes (e.g. conkay.telemetry) flank the SAME transcript content,
+          unchanged. The lanes hide below `lg` so mobile keeps full width. */}
+      <ConKayCockpit>
         <div className="mx-auto max-w-2xl space-y-3 py-2">
           {messages.length === 0 && (
             <div className="mt-10 text-center text-sm text-cyan-100/70">
@@ -613,11 +642,9 @@ export function ConKayOverlay() {
           ))}
           {/* JARVIS "you can see it building" — live arc-reactor + step spine */}
           <ConKayWorkStatus phase={conkayState} status={workStatus} steps={steps} active={running} />
-          {/* Phase-2 honest telemetry — real macro:completed facts only */}
-          <ConKayTelemetryPanel />
           <div ref={bottomRef} aria-hidden />
         </div>
-      </div>
+      </ConKayCockpit>
 
       {/* command bar */}
       <form onSubmit={onSubmitForm} className="px-5 pb-5 pt-2">

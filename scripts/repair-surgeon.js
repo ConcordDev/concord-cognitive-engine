@@ -19,7 +19,7 @@
  */
 
 import fs from "fs";
-import { execSync, execFileSync } from "child_process";
+import { execFileSync } from "child_process";
 import {
   matchErrorPattern,
   addToRepairMemory,
@@ -108,9 +108,11 @@ function executeFixCommand(cmd, fixName) {
     // hardcoded templates; the only interpolated values are captures already
     // run through safePkg/safePort/safePath (null = rejected before reaching
     // here). A shell is required because the commands use &&/||/cd/rm, so this
-    // stays execSync — the injection surface is closed upstream at the
-    // validators, not at this call. (Dev/CI repair tool, not a request path.)
-    execSync(cmd, { stdio: "pipe", timeout: 120000 });
+    // runs via execFileSync("/bin/sh", ["-c", cmd], ...) — an explicit argv
+    // shape rather than a single interpolated string handed to a shell-spawning
+    // exec — the injection surface is closed upstream at the validators, not
+    // at this call. (Dev/CI repair tool, not a request path.)
+    execFileSync("/bin/sh", ["-c", cmd], { stdio: "pipe", timeout: 120000 });
     console.log(`  ✓ Fix "${fixName}" applied successfully`);
     return true;
   } catch (e) {

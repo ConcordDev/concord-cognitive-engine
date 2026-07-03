@@ -8,13 +8,21 @@
 // offset the old schedule used. Adding a POI kind = a row in POI_ADVERTISEMENTS.
 
 // building_type → { need: satisfaction amount } it advertises.
+//
+// `comfort` (thermal-shelter relief, npc-needs.js#applyThermalComfort) is
+// advertised by the enclosed structures — a house and an inn are where a cold /
+// sweltering NPC goes to warm up or cool down — plus an explicit `shelter` kind
+// for a purpose-built refuge. It's a modest value so it never out-competes a
+// pressing hunger/energy deficit; it only wins when the NPC is genuinely
+// thermally uncomfortable (a comfortable NPC has comfort=0 → 0 contribution).
 export const POI_ADVERTISEMENTS = Object.freeze({
-  inn:       { hunger: 0.6, social: 0.5, energy: 0.3 },
+  inn:       { hunger: 0.6, social: 0.5, energy: 0.3, comfort: 0.4 },
   market:    { wealth: 0.5, social: 0.4 },
   forge:     { wealth: 0.6, purpose: 0.5 },
   farm:      { wealth: 0.5, purpose: 0.5 },
   mine:      { wealth: 0.6, purpose: 0.4 },
-  house:     { energy: 0.8 },
+  house:     { energy: 0.8, comfort: 0.5 },
+  shelter:   { comfort: 0.8, energy: 0.3 },
   well:      { hunger: 0.25 },
   tower:     { safety: 0.5, purpose: 0.4 },
   dock:      { wealth: 0.5, purpose: 0.4 },

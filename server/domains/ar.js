@@ -1166,10 +1166,15 @@ export default function registerArActions(registerLensAction) {
    */
   registerLensAction("ar", "render", (ctx, artifact, params = {}) => {
     try {
+      // Honest ConKay HUD beats (K1): report the two real phases —
+      // resolve the renderable objects, then build the render plan. Best-effort
+      // decoration bound to the real handler structure, never a timer.
+      const stage = (s) => { try { ctx?.emitMacroStage?.(s); } catch { /* decoration only */ } };
       const p = params || {};
       const d = (artifact && artifact.data) || {};
       let objects, anchor, settings;
 
+      stage("resolving_objects");
       if (p.sceneId) {
         const scene = sceneStore(ctx).get(p.sceneId);
         if (scene) { objects = scene.objects; anchor = scene.anchor; settings = scene.settings; }
@@ -1186,6 +1191,7 @@ export default function registerArActions(registerLensAction) {
       anchor = anchor || d.anchorType || d.anchor || "plane";
       settings = settings || { renderQuality: d.renderQuality };
 
+      stage("building_plan");
       const plan = buildRenderPlan(objects, anchor, settings);
       // Model URLs to pre-warm the GLTF LRU cache (asset-loader.ts) before the session.
       const assets = [...new Set(

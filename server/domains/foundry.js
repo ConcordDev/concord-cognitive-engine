@@ -41,6 +41,11 @@ import {
   COLLAB_ROLES,
 } from "../lib/foundry/builder-extras.js";
 
+// Honest ConKay HUD beat (K1): forward a real `macro:stage` to the caller's
+// stream, best-effort. A throwing hook must never break the macro, so this is
+// guarded — same contract as the lib-threaded beats (fea/forge/discovery).
+function _beat(ctx, stage) { try { ctx?.emitMacroStage?.(stage); } catch { /* decoration only */ } }
+
 // Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
 // silently clamp through a Math.min/max bound. A caller that PASSES a numeric
 // field at all must pass a finite, non-negative one — an absent field is fine
@@ -302,6 +307,11 @@ export default function registerFoundryMacros(register) {
    * input: { id } | { worldspec }
    * output: { ok, errors, warnings, normalized }
    */
+  // K1 honest stop-point: foundry.validate is a single atomic step
+  // (validateWorldspec) with no natural internal boundary, so it stays
+  // start/complete-only — no macro:stage beats. The genuinely multi-step
+  // foundry macros (preview: compile→persist; publish: validate→compile→persist)
+  // carry the real beats.
   register("foundry", "validate", (ctx, input = {}) => {
     const db = ctx?.db;
     let worldspec = input && input.worldspec;
@@ -359,6 +369,10 @@ export default function registerFoundryMacros(register) {
     let rawSpec;
     try { rawSpec = JSON.parse(row.worldspec_json); }
     catch { rawSpec = emptyWorldspec(); }
+    // Honest ConKay HUD beats (K1): publish IS the compile-and-persist pipeline
+    // (validate → compile modulators → persist worlds row). Report each real
+    // phase to the caller's macro:stage stream. Best-effort decoration.
+    _beat(ctx, "validating");
     const validation = validateWorldspec(rawSpec);
     if (!validation.ok) {
       return { ok: false, reason: "worldspec_invalid", errors: validation.errors, warnings: validation.warnings };
@@ -368,10 +382,12 @@ export default function registerFoundryMacros(register) {
       return { ok: false, reason: "no_systems", hint: "select at least one system before publishing" };
     }
 
+    _beat(ctx, "compiling");
     const compiled = compileWorldspec(worldspec);
     const worldId = `world-${randomUUID()}`;
     const now = Date.now();
 
+    _beat(ctx, "persisting");
     const publishTx = db.transaction(() => {
       db.prepare(`
         INSERT INTO worlds
@@ -512,6 +528,9 @@ export default function registerFoundryMacros(register) {
       return { ok: false, reason: "no_systems", hint: "add a system before previewing" };
     }
 
+    // Honest ConKay HUD beats (K1): report the two real phases — compile the
+    // worldspec into modulators, then persist the preview world. Best-effort.
+    _beat(ctx, "compiling");
     const compiled = compileWorldspec(worldspec);
     const nowSec = Math.floor(Date.now() / 1000);
     const physJson = JSON.stringify(compiled.physics_modulators);
@@ -524,6 +543,7 @@ export default function registerFoundryMacros(register) {
       ? db.prepare(`SELECT id FROM worlds WHERE id = ? AND status = 'preview'`).get(previewWorldId)
       : null;
 
+    _beat(ctx, "persisting_preview");
     try {
       if (existing) {
         db.prepare(`

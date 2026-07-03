@@ -21,6 +21,9 @@ export default function registerDiscoveryMacros(register) {
       creatorId: input.mine ? (ctx?.actor?.userId || null) : input.creatorId,
       limit: input.limit,
       requesterId: ctx?.actor?.userId || null,
+      // K1: forward real search phases (searching → reranking) to the caller's
+      // macro:stage stream when run via /api/lens/run.
+      onStage: ctx?.emitMacroStage,
     };
     // Semantic (embedding) re-rank when available — ConKay's "search my archive"
     // becomes meaning-based, not keyword-only. Pass keyword:true to force the

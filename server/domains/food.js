@@ -2,6 +2,7 @@
 // Domain actions for food service: recipe scaling, plate costing, spoilage, pour cost.
 
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
 
 export default function registerFoodActions(registerLensAction) {
   registerLensAction("food", "vision", async (ctx, artifact, _params) => {
@@ -748,7 +749,10 @@ export default function registerFoodActions(registerLensAction) {
       const diet = params.diet || "";
       const url = `https://api.spoonacular.com/mealplanner/generate?apiKey=${encodeURIComponent(process.env.SPOONACULAR_API_KEY)}&timeFrame=week&targetCalories=${targetCalories}${diet ? `&diet=${encodeURIComponent(diet)}` : ""}`;
       try {
-        const r = await fetch(url);
+        // Routed through the SSRF-guarded keyless fetch (public-fetch.js)
+        // instead of a bare fetch() — closes the same bypass class
+        // fetchJsonGov (government.js) closed. Behavior unchanged.
+        const r = await fetchPublicUrl(url);
         if (!r.ok) throw new Error(`spoonacular ${r.status}`);
         const data = await r.json();
         const weekDays = data?.week ? Object.entries(data.week) : [];
@@ -826,11 +830,19 @@ export default function registerFoodActions(registerLensAction) {
     try {
       const ac = new AbortController();
       const t = setTimeout(() => ac.abort(), 8000);
-      const r = await fetch(url, { signal: ac.signal, headers: { "user-agent": "ConcordFoodLens/1.0" } });
+      // `url` is caller-supplied (highest-priority SSRF surface in this
+      // domain) — routed through the SSRF-guarded keyless fetch
+      // (public-fetch.js) instead of a bare fetch() so the scheme
+      // allowlist/private-IP-block/DNS-rebinding-pin actually protects this
+      // user-controlled-URL path. On guard rejection, fetchPublicUrl throws
+      // with `.code === "SSRF_BLOCKED"` — caught below as an honest failure
+      // without leaking the guard's internal reason.
+      const r = await fetchPublicUrl(url, { signal: ac.signal, headers: { "user-agent": "ConcordFoodLens/1.0" } });
       clearTimeout(t);
       if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
       html = await r.text();
     } catch (e) {
+      if (e?.code === "SSRF_BLOCKED") return { ok: false, error: "url not allowed" };
       return { ok: false, error: e?.message || "fetch failed" };
     }
     const jsonldMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
@@ -1889,7 +1901,10 @@ export default function registerFoodActions(registerLensAction) {
     const categories = ["snacks", "beverages", "breakfasts", "cheeses", "pastas", "chocolates"];
     const cat = categories[new Date().getHours() % categories.length];
     try {
-      const r = await fetch(`https://world.openfoodfacts.org/category/${cat}.json?page_size=${limit}&fields=code,product_name,brands,nutriscore_grade,categories`);
+      // Routed through the SSRF-guarded keyless fetch (public-fetch.js)
+      // instead of a bare fetch() — closes the same bypass class
+      // fetchJsonGov (government.js) closed. Behavior unchanged.
+      const r = await fetchPublicUrl(`https://world.openfoodfacts.org/category/${cat}.json?page_size=${limit}&fields=code,product_name,brands,nutriscore_grade,categories`);
       if (!r.ok) return { ok: false, error: `openfoodfacts ${r.status}` };
       const data = await r.json();
       const products = (Array.isArray(data?.products) ? data.products : []).filter((p) => p.product_name).slice(0, limit);
@@ -1898,9 +1913,21 @@ export default function registerFoodActions(registerLensAction) {
         const id = `off_${p.code}`;
         if (s.feedSeen.has(id)) { skipped++; continue; }
         const title = `Food product: ${p.product_name}`;
+        // Real, non-fabricated `core.claims` — every entry traces directly
+        // to a field already present on `p`/`cat` from the fetched product.
+        // Without this, dtu.create scores 0 structured fields and
+        // councilGate rejects the write (>=2 required for a system/
+        // automated caller), so `ingested` silently never increments.
+        const coreClaims = [
+          `Product: ${p.product_name}`,
+          `Brand: ${p.brands || "unknown"}`,
+          `Nutri-Score: ${(p.nutriscore_grade || "unrated").toUpperCase()}`,
+          `Category: ${cat}`,
+        ];
         const res = await ctx.macro.run("dtu", "create", {
           title,
           creti: `${title}\n\nBrand: ${p.brands || "?"}\nNutri-Score: ${(p.nutriscore_grade || "?").toUpperCase()}\nCategory: ${cat}\nBarcode: ${p.code}\nSource: Open Food Facts`,
+          core: { claims: coreClaims },
           tags: ["food", "feed", "product", "openfoodfacts"],
           source: "openfoodfacts-feed",
           meta: { code: p.code, name: p.product_name, brands: p.brands, nutriscore: p.nutriscore_grade },

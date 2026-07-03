@@ -17,7 +17,8 @@
 //        keep the suite egress-free regardless of ctx.llm presence).
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, load } from "./_harness.js";
+import { computeContentHash } from "../../lib/dtu-protocol.js";
 
 describe("research — calc contracts (exact computed values)", () => {
   it("citationNetwork: h-index, in-degree, and foundational works are computed exactly", async () => {
@@ -117,6 +118,104 @@ describe("research — calc contracts (exact computed values)", () => {
     assert.equal(r.result.reproducibilityPercentage, 0);
     assert.equal(r.result.assessment, "low-reproducibility");
     assert.equal(r.result.criticalIssues.length, 4);
+  });
+});
+
+describe("research — reproducibilityCheck opt-in DTU mint (real dtu.create, no fabrication)", () => {
+  it("regression: without mint, output shape is byte-identical to the pre-mint computation", async () => {
+    const r = await lensRun("research", "reproducibilityCheck", {
+      data: { study: {
+        pValues: [0.001, 0.002, 0.003],
+        materialsSections: true, codeAvailable: true, dataAvailable: true, protocolRegistered: true,
+      } },
+    });
+    assert.equal(r.result.overallScore, 60);
+    assert.equal(r.result.maxScore, 60);
+    assert.equal(r.result.reproducibilityPercentage, 100);
+    assert.equal(r.result.assessment, "highly-reproducible");
+    assert.deepEqual(r.result.criticalIssues, []);
+    // No persistence side effects unless a caller explicitly opts in.
+    assert.equal("dtuId" in r.result, false);
+    assert.equal("minted" in r.result, false);
+    assert.equal("mintError" in r.result, false);
+    // Exact key set — nothing extra sneaks onto the response when mint is absent.
+    assert.deepEqual(Object.keys(r.result).sort(), [
+      "assessment", "checks", "criticalIssues", "maxScore", "overallScore", "reproducibilityPercentage",
+    ]);
+  });
+
+  it("mint:true persists a real DTU whose stored content matches the computed score exactly", async () => {
+    const mctx = await depthCtx("research-repro-mint");
+    const study = {
+      title: "Replication of Effect X",
+      pValues: [0.001, 0.002, 0.003],
+      materialsSections: true, codeAvailable: true, dataAvailable: true, protocolRegistered: true,
+    };
+    const r = await lensRun("research", "reproducibilityCheck", {
+      data: { study, mint: true },
+    }, mctx);
+
+    // The computed score is unchanged by opting into persistence.
+    assert.equal(r.result.overallScore, 60);
+    assert.equal(r.result.maxScore, 60);
+    assert.equal(r.result.reproducibilityPercentage, 100);
+    assert.equal(r.result.assessment, "highly-reproducible");
+    assert.equal(r.result.minted, true);
+    assert.ok(r.result.dtuId, "a real, persisted DTU id must be returned");
+
+    // Read the DTU back out of the live substrate (not a mock) and verify its
+    // content genuinely reflects reproducibilityCheck's own math.
+    const { STATE } = await load();
+    const dtu = STATE.dtus.get(r.result.dtuId);
+    assert.ok(dtu, "the minted DTU must actually exist in STATE.dtus");
+    assert.equal(dtu.meta.check.overallScore, r.result.overallScore);
+    assert.equal(dtu.meta.check.maxScore, r.result.maxScore);
+    assert.equal(dtu.meta.check.reproducibilityPercentage, r.result.reproducibilityPercentage);
+    assert.equal(dtu.meta.check.assessment, r.result.assessment);
+    assert.deepEqual(dtu.meta.check.criticalIssues, r.result.criticalIssues);
+    assert.deepEqual(dtu.meta.check.checks, r.result.checks);
+    assert.equal(dtu.title, "Reproducibility assessment: Replication of Effect X");
+    // dtu.create runs the shared write pipeline (auto domain-classification,
+    // injection scanning) which is orthogonal to this handler and out of
+    // scope for this fix (the fix stays entirely inside
+    // server/domains/research.js). Assert the tags THIS handler explicitly
+    // requested are present rather than pinning the exact set, so the test
+    // doesn't couple to that shared, independently-owned pipeline.
+    for (const t of ["reproducibility", "research", "verification"]) {
+      assert.ok(dtu.tags.includes(t), `expected tag "${t}" on the minted DTU`);
+    }
+
+    // Provenance binds the assessment to THIS exact study payload — reusing
+    // dtu-protocol.js's canonical sha256 hasher, recomputed independently
+    // here (not trusting the stamp the handler wrote).
+    assert.match(dtu.meta.provenance.studyContentHash, /^[a-f0-9]{64}$/);
+    assert.equal(dtu.meta.provenance.studyContentHash, computeContentHash(study));
+    assert.ok(dtu.meta.provenance.stampedAt);
+  });
+
+  it("mint:true on a low-reproducibility study mints the honest critical-issues list, not a rosy fabrication", async () => {
+    const study = { materialsSections: false, codeAvailable: false, dataAvailable: false, protocolRegistered: false };
+    const r = await lensRun("research", "reproducibilityCheck", { data: { study, mint: true } });
+    assert.equal(r.result.minted, true);
+    assert.equal(r.result.assessment, "low-reproducibility");
+    assert.equal(r.result.criticalIssues.length, 4);
+
+    const { STATE } = await load();
+    const dtu = STATE.dtus.get(r.result.dtuId);
+    assert.equal(dtu.meta.check.overallScore, 0);
+    assert.equal(dtu.meta.check.criticalIssues.length, 4);
+    // No study.title supplied → a generated identifier derived from the hash, not a fabricated name.
+    assert.match(dtu.title, /^Reproducibility assessment: study-[a-f0-9]{8}$/);
+    assert.equal(dtu.meta.provenance.studyContentHash.startsWith(dtu.title.split("study-")[1]), true);
+  });
+
+  it("mint absent (default false) never calls dtu.create — params.mint=false is also a no-op", async () => {
+    const r = await lensRun("research", "reproducibilityCheck", {
+      data: { study: { materialsSections: true, codeAvailable: true, dataAvailable: true, protocolRegistered: true, mint: false } },
+      params: { mint: false },
+    });
+    assert.equal("dtuId" in r.result, false);
+    assert.equal("minted" in r.result, false);
   });
 });
 

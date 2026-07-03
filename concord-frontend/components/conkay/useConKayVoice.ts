@@ -8,7 +8,7 @@
 // (the mode still works by typing). TTS pauses STT so ConKay doesn't hear itself.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CONKAY_VOICE_HINTS } from './conkay-persona';
+import { CONKAY_VOICE_HINTS, CONKAY_VOICE_ID } from './conkay-persona';
 import { speakWithPiperOrFallback, type PiperPlaybackHandle } from '@/lib/voice/piper-stream';
 import { createMediaRecorderSTT, mediaRecorderSupported, type MediaRecorderSTTHandle } from '@/lib/voice/mediarecorder-stt';
 
@@ -43,6 +43,17 @@ export interface ConKayVoice {
   /** Set if the server STT route is unconfigured/unreachable — UI can hint
    *  "voice transcription unavailable here, type instead." */
   voiceUnavailable: boolean;
+  /**
+   * Live 0..1 amplitude envelope of ConKay's OWN speech while `speaking` is
+   * true, sampled every animation frame from the real playback via
+   * `PiperPlaybackHandle#getEnvelopeAt` (Piper: real decoded-audio bins; the
+   * Web-Speech fallback path returns its own pre-existing synthetic-square
+   * stub — honestly passed through, not something this hook fabricates on
+   * top of). A ref (not state) so consumers can read it in a per-frame loop
+   * (e.g. the Three.js scene) without forcing React re-renders — same
+   * pattern as `useMicAmplitude`. Always 0 while not speaking.
+   */
+  ttsAmplitudeRef: React.MutableRefObject<number>;
   speak: (text: string) => void;
   cancelSpeak: () => void;
 }
@@ -63,6 +74,12 @@ export function useConKayVoice(opts: {
   const pipeHandleRef = useRef<PiperPlaybackHandle | null>(null);
   const mrSttRef = useRef<MediaRecorderSTTHandle | null>(null);
   const speakingRef = useRef(false);
+  // Wall-clock time (performance.now(), ms) the current utterance started —
+  // lets the envelope sampler below compute "how far into playback are we"
+  // without depending on the audio element/buffer's own clock.
+  const speechStartRef = useRef(0);
+  // Live envelope of ConKay's own speech (see ConKayVoice#ttsAmplitudeRef).
+  const ttsAmplitudeRef = useRef(0);
   const wantListenRef = useRef(false);     // Web Speech auto-restart intent
   const wantFallbackRef = useRef(false);   // server-STT fallback intent
   const onFinalRef = useRef(onFinalTranscript);
@@ -182,8 +199,8 @@ export function useConKayVoice(opts: {
     stopListening();         // don't hear ourselves (Web Speech)
     stopFallbackListening(); // ...nor via the server-STT fallback
     try { pipeHandleRef.current?.cancel(); } catch { /* noop */ }
-    speakWithPiperOrFallback(clean, { rate: 0.98, pitch: 1.0 }, {
-      onStart: () => { speakingRef.current = true; setSpeaking(true); },
+    speakWithPiperOrFallback(clean, { rate: 0.98, pitch: 1.0, voice: CONKAY_VOICE_ID }, {
+      onStart: () => { speechStartRef.current = performance.now(); speakingRef.current = true; setSpeaking(true); },
       onEnd: () => {
         speakingRef.current = false; setSpeaking(false);
         pipeHandleRef.current = null;
@@ -194,6 +211,26 @@ export function useConKayVoice(opts: {
       speakingRef.current = false; setSpeaking(false);
     });
   }, [muted, stopListening, startListening, stopFallbackListening, startFallbackListening]);
+
+  // Sample ConKay's own speech envelope every animation frame while she's
+  // actually speaking — mirrors `useMicAmplitude`'s ref+rAF pattern (never
+  // React state in the loop). The value is REAL: it comes from
+  // `pipeHandleRef.current.getEnvelopeAt(elapsedSeconds)`, i.e. amplitude
+  // bins computed from the decoded Piper audio buffer at playback time (or
+  // the pre-existing Web-Speech synthetic stub when Piper wasn't used — that
+  // degradation already exists in piper-stream.ts and isn't something this
+  // hook adds fakery on top of). Never a setInterval/setTimeout.
+  useEffect(() => {
+    if (!speaking) { ttsAmplitudeRef.current = 0; return; }
+    let raf = 0;
+    const tick = () => {
+      const elapsedS = (performance.now() - speechStartRef.current) / 1000;
+      ttsAmplitudeRef.current = pipeHandleRef.current?.getEnvelopeAt(elapsedS) ?? 0;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); ttsAmplitudeRef.current = 0; };
+  }, [speaking]);
 
   // Drive listening from enabled/muted: Web Speech where available, else the
   // server-STT fallback, else nothing (typing still works).
@@ -211,7 +248,7 @@ export function useConKayVoice(opts: {
   // Cancel any speech + release the mic on unmount.
   useEffect(() => () => { cancelSpeak(); stopListening(); stopFallbackListening(); }, [cancelSpeak, stopListening, stopFallbackListening]);
 
-  return { supported, listening, speaking, interim, usingServerStt: serverSttSupported, voiceUnavailable, speak, cancelSpeak };
+  return { supported, listening, speaking, interim, usingServerStt: serverSttSupported, voiceUnavailable, ttsAmplitudeRef, speak, cancelSpeak };
 }
 
 export default useConKayVoice;

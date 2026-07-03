@@ -1,7 +1,7 @@
 {
   "version": 2,
   "format": "seed-packs",
-  "generatedAt": "2026-05-07T22:00:00.000Z",
+  "generatedAt": "2026-07-02T00:00:00.000Z",
   "totalDtus": 2002,
   "packCount": 12,
   "packs": [
@@ -9,8 +9,8 @@
       "file": "dtus-prediction.json",
       "label": "Pre-Registered Predictions — first-order falsifiability tests",
       "count": 1,
-      "sizeKB": 5.5,
-      "sha256": null
+      "sizeKB": 5.6,
+      "sha256": "24984cf5bd45a0d423445704d12c888560895bfc438b259fb4beb3f33d9a6fae"
     },
     {
       "file": "dtus-root.json",
@@ -23,22 +23,22 @@
       "file": "dtus-part1.json",
       "label": "Part 1: Core First-Order + Immediate Geometries (1-60)",
       "count": 60,
-      "sizeKB": 170.1,
-      "sha256": "b4d94e703cba2c1c68e9dc53f76f539fb3c34fbab5836483adf86dff57e41d2d"
+      "sizeKB": 195.7,
+      "sha256": "ddb4db0db25de7c58ea8d5ca4ea8b3c95c017128d2ec355e219b0fb0c828d9be"
     },
     {
       "file": "dtus-part2.json",
       "label": "Part 2: ETCC Core, Indices, and Constraint Geometry (61-120)",
       "count": 60,
-      "sizeKB": 170.6,
-      "sha256": "0cec5fea82099b4f27d547874c3534be98180019f2f40facdc32ba29b8e5851f"
+      "sizeKB": 200,
+      "sha256": "9055a83a7ea2b6f931e390d8d76498d097a38b7180f2b12e9fad7acb48feb79e"
     },
     {
       "file": "dtus-part3a.json",
       "label": "Part 3a: Alien Intelligence Morphologies (121-180)",
       "count": 60,
-      "sizeKB": 172.8,
-      "sha256": "6848094ecf640de241a2ebb62009652aee470f49199f6588892bee5e275c9fc5"
+      "sizeKB": 201.5,
+      "sha256": "c832128e578a7549adc2eec4cdb381c0f6bfa3b3c4fff69a8d1bde2c7be1a7a6"
     },
     {
       "file": "dtus-part3b.json",
@@ -51,35 +51,35 @@
       "file": "dtus-part4.json",
       "label": "Part 4: Civilization Architectures (181-240)",
       "count": 60,
-      "sizeKB": 175.2,
-      "sha256": "6a585bcd14d6b619efdfac7a8d7d658b4751acdf42362726386ee0aabb078969"
+      "sizeKB": 193.3,
+      "sha256": "3b2c83f85f69a9d3e3bd5b87872d38b4135e93c70a47304f81b4480512a52afb"
     },
     {
       "file": "dtus-part5.json",
       "label": "Part 5: Climate, Ecology, Infrastructure (241-300)",
       "count": 60,
-      "sizeKB": 171.6,
-      "sha256": "d4626612d6c9d03563b16236f155f296ec741eb224c489f8bff7876020026f9d"
+      "sizeKB": 199.9,
+      "sha256": "461e068f3becf659f08a980a753ac4c81194a4d2aa8daaa65008bc103d42cdfe"
     },
     {
       "file": "dtus-part6.json",
       "label": "Part 6: Mathematics, Computation, Physics (301-360)",
       "count": 60,
-      "sizeKB": 173.2,
-      "sha256": "73416880ef67f673ad2da7acbadacca18d497877fdf33a791208dec2152597a3"
+      "sizeKB": 212.4,
+      "sha256": "66244b204a694213b2e2399c239a519b83c7fb839dc44075740c6ce42a001b1f"
     },
     {
       "file": "dtus-part7.json",
       "label": "Part 7: Cognition, Psychology, Language (361-420)",
       "count": 60,
-      "sizeKB": 155.6,
-      "sha256": "ea0112bb98b94fbf85eb7e49794299dc3c29fdc67af6e04fc93c4c20ed424645"
+      "sizeKB": 224.6,
+      "sha256": "34b9638ae9ff0d005521e67bfd526e17f5ee2bb43d6c9bf2a96910e8524903c1"
     },
     {
       "file": "dtus-part8.json",
       "label": "Part 8: Meta-Closure, Recursive Self-Application (421-480)",
       "count": 60,
-      "sizeKB": 122.3,
+      "sizeKB": 274.6,
       "sha256": "e8e2cca67f4c37f9499e6425baba88cc6eb598238c45dabc35fcb63c83b664d4"
     },
     {

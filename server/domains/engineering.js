@@ -720,7 +720,10 @@ export default function registerEngineeringActions(registerLensAction) {
       const loads = Array.isArray(model.loads) ? [...model.loads] : [];
       const supports = Array.isArray(model.supports) ? model.supports : [];
       const t0 = Date.now();
-      const fea = runFEA({ nodes, members, loads, supports });
+      // Honest ConKay HUD beats (K1): forward the real solve phases
+      // (assemble → solve → postprocess) to the caller's macro:stage stream
+      // when this ran via /api/lens/run with a run id. No-op otherwise.
+      const fea = runFEA({ nodes, members, loads, supports, onStage: ctx?.emitMacroStage });
       const elapsedMs = Date.now() - t0;
       if (!fea.ok) return { ok: false, error: fea.error || 'FEA solve failed' };
 

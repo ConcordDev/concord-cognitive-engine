@@ -26,10 +26,10 @@ reclassifies 8 data-modules (168k lines, e.g. the deprecated 145k-line
 | Macro domains | **492** | verifier `macroDomains` |
 | Route prefixes | **2,973** | verifier `routePrefixes` |
 | Backend domain files | **405** | `ls server/domains/*.js \| wc -l` |
-| Numbered migrations | **349** | `ls server/migrations/[0-9]*.js \| wc -l` |
+| Numbered migrations | **350** | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **132** | `ls server/routes/*.js \| wc -l` |
-| Lib modules | **617** top (`ls server/lib/*.js \| wc -l`) · **916** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
-| `server/server.js` | **77,276 lines** | `wc -l server/server.js` |
+| Lib modules | **620** top (`ls server/lib/*.js \| wc -l`) · **919** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
+| `server/server.js` | **77,286 lines** | `wc -l server/server.js` |
 | DB tables (cartographer) | **690** | `npm run cartograph:static` |
 | Socket events | **277** | cartographer |
 | Heartbeats (registered) | **105 static** | cartographer / detector summary |
@@ -49,21 +49,71 @@ depth (destinations built deep by composition; the novel primitives in §5) is a
 **different axis the grader doesn't measure.** Cite 0.687 for "how much is
 behaviorally tested," cite 1.0 / the novelty inventory for "is it real + deep."
 
-## 4. Code health (reproduce: `cd server && node scripts/run-detectors.js`)
+## 4. Code health (reproduce: `cd server && node scripts/run-detectors.js`; ratchet `… --diff --ci`)
 
-- **980 findings** total (2 critical → **1 fixed this pass**, 73 high, 850 medium,
-  21 low) — **under** the ~1,131 baseline floor.
-- **Fixed (2026-06-09):** a real `cmd_injection` critical — `execSync()` with
-  interpolated `CONCORD_WORKER_CORES` in `workers/cognitive-worker.js` → switched to
-  `execFileSync` (no shell) + format-validated. Security consumer now **0 critical**.
-- **Remaining high (perf backlog, not security):** 73 — `perf_sync_fs_in_handler`
-  (sync fs in async paths: art/studio/whiteboard) + `perf_uncaught_sql_loop` (N+1:
-  dreams/nemesis/royalty-cascade/concordia-cycles/mount-behavior). Track + fix
-  incrementally; none are correctness or security.
-- **Clean:** 0 secret leaks (7,286 files scanned) · 0 DTU-lineage issues · 0 orphan
-  modules · 0 dormant modules · 0 decorative-state lens issues.
-- 1 remaining "critical" renders as `undefined/undefined` under invariant-guardian —
-  a detector-output bug to triage (not a confirmed code defect).
+> **Code-health re-verified 2026-07-03** (fresh full run + fresh `--diff --ci`
+> against the committed baseline, both re-run for this doc pass). The
+> 2026-06-09 "73 high perf backlog" that used to stand here is **CLOSED** — 0
+> high today too. That 73 predated the 2026-06-29 baseline refresh; don't cite
+> it.
+
+- **0 critical · 0 high, both today's fresh run and the ratchet.** A fresh
+  full `node scripts/run-detectors.js` run (2026-07-03) totals **71 findings:
+  {critical:0, high:0, medium:26, low:15, info:30}**. This differs from the
+  committed baseline (`audit/detectors/BASELINE.json`, v1, 2026-06-29, 30
+  detectors: `{critical:0, high:0, medium:27, low:15, info:176} = 218`)
+  almost entirely in the **info** bucket — info findings are runtime
+  macro-usage telemetry (per CLAUDE.md), not static-code defects, so they're
+  inherently volatile run-to-run; medium/low are close to stable. The
+  `--diff --ci` ratchet (the actual PR gate) is the more meaningful signal:
+  **added 5** (0 critical, 0 high, 4 medium, 1 info) vs **removed 152**, **66
+  unchanged** — **CI check PASSED**, 0 new high/critical. `BUDGET.json` (v10,
+  maxTotal 225) still states "0 critical / 0 high" as its floor.
+- **The perf backlog is closed, and its named sites were largely false-positives.**
+  art/studio/whiteboard carry only module-scope `fs.existsSync` (runs once at boot —
+  the detector explicitly exempts sync-fs outside a handler body); `dream-engine.js`
+  uses the correct `.all()`-then-iterate (one query, not an N+1). The 2026-06-09
+  `cmd_injection` critical fix (`workers/cognitive-worker.js` `execSync`→`execFileSync`
+  + format-validated) still holds → **0 critical**.
+- **Two residual findings named in earlier snapshots of this doc are now FIXED
+  (verified against today's fresh run — neither appears in current findings):**
+  the `emergent/nemesis-cycle.js:123-127` query-in-loop and the
+  `server/lib/world-snapshot.js:77` `db_prepare_in_loop` were both closed by
+  commit `4b2384da` ("perf: hoist per-table prepared statement in
+  world-snapshot; collapse nemesis-cycle N+1") — `world-snapshot.js#restoreWorld`
+  now hoists one prepared INSERT per table outside the row loop, and
+  `nemesis-cycle.js#_processSchemeBetrayals` now does one batched
+  `character_opinions` lookup via `WHERE npc_id IN (...) AND target_id IN
+  (...)` instead of a per-row query, correlated in-memory via a Map. Both
+  behavior-identical (`world-snapshot.test.js` 4/4, `nemesis-cycle.test.js`
+  19/19).
+- **Command-injection: the earlier "2 medium" figure and its `scripts/autoloop/lib.mjs:21`
+  citation need a correction.** Today's fresh run confirms exactly **one**
+  current command-injection finding — `cmd_injection_variable_command` at
+  **`scripts/autoloop/lib.mjs:21`** (dev-script scope, real security-relevant
+  signal, PROTECTed autoloop file — not something this doc pass can or should
+  edit). The *second* command-injection finding that used to make the count
+  "2" was `scripts/repair-surgeon.js:113` (`executeFixCommand`'s
+  `execSync(cmd)`), and it is now **FIXED** — commit `4c2546ea` switched it to
+  `execFileSync("/bin/sh", ["-c", cmd], ...)` (an explicit argv shape instead
+  of a single interpolated string handed to a shell-spawning exec; the
+  injection surface was already closed upstream by the pre-validated
+  `safePkg`/`safePort`/`safePath` captures, this closes the pattern at the
+  sink too). Confirmed absent from today's findings. So the current, accurate
+  count is **1 medium command-injection finding**, at `lib.mjs:21`.
+- **Other residual (medium, tracked — none high, none corrupt data):** 9
+  `resource-leak` findings, 13 `env-config-drift` findings (hardcoded
+  connector URLs — Notion's OAuth/API endpoints in
+  `server/lib/connector-client.js:392` and
+  `server/routes/connector-oauth.js:106-107` are the newest, added this
+  session), 2 `route_empty_render` (both in
+  `concord-frontend/app/lenses/quantum/page.tsx`), 1 `stale-code` /
+  `table_orphan` (`server/migrations/275_evo_asset_fk_repair.js:35` — a table
+  created but never read/written outside migrations).
+- **Clean:** 0 secret leaks · 0 DTU-lineage issues · 0 orphan modules · 0 dormant
+  modules · 0 decorative-state lens issues.
+- The prior "980 findings / 1,131 floor" line was the 2026-06-09 pre-refresh snapshot
+  (info-heavy). Trust a fresh run + the ratchet, not that number.
 
 ## 5. What's genuinely novel
 

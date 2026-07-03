@@ -14,7 +14,7 @@
  * being down. The check is always advisory; callers decide enforcement.
  */
 
-import { BRAIN } from "./brain-config.js";
+import { BRAIN_CONFIG as BRAIN } from "./brain-config.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
 
 const REPAIR_TIMEOUT_MS = 8_000;

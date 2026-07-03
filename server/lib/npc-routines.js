@@ -16,9 +16,19 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 // WS4 — the motivated-movement layer (needs → utility goal among real POIs).
-import { getNeeds, setNeeds, decayNeeds, satisfyFromAdvertisement } from "./npc-needs.js";
+import { getNeeds, setNeeds, decayNeeds, satisfyFromAdvertisement, applyThermalComfort } from "./npc-needs.js";
 import { nearbyPOIs } from "./npc-pois.js";
 import { chooseNextGoal } from "./npc-utility.js";
+// Thermal comfort: read the real per-cell environmental signal and filter it
+// through the humanoid umwelt (same pipeline the wildlife path uses) so ambient
+// temperature drives the `comfort` need each advance.
+import { signalsForWorld } from "./embodied/signals.js";
+import { perceiveSignals, HUMANOID_BASELINE } from "./ecosystem/umwelt.js";
+
+// location_kinds that count as being indoors/enclosed — an NPC at one of these
+// gets thermal relief regardless of the outdoor cell reading (we don't model
+// indoor temperature separately; location_kind is the real sheltered state).
+const SHELTER_LOCATIONS = new Set(["home", "tavern"]);
 
 const NEED_ADVANCE_HOURS = Number(process.env.CONCORD_NEED_ADVANCE_HOURS) || 0.06; // need pressure per advance
 const POI_ARRIVE_SATISFY_M = 6; // satisfy a POI's needs when within this of it
@@ -496,8 +506,27 @@ export async function advanceRoutine(db, npc, opts = {}) {
   if (process.env.CONCORD_NPC_NEEDS !== "0") {
     try {
       let needs = decayNeeds(getNeeds(db, npc.id), NEED_ADVANCE_HOURS);
+      const pos = parseLocation(npc.current_location) || parseLocation(npc.spawn_location) || { x: block.target_x, z: block.target_z };
+
+      // Thermal comfort: read the REAL per-cell environmental signal each advance
+      // (3×3 cell window around the NPC), filter it through the humanoid umwelt —
+      // the exact wildlife pipeline (signalsForWorld → perceiveSignals) applied to
+      // an NPC — and accrue/relieve the `comfort` need from the ambient temperature.
+      // Being at an indoor/shelter block relieves it. Graceful no-op when the
+      // embodied substrate has no data for this world (never invents a reading).
+      // Env-gated: CONCORD_NPC_THERMAL_COMFORT=0 disables just this coupling.
+      if (process.env.CONCORD_NPC_THERMAL_COMFORT !== "0" && npc.world_id) {
+        try {
+          const raw = signalsForWorld(db, npc.world_id, { x: pos.x, z: pos.z });
+          if (raw && raw.hasData) {
+            const perceived = perceiveSignals(raw, HUMANOID_BASELINE);
+            const sheltered = SHELTER_LOCATIONS.has(block.location_kind);
+            needs = applyThermalComfort(needs, perceived, NEED_ADVANCE_HOURS, { sheltered, hasData: true });
+          }
+        } catch { /* thermal comfort best-effort — signals optional on minimal builds */ }
+      }
+
       if (willTransition && npc.world_id) {
-        const pos = parseLocation(npc.current_location) || parseLocation(npc.spawn_location) || { x: block.target_x, z: block.target_z };
         const pois = nearbyPOIs(db, npc.world_id, pos.x, pos.z, 12);
         const goal = chooseNextGoal(npc, needs, pois, { activityKind: block.activity_kind, seedKey: `${npc.id}|${blockIdx}|${daySeed}` });
         if (goal?.poi) { block.target_x = goal.poi.x; block.target_z = goal.poi.z; }

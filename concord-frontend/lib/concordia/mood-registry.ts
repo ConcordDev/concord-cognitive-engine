@@ -27,15 +27,25 @@ function fromPayload(d: Record<string, unknown>): MoodVector {
   };
 }
 
+/** Named handler (module scope) so it can be added AND removed. */
+const onNpcMood = (e: Event): void => {
+  const d = (e as CustomEvent).detail || {};
+  if (!d || !d.npcId) return;
+  _moods.set(String(d.npcId), fromPayload(d));
+};
+
 /** Install the window listener once (no-op on SSR or double-install). */
 export function installMoodListener(): void {
   if (_installed || typeof window === "undefined") return;
   _installed = true;
-  window.addEventListener("concordia:npc-mood", (e: Event) => {
-    const d = (e as CustomEvent).detail || {};
-    if (!d || !d.npcId) return;
-    _moods.set(String(d.npcId), fromPayload(d));
-  });
+  window.addEventListener("concordia:npc-mood", onNpcMood);
+}
+
+/** Remove the window listener (no-op on SSR or if never installed). */
+export function uninstallMoodListener(): void {
+  if (!_installed || typeof window === "undefined") return;
+  window.removeEventListener("concordia:npc-mood", onNpcMood);
+  _installed = false;
 }
 
 export function getMood(npcId: string): MoodVector | null { return _moods.get(npcId) || null; }

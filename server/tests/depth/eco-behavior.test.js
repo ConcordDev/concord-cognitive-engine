@@ -9,10 +9,18 @@
 // lensRun("eco", "<macro>", …) call literally names the macro, so the
 // macro-depth grader credits it as a behavioral invocation.
 //
-// SKIPPED (network/LLM — fail under no-egress preload): weather-forecast,
-// aqi-current, species-identify, observation-feed, species-suggest,
-// environmental-alerts (all call external fetch / Open-Meteo / GBIF / vision).
+// SKIPPED (LLM/vision — fail under no-egress preload): species-identify.
 // None are tested here.
+//
+// weather-forecast, aqi-current, observation-feed, species-suggest, and
+// environmental-alerts all route through the shared `safeFetchJson` helper,
+// which was hardened to go through the SSRF-guarded `fetchPublicUrl`
+// (server/lib/public-fetch.js) instead of a bare fetch(). The describe block
+// at the end of this file exercises that shared helper via
+// `__setPublicFetchTestTransport` (public-fetch.js's own test seam) so the
+// tests genuinely prove the routed transport, not an incidental global-fetch
+// mock — see server/lib/public-fetch.js's header comment for the seam
+// contract. No real network egress.
 //
 // WRAPPING NOTE: lens.run nests the handler return under `.result`, so a handler
 // returning {ok:true,result:{…}} surfaces here as r.result.{…} (single nest;
@@ -22,6 +30,7 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { lensRun, depthCtx } from "./_harness.js";
+import { __setPublicFetchTestTransport } from "../../lib/public-fetch.js";
 
 describe("eco — environmental calc contracts (exact computed values)", () => {
   it("carbonFootprint: emission factor × quantity, scope split, offsets, net", async () => {
@@ -360,5 +369,151 @@ describe("eco — state CRUD round-trips + validation (shared ctx)", () => {
     const bad = await lensRun("eco", "locations-save", { params: { label: "no coords" } }, ctx2);
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /lat, lng required/);
+  });
+});
+
+// ── shared safeFetchJson helper — now SSRF-guarded via fetchPublicUrl ───────
+// safeFetchJson (server/domains/eco.js) is a SHARED helper used by all 5
+// macros below; hardening it once closes the bypass for every caller. Each
+// test installs the module-scope test transport (guard-skipped, transport
+// mocked — no real egress) to prove the macro's fetch now flows through
+// fetchPublicUrl rather than a bare fetch(), then restores the real guarded
+// path so later tests aren't affected.
+describe("eco network macros — routed through the SSRF-guarded safeFetchJson", () => {
+  it("weather-forecast parses a real Open-Meteo-shaped response via the guarded transport", async () => {
+    __setPublicFetchTestTransport(async (url) => {
+      assert.match(url, /api\.open-meteo\.com\/v1\/forecast/);
+      return {
+        ok: true,
+        json: async () => ({
+          current: { temperature_2m: 18, relative_humidity_2m: 60, apparent_temperature: 17, is_day: 1, precipitation: 0, weather_code: 1, wind_speed_10m: 5, wind_direction_10m: 180 },
+          hourly: { time: [], temperature_2m: [], precipitation: [], relative_humidity_2m: [] },
+          daily: {
+            time: ["2026-05-16", "2026-05-17", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22"],
+            weather_code: [1, 1, 2, 3, 1, 2, 1],
+            temperature_2m_max: [22, 23, 21, 20, 22, 24, 23],
+            temperature_2m_min: [12, 13, 11, 10, 12, 14, 13],
+            precipitation_sum: [0, 0, 1, 2, 0, 0, 0],
+            precipitation_probability_max: [10, 5, 30, 60, 5, 10, 5],
+            wind_speed_10m_max: [12, 10, 8, 15, 9, 11, 10],
+            uv_index_max: [6, 7, 5, 4, 7, 8, 7],
+          },
+        }),
+      };
+    });
+    try {
+      const r = await lensRun("eco", "weather-forecast", { params: { lat: 37.7, lng: -122.4 } });
+      assert.equal(r.result.daily.length, 7);
+      assert.equal(r.result.location.lat, 37.7);
+    } finally {
+      __setPublicFetchTestTransport(null);
+    }
+  });
+
+  it("aqi-current parses a real Open-Meteo air-quality response via the guarded transport", async () => {
+    __setPublicFetchTestTransport(async (url) => {
+      assert.match(url, /air-quality-api\.open-meteo\.com|air-quality/);
+      return { ok: true, json: async () => ({ current: { us_aqi: 62, pm2_5: 12, pm10: 20, ozone: 45 } }) };
+    });
+    try {
+      const r = await lensRun("eco", "aqi-current", { params: { lat: 37.7, lng: -122.4 } });
+      assert.equal(r.result.aqi, 62);
+      assert.equal(r.result.category, "moderate");
+      assert.match(r.result.source, /Open-Meteo/);
+    } finally {
+      __setPublicFetchTestTransport(null);
+    }
+  });
+
+  it("observation-feed parses a real GBIF-shaped response via the guarded transport", async () => {
+    __setPublicFetchTestTransport(async (url) => {
+      assert.match(url, /api\.gbif\.org\/v1\/occurrence\/search/);
+      return {
+        ok: true,
+        json: async () => ({
+          count: 1,
+          results: [
+            { key: 1, vernacularName: "Mallard", scientificName: "Anas platyrhynchos", kingdom: "Animalia", decimalLatitude: 37.71, decimalLongitude: -122.42, country: "US", eventDate: "2026-05-01", basisOfRecord: "HUMAN_OBSERVATION" },
+          ],
+        }),
+      };
+    });
+    try {
+      const r = await lensRun("eco", "observation-feed", { params: { lat: 37.7, lng: -122.4, radiusKm: 25 } });
+      assert.equal(r.result.observations.length, 1);
+      assert.equal(r.result.observations[0].commonName, "Mallard");
+      assert.match(r.result.source, /GBIF/);
+    } finally {
+      __setPublicFetchTestTransport(null);
+    }
+  });
+
+  it("species-suggest parses a real GBIF species/match response via the guarded transport", async () => {
+    // The handler always calls species/match first; when the backbone match
+    // returns zero alternatives (as it does here), it makes a SECOND,
+    // legitimate fallback call to species/search so the user still sees
+    // candidate species. The mock transport below honors both real calls
+    // instead of asserting every call is species/match — that's the bug
+    // this test is fixing (the handler's two-fetch fallback is correct
+    // production behavior, not something to avoid exercising).
+    __setPublicFetchTestTransport(async (url) => {
+      if (/\/species\/search/.test(url)) {
+        assert.match(url, /api\.gbif\.org\/v1\/species\/search/);
+        return {
+          ok: true,
+          json: async () => ({
+            results: [
+              {
+                key: 2480243, canonicalName: "Buteo lineatus", scientificName: "Buteo lineatus (Gmelin, 1788)",
+                rank: "SPECIES", kingdom: "Animalia", family: "Accipitridae",
+              },
+            ],
+          }),
+        };
+      }
+      assert.match(url, /api\.gbif\.org\/v1\/species\/match/);
+      return {
+        ok: true,
+        json: async () => ({
+          usageKey: 2480242, canonicalName: "Buteo jamaicensis", scientificName: "Buteo jamaicensis (Gmelin, 1788)",
+          rank: "SPECIES", kingdom: "Animalia", family: "Accipitridae", confidence: 97, matchType: "EXACT",
+          alternatives: [],
+        }),
+      };
+    });
+    try {
+      const r = await lensRun("eco", "species-suggest", { params: { name: "Red-tailed Hawk" } });
+      assert.ok(r.result.primary);
+      assert.ok(r.result.primary.confidence > 0.9);
+      assert.match(r.result.source, /GBIF/);
+      // alternatives came from the species/search fallback (match gave none).
+      assert.equal(r.result.alternatives.length, 1);
+      assert.equal(r.result.alternatives[0].commonName, "Buteo lineatus");
+      assert.equal(r.result.alternatives[0].matchType, "SEARCH");
+    } finally {
+      __setPublicFetchTestTransport(null);
+    }
+  });
+
+  it("environmental-alerts grades a real Open-Meteo air-quality + UV response via the guarded transport", async () => {
+    __setPublicFetchTestTransport(async (url) => {
+      if (url.includes("air-quality")) {
+        return {
+          ok: true,
+          json: async () => ({
+            current: { us_aqi: 165, pm2_5: 55, pm10: 80, ozone: 90 },
+            hourly: { grass_pollen: [10, 95, 40], birch_pollen: [5, 5, 5] },
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ daily: { uv_index_max: [9] } }) };
+    });
+    try {
+      const r = await lensRun("eco", "environmental-alerts", { params: { lat: 37.7, lng: -122.4, label: "Home" } });
+      assert.equal(r.result.allClear, false);
+      assert.equal(r.result.readings.aqi, 165);
+    } finally {
+      __setPublicFetchTestTransport(null);
+    }
   });
 });

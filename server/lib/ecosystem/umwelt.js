@@ -61,7 +61,14 @@ function catalog() {
 }
 export function _resetUmweltCache() { _catalog = null; }
 
-const HUMANOID_BASELINE = Object.freeze({
+// The full balanced perception band — every channel weighted 1. This is the
+// humanoid agent's umwelt: unlike a deer (sound/scent-biased) or a hawk
+// (light/thermal-biased), a person notices the whole sensory field evenly. It
+// was authored here as the total fallback for the wildlife path; it is now also
+// the perception vector the HUMANOID NPC layer (npc-routines thermal comfort)
+// passes to perceiveSignals — porting the exact wildlife pipeline
+// (signalsForWorld → perceiveSignals → behavior) onto humanoid NPCs.
+export const HUMANOID_BASELINE = Object.freeze({
   thermal: 1, humidity: 1, airQuality: 1, light: 1, sound: 1, pressure: 1, structural: 1,
 });
 

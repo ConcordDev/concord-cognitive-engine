@@ -39,6 +39,12 @@ const DTU_TARGET_RATIO = parseFloat(process.env.DTU_TARGET_RATIO || "0.65"); // 
 const DTU_TARGET_COUNT = Math.round(DTU_MEMORY_CEILING * DTU_TARGET_RATIO); // ~110,500
 // Max DTUs to forget per cycle to prevent batch-delete lag
 const MAX_FORGET_PER_CYCLE = parseInt(process.env.MAX_FORGET_PER_CYCLE || "50", 10);
+// Second-chance / CLOCK-style grace window: a DTU that crosses below the
+// forget threshold isn't tombstoned in the same cycle it's first found low.
+// It gets GRACE_CYCLES real (non-dry-run) cycles to recover (e.g. via a
+// fresh citation/access bumping retentionScore back up) before it's
+// actually forgotten.
+const GRACE_CYCLES = parseInt(process.env.FORGETTING_GRACE_CYCLES || "3", 10);
 
 // ── Module State ────────────────────────────────────────────────────────────
 
@@ -48,6 +54,9 @@ let _lastRun = null;
 let _lastResult = null;
 let _lifetimeForgotten = 0;
 let _lifetimeTombstones = 0;
+// Advances by 1 on every real (non-dry-run) runForgettingCycle call. Pure
+// bookkeeping for the grace-window mechanism below — not a general clock.
+let _cycleCount = 0;
 
 // ── Protection Rules ────────────────────────────────────────────────────────
 
@@ -178,7 +187,7 @@ async function forgetDTU(dtu, STATE, reason) {
 
 let _cycleRunning = false;
 
-export async function runForgettingCycle(dryRun = false) {
+export async function runForgettingCycle(dryRun = false, opts = {}) {
   if (_cycleRunning) return { ok: false, error: "Cycle already running" };
   _cycleRunning = true;
 
@@ -197,14 +206,47 @@ export async function runForgettingCycle(dryRun = false) {
       ? Math.min(_threshold * (1 + (liveDTUs - DTU_TARGET_COUNT) / DTU_TARGET_COUNT), 0.5)
       : _threshold;
 
-    // Score all DTUs
+    // Grace-window bookkeeping only advances on real cycles — a dry-run
+    // preview must never move a DTU closer to being forgotten.
+    if (!dryRun) _cycleCount++;
+
+    // Score all DTUs. Unprotected DTUs that drop below threshold don't go
+    // straight to `candidates` (immediate tombstone) — they get a
+    // second-chance grace window first (CLOCK/second-chance-eviction
+    // style): the first cycle a DTU is found below threshold, it's given
+    // `_graceUntil = _cycleCount + GRACE_CYCLES` and spared this cycle. If
+    // it recovers above threshold on a later cycle (e.g. a fresh citation),
+    // `_graceUntil` is cleared — clean slate, no partial credit. If it's
+    // still below threshold once `_cycleCount` reaches `_graceUntil`, THEN
+    // it's added to `candidates` for the existing forgetDTU path below.
+    // Dry runs report every currently-below-threshold DTU (independent of
+    // grace state) since they're a preview, not a mutation.
     for (const dtu of allDTUs) {
       if (dtu.type === "tombstone") continue;
       const score = retentionScore(dtu, STATE);
       dtu._retentionScore = score;
 
-      if (score < effectiveThreshold && !isProtected(dtu)) {
-        candidates.push({ dtu, score });
+      if (isProtected(dtu)) continue; // protected DTUs never enter the grace mechanism
+
+      const belowThreshold = score < effectiveThreshold;
+
+      if (dryRun) {
+        if (belowThreshold) candidates.push({ dtu, score });
+        continue;
+      }
+
+      if (belowThreshold) {
+        if (dtu._graceUntil == null) {
+          // First time crossing below threshold — start the grace window.
+          dtu._graceUntil = _cycleCount + GRACE_CYCLES;
+        } else if (_cycleCount >= dtu._graceUntil) {
+          // Still below threshold once the grace window has elapsed.
+          candidates.push({ dtu, score });
+        }
+        // else: still within its grace window — wait for a later cycle.
+      } else if (dtu._graceUntil != null) {
+        // Recovered above threshold during grace — clear it.
+        delete dtu._graceUntil;
       }
     }
 
@@ -257,6 +299,16 @@ export async function runForgettingCycle(dryRun = false) {
     _lastRun = nowISO();
     _lastResult = result;
 
+    // Additive spaced-repetition scheduling pass (SM-2-inspired, see the
+    // "Review Scheduling" section below). Pure bookkeeping — it never
+    // changes the forget/keep decision made above. Only runs when a db
+    // handle is supplied; legacy/dry-run/no-db callers silently skip it.
+    if (opts?.db) {
+      try {
+        result.reviewScheduling = await runReviewSchedulingPass(opts.db, { now: Date.now() });
+      } catch (_e) { logger.debug('emergent:forgetting-engine', 'review_scheduling_pass_failed', { error: _e?.message }); }
+    }
+
     // Emit for dashboard
     if (typeof globalThis.realtimeEmit === "function") {
       globalThis.realtimeEmit("forgetting:cycle_complete", {
@@ -270,6 +322,150 @@ export async function runForgettingCycle(dryRun = false) {
     return result;
   } finally {
     _cycleRunning = false;
+  }
+}
+
+// ── Review Scheduling (SM-2-inspired) ──────────────────────────────────────
+//
+// A spaced-repetition SCHEDULING layer on top of retentionScore above. It
+// does NOT reimplement the decay math — it decides WHEN a DTU is next
+// re-scored and widens/narrows that interval using SM-2's real update rules
+// (SuperMemo-2 / Anki). This is additive bookkeeping, backed by migration
+// 353's `dtu_review_schedule` table; it never changes what runForgettingCycle
+// decides to forget or keep.
+//
+// "Successful recall" signal: retentionScore (called unmodified, below)
+// still clears the module's current forgetting threshold (`_threshold`) —
+// i.e. the same score/threshold pairing runForgettingCycle already trusts to
+// decide forget-vs-keep, reused here rather than inventing a second signal
+// (e.g. a separate citation/access log). "Failed recall" is the inverse —
+// the DTU has faded below the line and gets re-checked sooner.
+//
+// SM-2's real ease-factor update is
+//   EF' = EF + (0.1 - (5-q)*(0.08+(5-q)*0.02))
+// for a 0-5 quality grade q. Because the signal above is a binary pass/fail
+// (not a graded 0-5 recall quality), this is deliberately simplified to a
+// flat +0.1 nudge on success / -0.2 on failure — clamped to SM-2's real
+// canonical bounds [1.3, 3.0]. Interval growth on success is SM-2's exact
+// formula (interval *= easeFactor); failure resets to SM-2's canonical
+// short relearn interval (1 day).
+
+const REVIEW_EASE_START = 2.5;          // SM-2 canonical starting ease factor
+const REVIEW_EASE_FLOOR = 1.3;          // SM-2 canonical floor
+const REVIEW_EASE_CEILING = 3.0;        // ceiling for the simplified binary variant
+const REVIEW_EASE_SUCCESS_DELTA = 0.1;
+const REVIEW_EASE_FAILURE_DELTA = -0.2;
+const REVIEW_INTERVAL_START_DAYS = 1;   // SM-2 canonical starting interval
+const REVIEW_INTERVAL_RELEARN_DAYS = 1; // SM-2 canonical relearn interval on failure
+const MAX_REVIEW_PER_PASS = parseInt(process.env.MAX_REVIEW_PER_PASS || "200", 10);
+
+// Idempotent: inserts the default row only if `dtuId` has none yet. A brand
+// new schedule row is immediately due (next_review_due = now).
+export function ensureReviewScheduled(db, dtuId) {
+  if (!db || !dtuId) return { ok: false, error: "db and dtuId required" };
+  try {
+    const now = Date.now();
+    db.prepare(`
+      INSERT OR IGNORE INTO dtu_review_schedule
+        (dtu_id, ease_factor, interval_days, next_review_due, last_reviewed_at, review_count)
+      VALUES (?, ?, ?, ?, NULL, 0)
+    `).run(dtuId, REVIEW_EASE_START, REVIEW_INTERVAL_START_DAYS, now);
+    return { ok: true, dtuId };
+  } catch (_e) {
+    logger.debug('emergent:forgetting-engine', 'ensure_review_scheduled_failed', { dtuId, error: _e?.message });
+    return { ok: false, error: _e?.message };
+  }
+}
+
+export function dueDtuIds(db, now = Date.now()) {
+  if (!db) return [];
+  try {
+    const rows = db.prepare(`
+      SELECT dtu_id FROM dtu_review_schedule WHERE next_review_due <= ? ORDER BY next_review_due ASC
+    `).all(now);
+    return rows.map(r => r.dtu_id);
+  } catch (_e) {
+    logger.debug('emergent:forgetting-engine', 'due_dtu_ids_failed', { error: _e?.message });
+    return [];
+  }
+}
+
+// The core scheduling step. Reuses retentionScore unmodified, then applies
+// the SM-2-inspired update above to grow/shrink this DTU's review interval.
+export function reviewDtu(db, dtuId, now = Date.now()) {
+  if (!db || !dtuId) return { ok: false, error: "db and dtuId required" };
+
+  try {
+    const STATE = getSTATE();
+    const dtu = STATE?.dtus?.get(dtuId);
+    if (!dtu) return { ok: false, error: "DTU not found", dtuId };
+
+    ensureReviewScheduled(db, dtuId);
+    const row = db.prepare(`SELECT * FROM dtu_review_schedule WHERE dtu_id = ?`).get(dtuId);
+    if (!row) return { ok: false, error: "schedule row missing after ensure", dtuId };
+
+    // The existing, unmodified decay math is the sole source of the score.
+    const score = retentionScore(dtu, STATE);
+    const success = score >= _threshold;
+
+    let easeFactor = row.ease_factor;
+    let intervalDays = row.interval_days;
+
+    if (success) {
+      intervalDays = intervalDays * easeFactor;
+      easeFactor = Math.min(REVIEW_EASE_CEILING, easeFactor + REVIEW_EASE_SUCCESS_DELTA);
+    } else {
+      intervalDays = REVIEW_INTERVAL_RELEARN_DAYS;
+      easeFactor = Math.max(REVIEW_EASE_FLOOR, easeFactor + REVIEW_EASE_FAILURE_DELTA);
+    }
+
+    const nextReviewDue = now + intervalDays * 86400000;
+    const reviewCount = row.review_count + 1;
+
+    db.prepare(`
+      UPDATE dtu_review_schedule
+      SET ease_factor = ?, interval_days = ?, next_review_due = ?, last_reviewed_at = ?, review_count = ?
+      WHERE dtu_id = ?
+    `).run(easeFactor, intervalDays, nextReviewDue, now, reviewCount, dtuId);
+
+    return { ok: true, dtuId, score, success, easeFactor, intervalDays, nextReviewDue, reviewCount };
+  } catch (_e) {
+    logger.debug('emergent:forgetting-engine', 'review_dtu_failed', { dtuId, error: _e?.message });
+    return { ok: false, error: _e?.message, dtuId };
+  }
+}
+
+// Additive pass: ensures every live DTU has a schedule row, then reviews
+// whichever ones are currently due (capped at MAX_REVIEW_PER_PASS per pass
+// to bound cost, mirroring MAX_FORGET_PER_CYCLE's role above). Never throws.
+export async function runReviewSchedulingPass(db, opts = {}) {
+  if (!db) return { ok: false, reason: "no_db" };
+  const STATE = getSTATE();
+  if (!STATE?.dtus || !(STATE.dtus instanceof Map)) return { ok: false, reason: "state_not_available" };
+
+  const now = opts.now ?? Date.now();
+
+  try {
+    for (const dtu of STATE.dtus.values()) {
+      if (dtu.type === "tombstone") continue;
+      ensureReviewScheduled(db, dtu.id);
+    }
+
+    const due = dueDtuIds(db, now).slice(0, MAX_REVIEW_PER_PASS);
+    let reviewed = 0;
+    let succeeded = 0;
+    for (const dtuId of due) {
+      const outcome = reviewDtu(db, dtuId, now);
+      if (outcome.ok) {
+        reviewed++;
+        if (outcome.success) succeeded++;
+      }
+    }
+
+    return { ok: true, dueCount: due.length, reviewedCount: reviewed, succeededCount: succeeded };
+  } catch (_e) {
+    logger.debug('emergent:forgetting-engine', 'review_scheduling_pass_failed', { error: _e?.message });
+    return { ok: false, reason: "pass_failed", error: _e?.message };
   }
 }
 
