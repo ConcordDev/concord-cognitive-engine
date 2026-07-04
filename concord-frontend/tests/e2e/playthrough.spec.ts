@@ -73,10 +73,13 @@ async function makeTestSession(request: APIRequestContext): Promise<{ cookies: {
   const password = 'PlaywrightSmoke!9912';
   const loadedAt = Date.now() - 3_500; // satisfy the 2s timing check.
 
-  await postWithRetry(request, `${BACKEND}/api/auth/register`, {
-    data: { username: uniq, email, password, _t: loadedAt },
+  const registerRes = await postWithRetry(request, `${BACKEND}/api/auth/register`, {
+    data: { username: uniq, email, password, dateOfBirth: '1990-01-01', _t: loadedAt },
     headers: { 'content-type': 'application/json' },
   });
+  if (!registerRes.ok()) {
+    throw new Error(`Register failed: status=${registerRes.status()} body=${await registerRes.text()}`);
+  }
   const loginRes = await postWithRetry(request, `${BACKEND}/api/auth/login`, {
     data: { email, password },
     headers: { 'content-type': 'application/json' },
