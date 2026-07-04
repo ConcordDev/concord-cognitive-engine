@@ -27,9 +27,9 @@ reclassifies 8 data-modules (168k lines, e.g. the deprecated 145k-line
 | Route prefixes | **2,973** | verifier `routePrefixes` |
 | Backend domain files | **405** | `ls server/domains/*.js \| wc -l` |
 | Numbered migrations | **355** | `ls server/migrations/[0-9]*.js \| wc -l` |
-| Route files | **132** | `ls server/routes/*.js \| wc -l` |
-| Lib modules | **622** top (`ls server/lib/*.js \| wc -l`) · **921** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
-| `server/server.js` | **77,409 lines** | `wc -l server/server.js` |
+| Route files | **131** | `ls server/routes/*.js \| wc -l` |
+| Lib modules | **623** top (`ls server/lib/*.js \| wc -l`) · **922** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
+| `server/server.js` | **77,424 lines** | `wc -l server/server.js` |
 | DB tables (cartographer) | **690** | `npm run cartograph:static` |
 | Socket events | **277** | cartographer |
 | Heartbeats (registered) | **105 static** | cartographer / detector summary |

@@ -11,6 +11,24 @@
 >
 > Re-audit any remaining item against code before treating it as live. For
 > current counts use `npm run check-doc-claims`.
+>
+> **2026-07-04 re-audit (browser-ready campaign):** the remaining headline Tier 1–3
+> items were re-verified against code and are ALL FIXED — do not treat them as live:
+> - **T1.2 trivia playability** → fixed end-to-end (`server/lib/trivia.js:140-192`
+>   `getAnswerChoices` seeded multiple-choice; `TriviaKioskPanel.tsx:116-147` clickable
+>   choices, no DTU-id typing; pinned by `server/tests/trivia-choices.test.js`).
+> - **T1.5 hacking guidance** → fixed (`server/lib/hacking.js:19-34` `hintForStep`
+>   fictional leads + `getHint` route + `HackingTerminal.tsx:82-85,144-149` "» lead:" UI;
+>   pinned by `server/tests/hacking-hints.test.js`).
+> - **T3.1 faction-strategy surfacing** → fixed (emits `faction:war-declared`/
+>   `faction:alliance-formed`/`faction:truce-sought`/`faction:strategy-move`;
+>   consumed by `EmergentEventFeed.tsx:52-55` + `StrategicWarBanner`, both mounted
+>   in `app/lenses/world/page.tsx`).
+> - **T3.3 scarcity → player prices** → fixed (`server/routes/npc-shop.js:88-96`
+>   buy path applies `priceModulator` scarcity to real Sparks prices; pinned by
+>   `server/tests/npc-shop-scarcity.test.js`). Note: `npc-marketplace.js#
+>   priceForRecipeWithScarcity` is dead code with zero callers — cleanup candidate,
+>   not a live defect.
 
 Goal: a code-grounded map of where Concordia falls short of AAA polish, so the
 "outpolish the games we borrow from" push has concrete targets. Every item below
