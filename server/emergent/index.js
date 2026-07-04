@@ -3042,6 +3042,24 @@ function init({ register, STATE, helpers }) {
   }, { description: "Run a specific guardian check", public: false });
 
   register("emergent", "repair.prophet", async (_ctx, input = {}) => {
+    // Fast, honest input validation BEFORE the heavy work. runProphet() walks
+    // the whole repo (18 pre-build checks, including the full detector suite)
+    // and takes real, multi-second-to-multi-minute wall time regardless of
+    // `input` — so a hostile/malformed payload (unknown keys, a non-string
+    // projectRoot) must be rejected fast rather than sailing into that scan.
+    // The only real field this macro accepts is an optional `projectRoot`
+    // string; no real caller sends anything else.
+    if (input === null || typeof input !== "object" || Array.isArray(input)) {
+      return { ok: false, reason: "invalid_input", detail: "input_must_be_object" };
+    }
+    for (const key of Object.keys(input)) {
+      if (key !== "projectRoot") {
+        return { ok: false, reason: "invalid_input", detail: `unknown_field:${key}` };
+      }
+    }
+    if (input.projectRoot !== undefined && typeof input.projectRoot !== "string") {
+      return { ok: false, reason: "invalid_input", detail: "projectRoot_must_be_string" };
+    }
     const projectRoot = input.projectRoot || process.cwd();
     // Wrap to honor the macro contract — runProphet returns the raw
     // {phase, timestamp, checks[], ...} report, not the {ok, ...} envelope.

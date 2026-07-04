@@ -1305,13 +1305,31 @@ export default function registerTravelActions(registerLensAction) {
   // feed — ingest real country travel profiles from the REST Countries
   // API as visible DTUs. Free, no key.
   registerLensAction("travel", "feed", async (ctx, _a, params = {}) => {
+    // Fast, honest input validation BEFORE the network call. This macro's
+    // only real field is `limit`; a fuzz/adversarial payload's unknown keys
+    // (an `artifact` wrapper, `__assassin_garbage`) or a non-object `params`
+    // are rejected up front rather than falling through to a network fetch
+    // that has no bound on how long it can hang.
+    if (params === null || typeof params !== "object" || Array.isArray(params)) {
+      return { ok: false, error: "invalid_input", reason: "invalid_input" };
+    }
+    for (const key of Object.keys(params)) {
+      if (key !== "limit") {
+        return { ok: false, error: `unknown_field:${key}`, reason: "invalid_input" };
+      }
+    }
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
     const regions = ["europe", "asia", "africa", "americas", "oceania"];
     const region = regions[new Date().getDate() % regions.length];
+    // Bound the network call well under the macro-layer's own timeout budgets
+    // (the adversarial/fuzz harness enforces an 8s ceiling) so a slow/blocked
+    // upstream returns an honest failure instead of hanging the caller.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
     try {
-      const r = await fetch(`https://restcountries.com/v3.1/region/${region}?fields=name,capital,region,subregion,population,currencies,languages,timezones`);
+      const r = await fetch(`https://restcountries.com/v3.1/region/${region}?fields=name,capital,region,subregion,population,currencies,languages,timezones`, { signal: ctrl.signal });
       if (!r.ok) return { ok: false, error: `restcountries ${r.status}` };
       const data = await r.json();
       const countries = (Array.isArray(data) ? data : [])
@@ -1336,7 +1354,15 @@ export default function registerTravelActions(registerLensAction) {
       saveTravelState();
       return { ok: true, result: { ingested, skipped, source: "restcountries-guides", dtuIds } };
     } catch (e) {
-      return { ok: false, error: `restcountries unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      const timedOut = e?.name === "AbortError";
+      return {
+        ok: false,
+        error: timedOut
+          ? "restcountries unreachable: request timed out"
+          : `restcountries unreachable: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    } finally {
+      clearTimeout(timer);
     }
   });
 }
