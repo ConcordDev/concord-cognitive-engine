@@ -40,6 +40,9 @@ test.describe('DTU Integrity Badge', () => {
     // Body should have rendered something
     const bodyVisible = await page.locator('body').isVisible().catch(() => false);
     if (bodyVisible) {
+      // Settle in-flight navigation first — under parallel workers page.content()
+      // throws "page is navigating and changing the content" mid-hydration.
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
       const content = await page.content();
       expect(content.length).toBeGreaterThan(0);
     }
@@ -58,6 +61,9 @@ test.describe('DTU Integrity Badge', () => {
 
     const bodyVisible = await page.locator('body').isVisible().catch(() => false);
     if (bodyVisible) {
+      // Settle in-flight navigation first — under parallel workers page.content()
+      // throws "page is navigating and changing the content" mid-hydration.
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
       const content = await page.content();
       expect(content.length).toBeGreaterThan(0);
     }
@@ -241,6 +247,9 @@ test.describe('DTU Verified State', () => {
 
     expect(response?.status()).toBeLessThan(500);
 
+    // Settle in-flight navigation first — under parallel workers page.content()
+    // throws "page is navigating and changing the content" mid-hydration.
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
     // Just verify the page loaded successfully
     const pageContent = await page.content();
     expect(pageContent.length).toBeGreaterThan(0);

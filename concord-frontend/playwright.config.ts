@@ -57,6 +57,22 @@ export default defineConfig({
     headless: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Block the app's service worker (public/sw.js) for the test context.
+    // The SW's fetch handler re-issues every /api/* request via its own
+    // fetch() (network-first for GET, network-first-then-queue for
+    // mutations). Requests initiated from within a service worker are NOT
+    // intercepted by page.route()/context.route(), so once the SW activates
+    // (it skipWaiting()s + clients.claim()s, taking control on first load)
+    // ALL of a spec's `page.route('**/api/...')` mocks are silently bypassed
+    // and hit the real backend. With the E2E fake `concord_refresh` cookie
+    // that backend returns 401 for every call, and the api-client 401
+    // interceptor then does `window.location.href = '/login'` — bouncing
+    // authed specs to /login mid-test (admin gate never renders, NEC-calc
+    // click waits out the full 120 s, login/register "redirect" asserts fail).
+    // It's a RACE (SW-vs-first-request), which is why the failing set drifted
+    // run to run. Blocking the SW keeps every request on the page's network
+    // path where route mocks apply. Refs: Playwright serviceWorkers option.
+    serviceWorkers: 'block',
     // Bump the per-action timeouts so first-route compile latency
     // under `next start` (which lazy-compiles each route on first
     // visit even in production mode) doesn't trip the default 30 s

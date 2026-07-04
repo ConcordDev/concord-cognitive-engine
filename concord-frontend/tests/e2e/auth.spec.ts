@@ -14,10 +14,12 @@ test.describe('Authentication Flow', () => {
 
     expect(response?.status()).toBeLessThan(500);
 
-    // The page title or branding should reference Concord
-    const brandingVisible = await page.locator('text=Concord').isVisible().catch(() => false);
+    // The page title or branding should reference Concord. `.first()` — the
+    // page legitimately carries several Concord brand strings (sidebar logo,
+    // footer, splash overlay), so a bare text=Concord strict-mode-collides.
+    const brandingVisible = await page.locator('text=Concord').first().isVisible().catch(() => false);
     if (brandingVisible) {
-      await expect(page.locator('text=Concord')).toBeVisible();
+      await expect(page.locator('text=Concord').first()).toBeVisible();
     }
 
     // Subtitle text: "Sign in to your cognitive engine"
@@ -553,15 +555,13 @@ test.describe('Authentication Flow', () => {
   });
 
   test('session persists across page reloads', async ({ page, context }) => {
-    await context.addCookies([
-      {
-        name: 'concord_refresh',
-        value: 'e2e_test_token',
-        domain: 'localhost',
-        path: '/',
-        httpOnly: true,
-      },
-    ]);
+    // mockAuthSuccess sets the concord_refresh cookie AND mocks /api/auth/me —
+    // without the mock, the real backend rejects the fake refresh token during
+    // the reload's 401-refresh attempt and CLEARS the cookie via Set-Cookie
+    // (correct server behavior), so the bare-cookie version of this test raced
+    // that clear. The intent here is browser-side persistence, not token
+    // validity — mocking the auth endpoints isolates exactly that.
+    await mockAuthSuccess(page);
 
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);

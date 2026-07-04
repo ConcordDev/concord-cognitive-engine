@@ -564,10 +564,17 @@ export default function AdminDashboardPage() {
     refetchMetrics();
   };
 
+  // Optional-chain THROUGH .llm/.organs, not just `dashboard`. A partial or
+  // unexpectedly-shaped 200 health payload (e.g. the public /api/system/health
+  // returning a lighter body than DashboardData) otherwise throws
+  // "Cannot read properties of undefined (reading 'ollamaReady')" during render
+  // — the ErrorBoundary then shows "Lens Error" and this crash pre-empts the
+  // 403 admin-gate check below, so a non-admin sees a crash instead of the
+  // friendly "Admin access required" state. Degrade to 'warning' instead.
   const systemHealth =
-    dashboard?.llm.ollamaReady || dashboard?.llm.ollamaEnabled ? 'healthy' : 'warning';
+    dashboard?.llm?.ollamaReady || dashboard?.llm?.ollamaEnabled ? 'healthy' : 'warning';
   const organHealth =
-    (dashboard?.organs.healthy || 0) / (dashboard?.organs.total || 1) > 0.7 ? 'healthy' : 'warning';
+    (dashboard?.organs?.healthy || 0) / (dashboard?.organs?.total || 1) > 0.7 ? 'healthy' : 'warning';
 
   if ([error, error2, error3].some(isForbidden)) {
     return (
@@ -602,8 +609,8 @@ export default function AdminDashboardPage() {
           <div>
             <h1 className="text-xl font-bold">Admin Dashboard</h1>
             <p className="text-sm text-gray-400">
-              Concord v{dashboard?.system.version || '...'} • Uptime:{' '}
-              {dashboard?.system.uptime.formatted || '...'}
+              Concord v{dashboard?.system?.version || '...'} • Uptime:{' '}
+              {dashboard?.system?.uptime?.formatted || '...'}
             </p>
           </div>
 
@@ -696,7 +703,7 @@ export default function AdminDashboardPage() {
       <div className="flex gap-4 sr-only">
         <StatusBadge status={systemHealth} />
         <StatusBadge status={organHealth} />
-        {dashboard?.searchIndex.dirty && (
+        {dashboard?.searchIndex?.dirty && (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border bg-orange-500/20 text-orange-400 border-orange-500/30">
             Search index needs rebuild
           </span>
@@ -708,46 +715,46 @@ export default function AdminDashboardPage() {
         <StatCard
           icon={Database}
           label="Total DTUs"
-          value={dashboard?.dtus.total || 0}
-          subValue={`${dashboard?.dtus.mega || 0} mega, ${dashboard?.dtus.hyper || 0} hyper`}
+          value={dashboard?.dtus?.total || 0}
+          subValue={`${dashboard?.dtus?.mega || 0} mega, ${dashboard?.dtus?.hyper || 0} hyper`}
           color="blue"
         />
         <StatCard
           icon={Users}
           label="Sessions"
-          value={dashboard?.sessions.total || 0}
-          subValue={`${dashboard?.sessions.active || 0} active`}
+          value={dashboard?.sessions?.total || 0}
+          subValue={`${dashboard?.sessions?.active || 0} active`}
           color="purple"
         />
         <StatCard
           icon={Brain}
           label="Organs"
-          value={dashboard?.organs.total || 0}
-          subValue={`${dashboard?.organs.healthy || 0} healthy`}
+          value={dashboard?.organs?.total || 0}
+          subValue={`${dashboard?.organs?.healthy || 0} healthy`}
           color="green"
         />
         <StatCard
           icon={Box}
           label="Plugins"
-          value={dashboard?.plugins.total || 0}
-          subValue={`${dashboard?.plugins.enabled || 0} enabled`}
+          value={dashboard?.plugins?.total || 0}
+          subValue={`${dashboard?.plugins?.enabled || 0} enabled`}
           color="pink"
         />
         <StatCard
           icon={Layers}
           label="Queue Items"
           value={
-            (dashboard?.queues.maintenance || 0) +
-            (dashboard?.queues.synthesis || 0) +
-            (dashboard?.queues.hypotheses || 0)
+            (dashboard?.queues?.maintenance || 0) +
+            (dashboard?.queues?.synthesis || 0) +
+            (dashboard?.queues?.hypotheses || 0)
           }
           color="orange"
         />
         <StatCard
           icon={Zap}
           label="Search Terms"
-          value={dashboard?.searchIndex.terms || 0}
-          subValue={`${dashboard?.searchIndex.documents || 0} docs`}
+          value={dashboard?.searchIndex?.terms || 0}
+          subValue={`${dashboard?.searchIndex?.documents || 0} docs`}
           color="blue"
         />
       </div>
@@ -856,15 +863,15 @@ export default function AdminDashboardPage() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">Heap Used</span>
-              <span>{dashboard?.system.memory.heapUsed || '...'}</span>
+              <span>{dashboard?.system?.memory?.heapUsed || '...'}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">Heap Total</span>
-              <span>{dashboard?.system.memory.heapTotal || '...'}</span>
+              <span>{dashboard?.system?.memory?.heapTotal || '...'}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">RSS</span>
-              <span>{dashboard?.system.memory.rss || '...'}</span>
+              <span>{dashboard?.system?.memory?.rss || '...'}</span>
             </div>
           </div>
         </motion.div>
@@ -882,17 +889,17 @@ export default function AdminDashboardPage() {
           <div className="space-y-2">
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">Ollama</span>
-              <span className={`status-dot ${dashboard?.llm.ollamaReady ? 'success' : 'error'}`} />
+              <span className={`status-dot ${dashboard?.llm?.ollamaReady ? 'success' : 'error'}`} />
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">Ollama</span>
               <span
-                className={`status-dot ${dashboard?.llm.ollamaEnabled ? 'success' : 'warning'}`}
+                className={`status-dot ${dashboard?.llm?.ollamaEnabled ? 'success' : 'warning'}`}
               />
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">Default On</span>
-              <span className={`status-dot ${dashboard?.llm.defaultOn ? 'success' : 'info'}`} />
+              <span className={`status-dot ${dashboard?.llm?.defaultOn ? 'success' : 'info'}`} />
             </div>
           </div>
         </motion.div>
@@ -910,15 +917,15 @@ export default function AdminDashboardPage() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">Maintenance</span>
-              <span>{dashboard?.queues.maintenance || 0}</span>
+              <span>{dashboard?.queues?.maintenance || 0}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">Synthesis</span>
-              <span>{dashboard?.queues.synthesis || 0}</span>
+              <span>{dashboard?.queues?.synthesis || 0}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">Hypotheses</span>
-              <span>{dashboard?.queues.hypotheses || 0}</span>
+              <span>{dashboard?.queues?.hypotheses || 0}</span>
             </div>
           </div>
         </motion.div>

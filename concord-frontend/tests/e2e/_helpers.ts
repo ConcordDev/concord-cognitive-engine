@@ -99,6 +99,16 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
     })
   );
 
+  // Auto-refresh — lib/api/client.ts's 401 interceptor POSTs here on ANY
+  // unmocked-endpoint 401 (e.g. a page.route() gap on some other call the
+  // page makes) and replays the original request on success. Without this
+  // mock, the POST reaches the real backend with the fake mock-refresh
+  // cookie, which correctly rejects it and calls clearAuthCookie() —
+  // silently deleting concord_refresh mid-test (routes/auth.js:547-582).
+  await page.route('**/api/auth/refresh', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
+  );
+
   // Hydration: useAuth() calls /api/auth/me on every authed page mount.
   // Returning a real-shape user payload keeps the auth context happy and
   // prevents the redirect-back-to-/login loop that times out the test.

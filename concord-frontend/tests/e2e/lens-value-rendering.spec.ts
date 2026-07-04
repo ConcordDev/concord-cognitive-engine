@@ -64,13 +64,17 @@ test.describe('Lens value rendering — computed values reach the screen', () =>
     await page.getByPlaceholder('e.g. 40').fill('40');
     await page.getByRole('button', { name: /^Size wire$/i }).click();
     await expect(page.getByText('#8 AWG')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('50A')).toBeVisible();
+    // exact — the min-breaker result cell is "50A"; a non-exact match also hits
+    // the "Design load 50A · ampacity …" caption below it (strict-mode clash).
+    await expect(page.getByText('50A', { exact: true })).toBeVisible();
     await expect(page.getByText('2.9%')).toBeVisible();
   });
 
   test('conduitFill: recommended conduit size + fill % render', async ({ page }) => {
     await page.getByRole('button', { name: /^Size conduit$/i }).click();
-    await expect(page.getByText('1"')).toBeVisible({ timeout: 10_000 });
+    // exact + .last() — a hidden <option>1"</option> in the trade-size select
+    // also matches; the result card (rendered after the select) is the target.
+    await expect(page.getByText('1"', { exact: true }).last()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('11.5%')).toBeVisible();
   });
 
