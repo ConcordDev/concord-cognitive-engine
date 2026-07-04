@@ -72,6 +72,34 @@ export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: 
     // The prior { severity: "high" } filter matched NOTHING, so HIGH/CRITICAL
     // findings never reached HLR and never emitted world:drift-alert. Route the
     // two actionable tiers (alert + critical) instead.
+    //
+    // LC3 — since drift-monitor.js's "unexplained contradiction" detector now
+    // emits at ALERT severity by default (CONCORD_CONTRADICTION_HLR, opt-out
+    // only), those contradiction alerts flow through THIS SAME bridge below.
+    // Read carefully what this bridge actually does before touching it: it
+    // is a "REASON about the alert, then formally VERIFY the reasoning, then
+    // mint a verified-claim DTU if the verification checks out" path —
+    // `runHLR({ mode: "deductive" })` produces conclusions, `verifyConclusions`
+    // runs them through the Z3 proof-gate, and only a SOUND proven verdict
+    // gets `persistProvenClaim`'d as a brand-new, separately-authored DTU. It
+    // NEVER reaches back into the two DTUs that were flagged as contradicting
+    // and never edits/deletes/merges them. That's not an oversight — it's the
+    // whole point: this project has no "confidence dropped below threshold X,
+    // therefore auto-apply a fix" pathway anywhere, and this bridge must never
+    // grow one. The only other consequence a contradiction alert has on the
+    // flagged DTUs themselves is drift-monitor's own small, symmetric
+    // `updateConfidence(db, dtuId, -0.05, "contradicted")` nudge (see
+    // detectContradictionCausalContext) — a soft signal for a human reviewer,
+    // not a repair trigger. Compare server/lib/self-repair-loop.js#decideRepair,
+    // which is the actual code-repair policy in this codebase: it escalates
+    // EVERY code-changing fix to human/Sovereign approval unconditionally,
+    // regardless of how healthy the canary metrics look — there is no bare
+    // numeric-confidence auto-apply threshold anywhere in Concord's real
+    // repair policy, for code OR for knowledge/DTUs. If you're tempted to add
+    // "and if confidence is low enough, auto-correct/quarantine/delete the
+    // DTU" here: don't. That decision requires a human, same as a code fix
+    // does. Add a NEW, explicitly human-gated surface instead of extending
+    // this one.
     const alertsResult = typeof mod.getDriftAlerts === "function"
       ? mod.getDriftAlerts(_STATE_REF, { severity: ["alert", "critical"] })
       : { alerts: [] };

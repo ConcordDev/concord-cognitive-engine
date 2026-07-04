@@ -218,6 +218,34 @@ function batchFetchOutgoingEdges(db, nodeIds) {
 }
 
 /**
+ * Fetch incoming dtu_causal_edges rows for a whole BFS frontier in ONE query
+ * (batched via `child_id IN (...)`) instead of one query per node — the exact
+ * mirror of batchFetchOutgoingEdges above, but walking the graph BACKWARD
+ * (effect -> cause) for traceCausalRoots. Grouped by child_id so callers can
+ * still look up a single node's incoming edges in O(1).
+ *
+ * @param {object} db
+ * @param {string[]} nodeIds
+ * @returns {Map<string, object[]>} child_id -> incoming edge rows
+ */
+function batchFetchIncomingEdges(db, nodeIds) {
+  const byChild = new Map();
+  if (nodeIds.length === 0) return byChild;
+  const placeholders = nodeIds.map(() => "?").join(",");
+  let rows = [];
+  try {
+    rows = db.prepare(`SELECT * FROM dtu_causal_edges WHERE child_id IN (${placeholders})`).all(...nodeIds);
+  } catch {
+    rows = [];
+  }
+  for (const row of rows) {
+    if (!byChild.has(row.child_id)) byChild.set(row.child_id, []);
+    byChild.get(row.child_id).push(row);
+  }
+  return byChild;
+}
+
+/**
  * BFS a causal path from `fromId` to `toId` walking parent_id -> child_id
  * edges FORWARD (cause -> effect), i.e. "does fromId's causal influence
  * eventually reach toId, and by what chain?" — the natural reading of
@@ -270,4 +298,81 @@ export function traceCausalPath(db, fromId, toId, { maxDepth = 10 } = {}) {
     depth++;
   }
   return null;
+}
+
+/**
+ * Reverse-BFS from `dtuId` walking child_id -> parent_id edges BACKWARD
+ * (effect -> cause) to find the "root" cause(s) of a DTU: nodes with no
+ * further incoming causal edges (or nodes only reachable past `maxDepth`
+ * hops, at which point the search cuts off and reports them as roots too —
+ * same depth-bound philosophy as traceCausalPath, just applied to "give up
+ * and report what you have" instead of "path not found").
+ *
+ * Uses the exact same visited-set + batched-per-level-query pattern as
+ * traceCausalPath (see batchFetchIncomingEdges above) so this traversal is
+ * safe over a cyclic graph and bounded to at most `maxDepth` BFS levels —
+ * no unbounded recursion, no risk of hanging on a large or cyclic graph.
+ *
+ * @param {object} db
+ * @param {string} dtuId
+ * @param {object} [opts]
+ * @param {number} [opts.maxDepth=10]
+ * @returns {{rootIds: string[], chainLength: number}} `rootIds` is every DTU
+ *   id with no incoming causal edge that was reached during the walk (or, if
+ *   none were reached because the whole frontier was still non-empty at the
+ *   depth cutoff, the deepest frontier reached). `chainLength` is the number
+ *   of BFS levels actually walked (0 when dtuId itself has no incoming
+ *   edges, i.e. dtuId is already a root). Honest-empty
+ *   (`{rootIds: [], chainLength: 0}`) when the table is missing or dtuId is
+ *   falsy.
+ */
+export function traceCausalRoots(db, dtuId, { maxDepth = 10 } = {}) {
+  if (!db || !dtuId || !tableExists(db, "dtu_causal_edges")) {
+    return { rootIds: [], chainLength: 0 };
+  }
+  const start = String(dtuId);
+
+  const visited = new Set([start]);
+  let frontier = [start];
+  const roots = new Set();
+  let depth = 0;
+
+  while (frontier.length > 0 && depth < maxDepth) {
+    // One batched query for the WHOLE frontier per BFS level, mirroring
+    // traceCausalPath's bounded-per-level batching (belt-and-suspenders
+    // against N+1 queries AND against unbounded traversal).
+    const incomingByChild = batchFetchIncomingEdges(db, [...new Set(frontier)]);
+    const nextFrontier = [];
+    for (const nodeId of frontier) {
+      const incoming = incomingByChild.get(nodeId) || [];
+      if (incoming.length === 0) {
+        // No further incoming causal edge — this node IS a root.
+        roots.add(nodeId);
+        continue;
+      }
+      for (const edge of incoming) {
+        if (!visited.has(edge.parent_id)) {
+          visited.add(edge.parent_id);
+          nextFrontier.push(edge.parent_id);
+        }
+      }
+    }
+    frontier = nextFrontier;
+    // Only count a level as a real hop if it actually advanced the walk
+    // backward — this keeps chainLength at 0 for a dtuId that's already a
+    // root (no incoming edges at all) instead of off-by-one, and avoids
+    // crediting a "hop" for a level that only absorbed already-visited
+    // cycle-closing nodes.
+    if (frontier.length > 0) depth++;
+  }
+
+  // Anything still queued when the depth cap cut the walk off is
+  // unresolved — report it as a root too (an honest "we don't know further
+  // back than this, within budget" rather than silently dropping it). A
+  // frontier that emptied out naturally (every path terminated in a real
+  // root, or looped back into already-visited territory) has nothing left
+  // here — this only fires on the maxDepth cutoff path.
+  for (const nodeId of frontier) roots.add(nodeId);
+
+  return { rootIds: [...roots], chainLength: depth };
 }

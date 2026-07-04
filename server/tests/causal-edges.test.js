@@ -28,6 +28,7 @@ import {
   causalEdgesFor,
   directCausalEdgeBetween,
   traceCausalPath,
+  traceCausalRoots,
   CAUSAL_EDGE_TYPES,
 } from "../lib/causal-edges.js";
 import { createEdge } from "../emergent/edges.js";
@@ -223,6 +224,72 @@ describe("(e) traceCausalPath — reachability", () => {
   });
 });
 
+describe("(g) traceCausalRoots — reverse BFS to root causes (LC3)", () => {
+  it("a DTU with no incoming causal edge is its own root (chainLength 0)", () => {
+    addCausalEdge(db, { childId: "dtu_2", parentId: "dtu_1", edgeType: "causes" });
+    // dtu_1 has no incoming edge at all — it's already a root.
+    const r = traceCausalRoots(db, "dtu_1");
+    assert.deepEqual(r.rootIds, ["dtu_1"]);
+    assert.equal(r.chainLength, 0);
+  });
+
+  it("finds the single root of a real multi-hop chain (uses batchFetchIncomingEdges under the hood)", () => {
+    // dtu_root -[causes]-> dtu_mid -[enables]-> dtu_leaf
+    addCausalEdge(db, { childId: "dtu_mid", parentId: "dtu_root", edgeType: "causes" });
+    addCausalEdge(db, { childId: "dtu_leaf", parentId: "dtu_mid", edgeType: "enables" });
+
+    const r = traceCausalRoots(db, "dtu_leaf");
+    assert.deepEqual(r.rootIds, ["dtu_root"]);
+    assert.equal(r.chainLength, 2, "2 hops back from dtu_leaf to dtu_root");
+  });
+
+  it("finds MULTIPLE roots when two independent causal chains converge on one DTU", () => {
+    // dtu_root_a -[causes]-> dtu_converge ; dtu_root_b -[enables]-> dtu_converge
+    addCausalEdge(db, { childId: "dtu_converge", parentId: "dtu_root_a", edgeType: "causes" });
+    addCausalEdge(db, { childId: "dtu_converge", parentId: "dtu_root_b", edgeType: "enables" });
+
+    const r = traceCausalRoots(db, "dtu_converge");
+    assert.deepEqual([...r.rootIds].sort(), ["dtu_root_a", "dtu_root_b"]);
+    assert.equal(r.chainLength, 1);
+  });
+
+  it("terminates safely (bounded BFS) over a cyclic graph and reports zero roots for a fully closed loop", () => {
+    // A enables B, B causes C, C prevents A — a genuine feedback loop, no
+    // node outside the cycle, so there is no root cause to find.
+    addCausalEdge(db, { childId: "dtu_b", parentId: "dtu_a", edgeType: "enables" });
+    addCausalEdge(db, { childId: "dtu_c", parentId: "dtu_b", edgeType: "causes" });
+    addCausalEdge(db, { childId: "dtu_a", parentId: "dtu_c", edgeType: "prevents" });
+
+    const start = Date.now();
+    const r = traceCausalRoots(db, "dtu_a", { maxDepth: 25 });
+    const elapsedMs = Date.now() - start;
+
+    assert.ok(elapsedMs < 2000, "reverse BFS returns quickly even over a cyclic graph (no infinite loop)");
+    assert.deepEqual(r.rootIds, [], "a fully closed cycle has no root outside itself");
+  });
+
+  it("respects maxDepth — reports the unresolved frontier as roots when the cap is hit before a real root", () => {
+    addCausalEdge(db, { childId: "dtu_2", parentId: "dtu_1", edgeType: "causes" });
+    addCausalEdge(db, { childId: "dtu_3", parentId: "dtu_2", edgeType: "causes" });
+    addCausalEdge(db, { childId: "dtu_4", parentId: "dtu_3", edgeType: "causes" });
+    // dtu_1 is the real root, 3 hops back from dtu_4.
+    const capped = traceCausalRoots(db, "dtu_4", { maxDepth: 1 });
+    assert.equal(capped.chainLength, 1);
+    assert.deepEqual(capped.rootIds, ["dtu_3"], "cut off after 1 hop, reports the frontier reached as-of-budget");
+
+    const full = traceCausalRoots(db, "dtu_4", { maxDepth: 10 });
+    assert.deepEqual(full.rootIds, ["dtu_1"], "given enough budget, finds the real root");
+    assert.equal(full.chainLength, 3);
+  });
+
+  it("returns an honest empty shape for a falsy dtuId or a missing table", () => {
+    assert.deepEqual(traceCausalRoots(db, null), { rootIds: [], chainLength: 0 });
+    const barebonesDb = new Database(":memory:");
+    assert.deepEqual(traceCausalRoots(barebonesDb, "dtu_x"), { rootIds: [], chainLength: 0 });
+    barebonesDb.close();
+  });
+});
+
 describe("(f) drift-monitor integration — contradiction enrichment", () => {
   function makeSTATE(dbHandle) {
     return { __emergent: {}, db: dbHandle, dtus: new Map() };
@@ -258,5 +325,67 @@ describe("(f) drift-monitor integration — contradiction enrichment", () => {
     const STATE = { __emergent: {}, dtus: new Map() };
     createEdge(STATE, { sourceId: "dtu_x", targetId: "dtu_y", edgeType: "contradicts" });
     assert.doesNotThrow(() => runDriftScan(STATE));
+  });
+
+  describe("LC3 — unexplained-contradiction severity + causal-root diagnostics", () => {
+    const ENV_KEY = "CONCORD_CONTRADICTION_HLR";
+    let prevEnv;
+
+    beforeEach(() => { prevEnv = process.env[ENV_KEY]; });
+    afterEach(() => {
+      if (prevEnv === undefined) delete process.env[ENV_KEY];
+      else process.env[ENV_KEY] = prevEnv;
+    });
+
+    it("emits ALERT severity by default (unset env var) — so the HLR bridge's alert+critical filter picks it up", () => {
+      delete process.env[ENV_KEY];
+      const STATE = makeSTATE(db);
+      createEdge(STATE, { sourceId: "dtu_x", targetId: "dtu_y", edgeType: "contradicts" });
+
+      const { alerts } = runDriftScan(STATE);
+      const unexplained = alerts.find((a) => a.data?.dtuA === "dtu_x" && a.data?.dtuB === "dtu_y");
+      assert.ok(unexplained);
+      assert.equal(unexplained.severity, "alert", "default-on: unexplained contradictions are ALERT severity");
+    });
+
+    it("falls back to WARNING severity when CONCORD_CONTRADICTION_HLR=0 (opt-out kill switch)", () => {
+      process.env[ENV_KEY] = "0";
+      const STATE = makeSTATE(db);
+      createEdge(STATE, { sourceId: "dtu_x", targetId: "dtu_y", edgeType: "contradicts" });
+
+      const { alerts } = runDriftScan(STATE);
+      const unexplained = alerts.find((a) => a.data?.dtuA === "dtu_x" && a.data?.dtuB === "dtu_y");
+      assert.ok(unexplained);
+      assert.equal(unexplained.severity, "warning", "CONCORD_CONTRADICTION_HLR=0 opts back into the old behavior");
+    });
+
+    it('any value OTHER than the string "0" keeps the new default-on ALERT behavior', () => {
+      process.env[ENV_KEY] = "false"; // not the literal "0" — must NOT opt out
+      const STATE = makeSTATE(db);
+      createEdge(STATE, { sourceId: "dtu_x", targetId: "dtu_y", edgeType: "contradicts" });
+
+      const { alerts } = runDriftScan(STATE);
+      const unexplained = alerts.find((a) => a.data?.dtuA === "dtu_x" && a.data?.dtuB === "dtu_y");
+      assert.equal(unexplained.severity, "alert");
+    });
+
+    it("attaches rootDtuIds/chainLength for a multi-hop scenario: no direct edge between the pair, but a shared ancestor", () => {
+      // dtu_shared_root -[causes]-> dtu_x   (chain of 1)
+      // dtu_shared_root -[enables]-> dtu_mid -[causes]-> dtu_y   (chain of 2)
+      // dtu_x and dtu_y have NO direct edge between them, but both trace
+      // back to dtu_shared_root — the actual root cause of the contradiction.
+      addCausalEdge(db, { childId: "dtu_x", parentId: "dtu_shared_root", edgeType: "causes" });
+      addCausalEdge(db, { childId: "dtu_mid", parentId: "dtu_shared_root", edgeType: "enables" });
+      addCausalEdge(db, { childId: "dtu_y", parentId: "dtu_mid", edgeType: "causes" });
+
+      const STATE = makeSTATE(db);
+      createEdge(STATE, { sourceId: "dtu_x", targetId: "dtu_y", edgeType: "contradicts" });
+
+      const { alerts } = runDriftScan(STATE);
+      const unexplained = alerts.find((a) => a.data?.dtuA === "dtu_x" && a.data?.dtuB === "dtu_y");
+      assert.ok(unexplained, "still flagged unexplained — no DIRECT edge between dtu_x and dtu_y");
+      assert.deepEqual(unexplained.data.rootDtuIds, ["dtu_shared_root"], "both sides trace back to the same root");
+      assert.equal(unexplained.data.chainLength, 2, "the longer of the two chains (dtu_y is 2 hops from the root)");
+    });
   });
 });

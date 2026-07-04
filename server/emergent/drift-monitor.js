@@ -23,7 +23,7 @@
  */
 
 import { getEmergentState } from "./store.js";
-import { directCausalEdgeBetween } from "../lib/causal-edges.js";
+import { directCausalEdgeBetween, traceCausalRoots } from "../lib/causal-edges.js";
 import { updateConfidence } from "../lib/dtu-confidence.js";
 
 // ── Drift Categories ────────────────────────────────────────────────────────
@@ -44,6 +44,20 @@ export const ALL_DRIFT_TYPES = Object.freeze(Object.values(DRIFT_TYPES));
 // contradiction is weak evidence, not proof; server/lib/dtu-confidence.js's
 // diminishing-influence update already tempers repeated nudges further.
 const SMALL_DOWNVOTE = 0.05;
+
+// LC3 — owner decision: an "unexplained contradiction" (no direct causal
+// edge accounts for it) now emits at ALERT severity by default, so it
+// automatically flows into the existing alert+critical bridge in
+// lattice-orchestrator.js#runPeriodicDriftScan (routes into HLR deductive
+// reasoning + the Z3 proof-gate — see that file's comment for why that path
+// mints VERIFIED-CLAIM DTUs and never auto-repairs anything). This is
+// opt-OUT, not opt-in: set CONCORD_CONTRADICTION_HLR=0 to fall back to the
+// old WARNING severity (which the orchestrator's alert+critical filter does
+// not pick up). Any other value, or leaving it unset, keeps the new
+// default-on ALERT behavior.
+function unexplainedContradictionSeverity() {
+  return process.env.CONCORD_CONTRADICTION_HLR === "0" ? DRIFT_SEVERITY.WARNING : DRIFT_SEVERITY.ALERT;
+}
 
 // ── Alert Severities ────────────────────────────────────────────────────────
 
@@ -370,7 +384,14 @@ function detectSelfReference(STATE, es, _store) {
  *   - no causal edge at all between a contradicting pair is an UNEXPLAINED
  *     contradiction — the actual reasoning payoff: it tells governance which
  *     contradictions are worth investigating vs. which are already accounted
- *     for by an authored causal claim.
+ *     for by an authored causal claim. LC3 additionally traces each side's
+ *     causal ROOTS (traceCausalRoots, a bounded reverse-BFS over the
+ *     incoming-edge graph) and attaches `rootDtuIds`/`chainLength` to the
+ *     alert data — diagnostic only, so a human/HLR reader can see whether
+ *     both contradicting DTUs trace back to a shared bad ancestor even
+ *     though they have no DIRECT edge to each other. This emits at ALERT
+ *     severity by default (see unexplainedContradictionSeverity above) so it
+ *     automatically reaches the lattice-orchestrator's HLR bridge.
  *
  * Best-effort + additive: any failure (missing causal-edges table on a
  * minimal build, a malformed edge, STATE without a `db`) is swallowed so this
@@ -406,11 +427,22 @@ function detectContradictionCausalContext(STATE, es, _store) {
           { dtuA: a, dtuB: b, causalEdgeId: causal.id, causalEdgeType: causal.edge_type, expected },
         ));
       } else {
+        // Diagnostic-only: trace each side's causal roots so the alert can
+        // surface a shared bad ancestor even when the pair has no direct
+        // edge. Bounded reverse-BFS (traceCausalRoots), best-effort — never
+        // lets a root-trace failure block emitting the underlying alert.
+        let rootsA = { rootIds: [], chainLength: 0 };
+        let rootsB = { rootIds: [], chainLength: 0 };
+        try { rootsA = traceCausalRoots(db, a) || rootsA; } catch { /* diagnostic best-effort */ }
+        try { rootsB = traceCausalRoots(db, b) || rootsB; } catch { /* diagnostic best-effort */ }
+        const rootDtuIds = [...new Set([...rootsA.rootIds, ...rootsB.rootIds])];
+        const chainLength = Math.max(rootsA.chainLength, rootsB.chainLength);
+
         alerts.push(makeAlert(
           DRIFT_TYPES.MEMETIC_DRIFT,
-          DRIFT_SEVERITY.WARNING,
+          unexplainedContradictionSeverity(),
           `${a} and ${b} contradict each other via no causal edge — unexplained contradiction`,
-          { dtuA: a, dtuB: b, causalEdgeId: null, causalEdgeType: null, expected: false },
+          { dtuA: a, dtuB: b, causalEdgeId: null, causalEdgeType: null, expected: false, rootDtuIds, chainLength },
         ));
         // An UNEXPLAINED contradiction (no causal edge accounting for it) is
         // weak evidence AGAINST validity for both DTUs in the pair — nudge
