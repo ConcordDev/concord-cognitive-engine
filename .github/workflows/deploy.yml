@@ -66,7 +66,19 @@ jobs:
         run: node scripts/check-depth-tests.mjs --ci
       - name: Depth behavioral tests
         working-directory: ./server
-        run: node --test --test-force-exit 'tests/depth/*.test.js'
+        # Run with the SAME invocation the depth tests were authored under
+        # (docs/DEPTH_FLEET_PLAN.md "run recipe (mandatory preload)"):
+        # - tests/preload/no-egress.mjs — the suite's network/LLM cases skip
+        #   under no-egress by design; without the preload they hit the live
+        #   network on CI and fail nondeterministically (the 2026-07-04 run
+        #   took 2h09m and failed 15/6000 with names that don't reproduce
+        #   anywhere else, while the doctrine invocation finishes in ~10min
+        #   deterministically).
+        # - --test-timeout so a hung case fails fast instead of stalling the gate.
+        # - isolated DB_PATH so the gate never touches a shared/stale DB file.
+        # - --test-concurrency=2 to keep parallel server boots from OOM/SIGTRAP
+        #   on smaller runners (one boot is ~550MB RSS).
+        run: DB_PATH=/tmp/deploy-gate-depth.db node --test --import=./tests/preload/no-egress.mjs --test-concurrency=2 --test-force-exit --test-timeout=60000 'tests/depth/*.test.js'
       - name: Security detector ratchet
         working-directory: ./server
         run: node scripts/run-detectors.js --consumer security --diff --ci
