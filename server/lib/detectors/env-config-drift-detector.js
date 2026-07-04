@@ -88,6 +88,13 @@ const PUBLIC_API_HOST_RE = new RegExp(
     // OAuth authorize / token + identity discovery hosts
     "accounts\\.google\\.com", "oauth2\\.googleapis\\.com",
     "slack\\.com", "webfinger\\.net",
+    // Notion's fixed public API base (also used for its OAuth authorize/
+    // token endpoints) — same shape as accounts.google.com/slack.com above.
+    "api\\.notion\\.com",
+    // Social-profile link construction (not just share intents, which the
+    // dedicated regex below already covers) — twitter.com/${handle} is a
+    // public, non-configurable profile URL.
+    "twitter\\.com",
     // WebRTC / TURN (Cloudflare Realtime)
     "rtc\\.live\\.cloudflare\\.com",
     // Stripe.js public loader CDN (required fixed URL, not config)
@@ -144,6 +151,9 @@ export async function runEnvConfigDriftDetector({ root, opts = {} } = {}) {
         if (ANNOTATION_OK_RE.test(lineText)) continue;
         if (/process\.env\.[A-Z_]+\s*(?:\|\||,)/.test(lineText)) continue;
         if (/^\s*(?:\/\/|\/\*|\*|#)/.test(lineText)) continue;
+        // Skip JSX/HTML input placeholder attributes — example hint text
+        // shown in an empty field is never actually fetched or navigated to.
+        if (/\bplaceholder\s*=\s*["'`]/.test(lineText)) continue;
         // Skip placeholder / reserved / standards-namespace / brand URLs.
         if (PLACEHOLDER_URL_RE.test(url)) continue;
         // Skip well-known PUBLIC third-party API endpoints (open data /
@@ -159,7 +169,7 @@ export async function runEnvConfigDriftDetector({ root, opts = {} } = {}) {
         // Patterns anchored on `://hostname` so prefix-shadowing like
         // `evil-twitter.com` can't accidentally match.
         if (/^https?:\/\/(?:www\.)?(?:twitter|linkedin|facebook|reddit|mastodon|threads|t\.me|telegram|wa\.me|whatsapp|bsky\.app|bluesky)\.com\/(?:intent|sharer?|share|home|share-offsite|sharing|tweet|status|messages)(?:[/?#]|$)/i.test(url)) continue;
-        if (/^https?:\/\/(?:www\.|[a-z0-9-]+\.)?(?:openstreetmap|osm)\.org(?:[/?#]|$)|^https?:\/\/[a-z0-9-]+\.tile\.openstreetmap\.org(?:[/?#]|$)|^https?:\/\/(?:www\.)?(?:maptiler|cartocdn)\.com(?:[/?#]|$)|^https?:\/\/(?:www\.)?mapbox\.com\/styles(?:[/?#]|$)|^https?:\/\/(?:www\.)?leafletjs\.com(?:[/?#]|$)/i.test(url)) continue;
+        if (/^https?:\/\/(?:www\.|[a-z0-9-]+\.)?(?:openstreetmap|osm)\.org(?:[/?#]|$)|^https?:\/\/[a-z0-9-]+\.tile\.openstreetmap\.org(?:[/?#]|$)|^https?:\/\/(?:www\.)?(?:maptiler|cartocdn)\.com(?:[/?#]|$)|^https?:\/\/(?:www\.)?mapbox\.com\/styles(?:[/?#]|$)|^https?:\/\/(?:www\.)?leafletjs\.com(?:[/?#]|$)|^https?:\/\/(?:www\.)?google\.com\/maps(?:[/?#]|$)|^https?:\/\/(?:www\.)?skyvector\.com(?:[/?#]|$)/i.test(url)) continue;
         if (/^https?:\/\/[a-z]+\.lattice(?:\b|\/)/i.test(url)) continue;   // template federation hosts
         if (/^https?:\/\/[a-z]+:\/\/|^https?:\/\/data:|^https?:\/\/blob:/i.test(url)) continue; // data/blob
         findings.push({

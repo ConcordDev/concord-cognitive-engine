@@ -29,7 +29,7 @@ export function NpmPackageSearch() {
     mutationFn: async () => {
       setError(null);
       try {
-        const r = await fetch(`https://registry.npmjs.com/-/v1/search?text=${encodeURIComponent(query)}&size=20`);
+        const r = await fetch(`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=20`);
         if (!r.ok) throw new Error(`npm ${r.status}`);
         const j = await r.json();
         setHits(j.objects || []);
@@ -45,13 +45,13 @@ export function NpmPackageSearch() {
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">NPM package search</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">registry.npmjs.com · no key</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">registry.npmjs.org · no key</span>
         </div>
         {hits.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="npm-registry"
-            apiUrl={`https://registry.npmjs.com/-/v1/search?text=${encodeURIComponent(query)}`}
+            apiUrl={`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}`}
             title={`NPM search — "${query}" (${hits.length})`}
             content={hits.slice(0, 25).map((h, i) => `${i + 1}. ${h.package.name}@${h.package.version} — ${h.package.description || ''}\n   score: q=${h.score.detail.quality.toFixed(2)} pop=${h.score.detail.popularity.toFixed(2)} maint=${h.score.detail.maintenance.toFixed(2)}\n   ${h.package.links?.npm || ''}`).join('\n\n')}
             extraTags={['app-maker', 'npm', 'packages']}

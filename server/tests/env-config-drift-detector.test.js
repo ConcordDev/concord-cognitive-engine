@@ -68,6 +68,59 @@ describe("EnvConfigDriftDetector — hardcoded production URL", () => {
       assert.equal(r.findings.filter(f => f.id === "hardcoded_prod_url").length, 0);
     } finally { teardown(dir); }
   });
+
+  it("skips a JSX input placeholder attribute (example hint text, never fetched)", async () => {
+    const dir = withFixture({
+      "concord-frontend/components/x.tsx": `<input placeholder="https://api.production-service.com/recipe" />;\n`,
+    });
+    try {
+      const r = await runEnvConfigDriftDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "hardcoded_prod_url").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT let the placeholder-attribute skip swallow a real hardcoded URL on an adjacent line", async () => {
+    const dir = withFixture({
+      "concord-frontend/components/x.tsx": `<input placeholder="example" />;\nconst HOST = "https://api.production-service.com";\n`,
+    });
+    try {
+      const r = await runEnvConfigDriftDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "hardcoded_prod_url").length, 1);
+    } finally { teardown(dir); }
+  });
+
+  it("skips well-known public API / OAuth hosts (Notion) and profile-link hosts (Twitter)", async () => {
+    const dir = withFixture({
+      "server/lib/notion.js": `const NOTION_BASE = "https://api.notion.com/v1";\n`,
+      "concord-frontend/components/y.tsx": `const url = \`https://twitter.com/\${handle}\`;\n`,
+    });
+    try {
+      const r = await runEnvConfigDriftDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "hardcoded_prod_url").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("skips well-known map/reference-link hosts (Google Maps, SkyVector)", async () => {
+    const dir = withFixture({
+      "concord-frontend/components/z.tsx":
+        `const a = \`https://www.google.com/maps/search/?api=1&query=\${lat},\${lng}\`;\n` +
+        `const b = \`https://skyvector.com/airport/\${ident}\`;\n`,
+    });
+    try {
+      const r = await runEnvConfigDriftDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "hardcoded_prod_url").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT let the new host allowlist swallow a prefix-shadowing domain", async () => {
+    const dir = withFixture({
+      "server/lib/evil.js": `const HOST = "https://evil-twitter.com/api";\nconst HOST2 = "https://evil-skyvector.com/x";\n`,
+    });
+    try {
+      const r = await runEnvConfigDriftDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "hardcoded_prod_url").length, 2);
+    } finally { teardown(dir); }
+  });
 });
 
 describe("EnvConfigDriftDetector — hardcoded localhost", () => {

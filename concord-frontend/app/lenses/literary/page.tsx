@@ -42,6 +42,8 @@ interface AnnotationData { chunkId: string; note: string; title?: string; author
 
 // ── Resonance-graph export (GraphML / CSV / JSON) — built from the live graph,
 // never fabricated. GraphML is the standard force-graph interchange (Gephi/yEd).
+// @env-config-ok — the graphml.graphdrawing.org/xmlns string below is an XML
+// namespace URI (GraphML spec boilerplate), never fetched over the network.
 function graphToGraphML(nodes: GraphNode[], edges: GraphEdge[]): string {
   const esc = (s: unknown) => String(s ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c] as string));
   const n = nodes.map((x) => `    <node id="${esc(x.id)}"><data key="label">${esc(x.label)}</data><data key="group">${esc(x.group)}</data></node>`).join('\n');

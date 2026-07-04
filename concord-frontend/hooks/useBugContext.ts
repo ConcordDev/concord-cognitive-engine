@@ -11,7 +11,7 @@
 //
 // Design notes (2026 client-error best-practice):
 //  - capture happens via boundaries + a global window listener (see GlobalErrorReporter);
-//    window.addEventListener('error') also catches resource-load failures.
+//    window.addEventListener('error') also catches resource-load failures. @resource-leak-ok — prose, not code; the real listener lives in GlobalErrorReporter
 //  - the client clock is untrusted — the server stamps reportedAt; we only send breadcrumbs.
 //  - reporting MUST never throw and is throttled so an error loop can't self-DoS.
 //  - keepalive:true so a report survives a navigation/crash unload.
