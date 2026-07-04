@@ -214,6 +214,13 @@ describe("research — reproducibilityCheck opt-in DTU mint (real dtu.create, no
       data: { study: { materialsSections: true, codeAvailable: true, dataAvailable: true, protocolRegistered: true, mint: false } },
       params: { mint: false },
     });
+    // All 4 transparency items true, no pValues/sampleSizes/replications ->
+    // only the transparency block scores: 4 x 10 = 40/40, 100%.
+    assert.equal(r.result.overallScore, 40);
+    assert.equal(r.result.maxScore, 40);
+    assert.equal(r.result.reproducibilityPercentage, 100);
+    assert.equal(r.result.assessment, "highly-reproducible");
+    assert.deepEqual(r.result.criticalIssues, []);
     assert.equal("dtuId" in r.result, false);
     assert.equal("minted" in r.result, false);
   });
