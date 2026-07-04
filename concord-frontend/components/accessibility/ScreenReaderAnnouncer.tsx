@@ -59,7 +59,7 @@ export default function ScreenReaderAnnouncer() {
       const d = (e as CustomEvent).detail as Announcement | undefined;
       if (d?.text) speak({ text: d.text, priority: d.priority || 'polite' });
     };
-    window.addEventListener('concordia:announce', generic);
+    window.addEventListener('concordia:announce', generic); // @resource-leak-ok — removed via the handlers-array loop below (dynamic name, not text-matchable)
     handlers.push(['concordia:announce', generic]);
 
     return () => { for (const [name, h] of handlers) window.removeEventListener(name, h); };

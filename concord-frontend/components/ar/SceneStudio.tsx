@@ -264,12 +264,12 @@ export function SceneStudio() {
       }
       renderer.setAnimationLoop(() => renderer.render(xrScene, camera));
 
-      session.addEventListener('end', () => {
+      session.addEventListener('end', () => { // @resource-leak-ok — { once: true } below self-removes
         renderer.setAnimationLoop(null);
         renderer.dispose();
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
         setXrActive(false);
-      });
+      }, { once: true });
     } catch (e) {
       flash(`AR session failed: ${String((e as Error)?.message || e)}`);
       setXrActive(false);

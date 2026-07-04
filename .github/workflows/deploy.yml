@@ -37,7 +37,16 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          # MUST be 22, not the workflow-wide NODE_VERSION (20): `node --test`
+          # only expands glob-pattern file arguments (e.g. 'tests/depth/*.test.js'
+          # below) on Node >= 21 — on Node 20 it fails immediately with
+          # "Could not find '<literal glob string>'" instead of matching any
+          # files. Same root cause + fix already applied in
+          # .github/workflows/audits.yml's structural-audits job; this gate's
+          # "Depth behavioral tests" step never got exercised on Node 20 until
+          # now because a separate lint failure always short-circuited the job
+          # first (fixed in the same PR that added this comment).
+          node-version: '22'
       - name: Install server deps
         working-directory: ./server
         run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)

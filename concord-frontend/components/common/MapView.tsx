@@ -73,7 +73,10 @@ export default function MapView({
         const marker = new maplibregl.Marker().setLngLat(toLngLat([m.lat, m.lng])).setPopup(popup).addTo(map);
         if (onMarkerClickRef.current) {
           marker.getElement().style.cursor = 'pointer';
-          marker.getElement().addEventListener('click', (ev) => {
+          // The listener lives on the marker's own DOM element; mk.remove()
+          // above (next apply() pass) detaches that element entirely, taking
+          // the listener with it — no separate removeEventListener needed.
+          marker.getElement().addEventListener('click', (ev) => { // @resource-leak-ok
             ev.stopPropagation();
             onMarkerClickRef.current?.(m);
           });

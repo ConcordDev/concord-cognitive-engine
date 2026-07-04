@@ -189,6 +189,35 @@ export function directCausalEdgeBetween(db, a, b) {
 // ── trace ───────────────────────────────────────────────────────────────────
 
 /**
+ * Fetch outgoing dtu_causal_edges rows for a whole BFS frontier in ONE query
+ * (batched via `parent_id IN (...)`) instead of one query per node — the
+ * previous per-node `db.prepare(...).all(nodeId)` inside traceCausalPath's
+ * node loop was a genuine N+1 (one round-trip per frontier node, on every
+ * BFS level). Grouped by parent_id so callers can still look up a single
+ * node's outgoing edges in O(1).
+ *
+ * @param {object} db
+ * @param {string[]} nodeIds
+ * @returns {Map<string, object[]>} parent_id -> outgoing edge rows
+ */
+function batchFetchOutgoingEdges(db, nodeIds) {
+  const byParent = new Map();
+  if (nodeIds.length === 0) return byParent;
+  const placeholders = nodeIds.map(() => "?").join(",");
+  let rows = [];
+  try {
+    rows = db.prepare(`SELECT * FROM dtu_causal_edges WHERE parent_id IN (${placeholders})`).all(...nodeIds);
+  } catch {
+    rows = [];
+  }
+  for (const row of rows) {
+    if (!byParent.has(row.parent_id)) byParent.set(row.parent_id, []);
+    byParent.get(row.parent_id).push(row);
+  }
+  return byParent;
+}
+
+/**
  * BFS a causal path from `fromId` to `toId` walking parent_id -> child_id
  * edges FORWARD (cause -> effect), i.e. "does fromId's causal influence
  * eventually reach toId, and by what chain?" — the natural reading of
@@ -221,14 +250,12 @@ export function traceCausalPath(db, fromId, toId, { maxDepth = 10 } = {}) {
   let depth = 0;
 
   while (frontier.length > 0 && depth < maxDepth) {
+    // One batched query for the WHOLE frontier per BFS level (bounded by
+    // maxDepth, default 10 levels total) instead of one query per node.
+    const outgoingByParent = batchFetchOutgoingEdges(db, [...new Set(frontier.map((f) => f.nodeId))]);
     const nextFrontier = [];
     for (const { nodeId, path } of frontier) {
-      let outgoing = [];
-      try {
-        outgoing = db.prepare("SELECT * FROM dtu_causal_edges WHERE parent_id = ?").all(nodeId);
-      } catch {
-        outgoing = [];
-      }
+      const outgoing = outgoingByParent.get(nodeId) || [];
       for (const edge of outgoing) {
         if (edge.child_id === to) {
           return [...path, edge];

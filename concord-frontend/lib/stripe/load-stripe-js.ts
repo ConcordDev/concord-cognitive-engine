@@ -63,8 +63,8 @@ function injectStripeScript(): Promise<void> {
     const existing = document.querySelector(`script[src="${STRIPE_V3_SRC}"]`);
     if (existing) {
       if (window.Stripe) return resolve();
-      existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('Stripe.js failed to load')), { once: true });
+      existing.addEventListener('load', () => resolve(), { once: true }); // @resource-leak-ok — self-removes
+      existing.addEventListener('error', () => reject(new Error('Stripe.js failed to load')), { once: true }); // @resource-leak-ok — self-removes
       return;
     }
     const script = document.createElement('script');

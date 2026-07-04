@@ -80,7 +80,7 @@ export function useAvatarAnimator() {
       return;
     }
 
-    worker.addEventListener('message', (ev: MessageEvent<WorkerOutbound>) => {
+    worker.addEventListener('message', (ev: MessageEvent<WorkerOutbound>) => { // @resource-leak-ok — worker.terminate() below tears the listener down with it
       const msg = ev.data;
       if (msg.type === 'ready') {
         stateRef.current.ready = true;
@@ -104,7 +104,7 @@ export function useAvatarAnimator() {
       }
     });
 
-    worker.addEventListener('error', (err) => {
+    worker.addEventListener('error', (err) => { // @resource-leak-ok — worker.terminate() below tears the listener down with it
       stateRef.current.failed = true;
        
       console.warn('[avatar-animator] worker error event', err);

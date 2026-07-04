@@ -39,6 +39,19 @@ const CYCLE_EXPORT_RE = /export\s+(?:async\s+)?function\s+((?:run|tick|sweep|pum
 const ORPHAN_ALLOWLIST = new Set([
   // lattice-orchestrator handlers are invoked by the orchestrator, not server.js
   // directly; they're reachable. Listed here so the audit stays green.
+
+  // forgetting-engine.js#runReviewSchedulingPass (DTU-wedge DW3, SM-2 retention
+  // scheduling) is invoked from runForgettingCycle IN THE SAME FILE (the
+  // corpus deliberately excludes a handler's own defining file so a
+  // same-file self-reference can't fake reachability — see the comment
+  // above). runForgettingCycle itself IS in `results.wired` (server.js calls
+  // it directly at several sites, e.g. the governorTick forgetting-cycle
+  // invocation with an `opts.db` that gates the review-scheduling pass), so
+  // runReviewSchedulingPass is genuinely reachable on the same clock — this
+  // is the same "handler invoked by another handler in its own file" shape
+  // the self-exclusion rule exists to guard against, but here the caller is
+  // externally wired, not a red herring.
+  "runReviewSchedulingPass",
 ]);
 
 function readSafe(p) { try { return readFileSync(p, "utf8"); } catch { return ""; } }

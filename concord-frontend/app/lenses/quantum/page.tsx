@@ -1,4 +1,7 @@
 'use client';
+// @route-empty-ok — the two `return null` in this file are inside the `run()`
+// action-handler callback (an early-return guard value for a helper, not the
+// page component's render path); this page always renders its shell.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

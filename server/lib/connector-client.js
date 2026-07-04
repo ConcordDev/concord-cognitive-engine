@@ -389,6 +389,9 @@ export async function createGitHubIssue(db, userId, repo, issue = {}, opts = {})
 }
 
 // ── Notion (connector_id "notion", Bearer token, Notion-Version header) ─────
+// @env-config-ok — Notion's fixed, vendor-published public API base, not
+// deployment-specific config (same shape as the GitHub/Slack API bases
+// elsewhere in this file).
 const NOTION_BASE = "https://api.notion.com/v1";
 const NOTION_HEADERS = { "Notion-Version": "2022-06-28" };
 

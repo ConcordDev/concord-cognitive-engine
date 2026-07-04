@@ -394,9 +394,10 @@ are release-blocking** (the peg is USD-anchored and closed-loop; purchased CC ca
 be cashed out — the money-transmitter risk-reducer already caps runaway value). The
 research validates the *current* posture rather than demanding a new dial. Documented
 here so a post-launch balance pass has the reference: if in-world CC inflation appears
-in telemetry, add a progressive holding tax (`CONCORD_CC_WEALTH_TAX_THRESHOLD`,
-`CONCORD_CC_WEALTH_TAX_RATE ≈ 0.02/period`) modeled on Alter Aeon — NOT a faucet cut,
-which the literature shows frustrates new players.
+in telemetry, add a progressive holding tax (a future `CONCORD_CC_WEALTH_TAX_*` pair —
+threshold + rate ≈ 0.02/period) modeled on Alter Aeon — NOT a faucet cut, which the
+literature shows frustrates new players. (Not implemented — no source dial exists yet;
+named here only as the recommended shape for whoever builds it.)
 
 ### 2. Roguelite meta-currency (Hades pattern)
 

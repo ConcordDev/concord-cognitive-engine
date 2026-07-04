@@ -1,4 +1,7 @@
 'use client';
+// @env-config-ok — the twitter.com/${handle} profile-link URL below is a
+// fixed, public, non-configurable host (constructing a link to a rep's
+// public profile), not deployment-specific config.
 
 import { useState } from 'react';
 import { MapPin, Phone, Mail, Globe, Search, Loader2, Users, Twitter } from 'lucide-react';

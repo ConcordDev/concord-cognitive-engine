@@ -88,7 +88,7 @@ export function ServiceWorkerPanel() {
         setCacheStats({ entries: ev.data.entries, maxEntries: ev.data.maxEntries });
       }
     };
-    navigator.serviceWorker.addEventListener('message', handler, { once: true });
+    navigator.serviceWorker.addEventListener('message', handler, { once: true }); // @resource-leak-ok — self-removes
     navigator.serviceWorker.controller.postMessage({ type: 'GET_CACHE_STATS' });
     // Some browsers prefer a dedicated port — send via both paths.
     channel.port1.onmessage = handler;
