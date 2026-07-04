@@ -23,6 +23,7 @@
 
 import crypto from "node:crypto";
 import logger from "../../logger.js";
+import { updateConfidence } from "../dtu-confidence.js";
 
 export const PREDICTION_TTL_S = Number(process.env.CONCORD_PREDICTION_TTL_S) || 48 * 3600;
 export const MAX_PREDICTIONS_PER_PASS = Number(process.env.CONCORD_PREDICTIONS_PER_PASS) || 3;
@@ -90,13 +91,17 @@ export async function tryPredictForUser(db, userId, opts = {}) {
       db.prepare(`
         INSERT INTO forward_predictions
           (id, user_id, world_id, subject_kind, subject_id, anticipated,
-           confidence, composer, composed_at, expires_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           confidence, composer, composed_at, expires_at, prediction_dtu_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         id, userId, s.worldId ?? null, s.kind, s.id,
         prediction.anticipated, prediction.confidence,
         prediction.composer || 'deterministic',
         now, now + PREDICTION_TTL_S,
+        // LC1 — honest-by-construction: NULL unless _gatherSubjects found a
+        // genuine, already-wired subject→DTU schema reference (see that
+        // function's header comment for the per-kind audit). Never fabricated.
+        s.dtuId ?? null,
       );
       inserted.push({ id, ...s, ...prediction });
     } catch (err) {
@@ -138,6 +143,42 @@ export function realisePrediction(db, predictionId, outcome) {
              reality_outcome = ?
        WHERE id = ? AND realised_at IS NULL
     `).run(typeof outcome === 'string' ? outcome : JSON.stringify(outcome ?? {}), predictionId);
+
+    // LC1 — close the DTU-confidence loop. This is the FIRST write path for
+    // dtu_confidence that isn't citation-registration or drift-monitor: a
+    // confirmed/violated prediction is real-world evidence about the DTU it
+    // was genuinely tied to at composition time.
+    //
+    // Fires ONLY when both hold:
+    //   (a) the prediction carries a non-null prediction_dtu_id — written by
+    //       _gatherSubjects only when a real, already-wired subject→DTU
+    //       schema link exists (never fabricated; see that function's
+    //       header comment for the per-subject-kind audit).
+    //   (b) the outcome unambiguously reads as 'realised' or 'rejected'.
+    // Every other case (outcome === 'expired', an 'ignored' beat, or an
+    // arbitrary payload with no `.outcome` string such as the direct-caller
+    // shape `{ matched: true, note: '...' }`) is an intentional no-op — a
+    // TTL lapse or an unlabelled payload is not evidence either way, and we
+    // never guess intent from an ambiguous shape.
+    try {
+      const label = typeof outcome === 'string'
+        ? outcome
+        : (outcome && typeof outcome === 'object' && typeof outcome.outcome === 'string')
+          ? outcome.outcome
+          : null;
+      if (label === 'realised' || label === 'rejected') {
+        const predRow = db.prepare(`SELECT prediction_dtu_id FROM forward_predictions WHERE id = ?`).get(predictionId);
+        if (predRow?.prediction_dtu_id) {
+          updateConfidence(
+            db,
+            predRow.prediction_dtu_id,
+            label === 'realised' ? 0.05 : -0.05,
+            label === 'realised' ? 'prediction_verified' : 'prediction_violated',
+          );
+        }
+      }
+    } catch { /* confidence update is best-effort; never blocks realisation */ }
+
     // Phase F3.1 — surface prediction realisation to the player.
     try {
       const emitFn = globalThis._concordRealtimeEmit;
@@ -179,6 +220,45 @@ export function sweepExpiredPredictions(db) {
 // Internal: subject gathering + deterministic composer
 // ───────────────────────────────────────────────────────────────────────────
 
+// ── LC1 — subject → DTU resolution (honest-by-construction) ────────────────
+//
+// `prediction_dtu_id` (migration 116) exists so a confirmed/violated
+// prediction can nudge `dtu_confidence` — but it must ONLY ever carry a
+// genuine, already-wired reference. Fabricating one just to have something
+// to write would corrupt the confidence signal. Audited per subject kind
+// (two-pass codebase search, 2026-07):
+//
+//   - quest: `quest_progress.quest_id` (server/migrations/315_missing_
+//     tables_repair.js) has NO schema-level link to any DTU — it's an
+//     opaque (user, world, quest_id) tracker. `lattice_born_quests` (the
+//     drift-alert-spawned quests) also carries no dtu column, and its
+//     `drift_alert_signature` is a one-way sha1 of type+severity+message+
+//     day (lattice-quest-composer.js#alertSignature) — not reversible to
+//     the DTU pair that triggered the drift. `server/emergent/quest-
+//     engine.js`'s `content.dtuIds` field belongs to a SEPARATE in-memory
+//     learning-quest system unrelated to `quest_progress`. Verdict: always
+//     NULL — no genuine link exists today.
+//   - npc: `world_npcs.home_dtu_id` (migration 060_npc_enhancements) IS a
+//     genuine per-npc_id → dtu_id schema column, and it IS read elsewhere
+//     (npc-consequences.js) — but nothing in the codebase ever WRITES it
+//     yet (exhaustive grep for assignments/INSERTs found none). We still
+//     read it: it's a real column, not a guess, and will correctly start
+//     resolving the day something populates it. `npc_knowledge` was
+//     considered and REJECTED — it's keyed by (world_id, role, dtu_id), so
+//     it names knowledge shared by every NPC of a role, not a fact about
+//     THIS specific npc_id; using it would misattribute.
+//   - faction: no faction table or authored content file anywhere carries a
+//     dtu reference. Always NULL.
+function _resolveNpcDtuId(db, npcId) {
+  if (!db || !npcId) return null;
+  try {
+    const row = db.prepare(`SELECT home_dtu_id FROM world_npcs WHERE id = ?`).get(npcId);
+    return row?.home_dtu_id || null;
+  } catch {
+    return null;
+  }
+}
+
 function _gatherSubjects(db, userId) {
   const subjects = [];
 
@@ -191,7 +271,9 @@ function _gatherSubjects(db, userId) {
        LIMIT 5
     `).all(userId, since);
     for (const r of rows) {
-      subjects.push({ kind: 'quest', id: r.quest_id, worldId: r.world_id });
+      // No genuine quest→DTU link exists in the schema — see the LC1 audit
+      // comment above. Never fabricate one.
+      subjects.push({ kind: 'quest', id: r.quest_id, worldId: r.world_id, dtuId: null });
     }
   } catch { /* table may not exist */ }
 
@@ -205,7 +287,7 @@ function _gatherSubjects(db, userId) {
        LIMIT 5
     `).all(userId, since);
     for (const r of rows) {
-      subjects.push({ kind: 'npc', id: r.npc_id, worldId: r.world_id });
+      subjects.push({ kind: 'npc', id: r.npc_id, worldId: r.world_id, dtuId: _resolveNpcDtuId(db, r.npc_id) });
     }
   } catch { /* ignore */ }
 
@@ -215,7 +297,9 @@ function _gatherSubjects(db, userId) {
       SELECT DISTINCT faction_id FROM faction_members WHERE user_id = ? LIMIT 3
     `).all(userId);
     for (const r of rows) {
-      subjects.push({ kind: 'faction', id: r.faction_id, worldId: null });
+      // No faction→DTU link exists anywhere in the schema/content — see the
+      // LC1 audit comment above. Never fabricate one.
+      subjects.push({ kind: 'faction', id: r.faction_id, worldId: null, dtuId: null });
     }
   } catch { /* ignore */ }
 

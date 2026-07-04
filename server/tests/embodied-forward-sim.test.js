@@ -9,6 +9,8 @@
  *   - sweepExpiredPredictions archives expired
  *   - realisePrediction stamps reality_outcome
  *   - runForwardSimCycle skips active users + composes for offline
+ *   - LC1: realisePrediction closes the DTU-confidence loop (see the
+ *     "LC1 — prediction → dtu_confidence loop closure" describe block below)
  *
  * Run: node --test tests/embodied-forward-sim.test.js
  */
@@ -29,11 +31,13 @@ import {
 import { runForwardSimCycle } from "../emergent/forward-sim-cycle.js";
 import { up as up109 } from "../migrations/114_pain_signals.js";
 import { up as up111 } from "../migrations/116_forward_predictions.js";
+import { up as up354 } from "../migrations/354_dtu_confidence.js";
 
 function setupDb() {
   const db = new Database(":memory:");
   up109(db);
   up111(db);
+  up354(db);
   db.exec(`
     CREATE TABLE damage_events (
       id TEXT PRIMARY KEY,
@@ -54,6 +58,9 @@ function setupDb() {
     );
     CREATE TABLE faction_members (
       user_id TEXT, faction_id TEXT
+    );
+    CREATE TABLE world_npcs (
+      id TEXT PRIMARY KEY, world_id TEXT, home_dtu_id TEXT
     );
   `);
   return db;
@@ -245,5 +252,171 @@ describe("runForwardSimCycle", () => {
     const r = await runForwardSimCycle({ db });
     assert.equal(r.ok, true);
     assert.equal(r.candidates, 0);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// LC1 — prediction → dtu_confidence loop closure
+//
+// forward_predictions has carried a `prediction_dtu_id` column since
+// migration 116, but until LC1 nothing ever wrote to it and realisePrediction
+// never touched dtu_confidence. These tests pin the honest wiring:
+//   - a prediction only ever carries a real, already-wired subject→DTU
+//     reference (currently: NPC subjects via world_npcs.home_dtu_id; quest
+//     and faction subjects are always NULL — see forward-sim.js's LC1 audit
+//     comment for why no genuine link exists for those two kinds today).
+//   - realising/rejecting a DTU-linked prediction nudges dtu_confidence by
+//     the REAL updateConfidence heuristic (not a guessed number).
+//   - a NULL-ref prediction is a genuine, silent no-op — never a throw and
+//     never a dtu_confidence write.
+// ───────────────────────────────────────────────────────────────────────────
+
+describe("LC1 — prediction → dtu_confidence loop closure", () => {
+  function seedNpcWithDtu(db, npcId, dtuId) {
+    db.prepare(`INSERT INTO world_npcs (id, world_id, home_dtu_id) VALUES (?, ?, ?)`)
+      .run(npcId, "w1", dtuId);
+  }
+
+  it("resolves prediction_dtu_id for an NPC subject via world_npcs.home_dtu_id, and leaves it NULL for quest/faction subjects", async () => {
+    const db = setupDb();
+    seedNpcWithDtu(db, "npc-smith", "dtu-npc-smith-lore");
+    seedActivity(db, "u1"); // damage_events targets 'npc-smith', quest 'q-onboard', faction 'fac-coastguard'
+
+    await tryPredictForUser(db, "u1");
+    const rows = db.prepare(`SELECT subject_kind, subject_id, prediction_dtu_id FROM forward_predictions WHERE user_id = ?`).all("u1");
+
+    const npcRow = rows.find(r => r.subject_kind === "npc");
+    const questRow = rows.find(r => r.subject_kind === "quest");
+    const factionRow = rows.find(r => r.subject_kind === "faction");
+
+    assert.ok(npcRow, "expected an npc-subject prediction");
+    assert.equal(npcRow.prediction_dtu_id, "dtu-npc-smith-lore",
+      "npc subject should resolve the genuine world_npcs.home_dtu_id link");
+
+    if (questRow) assert.equal(questRow.prediction_dtu_id, null, "quest subjects have no genuine DTU link — must stay NULL");
+    if (factionRow) assert.equal(factionRow.prediction_dtu_id, null, "faction subjects have no genuine DTU link — must stay NULL");
+  });
+
+  it("a realised prediction with a resolved DTU ref moves dtu_confidence UP with reason prediction_verified", async () => {
+    const db = setupDb();
+    seedNpcWithDtu(db, "npc-smith", "dtu-verify-me");
+    seedActivity(db, "u1");
+
+    await tryPredictForUser(db, "u1");
+    const npcPred = db.prepare(`
+      SELECT id FROM forward_predictions WHERE user_id = ? AND subject_kind = 'npc'
+    `).get("u1");
+    assert.ok(npcPred, "expected an npc prediction to realise");
+
+    // Precondition: no dtu_confidence row exists yet (honest-unknown).
+    assert.equal(db.prepare(`SELECT * FROM dtu_confidence WHERE dtu_id = ?`).get("dtu-verify-me"), undefined);
+
+    const result = realisePrediction(db, npcPred.id, { outcome: "realised", beatId: "beat-1" });
+    assert.deepEqual(result, { ok: true });
+
+    // Trace the REAL updateConfidence math (server/lib/dtu-confidence.js):
+    // row is created fresh at score=0.5, evidenceCount=0; influence =
+    // 1/(evidenceCount+1) = 1/(0+1) = 1; newScore = clamp(0.5 + 0.05*1, 0, 1)
+    // = 0.55; evidence_count becomes 1.
+    const row = db.prepare(`SELECT score, evidence_count FROM dtu_confidence WHERE dtu_id = ?`).get("dtu-verify-me");
+    assert.ok(row, "expected updateConfidence to create the dtu_confidence row");
+    assert.equal(row.score, 0.55);
+    assert.equal(row.evidence_count, 1);
+  });
+
+  it("a rejected prediction with a resolved DTU ref moves dtu_confidence DOWN with reason prediction_violated", async () => {
+    const db = setupDb();
+    seedNpcWithDtu(db, "npc-smith", "dtu-violate-me");
+    seedActivity(db, "u1");
+
+    await tryPredictForUser(db, "u1");
+    const npcPred = db.prepare(`
+      SELECT id FROM forward_predictions WHERE user_id = ? AND subject_kind = 'npc'
+    `).get("u1");
+    assert.ok(npcPred);
+
+    realisePrediction(db, npcPred.id, { outcome: "rejected", beatId: "beat-2" });
+
+    // Same math as the "realised" case but delta = -0.05:
+    // newScore = clamp(0.5 - 0.05*1, 0, 1) = 0.45; evidence_count = 1.
+    const row = db.prepare(`SELECT score, evidence_count FROM dtu_confidence WHERE dtu_id = ?`).get("dtu-violate-me");
+    assert.ok(row);
+    assert.equal(row.score, 0.45);
+    assert.equal(row.evidence_count, 1);
+  });
+
+  it("a NULL-ref prediction (quest subject) realising does NOT throw and does NOT touch dtu_confidence", async () => {
+    const db = setupDb();
+    seedActivity(db, "u1"); // no npc DTU seeded — but exercising the quest subject specifically
+
+    await tryPredictForUser(db, "u1");
+    const questPred = db.prepare(`
+      SELECT id, prediction_dtu_id FROM forward_predictions WHERE user_id = ? AND subject_kind = 'quest'
+    `).get("u1");
+    assert.ok(questPred, "expected a quest prediction");
+    assert.equal(questPred.prediction_dtu_id, null);
+
+    assert.doesNotThrow(() => {
+      const r1 = realisePrediction(db, questPred.id, { outcome: "realised", beatId: "beat-3" });
+      assert.deepEqual(r1, { ok: true });
+    });
+
+    // Honest no-op: dtu_confidence must remain completely empty — no row
+    // was ever created for anything, because there was never a genuine
+    // DTU reference to act on.
+    const count = db.prepare(`SELECT COUNT(*) AS n FROM dtu_confidence`).get().n;
+    assert.equal(count, 0);
+  });
+
+  it("a NULL-ref prediction (quest subject) rejecting also does NOT throw and does NOT touch dtu_confidence", async () => {
+    const db = setupDb();
+    seedActivity(db, "u1");
+
+    await tryPredictForUser(db, "u1");
+    const questPred = db.prepare(`
+      SELECT id FROM forward_predictions WHERE user_id = ? AND subject_kind = 'quest'
+    `).get("u1");
+    assert.ok(questPred);
+
+    assert.doesNotThrow(() => {
+      realisePrediction(db, questPred.id, { outcome: "rejected", beatId: "beat-4" });
+    });
+    const count = db.prepare(`SELECT COUNT(*) AS n FROM dtu_confidence`).get().n;
+    assert.equal(count, 0);
+  });
+
+  it("an 'expired' outcome (even on a DTU-linked prediction) is a no-op — a TTL lapse is not evidence", async () => {
+    const db = setupDb();
+    seedNpcWithDtu(db, "npc-smith", "dtu-expired-noop");
+    seedActivity(db, "u1");
+
+    await tryPredictForUser(db, "u1");
+    const npcPred = db.prepare(`
+      SELECT id FROM forward_predictions WHERE user_id = ? AND subject_kind = 'npc'
+    `).get("u1");
+    assert.ok(npcPred);
+
+    realisePrediction(db, npcPred.id, { outcome: "expired" });
+    const row = db.prepare(`SELECT * FROM dtu_confidence WHERE dtu_id = ?`).get("dtu-expired-noop");
+    assert.equal(row, undefined, "expired must never create/touch a dtu_confidence row");
+  });
+
+  it("an ambiguous outcome payload with no `.outcome` string (direct-caller shape) is a no-op, even with a DTU-linked prediction", async () => {
+    const db = setupDb();
+    seedNpcWithDtu(db, "npc-smith", "dtu-ambiguous-noop");
+    seedActivity(db, "u1");
+
+    await tryPredictForUser(db, "u1");
+    const npcPred = db.prepare(`
+      SELECT id FROM forward_predictions WHERE user_id = ? AND subject_kind = 'npc'
+    `).get("u1");
+    assert.ok(npcPred);
+
+    // This is the exact shape the existing "stamps reality_outcome" test
+    // above uses for a direct (non-beat-scheduler) caller.
+    realisePrediction(db, npcPred.id, { matched: true, note: "you were right" });
+
+    const row = db.prepare(`SELECT * FROM dtu_confidence WHERE dtu_id = ?`).get("dtu-ambiguous-noop");
+    assert.equal(row, undefined, "an unlabelled outcome payload must never guess intent and touch confidence");
   });
 });
