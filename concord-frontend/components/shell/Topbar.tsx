@@ -13,6 +13,7 @@ import { NotificationBell } from '@/components/social/NotificationBell';
 import { DMIndicator } from '@/components/social/DMIndicator';
 import { UserMenu } from './topbar/UserMenu';
 import { usePowerMode } from '@/hooks/usePowerMode';
+import { safeGetItem } from '@/lib/safe-storage';
 
 export function Topbar() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
@@ -29,10 +30,17 @@ export function Topbar() {
     retry: false,
   });
 
-  // Fetch user info for display name
+  // Fetch user info for display name — gated on the same client-visible
+  // "has entered" signal Providers.tsx uses (the auth cookie itself is
+  // httpOnly, so JS can't read it directly; `concord_entered` is set by
+  // login/register/onboarding and cleared on logout + the 401 interceptor,
+  // per lib/api/client.ts). Skips the probe entirely for anonymous visitors
+  // instead of generating a guaranteed 401 on every lens page mount.
+  const hasEntered = typeof window !== 'undefined' && !!safeGetItem(window.localStorage, 'concord_entered');
   const { data: userData } = useQuery({
     queryKey: ['auth-me'],
     queryFn: () => api.get('/api/auth/me').then((r) => r.data).catch(() => null),
+    enabled: hasEntered,
     staleTime: 60000,
     retry: false,
   });
