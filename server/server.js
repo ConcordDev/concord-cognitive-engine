@@ -41,6 +41,7 @@ import express from "express";
 import cors from "cors";
 import crypto from "crypto";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { startSSE } from "./lib/sse.js";
 import fs from "fs";
@@ -12370,8 +12371,18 @@ register("voice","tts", async (ctx, input={}) => {
   // Local-first: Piper binary
   const bin = process.env.PIPER_BIN || "";
   if (bin) {
-    const voice = String(process.env.PIPER_VOICE || "");
-    const args = voice ? ["--model", voice] : [];
+    // Honor a per-request voice (input.voice) when it validates against the
+    // closed Piper voice-id allowlist AND (if a voices dir is configured)
+    // its model file actually exists on disk. Never pass an unvalidated
+    // string to spawnSync. Falls back to the existing PIPER_VOICE env
+    // default, honestly reported via voiceFallback so callers aren't misled.
+    const { modelArg, voiceUsed, voiceFallback } = resolvePiperVoice({
+      requestedVoice: input.voice,
+      envVoice: process.env.PIPER_VOICE || "",
+      voicesDir: process.env.PIPER_VOICES_DIR || "",
+      existsSync: fs.existsSync,
+    });
+    const args = modelArg ? ["--model", modelArg] : [];
     const p = spawnSync(bin, args, { input: text, encoding:"utf-8" });
     if (p.error) return { ok:false, error:String(p.error) };
     const outPath = String(input.outPath || "");
@@ -12382,9 +12393,9 @@ register("voice","tts", async (ctx, input={}) => {
       const safeName = path.basename(outPath).replace(/[^a-zA-Z0-9._-]/g, "_");
       const safePath = path.join(TTS_OUTPUT_DIR, safeName);
       try { fs.writeFileSync(safePath, p.stdout); } catch (e) { return { ok:false, error:"Failed to write TTS audio file", detail: String(e) }; }
-      return { ok:true, outPath: safePath, source: "piper", note:"TTS wrote audio to safe path." };
+      return { ok:true, outPath: safePath, source: "piper", voiceUsed, voiceFallback, note:"TTS wrote audio to safe path." };
     }
-    return { ok:true, source: "piper", audioBase64: Buffer.from(p.stdout).toString("base64") };
+    return { ok:true, source: "piper", voiceUsed, voiceFallback, audioBase64: Buffer.from(p.stdout).toString("base64") };
   }
 
   return { ok:false, error:"No TTS backend configured. Set PIPER_BIN (local Piper TTS)" };
