@@ -468,9 +468,13 @@ describe("fitness.recovery-history — emits the SleepRecovery field contract", 
   it("maps a synced device row to recoveryScore/sleepDurationHours/restingHr/hrv/strainYesterday", () => {
     const ctx = { actor: { userId: "fit_recov_u" }, userId: "fit_recov_u" };
     call("wearable-link", ctx, { provider: "whoop" });
+    // Relative to Date.now() (not hardcoded dates) so this stays inside the
+    // days:14 window regardless of what day the suite actually runs on.
+    const day1 = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+    const day2 = new Date(Date.now() - 1 * 86400000).toISOString().slice(0, 10);
     const sync = call("wearable-sync", ctx, { provider: "whoop", samples: [
-      { date: "2026-06-26", restingHr: 52, hrv: 60, sleepHours: 7.0, recoveryScore: 70 },
-      { date: "2026-06-27", restingHr: 50, hrv: 65, sleepHours: 7.5, recoveryScore: 80 },
+      { date: day1, restingHr: 52, hrv: 60, sleepHours: 7.0, recoveryScore: 70 },
+      { date: day2, restingHr: 50, hrv: 65, sleepHours: 7.5, recoveryScore: 80 },
     ] });
     assert.equal(sync.ok, true);
     const r = call("recovery-history", ctx, { days: 14 });
@@ -502,8 +506,11 @@ describe("fitness.activity-summary — emits the ActivityRings field contract", 
   it("maps a synced device row to moveCalories/moveGoal/exerciseMinutes/standHours/steps + goals", () => {
     const ctx = { actor: { userId: "fit_rings_u" }, userId: "fit_rings_u" };
     call("wearable-link", ctx, { provider: "apple_health" });
+    // Relative to Date.now() (not a hardcoded date) so this stays inside the
+    // days:7 window regardless of what day the suite actually runs on.
+    const sampleDate = new Date(Date.now() - 1 * 86400000).toISOString().slice(0, 10);
     call("wearable-sync", ctx, { provider: "apple_health", samples: [
-      { date: "2026-06-27", steps: 9000, activeCalories: 500, exerciseMinutes: 40 },
+      { date: sampleDate, steps: 9000, activeCalories: 500, exerciseMinutes: 40 },
     ] });
     const r = call("activity-summary", ctx, { days: 7 });
     assert.equal(r.ok, true);
