@@ -2,7 +2,7 @@
   "contracts": [
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "slack",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -10,12 +10,12 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.append",
-      "name": "append"
+      "macro_id": "slack.channels",
+      "name": "channels"
     },
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "slack",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -23,12 +23,12 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.connect",
+      "macro_id": "slack.connect",
       "name": "connect"
     },
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "slack",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -36,12 +36,12 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.get",
-      "name": "get"
+      "macro_id": "slack.history",
+      "name": "history"
     },
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "slack",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -49,24 +49,11 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.import",
-      "name": "import"
-    },
-    {
-      "_derived": true,
-      "domain": "notion",
-      "fuzz_cases": [],
-      "inputs": {},
-      "invariants": [
-        "output !== null && output !== undefined",
-        "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
-      ],
-      "macro_id": "notion.search",
-      "name": "search"
+      "macro_id": "slack.post",
+      "name": "post"
     }
   ],
-  "domain": "notion",
+  "domain": "slack",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 4
 }

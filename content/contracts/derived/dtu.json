@@ -10,8 +10,47 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dtu.causal-link",
+      "name": "causal-link"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.causal-trace",
+      "name": "causal-trace"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dtu.cluster",
       "name": "cluster"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.confidence",
+      "name": "confidence"
     },
     {
       "_derived": true,
@@ -211,5 +250,5 @@
   ],
   "domain": "dtu",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 16
+  "macroCount": 19
 }
