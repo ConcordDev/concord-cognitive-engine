@@ -87,7 +87,11 @@ export function loadFestivalsFromContent(db) {
 export function listFestivals(db) {
   if (!db) return [];
   try {
-    return db.prepare(`SELECT * FROM festivals`).all();
+    return db.prepare(`
+      SELECT id, name, season_idx, day_in_season_start, day_in_season_end,
+             repeats_yearly, decoration_tag, content_pack, created_at
+        FROM festivals
+    `).all();
   } catch { return []; }
 }
 
@@ -103,7 +107,12 @@ export function runFestivalTriggerPass(db, worldId, opts = {}) {
   let opened = [];
 
   try {
-    const festivals = db.prepare(`SELECT * FROM festivals`).all();
+    // Only id/name/season_idx/day_in_season_{start,end} are read below —
+    // project exactly those instead of pulling every column per pass.
+    const festivals = db.prepare(`
+      SELECT id, name, season_idx, day_in_season_start, day_in_season_end
+        FROM festivals
+    `).all();
     for (const f of festivals) {
       const inWindow =
         f.season_idx === cal.season_idx &&

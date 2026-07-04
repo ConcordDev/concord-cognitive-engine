@@ -18,6 +18,7 @@
 
 import { createHash, randomUUID } from "crypto";
 import logger from "../logger.js";
+import { LruMap } from "./lru-map.js";
 import { feedAttribution } from "./source-attribution.js";
 import { browserEngine } from "./browser-engine.js";
 
@@ -79,8 +80,13 @@ const _sourceDenylist = new Set(
     .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
 );
 
-/** @type {Map<string, {allowed:boolean, checkedAt:number}>} robots.txt verdict per origin */
-const _robotsCache = new Map();
+/**
+ * @type {Map<string, {allowed:boolean, checkedAt:number}>} robots.txt verdict per origin.
+ * Feed count is capped at 100 active sources, but origins accumulate across
+ * feed-source churn over process lifetime — bounded with LRU on top of the
+ * existing 24h TTL (the TTL keeps answers fresh; the cap keeps the map finite).
+ */
+const _robotsCache = new LruMap(500);
 const ROBOTS_TTL_MS = 24 * 60 * 60 * 1000;
 
 /** Add a source (name or feed id) to the takedown denylist — future fetches skip it. */

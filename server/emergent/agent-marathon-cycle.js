@@ -10,13 +10,18 @@
 import { findDueMarathons, tickMarathon, startMarathon } from "../lib/agent-marathon.js";
 import { loadOrCreate } from "../lib/affect-bridge.js";
 import { formGoalForAgent } from "../lib/agent-goals.js";
+import { LruMap } from "../lib/lru-map.js";
 
 const MAX_PER_PASS = 3;
 const MAX_REGOAL_PER_PASS = 2;
+const TERMINAL_STATUSES = new Set(["completed", "abandoned", "failed"]);
 
 // Wave 7 / E2 — per-session prior affect cache so the salience gate can detect spikes
-// across ticks (a sudden FEAR jump = a reason to wake the brain).
-const _priorState = new Map();
+// across ticks (a sudden FEAR jump = a reason to wake the brain). Entries are deleted
+// on terminal status below (the real cleanup); the LRU cap is only a backstop for
+// sessions that go permanently stale without ever reporting a terminal status (e.g.
+// stuck 'paused' and never resumed).
+const _priorState = new LruMap(3000);
 
 // Build the B4/B6 salience gate ONLY for autonomous-agent marathons (an agent_identities
 // row for the session's owner). Human marathons return null → ungated (always deliberate,
@@ -105,6 +110,12 @@ export async function runAgentMarathonCycle({ db } = {}) {
         });
         if (r.ok) advanced++;
         if (r.deliberated === false) onInstinct++;
+        // Real cleanup: once a marathon reaches a terminal status it will
+        // never be ticked again (findDueMarathons filters on status='running'),
+        // so its prior-affect entry would otherwise sit in the cache forever.
+        if (r.alreadyTerminal || TERMINAL_STATUSES.has(r.status)) {
+          _priorState.delete(id);
+        }
       } catch {
         errors++;
       }

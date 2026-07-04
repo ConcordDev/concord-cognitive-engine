@@ -21,14 +21,17 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { LruMap } from "../lib/lru-map.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_ROOT = join(__dir, "..", "..", "content");
 
 /* In-process content cache. Authored content doesn't change at runtime
- * so we read once and reuse. */
-const _factionsByWorld = new Map();   // worldId → factions[]
-const _npcsByWorld = new Map();        // worldId → npcs[]
+ * so we read once and reuse. Foundry lets users create new worlds at
+ * runtime, so worldId is unbounded over process lifetime — bound with
+ * LRU eviction (re-hydrating a re-added world is just a cheap disk read). */
+const _factionsByWorld = new LruMap(200);   // worldId → factions[]
+const _npcsByWorld = new LruMap(200);        // worldId → npcs[]
 const CANON_WORLDS = ["tunya", "cyber", "crime", "fantasy", "superhero",
                        "sovereign-ruins", "lattice-crucible",
                        "concord-link-frontier"];

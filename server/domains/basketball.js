@@ -1,7 +1,11 @@
 // server/domains/basketball.js — Phase I2 basketball minigame surface.
 import crypto from "node:crypto";
+import { LruMap } from "../lib/lru-map.js";
 
-const _activeCourts = new Map();   // courtId -> state
+// No explicit "end match" macro exists to remove a finished court, so this
+// grows for the life of the process. Bound with a generous LRU cap (courts
+// are lightweight score objects) rather than inventing a new cleanup hook.
+const _activeCourts = new LruMap(1000);   // courtId -> state
 
 export default function registerBasketballMacros(register) {
   register("basketball", "start_match", async (ctx, input = {}) => {

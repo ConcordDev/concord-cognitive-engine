@@ -732,6 +732,9 @@ export function removeUser(userId) {
     _userPositions.delete(userId);
     logger.debug("city-presence", `User ${userId} removed from presence`);
   }
+  // Speedster S3 cache follows the same lifecycle as position — without this
+  // it grows forever (one entry per user who ever moved, never freed).
+  _lastSpeed.delete(userId);
 }
 
 // Default stale threshold — entries with `lastUpdate` older than this are
