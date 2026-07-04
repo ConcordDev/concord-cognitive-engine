@@ -24,6 +24,29 @@ const wrap = (payload: unknown) => ({ ok: true, result: { ok: true, result: payl
 
 /** Route /api/lens/run, dispatching a canned computed result per action. */
 async function mockLensCalcs(page: import('@playwright/test').Page) {
+  // The electrical lens page ALSO calls useLensData -> GET /api/lens/electrical
+  // (lib/hooks/use-lens-data.ts) on every mount, independent of the calculator
+  // POSTs mocked below. Left unmocked, that GET hits the real backend with the
+  // fake e2e cookie, gets a 401, and LensPageShell (components/lens/LensPageShell.tsx)
+  // renders <ErrorState> instead of children — so the tab bar (incl. the
+  // "NEC Calculators" button the beforeEach clicks) never mounts and the click
+  // times out. Response shape must match what use-lens-data.ts destructures:
+  // `{ ok: boolean; artifacts: LensItem[]; total: number }` — an honest empty
+  // list (no fabricated artifacts).
+  await page.route('**/api/lens/electrical**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, artifacts: [], total: 0 }),
+    })
+  );
+  // Defensive: mockAuthSuccess plants a fake refresh cookie but doesn't mock
+  // /api/auth/refresh. If any unmocked call ever 401s, lib/api/client.ts's
+  // interceptor tries a real POST /api/auth/refresh before giving up — mocking
+  // it 200 keeps that path inert rather than racing the real backend.
+  await page.route('**/api/auth/refresh', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
+  );
   await page.route('**/api/lens/run', async (route) => {
     const body = (route.request().postDataJSON?.() ?? {}) as LensRunBody;
     const action = body.action || body.name;
