@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthSuccess, gotoStable } from './_helpers';
+import { mockAuthSuccess, gotoStable, blockUnmockedApi } from './_helpers';
 
 /**
  * Admin-gated lenses must render a friendly "Admin access required" state (not a
@@ -11,6 +11,15 @@ import { mockAuthSuccess, gotoStable } from './_helpers';
 
 const ADMIN_LENSES = ['ops-telemetry', 'repair-telemetry', 'psyops', 'crisis-ops', 'ops', 'admin'];
 
+// These are the test's SUBJECT — the 403 on these exact patterns must still
+// reach the lens pages so <AdminRequiredState> renders. They are registered
+// (in the test body) AFTER blockUnmockedApi()'s catch-all, so per Playwright's
+// last-registered-wins route precedence they correctly override the generic
+// 200 for these specific patterns while every other endpoint the page
+// background-probes (age-status, pulse, circuits, quality/thresholds,
+// flywheel, org/list, pipeline/executions, ...) still gets a benign 200 from
+// the catch-all instead of a real 401 that would trip the auth-refresh
+// interceptor and bounce the whole page to /login.
 async function denyAdminData(page: import('@playwright/test').Page) {
   const forbid = (route: import('@playwright/test').Route) =>
     route.fulfill({
@@ -30,6 +39,10 @@ async function denyAdminData(page: import('@playwright/test').Page) {
 test.describe('Admin-gated lenses show a friendly Admin-required state on 403', () => {
   for (const lens of ADMIN_LENSES) {
     test(`/lenses/${lens} renders "Admin access required" for a non-admin`, async ({ page }) => {
+      // Registration order matters: blockUnmockedApi's catch-all MUST be
+      // registered first so mockAuthSuccess's + denyAdminData's more-specific
+      // mocks (registered after) take precedence over it (see _helpers.ts).
+      await blockUnmockedApi(page);
       await mockAuthSuccess(page, { role: 'user' });
       await denyAdminData(page);
       await gotoStable(page, `/lenses/${lens}`);

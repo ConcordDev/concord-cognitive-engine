@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockSovereignAuth, gotoStable } from './_helpers';
+import { mockSovereignAuth, gotoStable, blockUnmockedApi } from './_helpers';
 
 /**
  * Positive counterpart to admin-gated-lenses.spec.ts.
@@ -18,6 +18,10 @@ import { mockSovereignAuth, gotoStable } from './_helpers';
 
 test.describe('Elevated user walks through admin + sovereign controls', () => {
   test('operator lens (ops-telemetry) renders controls, NOT the admin gate', async ({ page }) => {
+    // blockUnmockedApi's catch-all MUST be registered before mockSovereignAuth
+    // so the auth + admin-data mocks it registers (more specific patterns)
+    // take precedence — Playwright routes last-registered-first (_helpers.ts).
+    await blockUnmockedApi(page);
     await mockSovereignAuth(page);
     await gotoStable(page, '/lenses/ops-telemetry');
     // The 403 gate must NOT appear for an elevated user with 200 admin data.
@@ -28,6 +32,7 @@ test.describe('Elevated user walks through admin + sovereign controls', () => {
   });
 
   test('admin lens renders without the access gate for an elevated user', async ({ page }) => {
+    await blockUnmockedApi(page);
     await mockSovereignAuth(page);
     const res = await gotoStable(page, '/lenses/admin');
     expect(res?.status() ?? 200).toBeLessThan(500);
@@ -36,6 +41,7 @@ test.describe('Elevated user walks through admin + sovereign controls', () => {
   });
 
   test('sovereignty controls (/lenses/lock) render live lock state', async ({ page }) => {
+    await blockUnmockedApi(page);
     await mockSovereignAuth(page);
     await gotoStable(page, '/lenses/lock');
     await expect(page).not.toHaveURL(/\/login/);
