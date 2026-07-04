@@ -39,6 +39,9 @@ const SKIP = [
   // excluded — those get real render tests.)
   /(^|\/)world\/CombatVFXBridge\.tsx$/,
   /(^|\/)landscaping\/GardenStudio\.tsx$/,
+  // AR scene authoring studio — mounts an @react-three/fiber <Canvas> as its
+  // 3D preview viewport (same rationale as the two exclusions above).
+  /(^|\/)ar\/SceneStudio\.tsx$/,
   // ConKay's summonable surface + its holographic scene/backdrop + voice hook are
   // browser-only integration code: a socket subscriber, a getUserMedia STT/TTS
   // loop, and a three.js/<Canvas> world-tree. jsdom can't exercise the WebGL/mic

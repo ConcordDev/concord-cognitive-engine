@@ -457,7 +457,7 @@ describe("eco network macros — routed through the SSRF-guarded safeFetchJson",
     // this test is fixing (the handler's two-fetch fallback is correct
     // production behavior, not something to avoid exercising).
     __setPublicFetchTestTransport(async (url) => {
-      if (/\/species\/search/.test(url)) {
+      if (url.includes("/species/search")) {
         assert.match(url, /api\.gbif\.org\/v1\/species\/search/);
         return {
           ok: true,
