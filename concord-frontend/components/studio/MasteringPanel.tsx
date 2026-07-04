@@ -261,24 +261,34 @@ export function MasteringPanel({
       {analysis && (
         <div className="bg-white/5 rounded-xl p-4 border border-white/10 space-y-3">
           <h3 className="text-xs font-semibold text-gray-400 uppercase">Loudness Analysis</h3>
+          <p className="text-[9px] text-gray-500 leading-snug">
+            RMS-based estimate captured live from the master bus AnalyserNode
+            (~3s window) — an approximation, not full ITU-R BS.1770 K-weighted LUFS.
+          </p>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-neon-green font-mono">{analysis.integratedLUFS.toFixed(1)}</div>
-              <div className="text-[10px] text-gray-400">Integrated LUFS</div>
+              <div className="text-[10px] text-gray-400">Integrated LUFS (approx)</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-neon-cyan font-mono">{analysis.truePeak.toFixed(1)}</div>
-              <div className="text-[10px] text-gray-400">True Peak dBTP</div>
+              <div className="text-[10px] text-gray-400">Peak dBFS (sampled)</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-neon-purple font-mono">{analysis.dynamicRange.toFixed(1)}</div>
-              <div className="text-[10px] text-gray-400">Dynamic Range dB</div>
+              <div className="text-[10px] text-gray-400">Crest Factor dB</div>
             </div>
           </div>
-          <MeterBar value={analysis.integratedLUFS} min={-24} max={0} label="Integrated LUFS" unit="LUFS" color="neon-green" target={chain.loudnessTarget} />
-          <MeterBar value={analysis.truePeak} min={-6} max={3} label="True Peak" unit="dBTP" color="neon-cyan" target={-1} />
-          <MeterBar value={analysis.dynamicRange} min={0} max={20} label="Dynamic Range" unit="dB" color="neon-purple" />
-          <MeterBar value={analysis.stereoCorrelation} min={-1} max={1} label="Stereo Correlation" unit="" color="neon-pink" />
+          <MeterBar value={analysis.integratedLUFS} min={-24} max={0} label="Integrated LUFS (approx)" unit="LUFS" color="neon-green" target={chain.loudnessTarget} />
+          <MeterBar value={analysis.truePeak} min={-6} max={3} label="Peak (sampled)" unit="dBFS" color="neon-cyan" target={-1} />
+          <MeterBar value={analysis.dynamicRange} min={0} max={20} label="Crest Factor" unit="dB" color="neon-purple" />
+          {analysis.stereoCorrelation !== undefined ? (
+            <MeterBar value={analysis.stereoCorrelation} min={-1} max={1} label="Stereo Correlation" unit="" color="neon-pink" />
+          ) : (
+            <div className="text-[9px] text-gray-500 italic">
+              Stereo correlation not available — the master analysis tap is mono-downmixed (no per-channel split wired), so phase correlation can&apos;t be measured yet.
+            </div>
+          )}
         </div>
       )}
 

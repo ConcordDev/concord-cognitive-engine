@@ -488,6 +488,7 @@ export default function StudioLensPage() {
   // Mastering
   const [masteringAnalysis, setMasteringAnalysis] = useState<MasteringAnalysis | null>(null);
   const [spectrumData, setSpectrumData] = useState<Uint8Array | null>(null);
+  const [isAnalyzingMaster, setIsAnalyzingMaster] = useState(false);
 
   // AI Assistant state
   const [aiLoading, setAiLoading] = useState<string | null>(null);
@@ -1264,19 +1265,82 @@ export default function StudioLensPage() {
     [updateProject]
   );
 
+  // ---- Real master-bus analysis ----
+  // Samples the live MixerEngine master AnalyserNode (mixerRef) over a
+  // real ~3s capture window and derives RMS-based loudness/peak/dynamic-
+  // range numbers from the ACTUAL signal — no fabricated values. This is
+  // an RMS-based *approximation* of loudness, not full ITU-R BS.1770
+  // K-weighted LUFS (no K-weighting filter or gating stage is applied);
+  // labeled as such in the UI. Stereo correlation is intentionally left
+  // undefined: the master analyser tap downmixes to mono before analysis
+  // (Web Audio AnalyserNode spec), so there is no per-channel phase data
+  // to measure — faking a number there would violate the no-fabrication
+  // rule, so the UI shows "not available" instead.
+  const ANALYZE_SAMPLE_INTERVAL_MS = 100;
+  const ANALYZE_SAMPLE_COUNT = 30; // ~3s capture window
+
   const handleAnalyze = useCallback(() => {
-    // Placeholder — real implementation needs Web Audio AnalyserNode
-    setTimeout(() => {
-      setMasteringAnalysis({
-        integratedLUFS: 0,
-        shortTermLUFS: 0,
-        momentaryLUFS: 0,
-        truePeak: 0,
-        dynamicRange: 0,
-        stereoCorrelation: 0,
-        spectralBalance: Array.from({ length: 8 }, () => 0),
-      });
-    }, 500);
+    const mixer = mixerRef.current;
+    if (!mixer) return;
+    setIsAnalyzingMaster(true);
+
+    const samples: { rms: number; peak: number }[] = [];
+    const toDb = (linear: number) => (linear > 0.0001 ? 20 * Math.log10(linear) : -60);
+
+    let tick = 0;
+    const captureTimer = setInterval(() => {
+      const timeDomain = mixer.getMasterWaveformData(); // real Uint8Array, 128 = silence
+      let sumSq = 0;
+      let peak = 0;
+      for (let i = 0; i < timeDomain.length; i++) {
+        const v = (timeDomain[i] - 128) / 128; // -1..1
+        sumSq += v * v;
+        const abs = Math.abs(v);
+        if (abs > peak) peak = abs;
+      }
+      samples.push({ rms: Math.sqrt(sumSq / timeDomain.length), peak });
+      tick += 1;
+
+      if (tick >= ANALYZE_SAMPLE_COUNT) {
+        clearInterval(captureTimer);
+
+        const avgRms = (arr: typeof samples) =>
+          arr.length ? arr.reduce((s, x) => s + x.rms, 0) / arr.length : 0;
+        const momentarySamples = samples.slice(-4); // last ~400ms
+        const momentaryRms = avgRms(momentarySamples.length ? momentarySamples : samples);
+        const integratedRms = avgRms(samples);
+        const peakLinear = samples.reduce((m, x) => Math.max(m, x.peak), 0);
+
+        // 8-band spectral summary from the real frequency-domain snapshot
+        // (same analyser already driving the spectrum visualizer above).
+        const freqData = mixer.getMasterAnalyserData();
+        const bands = 8;
+        const bandSize = Math.max(1, Math.floor(freqData.length / bands));
+        const spectralBalance = Array.from({ length: bands }, (_, b) => {
+          const start = b * bandSize;
+          const end = Math.min(freqData.length, start + bandSize);
+          if (end <= start) return 0;
+          let sum = 0;
+          for (let i = start; i < end; i++) sum += freqData[i];
+          return sum / (end - start) / 255;
+        });
+
+        setMasteringAnalysis({
+          integratedLUFS: toDb(integratedRms) - 0.691,
+          shortTermLUFS: toDb(integratedRms) - 0.691,
+          momentaryLUFS: toDb(momentaryRms) - 0.691,
+          truePeak: toDb(peakLinear),
+          dynamicRange: toDb(peakLinear) - toDb(integratedRms), // crest factor
+          stereoCorrelation: undefined,
+          spectralBalance,
+        });
+        setIsAnalyzingMaster(false);
+
+        if (peakLinear < 0.002) {
+          showToast('info', 'No audio signal detected on the master bus — press play to analyze the live mix');
+        }
+      }
+    }, ANALYZE_SAMPLE_INTERVAL_MS);
   }, []);
 
   const handleExport = useCallback(
@@ -2073,6 +2137,7 @@ export default function StudioLensPage() {
               onUpdateChain={handleUpdateMasteringChain}
               onAnalyze={handleAnalyze}
               onExport={handleExport}
+              isAnalyzing={isAnalyzingMaster}
             />
           )}
 
