@@ -1,5 +1,9 @@
 // server/routes/connector-oauth.js
 //
+// @env-config-ok — the notion.authUrl/tokenUrl below are Notion's fixed,
+// vendor-published OAuth authorize/token endpoints, not deployment-specific
+// config (same shape as the other providers' authUrl/tokenUrl in this file).
+//
 // Track C — the documented gap: the connector-AUTHORIZE flow (distinct from
 // identity sign-in in routes/oauth.js). A connector flow needs the user to
 // grant DATA-access scopes (Calendar/Gmail/Sheets/Slack), then persists the

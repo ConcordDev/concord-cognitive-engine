@@ -89,17 +89,6 @@ describe("EnvConfigDriftDetector — hardcoded production URL", () => {
     } finally { teardown(dir); }
   });
 
-  it("skips well-known public API / OAuth hosts (Notion) and profile-link hosts (Twitter)", async () => {
-    const dir = withFixture({
-      "server/lib/notion.js": `const NOTION_BASE = "https://api.notion.com/v1";\n`,
-      "concord-frontend/components/y.tsx": `const url = \`https://twitter.com/\${handle}\`;\n`,
-    });
-    try {
-      const r = await runEnvConfigDriftDetector({ root: dir });
-      assert.equal(r.findings.filter(f => f.id === "hardcoded_prod_url").length, 0);
-    } finally { teardown(dir); }
-  });
-
   it("skips well-known map/reference-link hosts (Google Maps, SkyVector)", async () => {
     const dir = withFixture({
       "concord-frontend/components/z.tsx":

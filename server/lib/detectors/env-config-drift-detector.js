@@ -88,13 +88,6 @@ const PUBLIC_API_HOST_RE = new RegExp(
     // OAuth authorize / token + identity discovery hosts
     "accounts\\.google\\.com", "oauth2\\.googleapis\\.com",
     "slack\\.com", "webfinger\\.net",
-    // Notion's fixed public API base (also used for its OAuth authorize/
-    // token endpoints) — same shape as accounts.google.com/slack.com above.
-    "api\\.notion\\.com",
-    // Social-profile link construction (not just share intents, which the
-    // dedicated regex below already covers) — twitter.com/${handle} is a
-    // public, non-configurable profile URL.
-    "twitter\\.com",
     // WebRTC / TURN (Cloudflare Realtime)
     "rtc\\.live\\.cloudflare\\.com",
     // Stripe.js public loader CDN (required fixed URL, not config)
