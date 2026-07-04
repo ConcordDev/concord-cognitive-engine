@@ -6,18 +6,28 @@
  *
  *   Part 1: Fabrication, Sensors, Blockchain, Shell        (15 routes)
  *   Part 2: Notebook, Marketplace, Certificates, Federation (20 routes)
- *   Part 3: DSL Compiler, Digital Twins, Voice, Replay     (14 routes)
  *   Part 4: Agents, Standards, DTU Diff, Dependency Graph  (13 routes)
  *
- * Total: 62 routes across 16 frontier features
+ * Part 3 (DSL Compiler, Digital Twins, Voice, Replay) was removed
+ * 2026-07-04 — it was entirely fabricated data (Math.random telemetry,
+ * canned findings, a hardcoded fake voice transcript, a fake DSL
+ * "compiler") with zero consumers. Real equivalents live in
+ * domains/digital-twin.js and the event_timeline domain.
+ *
+ * Total: 48 routes across 12 frontier features
  */
 
 import { Router } from 'express';
 import { createRequire } from 'module';
 import createFrontierRoutesPart1 from './frontier-part1.js';
 import createFrontierRoutesPart2 from './frontier-part2.js';
-import createFrontierRoutesPart3 from './frontier-part3.js';
 import createFrontierRoutesPart4 from './frontier-part4.js';
+// frontier-part3.js was removed (2026-07-04) — every route in it fabricated
+// data (Math.random sensor telemetry, canned "assessment" findings, a
+// hardcoded fake voice transcript, random forensic event counts, a fake DSL
+// "compiler") and had zero consumers repo-wide. This unified router (frontier.js
+// itself) also has zero consumers — it is never imported by server.js, which
+// mounts part1/part2/part4 directly instead.
 
 // Load CommonJS frontier config via createRequire (config is CJS)
 const require = createRequire(import.meta.url);
@@ -40,7 +50,6 @@ export default function createFrontierRoutes({ requireAuth } = {}) {
   // Mount each feature group
   router.use('/', createFrontierRoutesPart1({ requireAuth }));
   router.use('/', createFrontierRoutesPart2({ requireAuth }));
-  router.use('/', createFrontierRoutesPart3({ requireAuth }));
   router.use('/', createFrontierRoutesPart4({ requireAuth }));
 
   // ── Health & Discovery ──────────────────────────────────────────────────
@@ -52,10 +61,9 @@ export default function createFrontierRoutes({ requireAuth } = {}) {
       features: [
         'fabrication', 'sensors', 'blockchain', 'shell',
         'notebooks', 'marketplace', 'certificates', 'federation',
-        'dsl', 'twins', 'voice', 'replay',
         'agents', 'standards', 'dtu-diff', 'dependency-graph',
       ],
-      featureCount: 16,
+      featureCount: 12,
       status: 'operational',
       uptime: process.uptime(),
     });

@@ -134,7 +134,6 @@ test("CodeQL drift: no top-level eval() in any source file", () => {
   // forbidden-pattern string for its own scanner.
   const allowed = [
     "server/routes/forge.js",          // forbidden-pattern detector string
-    "server/routes/frontier-part3.js", // forbidden-pattern detector string
     "server/domains/repos.js",         // code-review detector: /eval\s*\(/ rule pattern
   ];
   // Negative lookbehind: not preceded by `$` (Puppeteer) or `.` (foo.eval).

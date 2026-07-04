@@ -33526,12 +33526,16 @@ try { app.use("/api/emergent-features", createEmergentFeaturesRouter({ STATE, re
 
 import createFrontierRoutesPart1 from "./routes/frontier-part1.js";
 import createFrontierRoutesPart2 from "./routes/frontier-part2.js";
-import createFrontierRoutesPart3 from "./routes/frontier-part3.js";
 import createFrontierRoutesPart4 from "./routes/frontier-part4.js";
+// frontier-part3.js was removed (2026-07-04): every route in it fabricated data
+// (Math.random sensor telemetry, canned "assessment" findings, a hardcoded fake
+// voice transcript with confidence 0.95 regardless of input, random forensic
+// event counts, a fake DSL "compiler" that just chunked lines mod 3) and had
+// zero consumers repo-wide. Real, honest equivalents live in domains/digital-twin.js
+// and the event_timeline domain.
 try {
   app.use("/api", createFrontierRoutesPart1({ requireAuth }));
   app.use("/api", createFrontierRoutesPart2({ requireAuth }));
-  app.use("/api", createFrontierRoutesPart3({ requireAuth }));
   app.use("/api", createFrontierRoutesPart4({ requireAuth }));
 } catch (e) { structuredLog("warn", "frontier_routes_skip", { error: e.message }); }
 
@@ -33696,8 +33700,8 @@ app.get("/api/city/streams", async (req, res) => {
 });
 
 structuredLog("info", "previously_missing_routes_registered", {
-  count: 15,
-  routes: ["cdn","emergent-features","frontier-part1","frontier-part2","frontier-part3","frontier-part4","helpers-extended","media","moderation","social-groups","feeds","canonical","attribution","city"],
+  count: 14,
+  routes: ["cdn","emergent-features","frontier-part1","frontier-part2","frontier-part4","helpers-extended","media","moderation","social-groups","feeds","canonical","attribution","city"],
 });
 
 // ===== SPECIES API =====
