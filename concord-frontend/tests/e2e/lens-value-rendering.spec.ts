@@ -86,15 +86,23 @@ test.describe('Lens value rendering — computed values reach the screen', () =>
   test('wireSize: load amps → #8 AWG / 50A breaker render', async ({ page }) => {
     await page.getByPlaceholder('e.g. 40').fill('40');
     await page.getByRole('button', { name: /^Size wire$/i }).click();
-    await expect(page.getByText('#8 AWG')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('50A')).toBeVisible();
-    await expect(page.getByText('2.9%')).toBeVisible();
+    // NecCalculators.tsx renders each computed result in a `.font-mono.text-lg`
+    // value cell; "50A" also appears verbatim inside a `Design load 50A ·
+    // ampacity` caption elsewhere on the page, so a bare getByText('50A')
+    // strict-mode-fails with 2 matches. Scope to the styled result cell.
+    await expect(page.locator('div.font-mono.text-lg', { hasText: '#8 AWG' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('div.font-mono.text-lg', { hasText: /^50A$/ })).toBeVisible();
+    await expect(page.locator('div.font-mono.text-lg', { hasText: /^2\.9%$/ })).toBeVisible();
   });
 
   test('conduitFill: recommended conduit size + fill % render', async ({ page }) => {
     await page.getByRole('button', { name: /^Size conduit$/i }).click();
-    await expect(page.getByText('1"')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('11.5%')).toBeVisible();
+    // Same ambiguity as above: the "Verify size (optional)" <select> has a
+    // literal `<option>1"</option>` in the DOM alongside the computed result
+    // cell, so getByText('1"') strict-mode-fails with 2 matches even though
+    // only one is visible. Scope to the styled result cell.
+    await expect(page.locator('div.font-mono.text-lg', { hasText: /^1"$/ })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('div.font-mono.text-lg', { hasText: /^11\.5%$/ })).toBeVisible();
   });
 
   test('boxFill: required volume + PASS verdict render', async ({ page }) => {

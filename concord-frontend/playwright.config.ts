@@ -67,6 +67,20 @@ export default defineConfig({
     // page actions whose API calls were waiting on a brief stall.
     navigationTimeout: 60000,
     actionTimeout: 120000,
+    // The app registers a real Service Worker (public/sw.js via
+    // AppShell.tsx#navigator.serviceWorker.register). A SW's own fetch()
+    // calls run in the worker's execution context, NOT the page's — so
+    // page.route() mocks (auth, admin-403, lens data) never see them, and
+    // once the SW takes control it can independently replay/retry
+    // network requests (including auth refresh) straight to the real
+    // backend. Root-caused via server logs: hundreds of real
+    // `POST /api/auth/refresh` hits (429-rate-limited) with none of the
+    // test's mocked routes involved, timed to whichever test happened to
+    // run after the SW finished activating — a Service-Worker escape of
+    // Playwright's network interception, not a mock gap. Blocking SW
+    // registration in the test browser context is Playwright's documented
+    // fix for exactly this class of bug.
+    serviceWorkers: 'block',
   },
   // Per-test timeout — covers the whole spec body including setup
   // and teardown. 180 s lets cold-loading heavy Three.js worlds
