@@ -312,8 +312,9 @@ export function DesignHUD({ worldId, worldType = 'standard', onClose, onSaved }:
       if (data.ok) {
         setCraftResult(`✦ ${spec.name} created!`);
       } else {
+        const missing = Array.isArray(data?.missing_resources) ? data.missing_resources : [];
         setCraftResult(
-          `✗ ${data.error || 'Craft failed'}: ${data.missing_resources?.map((r: ResourceRequirement) => `${r.quantity}× ${r.resource_id}`).join(', ') || ''}`
+          `✗ ${data?.error || 'Craft failed'}: ${missing.map((r: ResourceRequirement) => `${r.quantity}× ${r.resource_id}`).join(', ')}`
         );
       }
     } catch {

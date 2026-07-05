@@ -332,7 +332,7 @@ export async function checkCloudConnection(): Promise<{ connected: boolean; emai
       });
       if (!res.ok) return { connected: false, error: 'Invalid token' };
       const data = await res.json();
-      return { connected: true, email: data.user?.emailAddress };
+      return { connected: true, email: data?.user?.emailAddress };
     } else if (config.provider === 'dropbox') {
       const res = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
         method: 'POST',
@@ -361,8 +361,8 @@ export async function getCloudUsage(): Promise<{ used: number; total: number } |
       if (!res.ok) return null;
       const data = await res.json();
       return {
-        used: Number(data.storageQuota?.usage || 0),
-        total: Number(data.storageQuota?.limit || 0),
+        used: Number(data?.storageQuota?.usage || 0),
+        total: Number(data?.storageQuota?.limit || 0),
       };
     } else if (config.provider === 'dropbox') {
       const res = await fetch('https://api.dropboxapi.com/2/users/get_space_usage', {
@@ -372,8 +372,8 @@ export async function getCloudUsage(): Promise<{ used: number; total: number } |
       if (!res.ok) return null;
       const data = await res.json();
       return {
-        used: data.used || 0,
-        total: data.allocation?.allocated || 0,
+        used: data?.used || 0,
+        total: data?.allocation?.allocated || 0,
       };
     }
     return null;

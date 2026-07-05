@@ -25,7 +25,7 @@ export function ProjectIOPanel({ projectId }: { projectId?: string }) {
     setBusy(true); setErr(null); setJob(null);
     try {
       const res = await lensRun('studio', 'export-stems', { projectId, format, sampleRate });
-      if (res.data?.ok) setJob(res.data.result.job as StemJob);
+      if (res.data?.ok) setJob((res.data.result?.job ?? null) as StemJob | null);
       else setErr(res.data?.error || 'Stem export failed.');
     } catch (e) { console.error('[ProjectIO] stems', e); setErr('Stem export failed.'); }
     finally { setBusy(false); }
@@ -36,7 +36,7 @@ export function ProjectIOPanel({ projectId }: { projectId?: string }) {
     setBusy(true); setErr(null);
     try {
       const res = await lensRun('studio', 'project-export', { projectId });
-      if (!res.data?.ok) { setErr(res.data?.error || 'Project export failed.'); return; }
+      if (!res.data?.ok || !res.data.result) { setErr(res.data?.error || 'Project export failed.'); return; }
       const bundle = res.data.result.bundle;
       const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);

@@ -75,7 +75,7 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
 
   const loadShare = useCallback(async (id: string) => {
     const r = await lensRun('voice', 'share-detail', { recordingId: id });
-    setShare(r.data?.ok && r.data.result?.shared ? (r.data.result.share as ShareInfo) : null);
+    setShare(r.data?.ok && r.data.result?.shared ? ((r.data.result?.share as ShareInfo) ?? null) : null);
   }, []);
 
   const loadTranslations = useCallback(async (id: string) => {
@@ -183,8 +183,8 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
     });
     setBusy(null);
     if (r.data?.ok) {
-      const t = r.data.result?.translation as { segments: TranslatedSeg[] };
-      setTranslatedSegs(t.segments);
+      const t = r.data.result?.translation as { segments: TranslatedSeg[] } | undefined;
+      setTranslatedSegs(t?.segments ?? null);
       await loadTranslations(active.id);
     } else {
       setError(r.data?.error || 'Translation failed');

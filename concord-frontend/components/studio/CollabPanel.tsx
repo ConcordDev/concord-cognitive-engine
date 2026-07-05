@@ -72,7 +72,7 @@ export function CollabPanel({ projectId }: { projectId?: string }) {
     if (!projectId) return;
     try {
       const res = await lensRun('studio', 'collab-session-start', { projectId, displayName: displayName || undefined });
-      if (res.data?.ok) { setSession(res.data.result.session as Session); setJoined(true); }
+      if (res.data?.ok) { setSession((res.data.result?.session ?? null) as Session | null); setJoined(true); }
     } catch (e) { console.error('[Collab] start', e); }
   }
 
@@ -81,9 +81,11 @@ export function CollabPanel({ projectId }: { projectId?: string }) {
     try {
       const res = await lensRun('studio', 'collab-join', { projectId, displayName: displayName || undefined });
       if (res.data?.ok) {
-        const s = res.data.result.session as Session;
-        setSession(s); setCollaborators(s.collaborators); sinceSeqRef.current = s.editLog.length;
-        setJoined(true);
+        const s = (res.data.result?.session ?? null) as Session | null;
+        if (s) {
+          setSession(s); setCollaborators(s.collaborators); sinceSeqRef.current = s.editLog.length;
+          setJoined(true);
+        }
       }
     } catch (e) { console.error('[Collab] join', e); }
   }

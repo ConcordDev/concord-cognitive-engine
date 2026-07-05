@@ -36,7 +36,7 @@ export function SubmarineHUD() {
       const r = await fetch('/api/players/me/dive-state', { credentials: 'include' });
       if (!r.ok) return;
       const j = await r.json();
-      setState(j?.ok && j.diveState?.isSwimming ? j.diveState : null);
+      setState(j?.ok && j?.diveState?.isSwimming ? j.diveState : null);
     } catch { /* network blip */ }
   }, []);
 
