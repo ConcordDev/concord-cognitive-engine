@@ -84,6 +84,43 @@ describe("ResourceLeakDetector — listener without remove", () => {
       assert.equal(r.findings.filter(f => f.id === "listener_without_remove").length, 0);
     } finally { teardown(dir); }
   });
+
+  it("does NOT flag a comment-only mention of addEventListener (JSDoc example prose)", async () => {
+    const dir = withFixture({
+      "concord-frontend/hooks/useFoo.ts": `/**
+ * Explains the pattern this file guards against:
+ * a bare \`window.addEventListener('foo:bar', ...)\` with no cleanup
+ * leaks the listener across remounts.
+ */
+// Another mention: window.addEventListener('name', handler) — still just prose.
+export function useFoo() {
+  const off = subscribe('resize', onResize);
+  return () => off();
+}
+`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "listener_without_remove").length, 0,
+        "a comment-only mention must not be misread as a real unpaired listener call");
+    } finally { teardown(dir); }
+  });
+
+  it("STILL flags a real unpaired listener sitting right after a comment with an apostrophe", async () => {
+    const dir = withFixture({
+      "concord-frontend/hooks/useFoo.ts": `// Reads the player's current context on mount.
+export function useFoo() {
+  window.addEventListener('concordia:context-update', onUpdate);
+}
+`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      const f = r.findings.find(x => x.id === "listener_without_remove");
+      assert.ok(f, "a real unpaired listener must still be flagged even after a comment containing an apostrophe");
+      assert.equal(f.subject.event, "concordia:context-update");
+    } finally { teardown(dir); }
+  });
 });
 
 describe("ResourceLeakDetector — db.prepare inside a loop", () => {

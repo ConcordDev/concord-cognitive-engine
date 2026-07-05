@@ -7,13 +7,23 @@ import { useIdentity } from '../../hooks/useIdentity';
 import { useBattery } from '../../hooks/useBattery';
 import { useBrainStore } from '../../store/brain-store';
 
-function SettingRow({ label, value, onToggle }: { label: string; value: boolean; onToggle: (v: boolean) => void }) {
+// `disabled` rows (no persisted per-user transport/privacy preference store
+// exists yet — see mesh-store.ts's `transports` array, which tracks live
+// connection status, not a user-toggleable enable/disable preference) render
+// the switch non-interactive rather than accepting a tap that updates
+// nothing real. A privacy toggle that visibly flips OFF but never reaches
+// the mesh/sensor pipeline is worse than an honestly-inert one — the user
+// would believe a preference took effect when it didn't.
+function SettingRow({ label, value, onToggle, disabled }: { label: string; value: boolean; onToggle: (v: boolean) => void; disabled?: boolean }) {
   return (
     <View style={styles.settingRow}>
-      <Text style={styles.settingLabel}>{label}</Text>
+      <Text style={[styles.settingLabel, disabled && styles.settingLabelDisabled]}>
+        {label}{disabled ? ' (not yet configurable)' : ''}
+      </Text>
       <Switch
         value={value}
         onValueChange={onToggle}
+        disabled={disabled}
         trackColor={{ false: '#333', true: '#1a3a5c' }}
         thumbColor={value ? '#00d4ff' : '#666'}
       />
@@ -78,21 +88,36 @@ export function SettingsScreen() {
       </View>
 
       {/* Transport Toggles */}
+      {/* No persisted per-user transport preference store exists yet
+          (mesh-store.ts tracks live connection status only) — every row
+          renders disabled+labeled honestly instead of accepting a tap
+          that updates nothing real. */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Transports</Text>
-        <SettingRow label="Bluetooth Mesh" value={true} onToggle={() => {}} />
-        <SettingRow label="WiFi Direct" value={true} onToggle={() => {}} />
-        <SettingRow label="NFC Tap Transfer" value={true} onToggle={() => {}} />
-        <SettingRow label="LoRa Bridge" value={false} onToggle={() => {}} />
-        <SettingRow label="Broadcast Receive" value={false} onToggle={() => {}} />
+        {/* detector-allow: hardcoded-prop see the section note above */}
+        <SettingRow label="Bluetooth Mesh" value={true} onToggle={() => {}} disabled />
+        {/* detector-allow: hardcoded-prop see the section note above */}
+        <SettingRow label="WiFi Direct" value={true} onToggle={() => {}} disabled />
+        {/* detector-allow: hardcoded-prop see the section note above */}
+        <SettingRow label="NFC Tap Transfer" value={true} onToggle={() => {}} disabled />
+        {/* detector-allow: hardcoded-prop see the section note above */}
+        <SettingRow label="LoRa Bridge" value={false} onToggle={() => {}} disabled />
+        {/* detector-allow: hardcoded-prop see the section note above */}
+        <SettingRow label="Broadcast Receive" value={false} onToggle={() => {}} disabled />
       </View>
 
       {/* Privacy */}
+      {/* No persisted per-user privacy preference store exists yet —
+          every row renders disabled+labeled honestly instead of
+          accepting a tap that updates nothing real. */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Privacy</Text>
-        <SettingRow label="Foundation Sense" value={true} onToggle={() => {}} />
-        <SettingRow label="Share Sensor Data to Mesh" value={true} onToggle={() => {}} />
-        <SettingRow label="Broadcast Bridge Mode" value={false} onToggle={() => {}} />
+        {/* detector-allow: hardcoded-prop see the section note above */}
+        <SettingRow label="Foundation Sense" value={true} onToggle={() => {}} disabled />
+        {/* detector-allow: hardcoded-prop see the section note above */}
+        <SettingRow label="Share Sensor Data to Mesh" value={true} onToggle={() => {}} disabled />
+        {/* detector-allow: hardcoded-prop see the section note above */}
+        <SettingRow label="Broadcast Bridge Mode" value={false} onToggle={() => {}} disabled />
         <Text style={styles.privacyNote}>
           Location is always approximate (100m grid). Bluetooth scans never capture
           individual device identifiers. All sensor data is aggregated.
@@ -152,6 +177,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   settingLabel: { color: '#e0e0e0', fontSize: 14 },
+  settingLabelDisabled: { color: '#666' },
   infoRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 8,

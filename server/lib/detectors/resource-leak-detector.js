@@ -78,6 +78,27 @@ const FS_CLOSE_RE = /\bfs\.(?:promises\.)?close\s*\(|\.close\(\)|\.end\(\)/;
 // loop body (vs after it).
 const LOOP_OPEN_RE = /\b(for|while)\s*\([^)]*\)\s*\{/g;
 const ANNOTATION_OK_RE = /@resource-leak-ok\b/;
+
+// Block-comment span check for the addEventListener/removeEventListener
+// pairing rule below. Without this, a JSDoc header that quotes example code
+// like `window.addEventListener('foo:bar', ...)` as PROSE (documenting the
+// pattern this detector itself looks for, or another detector's own
+// source explaining ITS pairing logic) gets misread as a real, unpaired
+// listener call. Index-range based (not a stateful per-character quote
+// tracker) so it can't be poisoned by an apostrophe earlier in the file —
+// the same class of bug this codebase's dead-event-listener-detector.js
+// already documents against its own naive isInsideComment() helper.
+function isInsideBlockOrLineComment(content, index) {
+  const lineStart = content.lastIndexOf("\n", index) + 1;
+  const linePrefix = content.slice(lineStart, index);
+  if (/^\s*(\/\/|\*|\/\*)/.test(linePrefix)) return true;
+  const blockRe = /\/\*[\s\S]*?\*\//g;
+  let bm;
+  while ((bm = blockRe.exec(content)) != null) {
+    if (bm.index <= index && index < bm.index + bm[0].length) return true;
+  }
+  return false;
+}
 // Module-scope empty-array accumulator: `const/let foo = []` (optionally
 // typed, e.g. `const foo: Item[] = []`), exported or not. Only the EMPTY
 // literal is a candidate — a pre-filled literal (`= [1,2,3]`) is a
@@ -243,6 +264,7 @@ export async function runResourceLeakDetector({ root, opts = {} } = {}) {
       for (const m of addMatches.slice(0, 10)) {
         const event = m[1];
         if (removed.has(event)) continue;
+        if (isInsideBlockOrLineComment(content, m.index)) continue;
         const lineNum = content.slice(0, m.index).split("\n").length;
         const lineText = content.split("\n")[lineNum - 1] || "";
         if (ANNOTATION_OK_RE.test(lineText)) continue;

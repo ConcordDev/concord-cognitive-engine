@@ -40,7 +40,7 @@ async function _loadDb() {
 // Bounded by design: keyed only by the fixed, hardcoded set of worker-flagged
 // module IDs in idToPath below (~10 entries) — this never grows with users,
 // worlds, or runtime data, so no eviction is needed.
-const _moduleCache = new Map();
+const _moduleCache = new Map(); // @bounded-cache-ok: keyed only by the fixed ~10 hardcoded module IDs in idToPath below, never grows with users/worlds/runtime data
 
 async function _loadModule(moduleId) {
   if (_moduleCache.has(moduleId)) return _moduleCache.get(moduleId);
