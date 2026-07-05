@@ -1761,7 +1761,10 @@ export default function ConcordiaScene({
       cameraLookState.yaw = (cameraLookState.yaw + yawDelta) % (Math.PI * 2);
       cameraLookState.pitch = Math.max(-1.2, Math.min(1.2, cameraLookState.pitch + pitchDelta));
     }
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    function handleContextMenuPrevent(e: Event) {
+      e.preventDefault();
+    }
+    canvas.addEventListener('contextmenu', handleContextMenuPrevent);
     canvas.addEventListener('mousedown', maybeRequestPointerLock);
     document.addEventListener('mousemove', handleMouseMove);
 
@@ -1778,6 +1781,7 @@ export default function ConcordiaScene({
       window.removeEventListener('concordia:hide-hud', handleHideHud);
       canvas.removeEventListener('click', handleCanvasClick);
       canvas.removeEventListener('contextmenu', handleContextMenu);
+      canvas.removeEventListener('contextmenu', handleContextMenuPrevent);
       canvas.removeEventListener('mousedown', maybeRequestPointerLock);
       document.removeEventListener('mousemove', handleMouseMove);
       try { document.exitPointerLock?.(); } catch { /* no-op */ }

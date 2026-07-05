@@ -115,7 +115,7 @@ export function NeuroActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Neuro — ${signalKind} (${channels.length}ch)`, tags: ['neuro', 'eeg', signalKind], source: 'neuro:bench:mint', meta: { visibility: 'private', consent: { allowCitations: false }, neuro: { kind: signalKind, freq: freqResult, conn: connResult, erp: erpResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Neuro — ${signalKind} (${channels.length}ch)`, tags: ['neuro', 'eeg', signalKind, 'synthetic'], source: 'neuro:bench:mint', meta: { visibility: 'private', consent: { allowCitations: false }, synthetic: true, neuro: { kind: signalKind, freq: freqResult, conn: connResult, erp: erpResult, synthetic: true } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('neuro.mintedDtuId', id, { label: `bench ${id.slice(0, 8)}` }); ok(`Neuro DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -139,7 +139,7 @@ export function NeuroActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `EEG dataset — ${signalKind}`, tags: ['neuro', 'eeg', 'public'], source: 'neuro:dataset:publish', meta: { visibility: 'public', consent: { allowCitations: true }, freq: freqResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `EEG dataset — ${signalKind} (synthetic demo)`, tags: ['neuro', 'eeg', 'public', 'synthetic'], source: 'neuro:dataset:publish', meta: { visibility: 'public', consent: { allowCitations: true }, synthetic: true, freq: freqResult } } });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -178,6 +178,16 @@ export function NeuroActionPanel() {
         <h3 className="text-sm font-semibold text-white">Neuro bench</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">EEG · FFT · connectivity · ERP</span>
       </header>
+
+      <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+        <span>
+          <strong className="font-semibold">Synthetic demo data — not a real EEG recording.</strong>{' '}
+          All channels here are generated with <code className="font-mono">Math.random()</code> jitter for
+          bench/demo purposes. Unlike the EEG Workbench (real imported recordings), nothing on this panel
+          comes from an actual sensor. Any Mint/Publish from this panel is stamped <code className="font-mono">synthetic: true</code>.
+        </span>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <select value={signalKind} onChange={(e) => setSignalKind(e.target.value as typeof signalKind)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">

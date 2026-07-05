@@ -100,27 +100,35 @@ function readBalance(db, reserve) {
 function applyBalanceDelta(db, { reserve, deltaCents, type, sourceTxId, description }) {
   const now = nowISO();
 
-  // Update balance
-  db.prepare(`
-    UPDATE reserves_balance
-       SET balance_cents = balance_cents + ?,
-           updated_at    = ?
-     WHERE reserve = ?
-  `).run(deltaCents, now, reserve);
+  // Single-transaction delta: the balance UPDATE and its ledger INSERT
+  // either both land or neither does. better-sqlite3 nests transactions
+  // as SAVEPOINTs, so a caller (e.g. allocateFromFee) that wraps two
+  // applyBalanceDelta calls in an outer db.transaction(...) composes
+  // safely — this inner transaction becomes a savepoint of the outer one.
+  const tx = db.transaction(() => {
+    // Update balance
+    db.prepare(`
+      UPDATE reserves_balance
+         SET balance_cents = balance_cents + ?,
+             updated_at    = ?
+       WHERE reserve = ?
+    `).run(deltaCents, now, reserve);
 
-  // Ledger entry (always positive amount; type encodes direction)
-  db.prepare(`
-    INSERT INTO reserves_ledger (id, reserve, type, amount_cents, source_tx_id, description, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    reserveLedgerId(),
-    reserve,
-    type,
-    Math.abs(deltaCents),
-    sourceTxId || null,
-    description || null,
-    now,
-  );
+    // Ledger entry (always positive amount; type encodes direction)
+    db.prepare(`
+      INSERT INTO reserves_ledger (id, reserve, type, amount_cents, source_tx_id, description, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      reserveLedgerId(),
+      reserve,
+      type,
+      Math.abs(deltaCents),
+      sourceTxId || null,
+      description || null,
+      now,
+    );
+  });
+  tx();
 }
 
 /**
@@ -178,21 +186,29 @@ export function allocateFromFee(db, { feeAmount, sourceTxId, requestId, ip }) {
     const chargebackCents = Math.round(feeCents * chargebackRate);
     const operatingCents  = feeCents - chargebackCents; // exact complement
 
-    applyBalanceDelta(db, {
-      reserve:     RESERVE_CHARGEBACK,
-      deltaCents:  chargebackCents,
-      type:        "fee_allocation",
-      sourceTxId,
-      description: `Fee allocation (${atTarget ? "maintenance" : "building"} phase); requestId=${requestId || "-"} ip=${ip || "-"}`,
-    });
+    // Outer transaction: the chargeback + operating allocations from the
+    // same fee split either both land or neither does. applyBalanceDelta's
+    // own db.transaction(...) nests as a SAVEPOINT inside this one (see
+    // its comment) — a crash between the two calls no longer leaves one
+    // reserve credited without its sibling.
+    const allocateTx = db.transaction(() => {
+      applyBalanceDelta(db, {
+        reserve:     RESERVE_CHARGEBACK,
+        deltaCents:  chargebackCents,
+        type:        "fee_allocation",
+        sourceTxId,
+        description: `Fee allocation (${atTarget ? "maintenance" : "building"} phase); requestId=${requestId || "-"} ip=${ip || "-"}`,
+      });
 
-    applyBalanceDelta(db, {
-      reserve:     RESERVE_OPERATING,
-      deltaCents:  operatingCents,
-      type:        "fee_allocation",
-      sourceTxId,
-      description: `Operating allocation from fee; requestId=${requestId || "-"} ip=${ip || "-"}`,
+      applyBalanceDelta(db, {
+        reserve:     RESERVE_OPERATING,
+        deltaCents:  operatingCents,
+        type:        "fee_allocation",
+        sourceTxId,
+        description: `Operating allocation from fee; requestId=${requestId || "-"} ip=${ip || "-"}`,
+      });
     });
+    allocateTx();
 
     return {
       ok:                   true,
