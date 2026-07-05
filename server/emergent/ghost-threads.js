@@ -127,9 +127,6 @@ const CONNECTION_PATTERNS = {
 /** @type {Map<string, object>} insightId → ghost insight */
 const _ghostInsights = new Map();
 
-/** @type {{ ts: number }[]} Recent thread runs for rate limiting */
-const _threadHistory = [];
-
 let _runningThreads = 0;
 let _lastRunAt = 0;
 
@@ -234,7 +231,6 @@ export function runGhostThread(STATE, opts = {}) {
 
     _metrics.totalRuns++;
     _metrics.totalInsights += insights.length;
-    _threadHistory.push({ ts: now });
 
     logger.info("ghost-threads", `Ghost thread found ${connections.length} connections, ${insights.length} insights from ${sampled.length} DTUs across ${domains.size} domains`);
 
