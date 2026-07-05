@@ -14,7 +14,10 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search, CornerDownLeft, ArrowUp, ArrowDown, Sparkles, LayoutPanelLeft } from 'lucide-react';
+import {
+  Search, CornerDownLeft, ArrowUp, ArrowDown, Sparkles, LayoutPanelLeft,
+  Dice5, Zap, Crosshair, Ghost, Hourglass, Swords,
+} from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import {
   getCommandPaletteLenses,
@@ -156,7 +159,85 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
       order: 900,
       keywords: ['panel', ...(p.keywords ?? [])],
     }));
-    return [conkay, ...getCommandPaletteLenses(), ...panelEntries];
+    // Run-mode entries (DA4) — pseudo-entries `mode:<id>` that dispatch
+    // `concordia:start-mode` instead of navigating (see navigateToLens
+    // below). ids/labels mirror GameModesHotbarGroup.tsx's MODES exactly —
+    // that component is the one real consumer of the dispatched event.
+    const modeEntries: LensEntry[] = [
+      {
+        id: 'mode:roguelite',
+        name: 'Start Mode — Roguelite',
+        icon: Dice5,
+        description: 'Enter a procgen region. Die or extract — meta-currency banks.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 910,
+        keywords: ['mode', 'roguelite', 'run', 'procgen'],
+      },
+      {
+        id: 'mode:horde',
+        name: 'Start Mode — Horde',
+        icon: Zap,
+        description: 'Bullet heaven. Auto-attack. Wave scaling.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 911,
+        keywords: ['mode', 'horde', 'wave', 'survival'],
+      },
+      {
+        id: 'mode:extraction',
+        name: 'Start Mode — Extraction',
+        icon: Crosshair,
+        description: 'Tarkov-lite. Pickup loot. Reach the extract zone before timer.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 912,
+        keywords: ['mode', 'extraction', 'loot', 'raid'],
+      },
+      {
+        id: 'mode:horror-ghost',
+        name: 'Start Mode — Horror (Ghost)',
+        icon: Ghost,
+        description: 'Host an asymmetric horror session as the ghost.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 913,
+        keywords: ['mode', 'horror', 'ghost', 'asymmetric'],
+      },
+      {
+        id: 'mode:time-loop',
+        name: 'Start Mode — Time Loop',
+        icon: Hourglass,
+        description: 'Enter a looped world. 22-min cycles. Memories survive.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 914,
+        keywords: ['mode', 'time-loop', 'loop'],
+      },
+      {
+        id: 'mode:brawl',
+        name: 'Start Mode — Brawl',
+        icon: Swords,
+        description: 'Fist-only 1v1. Sifu profile. Open the matchmaker.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 915,
+        keywords: ['mode', 'brawl', 'pvp', 'matchmaker'],
+      },
+    ];
+    return [conkay, ...getCommandPaletteLenses(), ...panelEntries, ...modeEntries];
   }, []);
 
   // Filtered + scored results
@@ -261,6 +342,15 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
       // (GlobalPanelHost) instead of navigating away.
       if (lens.id.startsWith('panel:') && typeof window !== 'undefined') {
         openPanel(lens.id.slice('panel:'.length));
+        return;
+      }
+      // A `mode:<id>` entry (DA4 run modes) dispatches the same
+      // `concordia:start-mode` event the hotbar's own buttons trigger
+      // (GameModesHotbarGroup.tsx) instead of navigating away.
+      if (lens.id.startsWith('mode:') && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('concordia:start-mode', {
+          detail: { mode: lens.id.slice('mode:'.length) },
+        }));
         return;
       }
       // "Summon Kay" opens the cross-lens ConKay overlay ON the current lens

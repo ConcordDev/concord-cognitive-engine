@@ -324,17 +324,20 @@ export function HUDContextProvider() {
   }, [setWorldId]);
 
   // Socket-forwarded refusal field event (already in useSocket forwarders).
+  // Note: 'world:refusal-field' is intentionally NOT listened to here — it's
+  // already consumed by 6 independent subscribe()-based consumers elsewhere
+  // (RefusalFieldHUD, CinematicTriggerBridge, EmergentJuiceBridge, SystemFeed,
+  // RefusalFieldBanner, dome-barrier.ts); this provider only needs the
+  // compound-threshold signal for the HUD's refusalStrength slice.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     function onRefusal(e: Event) {
       const d = (e as CustomEvent).detail as { strength?: number } | undefined;
       if (d?.strength != null) setRefusalStrength(d.strength);
     }
-    window.addEventListener('world:refusal-field', onRefusal);
-    window.addEventListener('refusal:compound', onRefusal);
+    window.addEventListener('refusal:compound-threshold', onRefusal);
     return () => {
-      window.removeEventListener('world:refusal-field', onRefusal);
-      window.removeEventListener('refusal:compound', onRefusal);
+      window.removeEventListener('refusal:compound-threshold', onRefusal);
     };
   }, [setRefusalStrength]);
 

@@ -197,7 +197,7 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'scheme:complete' as SocketEvent,
   'dynasty:heir_acceded' as SocketEvent,
   // Concordia Phase 15 — refusal field deep-cold + ark archive unlock
-  'refusal:compound' as SocketEvent,
+  'refusal:compound-threshold' as SocketEvent,
   'ark:archive_unlocked' as SocketEvent,
   'vela:reveal' as SocketEvent,
   // Phase DB2/E7 — brawl invite (direct challenge + matchmaking pairing).
@@ -308,7 +308,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
               event === ('combat:bloodline_fire_cast' as SocketEvent) ||
               event === ('scheme:complete' as SocketEvent) ||
               event === ('dynasty:heir_acceded' as SocketEvent) ||
-              event === ('refusal:compound' as SocketEvent) ||
+              event === ('refusal:compound-threshold' as SocketEvent) ||
               event === ('ark:archive_unlocked' as SocketEvent) ||
               event === ('vela:reveal' as SocketEvent)
             ) {

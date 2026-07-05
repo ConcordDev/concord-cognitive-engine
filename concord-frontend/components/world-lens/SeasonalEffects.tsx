@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { subscribe, type SocketEvent } from '@/lib/realtime/socket';
 
 type Season =
   | 'deep_winter' | 'late_winter' | 'early_spring' | 'late_spring'
@@ -30,7 +31,10 @@ interface WeatherEvent {
 
 interface SeasonEvent {
   worldId?: string;
-  toSeason?: Season;
+  // Server payload field (server/lib/seasons.js#advanceSeasonForWorld) is
+  // `seasonName`, not `toSeason` — the emitter emits `{ worldId, seasonIdx,
+  // seasonName, year, narrative, ts }`.
+  seasonName?: Season;
 }
 
 type ParticleKind = 'snow' | 'leaf' | 'pollen' | 'none';
@@ -66,24 +70,23 @@ export default function SeasonalEffects({ worldId }: Props) {
   const particlesRef = useRef<Particle[]>([]);
   const rafRef = useRef<number | null>(null);
 
-  // Listen for socket events bridged via `window` CustomEvents (the world
-  // lens already does this for other socket-aware components).
+  // Listen directly on the socket via subscribe() — there is no window-bridge
+  // for these two events (server emits `world:season-transition` and
+  // `world:weather`, neither of which is forwarded to a `concordia:*` window
+  // CustomEvent), so this component subscribes to the socket itself rather
+  // than a bridge that doesn't exist.
   useEffect(() => {
-    const onSeason = (e: Event) => {
-      const ce = e as CustomEvent<SeasonEvent>;
-      if (ce.detail?.worldId && ce.detail.worldId !== worldId) return;
-      if (ce.detail?.toSeason) setSeason(ce.detail.toSeason);
-    };
-    const onWeather = (e: Event) => {
-      const ce = e as CustomEvent<WeatherEvent>;
-      if (ce.detail?.worldId && ce.detail.worldId !== worldId) return;
-      if (typeof ce.detail?.windDirection === 'number') setWindDir(ce.detail.windDirection);
-    };
-    window.addEventListener('concordia:season-transition', onSeason as EventListener);
-    window.addEventListener('concordia:weather', onWeather as EventListener);
+    const offSeason = subscribe<SeasonEvent>('world:season-transition' as SocketEvent, (detail) => {
+      if (detail?.worldId && detail.worldId !== worldId) return;
+      if (detail?.seasonName) setSeason(detail.seasonName);
+    });
+    const offWeather = subscribe<WeatherEvent>('world:weather' as SocketEvent, (detail) => {
+      if (detail?.worldId && detail.worldId !== worldId) return;
+      if (typeof detail?.windDirection === 'number') setWindDir(detail.windDirection);
+    });
     return () => {
-      window.removeEventListener('concordia:season-transition', onSeason as EventListener);
-      window.removeEventListener('concordia:weather', onWeather as EventListener);
+      offSeason();
+      offWeather();
     };
   }, [worldId]);
 

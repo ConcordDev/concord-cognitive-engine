@@ -49,7 +49,13 @@ export function CinematicTriggerBridge() {
       offs.push(subscribe('kingdom:takeover' as Parameters<typeof subscribe>[0], (p) => fire('kingdom_takeover', p)));
       offs.push(subscribe('world:refusal-field' as Parameters<typeof subscribe>[0], (payload: unknown) => {
         const ev = payload as { strength?: number };
-        if ((ev?.strength ?? 0) >= 9) fire('refusal_field_compound', payload);
+        // Trigger name must match cinematic-director's AUTO_TEMPLATES key
+        // ('refusal:compound') and content/cinematics/concordia-deep-cold.json's
+        // "trigger" field — both use the colon convention already shared by
+        // 3 other authored triggers (ark:archive_unlocked, dynasty:heir_acceded,
+        // vela:reveal), so this keeps that convention rather than introducing
+        // a second underscore-separated name for the same event.
+        if ((ev?.strength ?? 0) >= 9) fire('refusal:compound', payload);
       }));
       offs.push(subscribe('rebellion:fired' as Parameters<typeof subscribe>[0], (p) => fire('rebellion_fired', p)));
       offs.push(subscribe('spawn:boss' as Parameters<typeof subscribe>[0], (p) => fire('boss_arrival', p)));
