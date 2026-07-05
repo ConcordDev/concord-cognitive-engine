@@ -83,17 +83,34 @@ export default function createCDNRouter({ cdnManager, urlSigner, STATE }) {
   }));
 
   // ── GET /info — Public CDN info for frontend media URL resolution ────
-  router.get("/info", asyncHandler(async (_req, res) => {
-    const providerInfo = await cdnManager.getProviderInfo().catch(() => ({}));
+  //
+  // Bug fix (verification-audit campaign, duplicate-handler-race finding):
+  // this was one of two duplicate registrations of GET /info. This one
+  // (first-registered, so the one that actually dispatched) called
+  // `cdnManager.getProviderInfo().catch(...)` — but getProviderInfo() is
+  // SYNCHRONOUS (returns a plain object, not a Promise), so `.catch` isn't
+  // a function and every real request threw a TypeError, 500ing every
+  // call. The other (dead-by-registration-order) duplicate had the
+  // correct synchronous call plus a `signer` info block this one lacked —
+  // merged here as the survivor.
+  router.get("/info", (_req, res) => {
+    const providerInfo = cdnManager.getProviderInfo();
+    const signerInfo = urlSigner.getInfo();
     res.json({
       ok: true,
       cdn: {
         provider: providerInfo?.provider || "local",
+        description: providerInfo?.description,
         configured: providerInfo?.configured || false,
         baseUrl: providerInfo?.baseUrl || null,
       },
+      signer: {
+        algorithm: signerInfo.algorithm,
+        defaultExpiry: signerInfo.defaultExpiry,
+        maxExpiry: signerInfo.maxExpiry,
+      },
     });
-  }));
+  });
 
   // ── POST /purge — Purge specific artifact from CDN (admin) ────────
 
@@ -286,27 +303,6 @@ export default function createCDNRouter({ cdnManager, urlSigner, STATE }) {
     res.json(result);
   }));
 
-  // ── GET /info — Public CDN configuration info ─────────────────────
-
-  router.get("/info", (_req, res) => {
-    const providerInfo = cdnManager.getProviderInfo();
-    const signerInfo = urlSigner.getInfo();
-
-    res.json({
-      ok: true,
-      cdn: {
-        provider: providerInfo.provider,
-        description: providerInfo.description,
-        configured: providerInfo.configured,
-        baseUrl: providerInfo.baseUrl || null,
-      },
-      signer: {
-        algorithm: signerInfo.algorithm,
-        defaultExpiry: signerInfo.defaultExpiry,
-        maxExpiry: signerInfo.maxExpiry,
-      },
-    });
-  });
 
   return router;
 }
