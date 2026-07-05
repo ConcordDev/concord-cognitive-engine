@@ -201,12 +201,28 @@ async function runSuite(npmScript, minPass) {
   return { ok: false, npmScript, reason: "exhausted" };
 }
 
-// Sequential by design: the two suites share in-process port/DB assumptions and
-// must not interleave. Per-suite minPass floors reject a silently-partial run
-// (e.g. a glob that didn't expand): main is ~23.7k tests, behavior ~2.3k.
-const mainResult = await runSuite("test:main", Number(process.env.CONCORD_CI_MAIN_MIN_PASS || 15000));
-const behaviorResult = await runSuite("test:behavior", Number(process.env.CONCORD_CI_BEHAVIOR_MIN_PASS || 1500));
-const results = [mainResult, behaviorResult];
+// --depth-only: the deploy gate's "Depth behavioral tests" step runs ONLY
+// tests/depth/*.test.js (a distinct suite from test:main/test:behavior above,
+// with its own npm script — test:depth:raw — mirroring the exact invocation
+// deploy.yml used to run bare). It hits the identical CI-contention SIGTRAP
+// class documented above (a server-booting depth test starves under full
+// parallel load; which file trips rotates run to run — confirmed by hand
+// across 5+ distinct files, e.g. city-behavior, schemes-behavior,
+// security-access-audit-behavior — all pass clean in isolation every time).
+// Route it through the SAME isolate-and-retry tolerance rather than leaving
+// it as a bare invocation with no flake safety net.
+const depthOnly = process.argv.includes("--depth-only");
+
+// Sequential by design: suites share in-process port/DB assumptions and must
+// not interleave. Per-suite minPass floors reject a silently-partial run
+// (e.g. a glob that didn't expand): main is ~23.7k tests, behavior ~2.3k,
+// depth is ~5k.
+const results = depthOnly
+  ? [await runSuite("test:depth:raw", Number(process.env.CONCORD_CI_DEPTH_MIN_PASS || 4000))]
+  : [
+      await runSuite("test:main", Number(process.env.CONCORD_CI_MAIN_MIN_PASS || 15000)),
+      await runSuite("test:behavior", Number(process.env.CONCORD_CI_BEHAVIOR_MIN_PASS || 1500)),
+    ];
 
 const failed = results.filter((r) => !r.ok);
 if (failed.length === 0) {
