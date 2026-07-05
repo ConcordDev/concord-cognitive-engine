@@ -13,7 +13,7 @@
 // CI), returns 401, the auth context redirects back to /login, and the
 // `expect(page).not.toHaveURL(/\/login/)` assertion times out at 30s.
 
-import type { Page } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 
 /**
  * Catch-all safety net: fulfills EVERY /api/** request with a benign 200 so
@@ -269,4 +269,82 @@ export async function gotoStable(page: Page, path: string) {
   await page.waitForLoadState('domcontentloaded').catch(() => {});
   await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
   return response;
+}
+
+// Force IPv4. playwright's `request` (undici) can resolve `localhost` to
+// the IPv6 `::1` on a GitHub runner; the server's dual-stack listen
+// socket is reachable in theory, but the runner's IPv6 path is flaky and
+// the connection then HANGS to the action timeout instead of failing
+// fast. `127.0.0.1` removes the ambiguity. (Same fix as
+// tests/e2e-infra/auth.setup.ts.)
+export const E2E_BACKEND = (process.env.CONCORD_API_BASE || 'http://localhost:5050')
+  .replace(/\/$/, '')
+  .replace('//localhost:', '//127.0.0.1:');
+
+/** POST with bounded retries — a single unbounded request.post burns the
+ *  whole action timeout on one transient hang; 3 attempts at 20s each
+ *  with a short backoff recovers from a momentary hiccup and fails fast
+ *  otherwise. */
+export async function postWithRetry(
+  request: APIRequestContext,
+  url: string,
+  opts: Parameters<APIRequestContext['post']>[1],
+) {
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await request.post(url, { timeout: 20_000, ...opts });
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 2_000 * attempt));
+    }
+  }
+  throw new Error(`POST ${url} failed after 3 attempts: ${String(lastErr)}`);
+}
+
+/**
+ * Register + log in a fresh test user against the REAL backend, return
+ * cookies the page context can replay. Used by specs that need to render
+ * real, non-mocked data (e.g. the 3D world lens for a perf/draw-call
+ * measurement, where mocking the API would make the test measure nothing).
+ * The frontend's middleware checks concord_auth/concord_refresh cookies;
+ * the backend's bot-timing check rejects forms submitted in < 2s of "load",
+ * so we backdate `_t`.
+ */
+export async function makeTestSession(
+  request: APIRequestContext,
+): Promise<{ cookies: { name: string; value: string; domain: string; path: string }[] }> {
+  // Date.now() alone collides under parallel callers stamping the same
+  // millisecond; a random suffix makes each call's username unique
+  // regardless of timing.
+  const uniq = `smoke_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const email = `${uniq}@concord-smoke.test`;
+  const password = 'PlaywrightSmoke!9912';
+  const loadedAt = Date.now() - 3_500; // satisfy the 2s timing check.
+
+  const registerRes = await postWithRetry(request, `${E2E_BACKEND}/api/auth/register`, {
+    data: { username: uniq, email, password, dateOfBirth: '1990-01-01', _t: loadedAt },
+    headers: { 'content-type': 'application/json' },
+  });
+  if (!registerRes.ok()) {
+    throw new Error(`Register failed: status=${registerRes.status()} body=${await registerRes.text()}`);
+  }
+  const loginRes = await postWithRetry(request, `${E2E_BACKEND}/api/auth/login`, {
+    data: { email, password },
+    headers: { 'content-type': 'application/json' },
+  });
+  const headers = loginRes.headers();
+  // Backend returns Set-Cookie; we re-parse to set on the browser ctx.
+  const rawCookies = (loginRes.headersArray() as Array<{ name: string; value: string }>)
+    .filter((h) => h.name.toLowerCase() === 'set-cookie')
+    .map((h) => h.value);
+  if (rawCookies.length === 0) {
+    throw new Error(`No Set-Cookie on /api/auth/login. status=${loginRes.status()} headers=${JSON.stringify(headers)}`);
+  }
+  const cookies = rawCookies.map((raw) => {
+    const [pair] = raw.split(';');
+    const [name, value] = pair.split('=');
+    return { name: name.trim(), value: value?.trim() ?? '', domain: 'localhost', path: '/' };
+  });
+  return { cookies };
 }

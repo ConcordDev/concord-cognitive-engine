@@ -20,9 +20,10 @@
  * Screenshots committed to docs/smoke-screenshots/<world>/<action>.png.
  */
 
-import { test, expect, type APIRequestContext } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { makeTestSession } from './_helpers';
 
 test.use({ browserName: 'chromium' });
 // Parallel mode: previously this file was serial, but a single browser-tab
@@ -31,78 +32,6 @@ test.use({ browserName: 'chromium' });
 // here owns its own session/auth flow and is independent — serial wasn't
 // load-bearing, just an artefact of the original scaffold.
 test.describe.configure({ mode: 'parallel' });
-
-// Force IPv4. playwright's `request` (undici) can resolve `localhost` to
-// the IPv6 `::1` on a GitHub runner; the server's dual-stack listen
-// socket is reachable in theory, but the runner's IPv6 path is flaky and
-// the connection then HANGS to the action timeout instead of failing
-// fast. `127.0.0.1` removes the ambiguity. (Same fix as
-// tests/e2e-infra/auth.setup.ts.)
-const BACKEND = (process.env.CONCORD_API_BASE || 'http://localhost:5050')
-  .replace(/\/$/, '')
-  .replace('//localhost:', '//127.0.0.1:');
-
-/** POST with bounded retries — a single unbounded request.post burns the
- *  whole action timeout on one transient hang; 3 attempts at 20s each
- *  with a short backoff recovers from a momentary hiccup and fails fast
- *  with a clear error otherwise. */
-async function postWithRetry(
-  request: APIRequestContext,
-  url: string,
-  opts: Parameters<APIRequestContext['post']>[1],
-) {
-  let lastErr: unknown = null;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      return await request.post(url, { timeout: 20_000, ...opts });
-    } catch (err) {
-      lastErr = err;
-      await new Promise((r) => setTimeout(r, 2_000 * attempt));
-    }
-  }
-  throw new Error(`POST ${url} failed after 3 attempts: ${String(lastErr)}`);
-}
-
-/** Register + log in a fresh test user, return a cookie header value
- *  the page context can replay. The frontend's middleware checks
- *  concord_auth / concord_refresh cookies; the backend's bot timing
- *  check rejects forms submitted in < 2s of "load", so we wait. */
-async function makeTestSession(request: APIRequestContext): Promise<{ cookies: { name: string; value: string; domain: string; path: string }[] }> {
-  // Date.now() alone collides: mode:'parallel' fires every per-world
-  // beforeAll near-simultaneously, so two worlds can stamp the identical
-  // millisecond and register the same username (409 "Username taken").
-  // A random suffix makes each call's username unique regardless of timing.
-  const uniq    = `smoke_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  const email   = `${uniq}@concord-smoke.test`;
-  const password = 'PlaywrightSmoke!9912';
-  const loadedAt = Date.now() - 3_500; // satisfy the 2s timing check.
-
-  const registerRes = await postWithRetry(request, `${BACKEND}/api/auth/register`, {
-    data: { username: uniq, email, password, dateOfBirth: '1990-01-01', _t: loadedAt },
-    headers: { 'content-type': 'application/json' },
-  });
-  if (!registerRes.ok()) {
-    throw new Error(`Register failed: status=${registerRes.status()} body=${await registerRes.text()}`);
-  }
-  const loginRes = await postWithRetry(request, `${BACKEND}/api/auth/login`, {
-    data: { email, password },
-    headers: { 'content-type': 'application/json' },
-  });
-  const headers = loginRes.headers();
-  // Backend returns Set-Cookie; we re-parse to set on the browser ctx.
-  const rawCookies = (loginRes.headersArray() as Array<{ name: string; value: string }>)
-    .filter((h) => h.name.toLowerCase() === 'set-cookie')
-    .map((h) => h.value);
-  if (rawCookies.length === 0) {
-    throw new Error(`No Set-Cookie on /api/auth/login. status=${loginRes.status()} headers=${JSON.stringify(headers)}`);
-  }
-  const cookies = rawCookies.map((raw) => {
-    const [pair] = raw.split(';');
-    const [name, value] = pair.split('=');
-    return { name: name.trim(), value: value?.trim() ?? '', domain: 'localhost', path: '/' };
-  });
-  return { cookies };
-}
 
 const CANON_WORLDS = [
   'concordia-hub',
