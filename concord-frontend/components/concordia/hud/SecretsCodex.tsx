@@ -47,7 +47,8 @@ export default function SecretsCodex({ open, onClose }: Props) {
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
-      const list: DiscoveredSecret[] = Array.isArray(j?.secrets) ? j.secrets : Array.isArray(j) ? j : [];
+      const payload = j?.result ?? j;
+      const list: DiscoveredSecret[] = Array.isArray(payload?.secrets) ? payload.secrets : Array.isArray(payload) ? payload : [];
       setSecrets(list);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load');

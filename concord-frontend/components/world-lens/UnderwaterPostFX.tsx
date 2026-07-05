@@ -85,7 +85,10 @@ export default function UnderwaterPostFX({
         });
         if (!r.ok) return;
         const j = await r.json();
-        if (!cancelled && typeof j?.oxygen_pct === 'number') setOxygen({ oxygen_pct: j.oxygen_pct });
+        // The outer `ok` from POST /api/lens/run is just a transport flag —
+        // oxygen.tick's real payload (ok/oxygen_pct) lives under `.result`.
+        const payload = j?.result ?? j;
+        if (!cancelled && typeof payload?.oxygen_pct === 'number') setOxygen({ oxygen_pct: payload.oxygen_pct });
       } catch { /* fine */ }
     };
     void tick();

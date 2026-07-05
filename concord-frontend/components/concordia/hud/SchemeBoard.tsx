@@ -51,8 +51,10 @@ export default function SchemeBoard({ open, onClose }: Props) {
           body: JSON.stringify({ domain: 'schemes', name: 'list_against_user', input: {} }),
         }).then(r => r.json()),
       ]);
-      setMine(Array.isArray(a?.schemes) ? a.schemes : []);
-      setAgainst(Array.isArray(b?.schemes) ? b.schemes : []);
+      const pa = a?.result ?? a;
+      const pb = b?.result ?? b;
+      setMine(Array.isArray(pa?.schemes) ? pa.schemes : []);
+      setAgainst(Array.isArray(pb?.schemes) ? pb.schemes : []);
     } finally {
       setLoading(false);
     }

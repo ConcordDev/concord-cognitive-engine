@@ -71,7 +71,8 @@ export default function TombsOverlay({ worldId, pollIntervalMs = 90_000 }: Props
       });
       if (!r.ok) return;
       const data = await r.json();
-      if (Array.isArray(data?.tombs)) setTombs(data.tombs);
+      const payload = data?.result ?? data;
+      if (Array.isArray(payload?.tombs)) setTombs(payload.tombs);
     } catch { /* anonymous browsers / network blips: silent */ }
   }, [worldId]);
 
@@ -104,7 +105,8 @@ export default function TombsOverlay({ worldId, pollIntervalMs = 90_000 }: Props
         });
         if (!r.ok) return;
         const data = await r.json();
-        if (!cancelled && data?.legacy) setOpenLegacy(data.legacy as LegacyDetail);
+        const payload = data?.result ?? data;
+        if (!cancelled && payload?.legacy) setOpenLegacy(payload.legacy as LegacyDetail);
       } catch { /* silent */ }
     })();
     return () => { cancelled = true; };
@@ -267,7 +269,8 @@ function InheritanceLog({ deceasedNpcId }: { deceasedNpcId: string }) {
         });
         if (!r.ok) return;
         const data = await r.json();
-        if (!cancelled && Array.isArray(data?.links)) setLinks(data.links as InheritanceLink[]);
+        const payload = data?.result ?? data;
+        if (!cancelled && Array.isArray(payload?.links)) setLinks(payload.links as InheritanceLink[]);
       } catch { /* silent */ } finally {
         if (!cancelled) setLoaded(true);
       }

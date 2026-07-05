@@ -74,7 +74,9 @@ export async function speakWithPiperOrFallback(
 
 interface PiperResponse { ok?: boolean; audioBase64?: string }
 
-async function fetchPiperAudio(text: string, profile: PiperVoiceProfile): Promise<PiperResponse | null> {
+// Exported for unit testing the envelope-unwrap contract in isolation
+// (decoding real audio in `playPiperBuffer` isn't feasible under jsdom).
+export async function fetchPiperAudio(text: string, profile: PiperVoiceProfile): Promise<PiperResponse | null> {
   try {
     const res = await fetch('/api/lens/run', {
       method: 'POST',
@@ -88,8 +90,13 @@ async function fetchPiperAudio(text: string, profile: PiperVoiceProfile): Promis
     });
     if (!res.ok) return null;
     const json = await res.json();
-    if (!json?.ok || !json.audioBase64) return null;
-    return json;
+    // POST /api/lens/run wraps the macro's payload in a transport envelope
+    // `{ ok: true, result: PAYLOAD }` — the top-level `ok` is just a
+    // transport flag, so voice.tts's real `{ ok, audioBase64 }` lives under
+    // `.result`.
+    const payload = json?.result ?? json;
+    if (!payload?.ok || !payload.audioBase64) return null;
+    return payload;
   } catch {
     return null;
   }

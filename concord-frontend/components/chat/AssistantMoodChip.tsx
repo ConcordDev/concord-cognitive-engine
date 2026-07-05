@@ -17,12 +17,13 @@ export function AssistantMoodChip({ pollMs = 20000 }: { pollMs?: number }) {
     let cancelled = false;
     const fetchMood = async () => {
       try {
-        const r = await fetch('/api/lens/run', {
+        const envelope = await fetch('/api/lens/run', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ domain: 'chat', name: 'mood', input: {} }),
         }).then((res) => res.json());
+        const r = envelope?.result ?? envelope;
         if (!cancelled && r?.ok) setMood({ lit: !!r.lit, valence: r.valence ?? 0, arousal: r.arousal ?? 0, quale: r.quale ?? null });
       } catch { /* swallow */ }
     };

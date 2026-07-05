@@ -43,7 +43,8 @@ export default function GlyphCastHUD({ worldId = 'concordia-hub', playerPos }: {
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain: 'glyph_spells', name: 'list_for_user', input: {} }),
       }).catch(() => null);
-      const data = r ? await r.json().catch(() => null) : null;
+      const raw = r ? await r.json().catch(() => null) : null;
+      const data = raw?.result ?? raw;
       if (alive && data?.ok && Array.isArray(data.spells)) setSpells(data.spells);
     })();
     return () => { alive = false; };
@@ -68,7 +69,8 @@ export default function GlyphCastHUD({ worldId = 'concordia-hub', playerPos }: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ domain: 'sonic_glyph', name: 'spell_to_chord', input: { spellId } }),
     }).catch(() => null);
-    const data = r ? await r.json().catch(() => null) : null;
+    const raw = r ? await r.json().catch(() => null) : null;
+    const data = raw?.result ?? raw;
     if (!data?.ok || !data?.chord?.notes?.length) {
       setCastStatus(`Sonic failed: ${data?.error || data?.reason || 'unknown'}`);
       window.setTimeout(() => setCastStatus(null), 3000);
@@ -122,7 +124,8 @@ export default function GlyphCastHUD({ worldId = 'concordia-hub', playerPos }: {
         input: { spellId, worldId, x: playerPos.x, z: playerPos.z, magnitude: 1 },
       }),
     }).catch(() => null);
-    const data = r ? await r.json().catch(() => null) : null;
+    const raw = r ? await r.json().catch(() => null) : null;
+    const data = raw?.result ?? raw;
     if (data?.ok) setCastStatus(`Cast ${data.element || ''} (${data.feedbackApplied || 0} channels)`);
     else setCastStatus(`Failed: ${data?.error || data?.reason || 'unknown'}`);
     window.setTimeout(() => setCastStatus(null), 3000);

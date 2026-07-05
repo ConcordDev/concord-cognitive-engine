@@ -100,7 +100,10 @@ export default function CognitiveReplayPage() {
         });
         if (!alive) return;
         if (!r.ok) throw new Error(`timeline request failed (${r.status})`);
-        const data = await r.json().catch(() => null);
+        const json = await r.json().catch(() => null);
+        // The outer `ok` from POST /api/lens/run is just a transport flag —
+        // chat.timeline's real payload (ok/events/error) lives under `.result`.
+        const data = json?.result ?? json;
         if (!data?.ok) throw new Error(typeof data?.error === 'string' ? data.error : 'failed to load cognitive timeline');
         const evs = Array.isArray(data.events) ? data.events : [];
         setEvents(evs);

@@ -77,12 +77,8 @@ export default function PersonasPage() {
   }, []);
 
   const refreshPackages = useCallback(async () => {
-    const r = await fetch('/api/lens/run', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain: 'npc_persona', name: 'list_for_user', input: {} }),
-    }).then((x) => x.json()).catch(() => null);
-    if (r?.ok) setPackages((r.packages || []) as PersonaPackage[]);
+    const r = await lensRun('npc_persona', 'list_for_user', {});
+    if (r.data?.ok) setPackages(((r.data.result as any)?.packages || []) as PersonaPackage[]);
   }, []);
 
   useEffect(() => {
@@ -105,30 +101,24 @@ export default function PersonasPage() {
   const packNpc = async () => {
     if (!packForm.npcId) return;
     flash('Packaging…');
-    const r = await fetch('/api/lens/run', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain: 'npc_persona', name: 'package', input: packForm }),
-    }).then((x) => x.json()).catch(() => null);
-    if (r?.ok) {
-      flash(`Packaged as ${r.dtuId}`);
+    const r = await lensRun('npc_persona', 'package', packForm);
+    const payload = r.data?.result as any;
+    if (r.data?.ok) {
+      flash(`Packaged as ${payload?.dtuId}`);
       setPackForm({ npcId: '', summary: '' });
       await refreshPackages();
-    } else flash(`Failed: ${r?.error || r?.reason || 'unknown'}`);
+    } else flash(`Failed: ${r.data?.error || payload?.reason || 'unknown'}`);
   };
 
   const installNpc = async () => {
     if (!installForm.dtuId) return;
     flash('Installing…');
-    const r = await fetch('/api/lens/run', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain: 'npc_persona', name: 'install', input: installForm }),
-    }).then((x) => x.json()).catch(() => null);
-    if (r?.ok) {
-      flash(`Installed as ${r.importedNpcId} (${r.importedRows} rows)`);
+    const r = await lensRun('npc_persona', 'install', installForm);
+    const payload = r.data?.result as any;
+    if (r.data?.ok) {
+      flash(`Installed as ${payload?.importedNpcId} (${payload?.importedRows} rows)`);
       setInstallForm({ dtuId: '', worldId: 'concordia-hub' });
-    } else flash(`Failed: ${r?.error || r?.reason || 'unknown'}`);
+    } else flash(`Failed: ${r.data?.error || payload?.reason || 'unknown'}`);
   };
 
   const TABS: Array<{ id: Tab; label: string }> = [

@@ -12,6 +12,16 @@
  * against). The headless LensShell, cross-lens substrate children, and the
  * persona authoring/marketplace/detail components are render-only stubs so the
  * test stays on the page's own state machine.
+ *
+ * Also pins findings 11-13: the legacy `npc_persona` packaging pipeline
+ * (list_for_user / package / install) used to bypass `lensRun` with a raw
+ * `fetch('/api/lens/run')` and read fields straight off the top-level JSON
+ * body — which is always `{ ok: true, result: PAYLOAD }` (the transport
+ * envelope), never the macro's own `{ ok, packages }` / `{ ok, dtuId }` /
+ * `{ ok, importedNpcId, importedRows }` payload. Those call sites now route
+ * through `lensRun` like the rest of the page, so the tests below mock
+ * `lensRun` with the real nested-`result` shape and assert the fields
+ * actually surface.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -50,6 +60,24 @@ function mineOk(personas: unknown[]) {
 function mineErr(error: string) {
   return Promise.resolve({ data: { ok: false, result: null, error } });
 }
+// The `/api/lens/run` transport envelope is always `{ ok: true, result: PAYLOAD }`
+// where PAYLOAD is the macro's own `{ ok, ... }` shape — these helpers mirror
+// what `lensRun()` (lib/api/client.ts) unwraps down to, i.e. what the page
+// actually receives on `r.data.result`.
+function pkgListOk(packages: unknown[]) {
+  return Promise.resolve({ data: { ok: true, result: { ok: true, packages }, error: null } });
+}
+function packageOk(dtuId: string) {
+  return Promise.resolve({ data: { ok: true, result: { ok: true, dtuId, sha256: 'deadbeef' }, error: null } });
+}
+// Mirrors what the real lensRun() resolves an `{ ok:false, error }` macro
+// failure down to (result:null, error carried at the top).
+function packageFail(error: string) {
+  return Promise.resolve({ data: { ok: false, result: null, error } });
+}
+function installOk(importedNpcId: string, importedRows: number) {
+  return Promise.resolve({ data: { ok: true, result: { ok: true, importedNpcId, importedRows }, error: null } });
+}
 
 const PERSONA = {
   id: 'persona_abc123',
@@ -65,11 +93,11 @@ const PERSONA = {
 beforeEach(() => {
   vi.unstubAllGlobals();
   lensRunMock.mockReset();
-  // The page also fires a raw fetch for the legacy npc_persona packaging list;
-  // keep it inert (empty package list) so we test only the personas.mine state
-  // machine.
+  // Belt-and-suspenders: the page no longer calls raw fetch (the legacy
+  // npc_persona packaging pipeline was migrated onto lensRun — findings
+  // 11-13), but stub it inert in case any stray code path still reaches it.
   vi.stubGlobal('fetch', vi.fn(() =>
-    Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, packages: [] }) }),
+    Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, result: { packages: [] } }) }),
   ));
 });
 
@@ -138,5 +166,93 @@ describe('personas lens — four UX states', () => {
     // no loading / error states linger once populated
     expect(container.querySelector('[role="status"]')).toBeFalsy();
     expect(container.querySelector('[role="alert"]')).toBeFalsy();
+  });
+});
+
+describe('personas lens — NPC Packaging tab (findings 11-13: read fields off .result, not top-level)', () => {
+  const PACKAGE_ROW = {
+    id: 1,
+    origin_npc_id: 'tully_vex',
+    dtu_id: 'npc_persona:tully_vex:a1b2c3d4',
+    package_sha256: '0123456789abcdef0123456789abcdef',
+    created_at: 1700000000,
+  };
+
+  it('finding 11: lists packages from result.packages, not a top-level `packages` field', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'mine') return mineOk([]);
+      if (action === 'list_for_user') return pkgListOk([PACKAGE_ROW]);
+      return mineOk([]);
+    });
+    const { getByText } = render(<PersonasPage />);
+    await act(async () => { fireEvent.click(getByText('NPC Packaging')); });
+    await waitFor(() => expect(getByText('tully_vex')).toBeInTheDocument());
+    expect(() => getByText('No NPC packages yet.')).toThrow();
+  });
+
+  it('finding 11: an empty result.packages still renders the honest empty state', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'mine') return mineOk([]);
+      if (action === 'list_for_user') return pkgListOk([]);
+      return mineOk([]);
+    });
+    const { getByText } = render(<PersonasPage />);
+    await act(async () => { fireEvent.click(getByText('NPC Packaging')); });
+    await waitFor(() => expect(getByText('No NPC packages yet.')).toBeInTheDocument());
+  });
+
+  it('finding 12: flashes the real dtuId from result.dtuId after a successful package', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'mine') return mineOk([]);
+      if (action === 'list_for_user') return pkgListOk([]);
+      if (action === 'package') return packageOk('npc_persona:tully_vex:deadbeef');
+      return mineOk([]);
+    });
+    const { getByText, getByPlaceholderText } = render(<PersonasPage />);
+    await act(async () => { fireEvent.click(getByText('NPC Packaging')); });
+    await waitFor(() => expect(getByText('No NPC packages yet.')).toBeInTheDocument());
+
+    fireEvent.change(getByPlaceholderText('NPC id (e.g. tully_vex)'), { target: { value: 'tully_vex' } });
+    await act(async () => { fireEvent.click(getByText('Package')); });
+
+    await waitFor(() => expect(getByText('Packaged as npc_persona:tully_vex:deadbeef')).toBeInTheDocument());
+    // pre-fix this read the top-level (always-undefined) `dtuId`, i.e. "Packaged as undefined".
+    expect(() => getByText(/Packaged as undefined/)).toThrow();
+  });
+
+  it('finding 13: flashes the real importedNpcId/importedRows from result after a successful install', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'mine') return mineOk([]);
+      if (action === 'list_for_user') return pkgListOk([]);
+      if (action === 'install') return installOk('npc_new_889', 42);
+      return mineOk([]);
+    });
+    const { getByText, getByPlaceholderText } = render(<PersonasPage />);
+    await act(async () => { fireEvent.click(getByText('NPC Packaging')); });
+    await waitFor(() => expect(getByText('No NPC packages yet.')).toBeInTheDocument());
+
+    fireEvent.change(getByPlaceholderText('DTU id'), { target: { value: 'npc_persona:tully_vex:deadbeef' } });
+    await act(async () => { fireEvent.click(getByText('Install')); });
+
+    await waitFor(() => expect(getByText('Installed as npc_new_889 (42 rows)')).toBeInTheDocument());
+    // pre-fix this read top-level `importedNpcId`/`importedRows`, i.e. "Installed as undefined (undefined rows)".
+    expect(() => getByText(/Installed as undefined/)).toThrow();
+  });
+
+  it('finding 12/13: a genuine failure surfaces the real error, not a silent success message', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'mine') return mineOk([]);
+      if (action === 'list_for_user') return pkgListOk([]);
+      if (action === 'package') return packageFail('npc_not_found');
+      return mineOk([]);
+    });
+    const { getByText, getByPlaceholderText } = render(<PersonasPage />);
+    await act(async () => { fireEvent.click(getByText('NPC Packaging')); });
+    await waitFor(() => expect(getByText('No NPC packages yet.')).toBeInTheDocument());
+
+    fireEvent.change(getByPlaceholderText('NPC id (e.g. tully_vex)'), { target: { value: 'ghost_npc' } });
+    await act(async () => { fireEvent.click(getByText('Package')); });
+
+    await waitFor(() => expect(getByText(/Failed: npc_not_found/)).toBeInTheDocument());
   });
 });

@@ -38,7 +38,13 @@ async function macro(domain: string, name: string, input: Record<string, unknown
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ domain, name, input }),
   }).catch(() => null);
-  return r ? r.json().catch(() => null) : null;
+  const j = r ? await r.json().catch(() => null) : null;
+  // POST /api/lens/run always answers { ok: true, result: PAYLOAD } where
+  // `ok` is just the transport flag — PAYLOAD (the macro's own { ok, ... })
+  // carries the real success/failure + fields. Unwrap it here, once, so
+  // every caller below can keep reading r?.ok / r?.teaching / r?.cohortId /
+  // r?.submissionId etc. directly.
+  return j ? (j.result ?? j) : null;
 }
 
 export default function ClassroomPage() {

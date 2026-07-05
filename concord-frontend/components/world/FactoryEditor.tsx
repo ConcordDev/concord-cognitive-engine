@@ -51,7 +51,8 @@ export function FactoryEditor({ building, onClose, worldId }: OverlayProps) {
           body: JSON.stringify({ domain: 'land_claims', name: 'list_for_user', input: {} }),
         });
         const j = await r.json();
-        const list = j?.data?.claims || j?.claims || [];
+        const payload = j?.result ?? j;
+        const list = payload?.claims || [];
         const inWorld = list.filter((c: Claim) => !c.world_id || c.world_id === worldId);
         setClaims(inWorld);
         if (inWorld.length === 1) setClaimId(inWorld[0].id);

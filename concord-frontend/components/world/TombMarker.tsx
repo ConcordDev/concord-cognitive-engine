@@ -76,7 +76,8 @@ export default function TombMarker({ worldId, pollIntervalMs = 60_000 }: Props) 
       });
       if (!r.ok) return;
       const data = await r.json();
-      if (Array.isArray(data?.tombs)) setTombs(data.tombs);
+      const payload = data?.result ?? data;
+      if (Array.isArray(payload?.tombs)) setTombs(payload.tombs);
     } catch { /* anonymous browsers / network blips: silent */ }
   }, [worldId]);
 
@@ -113,7 +114,8 @@ export default function TombMarker({ worldId, pollIntervalMs = 60_000 }: Props) 
         });
         if (!r.ok) return;
         const data = await r.json();
-        if (!cancelled && data?.legacy) setOpenLegacy(data.legacy as LegacyDetail);
+        const payload = data?.result ?? data;
+        if (!cancelled && payload?.legacy) setOpenLegacy(payload.legacy as LegacyDetail);
       } catch { /* silent */ }
     })();
     return () => { cancelled = true; };

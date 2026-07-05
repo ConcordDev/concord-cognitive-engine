@@ -67,7 +67,8 @@ async function callMacro<T = unknown>(domain: string, name: string, input: Recor
       body: JSON.stringify({ domain, name, input }),
     });
     if (!res.ok) return null;
-    return (await res.json()) as T;
+    const j = await res.json();
+    return (j?.result ?? j) as T;
   } catch {
     return null;
   }

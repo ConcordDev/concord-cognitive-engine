@@ -74,7 +74,8 @@ export function NemesisGlyphLayer({ worldId, playerPosition, enabled = true }: P
           input: { worldId, x: playerPosition?.x, z: playerPosition?.z, radius: 40 },
         }),
       });
-      const j = await r.json();
+      const envelope = await r.json();
+      const j = envelope?.result ?? envelope;
       if (j?.ok && Array.isArray(j.npcs)) {
         setRows((j.npcs as NemesisRow[]).filter((n) => n.isNemesis || n.scheme || n.grudge || n.desire));
       }

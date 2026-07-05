@@ -133,6 +133,19 @@ describe('gallery lens — four UX states', () => {
     expect(container.querySelector('[role="alert"]')).toBeFalsy();
   });
 
+  it('POPULATED (correctly-nested envelope): unwraps { ok, result: { ok, sigils } } from POST /api/lens/run', async () => {
+    // Regression pin: POST /api/lens/run always responds { ok: true, result:
+    // PAYLOAD } — the outer `ok` is a transport flag only. Before the fix,
+    // the page's `macro()` helper returned the raw envelope and read
+    // `r.sigils` directly, which is always undefined against the REAL shape
+    // below (it only "worked" against the flatter mocks above because those
+    // predate the nesting fix).
+    vi.stubGlobal('fetch', vi.fn(() => jsonOk({ ok: true, result: { ok: true, sigils: [SIGIL] } })));
+    const { getByText, container } = render(<GalleryPage />);
+    await waitFor(() => expect(getByText(SIGIL.title)).toBeInTheDocument());
+    expect(container.querySelector('[role="alert"]')).toBeFalsy();
+  });
+
   it('A11Y: the gallery tab nav exposes an accessible name + aria-current on the active tab', async () => {
     vi.stubGlobal('fetch', vi.fn(() => jsonOk({ ok: true, sigils: [SIGIL] })));
     const { container, getByText } = render(<GalleryPage />);

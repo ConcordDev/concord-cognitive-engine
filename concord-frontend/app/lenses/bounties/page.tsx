@@ -44,7 +44,12 @@ async function legacyMacro(domain: string, name: string, input: Record<string, u
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ domain, name, input }),
   }).catch(() => null);
-  return r ? r.json().catch(() => null) : null;
+  const j = r ? await r.json().catch(() => null) : null;
+  // POST /api/lens/run wraps the macro's payload in a transport envelope
+  // `{ ok: true, result: PAYLOAD }` — unwrap to the payload so callers can
+  // read the macro's real ok/error/bounties fields (Autofix staking tab only;
+  // the Bounty board tab uses `lensRun` from `@/lib/api/client` instead).
+  return j?.result ?? j;
 }
 
 const EMPTY_FILTERS: FilterState = {

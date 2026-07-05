@@ -48,7 +48,8 @@ export default function ZoneBadge({ worldId, pollMs = 4000 }: { worldId: string;
           body: JSON.stringify({ domain: 'zones', name: 'at', input: { worldId, x: pos.x, z: pos.z } }),
         });
         if (!r.ok) return;
-        const data = await r.json();
+        const envelope = await r.json();
+        const data = envelope?.result ?? envelope;
         if (cancelled) return;
         setZone(data?.zone ? { name: data.zone.name, kind: data.zone.kind } : null);
       } catch { /* anonymous / network blips: silent */ }

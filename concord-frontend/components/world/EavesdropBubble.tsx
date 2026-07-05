@@ -50,8 +50,9 @@ export default function EavesdropBubble({ worldId = 'concordia-hub', playerPos }
         }),
       }).catch(() => null);
       const data = r ? await r.json().catch(() => null) : null;
-      if (!alive || !data?.ok) return;
-      setActive(data.conversations || []);
+      const payload = data?.result ?? data;
+      if (!alive || !payload?.ok) return;
+      setActive(payload.conversations || []);
     };
     void refresh();
     const interval = window.setInterval(refresh, 4_000);

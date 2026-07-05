@@ -47,7 +47,9 @@ export default function DxPlatformPage() {
       });
       if (r.ok) {
         const data = await r.json();
-        if (data?.progress) setProgress(data.progress);
+        // The outer `ok` from POST /api/lens/run is just a transport flag —
+        // the macro's own payload lives under `.result`.
+        if (data?.result?.progress) setProgress(data.result.progress);
       }
     } catch { /* anonymous user — skip */ }
   }, []);
