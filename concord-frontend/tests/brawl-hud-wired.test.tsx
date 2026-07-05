@@ -1,9 +1,11 @@
 // Phase DB2 — Brawl HUDs wiring tests.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BrawlInviteToast } from '@/components/world/BrawlInviteToast';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const HUD = path.resolve(__dirname, '..', 'components', 'world', 'BrawlInviteToast.tsx');
@@ -16,12 +18,51 @@ describe('Phase DB2 — Brawl HUDs', () => {
     expect(src).toMatch(/concordia:brawl-invited/);
   });
 
-  it('accept calls /api/combat/brawl/accept', () => {
-    expect(src).toMatch(/\/api\/combat\/brawl\/accept/);
-  });
+  describe('accept/decline real fetch calls', () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
 
-  it('decline calls /api/combat/brawl/decline', () => {
-    expect(src).toMatch(/\/api\/combat\/brawl\/decline/);
+    beforeEach(() => {
+      fetchMock = vi.fn((url: string) => {
+        if (String(url).includes('/api/combat/brawl/invites')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, invites: [] }) });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+    });
+
+    afterEach(() => {
+      cleanup();
+      vi.unstubAllGlobals();
+    });
+
+    function dispatchInvite(inviteId: string) {
+      act(() => {
+        window.dispatchEvent(new CustomEvent('concordia:brawl-invited', {
+          detail: { inviteId, from: 'user_challenger', fromUserName: 'Challenger' },
+        }));
+      });
+    }
+
+    it('accept calls /api/combat/brawl/accept with the invite id', async () => {
+      render(<BrawlInviteToast />);
+      dispatchInvite('invite-1');
+      const acceptBtn = await screen.findByText(/Accept/);
+      await act(async () => { fireEvent.click(acceptBtn); });
+      const acceptCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/api/combat/brawl/accept'));
+      expect(acceptCall).toBeTruthy();
+      expect(acceptCall[1].body).toBe(JSON.stringify({ inviteId: 'invite-1' }));
+    });
+
+    it('decline calls /api/combat/brawl/decline with the invite id', async () => {
+      render(<BrawlInviteToast />);
+      dispatchInvite('invite-2');
+      const declineBtn = await screen.findByText(/Decline/);
+      await act(async () => { fireEvent.click(declineBtn); });
+      const declineCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/api/combat/brawl/decline'));
+      expect(declineCall).toBeTruthy();
+      expect(declineCall[1].body).toBe(JSON.stringify({ inviteId: 'invite-2' }));
+    });
   });
 
   it('active HUD shows sifu_brawler profile + end button', () => {

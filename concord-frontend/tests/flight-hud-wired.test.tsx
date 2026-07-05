@@ -1,36 +1,60 @@
 // Phase CA1 — confirm FlightHUD listens for concordia:flight-state.
 
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { render, screen, cleanup, act } from '@testing-library/react';
+import { FlightHUD } from '@/components/world/FlightHUD';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FILE = path.resolve(__dirname, '..', 'components', 'world', 'FlightHUD.tsx');
+function dispatchFlightState(detail: Record<string, unknown>) {
+  act(() => {
+    window.dispatchEvent(new CustomEvent('concordia:flight-state', { detail }));
+  });
+}
+
+const BASE_STATE = {
+  airspeed: 12.3, heading: Math.PI / 2, rollRad: 0, pitchRad: 0, vy: -1.5, stalled: false, stallTimerMs: 0,
+};
 
 describe('Phase CA1 — Flight HUD wired to flight-physics event', () => {
-  const source = readFileSync(FILE, 'utf8');
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
-  it('subscribes to concordia:flight-state', () => {
-    expect(source).toMatch(/addEventListener\(\s*['"]concordia:flight-state['"]/);
+  it('subscribes to concordia:flight-state and renders nothing before the first event', () => {
+    const { container } = render(<FlightHUD />);
+    expect(container.firstChild).toBeNull();
+    dispatchFlightState(BASE_STATE);
+    expect(screen.getByText(/Flight instruments/)).toBeInTheDocument();
   });
 
   it('reads airspeed + heading + vy + roll + pitch + stall from event detail', () => {
-    expect(source).toMatch(/airspeed/);
-    expect(source).toMatch(/heading/);
-    expect(source).toMatch(/vy/);
-    expect(source).toMatch(/rollRad/);
-    expect(source).toMatch(/pitchRad/);
-    expect(source).toMatch(/stalled/);
+    render(<FlightHUD />);
+    dispatchFlightState({
+      airspeed: 25.678, heading: Math.PI, rollRad: Math.PI / 4, pitchRad: -Math.PI / 6, vy: 3.2, stalled: false, stallTimerMs: 0,
+    });
+    expect(screen.getByText('25.7 m/s')).toBeInTheDocument(); // airspeed
+    expect(screen.getByText('180°')).toBeInTheDocument(); // heading
+    expect(screen.getByText('+3.2 m/s')).toBeInTheDocument(); // vy
+    expect(screen.getByText('45°')).toBeInTheDocument(); // roll
+    expect(screen.getByText('-30°')).toBeInTheDocument(); // pitch
+    expect(screen.getByText('OK')).toBeInTheDocument(); // stall
   });
 
   it('auto-hides on silence (no event for SILENCE_MS)', () => {
-    expect(source).toMatch(/SILENCE_MS/);
-    expect(source).toMatch(/setState\(null\)/);
+    vi.useFakeTimers();
+    render(<FlightHUD />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent('concordia:flight-state', { detail: BASE_STATE }));
+    });
+    expect(screen.getByText(/Flight instruments/)).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(2600); }); // > SILENCE_MS (2000ms) + one 500ms poll tick
+    expect(screen.queryByText(/Flight instruments/)).not.toBeInTheDocument();
   });
 
   it('shows stall warning when stalled', () => {
-    expect(source).toMatch(/STALL/);
-    expect(source).toMatch(/pitch down to recover/);
+    render(<FlightHUD />);
+    dispatchFlightState({ ...BASE_STATE, stalled: true, stallTimerMs: 340 });
+    expect(screen.getByText(/STALL — pitch down to recover/)).toBeInTheDocument();
+    expect(screen.getByText('340ms')).toBeInTheDocument();
   });
 });
