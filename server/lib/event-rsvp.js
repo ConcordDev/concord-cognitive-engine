@@ -80,7 +80,7 @@ export function sweepEventReminders(db) {
           worldId: r.world_id,
           startsAt: r.starts_at,
           title: r.title,
-        }, { targetUserId: r.user_id });
+        }, { userId: r.user_id });
       } catch { /* emit best-effort */ }
       try {
         db.prepare(`
