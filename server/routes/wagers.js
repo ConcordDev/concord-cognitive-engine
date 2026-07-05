@@ -64,20 +64,15 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
         return res.status(400).json({ ok: false, error: "insufficient_balance" });
       }
 
-      // Escrow amount from proposer
-      db.prepare(`UPDATE users SET ${balanceCol} = ${balanceCol} - ? WHERE id = ?`).run(amount, proposerId);
-
       const id = crypto.randomUUID();
       const now = Math.floor(Date.now() / 1000);
-      db.prepare(`
-        INSERT INTO wagers (id, proposer_id, opponent_id, amount, currency, duel_type, status, escrow_locked, world_id, proposed_at, expires_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending', 1, ?, ?, ?)
-      `).run(id, proposerId, opponentId, amount, currency, duelType, worldId, now, now + ACCEPT_WINDOW_S);
+      const expiresAt = now + ACCEPT_WINDOW_S;
+      _executeProposal(db, { id, proposerId, opponentId, amount, currency, balanceCol, duelType, worldId, now, expiresAt });
 
       // Notify opponent via socket
       realtimeEmit?.("wager:proposed", {
         wagerId: id, proposerId, amount, currency, duelType,
-        expiresAt: (now + ACCEPT_WINDOW_S) * 1000,
+        expiresAt: expiresAt * 1000,
       }, opponentId);
 
       res.status(201).json({ ok: true, wagerId: id });
@@ -109,8 +104,7 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
         return res.status(400).json({ ok: false, error: "insufficient_balance" });
       }
 
-      db.prepare(`UPDATE users SET ${balanceCol} = ${balanceCol} - ? WHERE id = ?`).run(wager.amount, userId);
-      db.prepare(`UPDATE wagers SET status = 'active', accepted_at = ? WHERE id = ?`).run(now, wager.id);
+      _executeAcceptance(db, { wagerId: wager.id, userId, balanceCol, amount: wager.amount, now });
 
       realtimeEmit?.("wager:accepted", { wagerId: wager.id }, wager.proposer_id);
       res.json({ ok: true, wagerId: wager.id });
@@ -155,11 +149,8 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       const payout = pot - fee;
 
       const balanceCol = BALANCE_COLS[wager.currency] ?? "sparks";
-      db.prepare(`UPDATE users SET ${balanceCol} = ${balanceCol} + ? WHERE id = ?`).run(payout, winnerId);
-
       const now = Math.floor(Date.now() / 1000);
-      db.prepare(`UPDATE wagers SET status = 'resolved', winner_id = ?, resolved_at = ? WHERE id = ?`)
-        .run(winnerId, now, wager.id);
+      _executeResolution(db, { wagerId: wager.id, winnerId, balanceCol, payout, now });
 
       realtimeEmit?.("wager:resolved", { wagerId: wager.id, winnerId, payout, currency: wager.currency });
       res.json({ ok: true, winnerId, payout, currency: wager.currency });
@@ -171,8 +162,48 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
   return router;
 }
 
-function _cancelAndRefund(db, wager) {
+// Money-hygiene fixes (verification-audit campaign). Each of these four
+// functions performs a balance mutation + a wagers-table status write that
+// previously ran as two unguarded sequential statements — a crash between
+// them could leave a proposer/opponent debited with no wager row to ever
+// resolve/refund against, or (worst case, /resolve) let a crash-then-retry
+// double-pay a winner since resolve has no other idempotency guard beyond
+// the status check. Exported for the atomicity pinning tests — see
+// tests/wagers-atomicity.test.js.
+
+export function _executeProposal(db, { id, proposerId, opponentId, amount, currency, balanceCol, duelType, worldId, now, expiresAt }) {
+  const tx = db.transaction(() => {
+    db.prepare(`UPDATE users SET ${balanceCol} = ${balanceCol} - ? WHERE id = ?`).run(amount, proposerId);
+    db.prepare(`
+      INSERT INTO wagers (id, proposer_id, opponent_id, amount, currency, duel_type, status, escrow_locked, world_id, proposed_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', 1, ?, ?, ?)
+    `).run(id, proposerId, opponentId, amount, currency, duelType, worldId, now, expiresAt);
+  });
+  tx();
+}
+
+export function _executeAcceptance(db, { wagerId, userId, balanceCol, amount, now }) {
+  const tx = db.transaction(() => {
+    db.prepare(`UPDATE users SET ${balanceCol} = ${balanceCol} - ? WHERE id = ?`).run(amount, userId);
+    db.prepare(`UPDATE wagers SET status = 'active', accepted_at = ? WHERE id = ?`).run(now, wagerId);
+  });
+  tx();
+}
+
+export function _executeResolution(db, { wagerId, winnerId, balanceCol, payout, now }) {
+  const tx = db.transaction(() => {
+    db.prepare(`UPDATE users SET ${balanceCol} = ${balanceCol} + ? WHERE id = ?`).run(payout, winnerId);
+    db.prepare(`UPDATE wagers SET status = 'resolved', winner_id = ?, resolved_at = ? WHERE id = ?`)
+      .run(winnerId, now, wagerId);
+  });
+  tx();
+}
+
+export function _cancelAndRefund(db, wager) {
   const balanceCol = BALANCE_COLS[wager.currency] ?? "sparks";
-  db.prepare(`UPDATE users SET ${balanceCol} = ${balanceCol} + ? WHERE id = ?`).run(wager.amount, wager.proposer_id);
-  db.prepare(`UPDATE wagers SET status = 'cancelled' WHERE id = ?`).run(wager.id);
+  const tx = db.transaction(() => {
+    db.prepare(`UPDATE users SET ${balanceCol} = ${balanceCol} + ? WHERE id = ?`).run(wager.amount, wager.proposer_id);
+    db.prepare(`UPDATE wagers SET status = 'cancelled' WHERE id = ?`).run(wager.id);
+  });
+  tx();
 }

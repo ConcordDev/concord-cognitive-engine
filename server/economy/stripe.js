@@ -146,6 +146,36 @@ export async function createCheckoutSession(db, { userId, tokens, requestId, ip 
 
 // ── B2: Webhook Handler ─────────────────────────────────────────────────────
 
+// Exported for the atomicity pinning test — see
+// tests/economy/stripe-webhook-atomicity.test.js. Money-hygiene fix
+// (verification-audit campaign): the withdrawal-status revert and the
+// ledger reversal entry must land together. A crash between them
+// previously could restore the withdrawal to 'approved' (eligible for
+// retry/cancel) while the CC debit was never reversed in the ledger, or
+// leave a reversal ledger row while the withdrawal stayed stuck
+// 'processing' forever.
+export function _reverseFailedWithdrawal(db, { withdrawalId, concordUserId, amount, stripeTransferId }) {
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE economy_withdrawals SET status = 'approved' WHERE id = ? AND status = 'processing'")
+      .run(withdrawalId);
+    if (amount > 0) {
+      const txId = generateTxId();
+      // Field names must be from/to/metadata — recordTransactionBatch reads
+      // tx.from/tx.to/tx.metadata (it JSON.stringifies metadata itself), not
+      // from_user_id/to_user_id/metadata_json. The pre-fix code used the
+      // wrong names here, so every reversal silently recorded a ledger row
+      // with NULL parties and empty metadata. Compare processStripeWithdrawal
+      // below, which already uses the correct shape.
+      recordTransactionBatch(db, [{
+        id: txId, type: "REVERSAL", from: PLATFORM_ACCOUNT_ID,
+        to: concordUserId, amount, fee: 0, net: amount,
+        status: "complete", metadata: { reason: "transfer_failed", withdrawalId, stripeTransferId },
+      }]);
+    }
+  });
+  tx();
+}
+
 export async function handleWebhook(db, { rawBody, signature, requestId, ip }) {
   const stripeClient = await getStripe();
   if (!stripeClient) return { ok: false, error: "stripe_not_configured" };
@@ -328,19 +358,8 @@ export async function handleWebhook(db, { rawBody, signature, requestId, ip }) {
       const transfer = event.data.object;
       const { concordUserId, withdrawalId, ccAmount } = transfer.metadata || {};
       if (withdrawalId && concordUserId) {
-        // Restore withdrawal to approved so admin can retry or user can cancel
-        db.prepare("UPDATE economy_withdrawals SET status = 'approved' WHERE id = ? AND status = 'processing'")
-          .run(withdrawalId);
-        // Reverse the ledger debit
         const amount = ccAmount ? parseInt(ccAmount, 10) : 0;
-        if (amount > 0) {
-          const txId = generateTxId();
-          recordTransactionBatch(db, [{
-            id: txId, type: "REVERSAL", from_user_id: PLATFORM_ACCOUNT_ID,
-            to_user_id: concordUserId, amount, fee: 0, net: amount,
-            status: "complete", metadata_json: JSON.stringify({ reason: "transfer_failed", withdrawalId, stripeTransferId: transfer.id }),
-          }]);
-        }
+        _reverseFailedWithdrawal(db, { withdrawalId, concordUserId, amount, stripeTransferId: transfer.id });
         economyAudit(db, {
           action: "withdrawal_payout_failed",
           userId: concordUserId,
