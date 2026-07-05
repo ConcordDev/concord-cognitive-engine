@@ -43,7 +43,7 @@ These predate this campaign and targeted CI/lint/test issues that this campaign'
 
 | PR | Status |
 |---|---|
-| #845 | Draft — the browser-ready campaign itself. Ready for review once Phase 4-6 final verification completes (see `docs/BROWSER_READY_CAMPAIGN.md`). |
+| #845 | **Merged** 2026-07-05 07:45 UTC (`514fe8a5`). Follow-on fixes for 2 real gaps the merge's own post-merge CI surfaced (deploy-gate `NODE_ENV`, a stale unit test) plus a user-reported UX fix landed on `claude/wave-abc-ci-fixes-debt-434jn3` — see `docs/BROWSER_READY_CAMPAIGN.md` for the full closeout. |
 
 ## Summary recommendation
 

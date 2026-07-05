@@ -197,11 +197,18 @@ describe('AppShell', () => {
     expect(queryByTestId('legal-footer')).toBeNull();
   });
 
-  it('toggles the command palette on Cmd/Ctrl+K', async () => {
+  it('does not handle Cmd/Ctrl+K itself (CommandPalette owns that binding)', async () => {
+    // Regression pin for the double-mount race fixed in eecb0bec: AppShell
+    // used to duplicate CommandPalette's own Mod+K toggle, and the two
+    // handlers raced on the shared UI store (each reading a stale
+    // pre-render snapshot while useSyncExternalStore forced a synchronous
+    // re-render between them), which could net-cancel the open. AppShell
+    // must stay silent on this key combo — CommandPalette's own listener
+    // is the single source of truth.
     const { getByTestId } = render(<AppShell><div>Body</div></AppShell>);
     await waitFor(() => expect(getByTestId('sidebar')).toBeInTheDocument());
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    expect(setCommandPaletteOpen).toHaveBeenCalledWith(true);
+    expect(setCommandPaletteOpen).not.toHaveBeenCalled();
   });
 
   it('closes the command palette on Escape when open', async () => {

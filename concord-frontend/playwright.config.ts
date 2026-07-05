@@ -102,6 +102,16 @@ export default defineConfig({
         // michelkraemer.com enable-gpu-headless. Swap to --use-gl=angle/egl +
         // xvfb on a GPU runner for hardware accel.
         launchOptions: {
+          // Opt-in escape hatch for sandboxes with a pre-baked browser whose
+          // revision doesn't match this repo's pinned @playwright/test (e.g.
+          // a container image built before a dependency bump, where running
+          // `playwright install` to fetch the new revision isn't an option).
+          // Unset by default — every real environment (local dev via
+          // `playwright install`, CI via `npx playwright install --with-deps
+          // chromium` in ci.yml) resolves its own matching browser and never
+          // sets this, so `executablePath` stays `undefined` and Playwright's
+          // normal resolution applies untouched.
+          executablePath: process.env.PLAYWRIGHT_LOCAL_CHROMIUM_PATH || undefined,
           args: [
             '--use-angle=swiftshader',
             '--use-gl=angle',

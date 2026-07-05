@@ -167,7 +167,7 @@ function buildHandlers(opts: {
     },
     'concordia:fps-overlay': (e) => addToast({ type: 'info', message: `FPS overlay ${e.detail?.enabled ? 'on' : 'off'}`, duration: 1500 }),
     'concordia:hint-level': (e) => addToast({ type: 'info', message: `Hint level → ${e.detail?.level ?? 'updated'}`, duration: 1500 }),
-    'concordia:hide-hud': (e) => addToast({ type: 'info', message: e.detail?.hidden ? 'HUD hidden' : 'HUD visible', duration: 1500 }),
+    'concordia:hide-hud': (e) => addToast({ type: 'info', message: e.detail?.hide ? 'HUD hidden' : 'HUD visible', duration: 1500 }),
     'concordia:building-collapse': () => addToast({ type: 'warning', message: 'A building has collapsed!', duration: 3000 }),
     'concordia:perf-alert': (e) => addToast({ type: 'warning', message: `Performance alert: ${e.detail?.reason ?? 'check overlay'}`, duration: 4000 }),
     'concordia:capture-saved': (e) => addToast({ type: 'success', message: `Capture saved${e.detail?.filename ? `: ${e.detail.filename}` : ''}`, duration: 3000 }),
