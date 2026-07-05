@@ -3701,6 +3701,12 @@ export default function WorldLensPage() {
     const SR_BRIDGE_EVENTS = [
       'world:event:scheduled', 'world:plague-declared', 'world:crisis', 'world:crisis-resolved',
       'faction:war-declared', 'combat:telegraph', 'combat:impact', 'player:low-health',
+      // combat:kill — ScreenReaderAnnouncer's COMBAT_CUES listens for the
+      // bridged `concordia:combat-kill` window event; it was never in this
+      // list so the announcer never spoke a kill despite the raw socket
+      // event being live (worldSocket.on('combat:kill', handleCombatKill)
+      // above already consumes it for gameplay state).
+      'combat:kill',
     ];
     const srBridges: Array<[string, (...a: unknown[]) => void]> = SR_BRIDGE_EVENTS.map((kind) => {
       const winName = `concordia:${kind.replace(/:/g, '-')}`;

@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Mail, Send, Inbox, Pencil, Coins, Package, RefreshCcw, X, Check, AlertCircle } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface MailRow {
   id: string;
@@ -83,10 +84,8 @@ export default function MailLensPage() {
 
   // Realtime — new mail arrival.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handler = () => refresh();
-    window.addEventListener('mail:received', handler);
-    return () => window.removeEventListener('mail:received', handler);
+    const off = subscribe('mail:received', () => refresh());
+    return () => off?.();
   }, [refresh]);
 
   // Auto-prefill compose from query param.

@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Gavel, Plus, Coins, Clock, X, Check, AlertCircle, RefreshCcw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface AuctionRow {
   id: string;
@@ -156,13 +157,12 @@ export default function AuctionLensPage() {
   }, [refresh]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     const handler = () => refresh();
-    window.addEventListener('auction:bid-placed', handler);
-    window.addEventListener('auction:settled', handler);
+    const offBid = subscribe('auction:bid-placed', handler);
+    const offSettled = subscribe('auction:settled', handler);
     return () => {
-      window.removeEventListener('auction:bid-placed', handler);
-      window.removeEventListener('auction:settled', handler);
+      offBid?.();
+      offSettled?.();
     };
   }, [refresh]);
 

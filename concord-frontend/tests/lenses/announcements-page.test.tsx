@@ -1,6 +1,6 @@
 /// <reference types="@testing-library/jest-dom/vitest" />
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
 // LensShell + ManifestActionBar pull in stores/context we don't care about
 // here — stub them to passthrough so the test isolates the four UX states.
@@ -11,7 +11,29 @@ vi.mock('@/components/lens/ManifestActionBar', () => ({
   ManifestActionBar: () => null,
 }));
 
+// Capturing socket mock — lets a test fire the real server event name and
+// assert the page's `subscribe('concord:announcement', ...)` handler (not a
+// dead `window.addEventListener`) actually re-fetches.
+vi.mock('@/lib/realtime/socket', () => {
+  const listeners: Record<string, Array<(data: unknown) => void>> = {};
+  return {
+    subscribe: vi.fn((event: string, cb: (data: unknown) => void) => {
+      (listeners[event] ||= []).push(cb);
+      return () => {
+        listeners[event] = (listeners[event] || []).filter((f) => f !== cb);
+      };
+    }),
+    __emit: (event: string, data?: unknown) => {
+      (listeners[event] || []).forEach((cb) => cb(data));
+    },
+  };
+});
+
 import AnnouncementsLensPage from '@/app/lenses/announcements/page';
+import * as socketMock from '@/lib/realtime/socket';
+
+const emitSocket = (event: string, data?: unknown) =>
+  (socketMock as unknown as { __emit: (e: string, d?: unknown) => void }).__emit(event, data);
 
 const NOW = Math.floor(Date.now() / 1000);
 
@@ -68,5 +90,19 @@ describe('AnnouncementsLensPage — four UX states', () => {
     expect(screen.getByText('Announcements lens is live.')).toBeInTheDocument();
     // a11y: the kind filter is a tablist.
     expect(screen.getByRole('tablist', { name: /filter by kind/i })).toBeInTheDocument();
+  });
+
+  it('realtime: a real concord:announcement socket event refetches (was a dead window listener)', async () => {
+    const fetchMock = vi.fn(() => okResponse(SAMPLE));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AnnouncementsLensPage />);
+    await waitFor(() => expect(screen.getByText('Batch 4 shipped')).toBeInTheDocument());
+
+    const callsAfterMount = fetchMock.mock.calls.length;
+    act(() => {
+      emitSocket('concord:announcement', { id: 'ann_2', kind: 'news', title: 'New', body_md: 'x' });
+    });
+
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterMount));
   });
 });

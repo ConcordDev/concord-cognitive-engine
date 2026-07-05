@@ -17,6 +17,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { ActionWheel, type WheelSpoke } from './ActionWheel';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface SkillDTU {
   id: string;
@@ -99,14 +100,15 @@ export default function SkillWheelMount() {
 
   useEffect(() => {
     load();
-    // Refresh when a skill is learned/evolved so the wheel stays current.
-    const onChange = () => load();
-    window.addEventListener('concordia:skill-learned', onChange);
-    window.addEventListener('skill:evolved', onChange);
-    return () => {
-      window.removeEventListener('concordia:skill-learned', onChange);
-      window.removeEventListener('skill:evolved', onChange);
-    };
+    // Refresh when a skill evolves so the wheel stays current. There is no
+    // server-side "skill learned" event distinct from evolution (grep of
+    // server/lib/skill-progression.js confirms `skill:evolved` is the only
+    // named skill-progression beat besides the per-XP-tick `skill:xp-awarded`)
+    // — `concordia:skill-learned` was a phantom name nothing ever dispatched.
+    // Both the old dead listener and this one now just react to the same
+    // real `skill:evolved` socket event.
+    const off = subscribe('skill:evolved', () => load());
+    return () => { off?.(); };
   }, [load]);
 
   return <ActionWheel variant="skill" spokes={spokes} />;

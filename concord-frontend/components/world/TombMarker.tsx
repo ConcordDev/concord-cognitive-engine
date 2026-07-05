@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface TombRow {
   id: string;
@@ -88,11 +89,10 @@ export default function TombMarker({ worldId, pollIntervalMs = 60_000 }: Props) 
     void refresh();
     const interval = window.setInterval(refresh, pollIntervalMs);
 
-    const onDeath = () => { void refresh(); };
-    window.addEventListener('entity:death', onDeath);
+    const off = subscribe('entity:death', () => { void refresh(); });
     return () => {
       window.clearInterval(interval);
-      window.removeEventListener('entity:death', onDeath);
+      off?.();
     };
   }, [refresh, pollIntervalMs]);
 

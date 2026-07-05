@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface ActiveFestival {
   festival_id: string;
@@ -52,11 +53,10 @@ export function FestivalBanner({ worldId }: FestivalBannerProps) {
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, 60_000);
-    const onStart = () => refresh();
-    if (typeof window !== 'undefined') window.addEventListener('festival:started', onStart);
+    const off = subscribe('festival:started', () => refresh());
     return () => {
       clearInterval(t);
-      if (typeof window !== 'undefined') window.removeEventListener('festival:started', onStart);
+      off?.();
     };
   }, [refresh]);
 

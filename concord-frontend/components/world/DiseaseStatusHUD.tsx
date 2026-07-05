@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Skull, Activity, X } from 'lucide-react';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface Disease {
   id: string;
@@ -39,13 +40,12 @@ export function DiseaseStatusHUD() {
     return () => clearInterval(id);
   }, [refresh]);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     const handler = () => refresh();
-    window.addEventListener('disease:contracted', handler);
-    window.addEventListener('disease:cured', handler);
+    const offContracted = subscribe('disease:contracted', handler);
+    const offCured = subscribe('disease:cured', handler);
     return () => {
-      window.removeEventListener('disease:contracted', handler);
-      window.removeEventListener('disease:cured', handler);
+      offContracted?.();
+      offCured?.();
     };
   }, [refresh]);
 

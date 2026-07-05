@@ -533,7 +533,22 @@ export type SocketEvent =
   // request opts in with x-conkay-run-id. The ConKay HUD animates these 1:1.
   | 'macro:started'
   | 'macro:stage'
-  | 'macro:completed';
+  | 'macro:completed'
+  // Realtime dead-event wiring pass (2026-07-05) — these were already
+  // server-emitted but missing from the union, so consumers were stuck on
+  // dead `window.addEventListener` calls nothing ever dispatched.
+  | 'achievement:unlocked'
+  | 'concord:announcement'
+  | 'auction:bid-placed'
+  | 'auction:settled'
+  | 'disease:contracted'
+  | 'disease:cured'
+  | 'festival:started'
+  | 'friend:request-accepted'
+  | 'friend:request-received'
+  | 'mail:received'
+  | 'world:invite-received'
+  | 'world:marker-placed';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

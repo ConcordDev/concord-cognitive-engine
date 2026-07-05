@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { Trophy, X, Sparkles, Zap } from 'lucide-react';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface UnlockEvent {
   achievementId: string;
@@ -32,14 +33,11 @@ export function AchievementToast() {
   const [queue, setQueue] = useState<UnlockEvent[]>([]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handler = (ev: Event) => {
-      const detail = (ev as CustomEvent<UnlockEvent>).detail;
-      if (!detail?.achievementId) return;
-      setQueue((prev) => [...prev, detail]);
-    };
-    window.addEventListener('achievement:unlocked', handler);
-    return () => window.removeEventListener('achievement:unlocked', handler);
+    const off = subscribe<UnlockEvent>('achievement:unlocked', (data) => {
+      if (!data?.achievementId) return;
+      setQueue((prev) => [...prev, data]);
+    });
+    return () => off?.();
   }, []);
 
   // Auto-dismiss each toast after 6s.

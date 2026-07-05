@@ -22,8 +22,30 @@ import { render, act, waitFor } from '@testing-library/react';
 // suite mock out their Canvas-only internals (see ForwardSimPanel.test.tsx).
 vi.mock('@react-three/fiber', () => ({ useFrame: () => {} }));
 
+// Capturing socket mock — lets a test fire the real `entity:death` event and
+// assert both components' `subscribe('entity:death', ...)` handlers (not
+// dead `window.addEventListener` calls) actually re-fetch.
+vi.mock('@/lib/realtime/socket', () => {
+  const listeners: Record<string, Array<(data: unknown) => void>> = {};
+  return {
+    subscribe: vi.fn((event: string, cb: (data: unknown) => void) => {
+      (listeners[event] ||= []).push(cb);
+      return () => {
+        listeners[event] = (listeners[event] || []).filter((f) => f !== cb);
+      };
+    }),
+    __emit: (event: string, data?: unknown) => {
+      (listeners[event] || []).forEach((cb) => cb(data));
+    },
+  };
+});
+
 import TombsOverlay from '@/components/world/TombsOverlay';
 import TombMarker from '@/components/world/TombMarker';
+import * as socketMock from '@/lib/realtime/socket';
+
+const emitSocket = (event: string, data?: unknown) =>
+  (socketMock as unknown as { __emit: (e: string, d?: unknown) => void }).__emit(event, data);
 
 const TOMB = {
   id: 'tomb-1',
@@ -117,6 +139,18 @@ describe('TombsOverlay — envelope unwrap (findings 19-21)', () => {
     const { container } = render(<TombsOverlay worldId="concordia-hub" />);
     await waitFor(() => expect(container.textContent).toMatch(/Tombs — 1/));
   });
+
+  it('realtime: a real entity:death socket event refetches (was a dead window listener)', async () => {
+    const fetchSpy = fetchRouter();
+    vi.stubGlobal('fetch', fetchSpy);
+    const { container } = render(<TombsOverlay worldId="concordia-hub" />);
+    await waitFor(() => expect(container.textContent).toMatch(/Tombs — 1/));
+
+    const callsAfterMount = fetchSpy.mock.calls.length;
+    emitSocket('entity:death', { entityId: 'npc-2', entityName: 'Someone', cause: 'combat' });
+
+    await waitFor(() => expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsAfterMount));
+  });
 });
 
 describe('TombMarker — envelope unwrap (findings 22-23)', () => {
@@ -132,5 +166,17 @@ describe('TombMarker — envelope unwrap (findings 22-23)', () => {
     await act(async () => { group.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
     await waitFor(() => expect(document.getElementById('concord-tomb-close')).toBeTruthy());
     expect(document.body.textContent).toMatch(/The dome will hold\./);
+  });
+
+  it('realtime: a real entity:death socket event refetches (was a dead window listener)', async () => {
+    const fetchSpy = fetchRouter();
+    vi.stubGlobal('fetch', fetchSpy);
+    const { container } = render(<TombMarker worldId="concordia-hub" />);
+    await waitFor(() => expect(container.querySelectorAll('group').length).toBe(1));
+
+    const callsAfterMount = fetchSpy.mock.calls.length;
+    emitSocket('entity:death', { entityId: 'npc-2', entityName: 'Someone', cause: 'combat' });
+
+    await waitFor(() => expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsAfterMount));
   });
 });

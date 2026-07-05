@@ -23,6 +23,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface TombRow {
   id: string;
@@ -79,11 +80,10 @@ export default function TombsOverlay({ worldId, pollIntervalMs = 90_000 }: Props
   useEffect(() => {
     void refresh();
     const interval = window.setInterval(refresh, pollIntervalMs);
-    const onDeath = () => { void refresh(); };
-    window.addEventListener('entity:death', onDeath);
+    const off = subscribe('entity:death', () => { void refresh(); });
     return () => {
       window.clearInterval(interval);
-      window.removeEventListener('entity:death', onDeath);
+      off?.();
     };
   }, [refresh, pollIntervalMs]);
 
