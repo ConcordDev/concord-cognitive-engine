@@ -1864,6 +1864,16 @@ export default function WorldLensPage() {
         category: 'view',
         action: togglePointerLock,
       },
+      {
+        id: 'toggle-hud',
+        keys: 'h',
+        description: 'Hide/show HUD panels (clear the view for movement/screenshots)',
+        category: 'view',
+        action: () =>
+          window.dispatchEvent(
+            new CustomEvent('concordia:hide-hud', { detail: { hide: !hudHidden } })
+          ),
+      },
     ],
     { lensId: 'world' }
   );
@@ -1933,6 +1943,22 @@ export default function WorldLensPage() {
   // only when WebGL is unavailable (see webglAvailable + the effect below).
   const [viewMode, setViewMode] = useState<ViewMode>('explore');
   const [activeDistrict, setActiveDistrict] = useState<District>(DEMO_DISTRICT);
+
+  // Global HUD visibility — the ~15 permanent 2D panels floating over the
+  // 3D canvas (feeds, trackers, toolbar, resource bars) obstruct movement
+  // and the view. One toggle clears all of them at once. Also the real
+  // wiring for PhotoMode's hide-HUD dispatch, which previously had no
+  // listener on this page (PhotoMode fired 'concordia:hide-hud' into the
+  // void — see lib/event-router.ts, which only ever showed a toast).
+  const [hudHidden, setHudHidden] = useState(false);
+  useEffect(() => {
+    const onHideHud = (e: Event) => {
+      const hide = (e as CustomEvent<{ hide?: boolean }>).detail?.hide;
+      if (typeof hide === 'boolean') setHudHidden(hide);
+    };
+    window.addEventListener('concordia:hide-hud', onHideHud);
+    return () => window.removeEventListener('concordia:hide-hud', onHideHud);
+  }, []);
 
   // ── World-data honesty (W4) ────────────────────────────────────────────────
   // The scene boots on DEMO_DISTRICT seed geometry; the player must never
@@ -4426,7 +4452,7 @@ export default function WorldLensPage() {
               floats above the canvas in either windowed or fullscreen
               mode. Skyrim-shape immersion: F to toggle full, P to
               capture mouse for FPS-style aim. */}
-          <div className="absolute top-4 left-4 z-30 flex items-center gap-1.5 bg-black/60 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto">
+          <div className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 bg-black/60 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             <button
               onClick={isFullscreen ? exitFullscreen : enterFullscreen}
               title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen (F)'}
@@ -4511,7 +4537,7 @@ export default function WorldLensPage() {
           />
           </ErrorBoundary>
           {/* Theme picker — 3 swatches + PBR/Toon toggle top-right */}
-          <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto">
+          <div className={`absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             {[
               { id: 'neon-punk' as const, swatch: '#6366f1', label: 'Neon Punk' },
               { id: 'classic' as const, swatch: '#e8c97a', label: 'Classic' },
@@ -4720,7 +4746,7 @@ export default function WorldLensPage() {
             worldId={activeDistrict.id}
             playerPosition={{ x: playerAvatar.position.x, y: 0, z: playerAvatar.position.z }}
           />
-          <CurrencyHUD onClick={() => setShowPanel('profile')} />
+          {!hudHidden && <CurrencyHUD onClick={() => setShowPanel('profile')} />}
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}
             onOpenMap={() => setShowPanel('map')}
@@ -4924,7 +4950,7 @@ export default function WorldLensPage() {
           })}
 
           {/* Camera mode controls */}
-          <div className="absolute top-4 right-4 z-20">
+          <div className={`absolute top-4 right-4 z-20 ${hudHidden ? 'hidden' : ''}`}>
             <CameraControls
               cameraState={{
                 mode: cameraMode,
@@ -4943,21 +4969,23 @@ export default function WorldLensPage() {
             />
           </div>
           {/* HUD overlay — mode drives the top-bar label */}
-          <HUDOverlay
-            mode={(MODE_TO_HUD[inputMode] ?? 'explore') as HUDMode}
-            district={activeDistrict.name}
-            timeOfDay="day"
-            weather="clear"
-            playerCount={1}
-            currency={{ concordCoin: 0, pendingRoyalties: 0 }}
-            professionBadge=""
-            reputationLevel={1}
-            notifications={[]}
-            unreadCount={0}
-            tools={[]}
-            onToolSelect={() => {}}
-            onMenuOpen={() => setA11yMenuOpen(true)}
-          />
+          {!hudHidden && (
+            <HUDOverlay
+              mode={(MODE_TO_HUD[inputMode] ?? 'explore') as HUDMode}
+              district={activeDistrict.name}
+              timeOfDay="day"
+              weather="clear"
+              playerCount={1}
+              currency={{ concordCoin: 0, pendingRoyalties: 0 }}
+              professionBadge=""
+              reputationLevel={1}
+              notifications={[]}
+              unreadCount={0}
+              tools={[]}
+              onToolSelect={() => {}}
+              onMenuOpen={() => setA11yMenuOpen(true)}
+            />
+          )}
 
           {/* F1/F3/F4 — accessibility surfaces (subtitles, SR announcer, settings menu) */}
           <SubtitleDisplay />
@@ -5115,12 +5143,12 @@ export default function WorldLensPage() {
             onHotbar={combatCtx.activateSkill}
           />
           {/* Tutorial overlay — always present, shows ? button */}
-          <TutorialOverlay />
+          {!hudHidden && <TutorialOverlay />}
 
           {/* Emergent simulation feed — surfaces world-tick activity that
               previously fired silently (NPC death, evo-promotion, refusal
               fields, weather rolls, agent insights, etc.) */}
-          <EmergentEventFeed />
+          {!hudHidden && <EmergentEventFeed />}
           <DangerBandHUD />
           <AwakeningToast />
           <SystemFeed />
@@ -5324,7 +5352,7 @@ export default function WorldLensPage() {
 
           {/* Companion roster — pet HUD (Phase A). Mounted bottom-right;
               opens on click. Lists owned creatures, deploy/dismiss/rename. */}
-          <CompanionRosterPanel worldId={activeDistrict?.id || 'concordia-hub'} />
+          {!hudHidden && <CompanionRosterPanel worldId={activeDistrict?.id || 'concordia-hub'} />}
 
           {/* Tame attempt overlay — opens on KeyJ press near a creature.
               Shows current bond progress vs threshold + lure selector. */}
@@ -5387,14 +5415,16 @@ export default function WorldLensPage() {
           />
 
           {/* Phase AB — village gossip (NPC↔NPC graph escalations) */}
-          <VillageGossipFeed worldId={activeDistrict.id} />
+          {!hudHidden && <VillageGossipFeed worldId={activeDistrict.id} />}
 
           {/* Phase AG — district ambient chat (co-presence) */}
-          <AmbientChatPanel
-            worldId={activeDistrict.id}
-            districtId={activeDistrict.id}
-            currentUserId={playerAvatar.id}
-          />
+          {!hudHidden && (
+            <AmbientChatPanel
+              worldId={activeDistrict.id}
+              districtId={activeDistrict.id}
+              currentUserId={playerAvatar.id}
+            />
+          )}
 
           {/* Phase BB1 — active festival banner */}
           <FestivalBanner worldId={activeDistrict.id} />
@@ -5427,7 +5457,7 @@ export default function WorldLensPage() {
           <CommandPalette />
 
           {/* Phase DA4 — Run-mode hotbar group (top-right floating cluster) */}
-          <div className="pointer-events-auto fixed right-4 top-32 z-20">
+          <div className={`pointer-events-auto fixed right-4 top-32 z-20 ${hudHidden ? 'hidden' : ''}`}>
             <GameModesHotbarGroup worldId={activeDistrict.id} />
           </div>
 
@@ -5520,7 +5550,7 @@ export default function WorldLensPage() {
           )}
 
           {/* Gameplay toolbar */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto">
+          <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             {(
               [
                 { key: 'inventory', label: 'Inventory', icon: Layers },
@@ -5942,7 +5972,7 @@ export default function WorldLensPage() {
           )}
 
           {/* Resource Bars HUD (top-left, below minimap) */}
-          <div className="absolute top-4 left-4 z-20 pointer-events-none flex flex-col gap-1 min-w-[160px]">
+          <div className={`absolute top-4 left-4 z-20 pointer-events-none flex flex-col gap-1 min-w-[160px] ${hudHidden ? 'hidden' : ''}`}>
             {(
               [
                 { key: 'hp', label: 'HP', color: '#ef4444', icon: '❤' },
@@ -6061,7 +6091,7 @@ export default function WorldLensPage() {
           )}
 
           {/* Quest tracker HUD — bottom right, above HUD bar */}
-          <div className="absolute bottom-24 right-4 z-25 flex flex-col gap-2 pointer-events-auto">
+          <div className={`absolute bottom-24 right-4 z-25 flex flex-col gap-2 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             <QuestTracker
               worldId={activeDistrict.id}
               onClaimReward={(_questId, _rewards) => {
@@ -6246,7 +6276,7 @@ export default function WorldLensPage() {
           )}
 
           <CrisisBanner />
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+          <div className={`absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             <SeasonBanner onOpenPassPanel={() => setShowPanel('season')} />
           </div>
           <GameModeHUD />
