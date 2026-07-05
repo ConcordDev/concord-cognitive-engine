@@ -197,34 +197,26 @@ const NEW_RELEASES: MiniRelease[] = [];
 
 // ── Subcomponents ──────────────────────────────────────────────────────────────
 
-function WaveformPlayer({
+export function WaveformPlayer({
   waveform,
   duration,
   bitrate,
   title,
 }: AudioAttachment & { className?: string }) {
   const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
 
+  // NOTE: AudioAttachment carries no real audio URL/source (no `url` field,
+  // no HTMLAudioElement) — there is no real playback happening here. The
+  // previous code faked a numeric progress percentage via a bare setInterval
+  // with no backing state, which CLAUDE.md's honest-by-construction rule
+  // forbids. Until the backend/DTU pipeline surfaces a real playable URL
+  // (out of scope for this file), this shows an honest indeterminate
+  // "playing" state instead of a fabricated percentage. Follow-up: add a
+  // `url` field to AudioAttachment + wire a real <audio> element whose
+  // `timeupdate` event drives real progress.
   const togglePlay = useCallback(() => {
-    setPlaying((prev) => {
-      if (!prev) {
-        // simulate playback progress
-        let p = progress;
-        const iv = setInterval(() => {
-          p += 2;
-          if (p >= 100) {
-            clearInterval(iv);
-            setPlaying(false);
-            setProgress(0);
-            return;
-          }
-          setProgress(p);
-        }, 200);
-      }
-      return !prev;
-    });
-  }, [progress]);
+    setPlaying((prev) => !prev);
+  }, []);
 
   return (
     <motion.div
@@ -245,20 +237,17 @@ function WaveformPlayer({
             <span className="text-sm font-medium text-white truncate">{title}</span>
             {bitrate && <span className="text-xs text-gray-400">{bitrate} kbps</span>}
           </div>
-          <div className="flex items-end gap-[2px] h-8">
-            {waveform.map((h, i) => {
-              const filled = (i / waveform.length) * 100 < progress;
-              return (
-                <div
-                  key={i}
-                  className={cn(
-                    'flex-1 rounded-sm transition-colors duration-150',
-                    filled ? 'bg-neon-cyan' : playing ? 'bg-gray-600' : 'bg-gray-700'
-                  )}
-                  style={{ height: `${h}%` }}
-                />
-              );
-            })}
+          <div className={cn('flex items-end gap-[2px] h-8', playing && 'animate-pulse')}>
+            {waveform.map((h, i) => (
+              <div
+                key={i}
+                className={cn(
+                  'flex-1 rounded-sm transition-colors duration-150',
+                  playing ? 'bg-neon-cyan/70' : 'bg-gray-700'
+                )}
+                style={{ height: `${h}%` }}
+              />
+            ))}
           </div>
         </div>
         <span className="text-xs text-gray-400 tabular-nums flex-shrink-0">{duration}</span>

@@ -244,33 +244,23 @@ export function MediaUpload({
   const uploadMutation = useMutation({
     mutationFn: async () => {
       setUploadStatus('validating');
-      setUploadProgress(10);
+      setUploadProgress(0);
 
       if (!uploadFile) throw new Error('No file selected');
       if (!title.trim()) throw new Error('Title is required');
 
       setUploadStatus('uploading');
 
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 80) {
-            clearInterval(progressInterval);
-            return 80;
-          }
-          return prev + Math.random() * 15;
-        });
-      }, 300);
+      // Convert file to base64 for binary storage
+      if (!uploadFile.file) throw new Error('File data is missing');
+      const arrayBuffer = await uploadFile.file.arrayBuffer();
+      const base64Data = btoa(
+        new Uint8Array(arrayBuffer).reduce((d, byte) => d + String.fromCharCode(byte), '')
+      );
 
-      try {
-        // Convert file to base64 for binary storage
-        if (!uploadFile.file) throw new Error('File data is missing');
-        const arrayBuffer = await uploadFile.file.arrayBuffer();
-        const base64Data = btoa(
-          new Uint8Array(arrayBuffer).reduce((d, byte) => d + String.fromCharCode(byte), '')
-        );
-
-        const response = await api.post('/api/media/upload', {
+      const response = await api.post(
+        '/api/media/upload',
+        {
           authorId,
           title: title.trim(),
           description: description.trim(),
@@ -282,21 +272,27 @@ export function MediaUpload({
           privacy,
           tier,
           data: base64Data,
-        });
+        },
+        {
+          // Real per-byte upload progress from the browser's XHR upload
+          // event — not fabricated (CLAUDE.md honest-by-construction rule).
+          // Drives only the local progress bar; never sent to the server.
+          onUploadProgress: (evt) => {
+            if (evt.total) {
+              setUploadProgress(Math.round((evt.loaded / evt.total) * 100));
+            }
+          },
+        }
+      );
 
-        clearInterval(progressInterval);
-        setUploadProgress(100);
-        setUploadStatus('processing');
+      setUploadProgress(100);
+      setUploadStatus('processing');
 
-        // Brief processing phase
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setUploadStatus('complete');
+      // Brief processing phase
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setUploadStatus('complete');
 
-        return response.data;
-      } catch (err) {
-        clearInterval(progressInterval);
-        throw err;
-      }
+      return response.data;
     },
     onSuccess: (data) => {
       onUploadComplete?.(data.mediaDTU || data);
