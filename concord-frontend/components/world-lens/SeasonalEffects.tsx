@@ -103,7 +103,9 @@ export default function SeasonalEffects({ worldId }: Props) {
         });
         if (!r.ok) return;
         const j = await r.json();
-        if (!cancelled && j?.season) setSeason(j.season as Season);
+        // /api/lens/run always wraps the macro payload as { ok, result }
+        // — read the real envelope, not a bare top-level field.
+        if (!cancelled && j?.result?.season) setSeason(j.result.season as Season);
       } catch { /* fine */ }
     })();
     return () => { cancelled = true; };

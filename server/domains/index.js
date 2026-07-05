@@ -242,6 +242,9 @@ import standardsDomain from './standards.js';
 import registerSensorActions from './sensor.js';
 import registerProfileActions from './profile.js';
 import registerSeasonalActions from './seasonal.js';
+import registerSeasonsActions from './seasons.js';
+import registerSkillsActions from './skills.js';
+import registerWorldsActions from './worlds.js';
 import registerPresenceActions from './presence.js';
 import serviceMarket from './service-market.js';
 import digitalTwin from './digital-twin.js';
@@ -484,6 +487,9 @@ export default [
   registerSensorActions,
   registerProfileActions,
   registerSeasonalActions,
+  registerSeasonsActions,
+  registerSkillsActions,
+  registerWorldsActions,
   registerPresenceActions,
   serviceMarket,
   digitalTwin,

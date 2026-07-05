@@ -11,7 +11,10 @@
  * Quest waypoints rim-light the spire of the active quest's destination.
  *
  * Server contract: `/api/lens/run` domain=worlds name=anchors_for_world
- * → returns `{ anchors: [{ id, name, x, z, faction_id?, kind? }] }`.
+ * → returns `{ result: { anchors: [{ id, name, x, z, kind? }] } }`. Anchors
+ * are named world_buildings (real positional data) — no per-world
+ * authored "spire" data exists (content/world/*\/meta.json's "anchors" are
+ * an unrelated Concord Link network feature with no x/z positions).
  */
 
 import { useEffect, useState } from 'react';
@@ -70,7 +73,9 @@ export default function LandmarkSpires({ worldId, getCamera, activeQuestWaypoint
         });
         if (!r.ok) return;
         const j = await r.json();
-        if (!cancelled && Array.isArray(j?.anchors)) setAnchors(j.anchors);
+        // /api/lens/run always wraps the macro payload as { ok, result }
+        // — read the real envelope, not a bare top-level field.
+        if (!cancelled && Array.isArray(j?.result?.anchors)) setAnchors(j.result.anchors);
       } catch { /* fine */ }
     })();
     return () => { cancelled = true; };

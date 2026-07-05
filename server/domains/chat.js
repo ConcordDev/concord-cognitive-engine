@@ -3,6 +3,7 @@
 // participant engagement analysis, and topic shift detection.
 
 import vm from "node:vm";
+import { generatePollinationsImage } from "../lib/pollinations-image.js";
 
 export default function registerChatActions(registerLensAction) {
   /**
@@ -1406,38 +1407,16 @@ export default function registerChatActions(registerLensAction) {
     ensureChatSubmaps(s);
     const userId = actorIdFor(ctx);
     const prompt = String(params.prompt || "").trim();
-    if (!prompt) return { ok: false, error: "prompt required" };
-    if (prompt.length > 800) return { ok: false, error: "prompt too long (max 800)" };
-    const width = Math.max(256, Math.min(1024, Number(params.width) || 768));
-    const height = Math.max(256, Math.min(1024, Number(params.height) || 768));
-    // Deterministic seed so the same prompt is reproducible; user may pass one.
-    let seed = Number(params.seed);
-    if (!Number.isInteger(seed) || seed < 0) {
-      seed = 0;
-      for (let i = 0; i < prompt.length; i++) {
-        seed = (seed * 31 + prompt.charCodeAt(i)) % 2147483647;
-      }
-    }
-    // Free keyless image service — text-to-image via URL params.
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
-      `?width=${width}&height=${height}&seed=${seed}&nologo=true`;
-    let reachable = true;
-    try {
-      const head = await fetch(url, { method: "HEAD" });
-      reachable = head.ok;
-    } catch (_e) {
-      // Network failure in a sandboxed test env — still return the URL,
-      // the client img tag will surface a load error if it truly fails.
-      reachable = false;
-    }
+    const gen = await generatePollinationsImage({ prompt, width: params.width, height: params.height, seed: params.seed });
+    if (!gen.ok) return gen;
     const image = {
       id: nextChatId("img"),
       prompt,
-      url,
-      width,
-      height,
-      seed,
-      reachable,
+      url: gen.url,
+      width: gen.width,
+      height: gen.height,
+      seed: gen.seed,
+      reachable: gen.reachable,
       createdAt: nowIsoChat(),
     };
     if (!s.images.has(userId)) s.images.set(userId, []);
