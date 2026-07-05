@@ -34,7 +34,7 @@ export function RecordSharingPanel({ patientId }: { patientId: string }) {
     setLoading(true);
     try {
       const r = await lensRun('healthcare', 'proxy-list', { patientId });
-      if (r.data?.ok) setGrants((r.data.result.grants || []) as ProxyGrant[]);
+      if (r.data?.ok) setGrants((r.data.result?.grants || []) as ProxyGrant[]);
     } catch (e) { console.error('[RecordSharing] refresh', e); }
     finally { setLoading(false); }
   }, [patientId]);

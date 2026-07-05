@@ -440,7 +440,7 @@ function ApaExport({ kind, result }: { kind: string; result: any }) {
   const generate = useCallback(async () => {
     setBusy(true);
     const res = await lensRun('hypothesis', 'apaReport', { kind, result });
-    if (res.data.ok) setApa(res.data.result.apa);
+    if (res.data?.ok) setApa(res.data.result?.apa ?? null);
     else setApa(`Error: ${res.data.error}`);
     setBusy(false);
   }, [kind, result]);
@@ -485,7 +485,7 @@ function DatasetPanel() {
 
   const refresh = useCallback(async () => {
     const res = await lensRun('hypothesis', 'datasetList', {});
-    if (res.data.ok) setDatasets(res.data.result.datasets || []);
+    if (res.data?.ok) setDatasets(res.data.result?.datasets || []);
   }, []);
 
   useEffect(() => {
@@ -961,9 +961,9 @@ function RegistryPanel() {
 
   const refresh = useCallback(async () => {
     const res = await lensRun('hypothesis', 'registryList', {});
-    if (res.data.ok) {
-      setItems(res.data.result.items || []);
-      setCounts(res.data.result.counts || {});
+    if (res.data?.ok) {
+      setItems(res.data.result?.items || []);
+      setCounts(res.data.result?.counts || {});
     }
   }, []);
 
