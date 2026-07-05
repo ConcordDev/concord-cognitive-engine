@@ -523,11 +523,14 @@ test.describe('Command Palette', () => {
         // After ArrowDown the first option should no longer be selected
         // (selection moved to the next item) — but tolerate the edge case
         // where the palette has only one option and selection wraps back
-        // to the same item.
-        const updatedAriaSelected = await firstOption.getAttribute('aria-selected').catch(() => null);
+        // to the same item. Poll via toHaveAttribute (not a raw getAttribute
+        // snapshot) since the re-render committing the new selectedIndex
+        // isn't synchronous with the keypress, especially under parallel
+        // worker CPU contention — a bare snapshot can read the pre-update
+        // DOM and flake even though the app behaves correctly.
         const optionCount = await page.locator('[role="option"]').count().catch(() => 0);
-        if (updatedAriaSelected && optionCount > 1) {
-          expect(updatedAriaSelected).toBe('false');
+        if (optionCount > 1) {
+          await expect(firstOption).toHaveAttribute('aria-selected', 'false');
         }
       }
     }
