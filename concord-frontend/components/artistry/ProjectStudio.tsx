@@ -86,7 +86,7 @@ export function ProjectStudio() {
 
   const toggleAppreciate = useCallback(async (id: string) => {
     const r = await lensRun('artistry', 'appreciate', { projectId: id });
-    if (r.data?.ok && detail) {
+    if (r.data?.ok && r.data.result && detail) {
       setDetail({ ...detail, appreciated: r.data.result.appreciated, appreciations: r.data.result.count });
     }
   }, [detail]);
@@ -94,7 +94,7 @@ export function ProjectStudio() {
   const addComment = useCallback(async () => {
     if (!commentBody.trim() || !openId) return;
     const r = await lensRun('artistry', 'commentAdd', { projectId: openId, body: commentBody });
-    if (r.data?.ok && detail) {
+    if (r.data?.ok && r.data.result && detail) {
       setDetail({ ...detail, comments: [...detail.comments, r.data.result.comment] });
       setCommentBody('');
     }

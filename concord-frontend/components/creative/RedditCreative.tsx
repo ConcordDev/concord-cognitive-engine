@@ -40,7 +40,7 @@ export function RedditCreative() {
       const r = await fetch(`https://www.reddit.com/r/${sub}/${sort}.json?limit=25&t=week`);
       if (!r.ok) throw new Error(`reddit ${r.status}`);
       const j = await r.json();
-      return ((j.data?.children || []) as { data: RedditPost }[]).map((c) => c.data);
+      return ((j?.data?.children || []) as { data: RedditPost }[]).map((c) => c.data);
     },
     staleTime: 10 * 60 * 1000,
   });

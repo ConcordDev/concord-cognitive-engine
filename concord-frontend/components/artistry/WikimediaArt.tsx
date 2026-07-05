@@ -32,7 +32,7 @@ export function WikimediaArt() {
         const r = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`);
         if (!r.ok) throw new Error(`wikimedia ${r.status}`);
         const j = await r.json();
-        const pages = j.query?.pages || {};
+        const pages = j?.query?.pages || {};
         const list = Object.values(pages).map((p: unknown) => {
           const pg = p as { pageid: number; title: string; thumbnail?: { source: string }; imageinfo?: WmImage['imageinfo'][] };
           return {
