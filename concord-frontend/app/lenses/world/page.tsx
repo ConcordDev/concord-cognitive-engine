@@ -2695,7 +2695,7 @@ export default function WorldLensPage() {
         setGatherResult(`Gathered: ${summary}`);
         setTimeout(() => setGatherResult(null), 3500);
         // If this gather triggered a level-up, show upgrade prompt
-        const cl = data.skillProgress?.characterLevelResult;
+        const cl = data?.skillProgress?.characterLevelResult;
         if (cl?.pendingUpgrades > 0) {
           setUpgradePrompt({
             characterLevel: cl.characterLevel,
@@ -2708,8 +2708,8 @@ export default function WorldLensPage() {
             n.id === nodeId
               ? {
                   ...n,
-                  quantity_remaining: data.node?.quantityRemaining ?? 0,
-                  is_depleted: data.node?.isDepleted ? 1 : 0,
+                  quantity_remaining: data?.node?.quantityRemaining ?? 0,
+                  is_depleted: data?.node?.isDepleted ? 1 : 0,
                 }
               : n
           )

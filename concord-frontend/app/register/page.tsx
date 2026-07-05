@@ -67,7 +67,7 @@ export default function RegisterPage() {
       // — { ok: true, user: { id: 'ok' } } with NO token, NO cookie — so we must not
       // treat a bare `ok` as logged-in, or the user lands on /onboarding unauthenticated
       // and bounces to /login ("I registered but I'm not logged in"). Require the token.
-      const realSuccess = res.data?.ok && (res.data?.token || res.data?.user?.id && res.data.user.id !== 'ok');
+      const realSuccess = res.data?.ok && (res.data?.token || (res.data?.user?.id && res.data?.user?.id !== 'ok'));
       if (realSuccess) {
         // Registration auto-logged you in (cookies set) — go straight to onboarding.
         localStorage.setItem('concord_entered', 'true');

@@ -35,8 +35,8 @@ export function DisciplineSearch() {
   const loadCloud = useCallback(async () => {
     const r = await lensRun('artistry', 'tagCloud', {});
     if (r.data?.ok) {
-      setTags((r.data.result.tags as TagEntry[]) || []);
-      setDisciplines((r.data.result.disciplines as DisciplineEntry[]) || []);
+      setTags((r.data.result?.tags as TagEntry[]) || []);
+      setDisciplines((r.data.result?.disciplines as DisciplineEntry[]) || []);
     }
   }, []);
 
@@ -48,7 +48,7 @@ export function DisciplineSearch() {
       discipline: opts?.discipline ?? discipline,
       tag: opts?.tag ?? tag,
     });
-    if (r.data?.ok) setResults((r.data.result.results as SearchProject[]) || []);
+    if (r.data?.ok) setResults((r.data.result?.results as SearchProject[]) || []);
     setLoading(false);
   }, [query, sort, discipline, tag]);
 

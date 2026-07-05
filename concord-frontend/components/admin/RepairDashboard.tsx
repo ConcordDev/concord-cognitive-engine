@@ -273,7 +273,7 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
       const data = await res.json();
       if (data.ok) {
         const active = data.active || [];
-        const current = data.currentScan?.predictions || [];
+        const current = data?.currentScan?.predictions || [];
         const combined = [
           ...current,
           ...active.filter((a: Prediction) => !current.some((c: Prediction) => c.id === a.id)),

@@ -105,7 +105,7 @@ export default function MailLensPage() {
       const r = await fetch(`/api/mail/${mailId}/claim`, { method: 'POST', credentials: 'include' });
       const j = await r.json();
       if (j.ok) {
-        showFlash('ok', `Claimed: ${j.payout?.attachmentCc || 0} CC + ${j.attachments?.dtuIds?.length || 0} DTUs.`);
+        showFlash('ok', `Claimed: ${j?.payout?.attachmentCc || 0} CC + ${j?.attachments?.dtuIds?.length || 0} DTUs.`);
         refresh();
       } else {
         showFlash('err', j.error || 'claim failed');

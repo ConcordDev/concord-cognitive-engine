@@ -59,7 +59,8 @@ export function ArtStudioSection() {
     setForm({ title: '', preset: 0, background: '#ffffff' });
     setError(null);
     await refresh();
-    if (r.data?.result?.artwork?.id) setOpenArtwork(r.data.result.artwork.id);
+    const newArtworkId = r.data?.result?.artwork?.id;
+    if (newArtworkId) setOpenArtwork(newArtworkId);
   };
 
   const delArtwork = async (id: string) => {

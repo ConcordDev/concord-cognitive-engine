@@ -389,8 +389,9 @@ export default function PoetryPage() {
     setAiGenerating(true);
     try {
       const resp = await api.post('/api/lens/run', { domain: 'creative', action: 'generate', mode: 'structural_poetry', form: compForm });
-      if (resp.data?.result?.content) {
-        setCompContent(prev => prev ? prev + '\n\n' + resp.data.result.content : resp.data.result.content);
+      const generated = resp.data?.result?.content;
+      if (generated) {
+        setCompContent(prev => prev ? prev + '\n\n' + generated : generated);
       }
     } catch (err) {
       console.error('AI generation failed:', err instanceof Error ? err.message : err);

@@ -60,7 +60,8 @@ export function AnimationStudioSection() {
     setForm({ title: '', preset: 0, fps: 12 });
     setError(null);
     await refresh();
-    if (r.data?.result?.animation?.id) setOpen(r.data.result.animation.id);
+    const newAnimId = r.data?.result?.animation?.id;
+    if (newAnimId) setOpen(newAnimId);
   };
 
   const createFromTemplate = async (templateId: string) => {
@@ -69,7 +70,8 @@ export function AnimationStudioSection() {
     setError(null);
     setShowTemplates(false);
     await refresh();
-    if (r.data?.result?.animation?.id) setOpen(r.data.result.animation.id);
+    const newAnimId = r.data?.result?.animation?.id;
+    if (newAnimId) setOpen(newAnimId);
   };
 
   const del = async (id: string) => {

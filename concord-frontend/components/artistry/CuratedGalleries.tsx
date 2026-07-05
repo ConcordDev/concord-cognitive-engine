@@ -51,7 +51,7 @@ export function CuratedGalleries() {
     setOpenId(id);
     setGalleryDetail(null);
     const r = await lensRun('artistry', 'galleryItems', { galleryId: id });
-    if (r.data?.ok) {
+    if (r.data?.ok && r.data.result) {
       setGalleryDetail({
         gallery: r.data.result.gallery as Gallery,
         items: (r.data.result.items as GalleryProject[]) || [],
