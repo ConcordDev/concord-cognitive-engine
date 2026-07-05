@@ -52103,9 +52103,9 @@ app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res
   if (r.ok && !r.alreadyOpen) {
     try {
       // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee's socket channel)
-      realtimeEmit?.(`user:${req.body?.toUserId}:brawl-invited`, {
+      realtimeEmit?.("brawl-invited", {
         inviteId: r.inviteId, from: fromUserId,
-      });
+      }, { userId: req.body?.toUserId });
     } catch { /* emit best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
@@ -52114,7 +52114,18 @@ app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res
 app.post("/api/combat/brawl/accept", requireAuth(), asyncHandler(async (req, res) => {
   const { acceptBrawl } = await import("./lib/brawl.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(acceptBrawl(req.body?.inviteId, userId));
+  const r = acceptBrawl(req.body?.inviteId, userId);
+  if (r.ok) {
+    // Fix (verification audit) — the accept path is the single, obvious
+    // spot where a brawl actually STARTS; notify both participants so
+    // BrawlActiveHUD can flip on for the inviter too (the accepter learns
+    // via this same request's response). r.opponent is the inviter.
+    try {
+      realtimeEmit?.("brawl-started", { opponent: userId }, { userId: r.opponent });
+      realtimeEmit?.("brawl-started", { opponent: r.opponent }, { userId });
+    } catch { /* emit best-effort */ }
+  }
+  res.json(r);
 }));
 
 app.post("/api/combat/brawl/decline", requireAuth(), asyncHandler(async (req, res) => {

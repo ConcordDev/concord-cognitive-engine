@@ -430,6 +430,7 @@ export type SocketEvent =
   // union, so HUDs can subscribe instead of polling (push + slow backstop).
   | 'world:drift-alert'
   | 'brawl-invited'
+  | 'brawl-started'
   | 'climbing:route-completed'
   | 'player:corpse-dropped'
   // The System — diegetic push-driven status layer (players/NPCs/hostiles).

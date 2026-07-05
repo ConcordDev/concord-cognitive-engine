@@ -28,6 +28,35 @@ const INVITE_TTL_MS = 60_000;
 export function BrawlInviteToast() {
   const [invites, setInvites] = useState<BrawlInvite[]>([]);
   const [flash, setFlash] = useState<string | null>(null);
+  const POLL_MS = useClientConfig().poll.brawlInviteMs; // E0 — server-tunable
+
+  // Backstop: fold in any open invites the REST list knows about that we
+  // haven't already recorded from a socket push. Fix (verification audit) —
+  // this used to live in BrawlActiveHUD, fetch the same endpoint, and
+  // discard the result (that component has no invite list to feed). Moved
+  // here, next to the state it's meant to keep in sync, so a missed
+  // `concordia:brawl-invited` window event (dropped socket message,
+  // reconnect race) still surfaces the invite within one backstop poll.
+  // Additive-only: never removes an invite the socket already delivered.
+  const refreshFromServer = useCallback(async () => {
+    try {
+      const r = await fetch('/api/combat/brawl/invites', { credentials: 'include' });
+      const j = await r.json();
+      if (!j?.ok || !Array.isArray(j.invites)) return;
+      setInvites((prev) => {
+        const known = new Set(prev.map((x) => x.inviteId));
+        const additions: BrawlInvite[] = j.invites
+          .filter((inv: { id?: string }) => inv?.id && !known.has(inv.id))
+          .map((inv: { id: string; fromUserId: string; expiresAt?: number }) => ({
+            inviteId: inv.id,
+            fromUserId: inv.fromUserId,
+            receivedAt: typeof inv.expiresAt === 'number' ? inv.expiresAt - INVITE_TTL_MS : Date.now(),
+          }));
+        return additions.length ? [...prev, ...additions] : prev;
+      });
+    } catch { /* backstop is best-effort */ }
+  }, []);
+  useRealtimeRefresh(['brawl-invited'], refreshFromServer, { backstopMs: POLL_MS });
 
   // Listen for real-time brawl-invited socket events.
   useEffect(() => {
@@ -141,20 +170,16 @@ interface ActiveBrawl {
 }
 
 export function BrawlActiveHUD() {
-  const POLL_MS = useClientConfig().poll.brawlInviteMs; // E0 — server-tunable
   const [active, setActive] = useState<ActiveBrawl | null>(null);
 
-  const refresh = useCallback(async () => {
-    try {
-      const r = await fetch('/api/combat/brawl/invites', { credentials: 'include' });
-      const j = await r.json();
-      // The /invites endpoint returns OPEN invites; we use a side
-      // dispatch from the accept call to populate active state.
-      if (!j?.ok) return;
-    } catch { /* swallow */ }
-  }, []);
-
-  // Listen for the accept-side success event.
+  // Listen for the accept-side success event. Fix (verification audit) —
+  // the server now actually emits 'brawl-started' (bridged to this
+  // `concordia:brawl-started` window event by useSocket.ts) from the
+  // /api/combat/brawl/accept route; previously nothing ever dispatched
+  // this event so the HUD could never appear. This component has no
+  // invite list of its own (that's BrawlInviteToast's `invites` state
+  // above), so it needs no REST backstop poll — it's purely event-driven
+  // off `brawl-started` / `brawl-ended`.
   useEffect(() => {
     function onBrawlStart(e: Event) {
       const detail = (e as CustomEvent<{ opponent: string }>).detail;
@@ -169,9 +194,6 @@ export function BrawlActiveHUD() {
       window.removeEventListener('concordia:brawl-ended', onBrawlEnd);
     };
   }, []);
-
-  // Push: a server brawl-invite refreshes pending invites instantly; slow backstop.
-  useRealtimeRefresh(['brawl-invited'], refresh, { backstopMs: POLL_MS });
 
   if (!active) return null;
 

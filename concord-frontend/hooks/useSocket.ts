@@ -200,6 +200,13 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'refusal:compound' as SocketEvent,
   'ark:archive_unlocked' as SocketEvent,
   'vela:reveal' as SocketEvent,
+  // Phase DB2/E7 — brawl invite (direct challenge + matchmaking pairing).
+  // BrawlInviteToast / BrawlMatchmakingQueue listen on the namespaced
+  // window event; see the rename branch below.
+  'brawl-invited' as SocketEvent,
+  // Fix (verification audit) — brawl match-start notification. See the
+  // rename branch below; BrawlActiveHUD listens on the namespaced name.
+  'brawl-started' as SocketEvent,
 ];
 
 interface UseSocketOptions {
@@ -294,8 +301,8 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
           //    ragdoll bridge listen for as window CustomEvents, dispatch
           //    a matching DOM event. Concordia is the only namespace
           //    with this dual-channel; other events stay event-bus-only.
-          if (
-            typeof window !== 'undefined' && (
+          if (typeof window !== 'undefined') {
+            if (
               event === ('concordia:lethal-hit' as SocketEvent) ||
               event === ('combat:hero_kill' as SocketEvent) ||
               event === ('combat:bloodline_fire_cast' as SocketEvent) ||
@@ -304,9 +311,16 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
               event === ('refusal:compound' as SocketEvent) ||
               event === ('ark:archive_unlocked' as SocketEvent) ||
               event === ('vela:reveal' as SocketEvent)
-            )
-          ) {
-            window.dispatchEvent(new CustomEvent(event as string, { detail: data }));
+            ) {
+              window.dispatchEvent(new CustomEvent(event as string, { detail: data }));
+            } else if (event === ('brawl-invited' as SocketEvent) || event === ('brawl-started' as SocketEvent)) {
+              // Fix (verification audit) — brawl HUDs (BrawlInviteToast,
+              // BrawlMatchmakingQueue, BrawlActiveHUD) listen on the
+              // `concordia:`-namespaced window event name, NOT the raw
+              // socket event name, so they need an explicit rename here
+              // rather than the same-name dispatch used above.
+              window.dispatchEvent(new CustomEvent(`concordia:${event}`, { detail: data }));
+            }
           }
         });
       }
