@@ -7,7 +7,10 @@ const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   images: {
-    domains: ['localhost', 'concord-os.org'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: 'concord-os.org' },
+    ],
     unoptimized: process.env.NODE_ENV === 'development',
   },
   // Tree-shake heavy icon libraries and UI packages

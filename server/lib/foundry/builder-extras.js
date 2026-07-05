@@ -153,6 +153,9 @@ function clampInt(v, lo, hi, dflt) {
 
 /** Roll an analytics bucket up into dashboard-ready stats. */
 export function summarizeAnalytics(bucket) {
+  // Note: `byUser` below is a function-local grouping scratchpad built fresh
+  // from the `bucket` argument on every call and freed on return — it is not
+  // a module-level cache and cannot leak across calls, so no cap is needed.
   const plays = Array.isArray(bucket?.plays) ? bucket.plays : [];
   const completions = Array.isArray(bucket?.completions) ? bucket.completions : [];
   const sessions = Array.isArray(bucket?.sessions) ? bucket.sessions : [];

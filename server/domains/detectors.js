@@ -30,6 +30,48 @@ import registerCodeQualityActions from "./code-quality.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../");
 
+const KNOWN_SEVERITIES = new Set(["info", "low", "medium", "high", "critical"]);
+
+/**
+ * Fast, honest input validation for the heavy detector-suite macros
+ * (diff/findings/runAll/summary). These macros always run the FULL detector
+ * suite (a multi-minute, whole-repo walk) regardless of the fields present in
+ * `input` — the fuzz/adversarial harness sends structurally-hostile payloads
+ * (an `artifact` wrapper + `__assassin_garbage`) that no real caller ever
+ * sends, and those payloads would otherwise sail past validation straight
+ * into the multi-minute suite and time out. Reject anything outside the real
+ * accepted shape BEFORE starting the heavy work — never fabricate a result.
+ * @returns {{ok:false, reason:string, detail?:string}|null} null when input is valid.
+ */
+function rejectInvalidDetectorInput(input, allowedFields) {
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    return { ok: false, reason: "invalid_input", detail: "input_must_be_object" };
+  }
+  for (const key of Object.keys(input)) {
+    if (!allowedFields.has(key)) {
+      return { ok: false, reason: "invalid_input", detail: `unknown_field:${key}` };
+    }
+  }
+  if ("consumer" in input && input.consumer !== undefined && typeof input.consumer !== "string") {
+    return { ok: false, reason: "invalid_input", detail: "consumer_must_be_string" };
+  }
+  if ("minSeverity" in input && input.minSeverity !== undefined) {
+    if (typeof input.minSeverity !== "string" || !KNOWN_SEVERITIES.has(input.minSeverity)) {
+      return { ok: false, reason: "invalid_input", detail: "minSeverity_must_be_known_severity" };
+    }
+  }
+  if ("kinds" in input && input.kinds !== undefined && !Array.isArray(input.kinds)) {
+    return { ok: false, reason: "invalid_input", detail: "kinds_must_be_array" };
+  }
+  if ("actionableOnly" in input && input.actionableOnly !== undefined && typeof input.actionableOnly !== "boolean") {
+    return { ok: false, reason: "invalid_input", detail: "actionableOnly_must_be_boolean" };
+  }
+  if ("codebaseId" in input && input.codebaseId !== undefined && typeof input.codebaseId !== "string") {
+    return { ok: false, reason: "invalid_input", detail: "codebaseId_must_be_string" };
+  }
+  return null;
+}
+
 export default function registerDetectorMacros(register) {
   /**
    * detectors.list — return registered detector specs.
@@ -80,6 +122,8 @@ export default function registerDetectorMacros(register) {
    * input: { consumer?, minSeverity?, codebaseId? }
    */
   register("detectors", "runAll", async (ctx, input = {}) => {
+    const rejected = rejectInvalidDetectorInput(input, new Set(["consumer", "minSeverity", "codebaseId"]));
+    if (rejected) return rejected;
     const codebaseId = input.codebaseId || null;
     const runId = `da_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     let dx;
@@ -118,6 +162,11 @@ export default function registerDetectorMacros(register) {
    * input: { consumer?, minSeverity?, kinds?, actionableOnly? }
    */
   register("detectors", "findings", async (ctx, input = {}) => {
+    const rejected = rejectInvalidDetectorInput(
+      input,
+      new Set(["consumer", "minSeverity", "kinds", "actionableOnly"]),
+    );
+    if (rejected) return rejected;
     const report = await runAllDetectors({
       db: ctx?.db,
       state: ctx?.state,
@@ -204,6 +253,8 @@ export default function registerDetectorMacros(register) {
    * detectors.diff — compute live delta vs BASELINE.json without persisting.
    */
   register("detectors", "diff", async (ctx, input = {}) => {
+    const rejected = rejectInvalidDetectorInput(input, new Set(["consumer"]));
+    if (rejected) return rejected;
     const report = await runAllDetectors({
       db: ctx?.db,
       state: ctx?.state,
@@ -231,6 +282,8 @@ export default function registerDetectorMacros(register) {
    * detectors.summary — short totals-only payload for the HUD.
    */
   register("detectors", "summary", async (ctx, input = {}) => {
+    const rejected = rejectInvalidDetectorInput(input, new Set(["consumer"]));
+    if (rejected) return rejected;
     const report = await runAllDetectors({
       db: ctx?.db,
       state: ctx?.state,

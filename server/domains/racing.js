@@ -1,8 +1,14 @@
 // server/domains/racing.js — Phase I1 racing minigame surface.
 import crypto from "node:crypto";
+import { LruMap } from "../lib/lru-map.js";
 
-const _activeRaces = new Map();        // raceId -> { worldId, startedAt, laps, participants[] }
-const _bestLapsByWorld = new Map();    // worldId -> [{ userId, laps, totalTimeMs }]
+// No explicit "end race" macro exists, so races are never removed once all
+// participants finish. Generous LRU cap rather than a new cleanup hook —
+// 2000 concurrent in-flight races is far beyond any realistic load, so LRU
+// eviction here only ever reaps long-abandoned races, never a live one.
+const _activeRaces = new LruMap(2000);        // raceId -> { worldId, startedAt, laps, participants[] }
+// worldId is unbounded (Foundry can create new worlds at runtime).
+const _bestLapsByWorld = new LruMap(500);    // worldId -> [{ userId, laps, totalTimeMs }]
 
 export default function registerRacingMacros(register) {
   register("racing", "start_race", async (ctx, input = {}) => {

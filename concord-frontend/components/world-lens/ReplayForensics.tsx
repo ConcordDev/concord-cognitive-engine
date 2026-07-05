@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { lensRun } from '@/lib/api/client';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { lensRun, apiHelpers } from '@/lib/api/client';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -84,6 +84,32 @@ interface EventTimelineRecentResult {
   rows?: EventTimelineRow[];
 }
 
+// Shape matches GET /api/economy/royalty-cascade/:dtuId exactly
+// (server/economy/routes.js) — do not rename fields.
+interface RoyaltyCascadeAncestor {
+  creatorId: string;
+  contentId: string;
+  generation: number;
+  rate: number;
+  ratePercent: string;
+  totalEarned: number;
+}
+interface RoyaltyCascadeDescendant {
+  contentId: string;
+  creatorId: string;
+  generation: number;
+}
+interface RoyaltyCascadeResult {
+  ok: boolean;
+  dtuId?: string;
+  totalEarned?: number;
+  totalTransactions?: number;
+  ancestors?: RoyaltyCascadeAncestor[];
+  descendantCount?: number;
+  descendants?: RoyaltyCascadeDescendant[];
+  error?: string;
+}
+
 export default function ReplayForensics() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   // Bookmarks live only in this session — there is no bookmark persistence
@@ -104,6 +130,9 @@ export default function ReplayForensics() {
   });
   const [forensicDtuId, setForensicDtuId] = useState('');
   const [showForensicReport, setShowForensicReport] = useState(false);
+  const [forensicLoading, setForensicLoading] = useState(false);
+  const [forensicError, setForensicError] = useState<string | null>(null);
+  const [forensicResult, setForensicResult] = useState<RoyaltyCascadeResult | null>(null);
   const [newBookmark, setNewBookmark] = useState({
     name: '',
     startTime: '06:00',
@@ -192,6 +221,32 @@ export default function ReplayForensics() {
     const pct = ((e.clientX - rect.left) / rect.width) * 100;
     setPlayheadPercent(Math.max(0, Math.min(100, pct)));
   };
+
+  // Trace a DTU's real royalty-cascade lineage from the backend.
+  const handleTrace = useCallback(async () => {
+    const dtuId = forensicDtuId.trim();
+    if (!dtuId) return;
+    setShowForensicReport(true);
+    setForensicLoading(true);
+    setForensicError(null);
+    setForensicResult(null);
+    try {
+      const res = await apiHelpers.economy.royaltyCascade(dtuId);
+      const data = res.data as RoyaltyCascadeResult;
+      if (!data?.ok) {
+        setForensicError(data?.error || 'trace_failed');
+        return;
+      }
+      setForensicResult(data);
+    } catch (err) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+        (err instanceof Error ? err.message : 'network_error');
+      setForensicError(message);
+    } finally {
+      setForensicLoading(false);
+    }
+  }, [forensicDtuId]);
 
   return (
     <div className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl text-white overflow-hidden flex flex-col h-[750px]">
@@ -481,18 +536,119 @@ export default function ReplayForensics() {
                 className="flex-1 px-3 py-2 text-xs font-mono bg-white/5 border border-white/10 rounded-lg outline-none focus:border-amber-500/50 placeholder-white/20"
               />
               <button
-                onClick={() => setShowForensicReport(true)}
-                className="px-4 py-2 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 transition-colors"
+                onClick={handleTrace}
+                disabled={!forensicDtuId.trim() || forensicLoading}
+                className="px-4 py-2 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                Trace
+                {forensicLoading ? 'Tracing…' : 'Trace'}
               </button>
             </div>
 
-            {/* Forensic report — no backend root-cause-trace macro exists yet,
-                so a trace always reports "no data". TODO: wire to backend. */}
-            {showForensicReport && forensicDtuId && (
-              <div className="p-6 text-center text-white/20 text-xs">
-                No forensic data found for DTU: {forensicDtuId}
+            {/* Forensic report — real royalty-cascade lineage from
+                GET /api/economy/royalty-cascade/:dtuId. */}
+            {showForensicReport && forensicLoading && (
+              <div className="p-6 text-center text-white/40 text-xs">
+                Tracing lineage for DTU: <span className="font-mono">{forensicDtuId}</span>…
+              </div>
+            )}
+
+            {showForensicReport && !forensicLoading && forensicError && (
+              <div className="p-6 text-center text-red-400/80 text-xs">
+                Trace failed for DTU {forensicDtuId}: {forensicError}
+              </div>
+            )}
+
+            {showForensicReport && !forensicLoading && !forensicError && forensicResult && (
+              <div className="space-y-3">
+                {(forensicResult.ancestors?.length ?? 0) === 0 &&
+                (forensicResult.descendantCount ?? 0) === 0 ? (
+                  <div className="p-6 text-center text-white/40 text-xs">
+                    This DTU has no citation lineage.
+                  </div>
+                ) : (
+                  <>
+                    {/* Summary */}
+                    <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] flex items-center gap-4 text-xs">
+                      <span className="text-white/40">
+                        Earned{' '}
+                        <span className="text-emerald-400 font-mono font-bold">
+                          {(forensicResult.totalEarned ?? 0).toFixed(2)} CC
+                        </span>{' '}
+                        across{' '}
+                        <span className="text-white font-medium">
+                          {forensicResult.totalTransactions ?? 0}
+                        </span>{' '}
+                        transaction{(forensicResult.totalTransactions ?? 0) !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {/* Ancestors — who this DTU pays royalties to */}
+                    <div className="p-3 rounded-xl border border-white/10 bg-white/[0.02]">
+                      <h4 className="text-xs font-semibold mb-2">
+                        Ancestors ({forensicResult.ancestors?.length ?? 0})
+                      </h4>
+                      {(forensicResult.ancestors?.length ?? 0) === 0 ? (
+                        <p className="text-[11px] text-white/30">
+                          No ancestor citations — this DTU is original.
+                        </p>
+                      ) : (
+                        <div className="space-y-1">
+                          {(forensicResult.ancestors ?? []).map((a, i) => (
+                            <div
+                              key={`${a.contentId}-${i}`}
+                              className="flex items-center justify-between text-[11px]"
+                            >
+                              <span className="text-white/60 truncate max-w-[200px] font-mono">
+                                Gen {a.generation}: {a.creatorId}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-yellow-400 font-mono">{a.ratePercent}</span>
+                                {a.totalEarned > 0 && (
+                                  <span className="text-emerald-400 font-mono">
+                                    {a.totalEarned.toFixed(2)} CC
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Descendants — who pays royalties because of this DTU */}
+                    <div className="p-3 rounded-xl border border-white/10 bg-white/[0.02]">
+                      <h4 className="text-xs font-semibold mb-2">
+                        Descendants ({forensicResult.descendantCount ?? 0})
+                      </h4>
+                      {(forensicResult.descendants?.length ?? 0) === 0 ? (
+                        <p className="text-[11px] text-white/30">
+                          No descendant citations yet.
+                        </p>
+                      ) : (
+                        <div className="space-y-1">
+                          {(forensicResult.descendants ?? []).map((d, i) => (
+                            <div
+                              key={`${d.contentId}-${i}`}
+                              className="flex items-center justify-between text-[11px]"
+                            >
+                              <span className="text-white/60 truncate max-w-[220px] font-mono">
+                                Gen {d.generation}: {d.contentId}
+                              </span>
+                              <span className="text-white/30 font-mono">{d.creatorId}</span>
+                            </div>
+                          ))}
+                          {(forensicResult.descendantCount ?? 0) >
+                            (forensicResult.descendants?.length ?? 0) && (
+                            <p className="text-[10px] text-white/20 pt-1">
+                              Showing {forensicResult.descendants?.length} of{' '}
+                              {forensicResult.descendantCount}.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

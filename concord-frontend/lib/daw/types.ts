@@ -374,7 +374,11 @@ export interface MasteringAnalysis {
   momentaryLUFS: number;
   truePeak: number;
   dynamicRange: number;
-  stereoCorrelation: number;
+  // Optional: the current master analysis path (a single AnalyserNode on
+  // the downmixed master bus) has no per-channel data, so true stereo
+  // correlation can't be measured honestly. Left undefined rather than
+  // faked; UI must treat absence as "not available", not zero.
+  stereoCorrelation?: number;
   spectralBalance: number[];
 }
 

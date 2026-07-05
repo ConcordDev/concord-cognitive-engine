@@ -47,7 +47,30 @@ jobs:
   iterate:
     runs-on: ubuntu-latest
     steps:
+      - name: Check autoloop/main exists
+        id: branch-check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Authenticated check (works for private repos too) — an unauthenticated
+          # git ls-remote would 403 on a private repo and misreport "missing" even
+          # after a human creates the branch.
+          if gh api "repos/${{ github.repository }}/branches/autoloop/main" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notice — autoloop/main missing
+        if: steps.branch-check.outputs.exists == 'false'
+        run: |
+          MSG="autoloop/main not found — create it to enable the autonomous loop; skipping"
+          echo "::notice::$MSG"
+          echo "### Autonomous Loop skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo "$MSG" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Checkout the autoloop branch
+        if: steps.branch-check.outputs.exists == 'true'
         uses: actions/checkout@v4
         with:
           ref: autoloop/main
@@ -56,6 +79,7 @@ jobs:
 
       - name: Kill-switch — honor AGENT_STOP
         id: stop
+        if: steps.branch-check.outputs.exists == 'true'
         run: |
           if [ -f AGENT_STOP ]; then
             echo "AGENT_STOP present — halting (rm AGENT_STOP on the branch to resume)."
@@ -65,7 +89,7 @@ jobs:
           fi
 
       - uses: actions/setup-node@v4
-        if: steps.stop.outputs.stopped == 'false'
+        if: steps.branch-check.outputs.exists == 'true' && steps.stop.outputs.stopped == 'false'
         with:
           node-version: 22
           cache: npm
@@ -74,23 +98,23 @@ jobs:
             concord-frontend/package-lock.json
 
       - name: Install deps
-        if: steps.stop.outputs.stopped == 'false'
+        if: steps.branch-check.outputs.exists == 'true' && steps.stop.outputs.stopped == 'false'
         run: |
           (cd server && npm ci)
           (cd concord-frontend && npm ci)
 
       - name: Install Claude Code CLI
-        if: steps.stop.outputs.stopped == 'false'
+        if: steps.branch-check.outputs.exists == 'true' && steps.stop.outputs.stopped == 'false'
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Configure git identity
-        if: steps.stop.outputs.stopped == 'false'
+        if: steps.branch-check.outputs.exists == 'true' && steps.stop.outputs.stopped == 'false'
         run: |
           git config user.name  "concord-autoloop[bot]"
           git config user.email "autoloop@users.noreply.github.com"
 
       - name: Run loop iterations
-        if: steps.stop.outputs.stopped == 'false'
+        if: steps.branch-check.outputs.exists == 'true' && steps.stop.outputs.stopped == 'false'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -139,5 +163,5 @@ jobs:
           done
 
       - name: Status
-        if: steps.stop.outputs.stopped == 'false'
+        if: steps.branch-check.outputs.exists == 'true' && steps.stop.outputs.stopped == 'false'
         run: node scripts/autoloop/status.mjs || true

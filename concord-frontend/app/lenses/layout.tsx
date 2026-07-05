@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { CoreLensNav } from '@/components/common/CoreLensNav';
 import { DestinationNav } from '@/components/common/DestinationNav';
 import { getDestinationForLens } from '@/lib/destinations';
-import { CommandPalette } from '@/components/common/CommandPalette';
 import { ConKayOverlay } from '@/components/conkay/ConKayOverlay';
 import { GlobalPanelHost } from '@/components/panels/GlobalPanelHost';
 import { CrossMountedPanels } from '@/components/panels/CrossMountedPanels';
@@ -181,8 +180,8 @@ function DiegeticLensLayout({ children }: { children: React.ReactNode }) {
  * FE-012 + FE-014: Lens layout with loading isolation, error containment,
  * automatic CoreLensNav for core workspace lenses, and universal features
  * (Smart Context Bar, Quick Capture, Domain AI Assistant, Cross-Domain
- * Connections, Brain Monitor, Activity Timeline, Export Menu, Command
- * Palette with Cmd+K).
+ * Connections, Brain Monitor, Activity Timeline, Export Menu). Command
+ * Palette (Cmd+K) is mounted once, app-wide, by AppShell — not here.
  */
 export default function LensLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -196,7 +195,12 @@ export default function LensLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <>
-      <CommandPalette />
+      {/* CommandPalette is NOT mounted here — AppShell (the app-wide shell
+          wrapping every route) already mounts one instance. A second copy
+          here double-rendered the whole overlay on every lens page: two
+          `[role="dialog"]` trees, duplicate `id="palette-item-*"` DOM ids,
+          and two independent Ctrl+K listeners racing on the same shared
+          store value (this is what broke keyboard nav — see AppShell.tsx). */}
       {/* ConKay — summonable on ANY lens (⌘/Ctrl+J), operates the host lens'
           real macros. The cross-lens "take over and operate" surface. */}
       {/* @modal-escape-ok: ConKayOverlay manages its own Escape-to-close (ConKayOverlay.tsx:168). */}

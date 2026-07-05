@@ -497,6 +497,7 @@ export default function registerResearchActions(registerLensAction) {
     const map = s.notes.get(userId);
     if (!map) return { ok: true, result: { notes: [] } };
     const notes = Array.from(map.values())
+      .reverse()
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .map(({ body, ...rest }) => ({ ...rest, preview: body.slice(0, 200) }));
     return { ok: true, result: { notes } };
@@ -1046,7 +1047,7 @@ export default function registerResearchActions(registerLensAction) {
     const map = s.notes.get(userId);
     if (!map) return { ok: true, result: { titles: [] } };
     const q = String(params.query || "").trim().toLowerCase();
-    let titles = [...map.values()].map((n) => ({ id: n.id, title: n.title, updatedAt: n.updatedAt }));
+    let titles = [...map.values()].reverse().map((n) => ({ id: n.id, title: n.title, updatedAt: n.updatedAt }));
     if (q) titles = titles.filter((t) => t.title.toLowerCase().includes(q));
     titles.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     return { ok: true, result: { titles: titles.slice(0, 30), count: titles.length } };
@@ -1193,6 +1194,7 @@ export default function registerResearchActions(registerLensAction) {
     const map = s.canvases.get(userId);
     if (!map) return { ok: true, result: { canvases: [] } };
     const canvases = [...map.values()]
+      .reverse()
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .map((c) => ({ id: c.id, name: c.name, cardCount: c.cards.length, edgeCount: c.edges.length, updatedAt: c.updatedAt }));
     return { ok: true, result: { canvases, count: canvases.length } };

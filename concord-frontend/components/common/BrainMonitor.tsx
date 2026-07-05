@@ -225,7 +225,7 @@ function BrainMonitor() {
       : data.mode === 'partial'
         ? 'text-amber-400'
         : 'text-red-400';
-  const totalBrains = data.brains.repair ? 4 : 3;
+  const totalBrains = data.brains?.repair ? 4 : 3;
 
   if (!expanded) {
     return (

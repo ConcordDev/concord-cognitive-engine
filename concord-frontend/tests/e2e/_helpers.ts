@@ -15,6 +15,37 @@
 
 import type { Page } from '@playwright/test';
 
+/**
+ * Catch-all safety net: fulfills EVERY /api/** request with a benign 200 so
+ * an endpoint a spec forgot to mock never falls through to the real :5050
+ * backend. This matters because a real backend 401 on ANY authenticated
+ * fetch trips the axios auto-refresh interceptor (lib/api/client.ts:196-214),
+ * which POSTs the REAL /api/auth/refresh; the server rejects the E2E specs'
+ * fake `concord_refresh` cookie and CLEARS both auth cookies
+ * (server/routes/auth.js:547-557), so every subsequent navigation 307s to
+ * /login and the actual assertion (e.g. "Admin access required") never gets
+ * a chance to render.
+ *
+ * Call this BEFORE any endpoint-specific mock (mockAuthSuccess,
+ * mockSovereignAuth, denyAdminData, grantAdminData, ...). Playwright invokes
+ * page.route() handlers in the REVERSE of their registration order — "the
+ * last registered route can always override all the previous ones" per the
+ * Playwright docs (route.fallback()) — so whichever handler is registered
+ * LAST wins whenever two patterns match the same request. Registering this
+ * catch-all first means every later, more-specific mock takes precedence
+ * over it, while anything nobody bothered to mock still gets a safe 200
+ * instead of hitting the live backend and 401ing.
+ */
+export async function blockUnmockedApi(page: Page) {
+  await page.route('**/api/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, data: [], items: [], artifacts: [], total: 0 }),
+    })
+  );
+}
+
 export interface AuthMockOptions {
   /** Username surfaced by /api/auth/me. Default: "testuser". */
   username?: string;
@@ -83,6 +114,17 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
       contentType: 'application/json',
       body: JSON.stringify({ ok: true, completed: true }),
     })
+  );
+
+  // Root-cause fix for the E2E mock leak: the axios interceptor
+  // (lib/api/client.ts:196-214) auto-POSTs the REAL /api/auth/refresh on any
+  // unmocked 401. The real server rejects our fake `concord_refresh` cookie
+  // and CLEARS both auth cookies (server/routes/auth.js:547-557), which
+  // 307s every subsequent navigation to /login. Mocking refresh to a benign
+  // 200 means that destructive real-refresh path can never fire in a mocked
+  // session, no matter which background probe triggers it.
+  await page.route('**/api/auth/refresh', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
   );
 
   // CSRF token — fired before login + after login by app/login/page.tsx

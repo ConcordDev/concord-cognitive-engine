@@ -68,15 +68,22 @@ async function postWithRetry(
  *  concord_auth / concord_refresh cookies; the backend's bot timing
  *  check rejects forms submitted in < 2s of "load", so we wait. */
 async function makeTestSession(request: APIRequestContext): Promise<{ cookies: { name: string; value: string; domain: string; path: string }[] }> {
-  const uniq    = `smoke_${Date.now().toString(36)}`;
+  // Date.now() alone collides: mode:'parallel' fires every per-world
+  // beforeAll near-simultaneously, so two worlds can stamp the identical
+  // millisecond and register the same username (409 "Username taken").
+  // A random suffix makes each call's username unique regardless of timing.
+  const uniq    = `smoke_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const email   = `${uniq}@concord-smoke.test`;
   const password = 'PlaywrightSmoke!9912';
   const loadedAt = Date.now() - 3_500; // satisfy the 2s timing check.
 
-  await postWithRetry(request, `${BACKEND}/api/auth/register`, {
-    data: { username: uniq, email, password, _t: loadedAt },
+  const registerRes = await postWithRetry(request, `${BACKEND}/api/auth/register`, {
+    data: { username: uniq, email, password, dateOfBirth: '1990-01-01', _t: loadedAt },
     headers: { 'content-type': 'application/json' },
   });
+  if (!registerRes.ok()) {
+    throw new Error(`Register failed: status=${registerRes.status()} body=${await registerRes.text()}`);
+  }
   const loginRes = await postWithRetry(request, `${BACKEND}/api/auth/login`, {
     data: { email, password },
     headers: { 'content-type': 'application/json' },

@@ -15,11 +15,13 @@
  */
 
 export async function register() {
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
+  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+
+  if (process.env.NEXT_RUNTIME === 'nodejs' && dsn) {
     const Sentry = await import('@sentry/nextjs');
     Sentry.init({
-      dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || '',
-      enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
+      dsn,
+      enabled: true,
       tracesSampleRate: 0,
       sendDefaultPii: false,
       beforeSend(event) {
@@ -30,11 +32,11 @@ export async function register() {
     });
   }
 
-  if (process.env.NEXT_RUNTIME === 'edge') {
+  if (process.env.NEXT_RUNTIME === 'edge' && dsn) {
     const Sentry = await import('@sentry/nextjs');
     Sentry.init({
-      dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || '',
-      enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
+      dsn,
+      enabled: true,
       tracesSampleRate: 0,
       sendDefaultPii: false,
       beforeSend(event) {

@@ -2,7 +2,7 @@
   "contracts": [
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "sheets",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -10,12 +10,12 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.append",
+      "macro_id": "sheets.append",
       "name": "append"
     },
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "sheets",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -23,12 +23,12 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.connect",
+      "macro_id": "sheets.connect",
       "name": "connect"
     },
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "sheets",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -36,37 +36,11 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.get",
-      "name": "get"
-    },
-    {
-      "_derived": true,
-      "domain": "notion",
-      "fuzz_cases": [],
-      "inputs": {},
-      "invariants": [
-        "output !== null && output !== undefined",
-        "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
-      ],
-      "macro_id": "notion.import",
-      "name": "import"
-    },
-    {
-      "_derived": true,
-      "domain": "notion",
-      "fuzz_cases": [],
-      "inputs": {},
-      "invariants": [
-        "output !== null && output !== undefined",
-        "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
-      ],
-      "macro_id": "notion.search",
-      "name": "search"
+      "macro_id": "sheets.read",
+      "name": "read"
     }
   ],
-  "domain": "notion",
+  "domain": "sheets",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 3
 }

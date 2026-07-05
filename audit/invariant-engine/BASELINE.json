@@ -1,79 +1,24 @@
 {
-  "generatedAt": "2026-06-29T03:26:48.524Z",
+  "generatedAt": "2026-07-04T23:20:10.874Z",
   "totals": {
-    "macrosEnumerated": 14514,
-    "headlessSafeDriven": 13422,
+    "macrosEnumerated": 14533,
+    "headlessSafeDriven": 13441,
     "headlessUnsafeSkipped": 1092,
-    "violations": 12,
+    "violations": 1,
     "hardCrashes": 0
   },
   "byVector": {
-    "V1": 0,
-    "V2": 6,
-    "V3": 6,
+    "V1": 1,
+    "V2": 0,
+    "V3": 0,
     "META": 0,
     "HARD": 0
   },
   "fingerprints": {
-    "3a934ddd5fb61455": {
-      "macro_id": "detectors.diff",
-      "vector": "V2",
-      "reason": "fuzz_timeout"
-    },
-    "4ad34eadb52d6f05": {
-      "macro_id": "detectors.diff",
-      "vector": "V3",
-      "reason": "invariant_input_timeout"
-    },
-    "9db43f25a827f3c5": {
-      "macro_id": "detectors.findings",
-      "vector": "V2",
-      "reason": "fuzz_timeout"
-    },
-    "3508547f3aa54916": {
-      "macro_id": "detectors.findings",
-      "vector": "V3",
-      "reason": "invariant_input_timeout"
-    },
-    "44932ae21e10b4b5": {
-      "macro_id": "detectors.runAll",
-      "vector": "V2",
-      "reason": "fuzz_timeout"
-    },
-    "87e65ee9fb1a0f55": {
-      "macro_id": "detectors.runAll",
-      "vector": "V3",
-      "reason": "invariant_input_timeout"
-    },
-    "3e4341069e8eceb6": {
-      "macro_id": "detectors.summary",
-      "vector": "V2",
-      "reason": "fuzz_timeout"
-    },
-    "5f6ccf26783a3d75": {
-      "macro_id": "detectors.summary",
-      "vector": "V3",
-      "reason": "invariant_input_timeout"
-    },
-    "27eac112d1ef67f1": {
-      "macro_id": "emergent.repair.prophet",
-      "vector": "V2",
-      "reason": "fuzz_timeout"
-    },
-    "0f9f71bd6440cbea": {
-      "macro_id": "emergent.repair.prophet",
-      "vector": "V3",
-      "reason": "invariant_input_timeout"
-    },
-    "b543bf6827d3f6c2": {
-      "macro_id": "government.budget-breakdown",
-      "vector": "V3",
-      "reason": "invariant_input_timeout"
-    },
-    "d9ef3f3d839c7749": {
-      "macro_id": "travel.feed",
-      "vector": "V2",
-      "reason": "fuzz_timeout"
+    "71c0fc173a50794b": {
+      "macro_id": "saved.folderCreate",
+      "vector": "V1",
+      "reason": "seed_expect_mismatch"
     }
   }
 }

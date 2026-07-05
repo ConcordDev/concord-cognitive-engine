@@ -59,7 +59,7 @@ export function LeagueStandings({ leagueId: initialLeagueId }: { leagueId?: stri
       await fetch(`/api/sports/league/${leagueId}/team`, {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: newTeamName, powerScore: 50 + Math.floor(Math.random() * 30) }),
+        body: JSON.stringify({ name: newTeamName }),
       });
       setNewTeamName('');
       refresh();

@@ -85,7 +85,7 @@ These two are locked by economic + legal contract. They're hardcoded in source a
 
 ## Frontend HUD poll intervals
 
-The frontend HUDs (HordeWaveHUD, ClimbingTracker, TimeLoopHUD, DriftAlertToast, etc.) use hardcoded `POLL_MS` constants for state polling. They're not env-overridable on the server side because the values live in the React component source. Tuning them requires a rebuild. Future work: pass them down from a server-rendered constants endpoint.
+**STALE SECTION — superseded by E0 below (kept for grep-back).** The "hardcoded, rebuild-required" description no longer holds: the poll/throttle dials are served by `server/lib/client-config.js` (`GET /api/config/client`) and consumed via `useClientConfig()` — see the E0 section for the env keys. Re-audit 2026-07-04: **25 components** call `useClientConfig()` (AvatarSystem3D, MahjongTable, SubmarineHUD, TimeLoopHUD, HorrorRoleHUDs, ExtractionRunHUD, ClimbingTracker, DriftAlertToast, RestaurantDashboard, StrategicWarBanner, ForwardPredictionsPanel, RogueliteRunHUD, PartyCombatHUD, ...), so the migration is essentially complete, not a two-component reference.
 
 ## Multi-tenant caps (Phase 11 deploy)
 
@@ -306,8 +306,9 @@ fetched by `useClientConfig()` (merged over baked defaults). Tuning a poll is a
 server env change + refresh — no rebuild. Keys: `CONCORD_POLL_{HORDE,MAHJONG,
 SUBMARINE,EXTRACTION,TIMELOOP,CLIMBING,HORROR,RESTAURANT,THEMEPARK,DRIFT,COURTSHIP,
 FOOTPRINT,FORWARD_PRED,WORLD_HEALTH,PARTY_TICK,PARTY_DISCOVERY}_MS` +
-`CONCORD_THROTTLE_{COURTSHIP,FOOTPRINT}_FRAME_MS`. DriftAlertToast + RestaurantDashboard
-migrated as the reference; remaining components follow the same one-line pattern.
+`CONCORD_THROTTLE_{COURTSHIP,FOOTPRINT}_FRAME_MS`. Re-audit 2026-07-04: the migration
+is essentially complete — 25 components call `useClientConfig()` (not just the two
+reference components originally listed).
 
 ---
 

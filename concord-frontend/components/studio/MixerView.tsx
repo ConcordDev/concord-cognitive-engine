@@ -108,9 +108,11 @@ function ChannelStrip({
         {track.pan > 0.01 ? `R${Math.round(track.pan * 100)}` : track.pan < -0.01 ? `L${Math.round(Math.abs(track.pan) * 100)}` : 'C'}
       </span>
 
-      {/* Fader + meter */}
+      {/* Fader + meter. No live analyser is wired into the mixer channel
+          strips yet, so these render a static level derived from the
+          fader value — not a fabricated bouncing signal. */}
       <div className="flex items-stretch gap-1 h-28">
-        <VUMeter value={track.mute ? -60 : track.volume - 10 + Math.random() * 8} />
+        <VUMeter value={track.mute ? -60 : track.volume - 10} />
         <div
           ref={faderRef}
           className="w-3 bg-white/10 rounded-full relative cursor-ns-resize"
@@ -129,7 +131,7 @@ function ChannelStrip({
             style={{ bottom: `${((track.volume + 60) / 66) * 100}%` }}
           />
         </div>
-        <VUMeter value={track.mute ? -60 : track.volume - 12 + Math.random() * 8} />
+        <VUMeter value={track.mute ? -60 : track.volume - 12} />
       </div>
 
       <span className="text-[9px] text-gray-400 font-mono">
@@ -234,9 +236,11 @@ export function MixerView({
             </div>
           )}
 
-          {/* Master fader */}
+          {/* Master fader. Static level derived from the fader value —
+              no analyser is wired to per-track/master meters here (the
+              real master spectrum comes from spectrumData above). */}
           <div className="flex items-stretch gap-1 h-28">
-            <VUMeter value={masterBus.volume - 5 + Math.random() * 6} />
+            <VUMeter value={masterBus.volume - 5} />
             <div
               className="w-3 bg-white/10 rounded-full relative cursor-ns-resize"
               onClick={(e) => {
@@ -255,7 +259,7 @@ export function MixerView({
                 style={{ bottom: `${((masterBus.volume + 60) / 66) * 100}%` }}
               />
             </div>
-            <VUMeter value={masterBus.volume - 6 + Math.random() * 6} />
+            <VUMeter value={masterBus.volume - 6} />
           </div>
 
           <span className="text-[9px] text-gray-400 font-mono">

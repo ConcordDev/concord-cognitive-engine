@@ -48,6 +48,18 @@ const PUBLIC_PREFIXES = [
   '/workbox-',
 ];
 
+// Anything served out of `public/` — including top-level files like
+// `/logo-cosmic.svg` or `/og-image.png` — is world-readable by construction
+// in Next.js (there is no auth gate a static file in `public/` could ever
+// honor). Prior to this, only a curated set of PUBLIC_PREFIXES subdirectories
+// (/meshes/, /music/, /sounds/, /textures/, ...) were exempted, so any
+// top-level static asset 307'd anonymous visitors to /login instead of
+// serving the file (e.g. the logo on the public /login page itself was
+// broken). Matching by extension covers the whole class without gating
+// real page routes, which never end in a static-file extension.
+const STATIC_ASSET_RE =
+  /\.(svg|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|mp3|ogg|wav|mp4|webm|glb|gltf|json|txt|xml|md|map)$/i;
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -58,6 +70,11 @@ export function middleware(request: NextRequest) {
 
   // Allow public prefixes through
   if (PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return NextResponse.next();
+  }
+
+  // Allow static assets (by extension) through — see STATIC_ASSET_RE comment.
+  if (STATIC_ASSET_RE.test(pathname)) {
     return NextResponse.next();
   }
 

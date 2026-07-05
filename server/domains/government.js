@@ -253,6 +253,19 @@ export default function registerGovernmentActions(registerLensAction) {
    * "everything must be real" directive: no hardcoded budget tables.
    */
   registerLensAction("government", "budget-breakdown", async (_ctx, _artifact, params = {}) => {
+    // Fast, honest input validation BEFORE the network call. This macro's
+    // only real fields are `scope` and `year`; a fuzz/adversarial payload's
+    // unknown keys (an `artifact` wrapper, `__assassin_garbage`) or a
+    // non-object `params` are rejected up front rather than falling through
+    // to a network fetch that has no bound on how long it can hang.
+    if (params === null || typeof params !== "object" || Array.isArray(params)) {
+      return { ok: false, error: "invalid_input", reason: "invalid_input" };
+    }
+    for (const key of Object.keys(params)) {
+      if (key !== "scope" && key !== "year") {
+        return { ok: false, error: `unknown_field:${key}`, reason: "invalid_input" };
+      }
+    }
     const scope = ["federal", "state", "local"].includes(params.scope) ? params.scope : "federal";
     const year = Math.max(2020, Math.min(2030, Number(params.year) || new Date().getFullYear() - 1));
     if (scope !== "federal") {
@@ -265,6 +278,11 @@ export default function registerGovernmentActions(registerLensAction) {
     // USAspending.gov v2: spending by category, fiscal year.
     // Endpoint returns budget functions (Treasury OMB Function Code).
     const url = `https://api.usaspending.gov/api/v2/spending/`;
+    // Bound the network call well under the macro-layer's own timeout budgets
+    // (the adversarial/fuzz harness enforces an 8s ceiling) so a slow/blocked
+    // upstream returns an honest failure instead of hanging the caller.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
     try {
       const r = await fetch(url, {
         method: "POST",
@@ -273,6 +291,7 @@ export default function registerGovernmentActions(registerLensAction) {
           type: "budget_function",
           filters: { fy: String(year) },
         }),
+        signal: ctrl.signal,
       });
       if (!r.ok) throw new Error(`usaspending ${r.status}`);
       const data = await r.json();
@@ -292,7 +311,15 @@ export default function registerGovernmentActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `usaspending unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      const timedOut = e?.name === "AbortError";
+      return {
+        ok: false,
+        error: timedOut
+          ? "usaspending unreachable: request timed out"
+          : `usaspending unreachable: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    } finally {
+      clearTimeout(timer);
     }
   });
 

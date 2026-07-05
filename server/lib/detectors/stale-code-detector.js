@@ -16,6 +16,11 @@ import {
   loadOpenDispatchers, loadLensManifestMacros,
 } from "./_framework.js";
 import { LruMap, LruSet } from "../lru-map.js";
+// Reused from the command-injection detector: a best-effort JS comment
+// stripper that tracks string/template-literal context (so a `//` inside a
+// URL string isn't treated as a comment) and preserves newlines so `lineOf`
+// line numbers stay accurate after stripping.
+import { stripComments } from "./command-injection-detector.js";
 
 // Macros that are public via the lens manifest / chat router are dispatched
 // dynamically; the static parse can miss them. We treat them as live if
@@ -154,21 +159,27 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
     for (const f of migrationFiles) {
       const c = await readSafe(f);
       if (!c) continue;
+      // Scan comment-free text so English prose in a migration's header
+      // comment (e.g. "...its CREATE TABLE omitted the column...") can't be
+      // misread as a DDL statement and produce a phantom table with no
+      // references. `lineOf` still resolves correct line numbers because
+      // stripComments preserves newlines.
+      const cc = stripComments(c);
       let m;
       TABLE_DDL_RE.lastIndex = 0;
-      while ((m = TABLE_DDL_RE.exec(c)) != null) {
+      while ((m = TABLE_DDL_RE.exec(cc)) != null) {
         const t = m[1].toLowerCase();
         if (SYSTEM_TABLES.has(t)) continue;
-        if (!tables.has(t)) tables.set(t, { file: relPath(root, f), line: lineOf(c, m.index) });
+        if (!tables.has(t)) tables.set(t, { file: relPath(root, f), line: lineOf(cc, m.index) });
         if (!tableMigrations.has(t)) tableMigrations.set(t, new Set());
-        tableMigrations.get(t).add(c);
+        tableMigrations.get(t).add(cc);
       }
       TABLE_DROP_RE.lastIndex = 0;
-      while ((m = TABLE_DROP_RE.exec(c)) != null) {
+      while ((m = TABLE_DROP_RE.exec(cc)) != null) {
         droppedTables.add(m[1].toLowerCase());
       }
       RESCUE_DROP_RE.lastIndex = 0;
-      while ((m = RESCUE_DROP_RE.exec(c)) != null) {
+      while ((m = RESCUE_DROP_RE.exec(cc)) != null) {
         // Pull individual quoted strings out of the array literal body.
         for (const lit of m[1].matchAll(/['"`]([a-zA-Z_][a-zA-Z0-9_]*)['"`]/g)) {
           droppedTables.add(lit[1].toLowerCase());
@@ -179,9 +190,14 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
       if (f.startsWith(migrationsDir + path.sep)) continue;
       const c = await readSafe(f);
       if (!c) continue;
+      // Same comment-free scan for the table-reference side, so a stray
+      // "SELECT ... FROM foo" mentioned in a doc comment can't manufacture a
+      // reference (or, symmetrically, a reference that only exists in a
+      // comment can't hide a genuine orphan).
+      const cc = stripComments(c);
       let m;
       TABLE_REF_RE.lastIndex = 0;
-      while ((m = TABLE_REF_RE.exec(c)) != null) {
+      while ((m = TABLE_REF_RE.exec(cc)) != null) {
         tableUses.add(m[1].toLowerCase());
       }
     }

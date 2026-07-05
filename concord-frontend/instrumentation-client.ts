@@ -35,19 +35,22 @@ if (typeof window !== 'undefined') {
   }, true);
 }
 
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || '',
-  enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
-  tracesSampleRate: 0,
-  replaysOnErrorSampleRate: 0,
-  replaysSessionSampleRate: 0,
-  sendDefaultPii: false,
-  beforeSend(event) {
-    delete event.user;
-    if (event.request?.cookies) delete event.request.cookies;
-    return event;
-  },
-});
+const clientDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+if (clientDsn) {
+  Sentry.init({
+    dsn: clientDsn,
+    enabled: true,
+    tracesSampleRate: 0,
+    replaysOnErrorSampleRate: 0,
+    replaysSessionSampleRate: 0,
+    sendDefaultPii: false,
+    beforeSend(event) {
+      delete event.user;
+      if (event.request?.cookies) delete event.request.cookies;
+      return event;
+    },
+  });
+}
 
 /**
  * Optional: capture router transitions when @sentry/nextjs exposes the

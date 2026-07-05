@@ -2,7 +2,7 @@
   "contracts": [
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "github",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -10,25 +10,12 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.append",
-      "name": "append"
-    },
-    {
-      "_derived": true,
-      "domain": "notion",
-      "fuzz_cases": [],
-      "inputs": {},
-      "invariants": [
-        "output !== null && output !== undefined",
-        "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
-      ],
-      "macro_id": "notion.connect",
+      "macro_id": "github.connect",
       "name": "connect"
     },
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "github",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -36,12 +23,12 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.get",
-      "name": "get"
+      "macro_id": "github.issue-create",
+      "name": "issue-create"
     },
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "github",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -49,12 +36,12 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.import",
-      "name": "import"
+      "macro_id": "github.issues",
+      "name": "issues"
     },
     {
       "_derived": true,
-      "domain": "notion",
+      "domain": "github",
       "fuzz_cases": [],
       "inputs": {},
       "invariants": [
@@ -62,11 +49,11 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "notion.search",
-      "name": "search"
+      "macro_id": "github.repos",
+      "name": "repos"
     }
   ],
-  "domain": "notion",
+  "domain": "github",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 4
 }

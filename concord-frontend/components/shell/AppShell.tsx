@@ -117,10 +117,13 @@ export function AppShell({ children }: AppShellProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setCommandPaletteOpen(!commandPaletteOpen);
-      }
+      // Mod+K is NOT handled here — CommandPalette.tsx owns that binding
+      // (its own document-level listener toggles the same store value).
+      // A second toggle handler racing on the same keydown event over a
+      // shared external store can flip-then-flip-back within one keypress
+      // (each handler reads a stale pre-render snapshot of `commandPaletteOpen`
+      // while React's useSyncExternalStore forces a synchronous re-render
+      // between them) — net result: the palette silently fails to open.
       if (e.key === 'Escape' && commandPaletteOpen) {
         setCommandPaletteOpen(false);
       }

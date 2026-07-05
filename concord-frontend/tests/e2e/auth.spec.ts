@@ -14,10 +14,15 @@ test.describe('Authentication Flow', () => {
 
     expect(response?.status()).toBeLessThan(500);
 
-    // The page title or branding should reference Concord
-    const brandingVisible = await page.locator('text=Concord').isVisible().catch(() => false);
+    // The page title or branding should reference Concord. `text=Concord` is a
+    // strict-mode locator hazard here — it matches the "Concordos" <span>, the
+    // wrapping <Link>, and ancestor <div>s (all "contain the substring"), so a
+    // multi-match throws under `expect(...).toBeVisible()`'s strict enforcement.
+    // Target the accessible link by its computed name instead (one match).
+    const brandLink = page.getByRole('link', { name: 'Concordos' });
+    const brandingVisible = await brandLink.isVisible().catch(() => false);
     if (brandingVisible) {
-      await expect(page.locator('text=Concord')).toBeVisible();
+      await expect(brandLink).toBeVisible();
     }
 
     // Subtitle text: "Sign in to your cognitive engine"
@@ -268,10 +273,15 @@ test.describe('Authentication Flow', () => {
 
     expect(response?.status()).toBeLessThan(500);
 
-    // Branding
-    const brandingVisible = await page.locator('text=Concord').isVisible().catch(() => false);
+    // Branding. `text=Concord` is a strict-mode locator hazard here — it
+    // matches the "Concordos" <span>, the wrapping <Link>, and ancestor
+    // <div>s, so a multi-match throws under `expect(...).toBeVisible()`'s
+    // strict enforcement (register/page.tsx:104 — a Link to "/" wrapping a
+    // "Concordos" span). Target the accessible link by its computed name.
+    const brandLink = page.getByRole('link', { name: 'Concordos' });
+    const brandingVisible = await brandLink.isVisible().catch(() => false);
     if (brandingVisible) {
-      await expect(page.locator('text=Concord')).toBeVisible();
+      await expect(brandLink).toBeVisible();
     }
 
     // Subtitle: "Create your sovereign account"
