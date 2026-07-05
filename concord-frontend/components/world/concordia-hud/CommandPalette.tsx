@@ -3,7 +3,9 @@
 /**
  * CommandPalette — Layer 3 of the dynamic HUD.
  *
- * Cmd+K / C key opens a centred fuzzy-search input. Power-user surface
+ * C key opens a centred fuzzy-search input (Cmd/Ctrl+K is reserved for
+ * the global common/CommandPalette.tsx — see the duplicate-handler-race
+ * fix note below). Power-user surface
  * for hitting any of the 12 substrate panels (Bloodline, Schemes,
  * Hooks, Jobs, Crafts, Dynasty, Marriage, Realm, Council, Calendar,
  * Stamina, Underwater) plus quick actions (Open HUD settings, Reset
@@ -71,16 +73,21 @@ export function CommandPalette() {
   const [hover, setHover] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Open on C key (matches old ConcordiaHUDPanels toggle) or Cmd+K (power user).
+  // Open on C key (matches old ConcordiaHUDPanels toggle).
+  //
+  // Duplicate-handler-race fix (verification-audit campaign): this used to
+  // ALSO bind Cmd/Ctrl+K, but app/lenses/world/page.tsx mounts this
+  // component alongside the global common/CommandPalette.tsx (via the
+  // components/world/CommandPalette.tsx shim), which owns that combo as
+  // the sacred, app-wide binding (CLAUDE.md) — every press opened both
+  // palettes at once. Removed the Cmd/Ctrl+K branch here; the 'C' key
+  // stays as this palette's unique, non-colliding trigger.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     function onKey(ev: KeyboardEvent) {
       const t = ev.target as HTMLElement | null;
       const inField = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as HTMLElement).isContentEditable);
-      if (ev.key === 'k' && (ev.metaKey || ev.ctrlKey)) {
-        ev.preventDefault();
-        setOpen((o) => !o);
-      } else if (ev.key === 'c' && !ev.metaKey && !ev.ctrlKey && !ev.altKey && !inField) {
+      if (ev.key === 'c' && !ev.metaKey && !ev.ctrlKey && !ev.altKey && !inField) {
         setOpen((o) => !o);
       } else if (ev.key === 'Escape' && open) {
         setOpen(false);

@@ -228,8 +228,11 @@ export function mountMcpServer({ app, runMacro, ctxFor, authMW }) {
     app.get("/mcp", authMW, handler);
     app.delete("/mcp", authMW, handler);
   } else {
+    // detector-allow: duplicate-handler — mutually exclusive with the if-branch above (decided once by authMW at module init); never both registered.
     app.post("/mcp", handler);
+    // detector-allow: duplicate-handler — same as above.
     app.get("/mcp", handler);
+    // detector-allow: duplicate-handler — same as above.
     app.delete("/mcp", handler);
   }
 

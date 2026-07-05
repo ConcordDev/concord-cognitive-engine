@@ -148,6 +148,7 @@ export function EditorPane({
   // event fall through to the command palette unchanged.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // detector-allow: duplicate-handler — resolved via capture-phase registration + conditional stopPropagation() below, not removal; see tests/editor-pane-ctrlk-race.test.tsx for the behavioral proof.
       if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save(); }
       if ((e.metaKey || e.ctrlKey) && e.key === 'k' && selection.trim()) {
         e.preventDefault();

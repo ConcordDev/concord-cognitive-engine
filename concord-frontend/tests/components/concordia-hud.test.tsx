@@ -7,7 +7,10 @@
  *   - AmbientLayer surfaces refusal badge when strength ≥ 6
  *   - ContextPromptLayer hidden out of exploration mode
  *   - ContextPromptLayer picks highest-priority target
- *   - CommandPalette opens on C / Cmd+K, filters by fuzzy match
+ *   - CommandPalette opens on C key, filters by fuzzy match (Cmd/Ctrl+K
+ *     was removed — it's the sacred global common/CommandPalette.tsx
+ *     binding; both were live on the world lens at once, a duplicate-
+ *     handler-race — see verification-audit fix in CommandPalette.tsx)
  *   - ActionWheel honours expertise spoke cap
  *   - PanelHost opens on concordia:panel-open event, closes on Esc
  *   - WorldInteractionSink ambient feedback for unhandled click kinds
@@ -144,6 +147,14 @@ describe('CommandPalette — open/close + fuzzy', () => {
     act(() => { useHUDContext.getState().setMode('combat'); });
     const { container } = render(<CommandPalette />);
     act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' })); });
+    expect(container.querySelector('[data-testid="hud-command-palette"]')).toBeNull();
+  });
+
+  it('does NOT open on Cmd/Ctrl+K — that combo is reserved for the global common/CommandPalette.tsx (duplicate-handler-race fix)', () => {
+    const { container } = render(<CommandPalette />);
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })); });
+    expect(container.querySelector('[data-testid="hud-command-palette"]')).toBeNull();
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true })); });
     expect(container.querySelector('[data-testid="hud-command-palette"]')).toBeNull();
   });
 });
