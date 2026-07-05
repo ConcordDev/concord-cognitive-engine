@@ -148,7 +148,6 @@ describe('MountDesigner — envelope unwrap (finding 17)', () => {
 
     // Unequip round-trips through the same unwrap (`{ ok: true }`, not
     // `{ ok: true, result: { ok: true } }` misread as failure).
-    // @ts-expect-error test global override to capture the call body
     const originalFetch = global.fetch;
     // @ts-expect-error test global
     global.fetch = vi.fn((url: string, init: RequestInit) => {

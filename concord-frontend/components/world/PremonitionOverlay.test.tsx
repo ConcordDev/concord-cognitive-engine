@@ -60,14 +60,12 @@ afterEach(() => { vi.restoreAllMocks(); });
 
 describe('PremonitionOverlay — envelope unwrap (finding 18)', () => {
   it('renders nothing while the predictions call is in flight / before it resolves', () => {
-    // @ts-expect-error test global
     global.fetch = vi.fn(() => new Promise<Response>(() => {}));
     const { container } = render(<PremonitionOverlay />);
     expect(container.firstChild).toBeNull();
   });
 
   it('surfaces the real highest-confidence unrealised prediction from result.predictions', async () => {
-    // @ts-expect-error test global
     global.fetch = vi.fn(() =>
       jsonResponse(envelope({ ok: true, userId: 'u1', predictions: [PREDICTION_LOW, PREDICTION_HIGH] })),
     );
@@ -83,7 +81,6 @@ describe('PremonitionOverlay — envelope unwrap (finding 18)', () => {
   });
 
   it('filters out already-realised predictions and renders nothing if none remain', async () => {
-    // @ts-expect-error test global
     global.fetch = vi.fn(() =>
       jsonResponse(envelope({ ok: true, userId: 'u1', predictions: [PREDICTION_REALISED] })),
     );
@@ -93,7 +90,6 @@ describe('PremonitionOverlay — envelope unwrap (finding 18)', () => {
   });
 
   it('an empty result.predictions array renders nothing (not a crash)', async () => {
-    // @ts-expect-error test global
     global.fetch = vi.fn(() => jsonResponse(envelope({ ok: true, userId: 'u1', predictions: [] })));
     const { container } = render(<PremonitionOverlay />);
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
