@@ -1,0 +1,25 @@
+// Legitimate static-only test — this is the kind of readFileSync + regex
+// test the detector must NOT flag: the title makes no behavior claim (no
+// "wires"/"dispatches"/"renders"/... in the name), it's an honest doc-claims
+// style check that a constant's value in the source matches what's
+// documented, same spirit as scripts/check-doc-claims-all.mjs.
+
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CONFIG = path.resolve(__dirname, '..', 'lib', 'feature-flags-constants.ts');
+
+describe('feature-flags-constants', () => {
+  const src = readFileSync(CONFIG, 'utf8');
+
+  it('exports the correct MAX_RETRY constant', () => {
+    expect(src).toMatch(/MAX_RETRY\s*=\s*3\b/);
+  });
+
+  it('documents the flag default as false', () => {
+    expect(src).toContain('ENABLE_BETA_UI = false');
+  });
+});
