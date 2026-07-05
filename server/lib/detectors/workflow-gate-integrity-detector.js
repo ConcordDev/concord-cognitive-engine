@@ -274,9 +274,15 @@ function checkContinueOnError(root, workflowFile, manifestEntries, findings) {
 }
 
 /** (b) push trigger without pull_request, on a workflow that runs tests. */
-function checkGateVisibleOnPR(root, workflowFile, findings) {
+function checkGateVisibleOnPR(root, workflowFile, manifestEntries, findings) {
   const triggers = extractTriggers(root);
   if (!triggers.has("push") || triggers.has("pull_request")) return;
+  // A deliberately scheduled/nightly drift-probe (not the primary PR-blocking
+  // gate) can opt out via the same manifest as continue-on-error — e.g.
+  // synthetic-journey/synthetic-playtest are explicitly cost-optimized to
+  // stay off the PR path per their own header comments, with the primary
+  // lint/type-check/depth gate already covering PRs elsewhere.
+  if (isExempt(manifestEntries, workflowFile, "workflow")) return;
   const jobsNode = child(root, "jobs");
   if (!jobsNode) return;
   const hits = [];
@@ -387,7 +393,7 @@ export async function runWorkflowGateIntegrityDetector({ root, opts = {} } = {})
       let tree;
       try { tree = buildYamlishTree(raw); } catch { continue; } // malformed file: skip, never crash the suite
       checkContinueOnError(tree, rel, manifest.entries, findings);
-      checkGateVisibleOnPR(tree, rel, findings);
+      checkGateVisibleOnPR(tree, rel, manifest.entries, findings);
       checkNodeEnvOnTestSteps(tree, rel, findings);
       checkUnassertedCurlCaptures(tree, rel, findings);
     }

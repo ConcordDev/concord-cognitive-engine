@@ -111,6 +111,64 @@ describe("workflow-gate-integrity detector — end to end", () => {
     assert.match(hits[0].location, /deploy\.yml/);
   });
 
+  it("does NOT flag gate-visibility for a push-only workflow exempted via gate-monitors.json (workflow-scoped)", async () => {
+    dir = await tmpRepo({
+      ".github/workflows/synthetic-journey.yml": [
+        "name: synthetic-journey",
+        "on:",
+        "  push:",
+        "    branches: [main]",
+        "  schedule:",
+        "    - cron: '27 4 * * *'",
+        "jobs:",
+        "  synthetic-journey:",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - name: Contract test (probe checks)",
+        "        working-directory: ./server",
+        "        run: node --test tests/synthetic-journey-probe.test.js",
+      ].join("\n"),
+      "audit/detectors/gate-monitors.json": JSON.stringify([
+        {
+          workflow: ".github/workflows/synthetic-journey.yml",
+          job_or_step: "workflow",
+          reason: "deliberately scheduled nightly drift probe, not the primary PR gate",
+        },
+      ]),
+    });
+    const r = await runWorkflowGateIntegrityDetector({ root: dir });
+    assert.equal(byId(r, "workflow_gate_not_visible_on_pr").length, 0,
+      "a workflow-scoped gate-monitors.json exemption must suppress the gate-visibility finding");
+  });
+
+  it("STILL flags gate-visibility for a push-only workflow with NO exemption entry for it", async () => {
+    dir = await tmpRepo({
+      ".github/workflows/deploy.yml": [
+        "name: Deploy",
+        "on:",
+        "  push:",
+        "    branches: [main]",
+        "jobs:",
+        "  gate:",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - name: Depth behavioral tests",
+        "        working-directory: ./server",
+        "        run: npm run test:depth:ci",
+      ].join("\n"),
+      "audit/detectors/gate-monitors.json": JSON.stringify([
+        {
+          workflow: ".github/workflows/synthetic-journey.yml",
+          job_or_step: "workflow",
+          reason: "a different workflow's exemption must not leak onto deploy.yml",
+        },
+      ]),
+    });
+    const r = await runWorkflowGateIntegrityDetector({ root: dir });
+    const hits = byId(r, "workflow_gate_not_visible_on_pr");
+    assert.equal(hits.length, 1, "an exemption for a DIFFERENT workflow must not suppress this finding");
+  });
+
   it("does NOT flag gate-visibility when pull_request is in the trigger list", async () => {
     dir = await tmpRepo({
       ".github/workflows/ci.yml": [

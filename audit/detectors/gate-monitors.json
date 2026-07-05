@@ -1,0 +1,86 @@
+[
+  {
+    "workflow": ".github/workflows/ci.yml",
+    "job_or_step": "lint-and-test:Run server tests with coverage",
+    "reason": "Report-only: this step boots the live server inside top-level tests, which make external fetches from worker threads (where the main-thread no-egress guard doesn't reach) and intermittently hang to a 15s timeout on GitHub's flaky partial-egress runners. Redundant with structural-audits, which runs the full server suite under the egress guard and DOES gate the PR. Kept for the coverage report only. Revisit once egress is sandboxed at the socket level for workers.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at ci.yml:190-199"
+  },
+  {
+    "workflow": ".github/workflows/ci.yml",
+    "job_or_step": "job:e2e-core",
+    "reason": "Informational until the trimmed E2E Core suite spends a full week green across commits (see in-file comment) — a PR-comment failure digest surfaces any remaining failure without blocking. Flip to blocking once that graduation criterion is met.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at ci.yml:709-714"
+  },
+  {
+    "workflow": ".github/workflows/ci.yml",
+    "job_or_step": "job:e2e-infra",
+    "reason": "Infra slice (Ollama chat, Google/Apple OAuth, Stripe wallet) cannot reliably run in GitHub-hosted CI — upstream services either need secrets not exposed to PRs or cold-start beyond the runner's time budget. Informational only; artifact still surfaces in the PR Checks tab. Promotion target: migrate individual specs back into E2E Core once they no longer depend on this infra.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at ci.yml:970-977"
+  },
+  {
+    "workflow": ".github/workflows/ci.yml",
+    "job_or_step": "e2e-infra:Pull tiny Ollama model for chat specs",
+    "reason": "Same infra-dependency class as the e2e-infra job exemption above — an Ollama model pull that can time out or fail on a cold runner shouldn't fail the whole informational infra slice.",
+    "owner_ack": "orchestrator, 2026-07-05"
+  },
+  {
+    "workflow": ".github/workflows/ci.yml",
+    "job_or_step": "job:server-clean-exit-canary",
+    "reason": "Proves every test file's child process exits on its own without --test-force-exit. Informational until it has a green streak in CI; promotion to blocking (and dropping --test-force-exit from test:main) happens only after the canary proves itself.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at ci.yml:1160-1166"
+  },
+  {
+    "workflow": ".github/workflows/codeql.yml",
+    "job_or_step": "job:analyze",
+    "reason": "The github/codeql-action/* family is downloaded from GitHub's CDN during 'Set up job' and intermittently 429s (rate-limited), failing the job before any analysis runs. A 429 means we miss ONE scan, not that vulnerabilities slip through — platinum-codeql-drift.test.js runs source-side grep coverage for the load-bearing CodeQL patterns regardless, and real findings on a SUCCESSFUL run still fail the build via the SARIF threshold.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at codeql.yml:14-28"
+  },
+  {
+    "workflow": ".github/workflows/detectors-cartography.yml",
+    "job_or_step": "job:cartograph",
+    "reason": "continue-on-error until the SYSTEMS.json baseline is committed — first-run output IS the baseline; until one exists, a missing-snapshot diff is informative noise, not a real regression.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at detectors-cartography.yml:136-139"
+  },
+  {
+    "workflow": ".github/workflows/lighthouse.yml",
+    "job_or_step": "lighthouse:Run Lighthouse CI",
+    "reason": "Performance scores fluctuate run-to-run on shared CI hardware; Lighthouse is advisory perf telemetry, not a merge-blocking correctness gate.",
+    "owner_ack": "orchestrator, 2026-07-05"
+  },
+  {
+    "workflow": ".github/workflows/platinum-performance.yml",
+    "job_or_step": "job:k6-smoke",
+    "reason": "The p(95)<3000ms/checks>0.90/5-VU threshold flakes ~1-in-3 runs from GC pauses, heartbeat ticks, and noisy-neighbour CPU on shared runners. Scoped to schedule/workflow_dispatch only (not PRs); the nightly cron still catches genuine perf-budget regressions within 24h. Real load-testing enforcement runs on a dedicated perf box.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at platinum-performance.yml:169-178"
+  },
+  {
+    "workflow": ".github/workflows/platinum-security.yml",
+    "job_or_step": "container-scan:Upload Trivy SARIF",
+    "reason": "This step only uploads results to GitHub's Security dashboard for visualization after the actual blocking Trivy CVE scan step already ran. A 429 from GitHub's CDN during action setup is transient infra noise, not a CVE finding, and shouldn't gate merges.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at platinum-security.yml:287-295"
+  },
+  {
+    "workflow": ".github/workflows/platinum-zap-dast.yml",
+    "job_or_step": "zap-baseline:ZAP Baseline Scan",
+    "reason": "Catches infra-class ZAP failures (e.g. spider read timeout against an unwarmed instance under Concord's heartbeat + parallel spider load) distinct from the fail_action:false-covered scan-found-issues case. The report still uploads regardless; this only prevents infra flake from failing the job.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at platinum-zap-dast.yml:77-83"
+  },
+  {
+    "workflow": ".github/workflows/repair-cortex.yml",
+    "job_or_step": "job:repair-cortex",
+    "reason": "continue-on-error until the platinum gate suite stabilizes on this branch — the runner script chains every gate and first-run failures are expected while individual gates seed their own baselines (Stryker mutation budget, threat-model manifest, SLO baseline, DR drill snapshot). Flip to blocking once a full nightly run lands green.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at repair-cortex.yml:50-56"
+  },
+  {
+    "workflow": ".github/workflows/synthetic-journey.yml",
+    "job_or_step": "workflow",
+    "reason": "Deliberately scheduled nightly + post-deploy drift probe (self-contained by default, optionally live against PROBE_BASE_URL), not the primary PR-blocking gate — the header comment documents this as supplementary detection. The primary lint/type-check/depth gate (deploy.yml's `gate` job) already covers PRs; this probe catches drift within its own 24h cadence.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at synthetic-journey.yml:1-16"
+  },
+  {
+    "workflow": ".github/workflows/synthetic-playtest.yml",
+    "job_or_step": "workflow",
+    "reason": "Explicitly documented as 'Default-off in PR CI' — compresses 7 in-game days into ~7 minutes of substrate simulation, deliberately kept off the PR path for cost reasons and flipped on only for the nightly schedule (and main pushes). The primary lint/type-check/depth gate already covers PRs; this is supplementary drift detection on its own cadence.",
+    "owner_ack": "orchestrator, 2026-07-05, per in-file comment at synthetic-playtest.yml:1-8"
+  }
+]

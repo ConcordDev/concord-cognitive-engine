@@ -41,6 +41,8 @@ jobs:
 
       - name: Contract test (probe checks)
         working-directory: ./server
+        env:
+          NODE_ENV: test
         run: node --test tests/synthetic-journey-probe.test.js
 
       - name: Run probe
