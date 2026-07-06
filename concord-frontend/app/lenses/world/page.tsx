@@ -3674,7 +3674,7 @@ export default function WorldLensPage() {
     worldSocket.on('world:action', handleWorldAction);
     worldSocket.on('weather:update', handleWeatherUpdate);
     worldSocket.on('world:weather', handleWorldWeather);
-    worldSocket.on('world:deformation', handleWorldDeformation);
+    worldSocket.on('concordia:terrain-deformed', handleWorldDeformation);
     // Embodied sonic-pulse → window event for SoundscapeEngine. Server emits
     // when a non-sensor source writes a loud sonic_os.ambient_db delta (skill
     // cast / combat). Engine briefly accents master gain in proportion.
@@ -3745,7 +3745,7 @@ export default function WorldLensPage() {
       worldSocket.off('world:action', handleWorldAction);
       worldSocket.off('weather:update', handleWeatherUpdate);
       worldSocket.off('world:weather', handleWorldWeather);
-      worldSocket.off('world:deformation', handleWorldDeformation);
+      worldSocket.off('concordia:terrain-deformed', handleWorldDeformation);
       worldSocket.off('world:sonic-pulse', handleSonicPulse);
       worldSocket.off('world:sign-placed', handleSignPlaced);
       worldSocket.off('horror:tension', handleHorrorTension);

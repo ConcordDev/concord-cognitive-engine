@@ -8,8 +8,11 @@
  *   combat:polish           → combat = 1 (decays back to 0 over 6s)
  *   combat:hit              → combat = max(combat, 0.7)
  *   combat:stagger          → tension bump
- *   npc:scheme_revealed     → revelation = 1 (decays over 8s)
- *   quest:triggered         → tension = 1 (decays over 10s)
+ *   npc:scheme-resolved     → revelation = 1 (decays over 8s)
+ *   quest:triggered         → tension = 1 (decays over 10s) — NOTE: no server
+ *     code emits this event anywhere (verification-audit finding); the
+ *     quest-trigger fire path (lib/quest-triggers.js#fireTrigger) does DB
+ *     writes only. Documented debt, not fixed here.
  *   world:refusal-field     → tension bump
  *
  * State decays back toward exploration baseline when no signals fire.
@@ -200,7 +203,10 @@ export default function AdaptiveMusicBridge() {
     off3 = subscribe('combat:stagger' as Parameters<typeof subscribe>[0], () => {
       bump('tension', 0.6);
     });
-    off4 = subscribe('npc:scheme_revealed' as Parameters<typeof subscribe>[0], () => {
+    // Dead-event-listener fix (verification-audit campaign): the real
+    // server event is 'npc:scheme-resolved' (hyphenated, "resolved" not
+    // "revealed") — this listener never fired under the wrong name.
+    off4 = subscribe('npc:scheme-resolved' as Parameters<typeof subscribe>[0], () => {
       bump('revelation', 1);
     });
     off5 = subscribe('quest:triggered' as Parameters<typeof subscribe>[0], () => {

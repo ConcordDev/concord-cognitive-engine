@@ -112,6 +112,19 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'world:node-update'        as SocketEvent, channel: 'world',     label: 'Resource node changed' },
   { name: 'world:loot-node'          as SocketEvent, channel: 'world',     label: 'Loot dropped' },
   { name: 'world:broadcast'          as SocketEvent, channel: 'system_health', label: 'World broadcast' },
+  // Dead-event-listener fix (verification-audit campaign) — 8 real server
+  // broadcasts with no frontend consumer at all, confirmed via full-repo
+  // grep. Each already carries a discrete, player-facing signal; wired
+  // through this feed's existing generic array pattern rather than a
+  // bespoke UI per event.
+  { name: 'world:boss-spawn'              as SocketEvent, channel: 'crisis',  label: 'World boss spawned' },
+  { name: 'scheme:player_assassinated'    as SocketEvent, channel: 'crisis',  label: 'Assassination' },
+  { name: 'plague:resolved'               as SocketEvent, channel: 'crisis',  label: 'Plague resolved' },
+  { name: 'faction:collapse-cascade'      as SocketEvent, channel: 'faction', label: 'Faction collapse cascade' },
+  { name: 'scheme:cross_world'            as SocketEvent, channel: 'npc',     label: 'Cross-world scheme' },
+  { name: 'creature:predation'            as SocketEvent, channel: 'world',   label: 'Creature predation' },
+  { name: 'career:shift'                  as SocketEvent, channel: 'economy', label: 'Career wages paid' },
+  { name: 'world:npc-event'               as SocketEvent, channel: 'npc',     label: 'NPC story event' },
 ];
 
 const CHANNEL_COLORS: Record<EmergentChannel, string> = {
