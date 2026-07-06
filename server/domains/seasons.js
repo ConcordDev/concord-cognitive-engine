@@ -9,7 +9,7 @@
 // from a read path — it only writes when a wall-clock boundary was
 // actually crossed since the last check).
 
-import { advanceSeasonForWorld } from "../lib/seasons.js";
+import { advanceSeasonForWorld, SEASONS, SEASON_NODE_YIELD_MULT } from "../lib/seasons.js";
 
 export default function registerSeasonsActions(registerLensAction) {
   registerLensAction("seasons", "current", (ctx, _artifact, params = {}) => {
@@ -19,5 +19,19 @@ export default function registerSeasonsActions(registerLensAction) {
     const r = advanceSeasonForWorld(ctx.db, worldId);
     if (!r.ok) return r;
     return { ok: true, result: { season: r.season, year: r.year, transitioned: r.transitioned, narrative: r.narrative } };
+  });
+
+  // The authored 42-day Concordia year: 6 seasons × 7 days, each with its
+  // climate biases + per-resource gather-yield multipliers. Pure catalog
+  // read from the same lib the season-cycle heartbeat runs on — no DB.
+  registerLensAction("seasons", "calendar", () => {
+    return {
+      ok: true,
+      result: {
+        seasons: SEASONS.map((s) => ({ ...s, yieldMultipliers: SEASON_NODE_YIELD_MULT[s.name] || null })),
+        seasonLengthDays: 7,
+        yearLengthDays: SEASONS.length * 7,
+      },
+    };
   });
 }

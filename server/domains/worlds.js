@@ -35,4 +35,31 @@ export default function registerWorldsActions(registerLensAction) {
 
     return { ok: true, result: { anchors } };
   });
+
+  // Combat-region zones for a world (migration 262: safe / sanctuary /
+  // pvp / lawless / hazard circles) — the same substrate ZoneBadge reads.
+  registerLensAction("worlds", "zones_for_world", (ctx, _artifact, params = {}) => {
+    const worldId = String(params.worldId || "").trim();
+    if (!worldId) return { ok: false, error: "worldId required" };
+    if (!ctx?.db) return { ok: true, result: { zones: [] } };
+
+    const rows = ctx.db.prepare(`
+      SELECT id, name, kind, center_x, center_z, radius_m
+      FROM world_zones
+      WHERE world_id = ?
+      ORDER BY radius_m DESC
+      LIMIT 100
+    `).all(worldId);
+
+    const zones = rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      kind: r.kind,
+      centerX: r.center_x,
+      centerZ: r.center_z,
+      radiusM: r.radius_m,
+    }));
+
+    return { ok: true, result: { zones } };
+  });
 }

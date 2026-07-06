@@ -93,6 +93,13 @@ function memDb() {
         get: () => null,
       };
     },
+    // better-sqlite3 shape: transaction(fn) returns a callable that runs fn.
+    // awardSparks (lib/currency.js) wraps its UPDATE+INSERT pair in this
+    // since the money-hygiene fix; without it the fake db made awardSparks
+    // throw and the sparks credit silently never landed.
+    transaction(fn) {
+      return (...args) => fn(...args);
+    },
     _t: t,
   };
 }

@@ -29,4 +29,26 @@ export default function registerSkillsActions(registerLensAction) {
     }
     return { ok: true, result: worst };
   });
+
+  // Full per-skill atrophy breakdown for the current user — same real
+  // decay math as atrophy_risk, but every skill DTU instead of only the
+  // single most-at-risk one (skill-management surfaces need the list).
+  registerLensAction("skills", "atrophy_all", (ctx, _artifact, _params = {}) => {
+    const userId = (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || null;
+    if (!userId) return { ok: false, error: "authentication required" };
+    if (!ctx?.db) return { ok: true, result: { skills: [] } };
+
+    const rows = ctx.db.prepare(`
+      SELECT id, title, skill_level, last_used_at FROM dtus
+      WHERE type = 'skill' AND owner_user_id = ? AND last_used_at IS NOT NULL
+    `).all(userId);
+
+    const skills = rows.map((row) => ({
+      dtuId: row.id,
+      title: row.title,
+      skillLevel: row.skill_level,
+      ...getAtrophyRisk(row),
+    })).sort((a, b) => b.projectedLoss - a.projectedLoss);
+    return { ok: true, result: { skills } };
+  });
 }
