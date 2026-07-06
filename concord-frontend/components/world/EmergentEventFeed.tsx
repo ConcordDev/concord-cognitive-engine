@@ -125,6 +125,10 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'creature:predation'            as SocketEvent, channel: 'world',   label: 'Creature predation' },
   { name: 'career:shift'                  as SocketEvent, channel: 'economy', label: 'Career wages paid' },
   { name: 'world:npc-event'               as SocketEvent, channel: 'npc',     label: 'NPC story event' },
+  // Dead-event-listener fix (verification-audit campaign): secrets.weaponise
+  // (server/domains/secrets.js) fires a blackmail/leverage-use narrative
+  // beat with zero frontend consumer anywhere.
+  { name: 'secret:weaponised'             as SocketEvent, channel: 'npc',     label: 'Secret weaponised' },
 ];
 
 const CHANNEL_COLORS: Record<EmergentChannel, string> = {

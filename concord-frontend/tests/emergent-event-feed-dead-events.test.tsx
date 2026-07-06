@@ -1,10 +1,10 @@
-// Verification-audit fix — pinning test for 8 real dead-event-listener
+// Verification-audit fix — pinning test for 9 real dead-event-listener
 // findings: real server broadcasts (world:boss-spawn, scheme:player_
 // assassinated, plague:resolved, faction:collapse-cascade, scheme:cross_
-// world, creature:predation, career:shift, world:npc-event) with zero
-// frontend consumer anywhere. Wired into EmergentEventFeed's existing
-// generic TRACKED_EVENTS array — the same mechanism that already
-// surfaces ~60 sibling emergent-simulation events.
+// world, creature:predation, career:shift, world:npc-event, secret:
+// weaponised) with zero frontend consumer anywhere. Wired into
+// EmergentEventFeed's existing generic TRACKED_EVENTS array — the same
+// mechanism that already surfaces ~60 sibling emergent-simulation events.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.resolve(__dirname, '..', 'components', 'world', 'EmergentEventFeed.tsx');
 
-describe('EmergentEventFeed — 8 previously-dead events now tracked', () => {
+describe('EmergentEventFeed — 9 previously-dead events now tracked', () => {
   const source = readFileSync(FILE, 'utf8');
   const trackedBlockStart = source.indexOf('const TRACKED_EVENTS');
   const trackedBlockEnd = source.indexOf('\n];', trackedBlockStart);
@@ -29,6 +29,7 @@ describe('EmergentEventFeed — 8 previously-dead events now tracked', () => {
     'creature:predation',
     'career:shift',
     'world:npc-event',
+    'secret:weaponised',
   ];
 
   for (const evt of expectedEvents) {
