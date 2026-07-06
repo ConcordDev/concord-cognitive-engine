@@ -93,6 +93,10 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'whiteboard:scene-update',
   'whiteboard:cursor',
   'whiteboard:vote-cast',
+  // Dead-event-listener fix (verification-audit campaign) — reaction/
+  // presence were never forwarded to the event bus at all.
+  'whiteboard:reaction',
+  'whiteboard:presence',
   // Message lens multi-device sync
   'message:saved',
   'message:unsaved',

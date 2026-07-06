@@ -348,7 +348,12 @@ export function CollabBoardSection() {
 
           {aiTab === 'collab' ? (
             <div className="flex-1 overflow-hidden">
-              <WhiteboardCollabPanel boardId={activeId} shapes={activeShapes} />
+              <WhiteboardCollabPanel
+                boardId={activeId}
+                shapes={activeShapes}
+                livePresence={collab.livePresence}
+                lastPeerReaction={collab.lastPeerReaction}
+              />
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-3 text-xs">

@@ -443,6 +443,14 @@ export type SocketEvent =
   // player never learned their match formed (only the initiator, via the
   // direct POST /api/arena/queue response, ever saw it).
   | 'arena:match:found'
+  // Dead-event-listener fix (verification-audit campaign) — whiteboard's
+  // "Live" tab (WhiteboardCollabPanel.tsx) has real reaction/presence
+  // backend (server/domains/whiteboard.js reaction-send/presence-ping),
+  // but these two names were never forwarded off the raw socket at all,
+  // so the labeled Live UI never received a push update (presence was
+  // poll-only and never populated since nothing ever called presence-ping).
+  | 'whiteboard:reaction'
+  | 'whiteboard:presence'
   // The System — diegetic push-driven status layer (players/NPCs/hostiles).
   | 'system:level-up'
   | 'system:skill-acquired'
