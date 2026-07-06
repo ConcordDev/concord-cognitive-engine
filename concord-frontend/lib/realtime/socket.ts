@@ -561,6 +561,11 @@ export type SocketEvent =
   | 'auction:settled'
   | 'disease:contracted'
   | 'disease:cured'
+  // Dead-event-listener fix (verification-audit campaign) — real server
+  // broadcast (server/lib/disease-engine.js#tickDiseases) with zero
+  // frontend consumer; DiseaseStatusHUD.tsx now subscribes alongside its
+  // sibling disease:contracted/disease:cured handlers.
+  | 'disease:lethal-progression'
   | 'festival:started'
   | 'friend:request-accepted'
   | 'friend:request-received'

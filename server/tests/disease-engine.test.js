@@ -174,4 +174,36 @@ describe("Phase W — disease engine", () => {
     assert.equal(d.tier, "rare");
     assert.ok(d.mortalityRisk > 0);
   });
+
+  // Dead-event-listener + realtime-emit-signature fix (verification-audit
+  // campaign): the lethal-progression emit used to fold userId into the
+  // payload instead of realtimeEmit's 3rd (options) argument, which is the
+  // only argument that actually room-scopes delivery to `user:<id>` — so
+  // every "your infection just turned critical" warning broadcast globally
+  // to every connected player instead of just the one player it was about.
+  it("tickDiseases emits disease:lethal-progression with userId as a room-scoping option, not folded into the payload", (t) => {
+    initDiseaseCatalog();
+    contractDisease(db, "u1", "rad-poison", { severity: 0.69 }); // +0.02 tick -> 0.71 > 0.7 threshold
+    t.mock.method(Math, "random", () => 0); // forces the `< risk * 0.1` mortality roll to fire
+
+    const emitted = [];
+    const prevEmit = globalThis._concordRealtimeEmit;
+    globalThis._concordRealtimeEmit = (event, payload, options) => emitted.push({ event, payload, options });
+    try {
+      tickDiseases(db, "u1");
+    } finally {
+      globalThis._concordRealtimeEmit = prevEmit;
+    }
+
+    const lethal = emitted.find((e) => e.event === "disease:lethal-progression");
+    assert.ok(lethal, "expected a disease:lethal-progression emit");
+    assert.equal(lethal.options?.userId, "u1", "userId must be passed via the realtimeEmit options argument");
+    assert.equal(lethal.payload.userId, undefined, "userId should not be duplicated inside the payload");
+    assert.equal(lethal.payload.diseaseId, "rad-poison");
+
+    // Severity is pushed to the max (1.0) rather than the raw ticked value —
+    // the player isn't killed directly, but their disease reads as maximal.
+    const after = listActiveDiseases(db, "u1")[0].severity;
+    assert.equal(after, 1.0);
+  });
 });

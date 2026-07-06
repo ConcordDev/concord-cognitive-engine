@@ -27,6 +27,9 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'attention:allocation',        channel: 'agent',   label: 'Attention shifted' },
   { name: 'evo:asset-promoted',          channel: 'evo',     label: 'Evo-asset promoted' },
   { name: 'combat:combo-evolved',        channel: 'evo',     label: 'Combo evolved' },
+  // Dead-event-listener fix (verification-audit campaign): the NPC-side
+  // twin of combat:combo-evolved above had zero consumer anywhere.
+  { name: 'combat:npc-combo-evolved'  as SocketEvent, channel: 'evo',  label: 'NPC combo evolved' },
   { name: 'companion:tame-success',      channel: 'companion', label: 'Companion tamed' },
   { name: 'companion:level-up',          channel: 'companion', label: 'Companion leveled up' },
   { name: 'kingdom:founded',             channel: 'world',     label: 'Kingdom founded' },
@@ -74,6 +77,11 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'mount:hungry'              as SocketEvent, channel: 'companion', label: 'Mount hungry' },
   { name: 'mount:loyalty-low'         as SocketEvent, channel: 'companion', label: 'Mount loyalty low' },
   { name: 'nemesis:defeated'          as SocketEvent, channel: 'npc',       label: 'Nemesis defeated' },
+  // Dead-event-listener fix (verification-audit campaign): MarriagePanel.tsx
+  // only fetches on mount with no poll/subscribe, so spouse reaction beats
+  // (including estrangement) were invisible unless the player manually
+  // reopened the panel.
+  { name: 'spouse:reaction'           as SocketEvent, channel: 'npc',       label: 'Spouse reacted' },
   { name: 'npc:combat-resolved'       as SocketEvent, channel: 'npc',       label: 'NPC combat resolved' },
   { name: 'npc:level-up'              as SocketEvent, channel: 'npc',       label: 'NPC leveled up' },
   { name: 'npc:quest-accepted'        as SocketEvent, channel: 'npc',       label: 'NPC took a quest' },

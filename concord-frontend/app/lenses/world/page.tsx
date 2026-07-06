@@ -771,6 +771,10 @@ const DamageBillboard = dynamic(
   () => import('@/components/world/DamageBillboard').then((m) => ({ default: m.DamageBillboard })),
   { ssr: false },
 );
+const WorldMarkers = dynamic(
+  () => import('@/components/world-lens/WorldMarkers').then((m) => ({ default: m.WorldMarkers })),
+  { ssr: false },
+);
 const WorldSigns = dynamic(
   () => import('@/components/world/WorldSigns').then((m) => ({ default: m.WorldSigns })),
   { ssr: false },
@@ -4761,6 +4765,7 @@ export default function WorldLensPage() {
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
           <DamageBillboard />
+          <WorldMarkers />
           <WorldSigns
             worldId={activeDistrict.id}
             playerPosition={{ x: playerAvatar.position.x, y: 0, z: playerAvatar.position.z }}

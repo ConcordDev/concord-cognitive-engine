@@ -66,4 +66,24 @@ describe('DiseaseStatusHUD — realtime wiring', () => {
       expect((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(callsAfterMount),
     );
   });
+
+  // Dead-event-listener fix (verification-audit campaign): the server has
+  // always emitted a distinct 'disease:lethal-progression' warning (a real,
+  // separate signal from the passive severity poll) but nothing ever
+  // subscribed to it — a player only found out their infection turned
+  // critical on the next 30s refresh, or not at all if death followed
+  // first. Also fixed a realtime-emit-signature bug in the same emit
+  // (userId was folded into the payload instead of the room-scoping
+  // options arg, making it a global broadcast) — not exercised by this
+  // frontend-only test, but covered by lib/disease-engine.js's own tests.
+  it('shows a critical-infection alert on a real disease:lethal-progression event', async () => {
+    const { getByLabelText, getByRole } = render(<DiseaseStatusHUD />);
+    await waitFor(() => expect(getByLabelText(/sick: 1 active infection/i)).toBeInTheDocument());
+
+    emitSocket('disease:lethal-progression', { diseaseId: 'flu', severity: 0.95 });
+    await waitFor(() => {
+      expect(getByRole('alert').textContent).toContain('Concord Flu');
+      expect(getByRole('alert').textContent).toContain('critical');
+    });
+  });
 });
