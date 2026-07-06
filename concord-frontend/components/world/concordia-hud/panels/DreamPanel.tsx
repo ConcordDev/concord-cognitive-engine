@@ -94,9 +94,10 @@ export function DreamPanel() {
         body: JSON.stringify({ domain: 'dreams', name: macro, input: { limit: 20 } }),
       });
       const j = await r.json();
-      if (j?.ok) {
-        if (t === 'dreams') setDreams((j.dreams || []) as DreamRow[]);
-        else setPreds((j.predictions || []) as PredictionRow[]);
+      const payload = j?.result ?? j;
+      if (payload?.ok) {
+        if (t === 'dreams') setDreams((payload.dreams || []) as DreamRow[]);
+        else setPreds((payload.predictions || []) as PredictionRow[]);
       }
     } finally {
       setLoading(false);

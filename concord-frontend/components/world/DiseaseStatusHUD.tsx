@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Skull, Activity, X } from 'lucide-react';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface Disease {
   id: string;
@@ -25,6 +26,7 @@ interface Disease {
 export function DiseaseStatusHUD() {
   const [diseases, setDiseases] = useState<Disease[]>([]);
   const [open, setOpen] = useState(false);
+  const [lethalWarning, setLethalWarning] = useState<{ diseaseId: string } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -39,23 +41,43 @@ export function DiseaseStatusHUD() {
     return () => clearInterval(id);
   }, [refresh]);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     const handler = () => refresh();
-    window.addEventListener('disease:contracted', handler);
-    window.addEventListener('disease:cured', handler);
+    const offContracted = subscribe('disease:contracted', handler);
+    const offCured = subscribe('disease:cured', handler);
+    // Dead-event-listener fix (verification-audit campaign): the server
+    // already emits a distinct "about to die" signal separate from the
+    // passive severity poll — surface it as an explicit warning instead of
+    // letting the player find out only via the next 30s refresh.
+    const offLethal = subscribe<{ diseaseId: string; severity: number }>('disease:lethal-progression', (p) => {
+      setLethalWarning({ diseaseId: p.diseaseId });
+      refresh();
+      setTimeout(() => setLethalWarning(null), 8000);
+    });
     return () => {
-      window.removeEventListener('disease:contracted', handler);
-      window.removeEventListener('disease:cured', handler);
+      offContracted?.();
+      offCured?.();
+      offLethal?.();
     };
   }, [refresh]);
 
-  if (diseases.length === 0) return null;
+  if (diseases.length === 0 && !lethalWarning) return null;
 
-  const worstSeverity = Math.max(...diseases.map((d) => d.severity));
+  const worstSeverity = diseases.length > 0 ? Math.max(...diseases.map((d) => d.severity)) : 0;
   const severityColor = worstSeverity > 0.7 ? 'text-rose-400' : worstSeverity > 0.3 ? 'text-amber-400' : 'text-yellow-300';
+  const lethalDiseaseName = lethalWarning
+    ? diseases.find((d) => d.diseaseId === lethalWarning.diseaseId)?.name ?? 'Infection'
+    : null;
 
   return (
     <>
+      {lethalDiseaseName && (
+        <div
+          role="alert"
+          className="fixed top-12 right-4 z-30 rounded-lg border border-rose-500 bg-rose-950/90 px-3 py-2 text-[11px] font-semibold text-rose-100 shadow-lg backdrop-blur"
+        >
+          {lethalDiseaseName} is turning critical
+        </div>
+      )}
       <button
         type="button"
         onClick={() => setOpen(true)}

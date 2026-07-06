@@ -75,9 +75,10 @@ export default function FactionBanners({ worldId, bannerAnchors = FALLBACK_BANNE
         });
         if (!r.ok) return;
         const j = await r.json();
-        if (cancelled || !Array.isArray(j?.factions)) return;
+        const payload = j?.result ?? j;
+        if (cancelled || !Array.isArray(payload?.factions)) return;
         const map = new Map<string, FactionVisual>();
-        for (const f of j.factions as FactionVisualEntry[]) {
+        for (const f of payload.factions as FactionVisualEntry[]) {
           if (f.visual) map.set(f.id, f.visual);
         }
         setFactionVisuals(map);

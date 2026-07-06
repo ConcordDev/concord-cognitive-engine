@@ -50,14 +50,20 @@ for (const f of files) {
 
 // 3) Weakened tests: an existing tracked test file whose assertion count DROPPED vs HEAD.
 //    (Adding new tests is the whole point; removing/weakening assertions is gaming.)
+// NOTE: ASSERT_RE's bare `expect` alternative also matches the "expect" substring inside
+// the TypeScript compiler directive `@ts-expect-error` (word-boundaries on both sides land
+// on the surrounding hyphens). Strip that directive before counting so removing an
+// unnecessary/incorrect @ts-expect-error comment — a real lint fix — isn't misread as
+// deleting a test assertion. Applied symmetrically to both sides of the diff.
 const ASSERT_RE = /\b(assert(?:\.\w+)?|expect|\.toBe|\.toEqual|\.toThrow|t\.ok|t\.equal)\b/g;
+const stripTsDirectives = (s) => s.replace(/@ts-expect-error/g, '');
 const testFiles = files.filter((f) => /\.(test|behavior|spec)\.(js|mjs|cjs|ts|tsx)$/.test(f) || /\/tests?\//.test(f) && /\.(js|mjs|ts|tsx)$/.test(f));
 for (const f of testFiles) {
   const head = run(`git show HEAD:${JSON.stringify(f).slice(1, -1)}`, { allowFail: true });
   if (!head.ok) continue; // new test file — fine
   const cur = run(`cat ${JSON.stringify(f)}`).out;
-  const before = (head.out.match(ASSERT_RE) || []).length;
-  const after = (cur.match(ASSERT_RE) || []).length;
+  const before = (stripTsDirectives(head.out).match(ASSERT_RE) || []).length;
+  const after = (stripTsDirectives(cur).match(ASSERT_RE) || []).length;
   if (after < before) violations.push(`TEST WEAKENED: ${f} assertions ${before}→${after} (removing/weakening assertions is gaming — add, don't subtract)`);
 }
 

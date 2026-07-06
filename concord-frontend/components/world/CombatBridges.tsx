@@ -557,14 +557,21 @@ export function CombatStaggerCameraBridge({ userId }: { userId: string | null })
 /**
  * Phase 8 add-on: when world:building-state transitions a building
  * to 'collapsed', dispatch a CustomEvent that the world scene's
- * BuildingCollapseVFX layer (mounted alongside the building meshes)
- * consumes — gravity-fall on the mesh + dust particle burst at the
- * impact point.
+ * BuildingCollapseVFX + BuildingWearLayer (mounted alongside the building
+ * meshes) consume a `concordia:building-state` window CustomEvent — the
+ * TRANSIENT crack-puff/collapse burst and the PERSISTENT scar layer,
+ * respectively. This bridge is their only source: it re-shapes the raw
+ * socket payload (`{buildingId, state, healthPct, position:{x,z}, attackerId}`,
+ * per routes/worlds.js:2998) into the `{buildingId, toState, position:{x,y,z},
+ * worldId}` shape those two consumers expect (`state`→`toState`; the server
+ * doesn't send position.y so it defaults to 0, same fallback the wear
+ * reducer already applies). Dispatched for EVERY transition (standing /
+ * damaged / collapsed) so BuildingWearLayer can clear a scar on repair and
+ * add one on damage, not just on collapse.
  *
- * The substrate emit at routes/worlds.js:2134 carries buildingId +
- * state + healthPct + (when available) position + attackerId.
- * We only react to the collapsed transition (the standing → damaged
- * transition gets a smaller VFX cue handled by CombatVFXLayer).
+ * `concordia:building-collapse` (the pre-existing toast + screen-shake
+ * dispatch below) is UNCHANGED and fires only for the collapsed transition,
+ * same as before — this bridge just does an additional dispatch alongside it.
  *
  * Local-relevance gate (per codex review P1, 2026-05-09): the server
  * broadcasts `world:building-state` to the entire world room. Without
@@ -592,7 +599,25 @@ export function BuildingCollapseBridge({ userId }: { userId: string | null }) {
         attackerId?: string | null;
         healthPct?: number;
       };
-      if (!ev?.buildingId || ev.state !== 'collapsed') return;
+      if (!ev?.buildingId || !ev.state) return;
+
+      // Re-shape + forward to the two `concordia:building-state` consumers
+      // (BuildingWearLayer's persistent scars, BuildingCollapseVFX's
+      // transient crack-puff / collapse burst) for every transition.
+      window.dispatchEvent(new CustomEvent('concordia:building-state', {
+        detail: {
+          buildingId: ev.buildingId,
+          worldId: ev.worldId || null,
+          toState: ev.state,
+          position: {
+            x: ev.position?.x ?? 0,
+            y: 0,
+            z: ev.position?.z ?? 0,
+          },
+        },
+      }));
+
+      if (ev.state !== 'collapsed') return;
 
       // Local-relevance check.
       let localRelevance: 'full' | 'soft' = 'soft';

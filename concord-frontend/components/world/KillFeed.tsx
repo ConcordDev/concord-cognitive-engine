@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import { Skull, Swords } from 'lucide-react';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface KillEvent {
   ts: number;
@@ -47,25 +48,44 @@ export function KillFeed({ worldId }: { worldId: string }) {
     return () => window.removeEventListener('concordia:killfeed-mode-changed', onChange);
   }, []);
 
+  // combat:kill (server.js) fires { attackerId, targetId } — bare user ids,
+  // no worldId/skillId/names. entity:death (death-protocol.js) fires
+  // { entityId, entityName, cause, ... } for NPC/creature deaths — also no
+  // worldId. Neither event carries the killer/victim/skillId/isPlayer shape
+  // the old (dead) window-CustomEvent handler assumed; map each shape
+  // explicitly instead of guessing a common one.
   useEffect(() => {
-    if (!enabled || typeof window === 'undefined') return;
-    const handler = (ev: Event) => {
-      const detail = (ev as CustomEvent).detail || {};
-      if (detail.worldId && detail.worldId !== worldId) return;
-      const k: KillEvent = {
-        ts: Date.now(),
-        killer: String(detail.killer?.name ?? detail.killer ?? detail.killerId ?? 'unknown'),
-        victim: String(detail.victim?.name ?? detail.victim ?? detail.victimId ?? 'unknown'),
-        skillId: detail.skillId,
-        isPlayer: !!detail.isPlayer,
-      };
-      setEvents((prev) => [k, ...prev].slice(0, 5));
-    };
-    window.addEventListener('combat:kill', handler);
-    window.addEventListener('entity:death', handler);
+    if (!enabled) return;
+    const offKill = subscribe<{ attackerId?: string; targetId?: string; worldId?: string }>(
+      'combat:kill',
+      (data) => {
+        if (!data) return;
+        if (data.worldId && data.worldId !== worldId) return;
+        const k: KillEvent = {
+          ts: Date.now(),
+          killer: String(data.attackerId ?? 'unknown'),
+          victim: String(data.targetId ?? 'unknown'),
+          isPlayer: true,
+        };
+        setEvents((prev) => [k, ...prev].slice(0, 5));
+      },
+    );
+    const offDeath = subscribe<{ entityId?: string; entityName?: string; cause?: string; worldId?: string }>(
+      'entity:death',
+      (data) => {
+        if (!data) return;
+        if (data.worldId && data.worldId !== worldId) return;
+        const k: KillEvent = {
+          ts: Date.now(),
+          killer: String(data.cause ?? 'unknown'),
+          victim: String(data.entityName ?? data.entityId ?? 'unknown'),
+        };
+        setEvents((prev) => [k, ...prev].slice(0, 5));
+      },
+    );
     return () => {
-      window.removeEventListener('combat:kill', handler);
-      window.removeEventListener('entity:death', handler);
+      offKill?.();
+      offDeath?.();
     };
   }, [enabled, worldId]);
 

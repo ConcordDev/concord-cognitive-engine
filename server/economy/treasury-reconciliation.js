@@ -75,43 +75,51 @@ export function runTreasuryReconciliation(db, { stripeBalance, alertCallback } =
   };
 
   try {
-    db.prepare(`
-      INSERT INTO treasury_reconciliation_log
-        (id, ledger_total, stripe_total, drift, alert_triggered, details_json, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      reconciliationId,
-      ledgerTotals.expectedTreasury,
-      stripeBalance ?? null,
-      stripeDrift ?? treasuryDrift,
-      anyAlert ? 1 : 0,
-      JSON.stringify(details),
-      now,
-    );
-
-    // Update treasury drift tracking
-    if (treasuryState) {
+    // Money-hygiene fix (verification-audit campaign): the reconciliation-
+    // log row, the treasury drift-tracking update, and the DRIFT_ALERT
+    // event must describe the same reconciliation pass — a partial write
+    // here would let the audit trail and the live `treasury` row disagree
+    // about whether/how much drift was detected.
+    const recordReconciliation = db.transaction(() => {
       db.prepare(`
-        UPDATE treasury SET drift_amount = ?, drift_alert = ?, last_reconciled = ?, updated_at = ?
-        WHERE id = 'treasury_main'
-      `).run(treasuryDrift, anyAlert ? 1 : 0, now, now);
-    }
-
-    // Record treasury event if drift detected
-    if (anyAlert) {
-      db.prepare(`
-        INSERT INTO treasury_events (id, event_type, amount, usd_before, usd_after, coins_before, coins_after, ref_id, metadata_json, created_at)
-        VALUES (?, 'DRIFT_ALERT', ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO treasury_reconciliation_log
+          (id, ledger_total, stripe_total, drift, alert_triggered, details_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(
-        uid("tev"),
-        Math.abs(stripeDrift ?? treasuryDrift),
-        treasuryUsd, treasuryUsd,
-        treasuryCoins, treasuryCoins,
         reconciliationId,
-        JSON.stringify({ alerts: details.alerts, drifts: details.drifts }),
+        ledgerTotals.expectedTreasury,
+        stripeBalance ?? null,
+        stripeDrift ?? treasuryDrift,
+        anyAlert ? 1 : 0,
+        JSON.stringify(details),
         now,
       );
-    }
+
+      // Update treasury drift tracking
+      if (treasuryState) {
+        db.prepare(`
+          UPDATE treasury SET drift_amount = ?, drift_alert = ?, last_reconciled = ?, updated_at = ?
+          WHERE id = 'treasury_main'
+        `).run(treasuryDrift, anyAlert ? 1 : 0, now, now);
+      }
+
+      // Record treasury event if drift detected
+      if (anyAlert) {
+        db.prepare(`
+          INSERT INTO treasury_events (id, event_type, amount, usd_before, usd_after, coins_before, coins_after, ref_id, metadata_json, created_at)
+          VALUES (?, 'DRIFT_ALERT', ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          uid("tev"),
+          Math.abs(stripeDrift ?? treasuryDrift),
+          treasuryUsd, treasuryUsd,
+          treasuryCoins, treasuryCoins,
+          reconciliationId,
+          JSON.stringify({ alerts: details.alerts, drifts: details.drifts }),
+          now,
+        );
+      }
+    });
+    recordReconciliation();
   } catch (err) {
     console.error("[Treasury Reconciliation] Failed to record:", err.message);
   }

@@ -1495,6 +1495,35 @@ Rules:
     }
   });
 
+  // ── Forge app generation from a free-text description ────────
+  //
+  // Dead-macro-call fix (verification-audit campaign): the code lens's
+  // "describe an app" UI called domain:'code', action:'forge-generate' —
+  // never registered anywhere, guaranteed unknown_macro. The real
+  // generator (lib/forge-template-generator.js#generateForgeApp) is
+  // template-based, not natural-language-driven, so this is a thin
+  // deterministic adapter (keyword match → templateId, same idiom as
+  // domains/research.js's "generate" keyword-extraction) rather than a
+  // fabricated NLP-to-code feature.
+  registerLensAction("code", "forge-generate", async (ctx, _a, params = {}) => {
+    const description = String(params.description || "").trim();
+    if (!description) return { ok: false, error: "description required" };
+    const { generateForgeApp } = await import("../lib/forge-template-generator.js");
+    const lower = description.toLowerCase();
+    let templateId = "blank";
+    if (/\b(shop|store|ecommerce|e-commerce|cart|checkout)\b/.test(lower)) templateId = "ecommerce";
+    else if (/\b(saas|subscription|billing|paid plan)\b/.test(lower)) templateId = "saas";
+    else if (/\b(social|feed|friends|follow|post)\b/.test(lower)) templateId = "social";
+    else if (/\b(realtime|real-time|chat|live|websocket)\b/.test(lower)) templateId = "realtime";
+    else if (/\b(api|rest|endpoint)\b/.test(lower)) templateId = "api_only";
+    const out = generateForgeApp({
+      templateId,
+      config: { appName: description.slice(0, 60) },
+      onStage: ctx?.emitMacroStage,
+    });
+    return { ok: true, result: { content: out.code, templateId, description } };
+  });
+
   // ── Explain / refactor / test-generate / format ──────────────
 
   registerLensAction("code", "explain", async (ctx, _a, params = {}) => {

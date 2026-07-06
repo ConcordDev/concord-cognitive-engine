@@ -68,7 +68,7 @@ export function registerWorldInviteRoutes(app, deps) {
     // Realtime push — the recipient's FriendsPresencePanel listens for
     // `world:invite-received` and refreshes its pending list.
     try {
-      realtimeEmit?.("world:invite-received", { id, fromUserId: userId, worldId, worldName }, { targetUserId: toUserId });
+      realtimeEmit?.("world:invite-received", { id, fromUserId: userId, worldId, worldName }, { userId: toUserId });
     } catch { /* emit best-effort */ }
 
     res.json({ ok: true, id });

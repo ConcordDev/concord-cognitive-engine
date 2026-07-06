@@ -82,6 +82,16 @@ const PROMOTION_STAGES = {
 
 const _proposals = new LruMap();
 const _history = [];
+// Resource-leak fix (verification-audit campaign): _history is an
+// append-only log read only via `.slice(-limit)` (getPromotionHistory) —
+// it never needs more than the tail, so it was growing unbounded for the
+// life of the process. Capped + trimmed to the same idiom as
+// attention-allocator.js's MAX_HISTORY.
+const MAX_HISTORY = 500;
+function _pushHistory(entry) {
+  _history.push(entry);
+  if (_history.length > MAX_HISTORY) _history.splice(0, _history.length - MAX_HISTORY);
+}
 
 // ── Requirement Checks ──────────────────────────────────────────────────────
 
@@ -206,7 +216,7 @@ export function requestPromotion(itemId, itemType, requesterId) {
   }
 
   _proposals.set(proposal.id, proposal);
-  _history.push({ action: "requested", proposalId: proposal.id, timestamp: nowISO() });
+  _pushHistory({ action: "requested", proposalId: proposal.id, timestamp: nowISO() });
 
   return { ok: true, proposal };
 }
@@ -331,7 +341,7 @@ export function approvePromotion(proposalId, approverId = "sovereign") {
     }
   }
 
-  _history.push({ action: "approved", proposalId, approverId, timestamp: nowISO() });
+  _pushHistory({ action: "approved", proposalId, approverId, timestamp: nowISO() });
 
   if (typeof globalThis.realtimeEmit === "function") {
     globalThis.realtimeEmit("promotion:approved", {
@@ -355,7 +365,7 @@ export function rejectPromotion(proposalId, reason, rejecterId = "sovereign") {
   proposal.resolvedAt = nowISO();
   proposal.resolution = `rejected_by_${rejecterId}: ${reason || "no reason"}`;
 
-  _history.push({ action: "rejected", proposalId, rejecterId, reason, timestamp: nowISO() });
+  _pushHistory({ action: "rejected", proposalId, rejecterId, reason, timestamp: nowISO() });
 
   return { ok: true, proposalId, rejected: true, reason };
 }

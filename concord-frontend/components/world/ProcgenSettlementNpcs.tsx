@@ -136,7 +136,8 @@ export default function ProcgenSettlementNpcs({
       });
       if (!r.ok) return;
       const data = await r.json();
-      if (Array.isArray(data?.npcs)) setRows(data.npcs);
+      const payload = data?.result ?? data;
+      if (Array.isArray(payload?.npcs)) setRows(payload.npcs);
     } catch { /* anonymous browsers / network blips: silent */ }
   }, [worldId]);
 

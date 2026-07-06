@@ -54,7 +54,7 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
     if (!projectId) return;
     try {
       const res = await lensRun('studio', 'record-config-set', { projectId, ...patch });
-      if (res.data?.ok) setConfig(res.data.result.config as RecordConfig);
+      if (res.data?.ok) setConfig((res.data.result?.config ?? null) as RecordConfig | null);
     } catch (e) { console.error('[Recording] setCfg', e); }
   }
 

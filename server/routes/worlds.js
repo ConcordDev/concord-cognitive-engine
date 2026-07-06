@@ -753,10 +753,40 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
   // ── World Emergents ────────────────────────────────────────────────────────
 
+  // GET /api/worlds/:worldId/emergents — native-affinity emergents + conscious
+  // world-boss NPCs.
+  //
+  // Fix (verification-audit campaign, duplicate-handler-race finding): this
+  // was one of two duplicate registrations. The other (dead-by-registration-
+  // order) additionally merged in a "bosses" list of conscious world-boss
+  // NPCs — genuinely useful, and correct (getWorldEmergents is synchronous,
+  // so its missing `await` there was harmless). Merged here so the bosses
+  // enrichment ships; no-auth access kept to match the previously-live
+  // behavior (no frontend caller currently requires auth on this route).
   router.get("/:worldId/emergents", async (req, res) => {
     try {
-      const emergents = await getWorldEmergents(req.params.worldId, db);
-      res.json({ ok: true, emergents });
+      const { worldId } = req.params;
+      const worldEmergents = await getWorldEmergents(worldId, db);
+
+      const consciousNPCs = db.prepare(`
+        SELECT id, archetype, state, level, current_location
+        FROM world_npcs
+        WHERE world_id = ? AND is_conscious = 1 AND is_dead = 0
+      `).all(worldId);
+
+      const bosses = consciousNPCs.map(n => {
+        const state = _tryParseJSON(n.state, {});
+        return {
+          id:        n.id,
+          name:      state.name || n.archetype,
+          archetype: n.archetype,
+          level:     n.level,
+          role:      'world_boss',
+          position:  _tryParseJSON(n.current_location, { x: 0, y: 0, z: 0 }),
+        };
+      });
+
+      res.json({ ok: true, emergents: worldEmergents, bosses, total: worldEmergents.length + bosses.length });
     } catch (e) {
       serverError(res, e);
     }
@@ -866,37 +896,6 @@ export default function createWorldsRouter({ requireAuth, db }) {
       });
 
       res.json({ ok: true, npcs, total: npcs.length });
-    } catch (e) {
-      res.status(500).json({ ok: false, error: e.message });
-    }
-  });
-
-  // GET /api/worlds/:worldId/emergents — list conscious emergents (Jarls/Bosses/Governors)
-  router.get("/:worldId/emergents", requireAuth, (req, res) => {
-    try {
-      const { worldId } = req.params;
-      const worldEmergents = getWorldEmergents(worldId, db);
-
-      // Also get conscious NPCs that are world bosses
-      const consciousNPCs = db.prepare(`
-        SELECT id, archetype, state, level, current_location
-        FROM world_npcs
-        WHERE world_id = ? AND is_conscious = 1 AND is_dead = 0
-      `).all(worldId);
-
-      const bosses = consciousNPCs.map(n => {
-        const state = _tryParseJSON(n.state, {});
-        return {
-          id:        n.id,
-          name:      state.name || n.archetype,
-          archetype: n.archetype,
-          level:     n.level,
-          role:      'world_boss',
-          position:  _tryParseJSON(n.current_location, { x: 0, y: 0, z: 0 }),
-        };
-      });
-
-      res.json({ ok: true, emergents: worldEmergents, bosses, total: worldEmergents.length + bosses.length });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

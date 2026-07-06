@@ -38,7 +38,11 @@ export default function PremonitionOverlay() {
         body: JSON.stringify({ domain: 'forward_sim', name: 'predictions_for_player', input: {} }),
       }).catch(() => null);
       if (!r?.ok || !alive) return;
-      const data = await r.json().catch(() => null);
+      const raw = await r.json().catch(() => null);
+      // /api/lens/run wraps the macro payload as { ok:true, result: PAYLOAD }
+      // — forward_sim.predictions_for_player's `predictions` field lives
+      // under .result, not at the top level.
+      const data = raw?.result ?? raw;
       const list: Prediction[] = data?.predictions || [];
       const unrealised = list.filter(p => !p.realised_at).sort((a, b) => b.confidence - a.confidence);
       if (unrealised.length > 0) {

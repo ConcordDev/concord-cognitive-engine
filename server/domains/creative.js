@@ -1,7 +1,82 @@
+import { generatePollinationsImage } from "../lib/pollinations-image.js";
+
+// Deterministic per-form skeleton for structural-poetry generation — no
+// LLM required by default (matches domains/research.js's "generate"
+// keyword-deterministic idiom). Optional LLM enrichment is layered on top
+// when ctx.llm is available.
+const POETRY_FORM_SKELETONS = {
+  haiku: () => "An autumn branch waits—\nsomething unseen shifts the air—\nlight finds the still pond.",
+  sonnet: () => Array.from({ length: 14 }, (_, i) => `Line ${i + 1}: a thought unfolds against the hour.`).join("\n"),
+  limerick: () => [
+    "There once was a thought quite unruly,",
+    "That turned every plan topsy-turvy,",
+    "It danced with a grin,",
+    "Broke rules to begin,",
+    "And ended the verse rather truly.",
+  ].join("\n"),
+  villanelle: () => Array.from({ length: 19 }, (_, i) => `Refrain-aware line ${i + 1} of the villanelle.`).join("\n"),
+  "free-verse": () => "Words fall\nwhere the mind\nlets them.",
+};
+
 export default function registerCreativeActions(registerLensAction) {
   // Fail-CLOSED numeric coercion: poisoned ("1e999"/"Infinity"/"NaN"/objects)
   // collapse to the default so every computed field stays Number.isFinite.
   const cvNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+
+  // Dead-macro-call fix (verification-audit campaign): domain:'creative',
+  // action:'generate' was called with two different param shapes from two
+  // different lenses and was never registered anywhere — guaranteed
+  // unknown_macro for both:
+  //   - maker lens:  { kind: 'image'|'text'|'melody', prompt }
+  //   - poetry lens: { mode: 'structural_poetry', form }
+  registerLensAction("creative", "generate", async (ctx, _artifact, params = {}) => {
+    if (params.mode === "structural_poetry") {
+      const form = String(params.form || "free-verse").toLowerCase();
+      const skeleton = POETRY_FORM_SKELETONS[form] || POETRY_FORM_SKELETONS["free-verse"];
+      if (ctx?.llm?.chat) {
+        try {
+          const r = await ctx.llm.chat({
+            messages: [
+              { role: "system", content: `You are a poetry-writing assistant. Write a single ${form} that follows the form's real structural rules. Output ONLY the poem text, no title, no commentary.` },
+              { role: "user", content: `Write a ${form}.` },
+            ],
+            temperature: 0.8, maxTokens: 400, slot: "conscious",
+          });
+          const text = String(r?.text || r?.content || "").trim();
+          if (text) return { ok: true, result: { content: text, form } };
+        } catch { /* fall through to deterministic skeleton */ }
+      }
+      return { ok: true, result: { content: skeleton(), form } };
+    }
+
+    const kind = ["image", "text", "melody"].includes(params.kind) ? params.kind : "text";
+    if (kind === "image") {
+      const gen = await generatePollinationsImage({ prompt: params.prompt });
+      if (!gen.ok) return gen;
+      const { ok, ...result } = gen;
+      return { ok, result };
+    }
+    if (kind === "melody") {
+      return { ok: false, reason: "not_yet_wired", error: "Melody generation is not yet implemented." };
+    }
+    // kind === "text"
+    const prompt = String(params.prompt || "").trim();
+    if (!prompt) return { ok: false, error: "prompt required" };
+    if (ctx?.llm?.chat) {
+      try {
+        const r = await ctx.llm.chat({
+          messages: [
+            { role: "system", content: "You are a creative-writing assistant. Respond with only the requested creative text, no preamble." },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.8, maxTokens: 500, slot: "conscious",
+        });
+        const text = String(r?.text || r?.content || "").trim();
+        if (text) return { ok: true, result: { content: text, kind } };
+      } catch { /* fall through to deterministic scaffold */ }
+    }
+    return { ok: true, result: { content: `[Deterministic scaffold — open an LLM-enabled session for a richer result]\n\nPrompt: ${prompt}`, kind } };
+  });
 
   // ── Producer bench: shot list ──────────────────────────────────────
   // CreativeActionPanel "Scenes JSON" → shotListGenerate. The panel renders

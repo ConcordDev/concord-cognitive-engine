@@ -20,18 +20,18 @@ export async function runBrawlQueueCycle({ realtimeEmit } = {}) {
       // user channel; the BrawlInviteToast component picks it up.
       try {
         if (typeof realtimeEmit === "function") {
-          realtimeEmit(`user:${r.paired.a}`, "brawl-invited", {
+          realtimeEmit("brawl-invited", {
             inviteId: r.paired.inviteId,
             from: r.paired.b,
             fromUserName: null,
             via: "matchmaking",
-          });
-          realtimeEmit(`user:${r.paired.b}`, "brawl-invited", {
+          }, { userId: r.paired.a });
+          realtimeEmit("brawl-invited", {
             inviteId: r.paired.inviteId,
             from: r.paired.a,
             fromUserName: null,
             via: "matchmaking",
-          });
+          }, { userId: r.paired.b });
         }
       } catch { /* best-effort emit */ }
     }

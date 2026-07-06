@@ -200,4 +200,31 @@ describe("player-mail (real migrated DB)", () => {
     assert.ok(getMail(db, id, "u2")); // recipient can read
     assert.equal(getMail(db, id, "u3"), null); // outsider cannot
   });
+
+  // Money-hygiene fix (verification-audit campaign): sendMail's escrow
+  // debit and the player_mail INSERT that records it now share one
+  // db.transaction(). Prior to the fix these were unguarded sequential
+  // writes — a crash between them left the sender debited with no mail
+  // row to ever release or refund the funds against.
+  it("sendMail rolls back the escrow debit when the player_mail INSERT fails", () => {
+    const origPrepare = db.prepare.bind(db);
+    let count = 0;
+    db.prepare = (sql) => {
+      const stmt = origPrepare(sql);
+      if (/INSERT INTO player_mail/.test(sql)) {
+        count += 1;
+        if (count === 1) {
+          return { run: () => { throw new Error("simulated_insert_failure"); }, get: (...a) => stmt.get(...a), all: (...a) => stmt.all(...a) };
+        }
+      }
+      return stmt;
+    };
+
+    const r = sendMail(db, { fromUserId: "u1", toUserId: "u2", subject: "Gift", attachmentCc: 100 });
+    assert.equal(r.ok, false);
+    assert.equal(ccOf(db, "u1"), 500, "escrow debit must be rolled back when the mail INSERT fails");
+
+    const mailCount = db.prepare("SELECT COUNT(*) AS c FROM player_mail").get().c;
+    assert.equal(mailCount, 0, "no orphan mail row");
+  });
 });

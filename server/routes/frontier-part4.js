@@ -299,106 +299,39 @@ export default function createFrontierRoutesPart4({ requireAuth } = {}) {
   const diffHistory = new Map();
 
   // POST /dtu/diff — compare two DTUs
+  //
+  // Honesty note (fabrication-mechanism audit): this handler used to
+  // synthesize an entirely fake diff (Math.random()-picked field changes from
+  // a hardcoded list unrelated to dtuIdA/dtuIdB, a Math.random()-derived
+  // similarity score) with no lookup of the real DTUs. This route factory
+  // only receives `{ requireAuth }` (see server.js, frontier.js) — no DTU
+  // store is threaded in here, and every other piece of state in this file
+  // is a request-scoped in-memory Map unrelated to the real `dtus` table.
+  // Rather than keep presenting fabricated data as a real diff, this is an
+  // honest failure. Follow-up (out of this file's scope): thread a real
+  // DTU-fetch dependency into createFrontierRoutesPart4() from server.js so
+  // this can compute a genuine field-level diff.
   router.post("/dtu/diff", auth, wrap((req, res) => {
     const { dtuIdA, dtuIdB } = req.body;
     if (!dtuIdA || !dtuIdB) {
       throw new Error("dtuIdA and dtuIdB are required");
     }
 
-    const changeTypes = ['added', 'modified', 'removed'];
-    const fieldDiffs = [
-      { fieldName: 'title', oldValue: 'Original Title', newValue: 'Updated Title', changeType: 'modified' },
-      { fieldName: 'version', oldValue: '1.0.0', newValue: '1.1.0', changeType: 'modified' },
-      { fieldName: 'category', oldValue: null, newValue: 'engineering', changeType: 'added' },
-      { fieldName: 'deprecated', oldValue: false, newValue: true, changeType: 'modified' },
-      { fieldName: 'legacyField', oldValue: 'some-value', newValue: null, changeType: 'removed' },
-    ];
-
-    // Select 3-5 diffs randomly
-    const count = 3 + Math.floor(Math.random() * 3);
-    const selectedDiffs = fieldDiffs.slice(0, count);
-
-    const metadataDiff = {
-      updatedBy: { oldValue: 'user-alpha', newValue: 'user-beta' },
-      updatedAt: { oldValue: '2026-03-01T10:00:00Z', newValue: '2026-04-05T14:30:00Z' },
-      tags: { oldValue: ['draft'], newValue: ['draft', 'reviewed'] },
-    };
-
-    const validationDiff = {
-      oldStatus: 'valid',
-      newStatus: 'valid',
-      oldErrors: 0,
-      newErrors: 0,
-      oldWarnings: 1,
-      newWarnings: 2,
-    };
-
-    const similarity = parseFloat((0.6 + Math.random() * 0.35).toFixed(3));
-
-    const now = new Date().toISOString();
-    const diff = {
-      id: crypto.randomUUID(),
-      dtuIdA,
-      dtuIdB,
-      fieldDiffs: selectedDiffs,
-      metadataDiff,
-      validationDiff,
-      similarity,
-      createdAt: now,
-    };
-
-    // Store in history for both DTUs
-    for (const dtuId of [dtuIdA, dtuIdB]) {
-      if (!diffHistory.has(dtuId)) diffHistory.set(dtuId, []);
-      diffHistory.get(dtuId).push({
-        diffId: diff.id,
-        comparedWith: dtuId === dtuIdA ? dtuIdB : dtuIdA,
-        fieldCount: selectedDiffs.length,
-        similarity,
-        summary: `${selectedDiffs.length} fields changed, similarity ${(similarity * 100).toFixed(1)}%`,
-        createdAt: now,
-      });
-    }
-
-    res.json({ ok: true, diff });
+    res.status(501).json({
+      ok: false,
+      reason: 'not_yet_wired',
+      error: 'DTU diffing has no real DTU store wired into this route yet — refusing to fabricate a diff.',
+    });
   }));
 
   // GET /dtu/diff-history/:dtuId — get diff history for a DTU
+  //
+  // Only ever reflects diffs this process has actually computed (see the
+  // honesty note on POST /dtu/diff above) — never fabricated/seeded mock
+  // history.
   router.get("/dtu/diff-history/:dtuId", auth, wrap((req, res) => {
     const { dtuId } = req.params;
-
-    let history = diffHistory.get(dtuId);
-    if (!history || history.length === 0) {
-      // Seed 3 mock entries
-      history = [
-        {
-          diffId: crypto.randomUUID(),
-          comparedWith: crypto.randomUUID(),
-          fieldCount: 3,
-          similarity: 0.87,
-          summary: '3 fields changed, similarity 87.0%',
-          createdAt: '2026-03-15T09:00:00Z',
-        },
-        {
-          diffId: crypto.randomUUID(),
-          comparedWith: crypto.randomUUID(),
-          fieldCount: 5,
-          similarity: 0.62,
-          summary: '5 fields changed, similarity 62.0%',
-          createdAt: '2026-03-20T14:30:00Z',
-        },
-        {
-          diffId: crypto.randomUUID(),
-          comparedWith: crypto.randomUUID(),
-          fieldCount: 2,
-          similarity: 0.95,
-          summary: '2 fields changed, similarity 95.0%',
-          createdAt: '2026-04-01T11:15:00Z',
-        },
-      ];
-      diffHistory.set(dtuId, history);
-    }
-
+    const history = diffHistory.get(dtuId) || [];
     res.json({ ok: true, dtuId, history, count: history.length });
   }));
 

@@ -45,6 +45,7 @@ jobs:
         env:
           CONCORD_SYNTHETIC_PLAYTEST: '1'
           CONCORD_FORWARD_SIM_MIN_INTERVAL_S: '1'
+          NODE_ENV: test
         run: node --test --test-timeout=600000 tests/synthetic-playtest.test.js
 
       - name: Upload trace on failure

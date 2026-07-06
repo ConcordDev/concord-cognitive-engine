@@ -27,6 +27,9 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'attention:allocation',        channel: 'agent',   label: 'Attention shifted' },
   { name: 'evo:asset-promoted',          channel: 'evo',     label: 'Evo-asset promoted' },
   { name: 'combat:combo-evolved',        channel: 'evo',     label: 'Combo evolved' },
+  // Dead-event-listener fix (verification-audit campaign): the NPC-side
+  // twin of combat:combo-evolved above had zero consumer anywhere.
+  { name: 'combat:npc-combo-evolved'  as SocketEvent, channel: 'evo',  label: 'NPC combo evolved' },
   { name: 'companion:tame-success',      channel: 'companion', label: 'Companion tamed' },
   { name: 'companion:level-up',          channel: 'companion', label: 'Companion leveled up' },
   { name: 'kingdom:founded',             channel: 'world',     label: 'Kingdom founded' },
@@ -74,6 +77,11 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'mount:hungry'              as SocketEvent, channel: 'companion', label: 'Mount hungry' },
   { name: 'mount:loyalty-low'         as SocketEvent, channel: 'companion', label: 'Mount loyalty low' },
   { name: 'nemesis:defeated'          as SocketEvent, channel: 'npc',       label: 'Nemesis defeated' },
+  // Dead-event-listener fix (verification-audit campaign): MarriagePanel.tsx
+  // only fetches on mount with no poll/subscribe, so spouse reaction beats
+  // (including estrangement) were invisible unless the player manually
+  // reopened the panel.
+  { name: 'spouse:reaction'           as SocketEvent, channel: 'npc',       label: 'Spouse reacted' },
   { name: 'npc:combat-resolved'       as SocketEvent, channel: 'npc',       label: 'NPC combat resolved' },
   { name: 'npc:level-up'              as SocketEvent, channel: 'npc',       label: 'NPC leveled up' },
   { name: 'npc:quest-accepted'        as SocketEvent, channel: 'npc',       label: 'NPC took a quest' },
@@ -112,6 +120,23 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'world:node-update'        as SocketEvent, channel: 'world',     label: 'Resource node changed' },
   { name: 'world:loot-node'          as SocketEvent, channel: 'world',     label: 'Loot dropped' },
   { name: 'world:broadcast'          as SocketEvent, channel: 'system_health', label: 'World broadcast' },
+  // Dead-event-listener fix (verification-audit campaign) — 8 real server
+  // broadcasts with no frontend consumer at all, confirmed via full-repo
+  // grep. Each already carries a discrete, player-facing signal; wired
+  // through this feed's existing generic array pattern rather than a
+  // bespoke UI per event.
+  { name: 'world:boss-spawn'              as SocketEvent, channel: 'crisis',  label: 'World boss spawned' },
+  { name: 'scheme:player_assassinated'    as SocketEvent, channel: 'crisis',  label: 'Assassination' },
+  { name: 'plague:resolved'               as SocketEvent, channel: 'crisis',  label: 'Plague resolved' },
+  { name: 'faction:collapse-cascade'      as SocketEvent, channel: 'faction', label: 'Faction collapse cascade' },
+  { name: 'scheme:cross_world'            as SocketEvent, channel: 'npc',     label: 'Cross-world scheme' },
+  { name: 'creature:predation'            as SocketEvent, channel: 'world',   label: 'Creature predation' },
+  { name: 'career:shift'                  as SocketEvent, channel: 'economy', label: 'Career wages paid' },
+  { name: 'world:npc-event'               as SocketEvent, channel: 'npc',     label: 'NPC story event' },
+  // Dead-event-listener fix (verification-audit campaign): secrets.weaponise
+  // (server/domains/secrets.js) fires a blackmail/leverage-use narrative
+  // beat with zero frontend consumer anywhere.
+  { name: 'secret:weaponised'             as SocketEvent, channel: 'npc',     label: 'Secret weaponised' },
 ];
 
 const CHANNEL_COLORS: Record<EmergentChannel, string> = {

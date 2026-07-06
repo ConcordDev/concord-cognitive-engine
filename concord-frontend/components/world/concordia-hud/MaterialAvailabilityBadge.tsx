@@ -58,7 +58,8 @@ export function MaterialAvailabilityBadge() {
           body: JSON.stringify({ domain: 'cross_world_effectiveness', name: 'for_player', input: { worldId } }),
         });
         const j = await r.json();
-        if (!cancelled && j?.ok && j.materials) setMaterials(j.materials as MaterialReadout);
+        const payload = j?.result ?? j;
+        if (!cancelled && payload?.ok && payload.materials) setMaterials(payload.materials as MaterialReadout);
       } catch { /* poll is best-effort */ }
     }
     poll();

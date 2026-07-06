@@ -141,9 +141,16 @@ export function tickDiseases(db, userId, opts = {}) {
       const risk = Number(disease.mortalityRisk) || 0;
       if (newSev > 0.7 && risk > 0 && Math.random() < risk * 0.1) {
         try {
+          // Dead-event-listener + realtime-emit-signature fix (verification-
+          // audit campaign): userId must arrive via the 3rd options argument
+          // for realtimeEmit's io.to(`user:${userId}`) room-scoping to
+          // actually apply — passing it only inside the payload (as this
+          // used to) made every lethal-progression warning a global
+          // broadcast to every connected player instead of just the one
+          // whose disease just turned lethal.
           globalThis._concordRealtimeEmit?.("disease:lethal-progression", {
-            userId, diseaseId: row.disease_id, severity: newSev,
-          });
+            diseaseId: row.disease_id, severity: newSev,
+          }, { userId });
         } catch { /* emit best-effort */ }
         // Don't kill the player directly — just push severity to max.
         // Combat / death systems handle the actual death event.

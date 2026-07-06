@@ -42,7 +42,8 @@ async function callRefusalMacro(name: string, worldId: string) {
     body: JSON.stringify({ domain: 'refusal', name, input: { worldId } }),
   }).catch(() => null);
   if (!r?.ok) return null;
-  return r.json().catch(() => null);
+  const j = await r.json().catch(() => null);
+  return j?.result ?? j;
 }
 
 export default function RefusalFieldHUD({ worldId = 'concordia-hub', pollMs = 5000 }: Props) {

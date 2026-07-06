@@ -46,7 +46,8 @@ export default function DecreeComposer({ kingdomId, open, onClose }: Props) {
         }),
       });
       const j = await r.json();
-      if (!j?.ok) throw new Error(j?.reason || 'rejected');
+      const payload = j?.result ?? j;
+      if (!payload?.ok) throw new Error(payload?.reason || 'rejected');
       onClose();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed');

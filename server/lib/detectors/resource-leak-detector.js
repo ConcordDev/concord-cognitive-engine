@@ -12,12 +12,21 @@
 //   - fs.createReadStream / createWriteStream without .on('close', ...)
 //   - new EventEmitter without .removeAllListeners() exit hook
 //   - Open file descriptors via fs.open() without close()
+//   - Module-scope array accumulators (`const x = []`) that are `.push()`ed
+//     but never shifted/spliced/truncated/reassigned (frontend + backend)
+//
+// Scans both server/ (lib, routes, economy, emergent) and the frontend
+// (concord-frontend/lib, components, hooks) — module-scope caches/arrays
+// leak in a long-lived browser tab the same way they leak in a long-lived
+// server process.
 //
 // Severities:
 //   high   — uncleaned setInterval in a long-running module path
 //   medium — addEventListener with no companion removeEventListener
 //            in a useEffect/lifecycle scope
-//   low    — file handles / streams without close hooks
+//   low    — file handles / streams without close hooks; unbounded
+//            module-scope array growth (mirrors the Map/Set
+//            "unbounded_cache_growth" severity in performance-hotspot-detector.js)
 //   info   — patterns that look risky but the file scope is small
 
 import path from "node:path";
@@ -69,6 +78,136 @@ const FS_CLOSE_RE = /\bfs\.(?:promises\.)?close\s*\(|\.close\(\)|\.end\(\)/;
 // loop body (vs after it).
 const LOOP_OPEN_RE = /\b(for|while)\s*\([^)]*\)\s*\{/g;
 const ANNOTATION_OK_RE = /@resource-leak-ok\b/;
+
+// Block-comment span check for the addEventListener/removeEventListener
+// pairing rule below. Without this, a JSDoc header that quotes example code
+// like `window.addEventListener('foo:bar', ...)` as PROSE (documenting the
+// pattern this detector itself looks for, or another detector's own
+// source explaining ITS pairing logic) gets misread as a real, unpaired
+// listener call. Index-range based (not a stateful per-character quote
+// tracker) so it can't be poisoned by an apostrophe earlier in the file —
+// the same class of bug this codebase's dead-event-listener-detector.js
+// already documents against its own naive isInsideComment() helper.
+function isInsideBlockOrLineComment(content, index) {
+  const lineStart = content.lastIndexOf("\n", index) + 1;
+  const linePrefix = content.slice(lineStart, index);
+  if (/^\s*(\/\/|\*|\/\*)/.test(linePrefix)) return true;
+  const blockRe = /\/\*[\s\S]*?\*\//g;
+  let bm;
+  while ((bm = blockRe.exec(content)) != null) {
+    if (bm.index <= index && index < bm.index + bm[0].length) return true;
+  }
+  return false;
+}
+// Module-scope empty-array accumulator: `const/let foo = []` (optionally
+// typed, e.g. `const foo: Item[] = []`), exported or not. Only the EMPTY
+// literal is a candidate — a pre-filled literal (`= [1,2,3]`) is a
+// constant, not an accumulator.
+const ARRAY_DECL_RE = /^\s*(?:export\s+)?(?:const|let)\s+(\w+)\s*(?::[^=]+)?=\s*\[\s*\]/;
+
+// Heuristic regex-literal-vs-division disambiguation: a `/` starts a
+// regex literal (rather than being the division operator) unless the
+// last significant code character was an identifier/number character or
+// a closing `)`/`]` (i.e. the tail of a value expression). This is the
+// same heuristic simple tokenizers use; it's reliable for how this
+// codebase actually writes regex (`const X_RE = /…/;`, `.replace(/…/, …)`,
+// `.test(str)`) and is what lets computeLineStartDepths() treat a regex's
+// contents as opaque instead of feeding its quote/backtick characters
+// through the string/template tracker below.
+function isRegexContext(lastSig) {
+  if (lastSig == null) return true;
+  if (/[A-Za-z0-9_$]/.test(lastSig)) return false;
+  if (lastSig === ")" || lastSig === "]") return false;
+  return true;
+}
+
+// Character-level scan producing, for each line, the real JS block/function
+// nesting depth AS OF THE START of that line (0 = module top-level). Unlike
+// a plain "toggle on backtick" template tracker, this correctly threads
+// through nested `${…}` interpolation (which contains REAL code — including
+// its own `{…}` blocks) via a context stack, and ignores braces inside
+// string literals / line comments / block comments / regex literals so
+// those don't skew the count. This is intentionally scoped to the
+// array-growth check below; it does not touch the existing (line-based)
+// checks elsewhere in this file.
+function computeLineStartDepths(content, lineCount) {
+  const depthAtLineStart = new Array(lineCount).fill(0);
+  const stack = []; // entries: 'brace' | 'tpl'
+  let inLineComment = false;
+  let inBlockComment = false;
+  let stringQuote = null; // "'" | '"' | null
+  let lineIdx = 0;
+  let atLineStart = true;
+  let lastSig = null; // last significant (non-whitespace) code-mode char
+  const braceDepth = () => { let d = 0; for (const s of stack) if (s === "brace") d++; return d; };
+  const n = content.length;
+  for (let i = 0; i < n; i++) {
+    if (atLineStart) {
+      if (lineIdx < lineCount) depthAtLineStart[lineIdx] = braceDepth();
+      atLineStart = false;
+    }
+    const ch = content[i];
+    if (ch === "\n") {
+      lineIdx++; atLineStart = true; inLineComment = false;
+      // A real single/double-quoted JS string can't contain a raw
+      // newline (only a template literal can) — so if `stringQuote` is
+      // still set here, it's a mis-detection. Reset at the line boundary
+      // so a false "open string" can't corrupt every line after it.
+      stringQuote = null;
+      continue;
+    }
+    if (inLineComment) continue;
+    if (inBlockComment) {
+      if (ch === "*" && content[i + 1] === "/") { inBlockComment = false; i++; }
+      continue;
+    }
+    if (stringQuote) {
+      if (ch === "\\") { i++; continue; }
+      if (ch === stringQuote) { stringQuote = null; lastSig = ch; }
+      continue;
+    }
+    const top = stack[stack.length - 1];
+    if (top === "tpl") {
+      // Raw template text: only escapes, `${` (enter interpolation), and
+      // an unescaped closing backtick (exit the template) matter.
+      if (ch === "\\") { i++; continue; }
+      if (ch === "$" && content[i + 1] === "{") { stack.push("brace"); i++; continue; }
+      if (ch === "`") { stack.pop(); lastSig = ch; }
+      continue;
+    }
+    // Code mode.
+    if (ch === "/" && content[i + 1] === "/") { inLineComment = true; i++; continue; }
+    if (ch === "/" && content[i + 1] === "*") { inBlockComment = true; i++; continue; }
+    if (ch === "/" && isRegexContext(lastSig)) {
+      // Consume the WHOLE regex literal (body + flags) as an opaque
+      // token. Without this, a character class like `['"`+"`"+`]` (a
+      // very common idiom in this very detectors/ directory) would leak
+      // its quote/backtick characters into the string/template tracker
+      // above and desync scope-depth for the rest of the file.
+      let j = i + 1;
+      let inClass = false;
+      while (j < n) {
+        const rc = content[j];
+        if (rc === "\n") break; // unterminated/malformed — bail out safely
+        if (rc === "\\") { j += 2; continue; }
+        if (rc === "[") { inClass = true; j++; continue; }
+        if (rc === "]") { inClass = false; j++; continue; }
+        if (rc === "/" && !inClass) { j++; break; }
+        j++;
+      }
+      while (j < n && /[a-zA-Z]/.test(content[j])) j++;
+      i = j - 1;
+      lastSig = "/";
+      continue;
+    }
+    if (ch === "'" || ch === '"') { stringQuote = ch; lastSig = ch; continue; }
+    if (ch === "`") { stack.push("tpl"); lastSig = ch; continue; }
+    if (ch === "{") { stack.push("brace"); lastSig = ch; continue; }
+    if (ch === "}") { if (top === "brace") stack.pop(); lastSig = ch; continue; }
+    if (!/\s/.test(ch)) lastSig = ch;
+  }
+  return depthAtLineStart;
+}
 
 export async function runResourceLeakDetector({ root, opts = {} } = {}) {
   const t0 = Date.now();
@@ -125,6 +264,7 @@ export async function runResourceLeakDetector({ root, opts = {} } = {}) {
       for (const m of addMatches.slice(0, 10)) {
         const event = m[1];
         if (removed.has(event)) continue;
+        if (isInsideBlockOrLineComment(content, m.index)) continue;
         const lineNum = content.slice(0, m.index).split("\n").length;
         const lineText = content.split("\n")[lineNum - 1] || "";
         if (ANNOTATION_OK_RE.test(lineText)) continue;
@@ -294,6 +434,79 @@ export async function runResourceLeakDetector({ root, opts = {} } = {}) {
             location: `${rel}:${lineNum}`,
             subject: { kind: "fd_leak", file: rel },
           });
+        }
+      }
+
+      // Module-scope array accumulator: `const/let x = []` that is later
+      // `.push(...)`-ed somewhere in the file, but never `.shift()`/
+      // `.splice()`/truncated (`.length = 0`)/reassigned to a fresh array.
+      // Mirrors the false-positive exclusion used by the Map/Set
+      // "unbounded_cache_growth" check in performance-hotspot-detector.js:
+      // a function-LOCAL array is rebuilt on every call and dies with the
+      // function's stack frame, so only MODULE-scope (brace depth 0 at the
+      // start of the declaration line) counts as a real leak candidate.
+      //
+      // Depth is computed with computeLineStartDepths() below rather than
+      // the sibling detector's plain backtick-toggle: a bare toggle
+      // mis-tracks nested `${…}` template interpolation (a real, common
+      // pattern in this codebase) — the interpolation's own closing `}`
+      // gets read as a top-level code brace once the line's closing
+      // backtick flips "insideTemplate" back off, under-counting depth
+      // for everything after it and producing false module-scope hits.
+      {
+        const lines = content.split("\n");
+        const depthAtLineStart = computeLineStartDepths(content, lines.length);
+        let arrayFindings = 0;
+        for (let i = 0; i < lines.length; i++) {
+          if (arrayFindings >= 5) break;
+          const line = lines[i];
+          if (depthAtLineStart[i] > 0) continue; // function-local — not a leak candidate
+
+          const m = line.match(ARRAY_DECL_RE);
+          if (!m) continue;
+          const name = m[1];
+          // UPPER_SNAKE_CASE — convention says it's a constant, not an
+          // accumulator (matches the Map/Set exclusion).
+          if (/^[A-Z][A-Z0-9_]*$/.test(name)) continue;
+
+          // Per-callsite opt-out: `@resource-leak-ok` on the declaration
+          // line or up to 3 lines above (same convention as db.prepare).
+          let exempted = ANNOTATION_OK_RE.test(line);
+          if (!exempted) {
+            for (let j = Math.max(0, i - 3); j < i; j++) {
+              if (ANNOTATION_OK_RE.test(lines[j] || "")) { exempted = true; break; }
+            }
+          }
+          if (exempted) continue;
+
+          // Must actually grow — a `.push(` callsite somewhere in the file.
+          const growsRe = new RegExp(`\\b${name}\\.push\\s*\\(`);
+          if (!growsRe.test(content)) continue;
+
+          // Bounded when the array is ever drained/truncated…
+          const evictRe = new RegExp(`\\b${name}\\.(?:shift|splice)\\s*\\(|\\b${name}\\.length\\s*=\\s*0\\b`);
+          if (evictRe.test(content)) continue;
+          // …or reassigned elsewhere — not just to a fresh `[]` literal, but
+          // ALSO the extremely common bounded-history idiom
+          // `x = x.slice(-MAX)` / `x = x.filter(...)` (prune-by-replace).
+          // Any plain reassignment (excluding `==`/`===` comparisons) is
+          // treated as deliberate lifecycle management of the array.
+          const restOfFile = lines.filter((_, idx) => idx !== i).join("\n");
+          const reassignRe = new RegExp(`\\b${name}\\s*=(?!=)`);
+          if (reassignRe.test(restOfFile)) continue;
+
+          findings.push({
+            id: "unbounded_array_growth",
+            severity: "low",
+            kind: "static",
+            category: CATEGORY,
+            message: `Module-scope array '${name}' is pushed to but never shifted/spliced/cleared/reassigned — unbounded growth risk.`,
+            location: `${rel}:${i + 1}`,
+            subject: { kind: "array_leak", file: rel, name },
+            fixHint: "Cap the array length (shift/splice the oldest entries) or evict via a bounded ring buffer / LRU, or annotate `// @resource-leak-ok: <reason>` if growth is genuinely bounded.",
+          });
+          arrayFindings++;
+          if (findings.length >= findingCap) break;
         }
       }
 

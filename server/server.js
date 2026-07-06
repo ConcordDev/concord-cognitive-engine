@@ -36188,8 +36188,38 @@ const _FEDERATION_TRUST = {
 };
 
 // Federation endpoints
-app.get("/api/federation/status", (req, res) => {
-  res.json({ ok: true, federation: _FEDERATION_TRUST.stats(), enabled: _c3Federation?.enabled || false });
+// Merged with a duplicate registration of this same route (verification-
+// audit campaign, duplicate-handler-race finding). These were two
+// genuinely different features that collided on one path: this one is the
+// public peer-trust-node subsystem (live consumer:
+// command-center/page.tsx's FederationStatusPanel reads
+// status.federation.trustedNodes/nodes/status.enabled — this exact
+// shape), the removed duplicate was the admin-gated ActivityPub-stats
+// subsystem (separate tables, separate lib/federation-outbox.js). Deleting
+// either outright would have been a regression — one breaks the working
+// command-center panel, the other silently loses the admin ActivityPub
+// capability that was already unreachable dead code. Resolution: keep the
+// public body byte-for-byte (non-admins see exactly what they see today),
+// and additively attach ActivityPub stats for admin/sovereign callers only
+// (mirrors requireRole's own check), in a try/catch so a missing
+// federation-outbox.js/table never breaks the base response.
+app.get("/api/federation/status", async (req, res) => {
+  const body = { ok: true, federation: _FEDERATION_TRUST.stats(), enabled: _c3Federation?.enabled || false };
+  if (req.user?.role === "admin" || req.user?.role === "sovereign") {
+    try {
+      const { outboxStats } = await import('./lib/federation-outbox.js');
+      body.activitypub = {
+        enabled: process.env.CONCORD_ACTIVITYPUB === 'true',
+        outbox: outboxStats(db),
+        inbox: {
+          total: db.prepare(`SELECT COUNT(*) AS c FROM federation_inbox`).get().c,
+          unprocessed: db.prepare(`SELECT COUNT(*) AS c FROM federation_inbox WHERE processed = 0`).get().c,
+        },
+        peerActors: db.prepare(`SELECT COUNT(*) AS c FROM federation_peer_actors`).get().c,
+      };
+    } catch { /* ActivityPub subsystem not provisioned — base response still returns */ }
+  }
+  res.json(body);
 });
 
 app.post("/api/federation/trust-node", requireRole("owner", "admin"), (req, res) => {
@@ -38758,6 +38788,13 @@ app.post("/api/artifact/upload", async (req, res) => {
 // video uploads (Reels, studio clips) via ffmpeg frame extraction.
 // Returns 404 when no thumbnail exists (rather than a stock placeholder),
 // so the UI can fall back to <video poster=""> first-frame decoding.
+// Merged with a duplicate registration of this same route (verification-
+// audit campaign, duplicate-handler-race finding). This survivor keeps the
+// try/catch + descriptive error codes + 1h cache header, and gains the
+// dead handler's two real capabilities it lacked: a JSON-thumbnail special
+// case, and a generic res.sendFile() fallback (correct auto content-type +
+// range/ETag support) instead of hardcoding "image/jpeg" for every
+// thumbnail regardless of its actual type.
 app.get("/api/artifact/:dtuId/thumbnail", async (req, res) => {
   try {
     const dtu = STATE.dtus.get(req.params.dtuId);
@@ -38765,10 +38802,16 @@ app.get("/api/artifact/:dtuId/thumbnail", async (req, res) => {
     const thumbPath = dtu.artifact.thumbnail;
     const fs = await import("fs");
     if (!fs.existsSync(thumbPath)) return res.status(404).json({ ok: false, error: "thumbnail_missing" });
-    // Cache for an hour — thumbnails are immutable.
-    res.setHeader("Content-Type", "image/jpeg");
+
+    const ext = thumbPath.split(".").pop();
+    if (ext === "json") {
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.json(JSON.parse(fs.readFileSync(thumbPath, "utf-8")));
+    }
+    // Cache for an hour — thumbnails are immutable. sendFile picks the
+    // correct Content-Type from the extension and supports range/ETag.
     res.setHeader("Cache-Control", "public, max-age=3600");
-    fs.createReadStream(thumbPath).pipe(res);
+    res.sendFile(thumbPath);
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
@@ -38844,21 +38887,6 @@ app.get("/api/artifact/:dtuId/info", async (req, res) => {
     },
     dtu: { id: dtu.id, summary: dtu.human?.summary, domain: dtu.domain, tier: dtu.tier },
   });
-});
-
-app.get("/api/artifact/:dtuId/thumbnail", async (req, res) => {
-  const dtu = STATE.dtus.get(req.params.dtuId);
-  if (!dtu?.artifact?.thumbnail) return res.status(404).json({ ok: false });
-
-  const fs = await import("fs");
-  if (!fs.existsSync(dtu.artifact.thumbnail)) return res.status(404).json({ ok: false });
-
-  const ext = dtu.artifact.thumbnail.split(".").pop();
-  if (ext === "json") {
-    res.json(JSON.parse(fs.readFileSync(dtu.artifact.thumbnail, "utf-8")));
-  } else {
-    res.sendFile(dtu.artifact.thumbnail);
-  }
 });
 
 // === Bulk Import ===
@@ -52048,11 +52076,6 @@ app.get("/api/roguelite/unlocks", requireAuth(), asyncHandler(async (req, res) =
 
 // C1 — the meta-unlock catalog (what's buyable + its run effect) and the run
 // modifiers the player's owned unlocks currently grant.
-app.get("/api/roguelite/catalog", asyncHandler(async (_req, res) => {
-  const { META_UNLOCK_CATALOG } = await import("./lib/roguelite.js");
-  res.json({ ok: true, catalog: Object.values(META_UNLOCK_CATALOG) });
-}));
-
 app.get("/api/roguelite/run-modifiers", requireAuth(), asyncHandler(async (req, res) => {
   const { runMetaModifiers } = await import("./lib/roguelite.js");
   const userId = req.user?.id || req.user?.userId;
@@ -52066,6 +52089,13 @@ app.get("/api/roguelite/active", requireAuth(), asyncHandler(async (req, res) =>
 }));
 
 // Phase DB3 — Roguelite unlock catalog (public read of the JSON content file).
+// This was a duplicate route registration (verification-audit campaign,
+// duplicate-handler-race finding) — the OTHER (now-removed) registration
+// was dead code by Express's first-registered-wins dispatch, but the live
+// one (this one) is actually a real bug fix: RogueliteRunHUD.tsx's
+// RogueliteUnlockShop reads `cat.unlocks` (this handler's shape) — the
+// removed dead handler returned `{catalog: [...]}}` instead, which would
+// have rendered an empty shop had it been dispatched.
 app.get("/api/roguelite/catalog", asyncHandler(async (req, res) => {
   try {
     const fs = await import("node:fs");
@@ -52103,9 +52133,9 @@ app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res
   if (r.ok && !r.alreadyOpen) {
     try {
       // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee's socket channel)
-      realtimeEmit?.(`user:${req.body?.toUserId}:brawl-invited`, {
+      realtimeEmit?.("brawl-invited", {
         inviteId: r.inviteId, from: fromUserId,
-      });
+      }, { userId: req.body?.toUserId });
     } catch { /* emit best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
@@ -52114,7 +52144,18 @@ app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res
 app.post("/api/combat/brawl/accept", requireAuth(), asyncHandler(async (req, res) => {
   const { acceptBrawl } = await import("./lib/brawl.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(acceptBrawl(req.body?.inviteId, userId));
+  const r = acceptBrawl(req.body?.inviteId, userId);
+  if (r.ok) {
+    // Fix (verification audit) — the accept path is the single, obvious
+    // spot where a brawl actually STARTS; notify both participants so
+    // BrawlActiveHUD can flip on for the inviter too (the accepter learns
+    // via this same request's response). r.opponent is the inviter.
+    try {
+      realtimeEmit?.("brawl-started", { opponent: userId }, { userId: r.opponent });
+      realtimeEmit?.("brawl-started", { opponent: r.opponent }, { userId });
+    } catch { /* emit best-effort */ }
+  }
+  res.json(r);
 }));
 
 app.post("/api/combat/brawl/decline", requireAuth(), asyncHandler(async (req, res) => {
@@ -52433,7 +52474,7 @@ app.post("/api/parties/:partyId/invite", requireAuth(), asyncHandler(async (req,
   if (r.ok) {
     try {
       // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee delivery target)
-      realtimeEmit?.("party:invite-received", { inviteId: r.inviteId, partyId: req.params.partyId, fromUserId: userId }, { targetUserId: req.body?.toUserId });
+      realtimeEmit?.("party:invite-received", { inviteId: r.inviteId, partyId: req.params.partyId, fromUserId: userId }, { userId: req.body?.toUserId });
     } catch { /* emit best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
@@ -52599,7 +52640,7 @@ app.post("/api/mail/send", requireAuth(), perEndpointRateLimit("write.mail"), as
   if (r.ok) {
     try {
       // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (mail recipient delivery target)
-      realtimeEmit?.("mail:received", { id: r.id, fromUserId, subject: req.body?.subject }, { targetUserId: req.body?.toUserId });
+      realtimeEmit?.("mail:received", { id: r.id, fromUserId, subject: req.body?.subject }, { userId: req.body?.toUserId });
     } catch { /* best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
@@ -52665,7 +52706,7 @@ app.post("/api/friends/request", requireAuth(), asyncHandler(async (req, res) =>
     // Realtime nudge to the addressee — their friends panel shows the new
     // pending request without a refresh.
     try {
-      realtimeEmit?.("friend:request-received", { id: r.id, fromUserId: userId, status: r.status }, { targetUserId: targetId });
+      realtimeEmit?.("friend:request-received", { id: r.id, fromUserId: userId, status: r.status }, { userId: targetId });
     } catch { /* emit best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
@@ -55494,22 +55535,6 @@ app.post("/api/federation/inbox", async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
-});
-
-app.get("/api/federation/status", requireRole("admin", "sovereign"), async (_req, res) => {
-  try {
-    const { outboxStats } = await import('./lib/federation-outbox.js');
-    res.json({
-      ok: true,
-      enabled: process.env.CONCORD_ACTIVITYPUB === 'true',
-      outbox: outboxStats(db),
-      inbox: {
-        total: db.prepare(`SELECT COUNT(*) AS c FROM federation_inbox`).get().c,
-        unprocessed: db.prepare(`SELECT COUNT(*) AS c FROM federation_inbox WHERE processed = 0`).get().c,
-      },
-      peerActors: db.prepare(`SELECT COUNT(*) AS c FROM federation_peer_actors`).get().c,
-    });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ---- Push notification registration (Phase 11 Item 13) ----
@@ -70424,7 +70449,18 @@ function creditWallet(odId, amount, reason = '', refId = null) {
       } else if (e.message?.includes('UNIQUE constraint')) {
         // Idempotent — already recorded
       } else {
+        // Money-hygiene fix (verification-audit campaign): the wallet
+        // balance is in-memory only (this Map), so a db.transaction()
+        // around the INSERT above cannot roll back the mutation already
+        // applied at the top of this function — a SQL transaction only
+        // ever affects SQL statements. On a genuine (non-idempotent,
+        // non-missing-column) ledger-write failure, compensate by
+        // reverting the in-memory mutation so either both the balance
+        // change and the ledger row exist, or neither does.
         console.error('[Economic→Ledger] Credit bridge failed:', e.message);
+        wallet.balance -= amount;
+        wallet.tokensEarned -= amount;
+        wallet.updatedAt = Date.now();
       }
     }
   }
@@ -70475,7 +70511,13 @@ function debitWallet(odId, amount, reason = '', refId = null) {
       } else if (e.message?.includes('UNIQUE constraint')) {
         // Idempotent — already recorded
       } else {
+        // Money-hygiene fix (verification-audit campaign): see creditWallet
+        // above — compensate the in-memory balance mutation on a genuine
+        // ledger-write failure so either both halves exist or neither does.
         console.error('[Economic→Ledger] Debit bridge failed:', e.message);
+        wallet.balance += amount;
+        wallet.tokensSpent -= amount;
+        wallet.updatedAt = Date.now();
       }
     }
   }
@@ -70499,27 +70541,48 @@ function logTransaction(tx) {
 
 // GET /api/economic/config — return tiers and token packages for billing page
 app.get('/api/economic/config', (req, res) => {
+  // Merged with a duplicate registration of this same route (verification-
+  // audit campaign, duplicate-handler-race finding) that was dead code
+  // (Express only ever dispatched to this first-registered handler) but
+  // carried fields this one lacked — kept both shapes so no consumer of
+  // either loses anything.
   res.json({
     ok: true,
     tiers: ECONOMIC_CONFIG.TIERS,
     tokenPackages: ECONOMIC_CONFIG.TOKEN_PACKAGES,
     marketplaceFee: ECONOMIC_CONFIG.MARKETPLACE_FEE,
     creatorShare: ECONOMIC_CONFIG.CREATOR_SHARE,
+    fees: {
+      tokenPurchase: ECONOMIC_CONFIG.TOKEN_PURCHASE_FEE,
+      marketplace: ECONOMIC_CONFIG.MARKETPLACE_FEE,
+    },
+    splits: {
+      creator: ECONOMIC_CONFIG.CREATOR_SHARE,
+      royalty: ECONOMIC_CONFIG.ROYALTY_SHARE,
+      treasury: ECONOMIC_CONFIG.TREASURY_SHARE,
+    },
+    stripeEnabled: STRIPE_ENABLED,
   });
 });
 
 // GET /api/economic/wallet/:odId — return wallet info for billing page
+// Merged with a duplicate registration of this same route (verification-
+// audit campaign, duplicate-handler-race finding). The dead handler leaked
+// stripeCustomerId/stripeSubscriptionId to the client via a raw {...wallet}
+// spread — not carried over. Its ingestStatus (checkIngestLimit's
+// {allowed,remaining,limit}, actionable for a billing page) is more useful
+// than the raw tracking tuple this survivor used, so it's adopted here.
 app.get('/api/economic/wallet/:odId', (req, res) => {
   try {
     const wallet = getWallet(req.params.odId);
-    const tracking = STATE.economic?.ingestTracking?.get(req.params.odId);
+    const ingestStatus = checkIngestLimit(req.params.odId);
     res.json({
       ok: true,
       balance: wallet.balance,
       tier: wallet.tier,
       tokensEarned: wallet.tokensEarned || 0,
       tokensSpent: wallet.tokensSpent || 0,
-      ingestStatus: tracking ? { date: tracking.date, count: tracking.count } : null,
+      ingestStatus,
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -70902,11 +70965,19 @@ app.post('/api/economic/marketplace/buy', (req, res) => {
       treasuryAmount = 0;
     }
 
-    // Debit buyer
+    // Money-hygiene fix (verification-audit campaign): both wallets are
+    // in-memory (STATE.economic.wallets), so there's no DB transaction to
+    // wrap around this pair — but a crash/throw between the debit and the
+    // credit would still destroy the transacted amount (buyer debited,
+    // seller never paid). Compensate by crediting the buyer back if the
+    // seller credit fails for any reason.
     debitWallet(odId, listing.price, `Purchase: ${listing.title}`, `${refId}:debit`);
-
-    // Credit seller
-    creditWallet(listing.seller, creatorAmount, `Sale: ${listing.title}`, `${refId}:credit`);
+    try {
+      creditWallet(listing.seller, creatorAmount, `Sale: ${listing.title}`, `${refId}:credit`);
+    } catch (creditErr) {
+      creditWallet(odId, listing.price, `Purchase refund (seller credit failed): ${listing.title}`, `${refId}:refund`);
+      throw creditErr;
+    }
 
     // Process royalty wheel (only for DTUs and other reference-able assets)
     if (royaltyAmount > 0 && listing.assetType === 'dtu') {
@@ -71250,37 +71321,6 @@ app.post('/api/economic/ingest-check', (req, res) => {
 });
 
 // ---- Economic Status Endpoints ----
-app.get('/api/economic/wallet/:odId', (req, res) => {
-  const wallet = getWallet(req.params.odId);
-  const ingestStatus = checkIngestLimit(req.params.odId);
-  res.json({ ...wallet, ingestStatus });
-});
-
-app.get('/api/economic/marketplace', (req, res) => {
-  ensureEconomicState();
-  const listings = Array.from(STATE.economic.listings.values())
-    .filter(l => l.status === 'active')
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(0, 100);
-  res.json({ listings, count: listings.length });
-});
-
-app.get('/api/economic/config', (req, res) => {
-  res.json({
-    tiers: ECONOMIC_CONFIG.TIERS,
-    tokenPackages: ECONOMIC_CONFIG.TOKEN_PACKAGES,
-    fees: {
-      tokenPurchase: ECONOMIC_CONFIG.TOKEN_PURCHASE_FEE,
-      marketplace: ECONOMIC_CONFIG.MARKETPLACE_FEE,
-    },
-    splits: {
-      creator: ECONOMIC_CONFIG.CREATOR_SHARE,
-      royalty: ECONOMIC_CONFIG.ROYALTY_SHARE,
-      treasury: ECONOMIC_CONFIG.TREASURY_SHARE,
-    },
-    stripeEnabled: STRIPE_ENABLED,
-  });
-});
 
 app.get('/api/economic/stats', (req, res) => {
   ensureEconomicState();
@@ -72436,15 +72476,6 @@ const LICENSE_TYPES = Object.freeze({
 });
 
 // GET /api/artistry/marketplace/art — list artwork assets for the art lens marketplace tab
-app.get('/api/artistry/marketplace/art', (req, res) => {
-  const art = ensureArtistryState();
-  const artworks = Array.from(art.assets.values())
-    .filter(a => a.status === 'active' && (a.type === 'artwork' || a.type === 'visual' || a.type === 'cover_art'))
-    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-    .slice(0, Number(req.query.limit) || 50);
-  res.json({ ok: true, artworks });
-});
-
 app.post('/api/artistry/marketplace/beats', (req, res) => {
   try {
     const art = ensureArtistryState();
@@ -72560,6 +72591,14 @@ app.post('/api/artistry/marketplace/art', (req, res) => {
   }
 });
 
+// This was a duplicate route registration (verification-audit campaign,
+// duplicate-handler-race finding) — the OTHER (now-removed) registration
+// was dead code by Express's first-registered-wins dispatch, but the live
+// one (this one) is actually a real bug fix: it reads art.artStore, the
+// same Map the POST handler above actually writes to, mirroring the
+// working beats/stems/samples create+list pairs elsewhere in this file.
+// The removed dead handler read the unrelated generic art.assets Map, so
+// artwork listed for sale via POST never appeared in the GET response.
 app.get('/api/artistry/marketplace/art', (req, res) => {
   const art = ensureArtistryState();
   const artworks = Array.from(art.artStore.values()).filter(a => a.status === 'active').sort((a, b) => b.createdAt - a.createdAt);
@@ -77421,4 +77460,9 @@ export const __TEST__ = Object.freeze({
   // Phase D endpoint-routing wiring test surface (brain-endpoint-wiring.test.js)
   callBrain,
   BRAIN,
+  // Money-hygiene atomicity test surface (verification-audit campaign —
+  // tests/economy/credit-debit-wallet-atomicity.test.js)
+  creditWallet,
+  debitWallet,
+  getWallet,
 });

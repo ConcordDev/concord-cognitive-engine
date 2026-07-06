@@ -75,9 +75,21 @@ export default function registerTerrainMacros(register) {
     } catch { /* structural coupling best-effort */ }
 
     // Realtime feed (the client replays the delta + rebuilds the heightfield).
+    //
+    // Dead-event-listener fix (verification-audit campaign): the frontend's
+    // DeformationRecord consumer (app/lenses/world/page.tsx) requires
+    // {id, type, entityId, x, y, z, timestamp}, and was also listening for
+    // a name ('world:deformation') nothing ever emitted. Both the shape and
+    // the name are fixed here — this multiplayer terrain-dig sync was
+    // previously fully non-functional for other players in the room.
     try {
       ctx?.realtime?.io?.to?.(`world:${worldId}`)?.emit?.("concordia:terrain-deformed", {
-        cell: def.cell, newDelta: def.newDelta, newElevation: def.newElevation, kind: "excavate",
+        id: crypto.randomUUID(),
+        type: "terrain_excavated",
+        entityId: `cell_${def.cell?.cx}_${def.cell?.cz}`,
+        x: wx, y: def.newElevation, z: wz,
+        timestamp: Date.now(),
+        data: { newDelta: def.newDelta, kind: "excavate" },
       });
     } catch { /* realtime optional */ }
 

@@ -99,7 +99,7 @@ function buildPrefixMap(serverText, routeFiles) {
   // this Map is local to this function call, keyed by the finite set of
   // route files on disk (~131 per CLAUDE.md), and is freed with the stack
   // frame on return — it never persists or grows across calls.
-  const prefixForFile = new Map();
+  const prefixForFile = new Map(); // @bounded-cache-ok: local to this function call, freed with the stack frame on return, never persists across calls
   for (const file of routeFiles) {
     const base = path.basename(file, '.js').toLowerCase().replace(/[-_]/g, '');
     let chosen = null;

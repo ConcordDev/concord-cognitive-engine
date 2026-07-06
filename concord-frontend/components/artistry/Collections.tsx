@@ -63,8 +63,8 @@ export function Collections() {
     setBoardCollection(null);
     const r = await lensRun('artistry', 'collectionItems', { collectionId: id });
     if (r.data?.ok) {
-      setBoardItems((r.data.result.items as BoardProject[]) || []);
-      setBoardCollection(r.data.result.collection as Collection);
+      setBoardItems((r.data.result?.items as BoardProject[]) || []);
+      setBoardCollection((r.data.result?.collection as Collection) || null);
     }
   }, []);
 

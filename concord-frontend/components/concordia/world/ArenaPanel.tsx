@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Swords, Users, Trophy } from 'lucide-react';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface ArenaMatch {
   id: string;
@@ -58,6 +59,20 @@ export function ArenaPanel({ playerId, onClose }: ArenaPanelProps) {
     loadHistory();
     const interval = setInterval(refreshQueue, 5000);
     return () => clearInterval(interval);
+  }, [refreshQueue, loadHistory]);
+
+  // Dead-event-listener fix (verification-audit campaign): the initiating
+  // player learns their match formed from the POST /api/arena/queue response
+  // directly, but the player who was already waiting in queue only ever saw
+  // their arena_queue row silently disappear. The server emits
+  // 'arena:match:found' (room-scoped to this user) for exactly this case.
+  useEffect(() => {
+    const off = subscribe<{ matchId: string; opponentId: string }>('arena:match:found', (data) => {
+      setMatchAlert({ matchId: data.matchId, opponentId: data.opponentId });
+      refreshQueue();
+      loadHistory();
+    });
+    return off;
   }, [refreshQueue, loadHistory]);
 
   const joinQueue = async () => {

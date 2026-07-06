@@ -220,14 +220,21 @@ export const useHUDContext = create<HUDContextState>((set) => ({
  *
  * No-op render; pure side-effects. Layers consume `useHUDContext()`.
  */
-async function macroCall(domain: string, name: string, input: Record<string, unknown> = {}) {
+export async function macroCall(domain: string, name: string, input: Record<string, unknown> = {}) {
   try {
     const r = await fetch('/api/lens/run', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ domain, name, input }),
     });
-    return r.ok ? r.json() : null;
+    if (!r.ok) return null;
+    // POST /api/lens/run wraps the macro payload as { ok:true, result: PAYLOAD }
+    // — the outer `ok` is a transport flag, not the macro's own success/failure.
+    // Every caller below reads fields (schemes, jobs, stamina, ...) directly off
+    // the return value, so unwrap here once. (The season call three lines below
+    // already does this correctly inline — this makes every caller consistent.)
+    const body = await r.json();
+    return body?.result ?? body;
   } catch { return null; }
 }
 
@@ -294,7 +301,9 @@ export function HUDContextProvider() {
     let stale = false;
     macroCall('season', 'current', { worldId: worldIdForSeason }).then((r) => {
       if (stale) return;
-      const seasonName = (r as { result?: { season?: string } } | null)?.result?.season;
+      // macroCall() now unwraps the {ok,result} envelope itself — read season
+      // directly off the returned payload, not a second .result level.
+      const seasonName = (r as { season?: string } | null)?.season;
       if (seasonName === 'spring' || seasonName === 'summer' || seasonName === 'autumn' || seasonName === 'winter') {
         setWorldSeason(seasonName);
       }
@@ -315,17 +324,20 @@ export function HUDContextProvider() {
   }, [setWorldId]);
 
   // Socket-forwarded refusal field event (already in useSocket forwarders).
+  // Note: 'world:refusal-field' is intentionally NOT listened to here — it's
+  // already consumed by 6 independent subscribe()-based consumers elsewhere
+  // (RefusalFieldHUD, CinematicTriggerBridge, EmergentJuiceBridge, SystemFeed,
+  // RefusalFieldBanner, dome-barrier.ts); this provider only needs the
+  // compound-threshold signal for the HUD's refusalStrength slice.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     function onRefusal(e: Event) {
       const d = (e as CustomEvent).detail as { strength?: number } | undefined;
       if (d?.strength != null) setRefusalStrength(d.strength);
     }
-    window.addEventListener('world:refusal-field', onRefusal);
-    window.addEventListener('refusal:compound', onRefusal);
+    window.addEventListener('refusal:compound-threshold', onRefusal);
     return () => {
-      window.removeEventListener('world:refusal-field', onRefusal);
-      window.removeEventListener('refusal:compound', onRefusal);
+      window.removeEventListener('refusal:compound-threshold', onRefusal);
     };
   }, [setRefusalStrength]);
 

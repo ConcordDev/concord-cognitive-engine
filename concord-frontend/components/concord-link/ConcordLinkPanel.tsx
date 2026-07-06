@@ -109,13 +109,6 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
   const [sending, setSending] = useState(false);
   const [composeError, setComposeError] = useState<string | null>(null);
 
-  // ── Toggle via window event ────────────────────────────────────────────
-  useEffect(() => {
-    const onToggle = () => setOpen((v) => !v);
-    window.addEventListener('concordia:concord-link-toggle', onToggle);
-    return () => window.removeEventListener('concordia:concord-link-toggle', onToggle);
-  }, []);
-
   // ── Load current world + inbox + anchors when opened ───────────────────
   const reload = useCallback(async () => {
     try {

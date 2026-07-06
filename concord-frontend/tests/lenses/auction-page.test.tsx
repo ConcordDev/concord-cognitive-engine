@@ -15,7 +15,30 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
+
+// Capturing socket mock — lets a test fire the real server event names and
+// assert the page's `subscribe('auction:bid-placed'|'auction:settled', ...)`
+// handlers (not dead `window.addEventListener` calls) actually re-fetch.
+vi.mock('@/lib/realtime/socket', () => {
+  const listeners: Record<string, Array<(data: unknown) => void>> = {};
+  return {
+    subscribe: vi.fn((event: string, cb: (data: unknown) => void) => {
+      (listeners[event] ||= []).push(cb);
+      return () => {
+        listeners[event] = (listeners[event] || []).filter((f) => f !== cb);
+      };
+    }),
+    __emit: (event: string, data?: unknown) => {
+      (listeners[event] || []).forEach((cb) => cb(data));
+    },
+  };
+});
+
 import AuctionLensPage from '../../app/lenses/auction/page';
+import * as socketMock from '@/lib/realtime/socket';
+
+const emitSocket = (event: string, data?: unknown) =>
+  (socketMock as unknown as { __emit: (e: string, d?: unknown) => void }).__emit(event, data);
 
 const EMPTY = { ok: true, auctions: [], buyOrders: [] };
 
@@ -104,5 +127,24 @@ describe('AuctionLensPage — four UX states', () => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
     expect(screen.getByText(/no active auctions/i)).toBeInTheDocument();
+  });
+
+  it('realtime: auction:bid-placed and auction:settled socket events refetch (were dead window listeners)', async () => {
+    const fetchMock = makeFetch((url) => {
+      if (url.includes('/api/auctions/active')) return jsonResponse({ ok: true, auctions: [] });
+      if (url.includes('/api/auctions/buy-orders')) return jsonResponse({ ok: true, buyOrders: [] });
+      return jsonResponse(EMPTY);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AuctionLensPage />);
+    await screen.findByText(/no active auctions/i);
+
+    const callsAfterMount = fetchMock.mock.calls.length;
+    emitSocket('auction:bid-placed', { auctionId: 'auc_test1', bidderUserId: 'b2', amountCc: 300 });
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterMount));
+
+    const callsAfterBid = fetchMock.mock.calls.length;
+    emitSocket('auction:settled', { auctionId: 'auc_test1', sellerUserId: 'seller', buyerUserId: 'b2' });
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterBid));
   });
 });

@@ -40,8 +40,10 @@ export default function WalkerArbitrageMap({ worldId = 'concordia-hub' }: { worl
           body: JSON.stringify({ domain: 'walker', name: 'trade_routes', input: { worldId } }),
         }).catch(() => null),
       ]);
-      const arbData = arbR ? await arbR.json().catch(() => null) : null;
-      const walkerData = walkerR ? await walkerR.json().catch(() => null) : null;
+      const arbEnvelope = arbR ? await arbR.json().catch(() => null) : null;
+      const walkerEnvelope = walkerR ? await walkerR.json().catch(() => null) : null;
+      const arbData = arbEnvelope?.result ?? arbEnvelope;
+      const walkerData = walkerEnvelope?.result ?? walkerEnvelope;
       if (!alive) return;
       if (arbData?.ok) setOpps(arbData.opps || []);
       if (walkerData?.ok) setWalkerCount(walkerData.count || 0);

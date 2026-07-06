@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Users, UserPlus, Send, X, Globe, ChevronRight, AlertCircle, Check, Mail } from 'lucide-react';
 import { useWorldTravel } from '@/hooks/useWorldTravel';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface FriendPresence {
   friendUserId: string;
@@ -70,15 +71,14 @@ export function FriendsPresencePanel({ myWorldId }: FriendsPresencePanelProps) {
 
   // Realtime push — incoming friend-request socket events drive a re-fetch.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     const handler = () => refresh();
-    window.addEventListener('friend:request-received', handler);
-    window.addEventListener('friend:request-accepted', handler);
-    window.addEventListener('world:invite-received', handler);
+    const offReceived = subscribe('friend:request-received', handler);
+    const offAccepted = subscribe('friend:request-accepted', handler);
+    const offInvite = subscribe('world:invite-received', handler);
     return () => {
-      window.removeEventListener('friend:request-received', handler);
-      window.removeEventListener('friend:request-accepted', handler);
-      window.removeEventListener('world:invite-received', handler);
+      offReceived?.();
+      offAccepted?.();
+      offInvite?.();
     };
   }, [refresh]);
 

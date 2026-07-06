@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface TombRow {
   id: string;
@@ -76,7 +77,8 @@ export default function TombMarker({ worldId, pollIntervalMs = 60_000 }: Props) 
       });
       if (!r.ok) return;
       const data = await r.json();
-      if (Array.isArray(data?.tombs)) setTombs(data.tombs);
+      const payload = data?.result ?? data;
+      if (Array.isArray(payload?.tombs)) setTombs(payload.tombs);
     } catch { /* anonymous browsers / network blips: silent */ }
   }, [worldId]);
 
@@ -87,11 +89,10 @@ export default function TombMarker({ worldId, pollIntervalMs = 60_000 }: Props) 
     void refresh();
     const interval = window.setInterval(refresh, pollIntervalMs);
 
-    const onDeath = () => { void refresh(); };
-    window.addEventListener('entity:death', onDeath);
+    const off = subscribe('entity:death', () => { void refresh(); });
     return () => {
       window.clearInterval(interval);
-      window.removeEventListener('entity:death', onDeath);
+      off?.();
     };
   }, [refresh, pollIntervalMs]);
 
@@ -113,7 +114,8 @@ export default function TombMarker({ worldId, pollIntervalMs = 60_000 }: Props) 
         });
         if (!r.ok) return;
         const data = await r.json();
-        if (!cancelled && data?.legacy) setOpenLegacy(data.legacy as LegacyDetail);
+        const payload = data?.result ?? data;
+        if (!cancelled && payload?.legacy) setOpenLegacy(payload.legacy as LegacyDetail);
       } catch { /* silent */ }
     })();
     return () => { cancelled = true; };

@@ -51,6 +51,15 @@ import { runUxRouteEmptyRenderDetector } from "./ux-route-empty-render-detector.
 import { runUxModalNoEscapeDetector } from "./ux-modal-no-escape-detector.js";
 import { runCommandInjectionDetector } from "./command-injection-detector.js";
 import { runAuthzCoverageDetector } from "./authz-coverage-detector.js";
+import { runFrontendUnsafeChainDetector } from "./frontend-unsafe-chain-detector.js";
+import { runDuplicateHandlerRaceDetector } from "./duplicate-handler-race-detector.js";
+import { runFabricationMechanismDetector } from "./fabrication-mechanism-detector.js";
+import { runWorkflowGateIntegrityDetector } from "./workflow-gate-integrity-detector.js";
+import { runMoneyTxnHygieneDetector } from "./money-txn-hygiene-detector.js";
+import { runRealtimeEmitSignatureDetector } from "./realtime-emit-signature-detector.js";
+import { runStaleLyingTestDetector } from "./stale-lying-test-detector.js";
+import { runDeadMacroCallDetector } from "./dead-macro-call-detector.js";
+import { runHardcodedLiteralDataPropDetector } from "./hardcoded-literal-data-prop-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -469,6 +478,84 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Flags mutating HTTP routes (app/router POST/PUT/DELETE/PATCH) with no auth middleware, no handler-body auth idiom, and no `// AUTH:` marker. Scans server.js (the monolith check-route-auth.js ignored) + routes/*.",
   run: runAuthzCoverageDetector,
+});
+
+// ── Verification-audit detector wave (2026-07) ──────────────────────────
+// Five new classes + the two X1/X2 extensions above (resource-leak,
+// dead-event-listener), drafted from the Deep Verification-Audit Campaign's
+// confirmed findings. Each ships a positive fixture from a real confirmed
+// finding and a negative fixture from a refuted one.
+registerDetector({
+  id: "frontend-unsafe-chain",
+  label: "FrontendUnsafeChainDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Unguarded member-access chains on data flowing from a fetch/lensRun/useSWR API surface — the envelope-unwrap crash class (finding: music/page.tsx listings/beats mismatch).",
+  run: runFrontendUnsafeChainDetector,
+});
+registerDetector({
+  id: "duplicate-handler-race",
+  label: "DuplicateHandlerRaceDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Same global keybinding/socket-event/route registered by more than one co-mounting handler with no de-dup — double-fire races (finding: triple-owner Ctrl+K).",
+  run: runDuplicateHandlerRaceDetector,
+});
+registerDetector({
+  id: "fabrication-mechanism",
+  label: "FabricationMechanismDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Random-generated or fake-incrementing values flowing into a shipped response/render as if real — the honest-by-construction violation class (finding: frontier-part4.js's fabricated /dtu/diff response).",
+  run: runFabricationMechanismDetector,
+});
+registerDetector({
+  id: "workflow-gate-integrity",
+  label: "WorkflowGateIntegrityDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "CI gate-integrity holes — unexempted continue-on-error, missing NODE_ENV backstops, captured-never-asserted checks, push-only gates that should also run on PRs.",
+  run: runWorkflowGateIntegrityDetector,
+});
+registerDetector({
+  id: "money-txn-hygiene",
+  label: "MoneyTxnHygieneDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Multiple money-table writes in one function without a wrapping db.transaction, and SELECT * on money tables — money-invariant files are scanned but emit escalate-only findings.",
+  run: runMoneyTxnHygieneDetector,
+});
+registerDetector({
+  id: "realtime-emit-signature",
+  label: "RealtimeEmitSignatureDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "realtimeEmit(event, payload, opts) called with the wrong argument order/shape — silently falls through to an unscoped broadcast (finding: the brawl-invited misordered calls).",
+  run: runRealtimeEmitSignatureDetector,
+});
+registerDetector({
+  id: "stale-lying-test",
+  label: "StaleLyingTestDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Tests that assert against a source-string match instead of rendering/dispatching real behavior — pass-for-the-wrong-reason tests that can't catch a regression (finding: command-palette-wired.test.tsx).",
+  run: runStaleLyingTestDetector,
+});
+registerDetector({
+  id: "dead-macro-call",
+  label: "DeadMacroCallDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "A frontend call site invokes a macro/action name that no domain registers — dead buttons that always hit the unknown_macro fallback.",
+  run: runDeadMacroCallDetector,
+});
+registerDetector({
+  id: "hardcoded-literal-data-prop",
+  label: "HardcodedLiteralDataPropDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "A component is mounted with a hardcoded empty/off literal (0, false, null, [], '') passed to a prop whose name implies live/computed data — silently making a feature permanently inert.",
+  run: runHardcodedLiteralDataPropDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same

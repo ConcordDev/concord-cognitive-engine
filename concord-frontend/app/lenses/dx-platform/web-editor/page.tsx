@@ -40,7 +40,12 @@ async function runMacro<T = unknown>(domain: string, name: string, input: Record
     body: JSON.stringify({ domain, name, input }),
   });
   if (!r.ok) throw new Error(`macro ${domain}.${name} failed: ${r.status}`);
-  return r.json() as Promise<T>;
+  const j = await r.json();
+  // POST /api/lens/run always responds { ok: true, result: PAYLOAD } where
+  // the outer `ok` is just a transport flag — the macro's own success/
+  // failure lives inside `result`. Unwrap it here so callers can read
+  // fields directly off the returned object.
+  return (j?.result ?? j) as T;
 }
 
 async function loadMonaco(): Promise<MonacoLike> {

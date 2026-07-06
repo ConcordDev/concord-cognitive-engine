@@ -26,6 +26,23 @@ import {
   listRebellionsForKingdom,
 } from "../lib/kingdom-rebellion.js";
 
+// Dead-event-listener fix (verification-audit campaign): the frontend
+// CinematicTriggerBridge.tsx already subscribes to 'kingdom:takeover' to
+// fire a cinematic on a real player takeover, but no server code ever
+// emitted it. Mirrors the _emit() helper pattern in domains/spawn.js.
+function _emitKingdomTakeover(db, kingdomId, userId, result) {
+  try {
+    const io = globalThis?.__CONCORD_REALTIME__?.io;
+    if (!io) return;
+    const k = getKingdom(db, kingdomId);
+    if (!k?.world_id) return;
+    io.to(`world:${k.world_id}`).emit("kingdom:takeover", {
+      worldId: k.world_id, kingdomId, userId,
+      path: result.path, legitimacy: result.legitimacy,
+    });
+  } catch { /* best-effort */ }
+}
+
 export default function registerKingdomsMacros(register) {
   register("kingdoms", "list", async (ctx, input = {}) => {
     const db = ctx?.db;
@@ -136,25 +153,31 @@ export default function registerKingdomsMacros(register) {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db || !userId || !input.kingdomId) return { ok: false, reason: "missing_inputs" };
-    return takeoverByConquest(db, userId, input.kingdomId, input.proof || {});
+    const r = takeoverByConquest(db, userId, input.kingdomId, input.proof || {});
+    if (r?.ok) _emitKingdomTakeover(db, input.kingdomId, userId, r);
+    return r;
   });
 
   register("kingdoms", "takeover_inheritance", async (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db || !userId || !input.kingdomId) return { ok: false, reason: "missing_inputs" };
-    return takeoverByInheritance(db, userId, input.kingdomId, {
+    const r = takeoverByInheritance(db, userId, input.kingdomId, {
       viaSchemeId: input.viaSchemeId, heirOfNpcId: input.heirOfNpcId,
     });
+    if (r?.ok) _emitKingdomTakeover(db, input.kingdomId, userId, r);
+    return r;
   });
 
   register("kingdoms", "takeover_election", async (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db || !userId || !input.kingdomId) return { ok: false, reason: "missing_inputs" };
-    return takeoverByElection(db, userId, input.kingdomId, {
+    const r = takeoverByElection(db, userId, input.kingdomId, {
       proposalId: input.proposalId, voterTurnoutOk: input.voterTurnoutOk !== false,
     });
+    if (r?.ok) _emitKingdomTakeover(db, input.kingdomId, userId, r);
+    return r;
   });
 
   register("kingdoms", "depose_ruler", async (ctx, input = {}) => {

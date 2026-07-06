@@ -44,8 +44,8 @@ export function DeviceDataPanel({ patientId }: { patientId: string }) {
         patientId, ...(metricFilter ? { metric: metricFilter } : {}),
       });
       if (r.data?.ok) {
-        setReadings((r.data.result.readings || []) as Reading[]);
-        setSummary((r.data.result.summary || []) as MetricSummary[]);
+        setReadings((r.data.result?.readings || []) as Reading[]);
+        setSummary((r.data.result?.summary || []) as MetricSummary[]);
       }
     } catch (e) { console.error('[DeviceData] refresh', e); }
     finally { setLoading(false); }

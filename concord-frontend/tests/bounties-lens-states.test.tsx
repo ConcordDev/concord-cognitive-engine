@@ -142,3 +142,73 @@ describe('bounties lens — four UX states', () => {
     expect(getByText(/STATE unavailable/i)).toBeInTheDocument();
   });
 });
+
+/**
+ * "Autofix staking" tab — the legacy `bounty` domain surface, backed by the
+ * page's own `legacyMacro()` helper (a raw `fetch('/api/lens/run')` call),
+ * NOT the `lensRun` client used by the Bounty board tab above.
+ *
+ * Regression pin: POST /api/lens/run always responds { ok: true, result:
+ * PAYLOAD } — the outer `ok` is just a transport flag. Before the fix,
+ * `legacyMacro` returned that raw envelope and the tab read `r.bounties` /
+ * `r.error` / `r.reason` straight off it, which are always undefined, so the
+ * Autofix tab could never show bounties or a working stake action.
+ */
+describe('bounties lens — Autofix staking tab (legacy `bounty` domain)', () => {
+  beforeEach(() => { lensRun.mockImplementation(() => reply({ bounties: [], total: 0 })); });
+
+  function jsonOf(body: unknown) {
+    return Promise.resolve({ json: () => Promise.resolve(body) } as Response);
+  }
+
+  const AUTOFIX_BOUNTY = { autofix_id: 42, proposal_kind: 'command-injection-fix', created_at: 1700000000, stake_count: 3, total_pool_cc: 15 };
+
+  async function openAutofixTab() {
+    const { getByText, ...rest } = render(<BountiesPage />);
+    await act(async () => { fireEvent.click(getByText('Autofix staking')); });
+    return { getByText, ...rest };
+  }
+
+  it('POPULATED: unwraps { ok, result: { ok, bounties } } and renders a real autofix row', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => jsonOf({ ok: true, result: { ok: true, bounties: [AUTOFIX_BOUNTY] } })));
+    const { getByText } = await openAutofixTab();
+    await waitFor(() => expect(getByText(/Bounty #42/)).toBeInTheDocument());
+    expect(getByText(/15 CC/)).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('EMPTY: shows the honest "No open autofix bounties" CTA on a correctly-unwrapped empty list', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => jsonOf({ ok: true, result: { ok: true, bounties: [] } })));
+    const { getByText } = await openAutofixTab();
+    await waitFor(() => expect(getByText(/No open autofix bounties/i)).toBeInTheDocument());
+    vi.unstubAllGlobals();
+  });
+
+  it('ERROR: a nested ok:false macro payload surfaces role=alert with the real reason (not swallowed)', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => jsonOf({ ok: true, result: { ok: false, reason: 'no_db' } })));
+    const { container } = await openAutofixTab();
+    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
+    expect(container.textContent).toMatch(/no_db/);
+    vi.unstubAllGlobals();
+  });
+
+  it('STAKE: a successful stake unwraps the nested envelope and shows the confirmation, then reloads', async () => {
+    let listCalls = 0;
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (body.name === 'list_open') { listCalls += 1; return jsonOf({ ok: true, result: { ok: true, bounties: [AUTOFIX_BOUNTY] } }); }
+      if (body.name === 'stake') return jsonOf({ ok: true, result: { ok: true, staked: true } });
+      return jsonOf({ ok: true, result: { ok: true } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { getByText } = await openAutofixTab();
+    await waitFor(() => expect(getByText(/Bounty #42/)).toBeInTheDocument());
+
+    const before = listCalls;
+    await act(async () => { fireEvent.click(getByText('Stake on patch 0')); });
+    await waitFor(() => expect(getByText(/Staked \d+ CC on choice 0 of bounty #42/)).toBeInTheDocument());
+    // loadAutofix() re-fires after a successful stake.
+    await waitFor(() => expect(listCalls).toBeGreaterThan(before));
+    vi.unstubAllGlobals();
+  });
+});

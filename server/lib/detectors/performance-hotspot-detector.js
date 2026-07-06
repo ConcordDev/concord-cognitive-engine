@@ -255,6 +255,20 @@ const PATTERNS = [
           if (ch === "{") depth++;
           else if (ch === "}") depth--;
         }
+        // Clamp at 0. This char-by-char counter has no string/regex-literal
+        // awareness (only // and /* */ comments are stripped), so a brace
+        // character sitting inside a regex literal or string (e.g. a `{2,4}`
+        // quantifier, or a JSDoc code-fence) can spuriously decrement depth
+        // below the true nesting level. Left unclamped, that drift is
+        // permanent for the rest of the file — depth never climbs back
+        // above 0 even inside a real function body, so every declaration
+        // after the drift point is misread as module-scope. A syntactically
+        // valid file's nesting relative to module scope never legitimately
+        // goes negative, so clamping is always safe and stops one stray
+        // miscount from cascading into false positives for every line that
+        // follows (verified against command-injection-detector.js's own
+        // `parseChildProcessBindings`, which was misflagged this way).
+        if (depth < 0) depth = 0;
         if (depthAtStart > 0) continue;   // inside a function body — skip
 
         const m = line.match(/^\s*(?:const|let)\s+(\w+)\s*=\s*new\s+(Map|Set)\s*\(([^)]*)\)/);

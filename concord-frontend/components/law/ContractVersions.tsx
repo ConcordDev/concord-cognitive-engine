@@ -30,7 +30,7 @@ export function ContractVersions({ contractId }: { contractId: string }) {
 
   const load = useCallback(async () => {
     const r = await lensRun('law', 'contract-version-list', { id: contractId });
-    if (r.data?.ok) setVersions((r.data.result.versions as VersionMeta[]) || []);
+    if (r.data?.ok) setVersions((r.data.result?.versions as VersionMeta[]) || []);
   }, [contractId]);
 
   useEffect(() => { void load(); setDiff(null); setFromV(null); }, [load]);

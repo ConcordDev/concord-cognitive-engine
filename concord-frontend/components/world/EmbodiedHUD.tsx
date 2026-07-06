@@ -66,7 +66,8 @@ export default function EmbodiedHUD() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain: 'embodied', name: 'channels', input: {} }),
       }).catch(() => null);
-      const data = cr ? await cr.json().catch(() => null) : null;
+      const raw = cr ? await cr.json().catch(() => null) : null;
+      const data = raw?.result ?? raw;
       if (!cancelled && data?.channels) setChannels(data.channels);
     })();
     return () => { cancelled = true; };
@@ -81,7 +82,8 @@ export default function EmbodiedHUD() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain: 'embodied', name: 'signals_for_player', input: {} }),
       }).catch(() => null);
-      const data = r ? await r.json().catch(() => null) : null;
+      const raw = r ? await r.json().catch(() => null) : null;
+      const data = raw?.result ?? raw;
       if (!alive || !data?.ok || !data.signals) return;
       const sigs: ChannelReadings = {};
       for (const c of channels) {

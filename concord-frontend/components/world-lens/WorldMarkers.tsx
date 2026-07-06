@@ -7,8 +7,18 @@
  * world-space layer the audit flagged: quest markers, interaction
  * prompts, ally indicators, social pings rendered in-world.
  *
- * Markers are projected from world to screen each frame. The renderer
- * supplies (worldX, worldY, worldZ); WorldMarkers does the projection.
+ * Dead-event-listener fix (verification-audit campaign, 2026-07-06): this
+ * component was fully built (real projection math, real marker categories,
+ * a real emitWorldMarker() helper other components could call) but was
+ * NEVER MOUNTED anywhere — so 'concordia:social-ping' had a listener with
+ * zero effect even after the server->window bridge for social:ping was
+ * fixed separately, because nothing ever rendered this component to
+ * receive it. Its original prop interface also predated the
+ * 'concordia:projector-ready' convention every sibling world-space overlay
+ * (DamageBillboard, NPCActivityTag, BazaarLayer) now uses — rewritten to
+ * match: no camera props, cache the world-to-screen projector the scene
+ * broadcasts, and mounted in app/lenses/world/page.tsx next to
+ * DamageBillboard.
  *
  * Marker categories:
  *   quest        — yellow exclamation/question mark above quest givers
@@ -23,13 +33,18 @@
  *   - 'concordia:world-marker:remove' (id)
  *   - 'concordia:social-ping'        (auto-creates ping markers from
  *                                     server social:ping broadcasts)
+ *   - 'concordia:projector-ready'    (world-to-screen projector, same as
+ *                                     DamageBillboard/NPCActivityTag/BazaarLayer)
  *
- * Visibility: markers fade when the camera moves > VISIBILITY_RADIUS
- * away. Off-screen markers are clamped to screen edges with arrows
- * so the player still knows which direction they're in.
+ * Visibility: a marker only renders while the real projector reports it
+ * in-frustum; opacity/scale fade with 2D ground distance from the player
+ * (window.__concordiaPlayerPos) as a proxy for camera distance.
  */
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+
+type Projection = { x: number; y: number; visible: boolean };
+type Projector = (world: { x: number; y: number; z: number }) => Projection | null;
 
 export type MarkerKind = 'quest' | 'ally' | 'enemy' | 'ping' | 'loot' | 'interaction';
 
@@ -47,21 +62,11 @@ export interface WorldMarker {
 interface ProjectedMarker extends WorldMarker {
   screenX: number;
   screenY: number;
-  visible: boolean;     // in front of camera + within radius
-  offScreenAngle: number; // for edge-clamped arrows
-  edgeClamped: boolean;
+  visible: boolean;
   distance: number;
 }
 
 interface WorldMarkersProps {
-  /** Camera position (player camera). */
-  cameraPos: { x: number; y: number; z: number };
-  /** Camera forward direction (unit vector in world space). */
-  cameraForward: { x: number; y: number; z: number };
-  /** Camera up direction. */
-  cameraUp?: { x: number; y: number; z: number };
-  /** Field of view (radians, vertical). */
-  fov?: number;
   /** Max distance at which markers stay readable. */
   visibilityRadius?: number;
 }
@@ -75,32 +80,23 @@ const KIND_DEFAULTS: Record<MarkerKind, { color: string; icon: string }> = {
   interaction: { color: '#e5e7eb', icon: 'E' },
 };
 
-function normalize(v: { x: number; y: number; z: number }) {
-  const m = Math.hypot(v.x, v.y, v.z) || 1;
-  return { x: v.x / m, y: v.y / m, z: v.z / m };
-}
-
-function dot(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) {
-  return a.x * b.x + a.y * b.y + a.z * b.z;
-}
-
-function cross(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) {
-  return {
-    x: a.y * b.z - a.z * b.y,
-    y: a.z * b.x - a.x * b.z,
-    z: a.x * b.y - a.y * b.x,
-  };
-}
-
 export function WorldMarkers({
-  cameraPos,
-  cameraForward,
-  cameraUp = { x: 0, y: 1, z: 0 },
-  fov = Math.PI / 3,
   visibilityRadius = 600,
 }: WorldMarkersProps) {
   const [markers, setMarkers] = useState<Map<string, WorldMarker>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
+  const projectorRef = useRef<Projector | null>(null);
+
+  // Cache the projector when ConcordiaScene dispatches it — same pattern as
+  // DamageBillboard/NPCActivityTag/BazaarLayer.
+  useEffect(() => {
+    function onProjector(e: Event) {
+      const detail = (e as CustomEvent).detail as { project: Projector };
+      if (typeof detail?.project === 'function') projectorRef.current = detail.project;
+    }
+    window.addEventListener('concordia:projector-ready', onProjector);
+    return () => window.removeEventListener('concordia:projector-ready', onProjector);
+  }, []);
 
   const addMarker = useCallback((m: WorldMarker) => {
     setMarkers((prev) => {
@@ -159,81 +155,66 @@ export function WorldMarkers({
     };
   }, [addMarker, removeMarker]);
 
-  // Project markers from world → screen each render.
-  const projected = useMemo<ProjectedMarker[]>(() => {
-    const fwd = normalize(cameraForward);
-    const up  = normalize(cameraUp);
-    const right = normalize(cross(fwd, up));
-    const trueUp = normalize(cross(right, fwd));
-
-    const w = typeof window !== 'undefined' ? window.innerWidth  : 1920;
-    const h = typeof window !== 'undefined' ? window.innerHeight : 1080;
-    const aspect = w / h;
-    const halfH = Math.tan(fov / 2);
-    const halfW = halfH * aspect;
-
-    const out: ProjectedMarker[] = [];
-    for (const m of markers.values()) {
-      const dx = m.position.x - cameraPos.x;
-      const dy = m.position.y - cameraPos.y;
-      const dz = m.position.z - cameraPos.z;
-      const distance = Math.hypot(dx, dy, dz);
-
-      const camRel = { x: dot({ x: dx, y: dy, z: dz }, right), y: dot({ x: dx, y: dy, z: dz }, trueUp), z: dot({ x: dx, y: dy, z: dz }, fwd) };
-
-      const visible = camRel.z > 0.5 && distance < visibilityRadius;
-      let screenX = w / 2;
-      let screenY = h / 2;
-      let edgeClamped = false;
-      let offScreenAngle = 0;
-
-      if (camRel.z > 0.05) {
-        const ndcX = camRel.x / (camRel.z * halfW);
-        const ndcY = camRel.y / (camRel.z * halfH);
-        screenX = (ndcX * 0.5 + 0.5) * w;
-        screenY = (1 - (ndcY * 0.5 + 0.5)) * h;
-
-        // Edge-clamp off-screen markers
-        if (screenX < 32 || screenX > w - 32 || screenY < 32 || screenY > h - 32) {
-          edgeClamped = true;
-          screenX = Math.max(32, Math.min(w - 32, screenX));
-          screenY = Math.max(32, Math.min(h - 32, screenY));
-          offScreenAngle = Math.atan2(camRel.y, camRel.x);
-        }
-      } else {
-        // Behind camera — pin to bottom edge with arrow.
-        edgeClamped = true;
-        offScreenAngle = Math.atan2(camRel.y, camRel.x) + Math.PI;
-        screenX = w / 2 + Math.cos(offScreenAngle) * (w / 2 - 32);
-        screenY = h - 64;
-      }
-
-      out.push({ ...m, screenX, screenY, visible, edgeClamped, offScreenAngle, distance });
+  // Project markers from world → screen each frame, rAF-throttled — same
+  // pattern as DamageBillboard. Distance falls back to the player position
+  // global (set by AvatarSystem3D, the established proxy for "how far is
+  // this from the camera" used by ExtractionRunHUD/DangerBandHUD/etc. when
+  // a component doesn't otherwise have live camera vectors) so distance-
+  // based fade still works without re-plumbing raw camera state.
+  const [projected, setProjected] = useState<ProjectedMarker[]>([]);
+  useEffect(() => {
+    if (markers.size === 0) {
+      setProjected([]);
+      return;
     }
-    return out;
-  }, [markers, cameraPos, cameraForward, cameraUp, fov, visibilityRadius]);
+    let raf = 0;
+    let last = 0;
+    const THROTTLE_MS = 80;
+    function loop(t: number) {
+      raf = requestAnimationFrame(loop);
+      if (t - last < THROTTLE_MS) return;
+      last = t;
+      const proj = projectorRef.current;
+      if (!proj) return;
+      const playerPos = (typeof window !== 'undefined'
+        ? (window as { __concordiaPlayerPos?: { x: number; y?: number; z: number } }).__concordiaPlayerPos
+        : null) ?? null;
+      const out: ProjectedMarker[] = [];
+      for (const m of markers.values()) {
+        const p = proj(m.position);
+        if (!p) continue;
+        const distance = playerPos
+          ? Math.hypot(m.position.x - playerPos.x, m.position.z - playerPos.z)
+          : 0;
+        out.push({ ...m, screenX: p.x, screenY: p.y, visible: p.visible, distance });
+      }
+      setProjected(out);
+    }
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [markers]);
 
   return (
     <div ref={containerRef} className="pointer-events-none fixed inset-0 z-[40]" aria-hidden>
       {projected.map((m) => {
-        if (!m.visible && !m.edgeClamped) return null;
+        if (!m.visible) return null;
         const def = KIND_DEFAULTS[m.kind];
         const color = m.color ?? def.color;
         const icon  = m.icon  ?? def.icon;
-        const opacity = m.distance < visibilityRadius
-          ? Math.max(0.3, 1 - (m.distance / visibilityRadius) * 0.7)
-          : 0.3;
-        const scale = Math.max(0.6, 1.0 - (m.distance / visibilityRadius) * 0.4);
+        const opacity = Math.max(0.3, 1 - Math.min(1, m.distance / visibilityRadius) * 0.7);
+        const scale = Math.max(0.6, 1.0 - Math.min(1, m.distance / visibilityRadius) * 0.4);
 
         return (
           <div
             key={m.id}
+            data-marker-id={m.id}
+            data-marker-kind={m.kind}
             className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform"
             style={{
               left: m.screenX,
               top:  m.screenY,
               opacity,
-              transform: `translate(-50%, -50%) scale(${scale})${m.pulse ? ' translateY(0)' : ''}`,
+              transform: `translate(-50%, -50%) scale(${scale})`,
             }}
           >
             <div
@@ -242,14 +223,6 @@ export function WorldMarkers({
             >
               <span className="font-bold text-sm leading-none">{icon}</span>
               {m.label && <span className="text-[10px] uppercase tracking-wider">{m.label}</span>}
-              {m.edgeClamped && (
-                <span
-                  className="text-xs"
-                  style={{ transform: `rotate(${m.offScreenAngle}rad)` }}
-                >
-                  ➤
-                </span>
-              )}
             </div>
           </div>
         );

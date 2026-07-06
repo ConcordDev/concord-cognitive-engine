@@ -39,6 +39,7 @@ import {
 } from '@/lib/hooks/use-lens-artifacts';
 import dynamic from 'next/dynamic';
 import { api, lensRun } from '@/lib/api/client';
+import { ACTIVE_WORLD_CHANGED_EVENT } from '@/hooks/useActiveWorldId';
 import {
   Hammer, ShoppingBag, Plus, Loader2, Flame, Sparkles, Search,
   X, Coins, ShieldCheck, Package, Beaker, Sword, Wand2, BookOpen,
@@ -217,10 +218,12 @@ export default function CraftingPage() {
     refreshHeader();
     const onAvatar = () => refreshHeader();
     window.addEventListener('concordia:avatar-changed', onAvatar);
-    window.addEventListener('concordia:world-changed', onAvatar);
+    // Canonical event (hooks/useWorldTravel.ts + useActiveWorldId.ts) — the
+    // prior 'concordia:world-changed' name is never dispatched by anything.
+    window.addEventListener(ACTIVE_WORLD_CHANGED_EVENT, onAvatar);
     return () => {
       window.removeEventListener('concordia:avatar-changed', onAvatar);
-      window.removeEventListener('concordia:world-changed', onAvatar);
+      window.removeEventListener(ACTIVE_WORLD_CHANGED_EVENT, onAvatar);
     };
   }, [refreshHeader]);
 

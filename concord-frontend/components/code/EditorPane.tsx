@@ -135,13 +135,29 @@ export function EditorPane({
   }
 
   // cmd-S to save
+  //
+  // Duplicate-handler-race fix (verification-audit campaign): Cmd/Ctrl+K is
+  // ALSO bound globally by CommandPalette.tsx (document-level, bubble
+  // phase, mounted app-wide via AppShell) — pressing Cmd/Ctrl+K here used
+  // to open both the inline-edit modal AND the command palette at once.
+  // CommandPalette's binding is sacred (CLAUDE.md) and stays untouched;
+  // instead this listener is registered on `window` in the CAPTURE phase
+  // (fires before any document-level bubble-phase listener, regardless of
+  // DOM order) so it can claim the combo with stopPropagation() only when
+  // it actually consumes it (a selection is active) and otherwise let the
+  // event fall through to the command palette unchanged.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // detector-allow: duplicate-handler — resolved via capture-phase registration + conditional stopPropagation() below, not removal; see tests/editor-pane-ctrlk-race.test.tsx for the behavioral proof.
       if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save(); }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); if (selection.trim()) setShowInlineEdit(true); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k' && selection.trim()) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowInlineEdit(true);
+      }
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, selection]);
 

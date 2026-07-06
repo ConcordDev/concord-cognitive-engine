@@ -21,8 +21,9 @@
  *   5. Spacebar push-to-talk toggles the outbound MediaStreamTrack;
  *      continuous mode toggle in panel settings keeps the track
  *      always-on.
- *   6. On unmount or voice:leave: close every peer connection +
- *      voice_chat.leave_room.
+ *   6. On unmount (Leave button): close every peer connection +
+ *      voice_chat.leave_room, which broadcasts voice:participant-left
+ *      so remaining peers clean up their side of the connection.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';

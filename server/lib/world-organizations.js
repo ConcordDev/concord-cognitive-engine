@@ -20,6 +20,13 @@ const ORG_TYPES = new Set(["guild", "crew", "studio", "firm", "lab", "band", "cl
 const MEMBER_ROLES = Object.freeze(["leader", "officer", "member", "apprentice"]);
 const MAX_PARTY_SIZE = 10;
 const MAX_ORG_MEMBERS = 500;
+// Resource-leak fix (verification-audit campaign): nothing ever flipped a
+// recruitment listing off "active" or removed it — _recruitmentBoard grew
+// unbounded for the life of the process. Real cleanup hook (not just a
+// size cap): listings older than the TTL are stale postings and are culled
+// opportunistically on each new post, plus a hard size cap as a backstop.
+const RECRUITMENT_LISTING_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const MAX_RECRUITMENT_LISTINGS = 1000;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // STATE
@@ -262,6 +269,22 @@ export function getMentorships(userId) {
 // RECRUITMENT BOARD
 // ══════════════════════════════════════════════════════════════════════════════
 
+function _cullExpiredRecruitments() {
+  const cutoff = Date.now() - RECRUITMENT_LISTING_TTL_MS;
+  let i = 0;
+  while (i < _recruitmentBoard.length) {
+    const postedAtMs = Date.parse(_recruitmentBoard[i].postedAt);
+    if (Number.isFinite(postedAtMs) && postedAtMs < cutoff) {
+      _recruitmentBoard.splice(i, 1);
+    } else {
+      i++;
+    }
+  }
+  if (_recruitmentBoard.length > MAX_RECRUITMENT_LISTINGS) {
+    _recruitmentBoard.splice(0, _recruitmentBoard.length - MAX_RECRUITMENT_LISTINGS);
+  }
+}
+
 export function postRecruitment({ orgId, type, title, description, requirements, benefits, districtId }) {
   const id = `recruit_${Date.now().toString(36)}_${randomUUID().slice(0, 8)}`;
   const listing = {
@@ -272,6 +295,7 @@ export function postRecruitment({ orgId, type, title, description, requirements,
     applications: [],
   };
   _recruitmentBoard.push(listing);
+  _cullExpiredRecruitments();
   return { ok: true, listingId: id };
 }
 

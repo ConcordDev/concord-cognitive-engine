@@ -29,11 +29,32 @@ export interface PeerCursor {
   lastSeenMs: number;
 }
 
+export interface LivePresence {
+  userId: string;
+  name: string;
+  color: string;
+  x: number;
+  y: number;
+  updatedAt: number;
+}
+
+export interface LiveReaction {
+  id: string;
+  emoji: string;
+  x: number;
+  y: number;
+  authorId: string;
+  authorName: string;
+  ts: number;
+}
+
 export interface WhiteboardCollabState {
   peerCursors: Record<string, PeerCursor>;
   voteCounts: Record<string, number>;
   remoteScene: unknown | null;
   remoteSceneUpdateCount: number;
+  livePresence: Record<string, LivePresence>;
+  lastPeerReaction: LiveReaction | null;
 }
 
 interface UseWhiteboardCollabOpts {
@@ -56,9 +77,12 @@ export function useWhiteboardCollab({
     voteCounts: {},
     remoteScene: null,
     remoteSceneUpdateCount: 0,
+    livePresence: {},
+    lastPeerReaction: null,
   });
 
   const lastCursorPushRef = useRef(0);
+  const lastPresencePingRef = useRef(0);
   const sceneDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSceneRef = useRef<unknown | null>(null);
   const lastBroadcastAtRef = useRef(0);
@@ -123,10 +147,53 @@ export function useWhiteboardCollab({
         voteCounts: { ...prev.voteCounts, [p.elementId!]: p.voteCount! },
       }));
     });
+    // Dead-event-listener fix (verification-audit campaign): the "Live" tab's
+    // named-participant presence list (server/domains/whiteboard.js
+    // presence-ping/presence-list) was poll-only and never received a push
+    // update — surfacing it here so it updates instantly instead of on the
+    // next 10s poll tick.
+    const offPresence = onEvent('whiteboard:presence', (payload: unknown) => {
+      const p = payload as Partial<LivePresence> & { boardId?: string };
+      if (p.boardId !== boardId || typeof p.userId !== 'string') return;
+      setState((prev) => ({
+        ...prev,
+        livePresence: {
+          ...prev.livePresence,
+          [p.userId!]: {
+            userId: p.userId!,
+            name: String(p.name ?? p.userId),
+            color: String(p.color ?? '#7dd3fc'),
+            x: Number(p.x) || 0,
+            y: Number(p.y) || 0,
+            updatedAt: Number(p.updatedAt) || Date.now(),
+          },
+        },
+      }));
+    });
+    // Reactions were broadcast server-side but nothing ever subscribed —
+    // the sender saw their own "Sent 😀" confirmation, no one else saw it.
+    const offReaction = onEvent('whiteboard:reaction', (payload: unknown) => {
+      const p = payload as Partial<LiveReaction> & { boardId?: string };
+      if (p.boardId !== boardId || typeof p.id !== 'string') return;
+      setState((prev) => ({
+        ...prev,
+        lastPeerReaction: {
+          id: p.id!,
+          emoji: String(p.emoji ?? ''),
+          x: Number(p.x) || 0,
+          y: Number(p.y) || 0,
+          authorId: String(p.authorId ?? ''),
+          authorName: String(p.authorName ?? p.authorId ?? 'Someone'),
+          ts: Number(p.ts) || Date.now(),
+        },
+      }));
+    });
     return () => {
       offScene?.();
       offCursor?.();
       offVote?.();
+      offPresence?.();
+      offReaction?.();
     };
   }, [boardId, enabled]);
 
@@ -169,12 +236,26 @@ export function useWhiteboardCollab({
   const broadcastCursor = useCallback((x: number, y: number) => {
     if (!boardId || !enabled) return;
     const now = Date.now();
-    if (now - lastCursorPushRef.current < cursorThrottleMs) return;
-    lastCursorPushRef.current = now;
-    api.post('/api/lens/run', {
-      domain: 'whiteboard', action: 'broadcast-cursor',
-      input: { id: boardId, x, y },
-    }).catch(() => { /* best effort */ });
+    if (now - lastCursorPushRef.current >= cursorThrottleMs) {
+      lastCursorPushRef.current = now;
+      api.post('/api/lens/run', {
+        domain: 'whiteboard', action: 'broadcast-cursor',
+        input: { id: boardId, x, y },
+      }).catch(() => { /* best effort */ });
+    }
+    // Dead-event-listener fix (verification-audit campaign): the "Live" tab's
+    // named-participant presence list (presence-ping/presence-list) was
+    // never pinged from anywhere, so it always polled empty. Piggyback a
+    // slower-cadence presence heartbeat onto the same real cursor position
+    // already being tracked here — well under the 30s server-side TTL.
+    const PRESENCE_PING_MS = 8000;
+    if (now - lastPresencePingRef.current >= PRESENCE_PING_MS) {
+      lastPresencePingRef.current = now;
+      api.post('/api/lens/run', {
+        domain: 'whiteboard', action: 'presence-ping',
+        input: { boardId, x, y },
+      }).catch(() => { /* best effort */ });
+    }
   }, [boardId, enabled, cursorThrottleMs]);
 
   const castVote = useCallback(async (elementId: string) => {

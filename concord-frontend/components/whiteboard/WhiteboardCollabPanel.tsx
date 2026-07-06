@@ -18,6 +18,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { Shape } from './WhiteboardCanvas';
+import type { LivePresence, LiveReaction } from '@/hooks/useWhiteboardCollab';
 
 interface FrameRec { id: string; label: string; x: number; y: number; w: number; h: number; order: number; memberIds: string[] }
 interface ConnRoute { waypoints: Array<{ x: number; y: number }>; length: number }
@@ -33,7 +34,14 @@ const EMBED_ICON: Record<EmbedRec['kind'], React.ComponentType<{ className?: str
   image: ImageIcon, video: Video, document: FileText, link: Globe,
 };
 
-export function WhiteboardCollabPanel({ boardId, shapes }: { boardId: string | null; shapes: Shape[] }) {
+export function WhiteboardCollabPanel({
+  boardId, shapes, livePresence, lastPeerReaction,
+}: {
+  boardId: string | null;
+  shapes: Shape[];
+  livePresence?: Record<string, LivePresence>;
+  lastPeerReaction?: LiveReaction | null;
+}) {
   const [tab, setTab] = useState<CollabTab>('frames');
 
   if (!boardId) {
@@ -61,7 +69,7 @@ export function WhiteboardCollabPanel({ boardId, shapes }: { boardId: string | n
         {tab === 'connectors' && <ConnectorsTab boardId={boardId} shapes={shapes} />}
         {tab === 'embeds' && <EmbedsTab boardId={boardId} />}
         {tab === 'export' && <ExportTab boardId={boardId} />}
-        {tab === 'live' && <LiveTab boardId={boardId} />}
+        {tab === 'live' && <LiveTab boardId={boardId} livePresence={livePresence} lastPeerReaction={lastPeerReaction} />}
       </div>
     </div>
   );
@@ -386,10 +394,17 @@ function ExportTab({ boardId }: { boardId: string }) {
 }
 
 /* ── Reactions / live cursors ────────────────────────────────────── */
-function LiveTab({ boardId }: { boardId: string }) {
+function LiveTab({
+  boardId, livePresence, lastPeerReaction,
+}: {
+  boardId: string;
+  livePresence?: Record<string, LivePresence>;
+  lastPeerReaction?: LiveReaction | null;
+}) {
   const [presence, setPresence] = useState<PresenceRec[]>([]);
   const [selfId, setSelfId] = useState<string | null>(null);
   const [lastReaction, setLastReaction] = useState<string | null>(null);
+  const [lastReactionFrom, setLastReactionFrom] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun({ domain: 'whiteboard', action: 'presence-list', input: { boardId } });
@@ -405,9 +420,32 @@ function LiveTab({ boardId }: { boardId: string }) {
     return () => clearInterval(poll);
   }, [refresh]);
 
+  // Dead-event-listener fix (verification-audit campaign): merge pushed
+  // presence updates on top of the 10s poll so the list updates instantly
+  // once another participant's cursor pings (see useWhiteboardCollab's
+  // presence-ping heartbeat), instead of only ever reflecting a stale poll.
+  useEffect(() => {
+    if (!livePresence) return;
+    setPresence((prev) => {
+      const byId = new Map(prev.map((p) => [p.userId, p]));
+      for (const p of Object.values(livePresence)) {
+        byId.set(p.userId, { userId: p.userId, name: p.name, color: p.color, x: p.x, y: p.y });
+      }
+      return Array.from(byId.values());
+    });
+  }, [livePresence]);
+
+  // Surface reactions broadcast by OTHER participants — previously only the
+  // sender ever saw their own "Sent 😀" confirmation.
+  useEffect(() => {
+    if (!lastPeerReaction) return;
+    setLastReaction(lastPeerReaction.emoji);
+    setLastReactionFrom(lastPeerReaction.authorId === selfId ? null : lastPeerReaction.authorName);
+  }, [lastPeerReaction, selfId]);
+
   async function sendReaction(emoji: string) {
     const r = await lensRun({ domain: 'whiteboard', action: 'reaction-send', input: { boardId, emoji, x: 0, y: 0 } });
-    if (r.data?.ok) setLastReaction(emoji);
+    if (r.data?.ok) { setLastReaction(emoji); setLastReactionFrom(null); }
   }
 
   return (
@@ -422,7 +460,11 @@ function LiveTab({ boardId }: { boardId: string }) {
             </button>
           ))}
         </div>
-        {lastReaction && <div className="text-[10px] text-gray-400 mt-1">Sent {lastReaction}</div>}
+        {lastReaction && (
+          <div className="text-[10px] text-gray-400 mt-1">
+            {lastReactionFrom ? `${lastReactionFrom} sent ${lastReaction}` : `Sent ${lastReaction}`}
+          </div>
+        )}
       </div>
       <div>
         <div className="text-[10px] uppercase tracking-wider text-sky-300 mb-1 flex items-center gap-1"><Users className="w-3 h-3" />Live cursors</div>

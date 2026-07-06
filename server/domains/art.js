@@ -13,6 +13,7 @@ import * as fsp from "node:fs/promises";
 import path from "path";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { registerAsset } from "../lib/evo-asset/registry.js";
+import { generatePollinationsImage } from "../lib/pollinations-image.js";
 
 const PROCEDURAL_KINDS = new Set([
   "stone", "wood", "brick", "cloth", "metal", "leather", "thatch", "dirt",
@@ -40,6 +41,17 @@ function decodeDataUrl(dataUrl) {
 }
 
 export default function registerArtActions(registerLensAction) {
+  // Dead-macro-call fix (verification-audit campaign): the "AI Generate"
+  // panel called domain:'art', action:'generate' — never registered,
+  // guaranteed unknown_macro. Wired to the same real Pollinations
+  // text-to-image capability chat.image-generate already uses.
+  registerLensAction("art", "generate", async (_ctx, _artifact, params = {}) => {
+    const gen = await generatePollinationsImage({ prompt: params.prompt, width: params.width, height: params.height, seed: params.seed });
+    if (!gen.ok) return gen;
+    const { ok, ...result } = gen;
+    return { ok, result };
+  });
+
   registerLensAction("art", "vision", async (ctx, artifact, _params) => {
     const { imageB64, imageUrl } = artifact.data || {};
     if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };

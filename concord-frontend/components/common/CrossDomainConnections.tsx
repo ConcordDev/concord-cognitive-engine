@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { apiHelpers } from '@/lib/api/client';
@@ -109,17 +109,14 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
-  // ---- Keyboard shortcut: Cmd/Ctrl + J to toggle ----
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // Duplicate-handler-race fix (verification-audit campaign): this used to
+  // bind its own Cmd/Ctrl+J global keydown listener, but ConKayOverlay.tsx
+  // (mounted alongside this component on every lens page via
+  // app/lenses/layout.tsx) ALSO binds Cmd/Ctrl+J app-wide, so every press
+  // toggled both this panel and ConKay simultaneously. ConKay is the
+  // flagship shortcut owner for Cmd/Ctrl+J; this panel keeps its visible
+  // toggle button (below) as the entry point instead of a second global
+  // binding on the same combo.
 
   // ---- Fetch cross-domain connections via semantic search (primary) or graph.force (fallback) ----
   const {
@@ -207,10 +204,6 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
     [router]
   );
 
-  // ---- Platform modifier key label ----
-  const modKey =
-    typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '\u2318' : 'Ctrl';
-
   const isLoading = graphLoading;
   const hasError = !!graphError;
   const isEmpty = !isLoading && !hasError && connections.length === 0;
@@ -224,7 +217,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
           onClick={() => setOpen(true)}
           className="fixed bottom-[18.5rem] right-6 z-40 w-12 h-12 rounded-full bg-lattice-surface border border-lattice-border text-gray-300 shadow-lg flex items-center justify-center hover:bg-lattice-elevated hover:text-white transition-colors"
           aria-label="Open cross-domain connections"
-          title={`Connections (${modKey}+J)`}
+          title="Connections"
         >
           <Network className="w-5 h-5" />
         </button>
@@ -396,7 +389,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
               {/* Footer */}
               <div className="px-4 py-2.5 border-t border-lattice-border bg-lattice-surface">
                 <p className="text-[10px] text-gray-400 text-center">
-                  {modKey}+J to toggle &middot; Click a result to navigate
+                  Click a result to navigate
                 </p>
               </div>
             </motion.aside>

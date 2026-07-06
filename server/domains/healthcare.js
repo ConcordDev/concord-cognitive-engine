@@ -391,6 +391,42 @@ export default function registerHealthcareActions(registerLensAction) {
     }
   }
 
+  // Dead-macro-call fix (verification-audit campaign): the "Generate Care
+  // Plan" button called domain:'healthcare', action:'generate' — never
+  // registered, guaranteed unknown_macro. Same honest-fallback idiom as
+  // symptom-triage above: LLM-backed when available, a safe deterministic
+  // "consult a provider" scaffold otherwise — never a fabricated plan.
+  registerLensAction("healthcare", "generate", async (ctx, _artifact, params = {}) => {
+    const symptoms = String(params.symptoms || "").trim();
+    if (!symptoms) return { ok: false, error: "symptoms required" };
+    const title = "Generated Care Plan";
+    const deterministic = () => ({
+      title,
+      content: [
+        `# Care Plan Scaffold`,
+        ``,
+        `**Reported symptoms.** ${symptoms}`,
+        ``,
+        `**This is not a diagnosis.** An AI-assisted care plan requires an LLM-enabled session; this deterministic scaffold only organizes what was entered.`,
+        ``,
+        `**Suggested next steps.** Track symptom onset, duration, and severity; note any triggers or relief; schedule a visit with a provider if symptoms persist, worsen, or include chest pain, difficulty breathing, sudden severe headache, or suicidal ideation — those warrant emergency care immediately.`,
+      ].join("\n"),
+    });
+    if (!ctx?.llm?.chat) return { ok: true, result: deterministic() };
+    try {
+      const sys = `You are a patient-education assistant drafting a CARE PLAN OUTLINE from reported symptoms. NEVER diagnose. Always include a line recommending the patient confirm the plan with a licensed provider. Use markdown headings: Summary, Self-Care Steps, When To Seek Care, Follow-Up.`;
+      const llmRes = await ctx.llm.chat({
+        messages: [{ role: "system", content: sys }, { role: "user", content: `Reported symptoms: ${symptoms}` }],
+        temperature: 0.2, maxTokens: 900, slot: "conscious",
+      });
+      const text = String(llmRes?.text || llmRes?.content || "").trim();
+      if (!text) return { ok: true, result: deterministic() };
+      return { ok: true, result: { title, content: text } };
+    } catch {
+      return { ok: true, result: deterministic() };
+    }
+  });
+
   registerLensAction("healthcare", "symptom-triage", async (ctx, _artifact, params = {}) => {
     if (!ctx?.llm?.chat) {
       return { ok: true, result: { severity: "see_doctor", candidates: [], reasoning: "AI unavailable. Consult a provider." } };

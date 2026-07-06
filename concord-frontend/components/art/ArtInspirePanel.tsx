@@ -38,7 +38,8 @@ export function ArtInspirePanel() {
 
   const shuffle = async () => {
     const r = await lensRun('art', 'art-prompt', { random: true, category: activeCat || undefined });
-    if (r.data?.result?.prompt) setPrompt(r.data.result.prompt as Prompt);
+    const nextPrompt = r.data?.result?.prompt;
+    if (nextPrompt) setPrompt(nextPrompt as Prompt);
   };
 
   if (loading) {

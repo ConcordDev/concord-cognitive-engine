@@ -430,8 +430,27 @@ export type SocketEvent =
   // union, so HUDs can subscribe instead of polling (push + slow backstop).
   | 'world:drift-alert'
   | 'brawl-invited'
+  | 'brawl-started'
   | 'climbing:route-completed'
   | 'player:corpse-dropped'
+  // Dead-event-listener fix (verification-audit campaign) — real server
+  // broadcast (server/lib/social-pings.js) had no socket-to-window bridge
+  // at all, so WorldMarkers.tsx's 'concordia:social-ping' listener never fired.
+  | 'social:ping'
+  // Dead-event-listener fix (verification-audit campaign) — server emitted
+  // 'arena:match:found' to the queued/waiting player on match creation
+  // (server/routes/arena.js#createMatch) but nothing subscribed, so that
+  // player never learned their match formed (only the initiator, via the
+  // direct POST /api/arena/queue response, ever saw it).
+  | 'arena:match:found'
+  // Dead-event-listener fix (verification-audit campaign) — whiteboard's
+  // "Live" tab (WhiteboardCollabPanel.tsx) has real reaction/presence
+  // backend (server/domains/whiteboard.js reaction-send/presence-ping),
+  // but these two names were never forwarded off the raw socket at all,
+  // so the labeled Live UI never received a push update (presence was
+  // poll-only and never populated since nothing ever called presence-ping).
+  | 'whiteboard:reaction'
+  | 'whiteboard:presence'
   // The System — diegetic push-driven status layer (players/NPCs/hostiles).
   | 'system:level-up'
   | 'system:skill-acquired'
@@ -532,7 +551,27 @@ export type SocketEvent =
   // request opts in with x-conkay-run-id. The ConKay HUD animates these 1:1.
   | 'macro:started'
   | 'macro:stage'
-  | 'macro:completed';
+  | 'macro:completed'
+  // Realtime dead-event wiring pass (2026-07-05) — these were already
+  // server-emitted but missing from the union, so consumers were stuck on
+  // dead `window.addEventListener` calls nothing ever dispatched.
+  | 'achievement:unlocked'
+  | 'concord:announcement'
+  | 'auction:bid-placed'
+  | 'auction:settled'
+  | 'disease:contracted'
+  | 'disease:cured'
+  // Dead-event-listener fix (verification-audit campaign) — real server
+  // broadcast (server/lib/disease-engine.js#tickDiseases) with zero
+  // frontend consumer; DiseaseStatusHUD.tsx now subscribes alongside its
+  // sibling disease:contracted/disease:cured handlers.
+  | 'disease:lethal-progression'
+  | 'festival:started'
+  | 'friend:request-accepted'
+  | 'friend:request-received'
+  | 'mail:received'
+  | 'world:invite-received'
+  | 'world:marker-placed';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

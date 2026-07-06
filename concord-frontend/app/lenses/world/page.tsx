@@ -771,6 +771,10 @@ const DamageBillboard = dynamic(
   () => import('@/components/world/DamageBillboard').then((m) => ({ default: m.DamageBillboard })),
   { ssr: false },
 );
+const WorldMarkers = dynamic(
+  () => import('@/components/world-lens/WorldMarkers').then((m) => ({ default: m.WorldMarkers })),
+  { ssr: false },
+);
 const WorldSigns = dynamic(
   () => import('@/components/world/WorldSigns').then((m) => ({ default: m.WorldSigns })),
   { ssr: false },
@@ -2354,6 +2358,11 @@ export default function WorldLensPage() {
     return reconRef.current;
   }
   const [weatherData, setWeatherData] = useState<{ type: string; intensity: number } | null>(null);
+  // Real server wind — `world:weather` (server/lib/weather.js), distinct from
+  // the `weather:update` ticker above (an unrelated external-data-feed).
+  // Threaded into SkyWeatherRenderer/FactionBanners/InstancedGrass so they
+  // stop hardcoding a zero wind direction.
+  const [windDirection, setWindDirection] = useState(0);
   const [weatherModifiers, setWeatherModifiers] = useState<WeatherPhysicsModifiers | null>(null);
   // Live mirror so socket handlers can read the current target / stamina
   // without stale closures. Updated below via useEffect.
@@ -2690,7 +2699,7 @@ export default function WorldLensPage() {
         setGatherResult(`Gathered: ${summary}`);
         setTimeout(() => setGatherResult(null), 3500);
         // If this gather triggered a level-up, show upgrade prompt
-        const cl = data.skillProgress?.characterLevelResult;
+        const cl = data?.skillProgress?.characterLevelResult;
         if (cl?.pendingUpgrades > 0) {
           setUpgradePrompt({
             characterLevel: cl.characterLevel,
@@ -2703,8 +2712,8 @@ export default function WorldLensPage() {
             n.id === nodeId
               ? {
                   ...n,
-                  quantity_remaining: data.node?.quantityRemaining ?? 0,
-                  is_depleted: data.node?.isDepleted ? 1 : 0,
+                  quantity_remaining: data?.node?.quantityRemaining ?? 0,
+                  is_depleted: data?.node?.isDepleted ? 1 : 0,
                 }
               : n
           )
@@ -3627,6 +3636,12 @@ export default function WorldLensPage() {
       }
     };
 
+    // Real server wind direction (server/lib/weather.js#`world:weather`).
+    const handleWorldWeather = (msg: unknown) => {
+      const data = msg as { worldId?: string; windDirection?: number };
+      if (typeof data?.windDirection === 'number') setWindDirection(data.windDirection);
+    };
+
     const handleWorldDeformation = (msg: unknown) => {
       const rec = msg as DeformationRecord;
       if (!rec?.id) return;
@@ -3662,7 +3677,8 @@ export default function WorldLensPage() {
     worldSocket.on('world:notification', handleWorldNotification);
     worldSocket.on('world:action', handleWorldAction);
     worldSocket.on('weather:update', handleWeatherUpdate);
-    worldSocket.on('world:deformation', handleWorldDeformation);
+    worldSocket.on('world:weather', handleWorldWeather);
+    worldSocket.on('concordia:terrain-deformed', handleWorldDeformation);
     // Embodied sonic-pulse → window event for SoundscapeEngine. Server emits
     // when a non-sensor source writes a loud sonic_os.ambient_db delta (skill
     // cast / combat). Engine briefly accents master gain in proportion.
@@ -3701,6 +3717,12 @@ export default function WorldLensPage() {
     const SR_BRIDGE_EVENTS = [
       'world:event:scheduled', 'world:plague-declared', 'world:crisis', 'world:crisis-resolved',
       'faction:war-declared', 'combat:telegraph', 'combat:impact', 'player:low-health',
+      // combat:kill — ScreenReaderAnnouncer's COMBAT_CUES listens for the
+      // bridged `concordia:combat-kill` window event; it was never in this
+      // list so the announcer never spoke a kill despite the raw socket
+      // event being live (worldSocket.on('combat:kill', handleCombatKill)
+      // above already consumes it for gameplay state).
+      'combat:kill',
     ];
     const srBridges: Array<[string, (...a: unknown[]) => void]> = SR_BRIDGE_EVENTS.map((kind) => {
       const winName = `concordia:${kind.replace(/:/g, '-')}`;
@@ -3726,7 +3748,8 @@ export default function WorldLensPage() {
       worldSocket.off('world:notification', handleWorldNotification);
       worldSocket.off('world:action', handleWorldAction);
       worldSocket.off('weather:update', handleWeatherUpdate);
-      worldSocket.off('world:deformation', handleWorldDeformation);
+      worldSocket.off('world:weather', handleWorldWeather);
+      worldSocket.off('concordia:terrain-deformed', handleWorldDeformation);
       worldSocket.off('world:sonic-pulse', handleSonicPulse);
       worldSocket.off('world:sign-placed', handleSignPlaced);
       worldSocket.off('horror:tension', handleHorrorTension);
@@ -4609,7 +4632,7 @@ export default function WorldLensPage() {
               if (t === 'sandstorm') return 'fog';
               return 'clear';
             })()}
-            windDirection={0}
+            windDirection={windDirection}
             windSpeed={2 + (weatherData?.intensity ?? 0) * 6}
             season={worldSeasonForSky}
             quality="medium"
@@ -4742,6 +4765,7 @@ export default function WorldLensPage() {
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
           <DamageBillboard />
+          <WorldMarkers />
           <WorldSigns
             worldId={activeDistrict.id}
             playerPosition={{ x: playerAvatar.position.x, y: 0, z: playerAvatar.position.z }}
@@ -5328,7 +5352,7 @@ export default function WorldLensPage() {
             worldId={activeDistrict?.id || 'concordia-hub'}
             bannerAnchors={[]}
             getCamera={() => null}
-            windDirection={0}
+            windDirection={windDirection}
           />
           {/* Sprint D W2 — GPU-instanced grass tile around the player.
               Vertex-shader Perlin wind + footstep brush response. Density
@@ -5338,7 +5362,7 @@ export default function WorldLensPage() {
             tileHalf={80}
             bladesPerTile={4000}
             playerPos={{ x: 0, y: 0, z: 0 }}
-            windDirection={0}
+            windDirection={windDirection}
           />
 
           {/* Sprint D EE3 — adaptive music stem engine layered on top of

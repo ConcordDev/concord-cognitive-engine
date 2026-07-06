@@ -3,6 +3,15 @@ name: Deploy
 on:
   push:
     branches: [main]
+  # The `gate` job (lint, type-check, depth-honesty, the depth test suite,
+  # security-detector ratchet) is the ONLY job that should also run here — a
+  # regression could otherwise reach main via a merged PR with no CI having
+  # ever run the depth suite against it, since this was previously the sole
+  # workflow that runs it. `build-and-push`/`deploy-staging`/`deploy-production`
+  # stay push/workflow_dispatch-only (see their own `if:` conditions below) so
+  # a PR never builds+pushes an image or attempts a deploy.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -33,6 +42,14 @@ jobs:
   gate:
     name: CI gate (block deploy on red)
     runs-on: ubuntu-latest
+    # Job-level (not workflow-level) so this never leaks into build-and-push/
+    # deploy-staging/deploy-production — those are real build/deploy
+    # operations, not tests. Without this, tests/preload/no-egress.mjs's
+    # NODE_ENV==='test' gate never engages here, so the depth suite's
+    # network/LLM cases could reach the live network during this gate run
+    # instead of skipping deterministically.
+    env:
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -97,6 +114,9 @@ jobs:
   build-and-push:
     name: Build & Push Images
     needs: [gate]
+    # PRs should exercise `gate` (added above) but never build+push a
+    # registry image — that stays push-to-main/workflow_dispatch-only.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -251,6 +271,13 @@ jobs:
 
           if echo "$HEALTH" | grep -qi "fail"; then
             echo "Smoke test FAILED -- initiating rollback"
+            kubectl rollout undo deployment/concord-backend -n concord
+            kubectl rollout undo deployment/concord-frontend -n concord
+            exit 1
+          fi
+
+          if echo "$READY" | grep -qi "fail"; then
+            echo "Readiness check FAILED -- initiating rollback"
             kubectl rollout undo deployment/concord-backend -n concord
             kubectl rollout undo deployment/concord-frontend -n concord
             exit 1

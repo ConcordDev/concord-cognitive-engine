@@ -57,7 +57,8 @@ export function SpectatorOverlay() {
         body: JSON.stringify({ domain: 'spectator', name: 'list_for_world', input: { worldId: active.worldId } }),
       });
       const j = await r.json();
-      const list = j?.data?.spectators || j?.spectators || [];
+      const payload = j?.result ?? j;
+      const list = payload?.spectators || [];
       if (Array.isArray(list)) setSubscribers(list.length);
     } catch { /* swallow */ }
   }, [active?.worldId]);

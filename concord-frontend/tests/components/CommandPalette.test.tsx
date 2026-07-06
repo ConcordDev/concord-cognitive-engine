@@ -54,6 +54,11 @@ vi.mock('@/lib/lens-registry', () => {
       core: { label: 'Core' },
       governance: { label: 'Governance' },
       system: { label: 'System' },
+      // Fix 7 (verification audit) — the palette's 6 hardcoded `mode:*`
+      // run-mode pseudo-entries (DA4) use category 'world' regardless of
+      // the mocked lens-registry, so the mock must cover it too or the
+      // component's category-grouping useMemo throws on `config.label`.
+      world: { label: 'World' },
     },
   };
 });
@@ -209,9 +214,11 @@ describe('CommandPalette', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
-    // Three items (ConKay staple + two mock lenses), indices 0,1,2. ArrowDown
-    // wraps via (prev < length - 1 ? prev + 1 : 0); 20 presses from index 0
-    // land at index 2 (20 mod 3 = 2) → Marketplace.
+    // Nine items: ConKay staple + two mock lenses + the 6 hardcoded `mode:*`
+    // run-mode entries (Fix 7 — always present regardless of the mocked
+    // lens-registry, since they're baked into the component itself).
+    // Indices 0-8. ArrowDown wraps via (prev < length - 1 ? prev + 1 : 0);
+    // 20 presses from index 0 land at index 2 (20 mod 9 = 2) → Marketplace.
     for (let i = 0; i < 20; i++) {
       fireEvent.keyDown(input, { key: 'ArrowDown' });
     }
@@ -223,12 +230,13 @@ describe('CommandPalette', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
-    // Start at 0; ArrowUp wraps to last (1 = Marketplace), then again
-    // back to 0 (Resonance).
-    fireEvent.keyDown(input, { key: 'ArrowUp' });
-    fireEvent.keyDown(input, { key: 'ArrowUp' });
+    // 9 total items (see above). ArrowUp wraps via
+    // (prev > 0 ? prev - 1 : length - 1); starting at index 0, 8 ArrowUps
+    // land back at index 1 (Resonance) — (9 - (8 mod 9)) mod 9 = 1.
+    for (let i = 0; i < 8; i++) {
+      fireEvent.keyDown(input, { key: 'ArrowUp' });
+    }
     fireEvent.keyDown(input, { key: 'Enter' });
-    // 2 ArrowUps round-trip back to index 0.
     expect(mockPush).toHaveBeenCalledWith('/lenses/resonance');
   });
 
@@ -244,11 +252,14 @@ describe('CommandPalette', () => {
   it('exposes role=option on each lens entry with stable ids', () => {
     render(<CommandPalette {...defaultProps} />);
     const options = screen.getAllByRole('option');
-    // ConKay summon staple is prepended ahead of the two mock lenses.
-    expect(options).toHaveLength(3);
+    // ConKay summon staple + two mock lenses + 6 hardcoded run-mode entries
+    // (Fix 7 — see above).
+    expect(options).toHaveLength(9);
     expect(options[0]).toHaveAttribute('id', 'palette-item-conkay');
     expect(options[1]).toHaveAttribute('id', 'palette-item-resonance');
     expect(options[2]).toHaveAttribute('id', 'palette-item-marketplace');
+    expect(options[3]).toHaveAttribute('id', 'palette-item-mode:roguelite');
+    expect(options[8]).toHaveAttribute('id', 'palette-item-mode:brawl');
   });
 
   it('marks the selected option with aria-selected=true', () => {

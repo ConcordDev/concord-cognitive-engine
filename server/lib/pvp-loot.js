@@ -51,11 +51,16 @@ export function handlePlayerDeath(db, { killedId, killerId, gameMode, worldId, x
 
   const itemsToDrop = invItems.slice(0, Math.max(1, Math.min(3, invItems.length)));
 
-  // Deduct Sparks from victim
+  // Money-hygiene fix (verification-audit campaign): the Sparks debit and
+  // its ledger row must land together — same class of bug as handleRobbery
+  // below.
   if (sparksDropped > 0) {
-    db.prepare(`UPDATE users SET sparks = sparks - ? WHERE id = ?`).run(sparksDropped, killedId);
-    db.prepare(`INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?, ?, ?, ?, ?)`)
-      .run(crypto.randomUUID(), killedId, -sparksDropped, `death_drop:${worldId}`, worldId);
+    const tx = db.transaction(() => {
+      db.prepare(`UPDATE users SET sparks = sparks - ? WHERE id = ?`).run(sparksDropped, killedId);
+      db.prepare(`INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?, ?, ?, ?, ?)`)
+        .run(crypto.randomUUID(), killedId, -sparksDropped, `death_drop:${worldId}`, worldId);
+    });
+    tx();
   }
 
   // Remove items from victim's inventory — single batched DELETE.
@@ -95,11 +100,15 @@ export function claimLootBag(db, { bagId, claimerId }) {
     return { ok: false, error: "killer_priority_window", priorityEndsAt };
   }
 
-  // Transfer Sparks
+  // Money-hygiene fix (verification-audit campaign): same class of bug as
+  // handlePlayerDeath/handleRobbery/handleNPCKilledPlayer.
   if (bag.sparks > 0) {
-    db.prepare(`UPDATE users SET sparks = sparks + ? WHERE id = ?`).run(bag.sparks, claimerId);
-    db.prepare(`INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?, ?, ?, ?, ?)`)
-      .run(crypto.randomUUID(), claimerId, bag.sparks, `loot_claim:${bagId}`, bag.world_id);
+    const tx = db.transaction(() => {
+      db.prepare(`UPDATE users SET sparks = sparks + ? WHERE id = ?`).run(bag.sparks, claimerId);
+      db.prepare(`INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?, ?, ?, ?, ?)`)
+        .run(crypto.randomUUID(), claimerId, bag.sparks, `loot_claim:${bagId}`, bag.world_id);
+    });
+    tx();
   }
 
   // Transfer items — single batched SELECT for existing inventory rows
@@ -148,14 +157,21 @@ export function handleRobbery(db, { robberId, victimId, gameMode, worldId }) {
     WHERE user_id = ? ORDER BY RANDOM() LIMIT 1
   `).get(victimId);
 
-  // Transfer Sparks
+  // Money-hygiene fix (verification-audit campaign): victim-debit,
+  // robber-credit, and both sparks_ledger rows must land as one unit — a
+  // crash mid-sequence previously could debit the victim without crediting
+  // the robber (Sparks destroyed) or leave the balance change with no
+  // matching ledger row.
   if (sparksStolen > 0) {
-    db.prepare(`UPDATE users SET sparks = sparks - ? WHERE id = ?`).run(sparksStolen, victimId);
-    db.prepare(`UPDATE users SET sparks = sparks + ? WHERE id = ?`).run(sparksStolen, robberId);
-    db.prepare(`INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?, ?, ?, ?, ?)`)
-      .run(crypto.randomUUID(), victimId, -sparksStolen, `robbed_by:${robberId}`, worldId);
-    db.prepare(`INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?, ?, ?, ?, ?)`)
-      .run(crypto.randomUUID(), robberId, sparksStolen, `robbed_from:${victimId}`, worldId);
+    const tx = db.transaction(() => {
+      db.prepare(`UPDATE users SET sparks = sparks - ? WHERE id = ?`).run(sparksStolen, victimId);
+      db.prepare(`UPDATE users SET sparks = sparks + ? WHERE id = ?`).run(sparksStolen, robberId);
+      db.prepare(`INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?, ?, ?, ?, ?)`)
+        .run(crypto.randomUUID(), victimId, -sparksStolen, `robbed_by:${robberId}`, worldId);
+      db.prepare(`INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?, ?, ?, ?, ?)`)
+        .run(crypto.randomUUID(), robberId, sparksStolen, `robbed_from:${victimId}`, worldId);
+    });
+    tx();
   }
 
   // Transfer item
@@ -200,11 +216,15 @@ export function handleNPCKilledPlayer(db, { npcId, playerId, worldId, x = 0, y =
   `).all(playerId);
   const itemsToDrop = invItems.slice(0, Math.max(1, Math.min(3, invItems.length)));
 
-  // Deduct from victim
+  // Money-hygiene fix (verification-audit campaign): same class of bug as
+  // handlePlayerDeath/handleRobbery above.
   if (sparksDropped > 0) {
-    db.prepare('UPDATE users SET sparks = sparks - ? WHERE id = ?').run(sparksDropped, playerId);
-    db.prepare('INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?,?,?,?,?)')
-      .run(crypto.randomUUID(), playerId, -sparksDropped, `npc_kill:${npcId}`, worldId);
+    const tx = db.transaction(() => {
+      db.prepare('UPDATE users SET sparks = sparks - ? WHERE id = ?').run(sparksDropped, playerId);
+      db.prepare('INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?,?,?,?,?)')
+        .run(crypto.randomUUID(), playerId, -sparksDropped, `npc_kill:${npcId}`, worldId);
+    });
+    tx();
   }
   if (itemsToDrop.length > 0) {
     const ids = itemsToDrop.map(i => i.id);

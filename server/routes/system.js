@@ -606,30 +606,16 @@ export default function registerSystemRoutes(app, {
   });
 
   // ---- Health API ----
-  app.get("/api/health", (req, res) => {
-    const dbStatus = typeof getDbStatus === 'function' ? getDbStatus() : {};
-    const health = {
-      status: "healthy",
-      version: VERSION,
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      timestamp: nowISO(),
-      checks: {
-        state: STATE ? "ok" : "error",
-        dtus: (STATE.dtus?.size || 0) > 0 ? "ok" : "warning",
-        llm: LLM_READY ? "ok" : "disabled",
-        organs: (STATE.organs?.size || 0) > 0 ? "ok" : "warning",
-        growth: STATE.growth ? "ok" : "warning"
-      },
-      postgres: { connected: !!dbStatus.pgPool, status: dbStatus.pgPool ? 'connected' : 'in-memory-fallback' },
-      redis: { connected: !!dbStatus.redisClient, status: dbStatus.redisClient ? 'connected' : 'in-memory-fallback' },
-      saveFailures: STATE._saveFailures || 0,
-    };
-    const hasErrors = Object.values(health.checks).some(v => v === "error");
-    health.status = hasErrors ? "unhealthy" : "healthy";
-    return res.status(hasErrors ? 503 : 200).json(health);
-  });
-
+  //
+  // Bug fix (verification-audit campaign, duplicate-handler-race finding):
+  // this was a second GET /api/health registration, dead-by-registration-
+  // order — the live handler is the "Alias /api/health → /health" redirect
+  // above, which forwards to the well-documented liveness probe at /health
+  // (always-200, diagnostic-only checks, per the liveness-vs-readiness
+  // split this file's /health comment explains). This duplicate predated
+  // that alias, returned a DIFFERENT and less-careful shape (could 503 on
+  // STATE falsy), and was never reachable. Removed rather than merged —
+  // the live redirect is the intentional, documented design.
   app.get("/api/health/deep", (req, res) => {
     const checks = [];
     checks.push({

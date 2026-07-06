@@ -107,16 +107,12 @@ export default function registerVoiceChatMacros(register) {
     return { ok: true };
   }, { note: "Relay ICE candidate." });
 
-  register("voice_chat", "leave", async (ctx, input = {}) => {
-    const userId = ctx?.actor?.userId;
-    if (!userId) return { ok: false, reason: "no_actor" };
-    const { targetUserId } = input || {};
-    if (!targetUserId) return { ok: false, reason: "missing_inputs" };
-    try {
-      if (globalThis?.__CONCORD_REALTIME__?.io) {
-        globalThis.__CONCORD_REALTIME__.io.to(`user:${targetUserId}`).emit("voice:leave", { from: userId });
-      }
-    } catch { /* optional */ }
-    return { ok: true };
-  }, { note: "Notify peer of disconnect." });
+  // Dead-event-listener fix (verification-audit campaign): a "voice_chat.leave"
+  // 1:1-disconnect macro used to live here, emitting "voice:leave" to a single
+  // target user. It had zero callers anywhere in the frontend, and even if
+  // called, nothing ever subscribed to "voice:leave" (VoiceMesh.tsx only
+  // subscribes to voice:offer/answer/ice/participant-joined/participant-left).
+  // Fully superseded by leave_room below, whose "voice:participant-left"
+  // broadcast is what VoiceMesh.tsx actually listens for to close a peer
+  // connection — removed rather than wiring a macro nothing ever calls.
 }

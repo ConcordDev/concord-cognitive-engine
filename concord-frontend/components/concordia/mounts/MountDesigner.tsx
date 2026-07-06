@@ -74,7 +74,14 @@ async function runMacro<T = unknown>(
     body: JSON.stringify({ domain, name, input }),
   });
   if (!r.ok) throw new Error(`macro ${domain}.${name} failed: ${r.status}`);
-  return r.json() as Promise<T>;
+  const j = await r.json();
+  // POST /api/lens/run always answers { ok: true, result: PAYLOAD } where
+  // `ok` is just the transport flag — PAYLOAD (the macro's own
+  // { ok, companions/species/gait/gear/... }) carries the real
+  // success/failure + fields. Unwrap it here so every caller can keep
+  // reading list.companions / s.speciesId / g.gear / sp.species / gp.gait
+  // directly.
+  return (j?.result ?? j) as T;
 }
 
 function fmtMul(x: number | undefined): string {

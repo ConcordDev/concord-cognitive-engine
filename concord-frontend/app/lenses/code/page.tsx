@@ -774,9 +774,14 @@ export default function CodeLensPage() {
 
   const runScriptMutation = useMutation({
     mutationFn: async () => {
+      // Dead-macro-call fix (verification-audit campaign): 'code.generate'
+      // was never registered — every run hit onError and silently fell
+      // back to the local simulation. 'code.exec' is the real macro for
+      // this shape (executes JS/TS in a sandboxed node:vm; other
+      // languages return an honest "unsupported" result).
       const res = await api.post('/api/lens/run', {
         domain: 'code',
-        action: 'generate',
+        action: 'exec',
         input: {
           code: activeTab.content,
           language: activeTab.language,
@@ -786,11 +791,12 @@ export default function CodeLensPage() {
       return res.data;
     },
     onSuccess: (data) => {
-      const serverContent = typeof data?.result === 'string'
-        ? data.result
-        : typeof data?.result?.content === 'string'
-          ? data.result.content
-          : null;
+      // code.exec returns { result: { stdout, stderr, exitCode, supported } },
+      // not a bare string/.content — read the real shape.
+      const result = data?.result as { stdout?: string; stderr?: string; supported?: boolean } | undefined;
+      const serverContent = result?.supported === false
+        ? null
+        : [result?.stdout, result?.stderr].filter(Boolean).join('\n').trim() || null;
       const localResult = generateScriptOutput(activeTab.scriptType || activeScriptType, activeTab.content);
       setScriptOutput({
         log: serverContent

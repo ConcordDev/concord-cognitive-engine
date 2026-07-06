@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Trophy, Lock, Sparkles, Zap, Star, AlertTriangle, RefreshCw } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface CatalogEntry {
   id: string;
@@ -91,10 +92,10 @@ export default function AchievementsLensPage() {
 
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handler = () => refresh();
-    window.addEventListener('achievement:unlocked', handler);
-    return () => window.removeEventListener('achievement:unlocked', handler);
+    const off = subscribe('achievement:unlocked', () => {
+      void refresh();
+    });
+    return () => off?.();
   }, [refresh]);
 
   const earnedIds = useMemo(() => new Set(earned.map((e) => e.achievement_id)), [earned]);

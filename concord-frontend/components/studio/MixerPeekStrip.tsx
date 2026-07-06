@@ -38,7 +38,10 @@ function Meter({ level, color = 'bg-emerald-400' }: { level: number; color?: str
   const segments = 8;
   const active = Math.round(level * segments);
   return (
-    <div className="flex flex-col-reverse gap-px h-full">
+    <div
+      className="flex flex-col-reverse gap-px h-full"
+      title="Simulated level — not live audio"
+    >
       {Array.from({ length: segments }).map((_, i) => {
         const isActive = i < active;
         const segColor = i >= 7 ? 'bg-rose-400' : i >= 6 ? 'bg-amber-400' : color;
@@ -83,6 +86,12 @@ export default function MixerPeekStrip({
           <Volume2 className="w-3 h-3" />
           Mixer
           <span className="text-zinc-600">· {tracks.length} tracks</span>
+          <span
+            className="text-zinc-600 lowercase tracking-normal italic"
+            title="Meters are simulated (volume + jitter) — not live post-fader audio analysis"
+          >
+            · sim levels
+          </span>
         </div>
         {onToggleExpanded && (
           <button

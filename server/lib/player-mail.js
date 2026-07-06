@@ -52,26 +52,34 @@ export function sendMail(db, input) {
   const codCc = Math.max(0, Number(input?.codCc) || 0);
   const worldId = input?.worldId || null;
 
-  // Escrow: debit the sender now so the funds exist when the recipient
-  // claims. The recipient's COD payment is collected on claim.
-  if (attachmentCc > 0) {
-    const debit = _walletDebit(db, fromUserId, attachmentCc, "mail_escrow");
-    if (!debit.ok) return { ok: false, error: debit.error || "wallet_debit_failed" };
-  }
-
-  // Lock the DTU attachments to the mail row by stamping their owner to
-  // an escrow account. Done via meta_json marker so we don't need a new
-  // column. Best-effort — non-existent DTUs are silently skipped (the
-  // claim path will surface the mismatch).
-  for (const dtuId of attachmentDtuIds) {
-    try {
-      db.prepare(`UPDATE dtus SET data = json_set(COALESCE(data,'{}'), '$.mail_escrow', 1) WHERE id = ? AND creator_id = ?`)
-        .run(dtuId, fromUserId);
-    } catch { /* meta_json column may not exist on minimal builds */ }
-  }
-
   const id = `mail_${crypto.randomBytes(8).toString("hex")}`;
-  try {
+
+  // Money-hygiene fix (verification-audit campaign): the escrow debit, the
+  // DTU attachment lock, and the player_mail INSERT that records the
+  // escrow must land together — mirrors claimAttachments' single-
+  // transaction pattern below. Previously the debit ran as a standalone
+  // write before the INSERT; a crash between them left the sender debited
+  // with no mail row to ever release or refund the funds against.
+  let debitError = null;
+  const tx = db.transaction(() => {
+    // Escrow: debit the sender now so the funds exist when the recipient
+    // claims. The recipient's COD payment is collected on claim.
+    if (attachmentCc > 0) {
+      const debit = _walletDebit(db, fromUserId, attachmentCc, "mail_escrow");
+      if (!debit.ok) { debitError = debit; throw new Error(debit.error || "wallet_debit_failed"); }
+    }
+
+    // Lock the DTU attachments to the mail row by stamping their owner to
+    // an escrow account. Done via meta_json marker so we don't need a new
+    // column. Best-effort — non-existent DTUs are silently skipped (the
+    // claim path will surface the mismatch).
+    for (const dtuId of attachmentDtuIds) {
+      try {
+        db.prepare(`UPDATE dtus SET data = json_set(COALESCE(data,'{}'), '$.mail_escrow', 1) WHERE id = ? AND creator_id = ?`)
+          .run(dtuId, fromUserId);
+      } catch { /* meta_json column may not exist on minimal builds */ }
+    }
+
     db.prepare(`
       INSERT INTO player_mail
         (id, from_user_id, to_user_id, world_id, subject, body,
@@ -79,10 +87,13 @@ export function sendMail(db, input) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ? * 86400)
     `).run(id, fromUserId, toUserId, worldId, subject, body,
             JSON.stringify(attachmentDtuIds), attachmentCc, codCc, DEFAULT_TTL_DAYS);
+  });
+
+  try {
+    tx();
     return { ok: true, id };
   } catch (err) {
-    // Refund escrow if the insert failed.
-    if (attachmentCc > 0) _walletCredit(db, fromUserId, attachmentCc, "mail_escrow_refund");
+    if (debitError) return { ok: false, error: debitError.error || "wallet_debit_failed" };
     return { ok: false, error: err?.message };
   }
 }

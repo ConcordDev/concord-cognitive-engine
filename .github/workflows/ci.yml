@@ -147,6 +147,7 @@ jobs:
           # blanket net over files with no behavior test. Kept out of the coverage
           # run (it would tank function/branch % with unexecuted enumeration).
           NODE_OPTIONS: --max-old-space-size=6144
+          NODE_ENV: test
         run: npm run test:smoke
 
       - name: Run frontend unit tests with coverage (thresholds enforced)
@@ -157,6 +158,7 @@ jobs:
           # components/ + lib/ + hooks/ tree pushes heap usage well
           # past Node's default ~3.8GB. Match the build step's heap.
           NODE_OPTIONS: --max-old-space-size=6144
+          NODE_ENV: test
         run: npm run test:coverage
 
       - name: Frontend diff-coverage gate (changed files must be tested)
@@ -350,6 +352,10 @@ jobs:
   mobile-test:
     name: Mobile Lint, Typecheck & Test
     runs-on: ubuntu-latest
+    # Job-level is safe here — every step is lint/typecheck/test, no
+    # production build step to worry about affecting.
+    env:
+      NODE_ENV: test
 
     steps:
       - name: Checkout code
@@ -659,24 +665,28 @@ jobs:
         working-directory: ./server
         env:
           API_BASE: http://localhost:5050
+          NODE_ENV: test
         run: node --test tests/auth-security.test.js
 
       - name: Run adversarial auth bypass tests
         working-directory: ./server
         env:
           API_BASE: http://localhost:5050
+          NODE_ENV: test
         run: node --test tests/adversarial-critical-endpoints.test.js
 
       - name: Run edge case tests (critical paths)
         working-directory: ./server
         env:
           API_BASE: http://localhost:5050
+          NODE_ENV: test
         run: node --test tests/edge-cases-critical-paths.test.js
 
       - name: Run error path tests (degraded mode)
         working-directory: ./server
         env:
           API_BASE: http://localhost:5050
+          NODE_ENV: test
         run: node --test tests/error-paths.test.js
 
       - name: Stop server
@@ -792,6 +802,7 @@ jobs:
           CI: 'true'
           BASE_URL: http://localhost:3000
           NEXT_PUBLIC_API_URL: http://localhost:5050
+          NODE_ENV: test
         # Core suite: tests/e2e/ via the default playwright.config.ts.
         # The infra-tier specs (chat-flow, chat-modes, auth-oauth,
         # wallet-flow) live under tests/e2e-infra/ and run in the
@@ -1079,6 +1090,7 @@ jobs:
           CI: 'true'
           BASE_URL: http://localhost:3000
           NEXT_PUBLIC_API_URL: http://localhost:5050
+          NODE_ENV: test
         # CI=true flips the playwright webServer from `next dev` to
         # `npm run start:ci` against the prod build above. No reporter
         # override — playwright-infra.config.ts ships [html, json, list]

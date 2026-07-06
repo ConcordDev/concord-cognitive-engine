@@ -93,6 +93,10 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'whiteboard:scene-update',
   'whiteboard:cursor',
   'whiteboard:vote-cast',
+  // Dead-event-listener fix (verification-audit campaign) — reaction/
+  // presence were never forwarded to the event bus at all.
+  'whiteboard:reaction',
+  'whiteboard:presence',
   // Message lens multi-device sync
   'message:saved',
   'message:unsaved',
@@ -197,9 +201,20 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'scheme:complete' as SocketEvent,
   'dynasty:heir_acceded' as SocketEvent,
   // Concordia Phase 15 — refusal field deep-cold + ark archive unlock
-  'refusal:compound' as SocketEvent,
+  'refusal:compound-threshold' as SocketEvent,
   'ark:archive_unlocked' as SocketEvent,
   'vela:reveal' as SocketEvent,
+  // Phase DB2/E7 — brawl invite (direct challenge + matchmaking pairing).
+  // BrawlInviteToast / BrawlMatchmakingQueue listen on the namespaced
+  // window event; see the rename branch below.
+  'brawl-invited' as SocketEvent,
+  // Fix (verification audit) — brawl match-start notification. See the
+  // rename branch below; BrawlActiveHUD listens on the namespaced name.
+  'brawl-started' as SocketEvent,
+  // Dead-event-listener fix (verification audit) — real server broadcast
+  // (server/lib/social-pings.js) had no bridge at all; see the rename
+  // branch below, WorldMarkers.tsx listens on the namespaced name.
+  'social:ping' as SocketEvent,
 ];
 
 interface UseSocketOptions {
@@ -294,19 +309,30 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
           //    ragdoll bridge listen for as window CustomEvents, dispatch
           //    a matching DOM event. Concordia is the only namespace
           //    with this dual-channel; other events stay event-bus-only.
-          if (
-            typeof window !== 'undefined' && (
+          if (typeof window !== 'undefined') {
+            if (
               event === ('concordia:lethal-hit' as SocketEvent) ||
               event === ('combat:hero_kill' as SocketEvent) ||
               event === ('combat:bloodline_fire_cast' as SocketEvent) ||
               event === ('scheme:complete' as SocketEvent) ||
               event === ('dynasty:heir_acceded' as SocketEvent) ||
-              event === ('refusal:compound' as SocketEvent) ||
+              event === ('refusal:compound-threshold' as SocketEvent) ||
               event === ('ark:archive_unlocked' as SocketEvent) ||
               event === ('vela:reveal' as SocketEvent)
-            )
-          ) {
-            window.dispatchEvent(new CustomEvent(event as string, { detail: data }));
+            ) {
+              window.dispatchEvent(new CustomEvent(event as string, { detail: data }));
+            } else if (event === ('brawl-invited' as SocketEvent) || event === ('brawl-started' as SocketEvent)) {
+              // Fix (verification audit) — brawl HUDs (BrawlInviteToast,
+              // BrawlMatchmakingQueue, BrawlActiveHUD) listen on the
+              // `concordia:`-namespaced window event name, NOT the raw
+              // socket event name, so they need an explicit rename here
+              // rather than the same-name dispatch used above.
+              window.dispatchEvent(new CustomEvent(`concordia:${event}`, { detail: data }));
+            } else if (event === ('social:ping' as SocketEvent)) {
+              // Dead-event-listener fix (verification audit) — WorldMarkers.tsx
+              // listens on the `concordia:`-namespaced name.
+              window.dispatchEvent(new CustomEvent(`concordia:${event}`, { detail: data }));
+            }
           }
         });
       }

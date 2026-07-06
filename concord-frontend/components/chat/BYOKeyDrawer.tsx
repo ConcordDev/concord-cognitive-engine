@@ -51,7 +51,8 @@ async function runMacro<T = unknown>(domain: string, name: string, input?: Recor
     body: JSON.stringify({ domain, name, input: input || {} }),
   });
   if (!res.ok) throw new Error(`${domain}.${name} failed`);
-  return (await res.json()) as T;
+  const j = await res.json();
+  return (j?.result ?? j) as T;
 }
 
 export default function BYOKeyDrawer({ open, onClose }: BYOKeyDrawerProps) {

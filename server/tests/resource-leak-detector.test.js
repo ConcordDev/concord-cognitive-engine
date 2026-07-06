@@ -84,6 +84,43 @@ describe("ResourceLeakDetector — listener without remove", () => {
       assert.equal(r.findings.filter(f => f.id === "listener_without_remove").length, 0);
     } finally { teardown(dir); }
   });
+
+  it("does NOT flag a comment-only mention of addEventListener (JSDoc example prose)", async () => {
+    const dir = withFixture({
+      "concord-frontend/hooks/useFoo.ts": `/**
+ * Explains the pattern this file guards against:
+ * a bare \`window.addEventListener('foo:bar', ...)\` with no cleanup
+ * leaks the listener across remounts.
+ */
+// Another mention: window.addEventListener('name', handler) — still just prose.
+export function useFoo() {
+  const off = subscribe('resize', onResize);
+  return () => off();
+}
+`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "listener_without_remove").length, 0,
+        "a comment-only mention must not be misread as a real unpaired listener call");
+    } finally { teardown(dir); }
+  });
+
+  it("STILL flags a real unpaired listener sitting right after a comment with an apostrophe", async () => {
+    const dir = withFixture({
+      "concord-frontend/hooks/useFoo.ts": `// Reads the player's current context on mount.
+export function useFoo() {
+  window.addEventListener('concordia:context-update', onUpdate);
+}
+`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      const f = r.findings.find(x => x.id === "listener_without_remove");
+      assert.ok(f, "a real unpaired listener must still be flagged even after a comment containing an apostrophe");
+      assert.equal(f.subject.event, "concordia:context-update");
+    } finally { teardown(dir); }
+  });
 });
 
 describe("ResourceLeakDetector — db.prepare inside a loop", () => {
@@ -138,6 +175,151 @@ describe("ResourceLeakDetector — high setTimeout density (info)", () => {
       assert.ok(f);
       assert.equal(f.severity, "info");
       assert.equal(f.subject.count, 9);
+    } finally { teardown(dir); }
+  });
+});
+
+describe("ResourceLeakDetector — module-scope array unbounded growth", () => {
+  it("flags a module-scope array with .push() and no eviction (frontend .ts)", async () => {
+    const dir = withFixture({
+      "concord-frontend/lib/eventCache.ts":
+        `const _cache = [];\nexport function record(x) { _cache.push(x); }\nexport function all() { return _cache; }\n`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      const f = r.findings.find(x => x.id === "unbounded_array_growth");
+      assert.ok(f, "expected unbounded_array_growth finding");
+      assert.equal(f.severity, "low");
+      assert.equal(f.subject.name, "_cache");
+      assert.equal(f.subject.file, "concord-frontend/lib/eventCache.ts");
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag a function-local array rebuilt per call", async () => {
+    const dir = withFixture({
+      "concord-frontend/lib/localArr.ts":
+        `export function collect(items) {\n  const out = [];\n  for (const i of items) out.push(i);\n  return out;\n}\n`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "unbounded_array_growth").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag a module-scope array that is .shift()-ed (bounded)", async () => {
+    const dir = withFixture({
+      "concord-frontend/lib/ringBuffer.ts":
+        `const _queue = [];\nexport function enqueue(x) {\n  _queue.push(x);\n  if (_queue.length > 100) _queue.shift();\n}\n`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "unbounded_array_growth").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag a module-scope array that is reassigned elsewhere (eviction-by-replace)", async () => {
+    const dir = withFixture({
+      "concord-frontend/lib/resetArr.ts":
+        `let _buf = [];\nexport function add(x) { _buf.push(x); }\nexport function reset() { _buf = []; }\n`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "unbounded_array_growth").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag an UPPER_SNAKE_CASE constant array", async () => {
+    const dir = withFixture({
+      "concord-frontend/lib/constArr.ts":
+        `const REGISTRY = [];\nexport function register(x) { REGISTRY.push(x); }\n`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "unbounded_array_growth").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("respects @resource-leak-ok annotation on the declaration line", async () => {
+    const dir = withFixture({
+      "concord-frontend/lib/okArr.ts":
+        `const _log = []; // @resource-leak-ok: capped externally via a heartbeat sweep\nexport function add(x) { _log.push(x); }\n`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "unbounded_array_growth").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("flags an unbounded array in server/lib too (not frontend-only)", async () => {
+    const dir = withFixture({
+      "server/lib/backendLog.js": `const _events = [];\nfunction record(e) { _events.push(e); }\nmodule.exports = { record };\n`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      const f = r.findings.find(x => x.id === "unbounded_array_growth");
+      assert.ok(f);
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag a bounded-history array pruned via `x = x.slice(-MAX)` reassignment", async () => {
+    // Real-world idiom found in server/emergent/attention-allocator.js and
+    // server/lib/horizontal-scaling.js: push, then reassign-by-slice when
+    // the length exceeds a cap. No literal `.shift()`/`.splice()` call and
+    // no `name = [` fresh-literal reassignment — the eviction is a slice
+    // reassignment, which must still count as bounded.
+    const dir = withFixture({
+      "server/lib/boundedHistory.js":
+        `let _history = [];\nconst MAX = 288;\nfunction record(x) {\n  _history.push(x);\n  if (_history.length > MAX) {\n    _history = _history.slice(-MAX);\n  }\n}\n`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "unbounded_array_growth").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT flag a listeners array pruned via `.filter()` reassignment in a closure", async () => {
+    // Real-world idiom found in server/lib/inference/tracer.js: subscribe
+    // pushes, the returned unsubscribe closure prunes via `.filter(...)`.
+    const dir = withFixture({
+      "server/lib/pubsub.js":
+        `let _listeners = [];\nfunction subscribe(fn) {\n  _listeners.push(fn);\n  return () => { _listeners = _listeners.filter((l) => l !== fn); };\n}\n`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "unbounded_array_growth").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("does NOT desync scope-depth on a regex character class containing quotes/backtick (real-world shape)", async () => {
+    // A `/['"`+backtick+`]/`-shaped regex literal (very common in this
+    // repo's own detectors/*.js) must not be mistaken for template-literal
+    // syntax — that would corrupt module-vs-function scope tracking for
+    // every line after it and produce false positives.
+    const dir = withFixture({
+      "server/lib/withRegex.js":
+        "const QUOTE_RE = /['\"`]/g;\n" +
+        "export async function run() {\n" +
+        "  const local = [];\n" +
+        "  local.push(1);\n" +
+        "  return local;\n" +
+        "}\n",
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "unbounded_array_growth").length, 0);
+    } finally { teardown(dir); }
+  });
+
+  it("flags a genuine module-scope push-only history array (real-world true positive shape)", async () => {
+    const dir = withFixture({
+      "server/emergent/threadHistoryLike.js":
+        `const _threadHistory = [];\nexport function recordRun() {\n  _threadHistory.push({ ts: Date.now() });\n}\n`,
+    });
+    try {
+      const r = await runResourceLeakDetector({ root: dir });
+      const f = r.findings.find(x => x.id === "unbounded_array_growth");
+      assert.ok(f);
+      assert.equal(f.subject.name, "_threadHistory");
     } finally { teardown(dir); }
   });
 });

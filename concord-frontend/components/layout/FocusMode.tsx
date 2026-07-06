@@ -201,6 +201,7 @@ export function useFocusMode() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Toggle with Cmd+Shift+F or Escape to exit
+      // detector-allow: duplicate-handler — useFocusMode is never imported/called anywhere outside this file's own barrel re-export (verified via repo-wide grep); no live collision exists despite the same-combo match in GlobalSearch.tsx (also orphaned).
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
         e.preventDefault();
         setIsActive(prev => !prev);

@@ -40,7 +40,13 @@ async function macro(domain: string, name: string, input: Record<string, unknown
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ domain, name, input }),
   }).catch(() => null);
-  return r ? r.json().catch(() => null) : null;
+  const j = r ? await r.json().catch(() => null) : null;
+  // POST /api/lens/run always answers { ok: true, result: PAYLOAD } where
+  // `ok` is just the transport flag — PAYLOAD (the macro's own { ok, ... })
+  // carries the real success/failure + fields. Unwrap it here so `report.ok`
+  // / `report.dtuId` / `report.ripple` read the macro's own verdict, not the
+  // always-true transport flag.
+  return j ? (j.result ?? j) : null;
 }
 
 export default function ObservePage() {

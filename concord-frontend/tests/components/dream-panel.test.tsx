@@ -14,8 +14,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { DreamPanel } from '@/components/world/concordia-hud/panels/DreamPanel';
 
-function jsonResponse(body: Record<string, unknown>) {
-  return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+// /api/lens/run always answers { ok: true, result: PAYLOAD } at the transport
+// level — the outer `ok` only means "the call succeeded", not that the macro
+// itself succeeded. jsonResponse mocks that real envelope shape so this test
+// pins the fix for reading `.result.dreams` / `.result.predictions` instead of
+// the top-level (always-undefined) fields.
+function jsonResponse(macroPayload: Record<string, unknown>) {
+  return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, result: macroPayload }) });
 }
 
 beforeEach(() => {
@@ -111,5 +116,28 @@ describe('DreamPanel — content', () => {
     expect(row).not.toBeNull();
     expect(container.textContent).toMatch(/conf 82%/);
     expect(container.textContent).toMatch(/Kael will request/);
+  });
+
+  it('regression guard (finding 30): reads dreams from .result, not a decoy top-level field', async () => {
+    // The real transport shape ALWAYS wraps the macro payload at `.result`
+    // (outer `ok: true` is just "the call succeeded"). This plants a decoy
+    // top-level `dreams` array — the exact field the pre-fix code read — next
+    // to the real one nested at `.result.dreams`, so the assertion only
+    // passes if the component prefers `.result` over the top level.
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        ok: true,
+        dreams: [{ id: 'decoy', dream_dtu_id: 'x', fragment_count: 0, composer: 'decoy', composed_at: 0 }],
+        result: {
+          ok: true,
+          dreams: [{ id: 'real', dream_dtu_id: 'dtu_real', fragment_count: 3, composer: 'deterministic', composed_at: 0 }],
+        },
+      }),
+    })));
+    const { container } = render(<DreamPanel />);
+    await act(async () => { await Promise.resolve(); });
+    expect(container.querySelector('[data-dream-id="real"]')).not.toBeNull();
+    expect(container.querySelector('[data-dream-id="decoy"]')).toBeNull();
   });
 });

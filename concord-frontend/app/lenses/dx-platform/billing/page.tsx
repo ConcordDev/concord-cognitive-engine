@@ -43,7 +43,11 @@ async function runMacro<T = unknown>(domain: string, name: string, input: Record
     body: JSON.stringify({ domain, name, input }),
   });
   if (!r.ok) throw new Error(`macro ${domain}.${name} failed: ${r.status}`);
-  return r.json() as Promise<T>;
+  const j = await r.json();
+  // POST /api/lens/run always responds { ok: true, result: PAYLOAD } — the
+  // outer `ok` is just a transport flag, not the macro's own success/
+  // failure. Unwrap to the macro payload so callers read real fields.
+  return (j?.result ?? j) as T;
 }
 
 export default function BillingDashboardPage() {

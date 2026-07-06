@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, cleanup, act } from '@testing-library/react';
 import React from 'react';
 
 // LensShell mounts the UI store + keyboard providers in production; for an
@@ -12,7 +12,29 @@ vi.mock('@/components/lens/ManifestActionBar', () => ({
   ManifestActionBar: () => null,
 }));
 
+// Capturing socket mock — lets a test fire a real server event name and
+// assert the page's `subscribe('achievement:unlocked', ...)` handler (not a
+// dead `window.addEventListener`) actually re-fetches.
+vi.mock('@/lib/realtime/socket', () => {
+  const listeners: Record<string, Array<(data: unknown) => void>> = {};
+  return {
+    subscribe: vi.fn((event: string, cb: (data: unknown) => void) => {
+      (listeners[event] ||= []).push(cb);
+      return () => {
+        listeners[event] = (listeners[event] || []).filter((f) => f !== cb);
+      };
+    }),
+    __emit: (event: string, data?: unknown) => {
+      (listeners[event] || []).forEach((cb) => cb(data));
+    },
+  };
+});
+
 import AchievementsLensPage from '@/app/lenses/achievements/page';
+import * as socketMock from '@/lib/realtime/socket';
+
+const emitSocket = (event: string, data?: unknown) =>
+  (socketMock as unknown as { __emit: (e: string, d?: unknown) => void }).__emit(event, data);
 
 const CATALOG = [
   { id: 'first_blood', title: 'First Blood', description: 'Land your first hit.', category: 'combat', rarity: 'bronze', hidden: false, rewardSparks: 5, rewardTitle: null },
@@ -109,5 +131,28 @@ describe('AchievementsLensPage — four UX states', () => {
     expect(nav).toBeInTheDocument();
     const allBtn = screen.getByRole('button', { name: 'all' });
     expect(allBtn).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('realtime: a real achievement:unlocked socket event refetches the catalog (was a dead window listener)', async () => {
+    let mineCallCount = 0;
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/catalog')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ ok: true, catalog: CATALOG }) } as Response);
+      }
+      mineCallCount += 1;
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ ok: true, earned: [] }) } as Response);
+    }) as unknown as typeof fetch;
+
+    render(<AchievementsLensPage />);
+    await screen.findByText('First Blood');
+    const countAfterMount = mineCallCount;
+    expect(countAfterMount).toBeGreaterThan(0);
+
+    act(() => {
+      emitSocket('achievement:unlocked', { achievementId: 'first_blood', title: 'First Blood', rarity: 'bronze' });
+    });
+
+    await waitFor(() => expect(mineCallCount).toBeGreaterThan(countAfterMount));
   });
 });

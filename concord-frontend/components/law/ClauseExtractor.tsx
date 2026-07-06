@@ -53,7 +53,7 @@ export function ClauseExtractor({ contractId, onApplied }: { contractId: string 
     setBusy(true); setErr(null);
     const r = await lensRun('law', 'clause-extract-apply', { contractId, clauses });
     setBusy(false);
-    if (r.data?.ok) { setApplied(r.data.result.added as number); onApplied?.(); }
+    if (r.data?.ok) { setApplied((r.data.result?.added ?? 0) as number); onApplied?.(); }
     else { setErr(r.data?.error || 'Apply failed.'); }
   }
 

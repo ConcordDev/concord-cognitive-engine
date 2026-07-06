@@ -128,6 +128,18 @@ describe('cognitive-replay lens — page primary-load four UX states', () => {
     expect(container.querySelector('[role="alert"]')).toBeFalsy();
   });
 
+  it('POPULATED (correctly-nested envelope): unwraps { ok, result: { ok, events } } from chat.timeline', async () => {
+    // Regression pin: POST /api/lens/run always responds { ok: true, result:
+    // PAYLOAD } — the outer `ok` is a transport flag only. Before the fix the
+    // page read `data.ok` / `data.events` straight off the transport envelope,
+    // which is always undefined against this real (nested) shape.
+    vi.stubGlobal('fetch', vi.fn(() => fetchOk({ ok: true, result: { ok: true, events: EVENTS } })));
+    const { container } = render(<CognitiveReplayPage />);
+    await waitFor(() => expect(container.textContent).toMatch(/120 tokens/i));
+    expect(container.textContent).toMatch(/2 turns/i);
+    expect(container.querySelector('[role="alert"]')).toBeFalsy();
+  });
+
   it('a non-ok JSON body (ok:false) surfaces an error, not a silently-empty page', async () => {
     vi.stubGlobal('fetch', vi.fn(() => fetchOk({ ok: false, error: 'timeline unavailable' })));
     const { container, getByText } = render(<CognitiveReplayPage />);

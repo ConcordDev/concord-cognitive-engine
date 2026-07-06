@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { MapPin, Pin, AlertTriangle, PartyPopper, ScrollText, X } from 'lucide-react';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface Marker {
   id: string;
@@ -59,13 +60,10 @@ export function MapPingLayer({ worldId }: { worldId: string }) {
 
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handler = (ev: Event) => {
-      const detail = (ev as CustomEvent).detail || {};
-      if (detail.worldId === worldId) refresh();
-    };
-    window.addEventListener('world:marker-placed', handler);
-    return () => window.removeEventListener('world:marker-placed', handler);
+    const off = subscribe<{ worldId?: string }>('world:marker-placed', (data) => {
+      if (data?.worldId === worldId) refresh();
+    });
+    return () => off?.();
   }, [worldId, refresh]);
 
   const handleRemove = useCallback(async (markerId: string) => {

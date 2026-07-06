@@ -7,6 +7,12 @@
  *   - Shows "No ammo" warning when ballistic_ammo tier is depleted
  *   - Shows "Ammo scarce" warning when tier is scarce
  *   - Hidden in combat/dialogue/vehicle/photo modes
+ *
+ * `/api/lens/run` always responds `{ ok: true, result: PAYLOAD }` — the
+ * outer `ok` is just a transport flag, the macro's real fields live under
+ * `.result`. The mocks below use that real nested envelope shape (finding
+ * #31 — the component used to read `j.materials` directly off the
+ * top-level response, which is always undefined).
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -37,7 +43,7 @@ describe('MaterialAvailabilityBadge', () => {
   it('renders four chips after fetch', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve({ ok: true, materials: mockMaterials('moderate', 0.5) }),
+      json: () => Promise.resolve({ ok: true, result: { ok: true, materials: mockMaterials('moderate', 0.5) } }),
     })));
     const { container } = render(<MaterialAvailabilityBadge />);
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
@@ -48,7 +54,7 @@ describe('MaterialAvailabilityBadge', () => {
   it('shows "No ammo" warning when ballistic_ammo is depleted', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve({ ok: true, materials: mockMaterials('depleted', 0.05) }),
+      json: () => Promise.resolve({ ok: true, result: { ok: true, materials: mockMaterials('depleted', 0.05) } }),
     })));
     const { container } = render(<MaterialAvailabilityBadge />);
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
@@ -61,7 +67,7 @@ describe('MaterialAvailabilityBadge', () => {
   it('shows "Ammo scarce" when tier is scarce', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve({ ok: true, materials: mockMaterials('scarce', 0.20) }),
+      json: () => Promise.resolve({ ok: true, result: { ok: true, materials: mockMaterials('scarce', 0.20) } }),
     })));
     const { container } = render(<MaterialAvailabilityBadge />);
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
@@ -71,7 +77,7 @@ describe('MaterialAvailabilityBadge', () => {
   it('does NOT show warning when ammo is abundant', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve({ ok: true, materials: mockMaterials('abundant', 1.0) }),
+      json: () => Promise.resolve({ ok: true, result: { ok: true, materials: mockMaterials('abundant', 1.0) } }),
     })));
     const { container } = render(<MaterialAvailabilityBadge />);
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
@@ -82,7 +88,7 @@ describe('MaterialAvailabilityBadge', () => {
     useHUDContext.setState({ worldId: 'tunya', inputMode: 'combat' });
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve({ ok: true, materials: mockMaterials('depleted', 0.05) }),
+      json: () => Promise.resolve({ ok: true, result: { ok: true, materials: mockMaterials('depleted', 0.05) } }),
     })));
     const { container } = render(<MaterialAvailabilityBadge />);
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });

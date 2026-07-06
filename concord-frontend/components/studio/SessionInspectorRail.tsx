@@ -47,16 +47,27 @@ function Knob({
   format?: (v: number) => string;
 }) {
   const pct = ((value - min) / (max - min)) * 100;
+  // No onChange means there's no real state backing this control — a
+  // per-clip audio-processing model (gain/pan/pitch/filter) doesn't exist
+  // yet on SelectedClip. Rendering it as a live draggable slider would let
+  // a user drag it and watch it silently snap back (a controlled input
+  // with nothing to control) — disable it honestly instead of faking
+  // interactivity, per the honest-by-construction rule.
+  const disabled = !onChange;
   return (
-    <label className="flex flex-col items-center gap-1 text-center">
+    <label
+      className={cn('flex flex-col items-center gap-1 text-center', disabled && 'opacity-40 cursor-not-allowed')}
+      title={disabled ? 'Not yet wired to a per-clip audio model' : undefined}
+    >
       <input
         type="range"
         min={min}
         max={max}
         step={step}
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange?.(Number(e.target.value))}
-        className="w-full accent-cyan-400 h-1"
+        className="w-full accent-cyan-400 h-1 disabled:cursor-not-allowed"
         style={{ background: `linear-gradient(to right, rgb(34,211,238) 0%, rgb(34,211,238) ${pct}%, rgb(63,63,70) ${pct}%, rgb(63,63,70) 100%)` }}
       />
       <span className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</span>
@@ -134,9 +145,13 @@ export default function SessionInspectorRail({
                 <h3 className="text-xs font-semibold text-zinc-200">Smart Controls</h3>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                {/* detector-allow: hardcoded-prop no per-clip audio-processing model exists on SelectedClip yet; Knob renders disabled+titled honestly instead of faking a live control */}
                 <Knob label="Volume" value={0.75} format={(v) => `${Math.round(v * 100)}%`} />
+                {/* detector-allow: hardcoded-prop no per-clip audio-processing model exists on SelectedClip yet; Knob renders disabled+titled honestly instead of faking a live control */}
                 <Knob label="Pan" value={0} min={-1} max={1} format={(v) => v === 0 ? 'C' : v < 0 ? `L${Math.round(-v * 100)}` : `R${Math.round(v * 100)}`} />
+                {/* detector-allow: hardcoded-prop no per-clip audio-processing model exists on SelectedClip yet; Knob renders disabled+titled honestly instead of faking a live control */}
                 <Knob label="Pitch" value={0} min={-12} max={12} step={1} format={(v) => v > 0 ? `+${v}` : `${v}`} />
+                {/* detector-allow: hardcoded-prop no per-clip audio-processing model exists on SelectedClip yet; Knob renders disabled+titled honestly instead of faking a live control */}
                 <Knob label="Filter" value={0.5} format={(v) => `${Math.round(v * 100)}%`} />
               </div>
             </div>

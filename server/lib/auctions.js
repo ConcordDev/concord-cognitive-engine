@@ -326,13 +326,18 @@ export function placeBuyOrder(db, buyerId, opts = {}) {
   }
 
   const total = Math.round(unitPriceCc * quantity * 100) / 100;
-  const debit = _walletDebit(db, buyerId, total, `buy_order_escrow:${itemDescriptor}`);
-  if (!debit.ok) return debit;
-
   const id = `bo_${crypto.randomBytes(8).toString("hex")}`;
   const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
 
-  try {
+  // Money-hygiene fix (verification-audit campaign, mirrors the G8 fix in
+  // fillBuyOrder above): the escrow debit and the order INSERT that records
+  // it must land together. Previously the debit ran as a standalone write
+  // before the INSERT — a crash between them left the buyer debited with no
+  // order row to ever track or refund the escrow against.
+  let debitError = null;
+  const tx = db.transaction(() => {
+    const debit = _walletDebit(db, buyerId, total, `buy_order_escrow:${itemDescriptor}`);
+    if (!debit.ok) { debitError = debit; throw new Error(debit.error || "insufficient_funds"); }
     db.prepare(`
       INSERT INTO auction_buy_orders
         (id, buyer_user_id, world_id, item_kind, item_descriptor,
@@ -344,13 +349,17 @@ export function placeBuyOrder(db, buyerId, opts = {}) {
       itemFilter ? JSON.stringify(itemFilter) : null,
       unitPriceCc, quantity, total, expiresAt
     );
-    logger.info?.("auctions", "buy_order_placed", { id, buyerId, total, quantity });
-    return { ok: true, buyOrderId: id, escrowCc: total, expiresAt };
+  });
+
+  try {
+    tx();
   } catch (err) {
-    // Refund on insert failure.
-    _walletCredit(db, buyerId, total, `buy_order_refund_oninsert:${err?.message}`);
+    if (debitError) return debitError;
     return { ok: false, error: err?.message || "db_error" };
   }
+
+  logger.info?.("auctions", "buy_order_placed", { id, buyerId, total, quantity });
+  return { ok: true, buyOrderId: id, escrowCc: total, expiresAt };
 }
 
 export function fillBuyOrder(db, buyOrderId, sellerId, quantity) {

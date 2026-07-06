@@ -31,7 +31,7 @@ export function OshaIncidentSearch() {
         const r = await fetch(url);
         if (!r.ok) throw new Error(`data.gov ${r.status}`);
         const j = await r.json();
-        const results = (j.result?.results || []).map((p: Record<string, unknown>) => {
+        const results = (j?.result?.results || []).map((p: Record<string, unknown>) => {
           const org = p.organization as { title?: string } | undefined;
           return {
             id: p.id as string,

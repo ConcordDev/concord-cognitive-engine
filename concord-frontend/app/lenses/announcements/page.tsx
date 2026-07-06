@@ -18,6 +18,7 @@ import { Megaphone, Sparkles, Bell, Wrench, CalendarDays, Map, RefreshCcw, Alert
 import type { LucideIcon } from "lucide-react";
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { subscribe } from '@/lib/realtime/socket';
 
 interface Announcement {
   id: string;
@@ -69,10 +70,8 @@ export default function AnnouncementsLensPage() {
 
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const h = () => refresh();
-    window.addEventListener('concord:announcement', h);
-    return () => window.removeEventListener('concord:announcement', h);
+    const off = subscribe('concord:announcement', () => { refresh(); });
+    return () => off?.();
   }, [refresh]);
 
   return (
