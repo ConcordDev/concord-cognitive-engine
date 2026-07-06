@@ -80,8 +80,13 @@ function createMatch(db, userId, opponentId, realtimeEmit) {
     VALUES (?, ?, ?, ?, 'sparks', 'arena', 'active', 1, 'concordia-hub', ?, ?, ?)
   `).run(wagerId, opponentId, userId, ARENA_SPARKS_WAGER * 2, now, now, now + 30 * 60 * 1000);
 
-  realtimeEmit?.("arena:match:found", { userId: opponentId, matchId: wagerId, opponentId: userId });
-  realtimeEmit?.("arena:match:found", { userId,             matchId: wagerId, opponentId });
+  // Signature is realtimeEmit(event, payload, {userId}) — the 3rd-arg options
+  // object is what actually room-scopes delivery to `user:<id>`. Passing
+  // userId only inside the payload (as this used to) drops the options arg
+  // entirely, so the emit fell through to a global io.emit() broadcast to
+  // every connected client instead of just the two match participants.
+  realtimeEmit?.("arena:match:found", { matchId: wagerId, opponentId: userId },     { userId: opponentId });
+  realtimeEmit?.("arena:match:found", { matchId: wagerId, opponentId },             { userId });
 
   return wagerId;
 }

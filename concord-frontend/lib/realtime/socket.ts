@@ -437,6 +437,12 @@ export type SocketEvent =
   // broadcast (server/lib/social-pings.js) had no socket-to-window bridge
   // at all, so WorldMarkers.tsx's 'concordia:social-ping' listener never fired.
   | 'social:ping'
+  // Dead-event-listener fix (verification-audit campaign) — server emitted
+  // 'arena:match:found' to the queued/waiting player on match creation
+  // (server/routes/arena.js#createMatch) but nothing subscribed, so that
+  // player never learned their match formed (only the initiator, via the
+  // direct POST /api/arena/queue response, ever saw it).
+  | 'arena:match:found'
   // The System — diegetic push-driven status layer (players/NPCs/hostiles).
   | 'system:level-up'
   | 'system:skill-acquired'
