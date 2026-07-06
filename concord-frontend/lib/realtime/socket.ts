@@ -433,6 +433,10 @@ export type SocketEvent =
   | 'brawl-started'
   | 'climbing:route-completed'
   | 'player:corpse-dropped'
+  // Dead-event-listener fix (verification-audit campaign) — real server
+  // broadcast (server/lib/social-pings.js) had no socket-to-window bridge
+  // at all, so WorldMarkers.tsx's 'concordia:social-ping' listener never fired.
+  | 'social:ping'
   // The System — diegetic push-driven status layer (players/NPCs/hostiles).
   | 'system:level-up'
   | 'system:skill-acquired'

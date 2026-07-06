@@ -178,6 +178,12 @@ export function LevelUpJuiceBridge() {
             detail: { trigger: 'milestone', opts: { value: msg.title, tier: msg.tier } },
           }));
         } catch { /* ok */ }
+        // Dead-event-listener fix (verification-audit campaign):
+        // useSkillMastery's cache-refresh listener expects this event but
+        // nothing ever fired it — the mastery panel never live-updated.
+        // skill:evolved (per-10-level milestone) is the finest-grained real
+        // skill-progression signal available; dispatch it here.
+        try { window.dispatchEvent(new CustomEvent('concordia:skill-level-up', { detail: msg })); } catch { /* ok */ }
       },
     );
 

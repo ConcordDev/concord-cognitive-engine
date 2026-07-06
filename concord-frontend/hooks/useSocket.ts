@@ -207,6 +207,10 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   // Fix (verification audit) — brawl match-start notification. See the
   // rename branch below; BrawlActiveHUD listens on the namespaced name.
   'brawl-started' as SocketEvent,
+  // Dead-event-listener fix (verification audit) — real server broadcast
+  // (server/lib/social-pings.js) had no bridge at all; see the rename
+  // branch below, WorldMarkers.tsx listens on the namespaced name.
+  'social:ping' as SocketEvent,
 ];
 
 interface UseSocketOptions {
@@ -319,6 +323,10 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
               // `concordia:`-namespaced window event name, NOT the raw
               // socket event name, so they need an explicit rename here
               // rather than the same-name dispatch used above.
+              window.dispatchEvent(new CustomEvent(`concordia:${event}`, { detail: data }));
+            } else if (event === ('social:ping' as SocketEvent)) {
+              // Dead-event-listener fix (verification audit) — WorldMarkers.tsx
+              // listens on the `concordia:`-namespaced name.
               window.dispatchEvent(new CustomEvent(`concordia:${event}`, { detail: data }));
             }
           }
