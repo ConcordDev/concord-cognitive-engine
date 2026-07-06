@@ -52129,13 +52129,13 @@ app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res
   const { inviteBrawl } = await import("./lib/brawl.js");
   const fromUserId = req.user?.id || req.user?.userId;
   // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee; actor is fromUserId)
-  const r = inviteBrawl(fromUserId, req.body?.toUserId);
+  const toUserId = req.body?.toUserId;
+  const r = inviteBrawl(fromUserId, toUserId);
   if (r.ok && !r.alreadyOpen) {
     try {
-      // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee's socket channel)
       realtimeEmit?.("brawl-invited", {
         inviteId: r.inviteId, from: fromUserId,
-      }, { userId: req.body?.toUserId });
+      }, { userId: toUserId });
     } catch { /* emit best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);

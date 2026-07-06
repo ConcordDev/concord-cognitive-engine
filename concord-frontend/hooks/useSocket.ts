@@ -321,17 +321,24 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
               event === ('vela:reveal' as SocketEvent)
             ) {
               window.dispatchEvent(new CustomEvent(event as string, { detail: data }));
-            } else if (event === ('brawl-invited' as SocketEvent) || event === ('brawl-started' as SocketEvent)) {
+            } else if (event === ('brawl-invited' as SocketEvent)) {
               // Fix (verification audit) — brawl HUDs (BrawlInviteToast,
               // BrawlMatchmakingQueue, BrawlActiveHUD) listen on the
               // `concordia:`-namespaced window event name, NOT the raw
               // socket event name, so they need an explicit rename here
-              // rather than the same-name dispatch used above.
-              window.dispatchEvent(new CustomEvent(`concordia:${event}`, { detail: data }));
+              // rather than the same-name dispatch used above. Literal
+              // names (not `concordia:${event}`) so the orphaned-event
+              // CI gate can statically match dispatch to listener.
+              window.dispatchEvent(new CustomEvent('concordia:brawl-invited', { detail: data }));
+            } else if (event === ('brawl-started' as SocketEvent)) {
+              window.dispatchEvent(new CustomEvent('concordia:brawl-started', { detail: data }));
             } else if (event === ('social:ping' as SocketEvent)) {
               // Dead-event-listener fix (verification audit) — WorldMarkers.tsx
-              // listens on the `concordia:`-namespaced name.
-              window.dispatchEvent(new CustomEvent(`concordia:${event}`, { detail: data }));
+              // listens on 'concordia:social-ping' (hyphen). The previous
+              // template dispatch produced 'concordia:social:ping' (colon),
+              // which nothing listened to — the rename must swap the last
+              // ':' for '-', not just prefix the namespace.
+              window.dispatchEvent(new CustomEvent('concordia:social-ping', { detail: data }));
             }
           }
         });
