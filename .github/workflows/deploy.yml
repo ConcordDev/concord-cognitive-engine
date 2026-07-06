@@ -26,8 +26,13 @@ on:
 env:
   REGISTRY: ghcr.io
   NODE_VERSION: '20'
-  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/concord-backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/concord-frontend
+  # BACKEND_IMAGE/FRONTEND_IMAGE deliberately NOT defined here: Docker repository
+  # names must be all-lowercase, but `github.repository_owner` for this repo is
+  # "ConcordDev" (mixed case) and GitHub Actions expressions have no built-in
+  # lowercase function. build-and-push's `vars` step computes the lowercased
+  # owner via bash and exposes it as the `owner-lower` job output; every image
+  # reference below is built from `${{ env.REGISTRY }}/${{ ...owner-lower }}/concord-{backend,frontend}`
+  # instead of a workflow-level env var (which can't reference step outputs).
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════════
@@ -124,6 +129,7 @@ jobs:
 
     outputs:
       sha-short: ${{ steps.vars.outputs.sha_short }}
+      owner-lower: ${{ steps.vars.outputs.owner_lower }}
 
     steps:
       - name: Checkout code
@@ -131,7 +137,12 @@ jobs:
 
       - name: Set variables
         id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          # Docker repository names must be lowercase; github.repository_owner
+          # is "ConcordDev" (mixed case) for this repo and GitHub Actions
+          # expressions have no built-in lowercase function.
+          echo "owner_lower=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -149,8 +160,8 @@ jobs:
           context: ./server
           push: true
           tags: |
-            ${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.sha_short }}
-            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.owner_lower }}/concord-backend:${{ steps.vars.outputs.sha_short }}
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.owner_lower }}/concord-backend:latest
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
           labels: |
@@ -163,8 +174,8 @@ jobs:
           context: ./concord-frontend
           push: true
           tags: |
-            ${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.sha_short }}
-            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.owner_lower }}/concord-frontend:${{ steps.vars.outputs.sha_short }}
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.owner_lower }}/concord-frontend:latest
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
           build-args: |
@@ -223,13 +234,13 @@ jobs:
           kubectl apply -f k8s/backend-deployment.yaml
           kubectl apply -f k8s/backend-service.yaml
           kubectl set image deployment/concord-backend \
-            backend="${{ env.BACKEND_IMAGE }}:${IMAGE_TAG}" \
+            backend="${{ env.REGISTRY }}/${{ needs.build-and-push.outputs.owner-lower }}/concord-backend:${IMAGE_TAG}" \
             -n concord
 
           kubectl apply -f k8s/frontend-deployment.yaml
           kubectl apply -f k8s/frontend-service.yaml
           kubectl set image deployment/concord-frontend \
-            frontend="${{ env.FRONTEND_IMAGE }}:${IMAGE_TAG}" \
+            frontend="${{ env.REGISTRY }}/${{ needs.build-and-push.outputs.owner-lower }}/concord-frontend:${IMAGE_TAG}" \
             -n concord
 
           # Apply ingress, autoscaling, and backup
@@ -355,13 +366,13 @@ jobs:
           kubectl apply -f k8s/backend-deployment.yaml
           kubectl apply -f k8s/backend-service.yaml
           kubectl set image deployment/concord-backend \
-            backend="${{ env.BACKEND_IMAGE }}:${IMAGE_TAG}" \
+            backend="${{ env.REGISTRY }}/${{ needs.build-and-push.outputs.owner-lower }}/concord-backend:${IMAGE_TAG}" \
             -n concord
 
           kubectl apply -f k8s/frontend-deployment.yaml
           kubectl apply -f k8s/frontend-service.yaml
           kubectl set image deployment/concord-frontend \
-            frontend="${{ env.FRONTEND_IMAGE }}:${IMAGE_TAG}" \
+            frontend="${{ env.REGISTRY }}/${{ needs.build-and-push.outputs.owner-lower }}/concord-frontend:${IMAGE_TAG}" \
             -n concord
 
           kubectl apply -f k8s/ingress.yaml
