@@ -1,15 +1,15 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-04T23:05:34.642Z",
+  "generatedAt": "2026-07-06T05:35:26.628Z",
   "totals": {
     "critical": 0,
-    "high": 0,
-    "medium": 1,
-    "low": 5,
-    "info": 62,
-    "total": 68
+    "high": 8,
+    "medium": 110,
+    "low": 0,
+    "info": 72,
+    "total": 190
   },
-  "detectorCount": 30,
+  "detectorCount": 39,
   "fingerprints": {
     "7702b52eea3af593": {
       "detector": "stale-code",
@@ -25,7 +25,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "843 macros · 0 dead · 411 single-caller · 1 popular · 357 dispatcher-reach (32 runtime-live, 325 retirement-candidates)"
+      "message": "843 macros · 0 dead · 408 single-caller · 1 popular · 360 dispatcher-reach (33 runtime-live, 327 retirement-candidates)"
     },
     "587747b661bed27b": {
       "detector": "macro-usage",
@@ -107,180 +107,188 @@
       "location": "server/server.js:33679",
       "message": "Macro city.getStream fired 2 time(s) at runtime — live"
     },
-    "a18368cd5a035518": {
+    "2c6f6c4bed12961b": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:48226",
+      "location": "server/server.js:48254",
       "message": "Macro db.query fired 2 time(s) at runtime — live"
     },
-    "5f681da35cdfab93": {
+    "2599c82b14294904": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:73824",
+      "location": "server/server.js:73863",
       "message": "Macro autotag.retro fired 2 time(s) at runtime — live"
     },
-    "962544ece185b926": {
+    "6c7f5f5bb707f0ed": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:73828",
+      "location": "server/server.js:73867",
       "message": "Macro autotag.sync_lenses fired 2 time(s) at runtime — live"
     },
-    "8651513978f29ac8": {
+    "5650d0456fee418e": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:73832",
+      "location": "server/server.js:73871",
       "message": "Macro autotag.classify fired 2 time(s) at runtime — live"
     },
-    "14de2618e5445c5e": {
+    "c328cf8d84fec395": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:74642",
+      "location": "server/server.js:74681",
       "message": "Macro admin.backup fired 2 time(s) at runtime — live"
     },
-    "25af196364457b39": {
+    "0d5b33e2bf7eec6f": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:75488",
+      "location": "server/server.js:74934",
+      "message": "Macro refusal.composition fired 9 time(s) at runtime — live"
+    },
+    "1103c8ac612b05a4": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:75527",
       "message": "Macro agent.persist fired 2 time(s) at runtime — live"
     },
-    "58be32d3b689aeee": {
+    "f3fac4a6df0cd93c": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:75515",
+      "location": "server/server.js:75554",
       "message": "Macro agent.list_persistent fired 2 time(s) at runtime — live"
     },
-    "adbc4bd7174e8f0f": {
+    "38973c134ab22428": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:75818",
+      "location": "server/server.js:75857",
       "message": "Macro deity.compose fired 4 time(s) at runtime — live"
     },
-    "e2440cdac5f2583c": {
+    "1c2062267ed2f44d": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:75845",
+      "location": "server/server.js:75884",
       "message": "Macro deity.list fired 4 time(s) at runtime — live"
     },
-    "fa65b75c9fa7745b": {
+    "ed91d8b00d491798": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:75870",
+      "location": "server/server.js:75909",
       "message": "Macro deity.tone_vector fired 4 time(s) at runtime — live"
     },
-    "1a980b9277872cc5": {
+    "23b37de8f8ba0aa1": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:76282",
+      "location": "server/server.js:76321",
       "message": "Macro compression_art.shape_for fired 2 time(s) at runtime — live"
     },
-    "ffaa0717f372c670": {
+    "60d17f02b1d2b2b7": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:76478",
+      "location": "server/server.js:76517",
       "message": "Macro betting.open_market fired 2 time(s) at runtime — live"
     },
-    "d0824394f24cbfe2": {
+    "7f01788235d209bd": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:76488",
+      "location": "server/server.js:76527",
       "message": "Macro betting.place_bet fired 2 time(s) at runtime — live"
     },
-    "ba90a6dc6538ad06": {
+    "210ad64b243fb16c": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:76500",
+      "location": "server/server.js:76539",
       "message": "Macro betting.resolve_market fired 2 time(s) at runtime — live"
     },
-    "a2763d5bf459da85": {
+    "4b6057f97230a2bb": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:76510",
+      "location": "server/server.js:76549",
       "message": "Macro betting.list_open fired 2 time(s) at runtime — live"
     },
-    "44fe9ccb021f5aad": {
+    "5567b0e44a5e96f7": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:76519",
+      "location": "server/server.js:76558",
       "message": "Macro betting.my_positions fired 2 time(s) at runtime — live"
     },
-    "ad872fc6121d7096": {
+    "83bceccc6d600d7a": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:76936",
+      "location": "server/server.js:76975",
       "message": "Macro bounty.stake fired 2 time(s) at runtime — live"
     },
-    "7522954e1d368dcb": {
+    "7cf3edc19a2cc3cb": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:76951",
+      "location": "server/server.js:76990",
       "message": "Macro bounty.list_open fired 2 time(s) at runtime — live"
     },
-    "b3668704b3ecf348": {
+    "51b9a9882b6039dc": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:76966",
+      "location": "server/server.js:77005",
       "message": "Macro bounty.resolve fired 2 time(s) at runtime — live"
     },
-    "682c7fa985667aec": {
+    "4e1290f7a1ed1593": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:77194",
+      "location": "server/server.js:77233",
       "message": "Macro classroom.submit_homework fired 2 time(s) at runtime — live"
     },
-    "d151fb63822c0600": {
+    "789c9e9e837506aa": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:77343",
+      "location": "server/server.js:77382",
       "message": "Macro deity.pilgrimage fired 4 time(s) at runtime — live"
     },
-    "01a355666f2ac7cf": {
+    "3e703a26165897ff": {
       "detector": "macro-usage",
       "id": "macro_runtime_live",
       "severity": "info",
       "kind": "semantic",
-      "location": "server/server.js:77362",
+      "location": "server/server.js:77401",
       "message": "Macro deity.pilgrim_log fired 4 time(s) at runtime — live"
     },
     "9c6176383f6bf175": {
@@ -299,12 +307,12 @@
       "location": null,
       "message": "Scanned 260 lenses · 1 issues found"
     },
-    "4a24ef5beea47223": {
+    "6e59ef2f4ca2be55": {
       "detector": "lens-health",
       "id": "lens_unknown_domain",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/app/lenses/world/page.tsx:5630",
+      "location": "concord-frontend/app/lenses/world/page.tsx:5684",
       "message": "Lens world calls domain \"mainland\" — no dedicated handler registered; runtime routes via utility-brain AI catch-all. Adding a register(\"mainland\", ...) handler would give deterministic behavior."
     },
     "2f600c033f853e95": {
@@ -337,7 +345,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 7864 files; flagged 0"
+      "message": "Scanned 7966 files; flagged 0"
     },
     "6954d635fa3b8074": {
       "detector": "performance-hotspot",
@@ -345,47 +353,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3834 server files"
-    },
-    "bf14651422b52b34": {
-      "detector": "performance-hotspot",
-      "id": "perf_unbounded_cache_growth",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/detectors/command-injection-detector.js:109",
-      "message": "Module-level Map / Set with no eviction path (architectural review)"
-    },
-    "bb75a0bbbbc065c9": {
-      "detector": "performance-hotspot",
-      "id": "perf_unbounded_cache_growth",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/detectors/command-injection-detector.js:110",
-      "message": "Module-level Map / Set with no eviction path (architectural review)"
-    },
-    "1c8be370522277b9": {
-      "detector": "performance-hotspot",
-      "id": "perf_unbounded_cache_growth",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/foundry/builder-extras.js:169",
-      "message": "Module-level Map / Set with no eviction path (architectural review)"
-    },
-    "0599c5205b089254": {
-      "detector": "performance-hotspot",
-      "id": "perf_unbounded_cache_growth",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/route-inventory.js:102",
-      "message": "Module-level Map / Set with no eviction path (architectural review)"
-    },
-    "14a15c34fecf9bfe": {
-      "detector": "performance-hotspot",
-      "id": "perf_unbounded_cache_growth",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/workers/heartbeat-executor.js:43",
-      "message": "Module-level Map / Set with no eviction path (architectural review)"
+      "message": "Scanned 3880 server files"
     },
     "3b5cf89535467e0d": {
       "detector": "historical-trend",
@@ -401,7 +369,7 @@
       "severity": "info",
       "kind": "predictive",
       "location": null,
-      "message": "22 samples · 14 tables observed · heap 13MB"
+      "message": "26 samples · 14 tables observed · heap 14MB"
     },
     "7d25275889c77630": {
       "detector": "architectural-hub",
@@ -409,7 +377,7 @@
       "severity": "info",
       "kind": "architectural",
       "location": null,
-      "message": "Scanned 3834 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+      "message": "Scanned 3880 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
     },
     "8124c3bcdf890d24": {
       "detector": "architectural-hub",
@@ -443,20 +411,20 @@
       "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:25",
       "message": "Production reference to identifier suggesting fake data: fakeLevel"
     },
-    "25f18d818783b099": {
+    "cc5c81bfa36d9e9e": {
       "detector": "fake-data",
       "id": "fake_ident_in_production",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:103",
+      "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:112",
       "message": "Production reference to identifier suggesting fake data: fakeLevel"
     },
-    "a11a898650404ca7": {
+    "9bf201dd3a590486": {
       "detector": "fake-data",
       "id": "fake_ident_in_production",
       "severity": "info",
       "kind": "static",
-      "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:130",
+      "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:139",
       "message": "Production reference to identifier suggesting fake data: fakeLevel"
     },
     "e8ca0dab4cb5f073": {
@@ -465,7 +433,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "1921 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
+      "message": "2006 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
     },
     "905794c0c06cc41d": {
       "detector": "env-config-drift",
@@ -523,13 +491,445 @@
       "location": "concord-frontend/components/space/VisiblePassPredictor.tsx:81",
       "message": "Magic timeout 10000ms — consider env-driven"
     },
+    "f405a506e03be138": {
+      "detector": "env-config-drift",
+      "id": "hardcoded_prod_url",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/pollinations-image.js:35",
+      "message": "Hardcoded production URL: https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}"
+    },
+    "08ee8aded324b96e": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/accessibility/ScreenReaderAnnouncer.tsx:62",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:announce' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "f7c3b86e8afbcd08": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/concordia/PhotoMode.tsx:52",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:photo-mode-toggle' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "ffc68ee0877f93e3": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/conkay/ConKayOverlay.tsx:155",
+      "message": "addEventListener / useEventListener subscribes to 'conkay:dismiss' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "73d2cabd9d61e85b": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/BloodlineTreeViewer.tsx:57",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:open-bloodline-tree' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "0f6d22e1c4a3202f": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/CurtainDossier.tsx:46",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:open-curtain' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "9d4e56e5b6347a3c": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/DreamReader.tsx:68",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:dream-composed' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "7a0bdc5df4146b66": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/EmbodiedParticlesBridge.tsx:155",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:embodied-signal' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "881dc980bc405f47": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/EmbodiedParticlesBridge.tsx:157",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:exertion' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "cf6024ed3bafd2ef": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/ForwardPredictionsPanel.tsx:50",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:prediction-realised' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "930c8d0590dca992": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/LinkScanOverlay.tsx:63",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:link-scan-toggle' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "079396b75c0d83d6": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/NPCSchemeOverhearTip.tsx:89",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:npc-scheme-resolved' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "17f2e7ab93363c6d": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/NPCTraitInspector.tsx:53",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:open-trait-inspector' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "dced82bd96055545": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/RogueliteRunHUD.tsx:76",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:open-roguelite-shop' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "46d9ec005b0b742e": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/SpectatorOverlay.tsx:43",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:enter-spectator-mode' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "e3b1fe0c10d9054c": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/SystemPrompter.tsx:22",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:context-update' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "1fee9993a745fd27": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/concord-link/LinkShell.tsx:48",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:concord-link-summon' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "d2abd63103fa3b82": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/AdaptiveMusicEngine.tsx:173",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:combat-engaged' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "973e1f9051e8ca7e": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/AdaptiveMusicEngine.tsx:174",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:stealth' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "3b7559812823e079": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/AdaptiveMusicEngine.tsx:175",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:discovery' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "53fea00ecbdb3426": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/AdaptiveMusicEngine.tsx:176",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:calm' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "ac0b929d5ceac7e9": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/CharacterSheetPanel.tsx:93",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:character-updated' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "b713ba7ad0910699": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/WorldMarkers.tsx:150",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:social-ping' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "764f41b3eaa848ee": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/WorldSFXHooks.tsx:107",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:ui-click' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "31b596809dd38ec8": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/WorldVisualHooks.tsx:59",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:level-up' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "d157cf1f8db7278a": {
+      "detector": "dead-event-listener",
+      "id": "dead_event_listener",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-travel/WorldTravelPanel.tsx:47",
+      "message": "addEventListener / useEventListener subscribes to 'concordia:world-travel-toggle' but nothing anywhere dispatches it — the listener is a no-op (ghost event, reverse direction)."
+    },
+    "f5f65981b43979e9": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/domains/crypto.js",
+      "message": "Server broadcasts socket event 'crypto:alert' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "0e6393ecc7468e7c": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/domains/whiteboard.js",
+      "message": "Server broadcasts socket event 'whiteboard:ops' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "f71ea77f3c6abfb3": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/economy/royalty-cascade.js",
+      "message": "Server broadcasts socket event 'royalty:cross-world' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "ce6e626c3778d266": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/agent-drift-watch-cycle.js",
+      "message": "Server broadcasts socket event 'agent:value-drift' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "93a25f32ca6eb6a6": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/app-maker.js",
+      "message": "Server broadcasts socket event 'app:created' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "87a1a90218c4f79f": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/avoidance-learning.js",
+      "message": "Server broadcasts socket event 'pain:avoidance_created' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener"
+    },
+    "fc87e6cb4502f4fb": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/forge-template-engine.js",
+      "message": "Server broadcasts socket event 'forge:template:published' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listen"
+    },
+    "6a14d01b33b468a1": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/lattice-orchestrator.js",
+      "message": "Server broadcasts socket event 'lattice:claim-verified' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener"
+    },
+    "b38b296437c73412": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/realm-control-cycle.js",
+      "message": "Server broadcasts socket event 'realm:governance-adjusted' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no liste"
+    },
+    "32188ad1f0c74b2e": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/repair-cortex.js",
+      "message": "Server broadcasts socket event 'system:reconnect' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "72f120811a917230": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/emergent/viability-cycle.js",
+      "message": "Server broadcasts socket event 'world:viability' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "16ea07cd4dc7ea58": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/existential/engine.js",
+      "message": "Server broadcasts socket event 'qualia:policy' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "f9d3d1ab4cac1ec4": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/agent-marathon.js",
+      "message": "Server broadcasts socket event 'marathon:status' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "72c21401c67a6fec": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/city-presence.js",
+      "message": "Server broadcasts socket event 'city:npcs' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "40cc2ee1f6a413c3": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/combat-netcode.js",
+      "message": "Server broadcasts socket event 'combat:miss' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "5e4108ef1feff13b": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/event-rsvp.js",
+      "message": "Server broadcasts socket event 'event:reminder' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "e4096a19d6ea9f01": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/lib/event-shapes.js",
+      "message": "Server broadcasts socket event 'gameJuice:fanfare' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "8597c82c796828c2": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/channels.js",
+      "message": "Server broadcasts socket event 'channel:inbound' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "b9b771d1d01019bb": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/chat.js",
+      "message": "Server broadcasts socket event 'chat:update' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "513f86d5211308dc": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/wagers.js",
+      "message": "Server broadcasts socket event 'wager:resolved' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "dbf5450b513b6fb5": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/routes/worlds.js",
+      "message": "Server broadcasts socket event 'combat:npc-attack-evaded' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listen"
+    },
+    "e1dee0a1e7c8739b": {
+      "detector": "dead-event-listener",
+      "id": "dead_socket_emit",
+      "severity": "medium",
+      "kind": "static",
+      "location": "server/server.js",
+      "message": "Server broadcasts socket event 'coop:build:edit' but no frontend code subscribes to it (checked subscribe()/socket.on()/bridge-array/window-listener indirection) — the broadcast has no listener."
+    },
+    "20e0ad314bb00598": {
+      "detector": "dead-event-listener",
+      "id": "orphan_socket_consumer",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/cognitive/ThoughtStream.tsx",
+      "message": "Frontend subscribes to socket event 'dtu:updated' but no server code ever emits it (checked realtimeEmit/io.emit/socket.emit and common emit-helper aliases) — the subscription will never fire."
+    },
+    "134852f25c036df2": {
+      "detector": "dead-event-listener",
+      "id": "orphan_socket_consumer",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/concordia/HUD/SovereignManifestationToast.tsx",
+      "message": "Frontend subscribes to socket event 'world:sovereign-manifest' but no server code ever emits it (checked realtimeEmit/io.emit/socket.emit and common emit-helper aliases) — the subscription will never "
+    },
+    "e22ff0eae3370b34": {
+      "detector": "dead-event-listener",
+      "id": "orphan_socket_consumer",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/AdaptiveMusicBridge.tsx",
+      "message": "Frontend subscribes to socket event 'quest:triggered' but no server code ever emits it (checked realtimeEmit/io.emit/socket.emit and common emit-helper aliases) — the subscription will never fire."
+    },
+    "d5fc9e2050890735": {
+      "detector": "dead-event-listener",
+      "id": "orphan_socket_consumer",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/CinematicTriggerBridge.tsx",
+      "message": "Frontend subscribes to socket event 'rebellion:fired' but no server code ever emits it (checked realtimeEmit/io.emit/socket.emit and common emit-helper aliases) — the subscription will never fire."
+    },
+    "e6d2e230dc24c4c9": {
+      "detector": "dead-event-listener",
+      "id": "orphan_socket_consumer",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/NamedEncounterController.tsx",
+      "message": "Frontend subscribes to socket event 'world:named-encounter' but no server code ever emits it (checked realtimeEmit/io.emit/socket.emit and common emit-helper aliases) — the subscription will never fir"
+    },
+    "cf1735c1eafda3e6": {
+      "detector": "dead-event-listener",
+      "id": "orphan_socket_consumer",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/LevelUpJuiceBridge.tsx",
+      "message": "Frontend subscribes to socket event 'quality:approved' but no server code ever emits it (checked realtimeEmit/io.emit/socket.emit and common emit-helper aliases) — the subscription will never fire."
+    },
     "54bf106d12062895": {
       "detector": "command-injection",
       "id": "command_injection_summary",
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 33 child_process-importing file(s) of 7931; flagged 1"
+      "message": "Scanned 33 child_process-importing file(s) of 8033; flagged 1"
     },
     "6664f30f1a999701": {
       "detector": "command-injection",
@@ -554,6 +954,422 @@
       "kind": "static",
       "location": null,
       "message": "server/server.js: global write-auth gate present (mount line 6650); 636 mutating route(s) behind it; 7 bypass path(s)"
+    },
+    "23522addb854db0a": {
+      "detector": "frontend-unsafe-chain",
+      "id": "frontend_unsafe_chain_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 3138 frontend file(s); 1461 had fetch/macro-sourced data; flagged 24"
+    },
+    "db200602b6b399db": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/automotive/GarageSection.tsx:106",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "3b33aaa5d9960a07": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_no_guard",
+      "severity": "high",
+      "kind": "static",
+      "location": "concord-frontend/components/crafting/CraftingWorkbench.tsx:813",
+      "message": "`r` chain reads .length with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.requirements.length`."
+    },
+    "b726ed6374370be1": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/creative/CreativeBoard.tsx:111",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "3b6ec0026d4a0870": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/creative/CreativeBoardsSection.tsx:43",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "845024ce70f61ed7": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/creative/CreativeBoardsSection.tsx:49",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "02325bf5614535bb": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/creative-writing/CwBinderPanel.tsx:110",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "175c340dabede679": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/debug/TraceViewer.tsx:135",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "43909583bb166c35": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/game-design/GdLevelPanel.tsx:63",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "cd2c04854adb3058": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/game-design/GdLevelPanel.tsx:412",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "573c4ba08e3870a1": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/healthcare/PatientsPanel.tsx:40",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "e9c6c99a96141078": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/legal/TrustAccountsPanel.tsx:70",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "e4caa6dc169d2c46": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/mentorship/MentorshipGoalsPanel.tsx:85",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "c6a16174f8b840ac": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/mentorship/MentorshipGoalsPanel.tsx:96",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "c6cc03a2bc8a0c34": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:96",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "124e53563ab49ca2": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:106",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "639269f4cfe75ac8": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:116",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "dca1b99c0dd3aa86": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/mentorship/MentorshipSessionsPanel.tsx:125",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "f767d0179f182fcb": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/message/ChannelList.tsx:55",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "30e8ff59869a7526": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/productivity/ProductivityQuickAddPanel.tsx:59",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "e3eb38deaac55fb9": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/reflection/RfPromptsPanel.tsx:43",
+      "message": "`r` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `r.data.resul"
+    },
+    "77fad471c5951891": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world/ZoneBadge.tsx:54",
+      "message": "`data` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `data.zone"
+    },
+    "754acec4ef2e3cd5": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-creator/DraftEditor.tsx:120",
+      "message": "`data` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `data.resu"
+    },
+    "e7485460ab57c61c": {
+      "detector": "frontend-unsafe-chain",
+      "id": "unsafe_chain_partial_guard",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/components/world-lens/SeasonalEffects.tsx:108",
+      "message": "`j` chain accesses a nested field 2+ levels deep with no guard — the same bug class as the 2026-07-05 /api/lens/run envelope audit (48+ real instances fixed in db1a0a75/61122eef). Chain: `j.result.sea"
+    },
+    "c4a010146d380e31": {
+      "detector": "duplicate-handler-race",
+      "id": "duplicate_handler_race_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 3244 frontend file(s) + 2200 server file(s); flagged 0."
+    },
+    "d462654fb51261ca": {
+      "detector": "fabrication-mechanism",
+      "id": "fabrication_mechanism_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 5649 file(s); flagged 0"
+    },
+    "d0df7c8fcaee4508": {
+      "detector": "workflow-gate-integrity",
+      "id": "workflow_gate_integrity_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 23 workflow file(s); flagged 0 finding(s) (manifest present, 14 exemption(s))."
+    },
+    "baa6a3adbd8b86e4": {
+      "detector": "money-txn-hygiene",
+      "id": "money_txn_hygiene_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 213 money-shaped file(s) of 3892 under server/; flagged 7"
+    },
+    "28713dd4b913d372": {
+      "detector": "money-txn-hygiene",
+      "id": "money_txn_untransacted_writes",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/economy/ledger.js:51",
+      "message": "recordTransaction() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
+    },
+    "f81b877963d64e7a": {
+      "detector": "money-txn-hygiene",
+      "id": "money_txn_untransacted_writes",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/economy/reserves.js:54",
+      "message": "initReservesSchema() performs 3 money-table write(s) (3 direct + 0 delegated, tables: reserves_balance) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
+    },
+    "3858d6b9cfdeca28": {
+      "detector": "money-txn-hygiene",
+      "id": "money_txn_untransacted_writes",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/economy/stripe.js:179",
+      "message": "handleWebhook() performs 2 money-table write(s) (1 direct + 1 delegated, tables: economy_withdrawals) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
+    },
+    "167d4c65d978fff2": {
+      "detector": "money-txn-hygiene",
+      "id": "money_txn_untransacted_writes",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/account-lifecycle.js:41",
+      "message": "requestAccountDeletion() performs 2 money-table write(s) (1 direct + 1 delegated, tables: balance_at_request) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of "
+    },
+    "ca5409e0d1cd7cdc": {
+      "detector": "money-txn-hygiene",
+      "id": "money_txn_untransacted_writes",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/wagers.js:12",
+      "message": "createWagersRouter() performs 5 money-table write(s) (0 direct + 5 delegated) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
+    },
+    "14d8eefffef55122": {
+      "detector": "money-txn-hygiene",
+      "id": "money_txn_untransacted_writes",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:70410",
+      "message": "creditWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
+    },
+    "681aaf0bc6e36390": {
+      "detector": "money-txn-hygiene",
+      "id": "money_txn_untransacted_writes",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:70470",
+      "message": "debitWallet() performs 2 money-table write(s) (2 direct + 0 delegated, tables: economy_ledger) with no db.transaction(...) wrapper — a crash mid-sequence can leave paired writes out of sync"
+    },
+    "577671649c5313ca": {
+      "detector": "realtime-emit-signature",
+      "id": "realtime_emit_signature_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 87 realtimeEmit-mentioning file(s) of 8033; 221 call site(s); flagged 0"
+    },
+    "da8b979a5bb58c77": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 46 readFileSync-using test file(s) of 574 test file(s); flagged 13"
+    },
+    "f00cbcac29b192e3": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/accessibility-wired.test.tsx:91",
+      "message": "it(\"AccessibilityDOMApplier is mounted in Providers\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/toHaveBeenCalled, so it cannot fa"
+    },
+    "4fce495bef4fb715": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/avatar-scar-render.test.tsx:18",
+      "message": "it(\"imports useAvatarScars hook\") claims a runtime behavior but only regex/substring-matches source text (source) — no render/fireEvent/dispatchEvent/toHaveBeenCalled, so it cannot fail from the behav"
+    },
+    "133aa66dafb9002d": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/avatar-scar-render.test.tsx:22",
+      "message": "it(\"invokes useAvatarScars with the player id\") claims a runtime behavior but only regex/substring-matches source text (source) — no render/fireEvent/dispatchEvent/toHaveBeenCalled, so it cannot fail "
+    },
+    "934409b3ee1ebab8": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/avatar-scar-render.test.tsx:26",
+      "message": "it(\"captures drift into a wear ref the renderer can read\") claims a runtime behavior but only regex/substring-matches source text (source) — no render/fireEvent/dispatchEvent/toHaveBeenCalled, so it c"
+    },
+    "8f7cad846e28e965": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/avatar-scar-render.test.tsx:31",
+      "message": "it(\"carries the scars list onto the same ref\") claims a runtime behavior but only regex/substring-matches source text (source) — no render/fireEvent/dispatchEvent/toHaveBeenCalled, so it cannot fail f"
+    },
+    "073738df2a3c5429": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/avatar-system-worker-wired.test.tsx:19",
+      "message": "it(\"imports useAvatarAnimator\") claims a runtime behavior but only regex/substring-matches source text (source) — no render/fireEvent/dispatchEvent/toHaveBeenCalled, so it cannot fail from the behavio"
+    },
+    "0a156a41f3d72967": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/avatar-system-worker-wired.test.tsx:23",
+      "message": "it(\"imports serializableToGaitPose\") claims a runtime behavior but only regex/substring-matches source text (source) — no render/fireEvent/dispatchEvent/toHaveBeenCalled, so it cannot fail from the be"
+    },
+    "c7a4b3ec7f297ee4": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/avatar-system-worker-wired.test.tsx:27",
+      "message": "it(\"initialises the hook inside the component\") claims a runtime behavior but only regex/substring-matches source text (source) — no render/fireEvent/dispatchEvent/toHaveBeenCalled, so it cannot fail "
+    },
+    "aee5ea77816d6c42": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/avatar-system-worker-wired.test.tsx:31",
+      "message": "it(\"calls avatarAnimator.requestGait at least twice (player + NPC)\") claims a runtime behavior but only regex/substring-matches source text (source) — no render/fireEvent/dispatchEvent/toHaveBeenCalle"
+    },
+    "1b372f8533bc02b5": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/avatar-system-worker-wired.test.tsx:36",
+      "message": "it(\"falls back to inline synthesizeGait when worker returns null\") claims a runtime behavior but only regex/substring-matches source text (source) — no render/fireEvent/dispatchEvent/toHaveBeenCalled,"
+    },
+    "a736ba8d27ae037b": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/npc-action-menu-wired.test.tsx:149",
+      "message": "it(\"ConcordiaScene raycaster dispatches concordia:npc-context-menu (not the old ope…\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/"
+    },
+    "c41248853a8dfed2": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/npc-action-menu-wired.test.tsx:154",
+      "message": "it(\"ConcordiaScene includes screenX + screenY in the dispatch payload\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/toHaveBeenCalle"
+    },
+    "daf2e1110ca7c2f5": {
+      "detector": "stale-lying-test",
+      "id": "stale_lying_test",
+      "severity": "medium",
+      "kind": "static",
+      "location": "concord-frontend/tests/station-router-wired.test.tsx:42",
+      "message": "it(\"world lens dispatches concordia:building-interact on raycaster hit\") claims a runtime behavior but only regex/substring-matches source text (src) — no render/fireEvent/dispatchEvent/toHaveBeenCall"
+    },
+    "5645d17312ed6ec6": {
+      "detector": "dead-macro-call",
+      "id": "dead_macro_call_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "10267 registered (domain, macro) pairs; scanned 1422 frontend file(s) with macro-run call sites, checked 5911 literal call site(s), flagged 0"
+    },
+    "b1edad482c167c53": {
+      "detector": "hardcoded-literal-data-prop",
+      "id": "hardcoded_literal_data_prop_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 2825 JSX file(s) of 3199; flagged 0"
     }
   }
 }
