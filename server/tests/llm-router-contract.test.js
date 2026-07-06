@@ -20,8 +20,11 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { registerServerCleanExit } from "./lib/server-clean-exit.js";
 
 const ENABLED = process.env.CONCORD_BEHAVIOR_TEST_LLM === "true";
+let _serverMod = null;
+if (ENABLED) registerServerCleanExit(() => _serverMod?.__TEST__);
 const $it = ENABLED ? it : it.skip;
 
 // 1×1 transparent PNG (8-bit RGBA), base64-encoded. ~80 bytes; minimum
@@ -33,6 +36,7 @@ describe("LLM router contract — gated on CONCORD_BEHAVIOR_TEST_LLM", () => {
     // Import server lazily so the bare presence of this test file doesn't
     // boot the monolith on local runs.
     const mod = await import("../server.js");
+    _serverMod = mod;
     const __TEST__ = mod.__TEST__;
     assert.ok(__TEST__, "server.js must export __TEST__ for the harness");
 
@@ -61,6 +65,7 @@ describe("LLM router contract — gated on CONCORD_BEHAVIOR_TEST_LLM", () => {
     // { ok:false, reason } envelope — never throw and never report
     // ok:true.
     const mod = await import("../server.js");
+    _serverMod = mod;
     const __TEST__ = mod.__TEST__;
     const BRAIN = __TEST__?.BRAIN ?? globalThis._concordBRAIN;
     assert.ok(BRAIN?.conscious, "BRAIN.conscious must be reachable from __TEST__ or global");

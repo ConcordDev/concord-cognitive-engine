@@ -27,6 +27,10 @@ import Database from "better-sqlite3";
 
 import { EVENT_SHAPES, validateEvent } from "../lib/event-shapes.js";
 import { verifyClaim } from "../lib/reason-verify.js";
+import { registerServerCleanExit } from "./lib/server-clean-exit.js";
+
+let _serverTestSurface;
+registerServerCleanExit(() => _serverTestSurface);
 
 describe("ConKay macro lifecycle — EVENT_SHAPES registration", () => {
   it("registers macro:started, macro:stage, macro:completed", () => {
@@ -106,7 +110,8 @@ describe("ConKay macro lifecycle — reason.verify emits REAL macro:stage beats"
 
 describe("ConKay macro lifecycle — realtimeEmit userId targeting", () => {
   it("realtimeEmit accepts the { userId } option without throwing", async () => {
-    const { realtimeEmit } = (await import("../server.js")).__TEST__;
+    _serverTestSurface = (await import("../server.js")).__TEST__;
+    const { realtimeEmit } = _serverTestSurface;
     // The new per-user targeting branch routes to the user:<id> room. It MUST
     // accept the userId option and return a result object (never throw),
     // whichever transport is live: { ok:true } when realtime is up, or

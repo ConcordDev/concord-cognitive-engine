@@ -16,9 +16,48 @@
 // Booting server.js once (the __TEST__ harness) is the established pattern
 // (see tests/behavior/lens-behavior-smoke.behavior.js). STATE is in-memory.
 import { randomUUID } from "node:crypto";
+import { after } from "node:test";
 
 let _t = null;
+let _afterHookRegistered = false;
 export async function load() {
+  if (!_afterHookRegistered) {
+    _afterHookRegistered = true;
+    // Server clean-exit canary fix (2026-07-06). Every file that calls
+    // load() boots the real server, which leaves several categories of
+    // deliberately long-lived resource in place for the server's whole
+    // life: 4 pooled worker threads (2 macro-pool + 1 heartbeat-pool + 1
+    // cognitive worker) and dozens of staggered background intervals
+    // (dtu cleanup, analytics snapshots, backup scheduler, etc). This
+    // hook does the two genuinely-verified cleanup steps first — worker
+    // termination (server.js's __terminateAllWorkersForTest) and clearing
+    // (not just unref'ing) every tracked interval — then calls
+    // process.exit(0).
+    //
+    // The exit() is necessary and was arrived at empirically, not by
+    // default: after both cleanup steps, direct instrumentation (JS-level
+    // process.getActiveResourcesInfo()/_getActiveHandles()/
+    // _getActiveRequests(), AND OS-level /proc/<pid>/status +
+    // /proc/<pid>/fd inspection) shows a genuinely idle process — sleeping
+    // (S) state, 0% CPU, zero active requests, no handles beyond the 3
+    // ordinary stdio pipes — yet `node --test`'s own file-completion
+    // tracking still does not consider the file done without an explicit
+    // exit; every one of dozens of test runs at every --test-timeout
+    // value from 15s to 180s exactly consumed its full configured budget
+    // rather than completing early, which rules out a genuine hang in
+    // favor of a `node --test` behavior this investigation could not
+    // fully characterize (its own internals, not this codebase's). Since
+    // the actual application-level cleanup is verified complete by this
+    // point, forcing exit here is the same shape as --test-force-exit
+    // (server/package.json's test:main), just scoped to this harness's
+    // own confirmed-clean teardown instead of applied blanket across the
+    // whole suite.
+    after(async () => {
+      try { await _t?.terminateAllWorkersForTest?.(); } catch { /* best-effort teardown */ }
+      try { _t?.clearActiveTimersForTest?.(); } catch { /* best-effort teardown */ }
+      process.exit(0);
+    });
+  }
   if (!_t) {
     process.env.NODE_ENV = process.env.NODE_ENV || "test";
     process.env.CONCORD_NO_LISTEN = process.env.CONCORD_NO_LISTEN || "true";

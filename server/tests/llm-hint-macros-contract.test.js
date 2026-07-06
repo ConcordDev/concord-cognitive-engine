@@ -18,11 +18,13 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { registerServerCleanExit } from "./lib/server-clean-exit.js";
 
 const mod = await import("../server.js");
 const { __TEST__ } = mod;
 if (!__TEST__) throw new Error("server.js did not export __TEST__");
 const { runMacro, makeInternalCtx, MACROS } = __TEST__;
+registerServerCleanExit(() => __TEST__);
 
 // Pairs lifted from audit/macro-depth.json — macros that are
 // tier=stub OR tier=functional AND hasTest=false. Regenerate with:

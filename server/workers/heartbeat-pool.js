@@ -151,6 +151,29 @@ export function shutdownPool() {
   queue.length = 0;
 }
 
+/**
+ * Test-only: shut down every pooled worker and AWAIT actual thread exit —
+ * see the matching function in workers/macro-pool.js for why this exists
+ * (`node --test` waits for worker threads to genuinely terminate, not just
+ * be `.unref()`'d, before considering a test file complete). `_poolReady` is
+ * cleared first so `_handleWorkerExit`'s respawn (gated on `_poolReady`)
+ * can't race a fresh worker into existence during teardown.
+ */
+export async function terminateAllForTest() {
+  _poolReady = false;
+  const toKill = workers.splice(0, workers.length).filter(Boolean);
+  await Promise.all(toKill.map((w) => new Promise((resolve) => {
+    const done = () => resolve();
+    w.once("exit", done);
+    try { w.postMessage({ type: "shutdown" }); } catch { done(); }
+    setTimeout(() => { w.terminate().catch(() => {}); }, 2000).unref();
+  })));
+  for (const task of queue) {
+    try { task.reject(new Error("pool_shutdown")); } catch { /* listener may be gone */ }
+  }
+  queue.length = 0;
+}
+
 // ── internals ────────────────────────────────────────────────────────────────
 
 function _runOnWorker(worker, task) {

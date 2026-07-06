@@ -169,6 +169,43 @@ export function shutdownPool() {
   queue.length = 0;
 }
 
+/**
+ * Test-only: shut down every pooled worker and AWAIT actual thread exit.
+ *
+ * `node --test` waits for worker threads to genuinely terminate before
+ * considering a test file complete — a `.unref()`'d worker is enough for a
+ * plain script to exit cleanly, but not enough for `node --test`'s own
+ * file-completion tracking (confirmed via minimal repro, 2026-07-06: an
+ * unref'd Worker with a message listener alone reproduces the clean-exit-
+ * canary hang). `shutdownPool()` above asks workers to exit via postMessage
+ * but never waits for the resulting exit, so callers can't know the threads
+ * are actually gone.
+ *
+ * This uses the SAME graceful postMessage("shutdown") path (the worker calls
+ * `process.exit(0)` itself — see macro-executor.js) rather than
+ * `worker.terminate()`, because terminate() reports exit code 1, and
+ * `handleWorkerExit` respawns on any non-zero code — calling terminate()
+ * directly would race a fresh, untracked replacement worker into existence
+ * right as this function tries to clear the pool.
+ */
+export async function terminateAllForTest() {
+  _poolReady = false;
+  const toKill = workers.splice(0, workers.length);
+  await Promise.all(toKill.map((w) => new Promise((resolve) => {
+    const done = () => resolve();
+    w.once("exit", done);
+    try { w.postMessage({ type: "shutdown" }); } catch { done(); }
+    // Fallback: if the worker doesn't self-exit promptly (e.g. it's mid-task
+    // and the message is queued behind other work), force it after a short
+    // grace period rather than hanging the test teardown itself.
+    setTimeout(() => { w.terminate().catch(() => {}); }, 2000).unref();
+  })));
+  for (const task of queue) {
+    try { task.reject(new Error("pool_shutdown")); } catch { /* listener may be gone */ }
+  }
+  queue.length = 0;
+}
+
 // ── Internal ──────────────────────────────────────────────────────────────────
 
 const WORKER_TIMEOUT_MS = 30_000; // Kill workers that hang beyond 30s

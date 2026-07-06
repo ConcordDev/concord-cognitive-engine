@@ -24,6 +24,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
+import { registerServerCleanExit } from "./lib/server-clean-exit.js";
 
 function makeFakeOllamaServer(label) {
   const hits = [];
@@ -109,6 +110,10 @@ after(async () => {
     )
   );
 });
+
+// Registered after the fake-server-close hook above so it runs last —
+// node:test runs after() hooks in registration order.
+registerServerCleanExit(() => __TEST__);
 
 describe("Phase D wiring fix — callBrain() sources its URL from pickBrainEndpoint", () => {
   it("multi-endpoint utility: dispatches to a real pickBrainEndpoint candidate, not the hardcoded singular default", async () => {

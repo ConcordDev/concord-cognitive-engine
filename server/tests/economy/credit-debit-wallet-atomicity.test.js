@@ -16,11 +16,13 @@
 
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
+import { registerServerCleanExit } from "../lib/server-clean-exit.js";
 
 process.env.NODE_ENV = process.env.NODE_ENV || "test";
 process.env.CONCORD_NO_LISTEN = process.env.CONCORD_NO_LISTEN || "true";
 
 let __TEST__;
+registerServerCleanExit(() => __TEST__);
 
 before(async () => {
   const os = await import("node:os");
