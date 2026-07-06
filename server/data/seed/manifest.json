@@ -2,16 +2,9 @@
   "version": 2,
   "format": "seed-packs",
   "generatedAt": "2026-07-02T00:00:00.000Z",
-  "totalDtus": 2002,
-  "packCount": 12,
+  "totalDtus": 2001,
+  "packCount": 11,
   "packs": [
-    {
-      "file": "dtus-prediction.json",
-      "label": "Pre-Registered Predictions — first-order falsifiability tests",
-      "count": 1,
-      "sizeKB": 5.6,
-      "sha256": "24984cf5bd45a0d423445704d12c888560895bfc438b259fb4beb3f33d9a6fae"
-    },
     {
       "file": "dtus-root.json",
       "label": "Root DTU",
