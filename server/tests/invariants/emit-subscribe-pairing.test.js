@@ -129,7 +129,13 @@ function collectSubscribes() {
     const content = fs.readFileSync(socketTs, "utf8");
     const unionMatch = content.match(/export type SocketEvent\s*=([\s\S]*?);\s*\n/);
     if (unionMatch) {
-      const re = /["']([a-z][a-zA-Z0-9:_-]*:[a-zA-Z0-9:_-]+)["']/g;
+      // Union members don't all carry a colon ('brawl-invited',
+      // 'brawl-started' are hyphen-only) — the earlier colon-required
+      // regex silently skipped those, flagging genuinely-consumed events
+      // (forwarded via useSocket's FORWARDED_EVENTS loop) as dead. The
+      // match is scoped to the union block, which contains only event
+      // names, so accepting any quoted token here is safe.
+      const re = /["']([a-z][a-zA-Z0-9:_-]+)["']/g;
       for (const s of extractMatches(unionMatch[1], re)) subs.add(s);
     }
   }

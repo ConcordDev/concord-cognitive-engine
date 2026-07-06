@@ -1504,8 +1504,8 @@ import { recordTick as tickSubjectiveTime, getSubjectiveTimeMetrics } from "./em
 import { recordObservation as recordInstitutionalDecision, getInstitutionalMemoryMetrics } from "./emergent/institutional-memory.js";
 
 // ---- Worker Pool: offload heavy macros to worker threads ----
-import { initPool, isHeavy, dispatch as dispatchToPool, syncState as syncPoolState, getPoolStats, shutdownPool } from "./workers/macro-pool.js";
-import { initHeartbeatPool, exec as execHeartbeatWorker, getPoolStats as getHeartbeatPoolStats, shutdownPool as shutdownHeartbeatPool } from "./workers/heartbeat-pool.js";
+import { initPool, isHeavy, dispatch as dispatchToPool, syncState as syncPoolState, getPoolStats, shutdownPool, terminateAllForTest as terminateMacroPoolForTest } from "./workers/macro-pool.js";
+import { initHeartbeatPool, exec as execHeartbeatWorker, getPoolStats as getHeartbeatPoolStats, shutdownPool as shutdownHeartbeatPool, terminateAllForTest as terminateHeartbeatPoolForTest } from "./workers/heartbeat-pool.js";
 import { setHeartbeatPool, getHeartbeatTimingStats } from "./emergent/heartbeat-registry.js";
 // Shard activation (ensureWorldActive/markWorldUserCount/recordWorldActivity) now
 // lives on the live worlds router (routes/worlds.js); the parent only needs the
@@ -30809,6 +30809,10 @@ let cognitiveWorker = null;
 let cognitiveWorkerReady = false;
 let _cognitiveWorkerRestartCount = 0;
 let _cognitiveWorkerStartTime = 0;
+// Test-only: set by terminateCognitiveWorkerForTest() so the exit handler's
+// crash-respawn logic doesn't race a fresh worker into existence while
+// intentionally tearing down for a test's clean-exit check.
+let _cognitiveWorkerTestShutdown = false;
 let _heartbeatCount = 0;
 
 // ── Cognitive Worker: snapshot builder ────────────────────────────────────────
@@ -30974,7 +30978,7 @@ function spawnCognitiveWorker() {
 
   cognitiveWorker.on("exit", (code) => {
     cognitiveWorkerReady = false;
-    if (code !== 0) {
+    if (code !== 0 && !_cognitiveWorkerTestShutdown) {
       console.error(`[cognitive-worker] Exited with code ${code}`);
       const uptime = Date.now() - _cognitiveWorkerStartTime;
       if (uptime < 10_000) _cognitiveWorkerRestartCount++;
@@ -30989,6 +30993,32 @@ function spawnCognitiveWorker() {
   // (Node re-refs kPublicPort on newListener). Re-unref now that all
   // listeners are attached so the worker can't block a clean test exit.
   _unrefInTest(cognitiveWorker);
+}
+
+/**
+ * Test-only: shut down the cognitive worker and AWAIT actual thread exit.
+ *
+ * `node --test` waits for worker threads to genuinely terminate before
+ * considering a test file complete — `.unref()` (even correctly re-applied
+ * after listener attachment, see the comment above) is sufficient for a
+ * plain script to exit cleanly but NOT for node --test's own file-completion
+ * tracking. Confirmed via minimal repro (2026-07-06): a bare unref'd Worker
+ * with only a message listener reproduces the clean-exit-canary hang;
+ * explicit termination is what resolves it. `_cognitiveWorkerTestShutdown`
+ * prevents the exit handler's crash-respawn from racing a replacement
+ * worker into existence during this teardown.
+ */
+async function terminateCognitiveWorkerForTest() {
+  if (!cognitiveWorker) return;
+  _cognitiveWorkerTestShutdown = true;
+  const w = cognitiveWorker;
+  cognitiveWorker = null;
+  await new Promise((resolve) => {
+    const done = () => resolve();
+    w.once("exit", done);
+    try { w.postMessage({ type: "shutdown" }); } catch { done(); }
+    setTimeout(() => { w.terminate().catch(() => {}); }, 2000).unref();
+  });
 }
 
 function startHeartbeat() {
@@ -52129,13 +52159,13 @@ app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res
   const { inviteBrawl } = await import("./lib/brawl.js");
   const fromUserId = req.user?.id || req.user?.userId;
   // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee; actor is fromUserId)
-  const r = inviteBrawl(fromUserId, req.body?.toUserId);
+  const toUserId = req.body?.toUserId;
+  const r = inviteBrawl(fromUserId, toUserId);
   if (r.ok && !r.alreadyOpen) {
     try {
-      // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee's socket channel)
       realtimeEmit?.("brawl-invited", {
         inviteId: r.inviteId, from: fromUserId,
-      }, { userId: req.body?.toUserId });
+      }, { userId: toUserId });
     } catch { /* emit best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
@@ -77421,6 +77451,48 @@ structuredLog("info", "phase9_6_federation_init", {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ---- test surface (safe exports; no side effects) ----
+
+/**
+ * Test-only: terminate all four pooled worker threads (2 macro-pool + 1
+ * heartbeat-pool + 1 cognitive worker) and await their actual exit.
+ *
+ * Root cause this fixes (server clean-exit canary, 2026-07-06): `node --test`
+ * waits for worker threads to genuinely terminate before considering a test
+ * file complete — `.unref()`'ing a worker is sufficient for a PLAIN SCRIPT to
+ * exit cleanly (confirmed directly: booting this same harness outside
+ * node:test exits on its own in seconds) but NOT sufficient for `node
+ * --test`'s own file-completion tracking, which every `tests/depth/*.test.js`
+ * file hits because each one boots the real server via tests/depth/_harness.js.
+ * Minimal repro: a bare unref'd Worker with only a message listener,
+ * standing alone with no server code at all, reproduces the exact hang
+ * (file's own assertions pass instantly; the file-level test still consumes
+ * its entire timeout budget). Explicit termination is what resolves it.
+ *
+ * Call this from a test file's `after()` hook — see tests/depth/_harness.js.
+ */
+export async function __terminateAllWorkersForTest() {
+  await Promise.all([
+    terminateMacroPoolForTest(),
+    terminateHeartbeatPoolForTest(),
+    terminateCognitiveWorkerForTest(),
+  ]);
+}
+
+/**
+ * Test-only: clear (not just unref) every tracked staggered/tracked interval.
+ * `_activeTimers` is the same registry `gracefulShutdown()` drains on
+ * SIGTERM/SIGINT — this exposes the same clear step without the rest of
+ * production shutdown (state save, request drain, 10s+ delay), which would
+ * make every test file's teardown far too slow.
+ */
+export function __clearActiveTimersForTest() {
+  for (const timerId of _activeTimers) {
+    clearInterval(timerId);
+    clearTimeout(timerId);
+  }
+  _activeTimers.clear();
+}
+
 export const __TEST__ = Object.freeze({
   VERSION,
   STATE,
@@ -77465,4 +77537,8 @@ export const __TEST__ = Object.freeze({
   creditWallet,
   debitWallet,
   getWallet,
+  // Server clean-exit canary fix (2026-07-06) — see the functions' own
+  // doc comments above. Call from a test file's after() hook.
+  terminateAllWorkersForTest: __terminateAllWorkersForTest,
+  clearActiveTimersForTest: __clearActiveTimersForTest,
 });

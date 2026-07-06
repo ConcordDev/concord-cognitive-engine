@@ -48,8 +48,12 @@ describe("brawl realtimeEmit wiring (server.js inline routes)", () => {
     assert.doesNotMatch(block, /realtimeEmit\?\.\(\s*`user:/, "regressed to room-string-as-event-name call shape");
     // Correct shape: literal event name first, then payload, then an
     // options object carrying userId (NOT a template-literal room string).
+    // The invitee id is hoisted once (`const toUserId = req.body?.toUserId`,
+    // under the route's no-restricted-syntax target-identifier disable) and
+    // that same variable must be what the options object carries.
     assert.match(block, /realtimeEmit\?\.\(\s*"brawl-invited"/, "must call realtimeEmit with the literal event name first");
-    assert.match(block, /\{\s*userId:\s*req\.body\?\.toUserId\s*\}/, "must pass { userId } as the options object so the room is derived internally");
+    assert.match(block, /const toUserId = req\.body\?\.toUserId/, "invitee id must come from req.body.toUserId (hoisted const)");
+    assert.match(block, /\{\s*userId:\s*toUserId\s*\}/, "must pass { userId } as the options object so the room is derived internally");
   });
 
   it("/api/combat/brawl/accept notifies both participants via realtimeEmit(\"brawl-started\", payload, { userId })", () => {

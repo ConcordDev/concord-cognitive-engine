@@ -1,7 +1,7 @@
 /// <reference types="@testing-library/jest-dom/vitest" />
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { WaveformPlayer } from './page';
+import { WaveformPlayer } from './WaveformPlayer';
 
 describe('WaveformPlayer (feed lens) — honest playback state', () => {
   it('never renders a fabricated progress percentage, even after time passes on a bare timer', () => {

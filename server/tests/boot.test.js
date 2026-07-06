@@ -12,6 +12,13 @@
 
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
+import { registerServerCleanExit } from "./lib/server-clean-exit.js";
+
+// Module-level handle to whatever __TEST__ Boot 1's before() hook resolves,
+// so the clean-exit teardown (registered once, at file scope) can reach it
+// regardless of which describe block's local variable holds the reference.
+let _bootTestSurface;
+registerServerCleanExit(() => _bootTestSurface);
 
 // ── Atlas imports ───────────────────────────────────────────────────────────
 
@@ -54,6 +61,7 @@ describe("Boot 1: Server module loads", () => {
     try {
       const mod = await import("../server.js");
       __TEST__ = mod.__TEST__;
+      _bootTestSurface = __TEST__;
     } catch (err) {
       loadError = err;
     }

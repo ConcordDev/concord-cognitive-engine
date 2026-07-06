@@ -3,7 +3,7 @@
  * rule — pins the module-scope-vs-function-scope depth-tracking fix.
  *
  * The rule's brace-depth counter has no string/regex-literal awareness (only
- * `//` and `/* *​/` comments are stripped), so a brace character sitting
+ * `//` line comments and block comments are stripped), so a brace character sitting
  * inside a regex literal or string can spuriously decrement `depth` below
  * the true nesting level. Left unclamped, that drift never recovers for the
  * rest of the file, so a genuinely function-local `Map`/`Set` declared after

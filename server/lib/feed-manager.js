@@ -795,11 +795,22 @@ function mapDomainToEventType(domain) {
 // FEED TIMER MANAGEMENT
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Node clamps any setInterval/setTimeout delay above this (2^31-1 ms, ~24.8
+// days) to 1ms instead of throwing — a `TimeoutOverflowWarning`, not an
+// error, so it's silent unless you're watching stderr. Feed sources with a
+// long refresh cadence (e.g. a 30-day/2,592,000,000ms "monthly" interval —
+// see lib/feed-sources.js) overflowed this and fired every ~1ms instead of
+// every 30 days: a runaway tick storm (confirmed via the server clean-exit
+// canary investigation, 2026-07-06 — visible as a continuous burst of
+// "[feed-manager] Auto-disabled stale feed" warnings). Clamping preserves a
+// safe (if slightly shorter than requested) cadence instead of overflowing.
+const MAX_SAFE_TIMER_MS = 2_147_483_647;
+
 function startFeedTimer(feedSource) {
   stopFeedTimer(feedSource.id);
   if (!feedSource.enabled) return;
 
-  const interval = Math.max(feedSource.interval || 60000, 5000); // min 5s
+  const interval = Math.min(Math.max(feedSource.interval || 60000, 5000), MAX_SAFE_TIMER_MS); // 5s..~24.8d
   const timer = setInterval(() => {
     tickFeed(feedSource.id).catch(err => {
       logger.warn?.("[feed-manager] Feed tick error", { feedId: feedSource.id, error: err.message });

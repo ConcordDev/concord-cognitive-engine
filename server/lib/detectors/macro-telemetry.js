@@ -79,6 +79,18 @@ export function snapshot() {
  */
 export function startTelemetry(repoRoot) {
   if (_started) return;
+  // CI guard — this JSONL is a DEPLOYMENT-usage signal ("did anyone
+  // actually call this macro in the live window"), and CI is not a
+  // deployment. The adversarial-audit's macro-assassin gate fires ~13k
+  // macros in-process; if that gate happens to outlive the 5-min flush
+  // interval, the flush lands in the workspace and the detector ratchet's
+  // macro-usage pass then reports ~135 self-inflicted "runtime-live"
+  // findings — blowing the detector budget nondeterministically (fails
+  // exactly when the CI runner is slow enough). BASELINE.json is built
+  // with zero CI telemetry, so recording it in CI only ever creates
+  // baseline-vs-run asymmetry, never signal. CONCORD_MACRO_TELEMETRY=1
+  // force-enables (used by macro-telemetry's own behavioral tests).
+  if (process.env.CI && process.env.CONCORD_MACRO_TELEMETRY !== "1") return;
   _started = true;
   _logPath = path.join(repoRoot, "audit", "detectors", "macro-telemetry.jsonl");
   _flushInterval = setInterval(() => {

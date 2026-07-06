@@ -26,6 +26,13 @@ import {
   MACRO_LIVE_WINDOW_DAYS,
 } from "../lib/detectors/macro-telemetry.js";
 
+// The module's CI guard turns startTelemetry into a no-op under CI (the
+// JSONL is a deployment-usage signal; CI self-exercise must not pollute
+// it). These tests exercise the real recording/flush behaviour, so force
+// telemetry on — the guard itself is pinned by
+// tests/macro-telemetry-ci-guard.test.js.
+process.env.CONCORD_MACRO_TELEMETRY = "1";
+
 let tmpRoot;
 
 before(async () => {
