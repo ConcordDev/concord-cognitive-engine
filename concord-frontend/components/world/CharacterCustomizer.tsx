@@ -1,12 +1,22 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import {
   User, Scissors, Smile, Shirt, PanelBottom, Footprints,
   Crown, Glasses, Backpack, Hand, Sparkles, Save, Check, Palette,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
+
+// Three.js/R3F is heavy and browser-only; lazy-load so the rest of the
+// customizer (+ any SSR page that mounts it) stays light and never tries
+// to construct a WebGL context on the server. Mirrors the exact pattern
+// `MountDesigner.tsx` uses for `MountPreviewCanvas`.
+const CharacterPreviewCanvas = dynamic(
+  () => import('./CharacterPreviewCanvas'),
+  { ssr: false, loading: () => <span className="text-xs text-zinc-500">Loading 3D preview…</span> },
+);
 
 // ──────────────────────────── Types ──────────────────────────────
 
@@ -200,36 +210,31 @@ export function CharacterCustomizer({
           })}
         </div>
 
-        {/* ── Center Panel: Character Preview ── */}
-        <div className="flex-1 flex flex-col items-center justify-center rounded-xl bg-zinc-950 border border-zinc-800 min-w-[200px]">
-          <div className="relative w-40 h-56 flex flex-col items-center justify-center">
-            {/* Body silhouette — head tinted by chosen skin tone */}
-            <div
-              className="w-20 h-20 rounded-full border-2 border-zinc-700"
-              style={skinColor ? { backgroundColor: skinColor } : undefined}
-            />
-            <div className="w-24 h-28 rounded-t-xl mt-1 border-2 border-zinc-700 bg-zinc-800" />
-
-            {/* Equipped labels — show the real chosen enum value per slot */}
-            <div className="mt-4 flex flex-wrap gap-1 justify-center max-w-[180px]">
-              {Object.entries(selections).map(([slotId, assetId]) => {
-                const slotDef = SLOTS.find((s) => s.id === slotId);
-                if (!slotDef) return null;
-                const SlotIcon = slotDef.icon;
-                const opt = options.slots?.[slotId]?.find((o) => o.assetId === assetId);
-                return (
-                  <span
-                    key={slotId}
-                    className="inline-flex items-center gap-0.5 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400"
-                  >
-                    <SlotIcon className="h-3 w-3" />
-                    {opt?.name ?? assetId}
-                  </span>
-                );
-              })}
-            </div>
+        {/* ── Center Panel: Character Preview (real 3D, not a CSS placeholder) ── */}
+        <div className="flex-1 flex flex-col items-center rounded-xl bg-zinc-950 border border-zinc-800 min-w-[200px] overflow-hidden">
+          <div className="w-full h-72 min-h-[220px]" data-testid="character-preview-canvas">
+            <CharacterPreviewCanvas selections={selections} skinColor={skinColor} />
           </div>
-          <p className="mt-4 text-xs text-zinc-400">3D Preview</p>
+
+          {/* Equipped labels — show the real chosen enum value per slot */}
+          <div className="mt-3 mb-3 flex flex-wrap gap-1 justify-center max-w-[220px]">
+            {Object.entries(selections).map(([slotId, assetId]) => {
+              const slotDef = SLOTS.find((s) => s.id === slotId);
+              if (!slotDef) return null;
+              const SlotIcon = slotDef.icon;
+              const opt = options.slots?.[slotId]?.find((o) => o.assetId === assetId);
+              return (
+                <span
+                  key={slotId}
+                  className="inline-flex items-center gap-0.5 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400"
+                >
+                  <SlotIcon className="h-3 w-3" />
+                  {opt?.name ?? assetId}
+                </span>
+              );
+            })}
+          </div>
+          <p className="mb-3 text-xs text-zinc-400">Live 3D Preview</p>
         </div>
 
         {/* ── Right Panel: Slot Options Grid ── */}
