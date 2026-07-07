@@ -426,6 +426,12 @@ export default function CouncilLensPage() {
     [debateLensItems]
   );
 
+  // Whether a real, persisted Proposal artifact exists to run council-analysis
+  // macros against. Before the first proposal is created there is nothing to
+  // deliberate/tally/minute/resolve — the panel should say so honestly rather
+  // than call the API against a fabricated id.
+  const hasRealProposal = proposalLensItems.length > 0;
+
   const [activeTab, setActiveTab] = useState<CouncilTab>('proposals');
 
   // ----- UI State -----
@@ -514,9 +520,19 @@ export default function CouncilLensPage() {
     setter: (val: Record<string, unknown> | null) => void,
     params?: Record<string, unknown>
   ) => {
+    // Honest failure: there is no real persisted proposal artifact yet, so
+    // don't pretend the literal string 'council' is one — that fake id is
+    // never a real lensArtifact and every macro would 500 with a confusing
+    // "not found". Tell the user what to do instead.
+    const artifactId = proposalLensItems[0]?.id;
+    if (!artifactId) {
+      setter({
+        message: 'Create a proposal first — council analysis runs against a real proposal.',
+      } as Record<string, unknown>);
+      return;
+    }
     setCouncilActionRunning(action);
     try {
-      const artifactId = proposalLensItems[0]?.id || 'council';
       const res = await runArtifact.mutateAsync({ id: artifactId, action, params: params || {} });
       if (res.ok === false) {
         setter({
@@ -3047,6 +3063,20 @@ export default function CouncilLensPage() {
               </span>
             </div>
 
+            {!hasRealProposal && (
+              <div className="flex items-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-3 py-2.5">
+                <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
+                <p className="text-xs text-gray-300 flex-1">
+                  Create a proposal first — these actions analyze a real proposal,
+                  and none exists yet.
+                </p>
+                <button onClick={() => setShowCreateProposal(true)} className={ds.btnSecondary + ' text-xs shrink-0'}>
+                  <Plus className="w-3.5 h-3.5" />
+                  New Proposal
+                </button>
+              </div>
+            )}
+
             {/* Action Buttons Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
@@ -3082,7 +3112,8 @@ export default function CouncilLensPage() {
                 <button
                   key={action}
                   onClick={() => handleCouncilAction(action, setter)}
-                  disabled={councilActionRunning !== null}
+                  disabled={councilActionRunning !== null || !hasRealProposal}
+                  title={!hasRealProposal ? 'Create a proposal first' : undefined}
                   className={cn(
                     ds.btnSecondary,
                     'flex items-center gap-1.5 justify-center disabled:opacity-40 disabled:cursor-not-allowed text-xs'
@@ -3237,6 +3268,14 @@ export default function CouncilLensPage() {
                       </span>
                     )}
                   </div>
+                  {'error' in voteCountResult && !('tally' in voteCountResult) && (
+                    <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-2.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
+                      <p className="text-xs text-gray-300">
+                        {String(voteCountResult.message || voteCountResult.error)}
+                      </p>
+                    </div>
+                  )}
                   {'tally' in voteCountResult && (
                     <div className="grid grid-cols-3 gap-2">
                       {[
@@ -3313,6 +3352,9 @@ export default function CouncilLensPage() {
                   <span className="text-xs font-semibold text-neon-cyan uppercase tracking-wider flex items-center gap-1.5">
                     <ClipboardList className="w-3.5 h-3.5" /> Meeting Minutes
                   </span>
+                  {'note' in minutesResult && (
+                    <p className="text-[11px] text-gray-500 italic">{String(minutesResult.note)}</p>
+                  )}
                   {'title' in minutesResult && (
                     <p className="text-sm font-medium text-white">{String(minutesResult.title)}</p>
                   )}
@@ -3385,6 +3427,14 @@ export default function CouncilLensPage() {
                   <span className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-1.5">
                     <HandshakeIcon className="w-3.5 h-3.5" /> Conflict Resolution
                   </span>
+                  {'error' in conflictResult && !('commonGround' in conflictResult) && (
+                    <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-2.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
+                      <p className="text-xs text-gray-300">
+                        {String(conflictResult.message || conflictResult.error)}
+                      </p>
+                    </div>
+                  )}
                   {'issue' in conflictResult && (
                     <p className="text-xs text-gray-400 italic">
                       &ldquo;{String(conflictResult.issue)}&rdquo;

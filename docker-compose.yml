@@ -1,5 +1,11 @@
 services:
-  # Backend API Server — GPU Pod: 16 vCPU / 62GB RAM / RTX 4000 Ada 20GB VRAM
+  # Backend API Server — target deploy host: single NVIDIA A40 (48GB VRAM),
+  # 9 vCPU, 50GB system RAM. CPU/memory reservations across every service in
+  # this file are sized to fit that specific box (prior comments here
+  # referenced a 16 vCPU / 62GB / RTX 4000 Ada 20GB pod and, further down, an
+  # RTX PRO 4500 Blackwell 32GB pod — neither matches this deploy target;
+  # see the reservation math at the "Four-Brain Cognitive Architecture"
+  # section below for the full budget).
   backend:
     build:
       context: ./server
@@ -29,9 +35,16 @@ services:
       - DATA_DIR=/data
       - DB_PATH=/data/db/concord.db
       - STATE_PATH=/data/concord_state.json
-      - NODE_OPTIONS=--max-old-space-size=32768
-      - MAX_OLD_SPACE_SIZE=32768
-      - UV_THREADPOOL_SIZE=16
+      # CLAUDE.md's documented 32GB-heap default assumes a 32GB+ RAM box.
+      # This container's memory limit below is 12G on the A40/50GB-RAM
+      # target, so the heap MUST stay well under that (the GC still needs
+      # non-heap headroom for buffers/native modules/OS) — a 32768 heap
+      # cap here would let V8 grow past the cgroup limit and get OOM-killed
+      # unpredictably instead of GC'ing normally. Override both together if
+      # deployed on a bigger box.
+      - NODE_OPTIONS=--max-old-space-size=8192
+      - MAX_OLD_SPACE_SIZE=8192
+      - UV_THREADPOOL_SIZE=8
       - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama-conscious:11434}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://concord-os.org}
       - FRONTEND_URL=${FRONTEND_URL:-https://concord-os.org}
@@ -90,10 +103,12 @@ services:
       # (needs a collector endpoint). Never set the footguns (DISABLE_CSRF,
       # RATE_LIMIT_BYPASS, CHAOS_ENABLED, WEBHOOK_ALLOW_OPEN, FEDERATION_ALLOW_LOOPBACK).
       # Four-Brain Cognitive Architecture
-      # Four-brain models. Defaults bumped for the RTX PRO 4500 (32GB
-      # VRAM): conscious goes 14B → 32B at q4_K_M (~18GB), leaving ~14GB
-      # for the other three brains + KV cache + LLaVA vision. Override
-      # via env if running on smaller hardware.
+      # Four-brain models. conscious runs 32B at q4_K_M (~18GB) — fits
+      # comfortably in the A40's 48GB alongside the other three brains +
+      # KV cache + LLaVA vision + the Phase D second utility/subconscious
+      # instances (see the VRAM budget at the "Four-Brain Cognitive
+      # Architecture" service block below). Override via env if running
+      # on smaller hardware.
       - BRAIN_CONSCIOUS_URL=${BRAIN_CONSCIOUS_URL:-http://ollama-conscious:11434}
       - BRAIN_CONSCIOUS_MODEL=${BRAIN_CONSCIOUS_MODEL:-qwen2.5:32b-instruct-q4_K_M}
       - BRAIN_SUBCONSCIOUS_URL=${BRAIN_SUBCONSCIOUS_URL:-http://ollama-subconscious:11434}
@@ -116,14 +131,18 @@ services:
       - CONCORD_EMBED_OLLAMA_URL=${CONCORD_EMBED_OLLAMA_URL:-http://ollama-vision:11434}
       - CONCORD_EMBED_OLLAMA_MODEL=${CONCORD_EMBED_OLLAMA_MODEL:-nomic-embed-text}
       # Brain server-side concurrency — match OLLAMA_NUM_PARALLEL on each
-      # service. Override per env when running on smaller hardware.
-      - BRAIN_CONSCIOUS_CONCURRENT=${BRAIN_CONSCIOUS_CONCURRENT:-8}
-      - BRAIN_SUBCONSCIOUS_CONCURRENT=${BRAIN_SUBCONSCIOUS_CONCURRENT:-12}
-      - BRAIN_UTILITY_CONCURRENT=${BRAIN_UTILITY_CONCURRENT:-16}
-      - BRAIN_REPAIR_CONCURRENT=${BRAIN_REPAIR_CONCURRENT:-4}
-      - BRAIN_VISION_CONCURRENT=${BRAIN_VISION_CONCURRENT:-8}
-      - LLM_CONCURRENCY=${LLM_CONCURRENCY:-32}
-      - LLM_CONCURRENCY_LIMIT=${LLM_CONCURRENCY_LIMIT:-64}
+      # service. Re-derived for the A40/9-vCPU box: 7 Ollama containers +
+      # the rest of the stack share only 9 cores total, so high parallelism
+      # numbers tuned for a roomier (28-vCPU RunPod-class) box just queue
+      # instead of genuinely running concurrently. Override per env if
+      # running on bigger hardware.
+      - BRAIN_CONSCIOUS_CONCURRENT=${BRAIN_CONSCIOUS_CONCURRENT:-4}
+      - BRAIN_SUBCONSCIOUS_CONCURRENT=${BRAIN_SUBCONSCIOUS_CONCURRENT:-6}
+      - BRAIN_UTILITY_CONCURRENT=${BRAIN_UTILITY_CONCURRENT:-8}
+      - BRAIN_REPAIR_CONCURRENT=${BRAIN_REPAIR_CONCURRENT:-6}
+      - BRAIN_VISION_CONCURRENT=${BRAIN_VISION_CONCURRENT:-4}
+      - LLM_CONCURRENCY=${LLM_CONCURRENCY:-16}
+      - LLM_CONCURRENCY_LIMIT=${LLM_CONCURRENCY_LIMIT:-32}
       # Heartbeat & emergent throttles
       - CONCORD_HEARTBEAT_MS=${CONCORD_HEARTBEAT_MS:-5000}
       - CONCORD_AGENT_TICK_CONCURRENT=${CONCORD_AGENT_TICK_CONCURRENT:-32}
@@ -196,11 +215,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 16G
-          cpus: '8.0'
+          memory: 12G
+          cpus: '3.0'
         reservations:
-          memory: 4G
-          cpus: '2.0'
+          memory: 3G
+          cpus: '1.5'
 
   # Read-only replica (horizontal read scale-out) — OPT-IN.
   # Start with:  docker compose --profile read-replica up -d backend-read
@@ -300,10 +319,10 @@ services:
       resources:
         limits:
           memory: 1G
-          cpus: '0.5'
+          cpus: '0.6'
         reservations:
-          memory: 256M
-          cpus: '0.1'
+          memory: 512M
+          cpus: '0.3'
 
   # Nginx Reverse Proxy
   nginx:
@@ -471,23 +490,45 @@ services:
           memory: 512M
           cpus: '0.5'
 
-  # ── Four-Brain Cognitive Architecture (GPU: RTX 4000 Ada, 16GB VRAM shared) ──
-  # VRAM budget: 14B-q4(~5.5GB) + 7B(~4.5GB) + 3B(~2GB) + 1.5B(~1GB) + embed(~0.3GB) = ~13.3GB → 2.7GB headroom
-  # Brain 1: Conscious — chat and deep reasoning (14B-q4_K_M on GPU, ~5.5GB VRAM)
+  # ── Four-Brain Cognitive Architecture — target: single NVIDIA A40, 48GB
+  # VRAM, shared by all 7 services below via NVIDIA_VISIBLE_DEVICES=all +
+  # device count:1 (no device_ids pinning — correct for a single-GPU box;
+  # all 7 legitimately share the one card). CPU/memory reservations,
+  # OLLAMA_NUM_PARALLEL, and OLLAMA_MAX_LOADED_MODELS below are sized for
+  # the box's 9 vCPU / 50GB RAM, NOT for the VRAM headroom alone — the
+  # scarce resource on this box is CPU, since 7 Ollama containers plus the
+  # rest of the stack (backend/frontend/nginx/redis/qdrant) share only 9
+  # cores total.
+  #
+  # VRAM budget (actual current model defaults, see BRAIN_*_MODEL above):
+  #   conscious 32B-q4_K_M (~18GB) + subconscious 7B-q5_K_M ×2 (~5.5GB each,
+  #   Phase D scale-out) + utility 3B-q5_K_M ×2 (~2.2GB each) + repair
+  #   1.5B-q5_K_M (~1.1GB) + vision 7B (~5.5GB) + embed model on the vision
+  #   instance (~0.3GB) ≈ 40.3GB committed, leaving ~7.7GB headroom in 48GB.
+  #   That headroom is why OLLAMA_MAX_LOADED_MODELS is capped at 1 below on
+  #   every single-model brain (a second model loading concurrently on any
+  #   of them isn't needed and would eat into that margin) — vision is the
+  #   one exception (see its own comment).
+  #
+  # CPU/memory reservation budget across all 7 services totals ~5.6 vCPU /
+  # ~36GB, leaving ~3.4 vCPU / ~14GB of the box's 9 vCPU / 50GB for
+  # backend+frontend+nginx+redis+qdrant+prometheus+grafana (their own
+  # reservations sum to ~2.4 vCPU / ~4GB — see those service blocks).
+  #
+  # Brain 1: Conscious — chat and deep reasoning (32B-q4_K_M on GPU, ~18GB VRAM)
   ollama-conscious:
     image: ollama/ollama
     container_name: concord-ollama-conscious
     restart: unless-stopped
     environment:
-      # Bumped parallelism + tuning flags for the RTX PRO 4500 Blackwell
-      # (32GB GDDR7, 5th-gen tensor cores). FLASH_ATTENTION uses the
-      # tensor cores for a ~30% inference speedup; KV_CACHE_TYPE=q8_0
-      # halves KV memory at near-zero quality cost so we can hold longer
-      # context. GPU_OVERHEAD reserves 1GB headroom for the KV cache.
-      # Phase D: bumped 8 → 12. The 32B conscious model is the largest;
-      # going higher than 12 risks KV-cache thrash.
-      - OLLAMA_NUM_PARALLEL=12
-      - OLLAMA_MAX_LOADED_MODELS=2
+      # NUM_PARALLEL re-derived for the A40/9-vCPU box (was 12, tuned for a
+      # roomier many-core pod). FLASH_ATTENTION uses tensor cores for a
+      # ~30% inference speedup; KV_CACHE_TYPE=q8_0 halves KV memory at
+      # near-zero quality cost. GPU_OVERHEAD reserves 1GB headroom for the
+      # KV cache — conscious is the largest model so it keeps the biggest
+      # overhead reservation of the seven.
+      - OLLAMA_NUM_PARALLEL=4
+      - OLLAMA_MAX_LOADED_MODELS=1
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KV_CACHE_TYPE=q8_0
@@ -506,11 +547,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 24G
-          cpus: '8.0'
+          memory: 14G
+          cpus: '3.0'
         reservations:
-          memory: 16G
-          cpus: '4.0'
+          memory: 10G
+          cpus: '1.5'
           devices:
             - driver: nvidia
               count: 1
@@ -523,12 +564,13 @@ services:
     container_name: concord-ollama-subconscious
     restart: unless-stopped
     environment:
-      # Phase D: bumped 12 → 16. 7B model fits comfortably.
-      - OLLAMA_NUM_PARALLEL=16
-      - OLLAMA_MAX_LOADED_MODELS=2
+      # NUM_PARALLEL re-derived for the A40/9-vCPU box (was 16).
+      - OLLAMA_NUM_PARALLEL=6
+      - OLLAMA_MAX_LOADED_MODELS=1
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_GPU_OVERHEAD=536870912
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ollama-subconscious-data:/root/.ollama
@@ -544,10 +586,10 @@ services:
       resources:
         limits:
           memory: 8G
-          cpus: '4.0'
+          cpus: '1.5'
         reservations:
-          memory: 4G
-          cpus: '1.0'
+          memory: 6G
+          cpus: '0.75'
           devices:
             - driver: nvidia
               count: 1
@@ -560,13 +602,15 @@ services:
     container_name: concord-ollama-utility
     restart: unless-stopped
     environment:
-      # Phase D: bumped 16 → 32. Utility (qwen2.5:3b) routes ~65% of all
-      # brain requests; this is the highest leverage bump.
-      - OLLAMA_NUM_PARALLEL=32
-      - OLLAMA_MAX_LOADED_MODELS=2
+      # NUM_PARALLEL re-derived for the A40/9-vCPU box (was 32). Utility
+      # (qwen2.5:3b) still routes ~65% of all brain requests, so it keeps
+      # the highest parallelism of the seven despite the box-wide cut.
+      - OLLAMA_NUM_PARALLEL=8
+      - OLLAMA_MAX_LOADED_MODELS=1
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_GPU_OVERHEAD=536870912
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ollama-utility-data:/root/.ollama
@@ -582,10 +626,10 @@ services:
       resources:
         limits:
           memory: 4G
-          cpus: '4.0'
+          cpus: '1.5'
         reservations:
-          memory: 2G
-          cpus: '1.0'
+          memory: 3G
+          cpus: '0.75'
           devices:
             - driver: nvidia
               count: 1
@@ -601,11 +645,12 @@ services:
     container_name: concord-ollama-utility-2
     restart: unless-stopped
     environment:
-      - OLLAMA_NUM_PARALLEL=32
-      - OLLAMA_MAX_LOADED_MODELS=2
+      - OLLAMA_NUM_PARALLEL=8
+      - OLLAMA_MAX_LOADED_MODELS=1
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_GPU_OVERHEAD=536870912
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ollama-utility-2-data:/root/.ollama
@@ -621,10 +666,10 @@ services:
       resources:
         limits:
           memory: 4G
-          cpus: '4.0'
+          cpus: '1.5'
         reservations:
-          memory: 2G
-          cpus: '1.0'
+          memory: 3G
+          cpus: '0.75'
           devices:
             - driver: nvidia
               count: 1
@@ -638,11 +683,12 @@ services:
     container_name: concord-ollama-subconscious-2
     restart: unless-stopped
     environment:
-      - OLLAMA_NUM_PARALLEL=16
-      - OLLAMA_MAX_LOADED_MODELS=2
+      - OLLAMA_NUM_PARALLEL=6
+      - OLLAMA_MAX_LOADED_MODELS=1
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_GPU_OVERHEAD=536870912
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ollama-subconscious-2-data:/root/.ollama
@@ -658,10 +704,10 @@ services:
       resources:
         limits:
           memory: 8G
-          cpus: '4.0'
+          cpus: '1.5'
         reservations:
-          memory: 4G
-          cpus: '1.0'
+          memory: 6G
+          cpus: '0.75'
           devices:
             - driver: nvidia
               count: 1
@@ -674,13 +720,15 @@ services:
     container_name: concord-ollama-repair
     restart: unless-stopped
     environment:
-      # Phase D: bumped 4 → 16. The 1.5B repair model is tiny — there's
-      # no reason it should be the throughput bottleneck.
-      - OLLAMA_NUM_PARALLEL=16
+      # The 1.5B repair model is tiny — there's no reason it should be the
+      # throughput bottleneck, so it keeps a moderate NUM_PARALLEL even
+      # after the box-wide cut (was 16).
+      - OLLAMA_NUM_PARALLEL=6
       - OLLAMA_MAX_LOADED_MODELS=1
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_GPU_OVERHEAD=268435456
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ollama-repair-data:/root/.ollama
@@ -695,11 +743,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: '2.0'
+          memory: 3G
+          cpus: '1.0'
         reservations:
-          memory: 1G
-          cpus: '0.5'
+          memory: 2G
+          cpus: '0.35'
           devices:
             - driver: nvidia
               count: 1
@@ -716,10 +764,20 @@ services:
     restart: unless-stopped
     environment:
       - OLLAMA_NUM_PARALLEL=4
-      - OLLAMA_MAX_LOADED_MODELS=1
+      # MAX_LOADED_MODELS=2, not 1: this instance is double-booked — the
+      # backend's CONCORD_EMBED_OLLAMA_URL points at ollama-vision too, so
+      # it serves BOTH the qwen2.5vl:7b vision model AND the
+      # nomic-embed-text embedding model. At MAX_LOADED_MODELS=1 every
+      # embedding call would evict the vision model (and vice versa),
+      # thrashing a reload on nearly every request. This is the one
+      # instance of the seven that genuinely needs to hold 2 models
+      # concurrently — the other six each serve exactly one model per
+      # brain role and stay capped at 1.
+      - OLLAMA_MAX_LOADED_MODELS=2
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_GPU_OVERHEAD=536870912
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ollama-vision-data:/root/.ollama
@@ -734,11 +792,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 16G
-          cpus: '4.0'
+          memory: 8G
+          cpus: '1.5'
         reservations:
-          memory: 10G
-          cpus: '2.0'
+          memory: 6G
+          cpus: '0.75'
           devices:
             - driver: nvidia
               count: 1

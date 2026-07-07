@@ -75,6 +75,47 @@ describe('ManifestActionBar', () => {
     expect(screen.getByText('Sign Machine')).toBeInTheDocument();
   });
 
+  it('humanises dotted macro-style names', () => {
+    getLensManifest.mockReturnValue({
+      domain: 'sentinel',
+      label: 'Sentinel',
+      actions: ['triage.open', 'monitor.create', 'scan.rule.add', 'query.save'],
+      macros: { list: 'list', get: 'get' },
+    });
+    render(<ManifestActionBar lensId="sentinel" />);
+    expect(screen.getByText('Triage Open')).toBeInTheDocument();
+    expect(screen.getByText('Scan Rule Add')).toBeInTheDocument();
+    expect(screen.getByText('Query Save')).toBeInTheDocument();
+  });
+
+  it('strips a short domain-code prefix repeated 5+ times in the same lens', () => {
+    getLensManifest.mockReturnValue({
+      domain: 'society',
+      label: 'Society',
+      actions: [
+        'wb-indicator', 'wb-country', 'wb-compare', 'wb-chart-series',
+        'wb-choropleth', 'wb-region-rankings', 'wb-country-dashboard', 'wb-common-indicators',
+      ],
+      macros: { list: 'list', get: 'get' },
+    });
+    render(<ManifestActionBar lensId="society" limit={8} />);
+    expect(screen.getByText('Indicator')).toBeInTheDocument();
+    expect(screen.getByText('Country')).toBeInTheDocument();
+    expect(screen.getByText('Compare')).toBeInTheDocument();
+    expect(screen.queryByText('Wb Indicator')).not.toBeInTheDocument();
+  });
+
+  it('leaves a one-off short prefix alone (does not guess)', () => {
+    getLensManifest.mockReturnValue({
+      domain: 'dx-platform',
+      label: 'DX Platform',
+      actions: ['dx-review', 'create'],
+      macros: { list: 'list', get: 'get' },
+    });
+    render(<ManifestActionBar lensId="dx-platform" />);
+    expect(screen.getByText('Dx Review')).toBeInTheDocument();
+  });
+
   it('caps button count at the limit prop', () => {
     getLensManifest.mockReturnValue({
       domain: 'a',

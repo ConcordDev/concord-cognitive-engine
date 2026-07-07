@@ -24,6 +24,7 @@ import {
   Minimize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Z_INDEX } from '@/lib/ui/z-index';
 
 interface HealthData {
   ok: boolean;
@@ -105,7 +106,8 @@ function SystemGuidePanel() {
     return (
       <button
         onClick={() => setCollapsed(false)}
-        className="fixed bottom-6 left-6 z-30 p-2 rounded-lg bg-lattice-surface border border-lattice-border hover:bg-lattice-border/50 transition-colors"
+        style={{ zIndex: Z_INDEX.GUIDE_PASSIVE }}
+        className="fixed bottom-6 left-6 p-2 rounded-lg bg-lattice-surface border border-lattice-border hover:bg-lattice-border/50 transition-colors"
         title="Expand Guide"
       >
         <Lightbulb className="w-4 h-4 text-neon-blue" />
@@ -114,7 +116,10 @@ function SystemGuidePanel() {
   }
 
   return (
-    <div className="fixed top-16 right-0 z-30 w-72 h-[calc(100vh-4rem)] bg-lattice-surface border-l border-lattice-border overflow-y-auto">
+    <div
+      style={{ zIndex: Z_INDEX.GUIDE_PASSIVE }}
+      className="fixed top-16 right-0 w-72 h-[calc(100vh-4rem)] bg-lattice-surface border-l border-lattice-border overflow-y-auto"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-lattice-border sticky top-0 bg-lattice-surface z-10">
         <span className="text-sm font-medium text-white flex items-center gap-1.5">

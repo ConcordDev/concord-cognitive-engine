@@ -38,7 +38,7 @@ import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { UniversalActions } from '@/components/lens/UniversalActions';
-import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -352,6 +352,77 @@ function createDefaultDrumPads(): DrumPad[] {
 }
 
 // ============================================================================
+// Recent Projects list — reopen affordance
+// ============================================================================
+//
+// `RecentMineCard domain="studio"` (mounted below) is backed by the
+// domain-wide `studio.recent_mine` macro, which reads the `dtus` table
+// (session/track/soundscape DTU snapshots) — a different store, keyed by a
+// different id namespace, than the `project` lens-artifacts this page
+// actually saves/loads (`useLensData('studio', 'project', ...)`). Its items
+// carry no `data` payload to reload from and their ids never match a
+// project artifact id, so wiring a "load project" onSelect onto it would be
+// a click that silently does nothing — its own honesty violation. This
+// component is the real, working equivalent: it lists actual saved
+// DAWProject snapshots and loads the picked one.
+function RecentProjectsList({
+  items,
+  onSelect,
+  title = 'Continue a recent project',
+  limit = 5,
+  activeId,
+  className,
+}: {
+  items: LensItem<Record<string, unknown>>[];
+  onSelect: (item: LensItem<Record<string, unknown>>) => void;
+  title?: string;
+  limit?: number;
+  activeId?: string | null;
+  className?: string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className={`w-full text-left ${className || ''}`}>
+      <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-2">{title}</p>
+      <div className="rounded-lg border border-white/10 divide-y divide-white/5 overflow-hidden bg-white/[0.02]">
+        {items.slice(0, limit).map((item) => {
+          const data = (item.data || {}) as Partial<DAWProject>;
+          const trackCount = Array.isArray(data.tracks) ? data.tracks.length : 0;
+          const isActive = !!activeId && item.id === activeId;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item)}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors ${isActive ? 'bg-neon-cyan/5' : ''}`}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm text-white truncate">
+                  {item.title}
+                  {isActive ? ' (open)' : ''}
+                </span>
+                <span className="block text-[11px] text-gray-400 truncate">
+                  {[
+                    data.bpm ? `${data.bpm} BPM` : null,
+                    data.key || null,
+                    `${trackCount} track${trackCount === 1 ? '' : 's'}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </span>
+              <span className="text-[10px] text-gray-500 shrink-0">
+                {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : ''}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Studio Page Component
 // ============================================================================
 
@@ -492,7 +563,9 @@ export default function StudioLensPage() {
 
   // AI Assistant state
   const [aiLoading, setAiLoading] = useState<string | null>(null);
-  const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
+  const [aiResult, setAiResult] = useState<{ title: string; content: string; error?: boolean } | null>(
+    null
+  );
 
   // Keep refs in sync for use in intervals / event handlers
   useEffect(() => {
@@ -685,6 +758,24 @@ export default function StudioLensPage() {
       updated.updatedAt = Date.now();
       return updated;
     });
+  }, []);
+
+  // ---- Load / reopen a previously-saved project ----
+  // Shared by the "recent projects" landing-screen list (empty-state) and
+  // the studio Workbench's project switcher. `item.data` is the full
+  // DAWProject snapshot persisted by handleCreateProject/handleSave; we
+  // re-stamp its `id` to the backend lens-artifact id (`item.id`) rather
+  // than trusting the client-generated id baked into the snapshot, so
+  // subsequent saves (handleSave / DTU-picker citation writes /
+  // handlePublishProject) target the artifact that was actually loaded
+  // instead of silently 404ing against a stale client id.
+  const loadProject = useCallback((item: LensItem<Record<string, unknown>>) => {
+    if (!item?.data) return;
+    const loaded = { ...(item.data as unknown as DAWProject), id: item.id };
+    setProject(loaded);
+    setShowNewProject(false);
+    transportRef.current?.updateConfig({ bpm: loaded.bpm, timeSignature: loaded.timeSignature });
+    showToast('success', `Reopened "${loaded.title || item.title || 'project'}"`);
   }, []);
 
   const handleCreateProject = useCallback(() => {
@@ -1478,10 +1569,13 @@ export default function StudioLensPage() {
         setAiResult({ title, content });
       } catch (e) {
         console.error('Studio AI action failed:', e);
+        const detail = e instanceof Error ? e.message : String(e);
         setAiResult({
           title,
-          content: `AI ${title.toLowerCase()} processed. Results applied to project.`,
+          content: `AI ${title.toLowerCase()} failed — ${detail}. Nothing was applied to the project.`,
+          error: true,
         });
+        showToast('error', `${title} failed`);
       }
       setAiLoading(null);
     },
@@ -1571,6 +1665,17 @@ export default function StudioLensPage() {
             >
               Create Project
             </button>
+
+            {/* Reopen a previously-saved project — the landing screen used to
+                dead-end returning users at "Create New Project" with no way
+                back to their saved work. `studioArtifacts` is the real
+                project-artifact store (server-sorted most-recently-updated
+                first), so this list is always accurate. */}
+            <RecentProjectsList
+              items={studioArtifacts}
+              onSelect={loadProject}
+              className="mt-8"
+            />
           </div>
         </div>
 
@@ -2244,9 +2349,21 @@ export default function StudioLensPage() {
                 ))}
               </div>
               {aiResult && (
-                <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-xl">
+                <div
+                  className={`mt-4 p-4 rounded-xl border ${
+                    aiResult.error
+                      ? 'bg-red-500/5 border-red-500/20'
+                      : 'bg-white/5 border-white/10'
+                  }`}
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-neon-purple">{aiResult.title}</h3>
+                    <h3
+                      className={`text-sm font-semibold ${
+                        aiResult.error ? 'text-red-400' : 'text-neon-purple'
+                      }`}
+                    >
+                      {aiResult.error ? `${aiResult.title} — Failed` : aiResult.title}
+                    </h3>
                     <button
                       onClick={() => setAiResult(null)}
                       className="p-1 hover:bg-white/10 rounded"
@@ -2779,6 +2896,13 @@ export default function StudioLensPage() {
       </PipingProvider>
           <SessionRail lensId="studio" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="studio" limit={10} hideWhenEmpty className="mt-4" />
+          <RecentProjectsList
+            items={studioArtifacts}
+            onSelect={loadProject}
+            title="Your projects"
+            activeId={project.id}
+            className="mt-4 mx-auto max-w-7xl"
+          />
           <AutoActionStrip domain="studio" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="studio" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
           {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar (most-used DAW views). */}

@@ -206,7 +206,12 @@ function ToolCalls({ toolCalls }: { toolCalls: unknown }) {
     <div className="mt-2 flex flex-wrap gap-1.5">
       {calls.slice(0, 6).map((c, i) => (
         <span key={i} className="inline-flex items-center gap-1 rounded-md border border-amber-400/25 bg-amber-400/10 px-2 py-0.5 text-[11px] text-amber-200">
-          <Wrench className="h-3 w-3" /> {String(c.name ?? c.action ?? `${c.domain ?? ''}.${c.macro ?? ''}`).replace(/^\.|\.$/g, '') || 'action'}
+          <Wrench className="h-3 w-3" />
+          {/* `tool` is the real field name on both the skills' toolCalls shape
+              (conkay-skills.ts) and the agent-loop's (chat-agent.js#executeToolCall);
+              `key` (domain.action) covers run_lens_action specifically; the rest are
+              older/looser shapes kept for back-compat. */}
+          {String(c.tool ?? c.key ?? c.name ?? c.action ?? `${c.domain ?? ''}.${c.macro ?? ''}`).replace(/^\.|\.$/g, '') || 'action'}
         </span>
       ))}
     </div>

@@ -16,16 +16,20 @@ const LIMITS = {
   'semantic.search': { max: 100, windowMs: 60000 },      // 100/min — GPU: embedding search is near-instant
   'default': { max: 120, windowMs: 60000 },              // 120/min — GPU: room for background + user
 
-  // Pre-launch write endpoint limits (per IP)
+  // Post-launch write endpoint limits (per IP). write.lens was 10/min shared
+  // across EVERY lens's write action (all funnel through POST /api/lens/run,
+  // the single dispatch endpoint for all 260+ lenses) — normal use blew
+  // through that in seconds ("too many requests" reported site-wide). Raised
+  // both write.lens and read.default; see docs/LIVE_OPS_PUNCHLIST_2026-07-07.md A.2.
   'write.chat':         { max: 30, windowMs: 60000 },    // POST /api/chat — 30/min
   'write.social':       { max: 10, windowMs: 60000 },    // POST /api/social/* — 10/min
-  'write.lens':         { max: 10, windowMs: 60000 },    // POST /api/lens/* — 10/min
+  'write.lens':         { max: 60, windowMs: 60000 },    // POST /api/lens/* — 60/min (was 10; shared by every lens's write action)
   'write.dtus':         { max: 20, windowMs: 60000 },    // POST /api/dtus — 20/min
   'write.media.upload': { max: 5,  windowMs: 60000 },    // POST /api/media/upload — 5/min
   'write.mail':         { max: 10, windowMs: 60000 },    // POST /api/mail/send — 10/min per user (anti-spam; auth-gated, capped payload)
   'write.client-error': { max: 50, windowMs: 60000 },    // POST /api/client-error — 50/min per IP (anon telemetry; an error storm must not self-DoS)
   'write.default':      { max: 20, windowMs: 60000 },    // All other POST/PUT/DELETE — 20/min
-  'read.default':       { max: 120, windowMs: 60000 },   // GET routes (open, rate limited) — 120/min
+  'read.default':       { max: 300, windowMs: 60000 },   // GET routes (open, rate limited) — 300/min (was 120; several HUD components poll every 1-2s)
 };
 
 /**

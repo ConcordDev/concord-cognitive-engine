@@ -15,6 +15,7 @@ import { isOnboardingComplete } from '@/lib/onboarding-state';
 import { Rocket, CheckCircle, Circle, ArrowRight, X, Brain, Package, Globe, ChefHat, Heart, Swords, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { phaseVoiceLine, ARRIVAL_LINE } from '@/lib/concordia/onboarding-voice';
+import { Z_INDEX } from '@/lib/ui/z-index';
 
 // Onboarding ceremony — speak a Concordia line in-world (the goddess turns to
 // the player + a fading toast carries the words) and fire a small juice beat.
@@ -228,7 +229,8 @@ function FirstWinWizard() {
     return (
       <button
         onClick={handleResume}
-        className="fixed bottom-6 left-6 z-40 flex items-center gap-1.5 px-3 py-2 rounded-full bg-lattice-surface border border-neon-blue/30 shadow-lg text-xs font-medium text-neon-blue hover:bg-neon-blue/10"
+        style={{ zIndex: Z_INDEX.STATUS }}
+        className="fixed bottom-6 left-6 flex items-center gap-1.5 px-3 py-2 rounded-full bg-lattice-surface border border-neon-blue/30 shadow-lg text-xs font-medium text-neon-blue hover:bg-neon-blue/10"
         aria-label="Resume First Cycle"
       >
         <Rocket className="w-3.5 h-3.5" />
@@ -240,8 +242,15 @@ function FirstWinWizard() {
   const currentStep =
     resolved.steps.find((s) => !s.completed) || resolved.steps[resolved.steps.length - 1];
 
+  // Offset up from the bare bottom-4/right-4 corner (not just a higher
+  // z-index) — Toasts and SyncIndicator both anchor exactly there, and a
+  // stack of transient toasts or the persistent sync/offline indicator would
+  // otherwise render directly on top of this panel while it's expanded.
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto bg-lattice-surface/95 backdrop-blur border border-neon-blue/30 rounded-xl shadow-xl">
+    <div
+      style={{ zIndex: Z_INDEX.FIRST_WIN_PANEL }}
+      className="fixed bottom-24 right-4 w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto bg-lattice-surface/95 backdrop-blur border border-neon-blue/30 rounded-xl shadow-xl"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 bg-neon-blue/10 border-b border-neon-blue/20">
         <span className="text-sm font-medium text-neon-blue flex items-center gap-1.5">

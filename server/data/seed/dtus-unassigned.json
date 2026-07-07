@@ -292,64 +292,6 @@
     }
   },
   {
-    "id": "dtu_486_post_god_era_transition",
-    "tier": "core",
-    "tags": [
-      "metaphysics",
-      "naturalism",
-      "n486",
-      "hypothesis"
-    ],
-    "human": {
-      "summary": "Post-God Era Transition: Order and structure need not be explained by external agents if recursion and constraint closure generate stable attractors internally; divine hypotheses become unnecessary when internal sufficiency holds.",
-      "bullets": [
-        "Post-God Era Transition",
-        "Order and structure need not be explained by external agents if recursion and constraint closure generate stable attractors internally; divine hypotheses become unnecessary when internal sufficiency holds.",
-        "Invariant: Internal dynamics must explain observed structure without contradiction."
-      ]
-    },
-    "core": {
-      "definitions": [],
-      "invariants": [
-        "Internal dynamics must explain observed structure without contradiction."
-      ],
-      "claims": [
-        "Order and structure need not be explained by external agents if recursion and constraint closure generate stable attractors internally; divine hypotheses become unnecessary when internal sufficiency holds."
-      ],
-      "examples": [
-        "x_{t+1}=F(x_t),\\quad \\Delta g_{\\text{external}}=0"
-      ],
-      "nextActions": []
-    },
-    "machine": {
-      "kind": "first_order",
-      "math": {
-        "equation": "x_{t+1}=F(x_t),\\quad \\Delta g_{\\text{external}}=0",
-        "interpretation": "Post-God Era Transition",
-        "invariant": "Internal dynamics must explain observed structure without contradiction."
-      },
-      "lineage": {
-        "parents": [],
-        "children": []
-      }
-    },
-    "source": "user",
-    "meta": {
-      "hidden": false
-    },
-    "authority": {
-      "model": "user",
-      "score": 0.6
-    },
-    "createdAt": "2026-01-05T00:00:00Z",
-    "updatedAt": "2026-01-05T00:00:00Z",
-    "hash": "",
-    "lineage": {
-      "parents": [],
-      "children": []
-    }
-  },
-  {
     "id": "dtu_487_luck_as_obsolete_unmapped_constraints",
     "tier": "core",
     "tags": [

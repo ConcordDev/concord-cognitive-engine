@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Mic, Loader2, Search, ExternalLink } from 'lucide-react';
+import { Mic, Loader2, Search, ExternalLink, LibraryBig, Check } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { showToast } from '@/components/common/Toasts';
 
 interface Podcast { collectionId: number; trackId?: number; title: string; artist?: string; genre?: string; artwork?: string; feedUrl?: string; episodeCount?: number; collectionUrl?: string; contentAdvisory?: string }
 
@@ -24,9 +25,33 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 export function ItunesSearch() {
   const [query, setQuery] = useState('');
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
+  const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
   const search = useMutation({
     mutationFn: async () => callMacro<{ podcasts: Podcast[] }>('itunes-search', { query: query.trim(), limit: 30 }),
     onSuccess: (env) => { if (env.ok && env.result) setPodcasts(env.result.podcasts); else setPodcasts([]); },
+  });
+  // Add-to-Library bridges an iTunes search result into the real listening
+  // engine (podcastLens STATE in server/domains/podcast.js) — show-add +
+  // an immediate rss-refresh so it shows up in the Listening Hub with real
+  // episodes, not just as a bookmarked DTU nobody can subscribe to or play.
+  const addToLibrary = useMutation({
+    mutationFn: async (p: Podcast) => {
+      const added = await callMacro<{ show: { id: string } }>('show-add', {
+        title: p.title, author: p.artist, category: p.genre, feedUrl: p.feedUrl,
+      });
+      if (!added.ok || !added.result) throw new Error(added.error || 'could not add show');
+      const showId = added.result.show.id;
+      if (p.feedUrl) {
+        const refreshed = await callMacro<{ ingested: number }>('rss-refresh', { showId, feedUrl: p.feedUrl });
+        if (!refreshed.ok) throw new Error(refreshed.error || 'feed unreachable');
+      }
+      return { showId, collectionId: p.collectionId };
+    },
+    onSuccess: ({ collectionId }) => {
+      setAddedIds((prev) => new Set(prev).add(collectionId));
+      showToast('success', 'Added to your library');
+    },
+    onError: (e) => showToast('error', e instanceof Error ? e.message : 'Could not add to library'),
   });
   return (
     <div className="space-y-4">
@@ -64,6 +89,16 @@ export function ItunesSearch() {
               </div>
             </div>
             <div className="flex shrink-0 flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => addToLibrary.mutate(p)}
+                disabled={addedIds.has(p.collectionId) || (addToLibrary.isPending && addToLibrary.variables?.collectionId === p.collectionId)}
+                title="Add to your library — subscribe and pull episodes into the Listening Hub"
+                className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-60"
+              >
+                {addedIds.has(p.collectionId) ? <Check className="h-3 w-3" /> : addToLibrary.isPending && addToLibrary.variables?.collectionId === p.collectionId ? <Loader2 className="h-3 w-3 animate-spin" /> : <LibraryBig className="h-3 w-3" />}
+                {addedIds.has(p.collectionId) ? 'Added' : 'Add to Library'}
+              </button>
               <SaveAsDtuButton
                 compact
                 apiSource="itunes-podcasts"

@@ -18,6 +18,7 @@ import Link from "next/link";
 import { HelpCircle, X, Send, BookOpen, Bug, Mail } from "lucide-react";
 import { useUIStore } from "@/store/ui";
 import { reportClientError } from "@/hooks/useBugContext";
+import { Z_INDEX } from "@/lib/ui/z-index";
 
 const SUPPORT_EMAIL = "support@concord-os.org";
 
@@ -82,7 +83,8 @@ export function HelpButton() {
       <button
         onClick={() => { setOpen((v) => !v); setMode("menu"); setSent(false); }}
         aria-label="Help and feedback"
-        className="fixed bottom-20 right-4 md:bottom-5 md:right-5 z-[60] w-11 h-11 rounded-full bg-lattice-surface border border-lattice-border text-neon-cyan shadow-lg hover:shadow-neon-cyan/25 hover:border-neon-cyan/50 transition-all flex items-center justify-center"
+        style={{ zIndex: Z_INDEX.HELP }}
+        className="fixed bottom-20 right-4 md:bottom-5 md:right-5 w-11 h-11 rounded-full bg-lattice-surface border border-lattice-border text-neon-cyan shadow-lg hover:shadow-neon-cyan/25 hover:border-neon-cyan/50 transition-all flex items-center justify-center"
         title="Help & feedback"
       >
         {open ? <X className="w-5 h-5" /> : <HelpCircle className="w-5 h-5" />}
@@ -92,7 +94,8 @@ export function HelpButton() {
         <div
           role="dialog"
           aria-label="Help and feedback"
-          className="fixed bottom-32 right-4 md:bottom-20 md:right-5 z-[60] w-[320px] max-w-[calc(100vw-2rem)] rounded-xl bg-lattice-surface border border-lattice-border shadow-2xl p-4 text-sm"
+          style={{ zIndex: Z_INDEX.HELP }}
+          className="fixed bottom-32 right-4 md:bottom-20 md:right-5 w-[320px] max-w-[calc(100vw-2rem)] rounded-xl bg-lattice-surface border border-lattice-border shadow-2xl p-4 text-sm"
         >
           {mode === "menu" && (
             <div className="space-y-2">

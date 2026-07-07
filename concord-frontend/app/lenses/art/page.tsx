@@ -51,8 +51,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import type { DTU } from '@/lib/api/generated-types';
@@ -119,23 +117,6 @@ export default function ArtLensPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [showFeatures, setShowFeatures] = useState(true);
-
-  // Backend action wiring
-  const runAction = useRunArtifact('art');
-  const { items: artItems } = useLensData<Record<string, unknown>>('art', 'artwork', { seed: [] });
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-
-  const handleArtAction = async (action: string) => {
-    const targetId = artItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setIsRunning(null);
-  };
 
   const [viewMode, setViewMode] = useState<ViewMode>('gallery');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1177,79 +1158,11 @@ export default function ArtLensPage() {
                 <button onClick={handleCreateListing} disabled={createListingMutation.isPending} className="w-full py-2.5 bg-neon-pink text-white rounded-lg font-medium hover:bg-neon-pink/80 disabled:opacity-50">
                   {createListingMutation.isPending ? 'Creating...' : 'Create Listing'}
                 </button>
-
-      {/* ── Backend Action Panels ── */}
-      <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Wand2 className="w-4 h-4 text-neon-pink" /> Art Compute Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button onClick={() => handleArtAction('colorHarmony')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10 hover:border-neon-pink/50 transition-colors disabled:opacity-50">
-            {isRunning === 'colorHarmony' ? <div className="w-5 h-5 border-2 border-neon-pink border-t-transparent rounded-full animate-spin" /> : <Palette className="w-5 h-5 text-neon-pink" />}
-            <span className="text-xs text-gray-300">Color Harmony</span>
-          </button>
-          <button onClick={() => handleArtAction('compositionScore')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10 hover:border-neon-cyan/50 transition-colors disabled:opacity-50">
-            {isRunning === 'compositionScore' ? <div className="w-5 h-5 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" /> : <Grid className="w-5 h-5 text-neon-cyan" />}
-            <span className="text-xs text-gray-300">Composition Score</span>
-          </button>
-          <button onClick={() => handleArtAction('generatePalette')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10 hover:border-neon-purple/50 transition-colors disabled:opacity-50">
-            {isRunning === 'generatePalette' ? <div className="w-5 h-5 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" /> : <Droplets className="w-5 h-5 text-neon-purple" />}
-            <span className="text-xs text-gray-300">Generate Palette</span>
-          </button>
-          <button onClick={() => handleArtAction('styleClassify')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10 hover:border-yellow-400/50 transition-colors disabled:opacity-50">
-            {isRunning === 'styleClassify' ? <div className="w-5 h-5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" /> : <Eye className="w-5 h-5 text-yellow-400" />}
-            <span className="text-xs text-gray-300">Style Classify</span>
-          </button>
-        </div>
-        {actionResult && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-white/5 rounded-lg border border-white/10">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold flex items-center gap-2"><Palette className="w-4 h-4 text-neon-pink" /> Result</h4>
-              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
-            </div>
-            {/* Color Harmony */}
-            {actionResult.harmonies !== undefined && actionResult.paletteSize !== undefined && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-pink">{actionResult.paletteSize as number}</p><p className="text-[10px] text-gray-400">Colors</p></div>
-                  <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.harmonyScore as number}</p><p className="text-[10px] text-gray-400">Harmony Score</p></div>
-                  <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-yellow-400">{actionResult.temperature as string}</p><p className="text-[10px] text-gray-400">Temperature</p></div>
-                </div>
-                {(actionResult.harmonies as Array<{ type: string; colors: string[] }>)?.slice(0, 4).map((h, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs"><span className="text-white capitalize">{h.type}</span><div className="flex gap-1">{h.colors.map((c, j) => <span key={j} className="w-4 h-4 rounded-sm border border-white/20" style={{ backgroundColor: c }} />)}</div></div>
-                ))}
               </div>
-            )}
-            {/* Composition Score */}
-            {actionResult.overall !== undefined && actionResult.scores !== undefined && (
-              <div className="space-y-2">
-                <div className="text-3xl font-bold text-neon-cyan">{actionResult.overall as number}<span className="text-sm text-gray-400">/100</span></div>
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(actionResult.scores as Record<string, number>).map(([key, val]) => (
-                    <div key={key} className="p-2 bg-white/5 rounded"><p className="text-[10px] text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{val}</p></div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Generate Palette */}
-            {actionResult.palette !== undefined && !actionResult.harmonies && (
-              <div className="space-y-2">
-                <div className="flex gap-2">{(actionResult.palette as Array<{ hex: string }>)?.map((c, i) => <div key={i} className="flex-1 h-10 rounded" style={{ backgroundColor: c.hex || (c as unknown as string) }} title={c.hex || (c as unknown as string)} />)}</div>
-              </div>
-            )}
-            {/* Style Classify */}
-            {actionResult.topMatch !== undefined && actionResult.confidence !== undefined && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-3"><span className="text-2xl font-bold text-yellow-400 capitalize">{(actionResult.topMatch as { style: string }).style}</span><span className="text-xs text-gray-400">Confidence: {actionResult.confidence as string}</span></div>
-                {(actionResult.allMatches as Array<{ style: string; similarity: number }>)?.slice(1).map((s, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs p-1.5 bg-white/5 rounded"><span className="text-white capitalize">{s.style}</span><span className="text-gray-400">{s.similarity}%</span></div>
-                ))}
-              </div>
-            )}
-            {!!actionResult.message && !actionResult.harmonies && !actionResult.overall && !actionResult.palette && !actionResult.topMatch && (
-              <p className="text-sm text-gray-400">{actionResult.message as string}</p>
-            )}
+            </motion.div>
           </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
       {/* Real-time Data Panel */}
       <UniversalActions domain="art" artifactId={null} compact />
@@ -1263,11 +1176,6 @@ export default function ArtLensPage() {
           compact
         />
       )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Lens Features */}
       <div className="border-t border-white/10">

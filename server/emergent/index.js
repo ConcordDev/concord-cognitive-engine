@@ -3121,7 +3121,7 @@ function init({ register, STATE, helpers }) {
         }
 
         // Orphaned lineage: references non-existent parent DTUs
-        for (const parentId of (dtu.lineage || [])) {
+        for (const parentId of (Array.isArray(dtu.lineage) ? dtu.lineage : [])) {
           if (!allIds.has(parentId) && audit.orphanedLineage.length < 10) {
             audit.orphanedLineage.push({ id, parentId, title: dtu.title?.slice(0, 60) });
           }
@@ -3142,7 +3142,7 @@ function init({ register, STATE, helpers }) {
       const claimMap = [];
       for (const [id, dtu] of dtusIterable) {
         if (!dtu || typeof dtu !== 'object') continue;
-        for (const claim of (dtu.core?.claims || [])) {
+        for (const claim of (Array.isArray(dtu.core?.claims) ? dtu.core.claims : [])) {
           if (typeof claim === "string" && claim.length > 10) {
             claimMap.push({ id, title: dtu.title, claim: claim.toLowerCase() });
           }

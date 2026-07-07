@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 // First-run overlay coordinator.
 //
 // Four surfaces used to fire on the first frame at once — the SplashScreen, the
@@ -46,4 +48,26 @@ export function onboardingDoneLocally(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Reactive: is the CookieConsent notice currently occupying the bottom-left
+ * corner? CookieConsent's own visibility is exactly `!cookieAnswered()` (see
+ * its `useEffect`), and it calls `advanceFirstRun()` the moment the user
+ * answers — so a passive bottom-left overlay (e.g. SystemStatus) can use this
+ * hook to know when to step out of the way instead of being fully covered by
+ * the higher-precedence consent banner. No coupling to CookieConsent's
+ * internal component state needed; both derive from the same localStorage key.
+ */
+export function useCookieConsentVisible(): boolean {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    setVisible(!cookieAnswered());
+    const onAdvance = () => setVisible(!cookieAnswered());
+    window.addEventListener(FIRST_RUN_ADVANCE, onAdvance);
+    return () => window.removeEventListener(FIRST_RUN_ADVANCE, onAdvance);
+  }, []);
+
+  return visible;
 }

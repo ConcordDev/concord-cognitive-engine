@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Download, X } from 'lucide-react';
+import { Z_INDEX } from '@/lib/ui/z-index';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -56,7 +57,8 @@ export function InstallPrompt() {
   return (
     <div
       role="banner"
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-lattice-surface border border-neon-cyan/30 rounded-xl p-4 shadow-lg shadow-neon-cyan/10 flex items-center gap-4 max-w-md w-[calc(100%-2rem)]"
+      style={{ zIndex: Z_INDEX.INSTALL_PROMPT }}
+      className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-lattice-surface border border-neon-cyan/30 rounded-xl p-4 shadow-lg shadow-neon-cyan/10 flex items-center gap-4 max-w-md w-[calc(100%-2rem)]"
     >
       <div className="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center flex-shrink-0">
         <Download className="w-5 h-5 text-neon-cyan" />

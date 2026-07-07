@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSyncStatus } from '@/hooks/useOfflineFirst';
+import { Z_INDEX } from '@/lib/ui/z-index';
+import { SYNC_INDICATOR_VISIBILITY_EVENT } from '@/lib/ui/overlay-events';
 
 /**
  * SyncIndicator — Shows sync queue status in the UI.
@@ -21,6 +23,18 @@ export default function SyncIndicator() {
     setVisible(!online || pending > 0);
   }, [online, pending]);
 
+  // Toasts.tsx listens for this to move the transient-notification stack out
+  // of the way instead of sharing this exact bottom-right corner with us.
+  useEffect(() => {
+    try {
+      window.dispatchEvent(
+        new CustomEvent(SYNC_INDICATOR_VISIBILITY_EVENT, { detail: { visible } })
+      );
+    } catch {
+      /* no-op if CustomEvent/window is unavailable */
+    }
+  }, [visible]);
+
   if (!visible) return null;
 
   const isOfflineWithItems = !online && pending > 0;
@@ -28,7 +42,10 @@ export default function SyncIndicator() {
   const isSyncing = online && pending > 0;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono shadow-lg backdrop-blur-sm">
+    <div
+      style={{ zIndex: Z_INDEX.SYNC_STATUS }}
+      className="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono shadow-lg backdrop-blur-sm"
+    >
       {isSyncing && (
         <div className="flex items-center gap-2 bg-blue-500/20 border border-blue-500/40 text-blue-300 px-3 py-2 rounded-lg">
           <span className="inline-block w-2 h-2 bg-blue-400 rounded-full animate-pulse" />

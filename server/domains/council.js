@@ -37,32 +37,128 @@ export default function registerCouncilActions(registerLensAction) {
     const weightedScore = Math.round(evaluations.reduce((s, e) => s + e.score * (e.weight || 0.25), 0));
     return { ok: true, result: { proposal: proposal.slice(0, 200), evaluations, weightedScore, recommendation: weightedScore >= 60 ? "Proceed" : weightedScore >= 40 ? "Revise and resubmit" : "Reject", consensus: evaluations.every(e => e.position === "support") ? "unanimous" : evaluations.filter(e => e.position === "support").length > evaluations.length / 2 ? "majority" : "no-consensus" } };
   });
+  // Real Proposal artifacts (concord-frontend/app/lenses/council/page.tsx's
+  // `Proposal` interface) store votes as `Record<stakeholderId, VoteChoice>` —
+  // a KEYED OBJECT, never an array — and never set `agenda`/`attendees`/
+  // `decisions`/`actionItems`/`parties` at all (they carry `discussion` /
+  // `amendments` / `coSponsors` / `sponsor` / `votingMethod` instead). The
+  // CouncilActionPanel virtual-artifact convention, by contrast, calls these
+  // same macros with a synthetic artifact whose `data` IS the caller's raw
+  // params (`{ votes: [...] }`, `{ agenda, attendees, decisions, actionItems }`,
+  // `{ issue, parties }`). Both shapes are handled below — real fields are
+  // read/mapped where a genuine analog exists, and never fabricated as a
+  // faux-empty success where no analog exists (see conflictResolution).
+  function _looksLikeRealProposal(data) {
+    return Array.isArray(data.discussion) || Array.isArray(data.amendments) ||
+      Array.isArray(data.coSponsors) || typeof data.sponsor === "string" ||
+      typeof data.votingMethod === "string" ||
+      (data.votes && typeof data.votes === "object" && !Array.isArray(data.votes));
+  }
+
   registerLensAction("council", "voteCount", (ctx, artifact, _params) => {
-    const votes = Array.isArray(artifact.data?.votes) ? artifact.data.votes : [];
+    const rawVotes = artifact.data?.votes;
+    let votes;
+    if (Array.isArray(rawVotes)) {
+      // CouncilActionPanel shape: an array of ballot rows [{ vote|position }].
+      votes = rawVotes;
+    } else if (rawVotes && typeof rawVotes === "object") {
+      // Real Proposal shape: Record<stakeholderId, VoteChoice>. Object.values
+      // gives us the VoteChoice string per stakeholder; wrap each as a
+      // pseudo-ballot row so the tally loop below is unchanged.
+      votes = Object.values(rawVotes).map(choice => ({ vote: choice }));
+    } else {
+      votes = [];
+    }
     const tally = { for: 0, against: 0, abstain: 0 };
+    // VoteChoice enum values (strongly_support/support/abstain/oppose/
+    // strongly_oppose/block) map onto the for/against/abstain tally alongside
+    // the legacy for/yes/support/against/no/oppose strings the panel sends.
+    const FOR_CHOICES = new Set(["for", "yes", "support", "strongly_support"]);
+    const AGAINST_CHOICES = new Set(["against", "no", "oppose", "strongly_oppose", "block"]);
     // String()-coerce the vote value: a poisoned non-string vote (number) must
     // not reach .toLowerCase() and throw uncaught.
-    for (const v of votes) { const pos = String((v && (v.vote ?? v.position)) ?? "abstain").toLowerCase(); if (pos === "for" || pos === "yes" || pos === "support") tally.for++; else if (pos === "against" || pos === "no" || pos === "oppose") tally.against++; else tally.abstain++; }
+    for (const v of votes) {
+      const pos = String((v && (v.vote ?? v.position)) ?? "abstain").toLowerCase();
+      if (FOR_CHOICES.has(pos)) tally.for++;
+      else if (AGAINST_CHOICES.has(pos)) tally.against++;
+      else tally.abstain++;
+    }
     const total = votes.length;
     const forPercent = total > 0 ? Math.round((tally.for / total) * 100) : 0;
-    return { ok: true, result: { tally, total, forPercent, passed: forPercent >= 67, passThreshold: "67% supermajority", quorumMet: total >= (parseInt(artifact.data?.quorum) || 3) } };
+    // quorumRequired is the real Proposal field name; `quorum` is kept for the
+    // generic/virtual-artifact caller convention.
+    const quorum = parseInt(artifact.data?.quorumRequired ?? artifact.data?.quorum) || 3;
+    return { ok: true, result: { tally, total, forPercent, passed: forPercent >= 67, passThreshold: "67% supermajority", quorumMet: total >= quorum } };
   });
   registerLensAction("council", "generateMinutes", (ctx, artifact, _params) => {
     const data = artifact.data || {};
     // Array-guard list inputs (a poisoned non-array string must not reach .map()
     // and throw uncaught) and String()-coerce title/date so the RETURN shape is
     // stable regardless of input poisoning.
-    const agenda = Array.isArray(data.agenda) ? data.agenda : [];
-    const attendees = Array.isArray(data.attendees) ? data.attendees : [];
-    const decisions = Array.isArray(data.decisions) ? data.decisions : [];
+    const hasExplicitMeetingShape = Array.isArray(data.agenda) || Array.isArray(data.attendees) ||
+      Array.isArray(data.decisions) || Array.isArray(data.actionItems);
+    const asProposal = !hasExplicitMeetingShape && _looksLikeRealProposal(data);
+
+    let agenda, attendees, decisions;
+    if (asProposal) {
+      // Agenda ← the proposal's real discussion thread (each comment is a
+      // topic that was actually raised and discussed).
+      agenda = Array.isArray(data.discussion)
+        ? data.discussion.map(c => ({ topic: (c && c.content) || "discussion", status: "discussed" }))
+        : [];
+      // Attendees ← sponsor + co-sponsors, the real participant list a
+      // Proposal tracks (there is no meeting-attendance concept on Proposal).
+      attendees = [
+        ...(typeof data.sponsor === "string" && data.sponsor ? [data.sponsor] : []),
+        ...(Array.isArray(data.coSponsors) ? data.coSponsors : []),
+      ];
+      // Decisions ← amendments: an amendment's accepted/rejected status IS a
+      // real decision the council made on that proposal.
+      decisions = Array.isArray(data.amendments)
+        ? data.amendments.map(a => ({ text: (a && a.title) || "amendment", votedBy: (a && a.author) || "council", passed: !!a && a.status === "accepted" }))
+        : [];
+      // actionItems: Proposal has no action-item field at all — leaving this
+      // empty is the honest answer (nothing invented), not a bug.
+    } else {
+      agenda = Array.isArray(data.agenda) ? data.agenda : [];
+      attendees = Array.isArray(data.attendees) ? data.attendees : [];
+      decisions = Array.isArray(data.decisions) ? data.decisions : [];
+    }
     const actionItems = Array.isArray(data.actionItems) ? data.actionItems : [];
-    return { ok: true, result: { title: String(data.title || "Council Meeting Minutes"), date: String(data.date || new Date().toISOString().split("T")[0]), attendees: attendees.length, agendaItems: agenda.map((a, i) => ({ item: i + 1, topic: (a && a.topic) || a, status: (a && a.status) || "discussed" })), decisions: decisions.map(d => ({ decision: (d && d.text) || d, votedBy: (d && d.votedBy) || "council", passed: !d || d.passed !== false })), actionItems: actionItems.map(a => ({ task: (a && a.task) || a, assignee: (a && a.assignee) || "unassigned", dueDate: (a && a.dueDate) || "TBD" })) } };
+    return {
+      ok: true,
+      result: {
+        title: String(data.title || "Council Meeting Minutes"),
+        date: String(data.date || new Date().toISOString().split("T")[0]),
+        attendees: attendees.length,
+        agendaItems: agenda.map((a, i) => ({ item: i + 1, topic: (a && a.topic) || a, status: (a && a.status) || "discussed" })),
+        decisions: decisions.map(d => ({ decision: (d && d.text) || d, votedBy: (d && d.votedBy) || "council", passed: !d || d.passed !== false })),
+        actionItems: actionItems.map(a => ({ task: (a && a.task) || a, assignee: (a && a.assignee) || "unassigned", dueDate: (a && a.dueDate) || "TBD" })),
+        ...(asProposal ? { derivedFrom: "proposal", note: "Agenda/attendees/decisions derived from this proposal's discussion, sponsors, and amendments — proposals don't track a formal meeting agenda or action items." } : {}),
+      },
+    };
   });
   registerLensAction("council", "conflictResolution", (ctx, artifact, _params) => {
+    const data = artifact.data || {};
     // Array-guard parties + String()-coerce issue so poisoned input degrades
     // instead of throwing on parties.map() / issue.slice().
-    const parties = Array.isArray(artifact.data?.parties) ? artifact.data.parties : [];
-    const issue = String(artifact.data?.issue ?? artifact.data?.description ?? "");
+    const partiesGiven = Array.isArray(data.parties) ? data.parties : null;
+    // A real Proposal has no "opposing parties with positions/priorities"
+    // concept at all — discussion authors aren't structured that way, and
+    // inventing priority/position fields for them would be fabrication, not
+    // derivation. When parties genuinely weren't supplied AND this is a real
+    // Proposal artifact, say so honestly instead of returning an empty-but-
+    // successful conflict analysis that looks like "no conflict found."
+    if (partiesGiven === null && _looksLikeRealProposal(data)) {
+      return {
+        ok: false,
+        error: "not_applicable",
+        reason: "not_applicable",
+        message: "Proposals don't track structured conflict parties (names/positions/priorities) — conflict resolution needs that data supplied explicitly, or use Deliberate instead.",
+      };
+    }
+    const parties = partiesGiven || [];
+    const issue = String(data.issue ?? data.description ?? "");
     const positions = parties.map(p => ({ party: (p && p.name) || p, position: (p && p.position) || "unstated", priority: (p && p.priority) || "medium" }));
     const commonGround = positions.filter(p => p.priority === "high").length > positions.length / 2 ? "shared-urgency" : "divergent-priorities";
     return { ok: true, result: { issue: issue.slice(0, 200), parties: positions, commonGround, suggestedApproach: commonGround === "shared-urgency" ? "Mediated negotiation — both sides want resolution" : "Structured dialogue — find common interests first", steps: ["Identify shared interests", "Map each party's needs vs wants", "Generate options that satisfy core needs", "Evaluate options against criteria", "Build agreement incrementally"] } };

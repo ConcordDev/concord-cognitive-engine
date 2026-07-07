@@ -16,16 +16,15 @@ import { PodcastListeningHub } from '@/components/podcast/PodcastListeningHub';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic2, Play, Pause, Plus, Search, Rss, BarChart3,
-  Clock, Users, X, Headphones, ListMusic, Trash2, Check, Loader2,
+  Clock, Users, X, Headphones, ListMusic, Trash2, Check,
   Square, CircleDot,
 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
@@ -42,16 +41,23 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
 type ViewTab = 'episodes' | 'create' | 'analytics';
 
+// Shape returned by the real podcastLens engine (server/domains/podcast.js
+// getPodState/episodeView) — the Episodes/Create/Analytics tabs read and
+// write this directly so a manually-created episode is the SAME episode
+// the Listening Hub / library / playback system sees, not a separate,
+// never-synced copy.
 interface PodcastEpisode {
+  id: string;
+  showId: string;
   title: string;
-  description: string;
-  episodeNumber: number;
-  seasonNumber: number;
+  description: string | null;
+  episodeNumber: number | null;
+  seasonNumber: number | null;
   coverArtUrl: string | null;
   mediaId: string | null;
   audioUrl: string | null;
-  duration: number;
-  publishedAt: string;
+  durationSec: number;
+  publishDate: string;
   status: 'draft' | 'published' | 'scheduled';
   playCount: number;
   tags: string[];
@@ -78,29 +84,56 @@ export default function PodcastLensPage() {
   useLensNav('podcast');
   const { isLive, lastUpdated, insights: realtimeInsights } = useRealtimeLens('podcast');
   const {
-    isLoading, items: episodeItems,
-    create: createEpisode, update: updateEpisode, remove: removeEpisode,
-  } = useLensData<Record<string, unknown>>('podcast', 'episode');
-  const {
     contextDTUs, hyperDTUs, megaDTUs, regularDTUs,
     publishToMarketplace, isLoading: dtusLoading,
   } = useLensDTUs({ lens: 'podcast' });
 
-  const { items: subscriberItems } = useLensData<Record<string, unknown>>('podcast', 'subscriber');
+  // ---- My-show episodes, backed by the real podcastLens engine (Model B) ----
+  // Episodes created here are the same episodes the Listening Hub, library,
+  // and playback system read — there is no separate creator-only copy.
+  const [myShowId, setMyShowId] = useState<string | null>(null);
+  const [subscriberCount, setSubscriberCount] = useState(0);
+  const [episodeList, setEpisodeList] = useState<PodcastEpisode[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const runAction = useRunArtifact('podcast');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = episodeItems[0]?.id;
-    if (!targetId) { setActionResult({ message: 'Create an episode first to run analytics.' }); return; }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
+  const refreshEpisodes = useCallback(async (showId: string) => {
+    const r = await lensRun<{ episodes: PodcastEpisode[] }>('podcast', 'episode-list', { showId });
+    if (r.data.ok && r.data.result) setEpisodeList(r.data.result.episodes ?? []);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const ensured = await lensRun<{ show: { id: string; subscriberCount?: number } }>('podcast', 'my-show-ensure', {});
+      if (cancelled) return;
+      const show = ensured.data?.result?.show;
+      if (show?.id) {
+        setMyShowId(show.id);
+        setSubscriberCount(show.subscriberCount ?? 0);
+        await refreshEpisodes(show.id);
+      }
+      if (!cancelled) setIsLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [refreshEpisodes]);
+
+  const createEpisode = useCallback(async (episodeData: PodcastEpisode) => {
+    if (!myShowId) return;
+    await lensRun('podcast', 'episode-add', { ...episodeData, showId: myShowId });
+    await refreshEpisodes(myShowId);
+  }, [myShowId, refreshEpisodes]);
+
+  const setEpisodeStatus = useCallback(async (episodeId: string, status: PodcastEpisode['status']) => {
+    if (!myShowId) return;
+    await lensRun('podcast', 'episode-set-status', { episodeId, status });
+    await refreshEpisodes(myShowId);
+  }, [myShowId, refreshEpisodes]);
+
+  const removeEpisode = useCallback(async (episodeId: string) => {
+    if (!myShowId) return;
+    await lensRun('podcast', 'episode-delete', { episodeId });
+    await refreshEpisodes(myShowId);
+  }, [myShowId, refreshEpisodes]);
 
   // ---- State ----
   const [activeTab, setActiveTab] = useState<ViewTab>('episodes');
@@ -142,14 +175,10 @@ export default function PodcastLensPage() {
 
   const { playTrack, nowPlaying } = useMusicStore();
 
-  // ---- Transform items ----
-  const episodes = useMemo<(PodcastEpisode & { id: string })[]>(() =>
-    episodeItems.map(item => ({
-      ...(item.data as unknown as PodcastEpisode),
-      id: item.id,
-      title: item.title || (item.data as Record<string, unknown>)?.title as string || 'Untitled',
-    })).sort((a, b) => (b.episodeNumber || 0) - (a.episodeNumber || 0)),
-    [episodeItems]
+  // ---- Sorted view ----
+  const episodes = useMemo(() =>
+    [...episodeList].sort((a, b) => (b.episodeNumber || 0) - (a.episodeNumber || 0)),
+    [episodeList]
   );
 
   // ---- Search ----
@@ -168,13 +197,12 @@ export default function PodcastLensPage() {
     const totalPlays = episodes.reduce((sum, e) => sum + (e.playCount || 0), 0);
     const totalEpisodes = episodes.length;
     const publishedEpisodes = episodes.filter(e => e.status === 'published').length;
-    const totalDuration = episodes.reduce((sum, e) => sum + (e.duration || 0), 0);
-    const subscriberCount = subscriberItems.length;
+    const totalDuration = episodes.reduce((sum, e) => sum + (e.durationSec || 0), 0);
     return { totalPlays, totalEpisodes, publishedEpisodes, totalDuration, subscriberCount };
-  }, [episodes, subscriberItems]);
+  }, [episodes, subscriberCount]);
 
   // ---- Playback ----
-  const handlePlay = useCallback((episode: PodcastEpisode & { id: string }) => {
+  const handlePlay = useCallback((episode: PodcastEpisode) => {
     if (playingId === episode.id) {
       const player = getPlayer();
       if (nowPlaying.playbackState === 'playing') {
@@ -190,7 +218,7 @@ export default function PodcastLensPage() {
       title: episode.title,
       artistName: `S${episode.seasonNumber || 1}E${episode.episodeNumber || 1}`,
       genre: 'podcast',
-      duration: episode.duration || 0,
+      duration: episode.durationSec || 0,
       coverArtUrl: episode.coverArtUrl || null,
       audioUrl: episode.audioUrl || (episode.mediaId ? `/api/media/${episode.mediaId}/stream` : null),
       tags: episode.tags || [],
@@ -320,7 +348,7 @@ export default function PodcastLensPage() {
   // ---- Create episode ----
   const handleCreateEpisode = useCallback(async () => {
     if (!formTitle.trim()) return;
-    const episodeData: PodcastEpisode = {
+    const episodeData = {
       title: formTitle,
       description: formDescription,
       episodeNumber: formEpisodeNum,
@@ -328,14 +356,12 @@ export default function PodcastLensPage() {
       coverArtUrl: formCoverArt,
       mediaId: formMediaId,
       audioUrl: formMediaId ? `/api/media/${formMediaId}/stream` : null,
-      duration: formDuration,
-      publishedAt: new Date().toISOString(),
-      status: 'draft',
-      playCount: 0,
-      tags: [],
+      durationSec: formDuration,
+      status: 'draft' as const,
+      tags: [] as string[],
     };
     try {
-      await createEpisode({ title: formTitle, data: episodeData as unknown as Record<string, unknown> });
+      await createEpisode(episodeData as unknown as PodcastEpisode);
       setFormTitle('');
       setFormDescription('');
       setFormEpisodeNum(formEpisodeNum + 1);
@@ -519,7 +545,7 @@ export default function PodcastLensPage() {
                         <div className="flex items-center gap-4 text-xs text-gray-400 flex-shrink-0">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {formatDuration(episode.duration || 0)}
+                            {formatDuration(episode.durationSec || 0)}
                           </span>
                           <span className="flex items-center gap-1">
                             <Headphones className="w-3 h-3" />
@@ -529,7 +555,7 @@ export default function PodcastLensPage() {
 
                         {/* Publish / Edit */}
                         <button
-                          onClick={() => { const nextStatus = episode.status === 'draft' ? 'published' : episode.status === 'published' ? 'draft' : 'published'; updateEpisode(episode.id, { data: { ...episode, status: nextStatus } as unknown as Record<string, unknown> }); }}
+                          onClick={() => setEpisodeStatus(episode.id, episode.status === 'published' ? 'draft' : 'published')}
                           className="p-1.5 rounded-lg text-gray-600 hover:text-green-400 hover:bg-green-500/10 opacity-0 group-hover:opacity-100 transition-all"
                           title={episode.status === 'published' ? 'Unpublish' : 'Publish'}
                         >
@@ -840,88 +866,6 @@ export default function PodcastLensPage() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Backend Action Panel */}
-        <div className="panel p-4 space-y-3 mx-auto">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Mic2 className="w-4 h-4 text-neon-purple" />
-            Podcast Analysis
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { action: 'episodeAnalytics', label: 'Episode Analytics' },
-              { action: 'guestResearch', label: 'Guest Research' },
-              { action: 'productionChecklist', label: 'Production Checklist' },
-              { action: 'monetizationCalc', label: 'Monetization Calc' },
-            ].map(({ action, label }) => (
-              <button key={action} onClick={() => handleAction(action)} disabled={!!isRunning}
-                className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
-                {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                {label}
-              </button>
-            ))}
-          </div>
-          {actionResult && (
-            <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-              {'totalListens' in actionResult && (
-                <div className="space-y-1">
-                  <div className="flex flex-wrap gap-4 text-xs">
-                    <span className="text-gray-400">Episodes: <span className="text-neon-cyan font-bold">{String(actionResult.episodes)}</span></span>
-                    <span className="text-gray-400">Total Listens: <span className="text-neon-cyan font-bold">{String(actionResult.totalListens)}</span></span>
-                    <span className="text-gray-400">Avg: <span className="text-neon-green">{String(actionResult.avgListensPerEpisode)}</span></span>
-                    <span className="text-gray-400">Completion: <span className="text-yellow-400">{String(actionResult.completionRate)}%</span></span>
-                  </div>
-                  <p className="text-xs text-gray-400">Top: <span className="text-white">{String(actionResult.topEpisode)}</span></p>
-                  <span className={`text-xs px-2 py-0.5 rounded ${actionResult.growth === 'established' ? 'bg-neon-green/20 text-neon-green' : 'bg-yellow-400/20 text-yellow-400'}`}>{String(actionResult.growth)}</span>
-                </div>
-              )}
-              {'topics' in actionResult && Array.isArray(actionResult.topics) && (
-                <div className="space-y-2">
-                  <p className="text-xs text-gray-400">Guest: <span className="text-white">{String(actionResult.name)}</span></p>
-                  {actionResult.topics.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {(actionResult.topics as string[]).map((t, i) => (
-                        <span key={i} className="text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded px-2 py-0.5 text-neon-cyan">{t}</span>
-                      ))}
-                    </div>
-                  )}
-                  {'questionSuggestions' in actionResult && Array.isArray(actionResult.questionSuggestions) && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-gray-400 uppercase tracking-wider">Questions</p>
-                      {(actionResult.questionSuggestions as string[]).slice(0, 3).map((q, i) => (
-                        <p key={i} className="text-xs text-gray-300">• {q}</p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              {'totalSteps' in actionResult && (
-                <div className="space-y-1">
-                  <div className="flex gap-4 text-xs text-gray-400">
-                    <span>Steps: <span className="text-neon-cyan">{String(actionResult.totalSteps)}</span></span>
-                    <span>Done: <span className="text-neon-green">{String(actionResult.completed)}</span></span>
-                    <span>Progress: <span className="text-yellow-400">{String(actionResult.progress)}%</span></span>
-                  </div>
-                  {'nextStep' in actionResult && <p className="text-xs text-gray-300">Next: <span className="text-neon-cyan">{String(actionResult.nextStep)}</span></p>}
-                </div>
-              )}
-              {'adRevenue' in actionResult && (
-                <div className="space-y-1">
-                  <div className="flex flex-wrap gap-4 text-xs text-gray-400">
-                    <span>Ad Revenue: <span className="text-neon-green font-bold">${String(actionResult.adRevenue)}</span></span>
-                    <span>Premium: <span className="text-neon-green">${String(actionResult.premiumRevenue)}</span></span>
-                    <span>Total: <span className="text-neon-cyan font-bold">${String(actionResult.totalMonthlyRevenue)}/mo</span></span>
-                  </div>
-                  <div className="flex gap-4 text-xs">
-                    <span className="text-gray-400">Tier: <span className="text-neon-purple">{String(actionResult.tier)}</span></span>
-                  </div>
-                  {'nextMilestone' in actionResult && <p className="text-xs text-gray-400">{String(actionResult.nextMilestone)}</p>}
-                </div>
-              )}
-              {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
-            </div>
-          )}
-        </div>
       </main>
 
       {/* Listening hub — RSS ingestion, streaming player + chapters,

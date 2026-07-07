@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { WifiOff, RefreshCw } from 'lucide-react';
+import { Z_INDEX } from '@/lib/ui/z-index';
 
 /**
  * Offline indicator banner.
@@ -34,7 +35,8 @@ export function OfflineFallback() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed top-0 left-0 right-0 z-[60] bg-sovereignty-warning/90 text-black text-xs font-medium py-1.5 px-4 flex items-center justify-center gap-2"
+      style={{ zIndex: Z_INDEX.ACTION_REQUIRED }}
+      className="fixed top-0 left-0 right-0 bg-sovereignty-warning/90 text-black text-xs font-medium py-1.5 px-4 flex items-center justify-center gap-2"
     >
       <WifiOff className="w-3.5 h-3.5" />
       <span>You are offline. Some features may be limited.</span>

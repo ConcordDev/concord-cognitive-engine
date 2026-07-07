@@ -21,6 +21,7 @@ import {
   Play, Plus, FileDown, RefreshCw, Trash2, Pencil, ListPlus,
   Search, Send, Mic, Image as ImageIcon, Code, Sparkles, Compass,
   CheckSquare, Settings, Wand2, Activity, Hammer, Tag, MessageSquare,
+  Eye, ShieldCheck, ClipboardList,
 } from 'lucide-react';
 
 import { apiHelpers } from '@/lib/api/client';
@@ -37,7 +38,7 @@ const ACTION_ICONS: Array<[RegExp, React.ReactElement]> = [
   [/^(image|photo|gallery|preview)/i, <ImageIcon className="w-4 h-4" key="img" />],
   [/^(execute|run|test|simulate)/i, <Play className="w-4 h-4" key="play" />],
   [/^(format|lint|review|refactor|fix)/i, <Code className="w-4 h-4" key="code" />],
-  [/^(create|new|add|forge|spawn)/i, <Plus className="w-4 h-4" key="plus" />],
+  [/^(create|new|add|forge|spawn|place)/i, <Plus className="w-4 h-4" key="plus" />],
   [/^(export|download|publish|emit)/i, <FileDown className="w-4 h-4" key="exp" />],
   [/^(refresh|reload|sync|update|reindex)/i, <RefreshCw className="w-4 h-4" key="refresh" />],
   [/^(delete|remove|withdraw|archive|prune)/i, <Trash2 className="w-4 h-4" key="del" />],
@@ -51,8 +52,12 @@ const ACTION_ICONS: Array<[RegExp, React.ReactElement]> = [
   [/^(tag|label|classify|categorize)/i, <Tag className="w-4 h-4" key="tag" />],
   [/^(analyze|summarize|insight)/i, <Sparkles className="w-4 h-4" key="sparkle" />],
   [/^(monitor|observe|status|health)/i, <Activity className="w-4 h-4" key="activity" />],
-  [/^(configure|setup|set)/i, <Settings className="w-4 h-4" key="settings" />],
+  [/^(configure|setup|set|apply)/i, <Settings className="w-4 h-4" key="settings" />],
   [/^(comment|discuss|annotate)/i, <MessageSquare className="w-4 h-4" key="msg" />],
+  [/^(view|inspect)/i, <Eye className="w-4 h-4" key="eye" />],
+  [/^(verify|validate|audit|check|confirm)/i, <ShieldCheck className="w-4 h-4" key="shield" />],
+  [/^(resolve|conclude|settle)/i, <CheckSquare className="w-4 h-4" key="resolve" />],
+  [/^(log|track|register)/i, <ClipboardList className="w-4 h-4" key="clipboard" />],
 ];
 
 function iconFor(action: string): React.ReactElement {
@@ -62,9 +67,43 @@ function iconFor(action: string): React.ReactElement {
   return <Sparkles className="w-4 h-4" />;
 }
 
-function humanize(action: string): string {
-  return action
-    .replace(/[-_]+/g, ' ')
+/**
+ * Detects a short (2-3 char) domain-code prefix shared by 5+ actions in
+ * the same manifest (e.g. `wb-indicator`, `wb-country`, `wb-compare`, ...
+ * all sharing "wb-"). These prefixes carry no user-facing meaning — they
+ * exist only to namespace macro ids within one lens — so once confirmed
+ * common we strip them for display. Conservative by design: a prefix
+ * must repeat at least 5 times in the SAME actions list before it's
+ * treated as noise; a one-off short prefix is left alone since it might
+ * be meaningful (we can't tell from the string alone).
+ */
+function detectNoisyPrefix(actions: string[]): string | null {
+  const counts = new Map<string, number>();
+  for (const action of actions) {
+    const m = /^([a-z]{2,3})-/i.exec(action);
+    if (!m) continue;
+    const prefix = m[1].toLowerCase();
+    counts.set(prefix, (counts.get(prefix) || 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [prefix, count] of counts) {
+    if (count >= 5 && count > bestCount) {
+      best = prefix;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+function humanize(action: string, noisyPrefix?: string | null): string {
+  let a = action;
+  if (noisyPrefix) {
+    const re = new RegExp(`^${noisyPrefix}-`, 'i');
+    a = a.replace(re, '');
+  }
+  return a
+    .replace(/[-_.]+/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
     .trim();
 }
@@ -109,12 +148,14 @@ export function ManifestActionBar({
     if (!resolvedLensId) return [];
     const manifest = getLensManifest(resolvedLensId);
     if (!manifest) return [];
-    const list = (manifest.actions || []).filter((a) => !exclude.includes(a)).slice(0, limit);
+    const allActions = manifest.actions || [];
+    const noisyPrefix = detectNoisyPrefix(allActions);
+    const list = allActions.filter((a) => !exclude.includes(a)).slice(0, limit);
     if (list.length === 0) return [];
     const primaryAction = primary || (list.includes('create') ? 'create' : list[0]);
     return list.map((action) => ({
       id: `manifest:${action}`,
-      label: humanize(action),
+      label: humanize(action, noisyPrefix),
       icon: iconFor(action),
       primary: action === primaryAction,
       disabled: running != null && running !== action,
@@ -129,7 +170,7 @@ export function ManifestActionBar({
           } else {
             addToast({
               type: 'info',
-              message: `${humanize(action)} — ok`,
+              message: `${humanize(action, noisyPrefix)} — ok`,
               duration: 3000,
             });
             onAction?.(action, body?.result ?? body);

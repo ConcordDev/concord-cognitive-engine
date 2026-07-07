@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { COOKIE_CONSENT_KEY as CONSENT_KEY, advanceFirstRun } from '@/lib/first-run';
+import { Z_INDEX } from '@/lib/ui/z-index';
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
@@ -33,9 +34,16 @@ export function CookieConsent() {
 
   // Compact bottom-LEFT card (was a full-width centered z-200 bar that collided
   // with the bottom-right coachmark/First-Win cluster + sat above onboarding
-  // modals). Lower z so modals layer above it.
+  // modals). Lower z so modals layer above it. Shares this corner with
+  // SystemStatus's "always-visible" pill — this is the higher-precedence side
+  // of that pair (SystemStatus steps up out of the way via
+  // `useCookieConsentVisible()` for as long as this is showing; see
+  // lib/ui/z-index.ts for the documented scale).
   return (
-    <div className="fixed bottom-4 left-4 z-[60] w-[22rem] max-w-[calc(100vw-2rem)] animate-in slide-in-from-bottom">
+    <div
+      style={{ zIndex: Z_INDEX.ACTION_REQUIRED }}
+      className="fixed bottom-4 left-4 w-[22rem] max-w-[calc(100vw-2rem)] animate-in slide-in-from-bottom"
+    >
       <div className="rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-lg p-4 shadow-2xl">
         <div className="flex flex-col gap-3">
           <div className="flex-1 min-w-0">

@@ -179,6 +179,36 @@ describe("council.voteCount — exact tally contract", () => {
     assert.equal(r.ok, true);
     assert.ok(Number.isFinite(r.result.forPercent));
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Regression: a REAL Proposal artifact (concord-frontend's Proposal
+  // interface) stores votes as Record<stakeholderId, VoteChoice> — a keyed
+  // OBJECT, not an array. Pre-fix, `Array.isArray` on that object was always
+  // false, so the tally silently stayed {0,0,0} regardless of real votes.
+  // ─────────────────────────────────────────────────────────────────────────
+  it("tallies a REAL Proposal's votes object (Record<stakeholderId, VoteChoice>), not just an array", () => {
+    const r = call("voteCount", ctxA, {
+      votes: {
+        alice: "strongly_support",
+        bob: "support",
+        carol: "oppose",
+        dana: "abstain",
+        erin: "block",
+      },
+      quorumRequired: 3,
+    });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.tally, { for: 2, against: 2, abstain: 1 });
+    assert.equal(r.result.total, 5);
+    assert.equal(r.result.forPercent, 40); // 2/5
+    assert.equal(r.result.quorumMet, true); // 5 >= quorumRequired 3
+  });
+
+  it("reads the real Proposal field name quorumRequired (not just the generic 'quorum')", () => {
+    const r = call("voteCount", ctxA, { votes: { a: "support" }, quorumRequired: 5 });
+    assert.equal(r.result.total, 1);
+    assert.equal(r.result.quorumMet, false); // 1 < quorumRequired 5
+  });
 });
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -211,6 +241,68 @@ describe("council.generateMinutes — exact minutes contract", () => {
     assert.match(r.result.date, /^\d{4}-\d{2}-\d{2}$/);
     assert.deepEqual(r.result.agendaItems, []);
     assert.equal(r.result.attendees, 0);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Regression: a REAL Proposal artifact never sets agenda/attendees/
+  // decisions/actionItems — it has discussion/amendments/coSponsors/sponsor
+  // instead. Pre-fix, generateMinutes read the never-set fields and always
+  // produced a fabricated-empty minutes doc no matter how much real
+  // discussion/amendment activity the proposal actually had.
+  // ─────────────────────────────────────────────────────────────────────────
+  it("derives minutes from a REAL Proposal's discussion/amendments/sponsors", () => {
+    const proposal = {
+      title: "Adopt remote-work policy",
+      sponsor: "Alice",
+      coSponsors: ["Bob", "Carol"],
+      discussion: [
+        { id: "c1", author: "Bob", content: "Strongly support this", createdAt: "2026-01-01T01:00:00Z", type: "comment" },
+        { id: "c2", author: "Dana", content: "Concerned about coverage", createdAt: "2026-01-01T02:00:00Z", type: "comment" },
+      ],
+      amendments: [
+        { id: "a1", author: "Carol", title: "Add core-hours clause", status: "accepted" },
+        { id: "a2", author: "Dana", title: "Cap remote days at 2", status: "rejected" },
+      ],
+      votingMethod: "simple_majority",
+      votes: { alice: "strongly_support" },
+    };
+    const r = call("generateMinutes", ctxA, proposal);
+    assert.equal(r.ok, true);
+    const res = r.result;
+    assert.equal(res.title, "Adopt remote-work policy");
+    // attendees ← sponsor + coSponsors (the real participant list a Proposal tracks)
+    assert.equal(res.attendees, 3, "sponsor + 2 co-sponsors");
+    // agenda ← real discussion thread, not a fabricated empty list
+    assert.deepEqual(res.agendaItems, [
+      { item: 1, topic: "Strongly support this", status: "discussed" },
+      { item: 2, topic: "Concerned about coverage", status: "discussed" },
+    ]);
+    // decisions ← real amendment accept/reject outcomes
+    assert.deepEqual(res.decisions, [
+      { decision: "Add core-hours clause", votedBy: "Carol", passed: true },
+      { decision: "Cap remote days at 2", votedBy: "Dana", passed: false },
+    ]);
+    // actionItems: Proposal has no equivalent field — honestly empty, not fabricated
+    assert.deepEqual(res.actionItems, []);
+    assert.equal(res.derivedFrom, "proposal");
+    assert.equal(typeof res.note, "string");
+  });
+
+  it("still honors explicit meeting fields even when proposal-shaped fields are also present", () => {
+    // If a caller (or future UI) supplies real meeting data alongside
+    // proposal-shaped fields, the explicit meeting data wins — proposal
+    // derivation only kicks in when no meeting shape was given at all.
+    const r = call("generateMinutes", ctxA, {
+      title: "Explicit meeting",
+      agenda: [{ topic: "Explicit topic" }],
+      attendees: ["X"],
+      discussion: [{ author: "Y", content: "should be ignored" }],
+      sponsor: "Z",
+    });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.agendaItems, [{ item: 1, topic: "Explicit topic", status: "discussed" }]);
+    assert.equal(r.result.attendees, 1);
+    assert.equal("derivedFrom" in r.result, false);
   });
 });
 
@@ -245,6 +337,41 @@ describe("council.conflictResolution — exact contract", () => {
     const r = call("conflictResolution", ctxA, { issue: "x" });
     assert.equal(r.ok, true);
     assert.deepEqual(r.result.parties, []);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Regression: a REAL Proposal artifact has no "parties" concept at all —
+  // no structured opposing-parties-with-positions/priorities data exists on
+  // Proposal. Pre-fix, conflictResolution silently returned an empty-but-
+  // "successful" analysis (parties: [], commonGround: "divergent-priorities")
+  // that looked like a real (if boring) conflict-resolution result instead of
+  // admitting it had nothing to analyze. Fabricating parties/positions out of
+  // discussion authors would be inventing data that was never authored, so
+  // the honest answer is an explicit not-applicable failure.
+  // ─────────────────────────────────────────────────────────────────────────
+  it("returns an honest not_applicable for a REAL Proposal (no parties data to analyze)", () => {
+    const proposal = {
+      title: "Adopt remote-work policy",
+      sponsor: "Alice",
+      coSponsors: ["Bob"],
+      discussion: [{ id: "c1", author: "Bob", content: "support", type: "comment" }],
+      votingMethod: "simple_majority",
+    };
+    const r = call("conflictResolution", ctxA, proposal);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "not_applicable");
+    assert.equal(r.reason, "not_applicable");
+    assert.equal(typeof r.message, "string");
+  });
+
+  it("still resolves normally when parties ARE explicitly supplied alongside proposal-shaped fields", () => {
+    const r = call("conflictResolution", ctxA, {
+      issue: "Budget dispute",
+      parties: [{ name: "Eng", priority: "high" }],
+      sponsor: "Alice", // proposal-shaped field present too — parties wins
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.parties.length, 1);
   });
 });
 

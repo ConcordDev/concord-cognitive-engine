@@ -45,43 +45,52 @@ if ! command -v taskset &>/dev/null; then
 fi
 
 # ── Core allocation ───────────────────────────────────────────────────────────
-# Layout (scales with core count), tunable via env percentages:
-#   Ollama:   first OLLAMA_CORE_PCT%   — GPU dispatch threads
-#   Backend:  the middle remainder     — Node event loop + ALL its worker threads
-#   Frontend: last FRONTEND_CORE_PCT%  — lightweight Next.js (min 1 core)
+# Layout (index order MUST match runpod-cognition.sh's so the two scripts
+# agree even when CONCORD_WORLD_CORES isn't inherited — same formula, same
+# ordering, same result): Ollama (low indices, gets the remainder) → Backend/
+# world-sim (fixed small count, CONCORD_WORLD_CORE_COUNT) → Frontend (top,
+# FRONTEND_CORE_PCT%).
 #
 # IMPORTANT — worker-thread inheritance: the heartbeat pool (workers/heartbeat-pool.js)
 # AND every per-world shard (workers/world-shard.js, spawned on travel when
 # CONCORD_SHARD_WORLDS=true) are node:worker_threads of the concord-backend
 # process, so they inherit the backend's CPU affinity automatically. Pinning the
 # backend therefore isolates the whole sim (main loop + heartbeat pool + N shards)
-# from Ollama's dispatch cores — no per-thread taskset needed. Because the sim now
-# runs IN those threads, give the backend the largest share: with sharding active
-# the backend wants enough cores for main + up-to-8 heartbeat workers + N shards.
+# from Ollama's dispatch cores — no per-thread taskset needed.
 #
-# Defaults: Ollama 35% (GPU does inference; Ollama CPU is just dispatch — it does
-# NOT need half the cores), backend the remainder, frontend ~10%. Override the
-# split for your hardware:
-#   OLLAMA_CORE_PCT=25 FRONTEND_CORE_PCT=10 bash scripts/pin-processes.sh
-# On a single-Ollama RunPod box, a smaller Ollama share + a bigger backend share
-# is the right call for the sharded workload.
+# Backend gets a FIXED small slice rather than "the remainder": world-sim work
+# (heartbeats + on-demand shards) is bursty/event-driven, not a constant CPU
+# hog, and CONCORD_SHARD_WORLDS defaults OFF on a small box anyway (see
+# .env.runpod), so there's no standing shard-worker load to size for. Ollama's
+# 5 dispatch/tokenization processes get what's left — on a small box that's a
+# better trade than starving them for a world-sim band that mostly sits idle.
+# Override for your hardware:
+#   CONCORD_WORLD_CORE_COUNT=4 FRONTEND_CORE_PCT=10 bash scripts/pin-processes.sh
 #
-# RTX Pro 4500 example (28 vCPU, defaults 35/–/10):
-#   Ollama:   0-9   (10 cores)
-#   Backend:  10-24 (15 cores — main loop + heartbeat pool + world shards)
+# This deploy's actual box — single A40, 9 vCPU (defaults: world=2, frontend~10%):
+#   Ollama:   0-5  (6 cores — 5 dispatch/tokenization processes)
+#   Backend:  6-7  (2 cores, fixed — main loop + CONCORD_HEARTBEAT_POOL_SIZE=4
+#                   workers; CONCORD_SHARD_WORLDS stays off at this size)
+#   Frontend: 8    (1 core)
+#
+# Bigger-pod example (28 vCPU, world still fixed at 2, frontend ~10%):
+#   Ollama:   0-22  (23 cores)
+#   Backend:  23-24 (2 cores, fixed — bump CONCORD_WORLD_CORE_COUNT if sharding is on)
 #   Frontend: 25-27 (3 cores)
 
-OLLAMA_PCT="${OLLAMA_CORE_PCT:-35}"
+WORLD_COUNT="${CONCORD_WORLD_CORE_COUNT:-2}"
+[ "$WORLD_COUNT" -lt 1 ] && WORLD_COUNT=1
+[ "$WORLD_COUNT" -gt $((TOTAL - 2)) ] && WORLD_COUNT=$((TOTAL - 2))   # leave >=1 each for ollama+frontend
+[ "$WORLD_COUNT" -lt 1 ] && WORLD_COUNT=1
 FRONTEND_PCT="${FRONTEND_CORE_PCT:-10}"
-
-OLLAMA_COUNT=$(( TOTAL * OLLAMA_PCT / 100 )); [ "$OLLAMA_COUNT" -lt 1 ] && OLLAMA_COUNT=1
 FRONTEND_COUNT=$(( TOTAL * FRONTEND_PCT / 100 )); [ "$FRONTEND_COUNT" -lt 1 ] && FRONTEND_COUNT=1
-[ $(( OLLAMA_COUNT + FRONTEND_COUNT )) -ge "$TOTAL" ] && FRONTEND_COUNT=$(( TOTAL - OLLAMA_COUNT - 1 )); [ "$FRONTEND_COUNT" -lt 1 ] && FRONTEND_COUNT=1
-BACKEND_END_IDX=$(( TOTAL - FRONTEND_COUNT - 1 ))
+[ $(( WORLD_COUNT + FRONTEND_COUNT )) -ge "$TOTAL" ] && FRONTEND_COUNT=$(( TOTAL - WORLD_COUNT - 1 )); [ "$FRONTEND_COUNT" -lt 1 ] && FRONTEND_COUNT=1
+OLLAMA_COUNT=$(( TOTAL - WORLD_COUNT - FRONTEND_COUNT )); [ "$OLLAMA_COUNT" -lt 1 ] && OLLAMA_COUNT=1
+BACKEND_END_IDX=$(( OLLAMA_COUNT + WORLD_COUNT - 1 ))
 
 # map index ranges onto the ACTUAL allowed core ids (taskset -c accepts the comma list)
-OLLAMA_CORES="$(idslice 0 $((OLLAMA_COUNT - 1)))"
 # honor the band runpod-cognition.sh already computed + exported, so the two scripts agree.
+OLLAMA_CORES="$(idslice 0 $((OLLAMA_COUNT - 1)))"
 BACKEND_CORES="${CONCORD_WORLD_CORES:-$(idslice "$OLLAMA_COUNT" "$BACKEND_END_IDX")}"
 FRONTEND_CORES="$(idslice $((BACKEND_END_IDX + 1)) $((TOTAL - 1)))"
 

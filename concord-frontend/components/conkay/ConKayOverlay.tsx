@@ -523,6 +523,143 @@ export function ConKayOverlay() {
     }
   }, [append, executeMacro, beginWork, setStep, clearWork]);
 
+  // ── free-form conversation → the real agent-loop pipeline ────────────────
+  // The actual "falls through to the normal chat pipeline" behavior the
+  // skills doc promises (see conkay-skills.ts header comment) — previously
+  // this path didn't exist at all; any message that wasn't a skill phrase or
+  // an operable-lens command silently dead-ended into a canned "try brief me…"
+  // reply, EVEN when the brains were fully online.
+  //
+  // Routes through /api/chat-agent/stream — the SAME runAgentLoop tool-use
+  // pipeline agent-marathon sessions use (web_search, run_compute, browse_url,
+  // run_lens_action, create_dtu, expert_mode, generate_image, mcp_call,
+  // mcp_list) — not a plain single-turn LLM call. SSE-parsing mirrors the
+  // proven pattern in LensAgentPanel.tsx. Each `tool_call` event is a REAL
+  // completed step from the agent's own trace (not a guess), so it earns its
+  // own WorkStep line — an honest stage-beat, not decorative pacing.
+  const chatWithBrain = useCallback(async (text: string) => {
+    append({ id: `u-${Date.now()}`, role: 'user', content: text });
+    setInput('');
+    setRunning(true);
+    beginWork('Thinking…', [{ id: 'agent', label: 'Reasoning', state: 'active' }]);
+    const aid = `a-${Date.now()}`;
+    let placed = false;
+    let liveText = '';
+    const liveToolCalls: unknown[] = [];
+    const liveDtuRefs: Array<{ id: string; title: string | null; tier: string | null }> = [];
+    let toolCount = 0;
+    // Push the live-updating assistant message (content/toolCalls/dtuRefs) —
+    // called from every branch below so text, tool chips, and artifacts all
+    // land on screen as they actually happen, not just at the end.
+    const syncMessage = () => {
+      if (!placed) {
+        placed = true;
+        append({ id: aid, role: 'assistant', content: liveText, brain: 'kay', toolCalls: liveToolCalls.slice(), dtuRefs: liveDtuRefs.slice() });
+      } else {
+        setMessages((prev) => prev.map((m) => (m.id === aid ? { ...m, content: liveText, toolCalls: liveToolCalls.slice(), dtuRefs: liveDtuRefs.slice() } : m)));
+      }
+    };
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL || '';
+      const history = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
+      const res = await fetch(`${base}/api/chat-agent/stream`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history }),
+      });
+      const reader = res.body?.getReader();
+      if (!res.ok || !reader) {
+        let err = '';
+        try { err = String((await res.json())?.error || ''); } catch { /* non-JSON error body */ }
+        throw new Error(err || `status_${res.status}`);
+      }
+      const decoder = new TextDecoder();
+      let buf = '';
+      let done_ = false;
+      let finalOk = true;
+      let finalErr = '';
+      while (!done_) {
+        const { value, done: streamDone } = await reader.read();
+        if (streamDone) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() || '';
+        let event = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) { event = line.slice(7).trim(); continue; }
+          if (!line.startsWith('data: ')) continue;
+          let data: Record<string, unknown> = {};
+          try { data = JSON.parse(line.slice(6)); } catch { continue; }
+          if (event === 'tool_call') {
+            liveToolCalls.push(data);
+            toolCount += 1;
+            const tc = data as {
+              tool?: string; ok?: boolean; key?: string; domain?: string; action?: string;
+              input?: Record<string, unknown>; result?: unknown;
+              dtuId?: string; title?: string;
+              artifact?: { kind?: string; id?: string; title?: string; image_b64?: string; prompt?: string };
+            };
+            const toolName = String(tc.tool || 'tool');
+            setSteps((prev) => [...prev, { id: `tool-${toolCount}`, label: `Called ${toolName}`, state: tc.ok === false ? 'error' : 'done' }]);
+            // Render, don't just narrate: an agent-created DTU becomes a real
+            // citable reference; a generated image renders inline; a
+            // run_lens_action result runs through the SAME detectArtifact
+            // registry executeMacro already uses, so ar.render / runFEA /
+            // foundry.preview / forge.sandbox results reached via the agent
+            // populate the Cockpit's Artifact Viewer exactly like a directly-run
+            // macro does — no separate, lesser code path for agent-driven work.
+            if (tc.artifact?.kind === 'dtu' && tc.artifact.id) {
+              liveDtuRefs.push({ id: tc.artifact.id, title: tc.artifact.title ?? tc.title ?? null, tier: null });
+            } else if (tc.artifact?.kind === 'image' && tc.artifact.image_b64) {
+              liveText += `\n\n![${tc.artifact.prompt || 'generated image'}](data:image/png;base64,${tc.artifact.image_b64})`;
+            } else if (toolName === 'run_lens_action' && tc.ok !== false && tc.domain && tc.action) {
+              const artifact = detectArtifact(tc.domain, tc.action, tc.input ?? {}, tc.result);
+              if (artifact) useConkayHudStore.getState().setLastArtifact(artifact);
+              if (tc.domain === 'engineering' && tc.action === 'runFEA') {
+                const fea = feaResultFromRun(tc.input ?? {}, tc.result);
+                if (fea) useConkayHudStore.getState().setLastFea(fea);
+              }
+            }
+            syncMessage();
+          } else if (event === 'token') {
+            liveText += String((data as { chunk?: string }).chunk || '');
+            syncMessage();
+          } else if (event === 'done') {
+            finalOk = data.ok !== false;
+            finalErr = String(data.error || '');
+            done_ = true;
+          }
+        }
+      }
+      setStep('agent', finalOk ? 'done' : 'error', finalOk ? 'Done' : 'Hit a snag');
+      if (!liveText.trim()) {
+        // A tool call may have already placed an (empty-text) message shell —
+        // finalize its content either way instead of leaving it blank or
+        // silently duplicating a message.
+        liveText = finalOk
+          ? (liveToolCalls.length ? 'Done.' : "I didn't have anything to add.")
+          : `I hit a snag reasoning through that${finalErr ? ` (${finalErr})` : ''}.`;
+        syncMessage();
+      } else if (looksProvable(liveText)) {
+        verifyMessage(aid, liveText, [], []);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setStep('agent', 'error', 'Hit a snag');
+      // A tool call may already have placed a message shell (real tool chips
+      // on screen) even though the stream then failed before any answer text
+      // arrived — finalize that same message rather than leaving it blank or
+      // appending a confusing second bubble.
+      if (!liveText.trim()) {
+        liveText = `The brains aren't reachable right now (${msg}). Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do" — those work without them.`;
+        syncMessage();
+      }
+    } finally {
+      setRunning(false);
+      clearWork();
+    }
+  }, [append, beginWork, setStep, setSteps, setMessages, clearWork, verifyMessage, messages]);
+
   // ── command routing ─────────────────────────────────────────────────
   function submit(raw: string) {
     const t = (raw || '').trim();
@@ -543,11 +680,8 @@ export function ConKayOverlay() {
     // 3) free-text on a lens → the conscious brain maps it onto a real macro and
     //    ConKay operates the lens (graceful fallback inside resolveAndOperate).
     if (lens && !onChatLens) { resolveAndOperate(t, lens.id, lens.name); return; }
-    // 4) not on an operable lens — guide to the global skills.
-    append({ id: `u-${Date.now()}`, role: 'user', content: t });
-    setInput('');
-    append({ id: `a-${Date.now()}`, role: 'assistant', brain: 'kay',
-      content: `Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do".` });
+    // 4) not on an operable lens (or on the chat lens itself) → real conversation.
+    chatWithBrain(t);
   }
 
   const onSubmitForm = (e: React.FormEvent) => { e.preventDefault(); submit(input); };

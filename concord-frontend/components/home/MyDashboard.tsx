@@ -19,6 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Sparkles, Globe2, Users, MessageSquare, Newspaper, Activity,
   Settings2, ChevronRight, CalendarClock, Trophy, Radio, X,
+  type LucideIcon,
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,6 +28,7 @@ import { PresenceIndicator } from '@/components/social/PresenceIndicator';
 import { QuickPostComposer } from '@/components/social/QuickPostComposer';
 import { useDashboardPrefs, DASHBOARD_WIDGETS, type DashboardWidget } from '@/lib/hooks/useDashboardPrefs';
 import { PageHeader } from '@/components/common/PageHeader';
+import { DTUQuickCreate } from '@/components/dtu/DTUQuickCreate';
 
 // Resilient GET — any failure yields a safe empty value so a widget degrades to
 // its empty state instead of crashing the dashboard.
@@ -52,22 +54,32 @@ function CardHead({ title, action }: { title: string; action?: React.ReactNode }
 }
 
 // ── 1) Quick-action feature cards (Tariff/Options/Subscription → Concord core) ──
-const ACTIONS = [
-  { href: '/lenses/studio', icon: Sparkles, accent: 'text-fuchsia-300', ring: 'border-fuchsia-500/30 bg-fuchsia-500/5',
-    title: 'Create', bullets: ['Mint a thought into a DTU', 'Author in the studio', 'Publish to the commons'] },
+// "Create" opens the DTUQuickCreate modal in-place (mint a thought into a DTU
+// takes Title/Content/Tags/Tier/Visibility — it does NOT navigate to the
+// Studio DAW, which is a separate, unrelated music-production destination).
+interface ActionCard {
+  href?: string;
+  icon: LucideIcon;
+  accent: string;
+  ring: string;
+  title: string;
+  bullets: string[];
+}
+const ACTIONS: ActionCard[] = [
+  { icon: Sparkles, accent: 'text-fuchsia-300', ring: 'border-fuchsia-500/30 bg-fuchsia-500/5',
+    title: 'Create', bullets: ['Mint a thought into a DTU', 'Add tags, tier & visibility', 'Publish to the commons'] },
   { href: '/lenses/world', icon: Globe2, accent: 'text-sky-300', ring: 'border-sky-500/30 bg-sky-500/5',
     title: 'Concordia', bullets: ['Enter the world via the Concord Link', 'Join live events & quests', 'Carry your inventory anywhere'] },
   { href: '/lenses/social', icon: Users, accent: 'text-emerald-300', ring: 'border-emerald-500/30 bg-emerald-500/5',
     title: 'Connect', bullets: ['Follow creators & friends', 'Share to the feed', 'Message and collaborate'] },
 ];
-function FeatureCards() {
+function FeatureCards({ onCreateClick }: { onCreateClick: () => void }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {ACTIONS.map((a) => {
         const Icon = a.icon;
-        return (
-          <Link key={a.title} href={a.href}
-            className={`group rounded-2xl border bg-lattice-surface/80 p-4 transition-all hover:-translate-y-0.5 hover:border-neon-purple/40 ${a.ring}`}>
+        const inner = (
+          <>
             <div className="mb-2 flex items-center gap-2">
               <span className={`grid h-8 w-8 place-items-center rounded-lg bg-lattice-elevated ${a.accent}`}><Icon className="h-4 w-4" /></span>
               <span className="text-sm font-semibold text-white">{a.title}</span>
@@ -80,6 +92,19 @@ function FeatureCards() {
                 </li>
               ))}
             </ul>
+          </>
+        );
+        const cardClass = `group rounded-2xl border bg-lattice-surface/80 p-4 transition-all hover:-translate-y-0.5 hover:border-neon-purple/40 ${a.ring}`;
+        if (!a.href) {
+          return (
+            <button key={a.title} type="button" onClick={onCreateClick} className={`w-full text-left ${cardClass}`}>
+              {inner}
+            </button>
+          );
+        }
+        return (
+          <Link key={a.title} href={a.href} className={cardClass}>
+            {inner}
           </Link>
         );
       })}
@@ -106,7 +131,7 @@ function bucketDtus(items: Array<{ ts: number }>, range: Range) {
   }
   return buckets;
 }
-function ActivityChart() {
+function ActivityChart({ onCreateClick }: { onCreateClick: () => void }) {
   const [range, setRange] = useState<Range>('Daily');
   const { data } = useQuery({
     queryKey: ['dash-activity-dtus'],
@@ -144,7 +169,8 @@ function ActivityChart() {
             <Sparkles className="mx-auto mb-2 h-5 w-5 text-fuchsia-300/70" />
             <div className="text-[13px] text-gray-300">No thoughts minted yet</div>
             <div className="mt-1 text-xs text-gray-500">
-              Your creation rhythm shows up here. <Link href="/lenses/studio" className="text-neon-purple hover:underline">Mint your first thought</Link>.
+              Your creation rhythm shows up here.{' '}
+              <button type="button" onClick={onCreateClick} className="text-neon-purple hover:underline">Mint your first thought</button>.
             </div>
           </div>
         ) : (
@@ -327,6 +353,7 @@ export function MyDashboard({ dash: dashProp }: { dash?: ReturnType<typeof useDa
   const dash = dashProp ?? ownDash; // shared instance when the switcher owns it
   const { isVisible } = dash;
   const [customizing, setCustomizing] = useState(false);
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -356,8 +383,8 @@ export function MyDashboard({ dash: dashProp }: { dash?: ReturnType<typeof useDa
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* Main column */}
         <div className="space-y-4">
-          {isVisible('featureCards') && <FeatureCards />}
-          {isVisible('activityChart') && <ActivityChart />}
+          {isVisible('featureCards') && <FeatureCards onCreateClick={() => setShowQuickCreate(true)} />}
+          {isVisible('activityChart') && <ActivityChart onCreateClick={() => setShowQuickCreate(true)} />}
           {isVisible('concordiaEvents') && <ConcordiaEvents />}
           {!isVisible('featureCards') && !isVisible('activityChart') && !isVisible('concordiaEvents') && (
             <Card className="p-8 text-center text-[13px] text-gray-400">
@@ -387,6 +414,14 @@ export function MyDashboard({ dash: dashProp }: { dash?: ReturnType<typeof useDa
           )}
         </div>
       </div>
+
+      {showQuickCreate && (
+        <DTUQuickCreate
+          source="dashboard"
+          onClose={() => setShowQuickCreate(false)}
+          onSuccess={() => setShowQuickCreate(false)}
+        />
+      )}
     </div>
   );
 }

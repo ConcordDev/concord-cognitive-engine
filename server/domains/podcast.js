@@ -147,12 +147,23 @@ export default function registerPodcastActions(registerLensAction) {
     return { ok: true, result: { show } };
   });
 
+  // Real subscriber count for a show: how many DISTINCT users' subscription
+  // lists include this show id. Derived from live state, never a stored
+  // fake counter — the prior Model-A "subscriber" artifact type had zero
+  // write path anywhere in the UI and always rendered 0.
+  const subscriberCountFor = (s, showId) => {
+    let n = 0;
+    for (const subs of s.subscriptions.values()) if (subs.includes(showId)) n++;
+    return n;
+  };
+
   function showView(s, userId, show) {
     const subs = s.subscriptions.get(userId) || [];
     return {
       ...show,
       episodeCount: (s.episodes.get(show.id) || []).length,
       subscribed: subs.includes(show.id),
+      subscriberCount: subscriberCountFor(s, show.id),
       reviewCount: (s.reviews.get(show.id) || []).length,
       rating: (() => {
         const rs = s.reviews.get(show.id) || [];
@@ -167,7 +178,37 @@ export default function registerPodcastActions(registerLensAction) {
     let shows = [...s.shows.values()].map((sh) => showView(s, userId, sh));
     if (params.subscribed) shows = shows.filter((sh) => sh.subscribed);
     if (params.category) shows = shows.filter((sh) => sh.category === String(params.category).toLowerCase());
+    if (params.mine) shows = shows.filter((sh) => sh.addedBy === userId);
     return { ok: true, result: { shows, count: shows.length } };
+  });
+
+  /**
+   * my-show-ensure — get-or-create the caller's own creator show. The
+   * Episodes/Create/Analytics tabs in the podcast lens are a single-show
+   * creator workflow; this gives them a stable showId to attach episodes
+   * to inside the real podcastLens engine instead of a disconnected
+   * generic-artifact store.
+   */
+  registerLensAction("podcast", "my-show-ensure", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pcaid(ctx);
+    const existing = [...s.shows.values()].find((sh) => sh.addedBy === userId && sh.isCreatorShow);
+    if (existing) return { ok: true, result: { show: showView(s, userId, existing), created: false } };
+    const show = {
+      id: pcid("show"),
+      title: pcclean(params.title, 160) || "My Podcast",
+      author: null,
+      category: "general",
+      description: null,
+      feedUrl: null,
+      isCreatorShow: true,
+      addedBy: userId,
+      createdAt: pcnow(),
+    };
+    s.shows.set(show.id, show);
+    s.episodes.set(show.id, []);
+    savePodState();
+    return { ok: true, result: { show: showView(s, userId, show), created: true } };
   });
 
   registerLensAction("podcast", "show-detail", (ctx, _a, params = {}) => {
@@ -210,24 +251,67 @@ export default function registerPodcastActions(registerLensAction) {
   });
 
   // ── Episodes ────────────────────────────────────────────────────────
+  const EPISODE_STATUSES = ["draft", "published", "scheduled"];
+
   registerLensAction("podcast", "episode-add", (ctx, _a, params = {}) => {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const show = s.shows.get(String(params.showId));
     if (!show) return { ok: false, error: "show not found" };
     const title = pcclean(params.title, 200);
     if (!title) return { ok: false, error: "episode title required" };
+    const status = EPISODE_STATUSES.includes(params.status) ? params.status : "draft";
     const ep = {
       id: pcid("ep"), showId: show.id, showTitle: show.title, title,
       description: pcclean(params.description, 2000) || null,
       durationSec: Math.max(0, Math.round(pcnum(params.durationSec))),
       publishDate: pcclean(params.publishDate, 10) || pcclean(pcnow(), 10),
       episodeNumber: Math.max(0, Math.round(pcnum(params.episodeNumber))) || null,
+      seasonNumber: Math.max(0, Math.round(pcnum(params.seasonNumber))) || null,
+      coverArtUrl: pcclean(params.coverArtUrl, 500) || null,
+      mediaId: pcclean(params.mediaId, 120) || null,
+      audioUrl: pcclean(params.audioUrl, 500) || null,
+      tags: Array.isArray(params.tags) ? params.tags.map((t) => pcclean(t, 40)).filter(Boolean).slice(0, 20) : [],
+      status,
       createdAt: pcnow(),
+      createdBy: pcaid(ctx),
     };
     pclistB(s.episodes, show.id).push(ep);
     savePodState();
     return { ok: true, result: { episode: ep } };
   });
+
+  registerLensAction("podcast", "episode-set-status", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ep = findEpisode(s, String(params.episodeId));
+    if (!ep) return { ok: false, error: "episode not found" };
+    if (!EPISODE_STATUSES.includes(params.status)) return { ok: false, error: `status must be one of ${EPISODE_STATUSES.join(", ")}` };
+    ep.status = params.status;
+    savePodState();
+    return { ok: true, result: { episodeId: ep.id, status: ep.status } };
+  });
+
+  registerLensAction("podcast", "episode-delete", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ep = findEpisode(s, String(params.episodeId));
+    if (!ep) return { ok: false, error: "episode not found" };
+    if (ep.createdBy && ep.createdBy !== pcaid(ctx)) return { ok: false, error: "only the creator can delete this episode" };
+    const list = s.episodes.get(ep.showId) || [];
+    const i = list.findIndex((x) => x.id === ep.id);
+    if (i >= 0) list.splice(i, 1);
+    savePodState();
+    return { ok: true, result: { deleted: ep.id } };
+  });
+
+  // Real per-episode listen count: distinct users whose playback progress
+  // for this episode is marked played. Derived, not a stored counter that
+  // nothing ever increments.
+  const playCountFor = (s, episodeId) => {
+    let n = 0;
+    for (const list of s.playback.values()) {
+      if (list.some((p) => p.episodeId === episodeId && p.played)) n++;
+    }
+    return n;
+  };
 
   function episodeView(s, userId, ep) {
     const prog = (s.playback.get(userId) || []).find((p) => p.episodeId === ep.id);
@@ -240,6 +324,7 @@ export default function registerPodcastActions(registerLensAction) {
       progressPct: prog && ep.durationSec > 0 ? Math.round((prog.positionSec / ep.durationSec) * 100) : 0,
       inQueue: queue.includes(ep.id),
       downloaded: dls.includes(ep.id),
+      playCount: playCountFor(s, ep.id),
     };
   }
 

@@ -157,7 +157,15 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="flex h-screen overflow-hidden bg-lattice-void">
       <ConnectionStatus />
-      {/* FE-013: Skip-to-content link for keyboard navigation */}
+      {/*
+        FE-013: Skip-to-content link for keyboard navigation.
+        `focus:z-[100]` corresponds to Z_INDEX.SKIP_LINK in lib/ui/z-index.ts —
+        the single documented stacking-order scale for every globally-mounted
+        fixed-position component below (see that file for the full pair-by-
+        pair collision writeup). Kept as a literal Tailwind class here (not an
+        inline style) because it only applies on `:focus`, which inline styles
+        can't express without a synthetic focus handler.
+      */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-neon-blue focus:text-white focus:rounded-lg focus:outline-none"
