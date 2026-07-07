@@ -546,7 +546,19 @@ export function ConKayOverlay() {
     let placed = false;
     let liveText = '';
     const liveToolCalls: unknown[] = [];
+    const liveDtuRefs: Array<{ id: string; title: string | null; tier: string | null }> = [];
     let toolCount = 0;
+    // Push the live-updating assistant message (content/toolCalls/dtuRefs) —
+    // called from every branch below so text, tool chips, and artifacts all
+    // land on screen as they actually happen, not just at the end.
+    const syncMessage = () => {
+      if (!placed) {
+        placed = true;
+        append({ id: aid, role: 'assistant', content: liveText, brain: 'kay', toolCalls: liveToolCalls.slice(), dtuRefs: liveDtuRefs.slice() });
+      } else {
+        setMessages((prev) => prev.map((m) => (m.id === aid ? { ...m, content: liveText, toolCalls: liveToolCalls.slice(), dtuRefs: liveDtuRefs.slice() } : m)));
+      }
+    };
     try {
       const base = process.env.NEXT_PUBLIC_API_URL || '';
       const history = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
@@ -581,16 +593,37 @@ export function ConKayOverlay() {
           if (event === 'tool_call') {
             liveToolCalls.push(data);
             toolCount += 1;
-            const toolName = String((data as { tool?: string }).tool || 'tool');
-            setSteps((prev) => [...prev, { id: `tool-${toolCount}`, label: `Called ${toolName}`, state: 'done' }]);
+            const tc = data as {
+              tool?: string; ok?: boolean; key?: string; domain?: string; action?: string;
+              input?: Record<string, unknown>; result?: unknown;
+              dtuId?: string; title?: string;
+              artifact?: { kind?: string; id?: string; title?: string; image_b64?: string; prompt?: string };
+            };
+            const toolName = String(tc.tool || 'tool');
+            setSteps((prev) => [...prev, { id: `tool-${toolCount}`, label: `Called ${toolName}`, state: tc.ok === false ? 'error' : 'done' }]);
+            // Render, don't just narrate: an agent-created DTU becomes a real
+            // citable reference; a generated image renders inline; a
+            // run_lens_action result runs through the SAME detectArtifact
+            // registry executeMacro already uses, so ar.render / runFEA /
+            // foundry.preview / forge.sandbox results reached via the agent
+            // populate the Cockpit's Artifact Viewer exactly like a directly-run
+            // macro does — no separate, lesser code path for agent-driven work.
+            if (tc.artifact?.kind === 'dtu' && tc.artifact.id) {
+              liveDtuRefs.push({ id: tc.artifact.id, title: tc.artifact.title ?? tc.title ?? null, tier: null });
+            } else if (tc.artifact?.kind === 'image' && tc.artifact.image_b64) {
+              liveText += `\n\n![${tc.artifact.prompt || 'generated image'}](data:image/png;base64,${tc.artifact.image_b64})`;
+            } else if (toolName === 'run_lens_action' && tc.ok !== false && tc.domain && tc.action) {
+              const artifact = detectArtifact(tc.domain, tc.action, tc.input ?? {}, tc.result);
+              if (artifact) useConkayHudStore.getState().setLastArtifact(artifact);
+              if (tc.domain === 'engineering' && tc.action === 'runFEA') {
+                const fea = feaResultFromRun(tc.input ?? {}, tc.result);
+                if (fea) useConkayHudStore.getState().setLastFea(fea);
+              }
+            }
+            syncMessage();
           } else if (event === 'token') {
             liveText += String((data as { chunk?: string }).chunk || '');
-            if (!placed) {
-              placed = true;
-              append({ id: aid, role: 'assistant', content: liveText, brain: 'kay', toolCalls: liveToolCalls.slice() });
-            } else {
-              setMessages((prev) => prev.map((m) => (m.id === aid ? { ...m, content: liveText, toolCalls: liveToolCalls.slice() } : m)));
-            }
+            syncMessage();
           } else if (event === 'done') {
             finalOk = data.ok !== false;
             finalErr = String(data.error || '');
@@ -599,26 +632,28 @@ export function ConKayOverlay() {
         }
       }
       setStep('agent', finalOk ? 'done' : 'error', finalOk ? 'Done' : 'Hit a snag');
-      if (!placed) {
-        // The loop produced tool calls / finished but never streamed any
-        // answer text (e.g. a tool-only turn, or a genuine failure) — still
-        // give an honest, visible reply instead of leaving nothing on screen.
-        append({
-          id: aid, role: 'assistant', brain: 'kay', toolCalls: liveToolCalls.slice(),
-          content: finalOk
-            ? (liveToolCalls.length ? 'Done.' : 'I didn\'t have anything to add.')
-            : `I hit a snag reasoning through that${finalErr ? ` (${finalErr})` : ''}.`,
-        });
+      if (!liveText.trim()) {
+        // A tool call may have already placed an (empty-text) message shell —
+        // finalize its content either way instead of leaving it blank or
+        // silently duplicating a message.
+        liveText = finalOk
+          ? (liveToolCalls.length ? 'Done.' : "I didn't have anything to add.")
+          : `I hit a snag reasoning through that${finalErr ? ` (${finalErr})` : ''}.`;
+        syncMessage();
       } else if (looksProvable(liveText)) {
         verifyMessage(aid, liveText, [], []);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setStep('agent', 'error', 'Hit a snag');
-      const content = placed
-        ? undefined // partial text already on screen; leave it, don't overwrite with an error
-        : `The brains aren't reachable right now (${msg}). Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do" — those work without them.`;
-      if (content) append({ id: aid, role: 'assistant', brain: 'kay', content });
+      // A tool call may already have placed a message shell (real tool chips
+      // on screen) even though the stream then failed before any answer text
+      // arrived — finalize that same message rather than leaving it blank or
+      // appending a confusing second bubble.
+      if (!liveText.trim()) {
+        liveText = `The brains aren't reachable right now (${msg}). Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do" — those work without them.`;
+        syncMessage();
+      }
     } finally {
       setRunning(false);
       clearWork();

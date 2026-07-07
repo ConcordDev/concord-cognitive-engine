@@ -163,8 +163,15 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           return { tool: call.tool, ok: false, error: `unknown lens action: ${key}` };
         }
         try {
-          const result = await handler(ctx, null, call.params.params || {});
-          return { tool: call.tool, ok: true, key, result };
+          const actionInput = call.params.params || {};
+          const result = await handler(ctx, null, actionInput);
+          // Carry the input alongside domain/action so a caller can run the
+          // result through the frontend's detectArtifact registry (some
+          // kinds, e.g. FEA, reshape input+output together — see
+          // lib/conkay/artifact-kinds.ts) — the honest artifact->interactive-3D
+          // pipeline needs this for agent-triggered lens actions the same way
+          // it already works for directly-run macros.
+          return { tool: call.tool, ok: true, key, domain, action, input: actionInput, result };
         } catch (err) {
           return { tool: call.tool, ok: false, error: `lens action error: ${err?.message}` };
         }
