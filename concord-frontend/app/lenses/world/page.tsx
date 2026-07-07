@@ -2527,7 +2527,7 @@ export default function WorldLensPage() {
 
   useEffect(() => {
     const loadBags = () => {
-      fetch(`/api/worlds/${activeDistrict.id}/loot-bags`)
+      fetch(`/api/worlds/${activeDistrict.id}/loot-bags`, { signal: AbortSignal.timeout(8000) })
         .then((r) => {
           if (!r.ok) throw new Error(`loot-bags ${r.status}`);
           return r.json();
@@ -2606,7 +2606,7 @@ export default function WorldLensPage() {
 
   // Load all surface nodes for map dots (once per world)
   useEffect(() => {
-    fetch(`/api/worlds/${activeDistrict.id}/nodes`)
+    fetch(`/api/worlds/${activeDistrict.id}/nodes`, { signal: AbortSignal.timeout(8000) })
       .then((r) => {
         if (!r.ok) throw new Error(`nodes ${r.status}`);
         return r.json();
@@ -2620,7 +2620,7 @@ export default function WorldLensPage() {
 
   // Load buildings (seed city + player-placed)
   useEffect(() => {
-    fetch(`/api/worlds/${activeDistrict.id}/buildings`)
+    fetch(`/api/worlds/${activeDistrict.id}/buildings`, { signal: AbortSignal.timeout(8000) })
       .then((r) => {
         if (!r.ok) throw new Error(`buildings ${r.status}`);
         return r.json();
@@ -2729,7 +2729,7 @@ export default function WorldLensPage() {
   // Load NPCs from API and keep positions fresh every 10s
   useEffect(() => {
     const loadNPCs = () => {
-      fetch(`/api/worlds/${activeDistrict.id}/npcs`)
+      fetch(`/api/worlds/${activeDistrict.id}/npcs`, { signal: AbortSignal.timeout(8000) })
         .then((r) => {
           if (!r.ok) throw new Error(`npcs ${r.status}`);
           return r.json();
