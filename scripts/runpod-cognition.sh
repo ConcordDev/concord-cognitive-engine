@@ -70,20 +70,27 @@ ALLOWED=( $(read_allowed_cpus) ); NCORES=${#ALLOWED[@]}; [ "$NCORES" -lt 1 ] && 
 idslice() { local a=$1 b=$2 out=() i; for ((i=a;i<=b && i<NCORES;i++)); do out+=("${ALLOWED[$i]}"); done; (IFS=,; echo "${out[*]}"); }
 
 # ── auto-allocate CPU cores from the pod's REAL (cgroup) core set ─────────────
-# Ollama inference is GPU-bound — the CPU side is just dispatch/tokenization — so the
-# five brains are confined to an OLLAMA BAND (~35% of cores, low end). The LARGE middle
-# band is left for the BACKEND, which hosts Concordia's world simulation (the
-# world-shard worker_threads + governorTick + 124 heartbeats + NPC/physics sim) — that's
-# the world lens's "power cores". The top band is the frontend. pin-processes.sh pins the
-# backend(world)+frontend to those bands after the app starts; this script keeps the
-# brains in their lane so they don't steal Concordia's cores. (Matches pin-processes.sh:
-# OLLAMA_CORE_PCT / FRONTEND_CORE_PCT.)
+# Concordia/world-sim gets a FIXED, small core count (default 2, override via
+# CONCORD_WORLD_CORE_COUNT) instead of the old "leftover large-middle-band"
+# scheme. Rationale (this box, 9 vCPU): world-sim work (heartbeats + on-demand
+# shards) is bursty/event-driven, not a constant CPU hog, so a small guaranteed
+# slice is enough day-to-day — and CONCORD_SHARD_WORLDS defaults OFF anyway on
+# this box size (see .env.runpod), so there's no standing shard-worker load to
+# size for. Ollama gets what's left after world+frontend are carved out —
+# inference itself is GPU-bound, but with 5 SEPARATE dispatch/tokenization
+# processes on a small box, giving them the bulk of the remaining cores (not
+# just a thin percentage) is the better trade than starving them for a world-
+# sim band that mostly sits idle. pin-processes.sh honors CONCORD_WORLD_CORES
+# (exported below) so the two scripts agree on the same split.
 declare -A WEIGHT=( [conscious]=8 [subconscious]=4 [utility]=2 [repair]=1 [vision]=1 ); WSUM=16
-OLLAMA_PCT="${OLLAMA_CORE_PCT:-35}"
-POOL=$(( NCORES * OLLAMA_PCT / 100 )); [ "$POOL" -lt 1 ] && POOL=1; [ "$POOL" -gt "$NCORES" ] && POOL=$NCORES
+WORLD_COUNT="${CONCORD_WORLD_CORE_COUNT:-2}"
+[ "$WORLD_COUNT" -lt 1 ] && WORLD_COUNT=1
+[ "$WORLD_COUNT" -gt $((NCORES - 2)) ] && WORLD_COUNT=$((NCORES - 2))   # leave >=1 each for ollama+frontend
+[ "$WORLD_COUNT" -lt 1 ] && WORLD_COUNT=1
 FE_PCT="${FRONTEND_CORE_PCT:-10}"; FE_COUNT=$(( NCORES * FE_PCT / 100 )); [ "$FE_COUNT" -lt 1 ] && FE_COUNT=1
-[ $(( POOL + FE_COUNT )) -ge "$NCORES" ] && FE_COUNT=$(( NCORES - POOL - 1 )); [ "$FE_COUNT" -lt 1 ] && FE_COUNT=1
-WORLD_START_IDX=$POOL; WORLD_END_IDX=$(( NCORES - FE_COUNT - 1 )); [ "$WORLD_END_IDX" -lt "$WORLD_START_IDX" ] && WORLD_END_IDX=$WORLD_START_IDX
+[ $(( WORLD_COUNT + FE_COUNT )) -ge "$NCORES" ] && FE_COUNT=$(( NCORES - WORLD_COUNT - 1 )); [ "$FE_COUNT" -lt 1 ] && FE_COUNT=1
+POOL=$(( NCORES - WORLD_COUNT - FE_COUNT )); [ "$POOL" -lt 1 ] && POOL=1
+WORLD_START_IDX=$POOL; WORLD_END_IDX=$(( POOL + WORLD_COUNT - 1 )); [ "$WORLD_END_IDX" -gt $((NCORES-1)) ] && WORLD_END_IDX=$((NCORES-1))
 declare -A CORES; cur=0
 for role in "${ROLES[@]}"; do
   ov="BRAIN_$(echo "$role" | tr '[:lower:]' '[:upper:]')_CORES"
@@ -124,11 +131,18 @@ declare -A FLASHATTN=( [vision]="${BRAIN_VISION_FLASH_ATTENTION:-0}" )
 # OLLAMA_GPU_OVERHEAD asks each instance to keep N bytes free per GPU — BUT it is NOT
 # reliably enforced (open bug github.com/ollama/ollama/issues/12223), and it can't fence
 # VRAM for a non-Ollama consumer. Concordia has no server-side CUDA of its own anyway (its
-# 3D render is client-side Three.js), so this "slice" is really FIT MARGIN: headroom the
-# brains' own KV growth shouldn't eat. The real guarantee is the pre-boot fit check
+# 3D render is client-side Three.js) — there is no GPU-bound Concordia workload today (the
+# world-sim is tick-based business logic: heartbeats, NPC AI, quest state — not dense
+# numeric compute CUDA would accelerate). So this "slice" is really FIT MARGIN: headroom
+# the brains' own KV growth shouldn't eat into, protecting the LLM calls that serve
+# Concordia's narrative features (dream/oracle/forward-sim on the subconscious brain), not
+# a literal render/physics budget. The real guarantee is the pre-boot fit check
 # (verify-resource-allocation.mjs) + BRAIN_VISION_KEEP_ALIVE to shed ~6.9GB on demand —
 # NOT this env var. We still set it (it helps when honored), just don't trust it as a fence.
-CONCORD_WORLD_VRAM_MB="${CONCORD_WORLD_VRAM_MB:-6144}"
+# Bumped to 16GB (was 6GB) — the 48GB A40 has real headroom past the 5 brains' ~26GB
+# resident footprint (~22GB free), so this uses some of that margin without threatening
+# the fit; verify-resource-allocation.mjs still gates on the real total before boot.
+CONCORD_WORLD_VRAM_MB="${CONCORD_WORLD_VRAM_MB:-16384}"
 export OLLAMA_GPU_OVERHEAD=$(( CONCORD_WORLD_VRAM_MB * 1024 * 1024 ))
 export CONCORD_WORLD_GPU="${CONCORD_WORLD_GPU:-0}"
 LOG_DIR="${LOG_DIR:-/tmp/concord-brains}"; mkdir -p "$LOG_DIR"
