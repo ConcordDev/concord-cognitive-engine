@@ -87,7 +87,8 @@ to work through, not a plan.
 
 ## C. UX / navigation — AUDITED
 
-10. **Dashboard "Create DTU" jumps straight into Concord Studio.** Root cause
+10. **Dashboard "Create DTU" jumps straight into Concord Studio — FIXED
+    (`e12fe468`).** Root cause
     confirmed: `components/home/MyDashboard.tsx:55-62` ("Create" quick-action
     card) and `:147` ("Mint your first thought" empty-state link) are both
     bare `<Link href="/lenses/studio">` — no modal, no confirmation. But
@@ -108,21 +109,31 @@ to work through, not a plan.
 11. **Concord Studio is barely usable.** Confirmed — but it's not "broken,"
     it's a deep, mostly-real DAW (real Web Audio engines, MIDI, mastering
     analysis) with specific, locatable defects:
-    - **Project state never rehydrates on reload.** `project` state
-      (`page.tsx:392`) is only ever set inside `handleCreateProject`; nothing
-      hydrates it from `useLensData('studio','project',...)` on mount — every
-      fresh visit shows the empty "Create Project" screen even if the user
-      has prior saved projects.
-    - **No way back to a past project.** `RecentMineCard` (`page.tsx:2781`)
-      is mounted with no `onSelect` prop, so list items render as inert
-      `<div>`s, not clickable — and it's only rendered in the "active
-      project" branch, not on the empty-state landing screen where it's
-      actually needed.
-    - **Fabricated success message on failure** (`page.tsx:1454-1489`,
-      `handleAiAction`'s `catch` block): if the AI action's API call throws,
-      the UI still shows *"AI [x] processed. Results applied to project."* —
-      a direct violation of this project's own honest-by-construction rule.
-    - **Several dead drag/drop handlers**: `ArrangementView`'s
+    - **FIXED (`effe370f`) — Project state never rehydrates on reload.**
+      `project` state (`page.tsx:392`) is only ever set inside
+      `handleCreateProject`; nothing hydrates it from
+      `useLensData('studio','project',...)` on mount — every fresh visit
+      shows the empty "Create Project" screen even if the user has prior
+      saved projects. Fixed via a shared `loadProject(item)` used by both
+      this and the next bullet.
+    - **FIXED (`effe370f`) — No way back to a past project.** `RecentMineCard`
+      (`page.tsx:2781`) is mounted with no `onSelect` prop, so list items
+      render as inert `<div>`s, not clickable — and it's only rendered in
+      the "active project" branch, not on the empty-state landing screen
+      where it's actually needed. Fixed via a new `RecentProjectsList`
+      (built on the real `studioArtifacts` data) on both screens — the
+      existing `RecentMineCard` mount was deliberately left untouched
+      rather than given a fake `onSelect`, since it reads from a different,
+      non-reloadable data store (`studio.recent_mine`, DTU-table snapshots,
+      not the `project` lens-artifacts this page actually saves).
+    - **FIXED (`effe370f`) — Fabricated success message on failure**
+      (`page.tsx:1454-1489`, `handleAiAction`'s `catch` block): if the AI
+      action's API call threw, the UI still showed *"AI [x] processed.
+      Results applied to project."* — a direct violation of this project's
+      own honest-by-construction rule. Now shows an honest failure message
+      with the real error, an error-tinted result panel, and an error toast.
+    - **Several dead drag/drop handlers** (deliberately NOT fixed — real
+      feature builds, not fixes): `ArrangementView`'s
       `onMoveClip`/`onResizeClip` (`page.tsx:1900-1901`), `AudioEditor`'s
       `onOperation` (`:2042`), `Soundboard`'s `onLoadEffectChain`/
       `onDragToTrack` (`:2154,2156`) are all wired to `() => {}` — the
@@ -156,18 +167,26 @@ to work through, not a plan.
     coordination; `LensAgentFab.tsx` adds a *third* bottom-right `fixed` FAB
     auto-mounted on every `LensShell` unless a lens explicitly opts out (most
     don't).
-13. **"Unknown macro" buttons are a real, locatable bug — not perception.**
+13. **"Unknown macro" buttons are a real, locatable bug — not perception.
+    FIXED (`ef1f2fda`) at the code level.**
     `LensManifest.actions` (`lib/lenses/manifest.ts:78`) is typed as a bare
     `string[]` with **no human-label field in the schema at all**.
-    `ManifestActionBar.humanize()` only replaces `-`/`_` with spaces and
-    title-cases — it does nothing with dots. Confirmed examples: a manifest
-    with `actions: ['triage.open', 'scan.rule.add', ...]` renders literally
+    `ManifestActionBar.humanize()` only replaced `-`/`_` with spaces and
+    title-cased — it did nothing with dots. Confirmed examples: a manifest
+    with `actions: ['triage.open', 'scan.rule.add', ...]` rendered literally
     as "Triage.open" / "Scan.rule.add"; another with `['wb-indicator',
-    'wb-country', ...]` renders as "Wb Indicator" / "Wb Country" — the
-    literal "unknown macro" complaint, reproduced exactly. The icon picker
-    (`ManifestActionBar.tsx:34-56`) falls back to a generic Sparkles icon for
-    anything that doesn't match ~20 known verb prefixes, compounding the
-    "slapped in with no context" feel.
+    'wb-country', ...]` rendered as "Wb Indicator" / "Wb Country" — the
+    literal "unknown macro" complaint, reproduced exactly. `humanize()` now
+    splits on `.` too, and a new `detectNoisyPrefix()` strips a short (2-3
+    char) domain-code prefix ONLY when it repeats 5+ times in the same
+    manifest (confirmed via a full 854-action-string scan: `wb-` was the one
+    real repeated case; every other short prefix was a one-off, correctly
+    left alone). Also added a handful of icon-fallback patterns for the most
+    common verb families still hitting the generic Sparkles icon (694 of 854
+    scanned actions, 81%, fell through before this).
+    **Not fully solved**: adding a real human label to every action across
+    hundreds of manifest entries is a content-authoring task, not attempted
+    here — this is the code-level rendering fix only.
 14. Design philosophy correction (no code finding — a direction, not a bug):
     lenses are supposed to be full apps, not lightweight shared surfaces. The
     findings above are the evidence base for why.
@@ -184,7 +203,7 @@ to work through, not a plan.
 
 ## E. Per-lens bugs — AUDITED
 
-16. **Art lens — two stacked bugs found, backend is fine.**
+16. **Art lens — two stacked bugs found, backend is fine. FIXED (`e2b71673`).**
     (1) *JSX structural defect*: in `app/lenses/art/page.tsx`, a
     `<div className="space-y-4">` opened at line 1162 for the "Create
     Listing" modal is never closed before the 4-button "Art Compute Actions"
@@ -199,7 +218,11 @@ to work through, not a plan.
     A separately-mounted `<ArtActionPanel/>` (always visible, `page.tsx:1300`)
     correctly calls the same 4 backend macros (`server/domains/art.js`, all
     real) — it's a working duplicate of the broken one.
-17. **Council lens — wrong artifact lookup + shape mismatch.** The visible
+    **Fix**: removed the dead duplicate panel + its plumbing entirely rather
+    than repairing two competing implementations; relocated an unrelated
+    block that got caught in the same broken div nesting.
+17. **Council lens — wrong artifact lookup + shape mismatch. FIXED (`8a268ecf`).**
+    The visible
     "Council Analysis Engine" panel calls its 4 macros against
     `artifactId = proposalLensItems[0]?.id || 'council'` — with no proposal
     yet, it falls back to the literal string `'council'`, which is never a
@@ -212,7 +235,16 @@ to work through, not a plan.
     "working." A separately-mounted `<CouncilActionPanel/>` calls the same
     macros correctly (builds the artifact from caller params directly) — same
     working-duplicate-vs-broken-original pattern as Art.
-18. **Podcast lens — three disconnected episode data models on one page.**
+    **Fix**: `handleCouncilAction` no longer fakes a `'council'` artifact id
+    (shows an honest "create a proposal first" state instead); the 3
+    mismatched macros now detect a real Proposal shape and adapt (votes
+    tallied from the real `Record<stakeholderId,VoteChoice>`, minutes
+    derived from `discussion`/`amendments`/`sponsor`+`coSponsors`,
+    conflict-resolution returns an honest `not_applicable` rather than
+    fabricating a "no conflict" result Proposal has no data for). 8 new
+    regression tests added; 96/96 council-related backend tests passing.
+18. **Podcast lens — three disconnected episode data models on one page.
+    NOT FIXED — needs your decision, not mine to make unilaterally.**
     (1) The page's own Episodes/Create/Analytics tabs use a **generic**
     artifact CRUD store shared by every lens. (2) `PodcastPlayerSection`/
     `PodcastListeningHub`/etc. use a **real, deep, purpose-built** RSS-backed
@@ -225,17 +257,27 @@ to work through, not a plan.
     substrate (the deeper one), migrate or delete the generic-CRUD tab, and
     delete the orphaned duplicate.
 19. **Feed lens — "overlays blocking" is a global `AppShell` problem, not
-    feed-specific.** Feed's own UI stays low in the stack (z-10/z-20). The
-    actual collisions are from components mounted globally on *every* page
-    via `components/shell/AppShell.tsx`, each independently claiming the same
-    screen corner with no shared z-index scheme: `SystemStatus` (bottom-left,
-    z-40) vs. `CookieConsent` (same bottom-left coords, z-60 — fully covers
-    the status pill until dismissed); `Toasts` vs. `SyncIndicator` (identical
-    bottom-right coords, same z-50, whichever mounts later in JSX order
-    wins); `ConnectionStatus` vs. `OfflineFallback` (identical top strip,
-    z-50 vs z-60). Feed's own like/repost/comment toasts fire into the
-    already-contested bottom-right box. Fix belongs in `AppShell.tsx`'s
-    layout, not in the Feed lens itself.
+    feed-specific. FIXED (`f9fba023`).** Feed's own UI stays low in the stack
+    (z-10/z-20). The actual collisions are from components mounted globally
+    on *every* page via `components/shell/AppShell.tsx`, each independently
+    claiming the same screen corner with no shared z-index scheme:
+    `SystemStatus` (bottom-left, z-40) vs. `CookieConsent` (same bottom-left
+    coords, z-60 — fully covers the status pill until dismissed); `Toasts`
+    vs. `SyncIndicator` (identical bottom-right coords, same z-50, whichever
+    mounts later in JSX order wins); `ConnectionStatus` vs. `OfflineFallback`
+    (identical top strip, z-50 vs z-60). Feed's own like/repost/comment
+    toasts fire into the already-contested bottom-right box.
+    **Fix**: new `lib/ui/z-index.ts` — one documented, shared stacking scale
+    every global overlay now uses (via inline `style={{zIndex}}`, since
+    Tailwind's JIT scanner doesn't generate template-interpolated `z-*`
+    classes). Z-index alone doesn't fix same-*position* collisions, so the
+    urgent side of each pair (CookieConsent, OfflineFallback) now takes
+    layout precedence and the passive side (SystemStatus, ConnectionStatus)
+    reactively repositions when the urgent one is visible; Toasts/
+    SyncIndicator (both can be visible at once) coordinate via a small new
+    custom-event mechanism (`lib/ui/overlay-events.ts`) so toasts shift up
+    instead of sitting on top of the sync indicator. 61/61 existing
+    component tests passing.
 20. "Unknown macros"/unlabeled buttons — same root cause as #13, confirmed
     to reproduce on multiple real manifests, not lens-specific.
 21. **Lenses failing to load — no systemic compile-time bug found.** Full
@@ -269,7 +311,8 @@ to work through, not a plan.
     `dynamic()` chunk-import calls (next-highest lens page in the app: **4**)
     — still a real fragility/hydration-cost risk worth reducing, just not the
     cause of the "stuck forever" report.
-23. **Character creation screen — confirmed, root cause found, cheap fix.**
+23. **Character creation screen — confirmed, root cause found, cheap fix.
+    FIXED (`f2350a6a`).**
     `components/world/CharacterCustomizer.tsx:203-233` renders exactly two
     plain HTML `<div>`s (a CSS circle for the head, a rounded rectangle for
     the torso) labeled "3D Preview" underneath — not even a 2D canvas or SVG,
@@ -288,6 +331,14 @@ to work through, not a plan.
     rendering work**: swap the two placeholder `<div>`s for an R3F `<Canvas>`
     following the `MountPreviewCanvas.tsx` template, fed by the customizer's
     own live selection state.
+    **Fix**: new `components/world/CharacterPreviewCanvas.tsx`, a real R3F
+    `<Canvas>` following `MountPreviewCanvas.tsx`'s scene setup, rendering
+    via `buildEnhancedAvatar`/`generateAppearance`. Since `generateAppearance`
+    is a deterministic seed-based generator rather than a direct consumer of
+    the customizer's flat per-slot map, added `appearanceFromSelections()` to
+    layer the live selections onto a deterministic base. Label corrected from
+    "3D Preview" (a lie) to "Live 3D Preview" (now true). 32/32 relevant
+    tests passing.
 
 ## F. Confirmed working (no action needed)
 
@@ -300,18 +351,29 @@ Full pass across `server/dtus.js` (all ~8,700 DTUs) and every file in
 every hit manually read for context. `content/world/*` game lore correctly
 excluded (fictional, not a real-world claim).
 
-**Flag for removal (2):**
-25. `dtu_486_post_god_era_transition` — `server/dtus.js:49438` **and**
-    `server/data/seed/dtus-unassigned.json:295` (exists in both places, both
-    need cleanup). Claims divine hypotheses are unnecessary — direct
-    metaphysical/atheistic assertion.
-26. **New finding**: `dtu_456_civilization_without_narrative_drift` —
+**Removed (2): FIXED (`5bda849f`)**
+25. `dtu_486_post_god_era_transition` — was `server/dtus.js:49438` **and**
+    `server/data/seed/dtus-unassigned.json:295` (existed in both places, both
+    cleaned up). Claimed divine hypotheses are unnecessary — direct
+    metaphysical/atheistic assertion. **Deleted** the DTU object from both
+    files via a brace-depth-counting removal script; verified with
+    `node --check` and a JSON parse pass on the seed file, and confirmed zero
+    remaining references to the id string anywhere in the tree. The old
+    file:line citations above are now stale (the surrounding content shifted
+    after deletion). A small number of dangling lineage cross-references
+    (other DTUs that listed this one as a parent/child) were intentionally
+    left in place — the repair-cortex lattice audit already tolerates and
+    honestly reports orphaned lineage rather than crashing on it, so no
+    further cleanup was needed there.
+26. `dtu_456_civilization_without_narrative_drift` — was
     `server/dtus.js:46941` and `server/data/seed/dtus-part8.json:3147`.
-    Presents the individual-rights reading of the 2nd Amendment as
+    Presented the individual-rights reading of the 2nd Amendment as
     inauthentic "narrative drift" from an "original" collective-militia
     meaning — one side of a live, contested US political/legal debate,
     stated as settled platform "knowledge." Same pattern as #25, political
-    instead of religious.
+    instead of religious. **Deleted** the same way, same verification, same
+    note on dangling lineage refs left for the lattice audit to report
+    honestly.
 
 **Ambiguous / judgment call (2):**
 27. `dtu_393_cultural_entropy_accumulation` (`dtus-part7.json:3330`) — frames
