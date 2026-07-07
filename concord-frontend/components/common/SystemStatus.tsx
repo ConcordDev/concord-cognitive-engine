@@ -15,6 +15,8 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { cn } from '@/lib/utils';
+import { useCookieConsentVisible } from '@/lib/first-run';
+import { Z_INDEX } from '@/lib/ui/z-index';
 import { Wifi, WifiOff, Shield, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface StatusResponse {
@@ -34,6 +36,15 @@ function SystemStatus() {
   const clearRequestErrors = useUIStore((s) => s.clearRequestErrors);
   const authPosture = useUIStore((s) => s.authPosture);
   const [expanded, setExpanded] = useState(false);
+
+  // The CookieConsent notice shares this bottom-left corner while a first-time
+  // visitor hasn't answered it yet. It outranks this "always-visible" status
+  // pill (it's a blocking first-run gate; this is passive chrome), so — rather
+  // than let it silently paint over us at the same z-index-less coordinates —
+  // step up out of its way for as long as it's showing. `bottom-36` clears the
+  // ~140px-tall consent card with margin; `bottom-4` is the normal resting spot.
+  const cookieBannerVisible = useCookieConsentVisible();
+  const bottomOffsetClass = cookieBannerVisible ? 'bottom-36' : 'bottom-4';
 
   const {
     data: status,
@@ -72,7 +83,11 @@ function SystemStatus() {
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="fixed bottom-4 left-4 z-40 flex items-center gap-1.5 px-2 py-1 rounded-full bg-neon-green/10 border border-neon-green/20 text-neon-green text-xs hover:bg-neon-green/20 transition-colors"
+        style={{ zIndex: Z_INDEX.STATUS }}
+        className={cn(
+          'fixed left-4 flex items-center gap-1.5 px-2 py-1 rounded-full bg-neon-green/10 border border-neon-green/20 text-neon-green text-xs hover:bg-neon-green/20 transition-colors transition-[bottom] duration-300',
+          bottomOffsetClass
+        )}
       >
         <Wifi className="w-3 h-3" />
         <span>System OK</span>
@@ -82,8 +97,10 @@ function SystemStatus() {
 
   return (
     <div
+      style={{ zIndex: Z_INDEX.STATUS }}
       className={cn(
-        'fixed bottom-4 left-4 z-40 rounded-lg border shadow-lg text-sm max-w-sm',
+        'fixed left-4 rounded-lg border shadow-lg text-sm max-w-sm transition-[bottom] duration-300',
+        bottomOffsetClass,
         isHealthy ? 'bg-lattice-surface border-lattice-border' : 'bg-red-950/90 border-red-500/40'
       )}
     >

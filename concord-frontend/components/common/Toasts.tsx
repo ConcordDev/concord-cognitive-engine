@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { X, CheckCircle, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
+import { Z_INDEX } from '@/lib/ui/z-index';
+import { SYNC_INDICATOR_VISIBILITY_EVENT } from '@/lib/ui/overlay-events';
 
 const TOAST_DURATION = 5000;
 
@@ -10,8 +12,33 @@ export function Toasts() {
   const toasts = useUIStore((state) => state.toasts);
   const removeToast = useUIStore((state) => state.removeToast);
 
+  // SyncIndicator anchors this same bottom-right corner whenever the app is
+  // offline or has a pending sync queue — a persistent connectivity state
+  // that shouldn't be fully covered by transient toasts stacking on top of
+  // it. Rather than fight it out with z-index (they were previously tied at
+  // z-50), the toast stack steps up out of the way for as long as it's
+  // showing. Listens for a lightweight custom event instead of importing the
+  // IndexedDB-backed useSyncStatus hook directly here, keeping this
+  // frequently-rendered notification surface free of that dependency.
+  const [syncIndicatorVisible, setSyncIndicatorVisible] = useState(false);
+  useEffect(() => {
+    const onVisibility = (e: Event) => {
+      setSyncIndicatorVisible(Boolean((e as CustomEvent<{ visible: boolean }>).detail?.visible));
+    };
+    window.addEventListener(SYNC_INDICATOR_VISIBILITY_EVENT, onVisibility);
+    return () => window.removeEventListener(SYNC_INDICATOR_VISIBILITY_EVENT, onVisibility);
+  }, []);
+
   return (
-    <div role="region" aria-live="polite" aria-label="Notifications" className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div
+      role="region"
+      aria-live="polite"
+      aria-label="Notifications"
+      style={{ zIndex: Z_INDEX.TOAST }}
+      className={`fixed right-4 flex flex-col gap-2 transition-[bottom] duration-300 ${
+        syncIndicatorVisible ? 'bottom-16' : 'bottom-4'
+      }`}
+    >
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
