@@ -227,16 +227,29 @@ to work through, not a plan.
     API errors, auth/session state, data-shape mismatches) that static
     analysis can't see** — needs a live browser repro with devtools open to
     capture the actual console/network error, not further code reading.
-22. **Concordia (world lens) doesn't load — one genuine anomaly found.**
+22. **Concordia (world lens) stuck on loading, never advances — ROOT CAUSE
+    FOUND + FIXED.** `deriveWorldDataState` (`lib/world-lens/world-data-
+    state.ts`) only leaves `'loading'` when at least one of 4 world-data
+    fetches (nodes/buildings/npcs/lootBags) resolves `'ok'`, or **all four**
+    explicitly resolve `'error'`. All four used bare `fetch()` with **no
+    timeout** (`app/lenses/world/page.tsx:2530,2609,2623,2732`) — if a
+    request just hangs (which a CPU-starved backend under heavy tick load
+    does — see A.1-A.4 — it doesn't necessarily error fast, it can simply not
+    respond), that promise never resolves or rejects, `markWorldFetch` never
+    fires for that source, and the derived state can reach neither `'live'`
+    nor `'offline'` — stuck on `'loading'` forever. `ConnectionStatus.tsx`
+    already uses `AbortSignal.timeout` for exactly this reason; these four
+    fetches never got the same treatment. **Fixed**: added an 8s
+    `AbortSignal.timeout` to all four (commit `c219a4b0`, pushed) — a hung
+    backend now resolves to the honest `'offline'` "showing local preview"
+    state instead of an infinite spinner. Note: this fixes Concordia's lack
+    of defense against a slow backend, not the backend slowness itself (still
+    A.1-A.4). The separate 237-`dynamic()`-import scale finding below is
+    still worth addressing but is not what was causing this specific symptom.
     `app/lenses/world/page.tsx` is 6,964 lines with **237** separate
-    `dynamic()` chunk-import calls. The next-highest lens page in the entire
-    app has **4**. Concordia must fetch and hydrate 237 separate client
-    chunks just to mount — uniquely fragile to a stale/evicted chunk after a
-    deploy (`ChunkLoadError`), a throw during the dynamic-import resolution
-    phase itself (which the page's top-level `ErrorBoundary` may not catch),
-    or sheer hydration cost stalling long enough to read as "doesn't load."
-    None of this shows up in `tsc` or `next build` — needs the same live
-    browser repro as #21.
+    `dynamic()` chunk-import calls (next-highest lens page in the app: **4**)
+    — still a real fragility/hydration-cost risk worth reducing, just not the
+    cause of the "stuck forever" report.
 23. **Character creation screen — confirmed, root cause found, cheap fix.**
     `components/world/CharacterCustomizer.tsx:203-233` renders exactly two
     plain HTML `<div>`s (a CSS circle for the head, a rounded rectangle for
