@@ -66,10 +66,17 @@ fi
 # On a single-Ollama RunPod box, a smaller Ollama share + a bigger backend share
 # is the right call for the sharded workload.
 #
-# RTX Pro 4500 example (28 vCPU, defaults 35/–/10):
+# Bigger-pod example (28 vCPU, defaults 35/–/10):
 #   Ollama:   0-9   (10 cores)
 #   Backend:  10-24 (15 cores — main loop + heartbeat pool + world shards)
 #   Frontend: 25-27 (3 cores)
+#
+# This deploy's actual box — single A40, 9 vCPU (defaults 35/–/10):
+#   Ollama:   0-2  (3 cores)
+#   Backend:  3-7  (5 cores — main loop + CONCORD_HEARTBEAT_POOL_SIZE=4 workers +
+#                   any world shards; see .env.runpod's CONCORD_SHARD_WORLDS note —
+#                   5 cores is why that flag defaults off on this box size)
+#   Frontend: 8    (1 core)
 
 OLLAMA_PCT="${OLLAMA_CORE_PCT:-35}"
 FRONTEND_PCT="${FRONTEND_CORE_PCT:-10}"
