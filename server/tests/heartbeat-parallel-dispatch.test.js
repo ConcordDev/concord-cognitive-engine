@@ -1,9 +1,15 @@
-// Phase A — parallel heartbeat dispatch.
+// Phase A2 — strictly sequential heartbeat dispatch (was Phase A "parallel";
+// superseded 2026-07 — concurrent same-tick modules were bursting enough
+// synchronous CPU work at once to spike request latency site-wide, so
+// tickAllRegistered no longer ever runs two modules' handlers concurrently,
+// regardless of the `serial` flag).
 //
-// Pins: (1) modules without `serial: true` run in parallel, (2) modules
-// with `serial: true` run after the parallel batch in registration order,
-// (3) a module that throws or times out does not block siblings, and
-// (4) a per-module timeout cancels at the dispatcher boundary.
+// Pins: (1) due modules never overlap in execution — dispatch is one-at-a-
+// time even when many modules share a frequency and collide on the same
+// tickCount, (2) modules with `serial: true` still run after the
+// default-flagged ones, in registration order, (3) a module that throws or
+// times out does not block siblings, and (4) a per-module timeout cancels
+// at the dispatcher boundary.
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
@@ -14,13 +20,13 @@ import {
   getHeartbeatTimingStats,
 } from "../emergent/heartbeat-registry.js";
 
-describe("Phase A — heartbeat parallel dispatch", () => {
+describe("Phase A2 — heartbeat sequential dispatch", () => {
   beforeEach(() => {
     _resetHeartbeatRegistry();
   });
 
-  it("runs parallel modules concurrently", async () => {
-    const WORK_MS = 100;
+  it("never runs two due modules concurrently, even when frequencies collide", async () => {
+    const WORK_MS = 40;
     let started = 0, peak = 0, finished = 0;
     const sleeper = async () => {
       started++;
@@ -28,17 +34,20 @@ describe("Phase A — heartbeat parallel dispatch", () => {
       await new Promise(r => { setTimeout(r, WORK_MS); });
       finished++;
     };
-    for (let i = 0; i < 5; i++) {
+    const N = 5;
+    for (let i = 0; i < N; i++) {
       registerHeartbeat(`p-${i}`, { frequency: 1, handler: sleeper });
     }
     const t0 = Date.now();
     await tickAllRegistered({ state: {}, db: null, tickCount: 1 });
     const elapsed = Date.now() - t0;
-    assert.ok(peak >= 2, `expected concurrent execution but peak in-flight was ${peak}`);
-    assert.ok(elapsed < WORK_MS * 4, `expected parallel ~${WORK_MS}ms, got ${elapsed}ms`);
+    assert.equal(peak, 1, `expected strictly sequential execution but peak in-flight was ${peak}`);
+    // N modules run one after another must take at least N * WORK_MS wall-clock —
+    // that's the whole point (no overlap), not an incidental slowdown.
+    assert.ok(elapsed >= WORK_MS * N, `expected sequential ~${WORK_MS * N}ms+, got ${elapsed}ms`);
   });
 
-  it("runs serial:true modules after the parallel batch", async () => {
+  it("runs serial:true modules after the default-flagged ones", async () => {
     const order = [];
     registerHeartbeat("par-a", { frequency: 1, handler: () => order.push("par-a") });
     registerHeartbeat("par-b", { frequency: 1, handler: () => order.push("par-b") });

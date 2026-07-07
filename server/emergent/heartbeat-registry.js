@@ -89,10 +89,21 @@ export function registerHeartbeat(id, { frequency, handler, neverDisable = false
 
 /**
  * Iterate all registered modules and run those whose tick is due.
- * Parallel-by-default; modules flagged `serial: true` run after the parallel
- * batch in registration order. Each handler is independently try/caught and
- * timed; a hung module is timed out at MODULE_TIMEOUT_MS so it cannot starve
- * the next tick.
+ *
+ * Strictly sequential — no two modules EVER execute concurrently, even when
+ * their frequencies collide on the same tickCount (a real, common case: many
+ * modules share frequency values like 4/5/8/20/60, so a naive concurrent
+ * batch would pile several handlers' synchronous work onto the event loop at
+ * the same instant, causing the request-latency spikes this was built to
+ * avoid). Each due module still runs at its own configured cadence — this
+ * changes CONCURRENCY, not FREQUENCY. `serial: true` modules still run after
+ * the default-flagged ones, in registration order, preserving the existing
+ * same-tick write-visibility guarantee (e.g. social-npc-bridge must complete
+ * before npc-knowledge-bridge reads its writes) — that ordering already
+ * implied sequential execution between the two groups; this just makes
+ * execution sequential WITHIN each group too. Each handler is independently
+ * try/caught and timed; a hung module is timed out at MODULE_TIMEOUT_MS so it
+ * cannot starve the rest of the tick indefinitely.
  *
  * @param {{ state: object, db: object, tickCount: number, reason?: string, scope?: 'global'|'world'|'all' }} ctx
  */
@@ -102,8 +113,8 @@ export async function tickAllRegistered(ctx) {
   const filterScope = ctx?.scope ?? "all";
   const disabled = new Set(ctx?.state?.settings?.disabledHeartbeats ?? []);
 
-  const parallel = [];
-  const serial = [];
+  const due = [];
+  const dueSerial = [];
 
   const worldId = ctx?.worldId ?? null;
   for (const entry of REGISTRY.values()) {
@@ -116,15 +127,16 @@ export async function tickAllRegistered(ctx) {
     if (filterScope !== "all" && entry.scope !== filterScope) continue;
     // Phase G — per-world enable flag.
     if (worldId && _isLoopEnabledForWorld && !_isLoopEnabledForWorld(worldId, entry.id)) continue;
-    (entry.serial ? serial : parallel).push(entry);
+    (entry.serial ? dueSerial : due).push(entry);
   }
 
   const moduleCtx = { state: ctx.state, db: ctx.db, tickCount, reason };
 
-  if (parallel.length > 0) {
-    await Promise.all(parallel.map((entry) => _runOne(entry, moduleCtx)));
+  // One at a time, always — never Promise.all. See doc comment above.
+  for (const entry of due) {
+    await _runOne(entry, moduleCtx);
   }
-  for (const entry of serial) {
+  for (const entry of dueSerial) {
     await _runOne(entry, moduleCtx);
   }
 }
