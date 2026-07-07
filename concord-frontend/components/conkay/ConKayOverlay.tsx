@@ -523,47 +523,107 @@ export function ConKayOverlay() {
     }
   }, [append, executeMacro, beginWork, setStep, clearWork]);
 
-  // ── free-form conversation → the four-brain conscious chat ──────────────
+  // ── free-form conversation → the real agent-loop pipeline ────────────────
   // The actual "falls through to the normal chat pipeline" behavior the
   // skills doc promises (see conkay-skills.ts header comment) — previously
   // this path didn't exist at all; any message that wasn't a skill phrase or
   // an operable-lens command silently dead-ended into a canned "try brief me…"
-  // reply, EVEN when the brains were fully online. Degrades honestly (a
-  // distinct, distinguishable message) if the brain call genuinely fails.
+  // reply, EVEN when the brains were fully online.
+  //
+  // Routes through /api/chat-agent/stream — the SAME runAgentLoop tool-use
+  // pipeline agent-marathon sessions use (web_search, run_compute, browse_url,
+  // run_lens_action, create_dtu, expert_mode, generate_image, mcp_call,
+  // mcp_list) — not a plain single-turn LLM call. SSE-parsing mirrors the
+  // proven pattern in LensAgentPanel.tsx. Each `tool_call` event is a REAL
+  // completed step from the agent's own trace (not a guess), so it earns its
+  // own WorkStep line — an honest stage-beat, not decorative pacing.
   const chatWithBrain = useCallback(async (text: string) => {
     append({ id: `u-${Date.now()}`, role: 'user', content: text });
     setInput('');
     setRunning(true);
-    beginWork('Thinking…', [{ id: 'think', label: 'Asking the conscious brain', state: 'active' }]);
+    beginWork('Thinking…', [{ id: 'agent', label: 'Reasoning', state: 'active' }]);
+    const aid = `a-${Date.now()}`;
+    let placed = false;
+    let liveText = '';
+    const liveToolCalls: unknown[] = [];
+    let toolCount = 0;
     try {
       const base = process.env.NEXT_PUBLIC_API_URL || '';
-      const r = await fetch(`${base}/api/brain/conscious/chat`, {
+      const history = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
+      const res = await fetch(`${base}/api/chat-agent/stream`, {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, history }),
       });
-      const j = await r.json();
-      setStep('think', 'done', 'Done');
-      const aid = `a-${Date.now()}`;
-      if (j?.ok && j?.reply) {
-        append({ id: aid, role: 'assistant', content: j.reply, sources: j.sources, brain: 'kay' });
-        if (looksProvable(j.reply)) verifyMessage(aid, j.reply, [], []);
-      } else {
-        append({
-          id: aid, role: 'assistant', brain: 'kay',
-          content: `The brains aren't reachable right now${j?.error ? ` (${j.error})` : ''}. Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do" — those work without them.`,
-        });
+      const reader = res.body?.getReader();
+      if (!res.ok || !reader) {
+        let err = '';
+        try { err = String((await res.json())?.error || ''); } catch { /* non-JSON error body */ }
+        throw new Error(err || `status_${res.status}`);
       }
-    } catch {
-      append({
-        id: `a-${Date.now()}`, role: 'assistant', brain: 'kay',
-        content: `I couldn't reach the brains just now. Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do" — those work without them.`,
-      });
+      const decoder = new TextDecoder();
+      let buf = '';
+      let done_ = false;
+      let finalOk = true;
+      let finalErr = '';
+      while (!done_) {
+        const { value, done: streamDone } = await reader.read();
+        if (streamDone) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() || '';
+        let event = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) { event = line.slice(7).trim(); continue; }
+          if (!line.startsWith('data: ')) continue;
+          let data: Record<string, unknown> = {};
+          try { data = JSON.parse(line.slice(6)); } catch { continue; }
+          if (event === 'tool_call') {
+            liveToolCalls.push(data);
+            toolCount += 1;
+            const toolName = String((data as { tool?: string }).tool || 'tool');
+            setSteps((prev) => [...prev, { id: `tool-${toolCount}`, label: `Called ${toolName}`, state: 'done' }]);
+          } else if (event === 'token') {
+            liveText += String((data as { chunk?: string }).chunk || '');
+            if (!placed) {
+              placed = true;
+              append({ id: aid, role: 'assistant', content: liveText, brain: 'kay', toolCalls: liveToolCalls.slice() });
+            } else {
+              setMessages((prev) => prev.map((m) => (m.id === aid ? { ...m, content: liveText, toolCalls: liveToolCalls.slice() } : m)));
+            }
+          } else if (event === 'done') {
+            finalOk = data.ok !== false;
+            finalErr = String(data.error || '');
+            done_ = true;
+          }
+        }
+      }
+      setStep('agent', finalOk ? 'done' : 'error', finalOk ? 'Done' : 'Hit a snag');
+      if (!placed) {
+        // The loop produced tool calls / finished but never streamed any
+        // answer text (e.g. a tool-only turn, or a genuine failure) — still
+        // give an honest, visible reply instead of leaving nothing on screen.
+        append({
+          id: aid, role: 'assistant', brain: 'kay', toolCalls: liveToolCalls.slice(),
+          content: finalOk
+            ? (liveToolCalls.length ? 'Done.' : 'I didn\'t have anything to add.')
+            : `I hit a snag reasoning through that${finalErr ? ` (${finalErr})` : ''}.`,
+        });
+      } else if (looksProvable(liveText)) {
+        verifyMessage(aid, liveText, [], []);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setStep('agent', 'error', 'Hit a snag');
+      const content = placed
+        ? undefined // partial text already on screen; leave it, don't overwrite with an error
+        : `The brains aren't reachable right now (${msg}). Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do" — those work without them.`;
+      if (content) append({ id: aid, role: 'assistant', brain: 'kay', content });
     } finally {
       setRunning(false);
       clearWork();
     }
-  }, [append, beginWork, setStep, clearWork, verifyMessage]);
+  }, [append, beginWork, setStep, setSteps, setMessages, clearWork, verifyMessage, messages]);
 
   // ── command routing ─────────────────────────────────────────────────
   function submit(raw: string) {
