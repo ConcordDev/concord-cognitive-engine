@@ -58,13 +58,32 @@ to work through, not a plan.
 
 ## B. New hard requirement: tick/interval spacing
 
-9. **Every timer/interval/tick in the codebase (beyond simple env-var-driven
-   ones) must be at least 4 minutes apart from every other one, and no two
-   may ever fire concurrently — no simultaneous ticks, ever.** Applies to the
-   heartbeat registry's per-module frequencies *and* any other ad-hoc
-   `setInterval`/`setTimeout`-driven periodic work across the codebase, not
-   just the main governor tick. Needs a full audit of every periodic-work
-   site, not just `server/emergent/heartbeat-registry.js`. **Not yet audited.**
+9. **No two heartbeat modules may ever execute concurrently — FIXED for the
+   registry-based system.** Audited: 131 registered heartbeats
+   (`registerHeartbeat`), frequencies 1 (~15s) to 2880 (~12h), many sharing
+   the same frequency number (4/5/8/20/30/60/120/240 each shared by several
+   modules) — whenever `tickCount` lands on a shared multiple, the old
+   `Promise.all(...)` dispatch ran all of them concurrently, bursting
+   synchronous CPU work onto the event loop at once. Given two options —
+   (A) strict serialization (no concurrent execution, each module keeps its
+   own configured cadence) vs. (B) a hard global 4-minute minimum gap between
+   *any* two executions system-wide (would force fast-cadence gameplay
+   systems like `refusal-field-sweep`, currently ~15s, down to ~4min) — **(A)
+   was chosen**. `tickAllRegistered` (`server/emergent/heartbeat-registry.js`)
+   now dispatches every due module strictly one-at-a-time; `serial: true`
+   modules still run after the default-flagged ones in registration order
+   (preserves the documented same-tick write-visibility dependency). Fixed
+   and pinned (commit `0e5ce324`) — `tests/heartbeat-parallel-dispatch.test.js`
+   rewritten to assert peak-in-flight === 1 instead of the old ≥2. **Known
+   tradeoff to monitor**: worst-case wall-clock time for one governor tick can
+   now be longer when many modules collide on the same tickCount (sum instead
+   of max) — watch the existing Tick SLO CI gate
+   (`.github/workflows/tick-slo.yml`) and `concord_heartbeat_skipped_total` in
+   production for any regression.
+   **Not yet audited**: any other ad-hoc `setInterval`/`setTimeout`-driven
+   periodic work outside the `registerHeartbeat` registry (the ~219 per-entity
+   inline emergent ticks, and any client-side intervals) — this fix only
+   covers the registry-dispatched singleton modules.
 
 ## C. UX / navigation — AUDITED
 
