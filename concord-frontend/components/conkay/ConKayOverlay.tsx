@@ -523,6 +523,48 @@ export function ConKayOverlay() {
     }
   }, [append, executeMacro, beginWork, setStep, clearWork]);
 
+  // ── free-form conversation → the four-brain conscious chat ──────────────
+  // The actual "falls through to the normal chat pipeline" behavior the
+  // skills doc promises (see conkay-skills.ts header comment) — previously
+  // this path didn't exist at all; any message that wasn't a skill phrase or
+  // an operable-lens command silently dead-ended into a canned "try brief me…"
+  // reply, EVEN when the brains were fully online. Degrades honestly (a
+  // distinct, distinguishable message) if the brain call genuinely fails.
+  const chatWithBrain = useCallback(async (text: string) => {
+    append({ id: `u-${Date.now()}`, role: 'user', content: text });
+    setInput('');
+    setRunning(true);
+    beginWork('Thinking…', [{ id: 'think', label: 'Asking the conscious brain', state: 'active' }]);
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL || '';
+      const r = await fetch(`${base}/api/brain/conscious/chat`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const j = await r.json();
+      setStep('think', 'done', 'Done');
+      const aid = `a-${Date.now()}`;
+      if (j?.ok && j?.reply) {
+        append({ id: aid, role: 'assistant', content: j.reply, sources: j.sources, brain: 'kay' });
+        if (looksProvable(j.reply)) verifyMessage(aid, j.reply, [], []);
+      } else {
+        append({
+          id: aid, role: 'assistant', brain: 'kay',
+          content: `The brains aren't reachable right now${j?.error ? ` (${j.error})` : ''}. Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do" — those work without them.`,
+        });
+      }
+    } catch {
+      append({
+        id: `a-${Date.now()}`, role: 'assistant', brain: 'kay',
+        content: `I couldn't reach the brains just now. Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do" — those work without them.`,
+      });
+    } finally {
+      setRunning(false);
+      clearWork();
+    }
+  }, [append, beginWork, setStep, clearWork, verifyMessage]);
+
   // ── command routing ─────────────────────────────────────────────────
   function submit(raw: string) {
     const t = (raw || '').trim();
@@ -543,11 +585,8 @@ export function ConKayOverlay() {
     // 3) free-text on a lens → the conscious brain maps it onto a real macro and
     //    ConKay operates the lens (graceful fallback inside resolveAndOperate).
     if (lens && !onChatLens) { resolveAndOperate(t, lens.id, lens.name); return; }
-    // 4) not on an operable lens — guide to the global skills.
-    append({ id: `u-${Date.now()}`, role: 'user', content: t });
-    setInput('');
-    append({ id: `a-${Date.now()}`, role: 'assistant', brain: 'kay',
-      content: `Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do".` });
+    // 4) not on an operable lens (or on the chat lens itself) → real conversation.
+    chatWithBrain(t);
   }
 
   const onSubmitForm = (e: React.FormEvent) => { e.preventDefault(); submit(input); };
