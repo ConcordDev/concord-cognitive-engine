@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Truck, Loader2, Plus, Trash2, Mail, Phone, Building2 } from 'lucide-react';
+import { Truck, Loader2, Plus, Trash2, Mail, Phone, Building2, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +25,8 @@ export function VendorsPanel() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ name: '', email: '', phone: '', taxId: '', is1099: false, defaultExpenseAccountId: '', paymentTerms: 'net30' as Vendor['paymentTerms'] });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: '', email: '', phone: '', taxId: '', is1099: false, defaultExpenseAccountId: '', paymentTerms: 'net30' as Vendor['paymentTerms'] });
 
   useEffect(() => { refresh(); }, []);
 
@@ -57,6 +59,20 @@ export function VendorsPanel() {
       await lensRun({ domain: 'accounting', action: 'vendors-delete', input: { id } });
       setList(prev => prev.filter(v => v.id !== id));
     } catch (e) { console.error('[Vendors] delete failed', e); }
+  }
+
+  function startEdit(v: Vendor) {
+    setEditingId(v.id);
+    setEditDraft({ name: v.name, email: v.email, phone: v.phone, taxId: v.taxId, is1099: v.is1099, defaultExpenseAccountId: v.defaultExpenseAccountId, paymentTerms: v.paymentTerms });
+  }
+
+  async function saveEdit(id: string) {
+    if (!editDraft.name.trim()) return;
+    try {
+      await lensRun({ domain: 'accounting', action: 'vendors-update', input: { id, ...editDraft } });
+      setEditingId(null);
+      await refresh();
+    } catch (e) { console.error('[Vendors] update failed', e); }
   }
 
   const expenseAccounts = accounts.filter(a => !a.archived && (a.category === 'expense' || a.category === 'cogs'));
@@ -103,6 +119,28 @@ export function VendorsPanel() {
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(v => (
+              editingId === v.id ? (
+                <li key={v.id} className="px-4 py-3 bg-emerald-500/5 grid grid-cols-12 gap-2">
+                  <input value={editDraft.name} onChange={e => setEditDraft({ ...editDraft, name: e.target.value })} placeholder="Vendor name *" className="col-span-5 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.email} onChange={e => setEditDraft({ ...editDraft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.phone} onChange={e => setEditDraft({ ...editDraft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.taxId} onChange={e => setEditDraft({ ...editDraft, taxId: e.target.value })} placeholder="EIN / SSN" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                  <select value={editDraft.paymentTerms} onChange={e => setEditDraft({ ...editDraft, paymentTerms: e.target.value as Vendor['paymentTerms'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                    {TERMS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </select>
+                  <select value={editDraft.defaultExpenseAccountId} onChange={e => setEditDraft({ ...editDraft, defaultExpenseAccountId: e.target.value })} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                    <option value="">Default expense account…</option>
+                    {expenseAccounts.map(a => <option key={a.id} value={a.id}>{a.code} {a.name}</option>)}
+                  </select>
+                  <label className="col-span-2 inline-flex items-center gap-1.5 text-[11px] text-gray-300">
+                    <input type="checkbox" checked={editDraft.is1099} onChange={e => setEditDraft({ ...editDraft, is1099: e.target.checked })} className="rounded" />1099
+                  </label>
+                  <div className="col-span-12 flex gap-2">
+                    <button onClick={() => saveEdit(v.id)} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center gap-1"><Check className="w-3 h-3" />Save</button>
+                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs rounded border border-white/15 text-gray-300 hover:bg-white/5 inline-flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
+                  </div>
+                </li>
+              ) : (
               <li key={v.id} className="px-4 py-2.5 hover:bg-white/[0.02] group flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-300 flex items-center justify-center text-xs font-bold flex-shrink-0">
                   {v.name.slice(0, 1).toUpperCase()}
@@ -120,10 +158,14 @@ export function VendorsPanel() {
                     {v.taxId && <span className={cn('inline-flex items-center gap-0.5 font-mono', v.is1099 && 'text-amber-300')}><Building2 className="w-2.5 h-2.5" />{v.taxId}</span>}
                   </div>
                 </div>
+                <button onClick={() => startEdit(v)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-white/10 text-gray-300" title="Edit">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
                 <button onClick={() => remove(v.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300" title="Delete">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>
+              )
             ))}
           </ul>
         )}

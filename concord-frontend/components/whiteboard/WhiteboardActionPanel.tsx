@@ -37,9 +37,24 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface Board { id: string; name: string; updatedAt?: string }
-interface Template { id: string; name: string; description?: string }
+interface Board { id: string; title: string; updatedAt?: string }
+interface Template { id: string; name: string; elementCount?: number }
 interface TallyResult { question?: string; totalVotes?: number; optionTallies?: Array<{ option: string; count: number; pct: number }>; winner?: string }
+
+// vote-cast/vote-tally are per-canvas-element (a sticky note gets votes),
+// not a "question with named text options" poll — there is no such macro
+// in the whiteboard domain. This panel's Vote/Tally UI is option-text based,
+// so options are mapped onto deterministic synthetic elementIds scoped to
+// the question text; tally then filters the board's full vote-tally result
+// down to just this question's option ids and re-aggregates client-side.
+// This keeps every number real (backed by the real per-user vote ledger)
+// without inventing a text-poll macro that doesn't exist server-side.
+function optionElementId(question: string, option: string): string {
+  const raw = `${question.trim().toLowerCase()}::${option.trim().toLowerCase()}`;
+  let h = 0;
+  for (let i = 0; i < raw.length; i++) h = (h * 31 + raw.charCodeAt(i)) | 0;
+  return `poll_${Math.abs(h).toString(36)}`;
+}
 
 export function WhiteboardActionPanel() {
   const [boards, setBoards] = useState<Board[]>([]);
@@ -58,7 +73,7 @@ export function WhiteboardActionPanel() {
 
   const [savedBoardId, setSavedBoardId] = useState<string | null>(null);
   const [tallyResult, setTallyResult] = useState<TallyResult | null>(null);
-  const [shareResult, setShareResult] = useState<{ shareUrl?: string; sharedWith?: number } | null>(null);
+  const [shareResult, setShareResult] = useState<{ sharedBoardId?: string; sharedWith?: number } | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
@@ -99,10 +114,12 @@ export function WhiteboardActionPanel() {
     setBusy('template'); setFeedback(null);
     const tpl = templates[0];
     try {
-      const r = await callMacro<{ board: { name: string; shapes: unknown[] } }>('template-load', { templateId: tpl.id });
-      if (r.ok && r.result?.board) {
-        setBoardSnapshot(JSON.stringify(r.result.board, null, 2));
-        setBoardName(r.result.board.name + ' (from template)');
+      // template-load takes { id } and returns { template: { id, name, elements } }
+      // — not { templateId } / { board: { shapes } } as this used to send/read.
+      const r = await callMacro<{ template: { name: string; elements: unknown[] } }>('template-load', { id: tpl.id });
+      if (r.ok && r.result?.template) {
+        setBoardSnapshot(JSON.stringify({ elements: r.result.template.elements, appState: {} }, null, 2));
+        setBoardName(r.result.template.name + ' (from template)');
         ok(`Loaded template: ${tpl.name}.`);
       } else err(r.error ?? 'template load failed');
     } catch (e) { err(pickMessage(e)); }
@@ -114,11 +131,18 @@ export function WhiteboardActionPanel() {
     try {
       let snapshotData;
       try { snapshotData = JSON.parse(boardSnapshot); } catch { err('Invalid snapshot JSON.'); setBusy(null); return; }
-      const r = await callMacro<{ boardId?: string }>('board-save', { name: boardName.trim(), snapshot: snapshotData });
-      if (r.ok && r.result?.boardId) {
-        setSavedBoardId(r.result.boardId);
-        pipe.publish('whiteboard.boardId', r.result.boardId, { label: `board ${r.result.boardId.slice(0, 8)}` });
-        ok(`Board saved ${r.result.boardId.slice(0, 8)}…`);
+      // board-save takes { id?, title, scene } and returns { board } — NOT
+      // { name, snapshot } / { boardId } as this used to send/read (those
+      // keys don't exist on either side, so every save silently persisted an
+      // empty "Untitled board" while reporting "save failed" to the user).
+      const r = await callMacro<{ board?: { id: string } }>('board-save', {
+        id: savedBoardId || undefined, title: boardName.trim(), scene: snapshotData,
+      });
+      const boardId = r.result?.board?.id;
+      if (r.ok && boardId) {
+        setSavedBoardId(boardId);
+        pipe.publish('whiteboard.boardId', boardId, { label: `board ${boardId.slice(0, 8)}` });
+        ok(`Board saved ${boardId.slice(0, 8)}…`);
         // Refresh list
         const b = await callMacro<{ boards: Board[] }>('board-list', {});
         if (b.ok && b.result?.boards) setBoards(b.result.boards);
@@ -131,19 +155,38 @@ export function WhiteboardActionPanel() {
     setBusy('vote'); setFeedback(null);
     try {
       const boardId = selectedBoardId || savedBoardId || 'session';
-      const r = await callMacro<{ ok?: boolean; voteId?: string }>('vote-cast', { boardId, question: voteQ.trim(), choice: myVote.trim() });
+      // vote-cast is per-element ({ boardId, elementId }), not per-question-
+      // text — map this question+choice onto a deterministic synthetic
+      // elementId so the real per-user vote ledger backs this poll UI.
+      const elementId = optionElementId(voteQ, myVote);
+      const r = await callMacro<{ voteCount?: number }>('vote-cast', { boardId, elementId });
       if (r.ok) { pipe.publish('whiteboard.vote', { question: voteQ.trim(), choice: myVote.trim() }, { label: myVote.trim() }); ok(`Vote cast for "${myVote.trim()}".`); }
       else err(r.error ?? 'vote failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
   async function actTally() {
+    if (!voteQ.trim()) { err('Enter the vote question first.'); return; }
     setBusy('tally'); setFeedback(null);
     try {
       const boardId = selectedBoardId || savedBoardId || 'session';
-      const r = await callMacro<TallyResult>('vote-tally', { boardId, question: voteQ.trim() });
-      if (r.ok && r.result) { setTallyResult(r.result); pipe.publish('whiteboard.tally', r.result, { label: `winner ${r.result.winner ?? '—'}` }); ok(`${r.result.totalVotes ?? 0} votes; winner: ${r.result.winner ?? '—'}.`); }
-      else err(r.error ?? 'tally failed');
+      const options = voteOptions.split('\n').map(o => o.trim()).filter(Boolean);
+      if (options.length === 0) { err('Enter at least one option.'); setBusy(null); return; }
+      // vote-tally returns every voted-on elementId for the board — filter
+      // down to just this question's options (matched by the same
+      // deterministic id derivation actVote used) and re-aggregate.
+      const r = await callMacro<{ tally: Array<{ elementId: string; count: number }>; total: number }>('vote-tally', { boardId });
+      if (r.ok && r.result) {
+        const byElementId = new Map(r.result.tally.map(t => [t.elementId, t.count]));
+        const counts = options.map(option => ({ option, count: byElementId.get(optionElementId(voteQ, option)) || 0 }));
+        const totalVotes = counts.reduce((s, c) => s + c.count, 0);
+        const winner = counts.reduce((best, c) => (c.count > best.count ? c : best), counts[0]);
+        const optionTallies = counts.map(c => ({ ...c, pct: totalVotes > 0 ? Math.round((c.count / totalVotes) * 100) : 0 }));
+        const result: TallyResult = { question: voteQ.trim(), totalVotes, optionTallies, winner: totalVotes > 0 ? winner.option : undefined };
+        setTallyResult(result);
+        pipe.publish('whiteboard.tally', result, { label: `winner ${result.winner ?? '—'}` });
+        ok(`${totalVotes} votes; winner: ${result.winner ?? '—'}.`);
+      } else err(r.error ?? 'tally failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -153,9 +196,20 @@ export function WhiteboardActionPanel() {
     setBusy('share'); setFeedback(null);
     try {
       const users = shareWith.split(',').map(s => s.trim()).filter(Boolean);
-      const r = await callMacro<{ shareUrl?: string; sharedWith?: number }>('share-board', { boardId: savedBoardId, userIds: users });
-      if (r.ok && r.result) { setShareResult(r.result); pipe.publish('whiteboard.share', r.result, { label: `shared with ${r.result.sharedWith ?? users.length}` }); ok(`Shared with ${r.result.sharedWith ?? users.length}.`); }
-      else err(r.error ?? 'share failed');
+      // share-board takes { id, userIds } and returns { board, sharedWith }
+      // — this used to send { boardId } (unread by the macro, so every
+      // share silently promoted an EMPTY untitled board and ignored the
+      // named recipients entirely, while still reporting "Shared with N").
+      const r = await callMacro<{ board?: { id: string }; sharedWith?: number }>('share-board', { id: savedBoardId, userIds: users });
+      if (r.ok && r.result) {
+        const sharedId = r.result.board?.id;
+        // No deep-link route exists yet for opening a shared board straight
+        // from a URL — recipients find it via the Shared tab (shared-list),
+        // so we surface the real board id instead of fabricating a shareUrl.
+        setShareResult({ sharedWith: r.result.sharedWith ?? 0, sharedBoardId: sharedId });
+        pipe.publish('whiteboard.share', r.result, { label: `shared with ${r.result.sharedWith ?? 0}` });
+        ok(`Shared with ${r.result.sharedWith ?? 0} — they'll see it under Collab → Shared.`);
+      } else err(r.error ?? 'share failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -184,7 +238,7 @@ export function WhiteboardActionPanel() {
     const body = [
       `🎨 Whiteboard: ${boardName.trim() || 'untitled'}`, '',
       tallyResult ? `Vote winner: ${tallyResult.winner} (${tallyResult.totalVotes} votes)` : '',
-      shareResult?.shareUrl ? `Share URL: ${shareResult.shareUrl}` : '',
+      shareResult?.sharedBoardId ? `Shared board: ${shareResult.sharedBoardId} (find it under Collab → Shared)` : '',
       mintedDtuId ? `\n[Board DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -303,7 +357,7 @@ export function WhiteboardActionPanel() {
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1.5"><FolderOpen className="w-3 h-3" /> Saved boards</div>
           {boards.slice(0, 10).map(b => (
             <button key={b.id} onClick={() => setSelectedBoardId(b.id)} className={cn('block w-full text-left text-[11px] py-0.5 px-1 hover:bg-zinc-800 rounded', selectedBoardId === b.id ? 'text-violet-300 font-semibold' : 'text-zinc-300')}>
-              <span className="font-mono text-zinc-400">{b.id.slice(0, 8)}</span> {b.name}
+              <span className="font-mono text-zinc-400">{b.id.slice(0, 8)}</span> {b.title}
             </button>
           ))}
         </div>
@@ -322,9 +376,11 @@ export function WhiteboardActionPanel() {
         </div>
       )}
 
-      {shareResult?.shareUrl && (
+      {shareResult && (
         <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5 text-[11px]">
-          <Share2 className="w-3 h-3 inline text-orange-300" /> <span className="text-zinc-300">Share URL:</span> <code className="text-orange-200 font-mono">{shareResult.shareUrl}</code>
+          <Share2 className="w-3 h-3 inline text-orange-300" /> <span className="text-zinc-300">Shared with {shareResult.sharedWith ?? 0} user{shareResult.sharedWith === 1 ? '' : 's'} — board</span>{' '}
+          <code className="text-orange-200 font-mono">{shareResult.sharedBoardId}</code>
+          <span className="text-zinc-300"> — they'll find it under Collab → Shared.</span>
         </div>
       )}
 
