@@ -6482,6 +6482,14 @@ function authMiddleware(req, res, next) {
   // Phase U6 — public world-marker reads so the world map shows pings
   // without requiring login (write requires auth).
   if (req.method === "GET" && /^\/api\/worlds\/[^/]+\/markers$/.test(req.path) && !_hasAuthHeader) return next();
+  // Photo-gallery image bytes — anon <img src> requests for a PUBLIC
+  // (shared) photo must not 401 (no way to attach a bearer header from an
+  // <img> tag), so an unauthenticated GET is allowed to reach the handler,
+  // which does its own owner-or-public gate before serving the blob. An
+  // authenticated request (cookie present) still runs the full pipeline
+  // above via `_hasAuthHeader`, so req.user is populated for the owner
+  // case too.
+  if (req.method === "GET" && /^\/api\/photos\/[^/]+\/image$/.test(req.path) && !_hasAuthHeader) return next();
   // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
@@ -52431,6 +52439,33 @@ app.get("/api/photos/mine", requireAuth(), asyncHandler(async (req, res) => {
 app.get("/api/photos/world/:worldId/public", asyncHandler(async (req, res) => {
   const { listPublicPhotosInWorld } = await import("./lib/photo-gallery.js");
   res.json({ ok: true, photos: listPublicPhotosInWorld(db, req.params.worldId, Number(req.query.limit) || 50) });
+}));
+
+// The actual PNG bytes for a photo. Mirrors the `photos.get` macro's
+// owner-or-public gate: the owner (via cookie auth, best-effort-decoded
+// above even on this Gate-1-bypassed path) can always view their own
+// photo; anyone else only when it has been shared (visibility='public').
+// Verify-pass fix (2026-07-09): the gallery lib + share/DTU-mint path were
+// fully real, but nothing ever served the stored blob back to a browser —
+// every gallery card rendered caption/timestamp text only, no image.
+app.get("/api/photos/:photoId/image", asyncHandler(async (req, res) => {
+  const row = db.prepare(
+    `SELECT user_id, visibility, blob_path FROM user_photos WHERE id = ?`,
+  ).get(req.params.photoId);
+  if (!row) return res.status(404).json({ ok: false, error: "not_found" });
+  const userId = req.user?.id || req.user?.userId;
+  if (row.visibility !== "public" && row.user_id !== userId) {
+    // Don't disclose existence of a private photo to a non-owner.
+    return res.status(404).json({ ok: false, error: "not_found" });
+  }
+  if (!row.blob_path || !fs.existsSync(row.blob_path)) {
+    return res.status(404).json({ ok: false, error: "blob_missing" });
+  }
+  res.setHeader(
+    "Cache-Control",
+    row.visibility === "public" ? "public, max-age=3600" : "private, no-store",
+  );
+  res.sendFile(path.resolve(row.blob_path));
 }));
 
 // Phase BB3 — operator announcements. Admin only on POST; public read.
