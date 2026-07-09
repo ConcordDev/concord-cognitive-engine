@@ -20,6 +20,7 @@ import { reportClientError } from '@/hooks/useBugContext';
 import AccessibilityDOMApplier from '@/components/accessibility/AccessibilityDOMApplier';
 import { safeGetItem, safeSetItem } from '@/lib/safe-storage';
 import { useEverTrue } from '@/hooks/useEverTrue';
+import { WorkspaceBusProvider } from '@/components/workspace-bus';
 
 /**
  * Shell-diet — SoundSystem / AdaptiveComplexity / HiddenAssistance /
@@ -48,6 +49,28 @@ const SoundSystem = dynamic(() => import('@/components/world-lens/SoundSystem'),
 const AdaptiveComplexity = dynamic(() => import('@/components/world-lens/AdaptiveComplexity'), { ssr: false });
 const HiddenAssistance = dynamic(() => import('@/components/world-lens/HiddenAssistance'), { ssr: false });
 const SecretsDiscovery = dynamic(() => import('@/components/world-lens/SecretsDiscovery'), { ssr: false });
+
+/**
+ * Workspace Bus — the system-level, DTU-native clipboard for cross-lens
+ * data movement (Frontend Rebuild Program, Phase 1 item 3; see
+ * `components/workspace-bus/WorkspaceBusProvider.tsx` for the full design
+ * note). Unlike the four Concordia-only providers above, this one is
+ * useful on EVERY lens (any lens can copy a DTU onto the bus, any lens can
+ * be the paste target), so it's imported directly (not gated) rather than
+ * behind the world-lens check. That's still shell-diet-safe: unlike
+ * SoundSystem/AdaptiveComplexity/etc., `WorkspaceBusProvider` itself is
+ * deliberately kept to a small context (a Map + an array of ≤10
+ * lightweight records) with NO heavy imports at module scope — it must
+ * mount eagerly and wrap `children` without blocking first paint, which a
+ * `next/dynamic`-wrapped component with no `loading` fallback would do
+ * (render `null` until the chunk arrives, stalling every page, not just
+ * world-lens ones). The one part of this feature with real weight — the
+ * Cmd/Ctrl+Shift+V picker overlay, which renders `DTUEmbed` and its social
+ * sub-components — is code-split via `next/dynamic({ ssr: false })`
+ * *inside* `WorkspaceBusProvider.tsx` itself, and only fetched the first
+ * time a user actually opens it. So the picker chunk never touches the
+ * initial bundle even though the provider that owns it does.
+ */
 
 /**
  * Client-side providers wrapper.
@@ -208,17 +231,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
               might call these hooks off-world breaks.
             */}
             <KeyboardProvider>
-              {worldLensEverVisited ? (
-                <AdaptiveComplexity>
-                  <HiddenAssistance>
-                    <SecretsDiscovery>
-                      <AppShell>{children}</AppShell>
-                    </SecretsDiscovery>
-                  </HiddenAssistance>
-                </AdaptiveComplexity>
-              ) : (
-                <AppShell>{children}</AppShell>
-              )}
+              {/*
+                WorkspaceBusProvider needs KeyboardProvider above it (it
+                registers the Cmd/Ctrl+Shift+V shortcut via useShortcut) and
+                must wrap BOTH branches below — the bus works on every lens,
+                not just Concordia, so it can't sit inside the
+                worldLensEverVisited-gated subtree.
+              */}
+              <WorkspaceBusProvider>
+                {worldLensEverVisited ? (
+                  <AdaptiveComplexity>
+                    <HiddenAssistance>
+                      <SecretsDiscovery>
+                        <AppShell>{children}</AppShell>
+                      </SecretsDiscovery>
+                    </HiddenAssistance>
+                  </AdaptiveComplexity>
+                ) : (
+                  <AppShell>{children}</AppShell>
+                )}
+              </WorkspaceBusProvider>
             </KeyboardProvider>
             {/* Global media layer — mounts once, survives all navigation.
                 Owns the <audio> element so playback continues across
