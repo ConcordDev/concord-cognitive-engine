@@ -1,5 +1,19 @@
 # Frontend Rebuild Program — "Lenses Become Real Apps"
 
+> **🟢 WAVE 2 COMPLETE (2026-07-09): all 55 confirmed-scaffold lenses
+> rebuilt across all 11 archetypes. `node scripts/grade-ux-polish.mjs
+> --honest` now reports 260/260 lenses at `tier: "polished"`, 0
+> `isGenericScaffold`, weighted score 1.0 — fleet-wide, not just the
+> targeted 55.** `verify-lens-backends.mjs` holds at 258 WIRED / 2
+> by-design NO-BACKEND-CALL (0 broken), full project `tsc --noEmit` 0
+> errors. Next: **Wave 3** — audit the ~192-lens risk pool that already
+> scored "polished" under the pre-honest grader for anything the honest
+> pass might still miss (a lens can pass the scaffold detector's
+> structural signals while still hiding a dark macro or a subtler fake-
+> data pattern than the ones this wave's detector was tuned against).
+> See the phase-by-phase history below for what Waves 0-2 actually found
+> and fixed.
+
 > **🟢 STATUS (2026-07-09): Phases 0-2 shipped, Phase 3 Wave 1 6/10 shipped,
 > Wave-1 test regressions fixed, Phase 0.5 (connection stability) shipped,
 > Wave 0 (a/b/c) shipped.** The bar was raised the same day (see
@@ -379,6 +393,11 @@ to have):
 
 | Date | Phase | What shipped | Commit |
 |---|---|---|---|
+| 2026-07-09 | Wave 2 COMPLETE | Milestone: `grade-ux-polish.mjs --honest` now reports **260/260 lenses `polished`, 0 `isGenericScaffold`, weighted score 1.0** — fleet-wide, confirmed by an independent re-run after the last batch-7 unit landed (not just the 55 targeted lenses). `verify-lens-backends.mjs` holds at 258 WIRED / 2 by-design NO-BACKEND-CALL, full-project `tsc --noEmit` 0 errors. All 55 confirmed-scaffold lenses across all 11 archetypes are now real, designed apps. Next: Wave 3's ~192-lens risk-pool audit. | `52963c2d` |
+| 2026-07-09 | Wave 2 batch 7 | export + legacy + custom rebuilt — Docs/B2B SaaS archetype complete (11/11), closing Wave 2. `legacy`'s primary surface was a fabricated "400-year vision planner" with a hardcoded `400` horizon and a `bioAge` fallback literal of `340` dressed up as "organism health" narrative — confirmed the domain is actually SonarQube/CAST-Highlight-class code modernization, nothing to do with the fake framing. `custom`'s "Lens Templates" system was a disconnected generic-CRUD builder with a raw JSON-paste creation modal duplicating the real 23-macro `CanvasBuilder`. `export`'s three quick-action buttons computed against an always-empty placeholder artifact instead of live DTU data. | `52963c2d` |
+| 2026-07-09 | Wave 2 batch 7 | queue + platform + transfer rebuilt. `transfer`'s three analysis macros were fed **analogy-search results** — a completely mismatched artifact shape guaranteeing every call failed, worse than merely disconnected. `queue` had 3 real queueing-theory macros (Erlang-C/M-M-1/M-M-c models, Jain's fairness index) with zero UI callers; new panel auto-derives inputs from the queue's own live job history instead of manual entry. | `7ad83171` |
+| 2026-07-09 | Wave 2 batch 7 | schema + audit + projects rebuilt. `schema`'s "Schema Validator" called the run endpoint with the schema's *name* as the artifact id — guaranteed `not found` on every click, silently rendered as "Invalid" (a real, previously-undetected bug, not just fake data). `projects`' real `ProjectsSection` already covered 89 of 98 macros; the fake duplicate ran a "Project Analysis Engine" on four legacy single-artifact macros nothing fed. | `6ccd5902` |
+| 2026-07-09 | Wave 2 batch 7 | hr + marketing rebuilt. `marketing` had 4 of 12 tabs duplicating real, already-built panels (`MarketingCampaignsPanel` etc.) that were already wired into `MarketingDashboardSection` one directory over — the fake tabs never called a single macro while the real components sat unused by the top-level nav. | `20f1e384` |
 | 2026-07-09 | Wave 2 batch 6 | metalearning + anon + fork rebuilt — Dev-tool/sim-console archetype complete (9/9). Subtler defects than most of the wave: metalearning's frontend read `type`/`successRate` fields the backend doesn't return (silently blanking badges, and a "type" dropdown that was discarded server-side); anon's privacy-compute macros were fed from a permanently-empty generic artifact store (dead-end buttons, not fake data); fork's one broken panel fabricated an "87 · healthy" fork-health score from missing-field defaults. | `f1bf9bfe` |
 | 2026-07-09 | Wave 2 batch 6 | quantum + fractal + neuro rebuilt — quantum was already fully complete against its IBM Quantum Composer parity target (confirmed, nothing to fix); fractal had 3 real analysis macros (fractalDimension/selfSimilarity/complexityMeasure) hidden behind a fake "Patterns" library where users hand-typed a depth/complexity number; neuro's one training macro had zero UI. Agent got cut off mid-wait on its own background tsc check — recovered by independently verifying and committing the already-complete work rather than re-dispatching. | `2694903a` |
 | 2026-07-09 | Wave 2 batch 6 | robotics + ml + offline rebuilt — all three were already fully real (every backend macro already had a designed caller); the only defect was the dead generic-scaffold body (`UniversalActions`/`LensFeaturePanel`) sitting on top with nothing domain-specific to add, since none of the three register `analyze`/`generate`/`suggest`. One real honesty gap found: ml's "Log epoch" button silently generated synthetic decay-curve metrics with no signal they weren't real — relabeled "Simulate epoch" + added a real manual-entry form. | `b3872388` |
