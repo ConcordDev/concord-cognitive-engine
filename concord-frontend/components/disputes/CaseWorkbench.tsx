@@ -239,12 +239,13 @@ export function CaseWorkbench() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between relative">
         <h2 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
           <Scale className="w-4 h-4 text-indigo-400" /> ODR Case Workbench
         </h2>
         <div className="flex items-center gap-2">
           <SlaCheckButton onDone={refreshList} />
+          <EscrowLedgerPanel onOpenCase={setSelectedId} />
           <button className={btnPrimary} onClick={() => setShowNew(true)}>
             <Plus className="w-3.5 h-3.5" /> New Case
           </button>
@@ -395,6 +396,74 @@ function SlaCheckButton({ onDone }: { onDone: () => void }) {
         {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
         SLA Check
       </button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Escrow ledger — aggregate view across every case with funds frozen */
+/*  (disputes.escrow-status: a portfolio-wide ledger the per-case      */
+/*  escrow-freeze/release buttons don't surface on their own)          */
+/* ------------------------------------------------------------------ */
+
+interface EscrowHold { caseId: string; title: string; amount: number; status: string; frozenSince: string }
+
+function EscrowLedgerPanel({ onOpenCase }: { onOpenCase: (caseId: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [holds, setHolds] = useState<EscrowHold[]>([]);
+  const [totalHeld, setTotalHeld] = useState(0);
+
+  const load = async () => {
+    setLoading(true);
+    const r = await lensRun('disputes', 'escrow-status', {});
+    if (r.data.ok && r.data.result) {
+      setHolds(((r.data.result as any).holds as EscrowHold[]) || []);
+      setTotalHeld((r.data.result as any).totalHeld || 0);
+    }
+    setLoading(false);
+  };
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next) void load();
+  };
+
+  return (
+    <div>
+      <button className={btnGhost} onClick={toggle}>
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
+        Escrow Ledger
+      </button>
+      {open && (
+        <div className="absolute right-6 mt-2 z-10 w-80 rounded-lg border border-zinc-800 bg-zinc-950 shadow-xl p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-zinc-200">Escrow ledger</p>
+            <p className="text-xs text-amber-400 font-mono">{totalHeld} CC held</p>
+          </div>
+          {holds.length === 0 ? (
+            <p className="text-xs text-zinc-500 italic">No funds currently frozen.</p>
+          ) : (
+            <ul className="space-y-1 max-h-64 overflow-y-auto">
+              {holds.map((h) => (
+                <li key={h.caseId}>
+                  <button
+                    onClick={() => { onOpenCase(h.caseId); setOpen(false); }}
+                    className="w-full text-left rounded border border-zinc-800 hover:border-amber-600/40 bg-zinc-900/60 px-2 py-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-zinc-200 truncate">{h.title}</span>
+                      <span className="text-xs font-mono text-amber-400">{h.amount}</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500">{h.status} · frozen {new Date(h.frozenSince).toLocaleDateString()}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

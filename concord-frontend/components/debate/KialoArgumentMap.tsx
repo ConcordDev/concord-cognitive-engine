@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Scale, Plus, Trash2, ThumbsUp, ThumbsDown, Loader2, Link2, BookOpen,
-  ChevronRight, ChevronDown, Gauge, Layers, Eye, Share2, X, ExternalLink,
+  ChevronRight, ChevronDown, Gauge, Layers, Eye, Share2, X, ExternalLink, Pencil, Check,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -80,6 +80,14 @@ interface PositionScore {
   support: number;
   sharePct: number;
 }
+interface Dashboard {
+  debates: number;
+  totalClaims: number;
+  totalPositions: number;
+  totalSources: number;
+  sharedDebates: number;
+  wellSupported: number;
+}
 
 type Perspective = 'all' | 'pro' | 'con';
 
@@ -109,12 +117,18 @@ export function KialoArgumentMap() {
   const [newPosition, setNewPosition] = useState({ label: '', summary: '' });
   const [showPositions, setShowPositions] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [editingClaim, setEditingClaim] = useState<string | null>(null);
 
   /* ── data loads ───────────────────────────────────────────────── */
 
   const refresh = useCallback(async () => {
-    const r = await lensRun('debate', 'debate-list', {});
-    if (r.data?.ok) setDebates((r.data.result?.debates as DebateMeta[]) || []);
+    const [list, dash] = await Promise.all([
+      lensRun('debate', 'debate-list', {}),
+      lensRun('debate', 'debate-dashboard', {}),
+    ]);
+    if (list.data?.ok) setDebates((list.data.result?.debates as DebateMeta[]) || []);
+    if (dash.data?.ok) setDashboard((dash.data.result as Dashboard) || null);
     setLoading(false);
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
@@ -188,6 +202,14 @@ export function KialoArgumentMap() {
     await lensRun('debate', 'claim-delete', { debateId: active.id, claimId });
     await reload();
     setBusy(false);
+  }
+  async function editClaim(claimId: string, text: string) {
+    if (!active || text.trim().length < 4) return false;
+    setBusy(true);
+    const r = await lensRun('debate', 'claim-edit', { debateId: active.id, claimId, text: text.trim() });
+    await reload();
+    setBusy(false);
+    return !!r.data?.ok;
   }
 
   /* ── sources ──────────────────────────────────────────────────── */
@@ -290,6 +312,25 @@ export function KialoArgumentMap() {
         <span className="text-[11px] text-gray-400">Kialo-shape · impact-weighted</span>
         {busy && <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />}
       </div>
+
+      {/* Dashboard strip — debate.debate-dashboard, real aggregate across every debate */}
+      {dashboard && dashboard.debates > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-3">
+          {[
+            { label: 'Debates', value: dashboard.debates },
+            { label: 'Claims', value: dashboard.totalClaims },
+            { label: 'Positions', value: dashboard.totalPositions },
+            { label: 'Sources', value: dashboard.totalSources },
+            { label: 'Shared', value: dashboard.sharedDebates },
+            { label: 'Well-supported', value: dashboard.wellSupported },
+          ].map((s) => (
+            <div key={s.label} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-center">
+              <p className="text-sm font-bold text-white leading-none">{s.value}</p>
+              <p className="mt-1 text-[9px] uppercase tracking-wider text-gray-400">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* New thesis */}
       <div className="flex gap-1.5 mb-3">
@@ -481,6 +522,9 @@ export function KialoArgumentMap() {
               onVote={voteClaim}
               onImpact={rateImpact}
               onDelete={removeClaim}
+              onEdit={editClaim}
+              editingClaim={editingClaim}
+              onOpenEdit={setEditingClaim}
               onAddSource={addSource}
               onRemoveSource={removeSource}
               onOpenSourcing={setSourcingClaim}
@@ -623,6 +667,9 @@ interface BranchProps {
   onVote: (claimId: string, weight: number) => void;
   onImpact: (claimId: string, impact: number) => void;
   onDelete: (claimId: string) => void;
+  onEdit: (claimId: string, text: string) => Promise<boolean | undefined>;
+  editingClaim: string | null;
+  onOpenEdit: (id: string | null) => void;
   onAddSource: (claimId: string, src: { title: string; url: string; kind: string; note: string }) => Promise<boolean | undefined>;
   onRemoveSource: (claimId: string, sourceId: string) => void;
   onOpenSourcing: (id: string | null) => void;
@@ -659,6 +706,9 @@ function ClaimBranch(props: BranchProps) {
               onVote={props.onVote}
               onImpact={props.onImpact}
               onDelete={props.onDelete}
+              onEdit={props.onEdit}
+              editing={props.editingClaim === c.id}
+              onOpenEdit={props.onOpenEdit}
               onAddSource={props.onAddSource}
               onRemoveSource={props.onRemoveSource}
               onOpenSourcing={props.onOpenSourcing}
@@ -683,24 +733,33 @@ function ClaimBranch(props: BranchProps) {
 /* ── single claim card ──────────────────────────────────────────── */
 
 function ClaimCard({
-  claim, childCount, isCollapsed, busy, sourcingOpen,
-  onToggleCollapse, onVote, onImpact, onDelete, onAddSource, onRemoveSource, onOpenSourcing,
+  claim, childCount, isCollapsed, busy, sourcingOpen, editing,
+  onToggleCollapse, onVote, onImpact, onDelete, onEdit, onOpenEdit, onAddSource, onRemoveSource, onOpenSourcing,
 }: {
   claim: Claim;
   childCount: number;
   isCollapsed: boolean;
   busy: boolean;
   sourcingOpen: boolean;
+  editing: boolean;
   onToggleCollapse: () => void;
   onVote: (claimId: string, weight: number) => void;
   onImpact: (claimId: string, impact: number) => void;
   onDelete: (claimId: string) => void;
+  onEdit: (claimId: string, text: string) => Promise<boolean | undefined>;
+  onOpenEdit: (id: string | null) => void;
   onAddSource: (claimId: string, src: { title: string; url: string; kind: string; note: string }) => Promise<boolean | undefined>;
   onRemoveSource: (claimId: string, sourceId: string) => void;
   onOpenSourcing: (id: string | null) => void;
 }) {
   const isPro = claim.stance === 'pro';
   const sources = claim.sources || [];
+  const [draft, setDraft] = useState(claim.text);
+  useEffect(() => { if (editing) setDraft(claim.text); }, [editing, claim.text]);
+  async function saveEdit() {
+    const ok = await onEdit(claim.id, draft);
+    if (ok) onOpenEdit(null);
+  }
   return (
     <div
       className={cn(
@@ -723,7 +782,17 @@ function ClaimCard({
         <span className={cn('text-[9px] font-bold uppercase mt-0.5', isPro ? 'text-emerald-400' : 'text-rose-400')}>
           {claim.stance}
         </span>
-        <p className="text-xs text-gray-200 flex-1">{claim.text}</p>
+        {editing ? (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void saveEdit(); if (e.key === 'Escape') onOpenEdit(null); }}
+            className="flex-1 bg-black/50 border border-cyan-600/50 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none"
+          />
+        ) : (
+          <p className="text-xs text-gray-200 flex-1">{claim.text}</p>
+        )}
         {childCount > 0 && isCollapsed && (
           <span className="text-[9px] text-gray-400 shrink-0 mt-0.5">{childCount} sub</span>
         )}
@@ -733,6 +802,15 @@ function ClaimCard({
         >
           {claim.effective.toFixed(1)}
         </span>
+        {editing ? (
+          <button onClick={saveEdit} disabled={draft.trim().length < 4 || busy} aria-label="Save edit" className="text-emerald-400 hover:text-emerald-300 disabled:opacity-40">
+            <Check className="w-3 h-3" />
+          </button>
+        ) : (
+          <button onClick={() => onOpenEdit(claim.id)} aria-label="Edit claim" className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-cyan-400">
+            <Pencil className="w-3 h-3" />
+          </button>
+        )}
         <button onClick={() => onVote(claim.id, 5)} aria-label="Vote up" className="text-gray-600 hover:text-emerald-400">
           <ThumbsUp className="w-3 h-3" />
         </button>
