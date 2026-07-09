@@ -11,9 +11,10 @@
  * per-panel rollups and domain-accurate labels.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { StatTile, StatTileGrid } from '@/components/ui/StatTile';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { Crosshair, AlertTriangle, Users, Truck, Loader2 } from 'lucide-react';
 
 interface AssetRollupResult {
@@ -61,9 +62,12 @@ export function DashboardStats() {
   const [personnel, setPersonnel] = useState<PersonnelRosterResult | null>(null);
   const [supply, setSupply] = useState<SupplyBoardResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(null);
     (async () => {
       const [a, t, p, s] = await Promise.all([
         lensRun<AssetRollupResult>('defense', 'asset-rollup', {}),
@@ -72,21 +76,36 @@ export function DashboardStats() {
         lensRun<SupplyBoardResult>('defense', 'supply-board', {}),
       ]);
       if (cancelled) return;
-      if (a.data?.ok && a.data.result) setAssets(a.data.result);
-      if (t.data?.ok && t.data.result) setThreats(t.data.result);
-      if (p.data?.ok && p.data.result) setPersonnel(p.data.result);
-      if (s.data?.ok && s.data.result) setSupply(s.data.result);
+      const failures: string[] = [];
+      if (a.data?.ok && a.data.result) setAssets(a.data.result); else failures.push(a.data?.error || 'asset-rollup failed');
+      if (t.data?.ok && t.data.result) setThreats(t.data.result); else failures.push(t.data?.error || 'threat-board failed');
+      if (p.data?.ok && p.data.result) setPersonnel(p.data.result); else failures.push(p.data?.error || 'personnel-roster failed');
+      if (s.data?.ok && s.data.result) setSupply(s.data.result); else failures.push(s.data?.error || 'supply-board failed');
+      // Only surface a hard error banner when EVERY rollup failed — a single
+      // rollup with no data yet (a genuinely empty roster) is not an error,
+      // it renders its honest zero/caption fallback below.
+      if (failures.length === 4) setError(failures[0]);
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    const cancel = load();
+    return cancel;
+  }, [load]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-6 text-zinc-400">
+      <div role="status" aria-live="polite" className="flex items-center justify-center py-6 text-zinc-400">
         <Loader2 className="w-4 h-4 animate-spin" />
+        <span className="sr-only">Loading readiness rollups…</span>
       </div>
     );
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={load} retrying={loading} />;
   }
 
   return (

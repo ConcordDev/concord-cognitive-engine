@@ -88,7 +88,8 @@ export function EmsOverviewPanel() {
 
   if (loading && !dash) {
     return (
-      <div className="space-y-3">
+      <div role="status" aria-live="polite" className="space-y-3">
+        <span className="sr-only">Loading operations overview…</span>
         <StatTileGrid columns={4}>
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="block" height={72} />)}
         </StatTileGrid>
@@ -103,7 +104,7 @@ export function EmsOverviewPanel() {
 
   if (!dash) return null;
 
-  const byKindEntries = Object.entries(dash.byKind).sort((a, b) => b[1] - a[1]);
+  const byKindEntries = Object.entries(dash.byKind || {}).sort((a, b) => b[1] - a[1]);
   const maxKind = byKindEntries.length ? byKindEntries[0][1] : 1;
 
   return (
