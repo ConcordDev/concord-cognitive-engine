@@ -18,9 +18,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
-import { ClassroomActionPanel } from '@/components/classroom/ClassroomActionPanel';
 import { ClassroomWorkspace } from '@/components/classroom/ClassroomWorkspace';
-import { PipingProvider } from '@/components/panel-polish';
 
 interface Cohort {
   id: number;
@@ -244,16 +242,15 @@ export default function ClassroomPage() {
         <ClassroomWorkspace cohortId={activeCohort} />
       </section>
 
-      {/* Bespoke Open Library book search + detail with Save-as-DTU */}
+      {/* Bespoke Open Library book search + detail with Save-as-DTU + DM +
+          agent week-plan. (Wave 3: this used to be followed by a second,
+          duplicate "Classroom library" action-bench — ClassroomActionPanel —
+          that re-ran the same 4 Open Library macros behind a plainer UI. Its
+          two genuinely distinct actions, DM and agent week-plan, are now
+          part of this panel's book detail view; the panel itself is retired.) */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <OpenLibrarySearch />
       </section>
-
-      <PipingProvider>
-        <section className="mt-6">
-          <ClassroomActionPanel />
-        </section>
-      </PipingProvider>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>

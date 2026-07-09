@@ -54,11 +54,6 @@ vi.mock('@/components/lens/LensVerticalHero', () => ({ LensVerticalHero: () => n
 // page's own cohort list + load-status state machine.
 vi.mock('@/components/classroom/ClassroomWorkspace', () => ({ ClassroomWorkspace: () => null }));
 vi.mock('@/components/classroom/OpenLibrarySearch', () => ({ OpenLibrarySearch: () => null }));
-vi.mock('@/components/classroom/ClassroomActionPanel', () => ({ ClassroomActionPanel: () => null }));
-vi.mock('@/components/panel-polish', () => ({
-  PipingProvider: ({ children }: { children: React.ReactNode }) =>
-    React.createElement(React.Fragment, null, children),
-}));
 
 // Import AFTER mocks are registered.
 import ClassroomPage from '@/app/lenses/classroom/page';
