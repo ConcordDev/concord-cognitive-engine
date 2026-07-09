@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Baby, Plus, ListChecks, Moon, TrendingUp, Sparkles, Loader2,
-  CalendarClock, Timer, Lightbulb, CalendarPlus, Users,
+  CalendarClock, Timer, Lightbulb, CalendarPlus, Users, ClipboardList, Syringe,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -23,9 +23,11 @@ import { PgTimersPanel } from './PgTimersPanel';
 import { PgInsightsPanel } from './PgInsightsPanel';
 import { PgAppointmentsPanel } from './PgAppointmentsPanel';
 import { PgCaregiversPanel } from './PgCaregiversPanel';
+import { PgCarePanel } from './PgCarePanel';
+import { PgImmunizationsPanel } from './PgImmunizationsPanel';
 
 interface Child { id: string; name: string; birthDate: string; sex: string; ageDisplay: string; ageMonths: number }
-type TabId = 'today' | 'timers' | 'sleep' | 'schedule' | 'growth' | 'milestones' | 'insights' | 'appointments' | 'caregivers';
+type TabId = 'today' | 'timers' | 'sleep' | 'schedule' | 'growth' | 'milestones' | 'care' | 'immunizations' | 'insights' | 'appointments' | 'caregivers';
 const TABS: { id: TabId; label: string; icon: typeof Baby }[] = [
   { id: 'today', label: 'Today', icon: ListChecks },
   { id: 'timers', label: 'Timers', icon: Timer },
@@ -33,6 +35,8 @@ const TABS: { id: TabId; label: string; icon: typeof Baby }[] = [
   { id: 'schedule', label: 'Schedule', icon: CalendarClock },
   { id: 'growth', label: 'Growth', icon: TrendingUp },
   { id: 'milestones', label: 'Milestones', icon: Sparkles },
+  { id: 'care', label: 'Care Log', icon: ClipboardList },
+  { id: 'immunizations', label: 'Immunizations', icon: Syringe },
   { id: 'insights', label: 'Insights', icon: Lightbulb },
   { id: 'appointments', label: 'Appointments', icon: CalendarPlus },
   { id: 'caregivers', label: 'Caregivers', icon: Users },
@@ -144,6 +148,13 @@ export function ParentingSection() {
                   </div>
                 )}
                 {tab === 'milestones' && <PgMilestonesPanel childId={activeChild} />}
+                {tab === 'care' && <PgCarePanel childId={activeChild} />}
+                {tab === 'immunizations' && (() => {
+                  const child = children.find((c) => c.id === activeChild);
+                  return child
+                    ? <PgImmunizationsPanel child={child} />
+                    : <p className="text-[11px] text-zinc-400 italic py-8 text-center">Select a child first.</p>;
+                })()}
                 {tab === 'insights' && <PgInsightsPanel childId={activeChild} />}
                 {tab === 'appointments' && <PgAppointmentsPanel childId={activeChild} />}
                 {tab === 'caregivers' && <PgCaregiversPanel childId={activeChild} />}

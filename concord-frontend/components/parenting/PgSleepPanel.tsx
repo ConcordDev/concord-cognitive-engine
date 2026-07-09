@@ -17,6 +17,7 @@ interface SweetSpot {
   note?: string;
 }
 interface SleepEntry { id: string; type: string; durationMin: number; startAt: string; endAt: string }
+interface SleepStats { sleepMinToday: number; napsToday: number; longestStretchMin: number; avgDailyMin: number }
 
 function timeOf(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -25,17 +26,20 @@ function timeOf(iso: string) {
 export function PgSleepPanel({ childId }: { childId: string }) {
   const [spot, setSpot] = useState<SweetSpot | null>(null);
   const [history, setHistory] = useState<SleepEntry[]>([]);
+  const [stats, setStats] = useState<SleepStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ type: 'nap', durationMin: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [s, h] = await Promise.all([
+    const [s, h, st] = await Promise.all([
       lensRun('parenting', 'sweet-spot', { childId }),
       lensRun('parenting', 'sleep-history', { childId, days: 7 }),
+      lensRun('parenting', 'sleep-stats', { childId }),
     ]);
     setSpot((s.data?.result as SweetSpot | null) || null);
     setHistory(h.data?.result?.entries || []);
+    setStats((st.data?.result as SleepStats | null) || null);
     setLoading(false);
   }, [childId]);
 
@@ -77,6 +81,15 @@ export function PgSleepPanel({ childId }: { childId: string }) {
         </div>
       )}
 
+      {/* Stats */}
+      {stats && (
+        <div className="grid grid-cols-3 gap-2">
+          <Stat label="Naps today" value={stats.napsToday} />
+          <Stat label="Longest stretch" value={`${Math.floor(stats.longestStretchMin / 60)}h ${stats.longestStretchMin % 60}m`} />
+          <Stat label="7d avg / day" value={`${Math.floor(stats.avgDailyMin / 60)}h ${stats.avgDailyMin % 60}m`} />
+        </div>
+      )}
+
       {/* Log sleep */}
       <div className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
         <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
@@ -113,6 +126,15 @@ export function PgSleepPanel({ childId }: { childId: string }) {
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2.5 text-center">
+      <p className="text-base font-bold text-zinc-100">{value}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

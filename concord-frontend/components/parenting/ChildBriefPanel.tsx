@@ -48,8 +48,23 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface MilestoneResult { ageMonths?: number; expected?: string[]; behind?: string[]; ahead?: string[]; notes?: string }
-interface RoutineResult { suggestions?: string[]; napWindow?: string; sleepWindow?: string; focusBlocks?: Array<{ time: string; activity: string }> }
+// Real response shapes from `parenting.milestoneCheck` / `parenting.routineOptimizer`
+// (server/domains/parenting.js) — verified against the handler source, not
+// guessed. An earlier version of this panel invented `expected`/`behind`/
+// `ahead`/`suggestions`/`napWindow` fields that don't exist in the actual
+// macro output, so the buttons showed a fake "success" toast while silently
+// rendering nothing real. Fixed alongside the request-shape bug below.
+interface MilestoneCategoryResult { category: string; ageRange: string; expected: string[]; achieved: number; total: number; completionRate: number }
+interface MilestoneResult {
+  childName?: string; ageMonths: number; ageDisplay?: string;
+  milestoneResults: MilestoneCategoryResult[]; overallCompletionRate: number;
+  totalMilestonesRecorded: number; assessment: string;
+}
+interface RoutineSlot { time: string; activity: string; duration: number; category: string }
+interface RoutineResult {
+  stage: string; ageYears: number; suggestedRoutine: RoutineSlot[];
+  existingSchedules: number; newSuggestions: number; categoryBreakdown: Record<string, number>;
+}
 
 export function ChildBriefPanel() {
   const [childName, setChildName] = useState('');
@@ -73,11 +88,23 @@ export function ChildBriefPanel() {
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
 
+  // `milestoneCheck`/`routineOptimizer` read `artifact.data.childAge` as a
+  // free-text string like "2y 3m" (parsed by a regex in the handler) — NOT
+  // a numeric `ageMonths` field. Building that string here is the fix for
+  // the real bug where these two actions always computed against age 0
+  // (milestoneCheck) or silently defaulted to the toddler template
+  // (routineOptimizer) regardless of what the caller typed in.
+  function childAgeStr(): string {
+    const y = parseFloat(ageYears) || 0;
+    const m = parseFloat(ageMonths) || 0;
+    return `${y}y ${m}m`;
+  }
+
   async function actMilestone() {
     if (!childKnown) { err('Enter child name + age.'); return; }
     setBusy('milestone'); setFeedback(null);
     try {
-      const r = await callMacro<MilestoneResult>('milestoneCheck', { childName: childName.trim(), ageMonths: ageInMonths });
+      const r = await callMacro<MilestoneResult>('milestoneCheck', { childName: childName.trim(), childAge: childAgeStr(), milestones: [] });
       if (r.ok && r.result) { setMilestoneResult(r.result); ok('Milestones loaded.'); }
       else err(r.error ?? 'milestone check failed');
     } catch (e) { err(pickMessage(e)); }
@@ -88,7 +115,7 @@ export function ChildBriefPanel() {
     if (!childKnown) { err('Enter child name + age.'); return; }
     setBusy('routine'); setFeedback(null);
     try {
-      const r = await callMacro<RoutineResult>('routineOptimizer', { childName: childName.trim(), ageMonths: ageInMonths });
+      const r = await callMacro<RoutineResult>('routineOptimizer', { childAge: childAgeStr(), schedules: [] });
       if (r.ok && r.result) { setRoutineResult(r.result); ok('Routine optimized.'); }
       else err(r.error ?? 'routine optimize failed');
     } catch (e) { err(pickMessage(e)); }
@@ -137,13 +164,11 @@ export function ChildBriefPanel() {
       `Age: ${ageYears || 0}y ${ageMonths || 0}m`,
       '',
     ];
-    if (milestoneResult?.expected?.length) {
-      parts.push(`Expected milestones at this age:`);
-      milestoneResult.expected.slice(0, 5).forEach(m => parts.push(`  • ${m}`));
-      parts.push('');
-    }
-    if (milestoneResult?.behind?.length) {
-      parts.push(`Watching for: ${milestoneResult.behind.join(', ')}`);
+    if (milestoneResult) {
+      parts.push(`Milestone assessment: ${milestoneResult.assessment} (${milestoneResult.overallCompletionRate}% complete)`);
+      for (const cat of milestoneResult.milestoneResults.slice(0, 4)) {
+        parts.push(`  • ${cat.category} (${cat.ageRange}): ${cat.achieved}/${cat.total} — ${cat.expected.join(', ')}`);
+      }
       parts.push('');
     }
     if (recentNotes.trim()) {
@@ -194,9 +219,11 @@ export function ChildBriefPanel() {
     if (!childKnown) { err('Enter child name + age.'); return; }
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
+      const expectedFlat = milestoneResult?.milestoneResults.flatMap((c) => c.expected) ?? [];
       const task = [
         `Developmental brief for ${childName.trim()}, ${ageInMonths} months old.`,
-        milestoneResult?.expected?.length ? `Currently expected: ${milestoneResult.expected.slice(0, 4).join(', ')}.` : '',
+        milestoneResult ? `Milestone assessment: ${milestoneResult.assessment} (${milestoneResult.overallCompletionRate}% complete).` : '',
+        expectedFlat.length ? `Currently expected: ${expectedFlat.slice(0, 4).join(', ')}.` : '',
         recentNotes.trim() ? `Recent notes: ${recentNotes.trim()}.` : '',
         ``,
         `Return a short brief: what to watch for in the next 4-6 weeks, 2-3 simple activities`,
@@ -286,45 +313,39 @@ export function ChildBriefPanel() {
       </div>
 
       {milestoneResult && (
-        <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-3 space-y-1">
+        <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-3 space-y-2">
           <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5">
-            <Milestone className="w-3 h-3" /> Milestones at {milestoneResult.ageMonths ?? ageInMonths} months
+            <Milestone className="w-3 h-3" /> Milestones at {milestoneResult.ageDisplay ?? `${milestoneResult.ageMonths}mo`} · {milestoneResult.overallCompletionRate}% complete
           </div>
-          {milestoneResult.expected?.length ? (
-            <div className="text-[11px] text-gray-300">
-              <strong className="text-purple-200">Expected:</strong> {milestoneResult.expected.join(' · ')}
-            </div>
-          ) : null}
-          {milestoneResult.behind?.length ? (
-            <div className="text-[11px] text-amber-300">
-              <strong>Watching:</strong> {milestoneResult.behind.join(' · ')}
-            </div>
-          ) : null}
-          {milestoneResult.ahead?.length ? (
-            <div className="text-[11px] text-emerald-300">
-              <strong>Ahead:</strong> {milestoneResult.ahead.join(' · ')}
-            </div>
-          ) : null}
-          {milestoneResult.notes && <p className="text-[11px] text-zinc-400 italic">{milestoneResult.notes}</p>}
+          <p className="text-[11px] text-purple-200">{milestoneResult.assessment}</p>
+          {milestoneResult.milestoneResults.length === 0 ? (
+            <p className="text-[11px] text-zinc-400 italic">No CDC benchmark bracket applies at this age yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {milestoneResult.milestoneResults.map((cat) => (
+                <li key={cat.category} className="text-[11px] text-gray-300">
+                  <strong className="text-purple-200">{cat.category}</strong> ({cat.ageRange}) — {cat.achieved}/{cat.total}: {cat.expected.join(' · ')}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
       {routineResult && (
         <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5">
-            <Clock className="w-3 h-3" /> Optimized routine
+            <Clock className="w-3 h-3" /> Optimized routine — {routineResult.stage} stage ({routineResult.newSuggestions} new of {routineResult.suggestedRoutine.length} slots)
           </div>
-          {routineResult.napWindow && (
-            <div className="text-[11px] text-gray-300"><strong className="text-cyan-200">Nap:</strong> {routineResult.napWindow}</div>
-          )}
-          {routineResult.sleepWindow && (
-            <div className="text-[11px] text-gray-300"><strong className="text-cyan-200">Sleep:</strong> {routineResult.sleepWindow}</div>
-          )}
-          {routineResult.suggestions?.length ? (
-            <ul className="text-[11px] text-gray-300 space-y-0.5 list-disc list-inside">
-              {routineResult.suggestions.map((s, i) => <li key={i}>{s}</li>)}
-            </ul>
-          ) : null}
+          <ul className="text-[11px] text-gray-300 space-y-0.5">
+            {routineResult.suggestedRoutine.map((slot, i) => (
+              <li key={i} className="flex items-center gap-2">
+                <span className="font-mono text-cyan-200 w-12 shrink-0">{slot.time}</span>
+                <span>{slot.activity}</span>
+                <span className="text-zinc-500">· {slot.duration}m · {slot.category}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
