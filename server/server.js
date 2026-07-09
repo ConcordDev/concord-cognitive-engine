@@ -8191,11 +8191,22 @@ async function tryInitWebSockets(server) {
       methods: ["GET", "POST"],
       credentials: true
     },
-    // In production, restrict to WebSocket only. Long-polling fallback at
-    // scale (1000+ clients) creates a flood of HTTP requests on flaky
-    // networks (1-5s polling × 1000 clients = 200-1000 req/s overhead).
-    // Dev keeps polling for local dev tools and proxy interop.
-    transports: NODE_ENV === "production" ? ["websocket"] : ["websocket", "polling"],
+    // In production, restrict to WebSocket only by default. Long-polling
+    // fallback at scale (1000+ clients) creates a flood of HTTP requests on
+    // flaky networks (1-5s polling × 1000 clients = 200-1000 req/s overhead)
+    // — a deliberate tradeoff, not an oversight, so this stays the default.
+    // But WS-only also means zero graceful-degradation path: if a deploy's
+    // WS upgrade is broken end-to-end (e.g. the frontend container is hit
+    // directly, bypassing the nginx `/socket.io/` proxy that forwards
+    // `Upgrade` headers correctly — see nginx/conf.d/default.conf and
+    // README's deploy section), clients go fully dark instead of degrading.
+    // CONCORD_SOCKET_ALLOW_POLLING_FALLBACK opts a deployment into the
+    // polling fallback without changing the safe default for the documented
+    // at-scale topology. Dev always keeps polling for local dev tools/proxy
+    // interop.
+    transports: NODE_ENV === "production"
+      ? (process.env.CONCORD_SOCKET_ALLOW_POLLING_FALLBACK === "true" ? ["websocket", "polling"] : ["websocket"])
+      : ["websocket", "polling"],
     pingTimeout: 60000,
     pingInterval: 25000,
     // G-5 — tighten the inbound frame ceiling (default 1MB). Game packets are
