@@ -10,11 +10,11 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -125,84 +125,10 @@ interface HistoryEntry {
   endedAt: number;
 }
 
-interface ParticipantStat {
-  name: string;
-  sharePercent: number;
-}
-
-interface ContributionRanking {
-  name: string;
-  totalScore: number;
-  contributions: number;
-}
-
-interface DissentingEntry {
-  position: string;
-  count: number;
-  percent: number;
-}
-
-interface WorkloadMember {
-  name: string;
-  status: string;
-  utilization: number;
-  totalHours: number;
-  capacity: number;
-  assignedTasks: number;
-}
-
-interface ActionResultError {
-  error: string;
-}
-
-interface ActionResultMessage {
-  message: string;
-}
-
-interface SessionAnalyticsResult {
-  totalMessages: number;
-  totalParticipants: number;
-  messagesPerMinute: number;
-  balanceRating: string;
-  participationBalance: number;
-  participantStats: ParticipantStat[];
-}
-
-interface ContributionScoreResult {
-  rankings: ContributionRanking[];
-  topContributor: string;
-  totalContributions: number;
-}
-
-interface ConsensusResult {
-  consensusPercent: number;
-  hasSupermajority: boolean;
-  hasConsensus: boolean;
-  status: string;
-  totalVotes: number;
-  leadingPosition: string;
-  dissenting: DissentingEntry[];
-}
-
-interface WorkloadBalanceResult {
-  members: WorkloadMember[];
-  avgUtilization: number;
-  overloadedMembers: number;
-  unassignedTasks: number;
-  suggestions: string[];
-}
-
-type ActionResult =
-  | ActionResultError
-  | ActionResultMessage
-  | SessionAnalyticsResult
-  | ContributionScoreResult
-  | ConsensusResult
-  | WorkloadBalanceResult
-  | Record<string, unknown>;
-
 // ---------------------------------------------------------------------------
-// Demo data
+// Avatar palette — a real per-user visual, deterministic from the user's own
+// id (same technique as the backend's `colorFor(userId)` in
+// server/domains/collab.js), never a fabricated name/identity generator.
 // ---------------------------------------------------------------------------
 
 const AVATARS = [
@@ -216,29 +142,10 @@ const AVATARS = [
   'bg-gradient-to-br from-sky-400 to-blue-600',
 ];
 
-const NAMES = [
-  'AlexDesigner',
-  'JordanDev',
-  'TaylorResearch',
-  'MorganCreative',
-  'CaseyWriter',
-  'RileyAnalyst',
-  'SamArchitect',
-  'DanaEngineer',
-  'InkFlow',
-  'PixelDrift',
-  'DrewPlanner',
-  'QuinnStrategy',
-];
-
-function _makePart(idx: number, role: ParticipantRole, online = true): Participant {
-  return {
-    id: `p-${idx}`,
-    name: NAMES[idx % NAMES.length],
-    avatar: AVATARS[idx % AVATARS.length],
-    role,
-    online,
-  };
+function avatarForUser(userId: string): string {
+  let h = 0;
+  for (let i = 0; i < userId.length; i++) h = (h * 31 + userId.charCodeAt(i)) >>> 0;
+  return AVATARS[h % AVATARS.length];
 }
 
 // ---------------------------------------------------------------------------
@@ -316,12 +223,16 @@ export default function CollabLensPage() {
     isLive,
     lastUpdated,
   } = useRealtimeLens('collab');
+  const { user } = useAuth();
+  const myUserId = user?.id || 'anon';
+  const myName = user?.username || 'You';
   const {
     isLoading,
     isError,
     error,
     refetch,
     items: sessionItems,
+    create: createSessionArtifact,
   } = useLensData('collab', 'session', {
     seed: [],
   });
@@ -380,38 +291,22 @@ export default function CollabLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const [inviteSessionId, setInviteSessionId] = useState<string | null>(null);
 
-  // --- Backend action wiring ---
-  const runAction = useRunArtifact('collab');
-  const [actionResult, setActionResult] = useState<ActionResult | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-
-  const targetId = sessionItems[0]?.id ?? 'default';
-
-  const handleAction = useCallback(
-    async (action: string) => {
-      setIsRunning(true);
-      setActionResult(null);
-      try {
-        const res = await runAction.mutateAsync({ id: targetId, action });
-        if (res.ok === false) {
-          setActionResult({
-            error: (res as Record<string, unknown>).error || 'Unknown error',
-          } as ActionResult);
-        } else {
-          setActionResult((res.result ?? res) as ActionResult);
-        }
-      } catch (err) {
-        setActionResult({ error: err instanceof Error ? err.message : 'Action failed' });
-      } finally {
-        setIsRunning(false);
-      }
-    },
-    [runAction, targetId]
-  );
-
-  const sessions: CollabSession[] = sessionItems.map((i) => i.data as unknown as CollabSession);
-  const invitations: Invitation[] = invitationItems.map((i) => i.data as unknown as Invitation);
-  const history: HistoryEntry[] = historyItems.map((i) => i.data as unknown as HistoryEntry);
+  // Merge the wrapping lens-artifact id into `.data` — the backend assigns
+  // the real, stable, cross-user-visible id at the artifact level (`i.id`),
+  // not inside the JSON payload, so this is required for join/leave/close to
+  // address the right record.
+  const sessions: CollabSession[] = sessionItems.map((i) => ({
+    ...(i.data as unknown as CollabSession),
+    id: i.id,
+  }));
+  const invitations: Invitation[] = invitationItems.map((i) => ({
+    ...(i.data as unknown as Invitation),
+    id: i.id,
+  }));
+  const history: HistoryEntry[] = historyItems.map((i) => ({
+    ...(i.data as unknown as HistoryEntry),
+    id: i.id,
+  }));
   const onlineCount = sessions.reduce(
     (n, s) => n + s.participants.filter((p) => p.online).length,
     0
@@ -425,7 +320,7 @@ export default function CollabLensPage() {
   });
 
   const mySessions = sessions.filter(
-    (s) => s.host.id === 'p-0' || s.participants.some((p) => p.id === 'p-0')
+    (s) => s.host.id === myUserId || s.participants.some((p) => p.id === myUserId)
   );
 
   const TABS: { key: MainTab; label: string; count?: number }[] = [
@@ -446,7 +341,14 @@ export default function CollabLensPage() {
 
   // If viewing an active session
   if (activeSession) {
-    return <ActiveSessionView session={activeSession} onLeave={() => setActiveSession(null)} />;
+    return (
+      <ActiveSessionView
+        session={activeSession}
+        currentUserId={myUserId}
+        currentUserName={myName}
+        onLeave={() => setActiveSession(null)}
+      />
+    );
   }
 
   if (isLoading || isLoadingInvitations || isLoadingHistory) {
@@ -704,7 +606,14 @@ export default function CollabLensPage() {
 
       {/* Create session modal */}
       <AnimatePresence>
-        {showCreateModal && <CreateSessionModal onClose={() => setShowCreateModal(false)} />}
+        {showCreateModal && (
+          <CreateSessionModal
+            onClose={() => setShowCreateModal(false)}
+            onCreate={createSessionArtifact}
+            hostId={myUserId}
+            hostName={myName}
+          />
+        )}
       </AnimatePresence>
 
       {/* Active Collaborations from API */}
@@ -773,240 +682,6 @@ export default function CollabLensPage() {
 
       <RealtimeDataPanel data={realtimeInsights} />
       <UniversalActions domain="collab" artifactId={null} compact />
-
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3 border border-neon-blue/20">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Handshake className="w-4 h-4 text-neon-blue" />
-          Collab Actions
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'sessionAnalytics', label: 'Session Analytics' },
-            { action: 'contributionScore', label: 'Contribution Scoring' },
-            { action: 'detectConsensus', label: 'Consensus Detection' },
-            { action: 'balanceWorkload', label: 'Workload Balancing' },
-          ].map(({ action, label }) => (
-            <button
-              key={action}
-              onClick={() => handleAction(action)}
-              disabled={isRunning}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-neon-blue/10 text-neon-blue border border-neon-blue/20 hover:bg-neon-blue/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-              {label}
-            </button>
-          ))}
-        </div>
-        {actionResult !== null && (
-          <div className="mt-2 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">Result</span>
-              <button
-                onClick={() => setActionResult(null)}
-                className="text-gray-400 hover:text-white transition-colors"
-              aria-label="Xcircle">
-                <XCircle className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="bg-lattice-surface p-3 rounded-lg text-xs space-y-3 max-h-72 overflow-y-auto">
-              {/* Error */}
-              {'error' in actionResult && (
-                <p className="text-red-400">{(actionResult as ActionResultError).error}</p>
-              )}
-              {/* Message-only result */}
-              {'message' in actionResult && !('error' in actionResult) && (
-                <p className="text-gray-300">{(actionResult as ActionResultMessage).message}</p>
-              )}
-
-              {/* sessionAnalytics */}
-              {'totalMessages' in actionResult &&
-                (() => {
-                  const sa = actionResult as SessionAnalyticsResult;
-                  return (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="p-2 bg-lattice-bg rounded text-center">
-                          <p className="text-sm font-bold text-neon-blue">{sa.totalMessages}</p>
-                          <p className="text-[10px] text-gray-400">Messages</p>
-                        </div>
-                        <div className="p-2 bg-lattice-bg rounded text-center">
-                          <p className="text-sm font-bold text-neon-blue">{sa.totalParticipants}</p>
-                          <p className="text-[10px] text-gray-400">Participants</p>
-                        </div>
-                        <div className="p-2 bg-lattice-bg rounded text-center">
-                          <p className="text-sm font-bold text-neon-blue">
-                            {sa.messagesPerMinute}/m
-                          </p>
-                          <p className="text-[10px] text-gray-400">Msg/Min</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-400">Balance:</span>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${sa.balanceRating === 'well-balanced' ? 'bg-neon-green/20 text-neon-green' : sa.balanceRating === 'slightly-uneven' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}
-                        >
-                          {sa.balanceRating}
-                        </span>
-                        <span className="text-gray-400 ml-auto">
-                          Gini: {sa.participationBalance}
-                        </span>
-                      </div>
-                      {(sa.participantStats || []).length > 0 && (
-                        <div className="space-y-1">
-                          {sa.participantStats.map((p: ParticipantStat) => (
-                            <div key={p.name} className="flex items-center gap-2">
-                              <span className="text-gray-300 w-24 truncate">{p.name}</span>
-                              <div className="flex-1 bg-lattice-bg rounded-full h-1.5">
-                                <div
-                                  className="bg-neon-blue h-1.5 rounded-full"
-                                  style={{ width: `${p.sharePercent}%` }}
-                                />
-                              </div>
-                              <span className="text-gray-400 w-10 text-right">
-                                {p.sharePercent}%
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-              {/* contributionScore */}
-              {'rankings' in actionResult &&
-                (() => {
-                  const cs = actionResult as ContributionScoreResult;
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <span>Top contributor:</span>
-                        <span className="text-neon-green font-medium">
-                          {cs.topContributor ?? '—'}
-                        </span>
-                        <span className="ml-auto text-gray-400">{cs.totalContributions} total</span>
-                      </div>
-                      <div className="space-y-1">
-                        {cs.rankings.map((r: ContributionRanking, i: number) => (
-                          <div
-                            key={r.name}
-                            className="flex items-center gap-2 p-1.5 bg-lattice-bg rounded"
-                          >
-                            <span className="text-gray-400 w-4">{i + 1}.</span>
-                            <span className="text-gray-200 flex-1">{r.name}</span>
-                            <span className="text-neon-blue font-bold">{r.totalScore}</span>
-                            <span className="text-gray-400 text-[10px]">
-                              {r.contributions} contribs
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-              {/* detectConsensus */}
-              {'consensusPercent' in actionResult &&
-                (() => {
-                  const cr = actionResult as ConsensusResult;
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cr.hasSupermajority ? 'bg-neon-green/20 text-neon-green' : cr.hasConsensus ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}
-                        >
-                          {cr.status}
-                        </span>
-                        <span className="text-gray-400 ml-auto">{cr.totalVotes} votes</span>
-                      </div>
-                      <div className="p-2 bg-lattice-bg rounded text-center">
-                        <p className="text-xl font-bold text-neon-blue">{cr.consensusPercent}%</p>
-                        <p className="text-[10px] text-gray-400">
-                          for &quot;{cr.leadingPosition}&quot;
-                        </p>
-                      </div>
-                      <div className="w-full bg-lattice-bg rounded-full h-2">
-                        <div
-                          className="bg-neon-blue h-2 rounded-full"
-                          style={{ width: `${cr.consensusPercent}%` }}
-                        />
-                      </div>
-                      {(cr.dissenting || []).length > 0 && (
-                        <div className="space-y-1">
-                          <p className="text-[10px] text-gray-400 uppercase">Dissenting</p>
-                          {cr.dissenting.map((d: DissentingEntry) => (
-                            <div
-                              key={d.position}
-                              className="flex items-center justify-between text-gray-400"
-                            >
-                              <span>{d.position}</span>
-                              <span>
-                                {d.count} ({d.percent}%)
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-              {/* balanceWorkload */}
-              {'members' in actionResult &&
-                (() => {
-                  const wb = actionResult as WorkloadBalanceResult;
-                  return (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="p-2 bg-lattice-bg rounded text-center">
-                          <p className="text-sm font-bold text-neon-blue">{wb.avgUtilization}%</p>
-                          <p className="text-[10px] text-gray-400">Avg Load</p>
-                        </div>
-                        <div className="p-2 bg-lattice-bg rounded text-center">
-                          <p className="text-sm font-bold text-red-400">{wb.overloadedMembers}</p>
-                          <p className="text-[10px] text-gray-400">Overloaded</p>
-                        </div>
-                        <div className="p-2 bg-lattice-bg rounded text-center">
-                          <p className="text-sm font-bold text-yellow-400">{wb.unassignedTasks}</p>
-                          <p className="text-[10px] text-gray-400">Unassigned</p>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        {wb.members.map((m: WorkloadMember) => (
-                          <div key={m.name} className="space-y-0.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-gray-300">{m.name}</span>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded ${m.status === 'overloaded' ? 'bg-red-500/20 text-red-400' : m.status === 'near-capacity' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neon-green/20 text-neon-green'}`}
-                              >
-                                {m.status}
-                              </span>
-                            </div>
-                            <div className="w-full bg-lattice-bg rounded-full h-1.5">
-                              <div
-                                className={`h-1.5 rounded-full ${m.status === 'overloaded' ? 'bg-red-500' : m.status === 'near-capacity' ? 'bg-yellow-500' : 'bg-neon-green'}`}
-                                style={{ width: `${Math.min(m.utilization, 100)}%` }}
-                              />
-                            </div>
-                            <p className="text-[10px] text-gray-400">
-                              {m.totalHours}h / {m.capacity}h · {m.assignedTasks} tasks
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                      {(wb.suggestions || []).length > 0 && (
-                        <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-300 text-[11px]">
-                          {wb.suggestions.join(' · ')}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Lens Features */}
       <div className="border-t border-white/10">
@@ -1182,10 +857,29 @@ function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () =
 // Active Session View
 // ---------------------------------------------------------------------------
 
-function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLeave: () => void }) {
+function ActiveSessionView({
+  session,
+  currentUserId,
+  currentUserName,
+  onLeave,
+}: {
+  session: CollabSession;
+  currentUserId: string;
+  currentUserName: string;
+  onLeave: () => void;
+}) {
+  const isHost = session.host.id === currentUserId;
+  // Every shared-state slice below (`chat` / `shared-notes` / `shared-file`)
+  // is tagged with this session's id, both on read (the `tags` filter) and
+  // on write (`meta.tags` at creation) — without this, all sessions in the
+  // domain would read/write the exact same global rows (they share one
+  // (domain, type) pair with no other session-scoping field).
+  const sessionTag = session.id;
+
   const [chatInput, setChatInput] = useState('');
   const { items: chatItems, create: createChatMessage } = useLensData('collab', 'chat', {
     seed: [],
+    tags: [sessionTag],
   });
   const messages: ChatMessage[] = chatItems.map((i) => i.data as unknown as ChatMessage);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -1197,14 +891,8 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
     create: createNote,
     update: updateNote,
   } = useLensData('collab', 'shared-notes', {
-    seed: [
-      {
-        title: 'session-notes',
-        data: {
-          text: '- Target: Q2 delivery\n- Primary focus on user onboarding flow improvements\n- Action items: finalize wireframes, collect stakeholder feedback\n- Accessibility review pending for all new components\n- Reference: competitor analysis doc',
-        },
-      },
-    ],
+    tags: [sessionTag],
+    noSeed: true,
   });
   const notesItem = notesItems[0];
   const [notesText, setNotesText] = useState('');
@@ -1229,7 +917,11 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
           if (notesItem) {
             await updateNote(notesItem.id, { data: { text: value } });
           } else {
-            await createNote({ title: 'session-notes', data: { text: value } });
+            await createNote({
+              title: 'session-notes',
+              data: { text: value },
+              meta: { tags: [sessionTag] },
+            });
           }
         } catch (err) {
           console.error('[Collab] Failed to save notes:', err);
@@ -1238,11 +930,12 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
         }
       }, 800);
     },
-    [notesItem, updateNote, createNote]
+    [notesItem, updateNote, createNote, sessionTag]
   );
 
   // --- File upload state ---
   const { items: fileItems, create: createFileEntry } = useLensData('collab', 'shared-file', {
+    tags: [sessionTag],
     noSeed: true,
   });
   const sharedFiles = fileItems.map(
@@ -1272,7 +965,8 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
               : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
         await createFileEntry({
           title: file.name,
-          data: { name: file.name, size: sizeStr, by: 'You', uploadedAt: Date.now() },
+          data: { name: file.name, size: sizeStr, by: currentUserName, uploadedAt: Date.now() },
+          meta: { tags: [sessionTag] },
         });
         useUIStore.getState().addToast({ type: 'success', message: `Uploaded "${file.name}"` });
       } catch (err) {
@@ -1285,7 +979,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
         setIsUploading(false);
       }
     },
-    [createFileEntry]
+    [createFileEntry, currentUserName, sessionTag]
   );
 
   // --- Screen sharing (WebRTC) ---
@@ -1421,18 +1115,19 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
     if (!chatInput.trim()) return;
     const newMsg: ChatMessage = {
       id: `m-${Date.now()}`,
-      senderId: 'me',
-      senderName: 'You',
-      senderAvatar: AVATARS[0],
+      senderId: currentUserId,
+      senderName: currentUserName,
+      senderAvatar: avatarForUser(currentUserId),
       text: chatInput.trim(),
       timestamp: Date.now(),
     };
     createChatMessage({
       title: newMsg.senderName,
       data: newMsg as unknown as Record<string, unknown>,
+      meta: { tags: [sessionTag] },
     });
     setChatInput('');
-  }, [chatInput, createChatMessage]);
+  }, [chatInput, createChatMessage, currentUserId, currentUserName, sessionTag]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
@@ -1465,22 +1160,32 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
           </div>
         </div>
         <button
-          onClick={() => {
-            api
-              .post(`/api/collab/${session.id}/close`)
-              .then((r) => r.data)
-              .then(() => onLeave())
-              .catch((err) => {
-                console.error('[Collab] Failed to leave session:', err);
+          onClick={async () => {
+            // Only the host actually ends the session for everyone (flips
+            // `status` so it drops out of "Active Sessions" for other
+            // viewers of this shared directory); a non-host just stops
+            // watching locally. There's no live per-participant membership
+            // tracking yet, so a guest "leaving" can't remove itself from
+            // `participants` — that's a real, scoped gap (see capability
+            // map), not something to fake here.
+            if (isHost) {
+              try {
+                await api.put(`/api/lens/collab/${session.id}`, {
+                  data: { ...session, status: 'closed' },
+                });
+              } catch (err) {
+                console.error('[Collab] Failed to close session:', err);
                 useUIStore
                   .getState()
-                  .addToast({ type: 'error', message: 'Failed to leave session' });
-              });
+                  .addToast({ type: 'error', message: 'Failed to close session' });
+              }
+            }
+            onLeave();
           }}
           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors font-medium"
         >
           <LogOut className="w-3.5 h-3.5" />
-          Leave
+          {isHost ? 'End Session' : 'Leave'}
         </button>
       </div>
 
@@ -1685,11 +1390,20 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
               {isUploading ? 'Uploading...' : 'Upload File'}
             </button>
             <button
-              onClick={() =>
-                useUIStore
-                  .getState()
-                  .addToast({ type: 'info', message: 'Invite link copied to clipboard' })
-              }
+              onClick={async () => {
+                const link = `${window.location.origin}/lenses/collab?session=${encodeURIComponent(session.id)}`;
+                try {
+                  await navigator.clipboard.writeText(link);
+                  useUIStore
+                    .getState()
+                    .addToast({ type: 'success', message: 'Invite link copied to clipboard' });
+                } catch (err) {
+                  console.error('[Collab] Clipboard write failed:', err);
+                  useUIStore
+                    .getState()
+                    .addToast({ type: 'error', message: `Could not copy — link: ${link}` });
+                }
+              }}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-lattice-surface border border-lattice-border text-gray-300 hover:border-neon-blue/40 transition-colors"
             >
               <UserPlus className="w-3.5 h-3.5" /> Invite
@@ -1937,8 +1651,17 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
 // Create Session Modal
 // ---------------------------------------------------------------------------
 
-function CreateSessionModal({ onClose }: { onClose: () => void }) {
-  const queryClient = useQueryClient();
+function CreateSessionModal({
+  onClose,
+  onCreate,
+  hostId,
+  hostName,
+}: {
+  onClose: () => void;
+  onCreate: (input: { title?: string; data?: Record<string, unknown> }) => Promise<unknown>;
+  hostId: string;
+  hostName: string;
+}) {
   const [form, setForm] = useState({
     name: '',
     type: 'design' as ProjectType,
@@ -1956,30 +1679,53 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof form) =>
-      apiHelpers.artistry.collab.sessions.create({
-        projectId: data.linkedProjectId || '',
-        maxParticipants: data.maxParticipants,
-        mode: data.privacy,
-      }),
+    mutationFn: async (data: typeof form) => {
+      const host: Participant = {
+        id: hostId,
+        name: hostName,
+        avatar: avatarForUser(hostId),
+        role: 'host',
+        online: true,
+      };
+      const session: Omit<CollabSession, 'id'> = {
+        name: data.name,
+        projectType: data.type,
+        host,
+        participants: [host],
+        status: 'open',
+        privacy: data.privacy,
+        genre: data.genre ? data.genre.split(',').map((g) => g.trim()).filter(Boolean) : [],
+        maxCapacity: data.maxParticipants,
+        description: data.description,
+        startedAt: Date.now(),
+        ...(data.linkedProjectId ? { linkedProjectId: data.linkedProjectId } : {}),
+      };
+      const created = await onCreate({
+        title: data.name,
+        data: session as unknown as Record<string, unknown>,
+      });
+
+      // Best-effort only: linking an existing studio project also opens a
+      // real Artistry live-jam session for it (project-scoped audio/asset
+      // collab — a genuinely separate capability). Its failure must never
+      // block or silently swallow the session the user actually asked to
+      // create, which is why it isn't awaited into the primary result.
+      if (data.linkedProjectId) {
+        apiHelpers.artistry.collab.sessions
+          .create({ projectId: data.linkedProjectId, maxParticipants: data.maxParticipants, mode: data.privacy })
+          .catch((err) => {
+            console.warn('[Collab] Linked-project jam session not started:', err instanceof Error ? err.message : err);
+          });
+      }
+      return created;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['artistry-collab-sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['active-collabs'] });
-      // Also register the collaboration via the createCollab API
-      api
-        .post('/api/collab/create', {
-          inviteeId: '',
-          domains: [form.type],
-          description: form.description || form.name,
-        })
-        .then((r) => r.data)
-        .catch((err) => {
-          console.error('[Collab] Failed to register collaboration:', err);
-        });
+      useUIStore.getState().addToast({ type: 'success', message: `Session "${form.name}" created.` });
       onClose();
     },
     onError: (err) => {
-      console.error('Failed to create session:', err instanceof Error ? err.message : err);
+      console.error('[Collab] Failed to create session:', err instanceof Error ? err.message : err);
+      useUIStore.getState().addToast({ type: 'error', message: 'Failed to create session.' });
     },
   });
 
