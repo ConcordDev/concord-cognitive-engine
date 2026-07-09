@@ -108,6 +108,20 @@ function humanize(action: string, noisyPrefix?: string | null): string {
     .trim();
 }
 
+// This bar fires every action with an empty `{}` input — the manifest
+// carries no param schema to fill in real ones. A macro that needs
+// arguments will either reject the call or "succeed" on a degenerate
+// no-op; either way an unconditional "ok" toast would misreport what
+// happened. Judge success from the actual response instead of the fact
+// that a call completed.
+function hasMeaningfulResult(result: unknown): boolean {
+  if (result == null) return false;
+  if (typeof result === 'string') return result.trim().length > 0;
+  if (Array.isArray(result)) return result.length > 0;
+  if (typeof result === 'object') return Object.keys(result as object).length > 0;
+  return Boolean(result);
+}
+
 export interface ManifestActionBarProps {
   /** Override the lens id (default: read from <LensShell>). */
   lensId?: string;
@@ -159,6 +173,7 @@ export function ManifestActionBar({
       icon: iconFor(action),
       primary: action === primaryAction,
       disabled: running != null && running !== action,
+      title: `${humanize(action, noisyPrefix)} — quick trigger, runs with no parameters`,
       onClick: async () => {
         if (running) return;
         setRunning(action);
@@ -167,13 +182,19 @@ export function ManifestActionBar({
           const body = (res as { data?: { ok?: boolean; error?: string; result?: unknown } }).data;
           if (body?.ok === false && body.error) {
             addToast({ type: 'error', message: body.error, duration: 6000 });
-          } else {
+          } else if (hasMeaningfulResult(body?.result)) {
             addToast({
               type: 'info',
               message: `${humanize(action, noisyPrefix)} — ok`,
               duration: 3000,
             });
             onAction?.(action, body?.result ?? body);
+          } else {
+            addToast({
+              type: 'info',
+              message: `${humanize(action, noisyPrefix)} ran with no parameters and returned nothing — this quick action can't supply real inputs for ${action}.`,
+              duration: 7000,
+            });
           }
         } catch (e) {
           addToast({
