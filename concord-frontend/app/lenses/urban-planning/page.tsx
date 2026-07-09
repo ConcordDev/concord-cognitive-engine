@@ -21,7 +21,7 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -92,7 +92,6 @@ interface CommentListResult { comments: unknown[]; total: number; tally: Record<
 
 export default function UrbanPlanningLensPage() {
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
     [
@@ -100,7 +99,6 @@ export default function UrbanPlanningLensPage() {
       { id: 'tab-zoning', keys: 'z', description: 'Zoning & Site Analysis', category: 'navigation', action: () => setActiveMode('Zoning') },
       { id: 'tab-parcels', keys: 'p', description: 'Parcels & Massing', category: 'navigation', action: () => setActiveMode('Parcels') },
       { id: 'tab-scenarios', keys: 's', description: 'Scenarios', category: 'navigation', action: () => setActiveMode('Scenarios') },
-      { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
     ],
     { lensId: 'urban-planning' },
   );

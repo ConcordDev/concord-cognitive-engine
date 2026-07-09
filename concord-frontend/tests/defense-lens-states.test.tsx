@@ -1,77 +1,30 @@
 /**
  * /lenses/defense — four-UX-state contract for the Defense lens.
  *
- * Pins that the lens renders genuine loading / error (with a WORKING Retry) /
- * empty (CTA) / populated states against its real backend channel: the artifact
- * list (useLensData('defense', type) → GET /api/lens/defense), and that the
- * compute-action runner is constructed on the 'defense' domain (a regression to
- * any other id resolves to NO backend receiver).
+ * Rewritten for the Frontend Rebuild Program pass (see
+ * `docs/lens-specs/defense-capability-map.md`): the page no longer runs on
+ * a disconnected generic-CRUD artifact store (`useLensData`/`useRunArtifact`
+ * on fake `Operation`/`Asset`/`Personnel`/`Intel` types) — that surface was
+ * genuinely fake (no backing macro) and has been removed. The Dashboard tab
+ * is now `DashboardStats` (four real roll-up macros:
+ * `asset-rollup`/`threat-board`/`personnel-roster`/`supply-board`) plus the
+ * newly-surfaced `ResourceAllocationPanel` (`resourceAllocation`). This test
+ * pins the honest four-UX-state contract against those real macro calls,
+ * and pins that tab navigation mounts the right (pre-existing, real) panel.
  *
- * a11y: loading is role=status, error is role=alert with a Retry that RE-FETCHES
- * (we assert refetch fires). This closes the swallowed-fetch → silent-empty
- * defect: a failed defense feed surfaces role=alert + Retry, not a blank "no
- * items" page. The page's inline loading/error branches were given role=status /
- * role=alert on 2026-06-28 (the ErrorState's "Try again" is wired to refetch).
- *
- * No fabricated data — every state is driven by a mocked useLensData standing in
- * for the real backend in the exact shape it returns.
+ * No fabricated data: every state is driven by a mocked `lensRun` standing
+ * in for the real backend, returning exactly the shapes
+ * `server/domains/defense.js` returns.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, fireEvent, waitFor, act, screen } from '@testing-library/react';
 import React from 'react';
 
-// ── main list channel: useLensData (controls loading/error/empty/populated) ──
-const lensDataState: {
-  items: unknown[];
-  isLoading: boolean;
-  isError: boolean;
-  error: Error | null;
-} = { items: [], isLoading: false, isError: false, error: null };
-const refetch = vi.fn();
-
-// ── compute-action channel: useRunArtifact mutate ───────────────────────────
-const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
-const useRunArtifactSpy = vi.fn();
-
-// useLensData is called multiple times in the page (current type + 4 seeded
-// lists). The first call governs loading/error/empty/populated; the seeded
-// lists return empty so the dashboard stats compute to 0.
-let lensDataCalls = 0;
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  useLensData: () => {
-    const first = lensDataCalls === 0;
-    lensDataCalls += 1;
-    if (first) {
-      return {
-        items: lensDataState.items,
-        total: lensDataState.items.length,
-        isLoading: lensDataState.isLoading,
-        isError: lensDataState.isError,
-        error: lensDataState.error,
-        isSeeding: false,
-        refetch,
-        create: vi.fn(() => Promise.resolve({})),
-        update: vi.fn(() => Promise.resolve({})),
-        remove: vi.fn(() => Promise.resolve({})),
-        createMut: { isPending: false },
-        updateMut: { isPending: false },
-        deleteMut: { isPending: false },
-      };
-    }
-    return {
-      items: [], total: 0, isLoading: false, isError: false, error: null, isSeeding: false,
-      refetch: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(),
-      createMut: { isPending: false }, updateMut: { isPending: false }, deleteMut: { isPending: false },
-    };
-  },
-}));
-
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: (domain: string) => {
-    useRunArtifactSpy(domain);
-    return { mutate: (...a: unknown[]) => runMutate(...a), mutateAsync: (...a: unknown[]) => runMutate(...a), isPending: false };
-  },
+// ── lensRun mock — the real backend channel for both new panels ─────────────
+const lensRun = vi.fn();
+vi.mock('@/lib/api/client', () => ({
+  lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
 vi.mock('@/hooks/useRealtimeLens', () => ({
@@ -79,13 +32,6 @@ vi.mock('@/hooks/useRealtimeLens', () => ({
 }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-
-vi.mock('@/lib/api/client', () => ({
-  api: { get: vi.fn(() => Promise.resolve({ data: null })), post: vi.fn(() => Promise.resolve({ data: {} })), delete: vi.fn(() => Promise.resolve({ data: {} })) },
-  apiHelpers: { lens: { runDomain: vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } })) } },
-  lensRun: vi.fn(() => Promise.resolve({ data: { ok: true, result: null } })),
-  isForbidden: () => false,
-}));
 
 // ── headless chrome: render-only / inert stubs ──────────────────────────────
 vi.mock('@/components/lens/LensShell', () => ({
@@ -98,22 +44,21 @@ vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPane
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
 vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-// heavy defense children (their own backend macros are covered by the
-// defense-lens-macros server test) → inert here.
+// Pre-existing, real, macro-wired panels this rebuild didn't touch — their own
+// behavior is out of scope here (each owns its own macros/tests); inert stubs
+// let this test assert on tab routing without re-testing their internals.
 vi.mock('@/components/defense/ContractSearch', () => ({ ContractSearch: () => null }));
 vi.mock('@/components/defense/DefenseActionPanel', () => ({ DefenseActionPanel: () => null }));
-vi.mock('@/components/defense/CommonOperatingPicture', () => ({ CommonOperatingPicture: () => null }));
-vi.mock('@/components/defense/MissionPlanner', () => ({ MissionPlanner: () => null }));
-vi.mock('@/components/defense/AssetReadiness', () => ({ AssetReadiness: () => null }));
-vi.mock('@/components/defense/ThreatBoard', () => ({ ThreatBoard: () => null }));
-vi.mock('@/components/defense/PersonnelRoster', () => ({ PersonnelRoster: () => null }));
-vi.mock('@/components/defense/LogisticsBoard', () => ({ LogisticsBoard: () => null }));
-vi.mock('@/components/defense/CommsLog', () => ({ CommsLog: () => null }));
+vi.mock('@/components/defense/CommonOperatingPicture', () => ({ CommonOperatingPicture: () => React.createElement('div', { 'data-testid': 'cop' }) }));
+vi.mock('@/components/defense/MissionPlanner', () => ({ MissionPlanner: () => React.createElement('div', { 'data-testid': 'mission-planner' }) }));
+vi.mock('@/components/defense/AssetReadiness', () => ({ AssetReadiness: () => React.createElement('div', { 'data-testid': 'asset-readiness' }) }));
+vi.mock('@/components/defense/ThreatBoard', () => ({ ThreatBoard: () => React.createElement('div', { 'data-testid': 'threat-board' }) }));
+vi.mock('@/components/defense/PersonnelRoster', () => ({ PersonnelRoster: () => React.createElement('div', { 'data-testid': 'personnel-roster' }) }));
+vi.mock('@/components/defense/LogisticsBoard', () => ({ LogisticsBoard: () => React.createElement('div', { 'data-testid': 'logistics-board' }) }));
+vi.mock('@/components/defense/CommsLog', () => ({ CommsLog: () => React.createElement('div', { 'data-testid': 'comms-log' }) }));
 vi.mock('@/components/panel-polish', () => ({ PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children) }));
 // framer-motion: render plain elements so animated nodes mount synchronously.
 vi.mock('framer-motion', () => ({
@@ -133,67 +78,138 @@ vi.mock('lucide-react', async (importOriginal) => {
   });
 });
 
+// DashboardStats and ResourceAllocationPanel are NOT mocked — they're the
+// real, newly-added components this rebuild pass is responsible for, and
+// the object of this test.
 import DefenseLensPage from '@/app/lenses/defense/page';
 
-const OPERATION = {
-  id: 'art_op1',
-  title: 'Operation Vigilant Shield',
-  data: { codeName: 'Vigilant Shield', status: 'active', classification: 'secret', objective: 'Secure the northern perimeter and deny enemy infiltration.' },
-  meta: { tags: [], status: 'active', visibility: 'private' },
-  createdAt: '2026-06-27', updatedAt: '2026-06-27', version: 1,
-};
+function reply(result: Record<string, unknown>, ok = true) {
+  return Promise.resolve({ data: { ok, result, error: ok ? undefined : 'defense readiness feed offline' } });
+}
+
+const ASSET_ROLLUP = { total: 12, fleetReadiness: 78, availabilityPct: 83, rollupStatus: 'green' };
+const THREAT_BOARD = { total: 3, activeWatch: 2, highestSeverity: 'high' };
+const PERSONNEL_ROSTER = { total: 40, deployable: 22, byAvailability: { deployed: 9, available: 22, transit: 5, leave: 3, unavailable: 1 } };
+const SUPPLY_BOARD = { total: 6, openCount: 5, fulfillmentPct: 67 };
+
+function mockRollupsOk() {
+  lensRun.mockImplementation((_domain: string, action: string) => {
+    if (action === 'asset-rollup') return reply(ASSET_ROLLUP);
+    if (action === 'threat-board') return reply(THREAT_BOARD);
+    if (action === 'personnel-roster') return reply(PERSONNEL_ROSTER);
+    if (action === 'supply-board') return reply(SUPPLY_BOARD);
+    return reply({});
+  });
+}
 
 beforeEach(() => {
-  lensDataState.items = [];
-  lensDataState.isLoading = false;
-  lensDataState.isError = false;
-  lensDataState.error = null;
-  lensDataCalls = 0;
-  refetch.mockReset();
-  runMutate.mockClear();
-  useRunArtifactSpy.mockClear();
-  window.localStorage.clear();
+  lensRun.mockReset();
 });
 
-describe('defense lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the defense domain', () => {
+describe('defense lens — Dashboard rollup four UX states (DashboardStats)', () => {
+  it('WIRING: the dashboard calls lensRun on the defense domain for all four rollups', async () => {
+    mockRollupsOk();
     render(<DefenseLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('defense');
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('defense', 'asset-rollup', {}));
+    expect(lensRun).toHaveBeenCalledWith('defense', 'threat-board', {});
+    expect(lensRun).toHaveBeenCalledWith('defense', 'personnel-roster', {});
+    expect(lensRun).toHaveBeenCalledWith('defense', 'supply-board', {});
   });
 
-  it('LOADING: an in-flight feed shows a role=status indicator', async () => {
-    lensDataState.isLoading = true;
+  it('LOADING: shows a role=status indicator while the rollups are in flight', async () => {
+    lensRun.mockImplementation(() => new Promise(() => {})); // never resolves
     const { container } = render(<DefenseLensPage />);
     await waitFor(() => expect(container.querySelector('[role="status"]')).toBeTruthy());
   });
 
-  it('EMPTY: an empty feed shows the honest "No … found" create CTA', async () => {
-    lensDataState.items = [];
-    const { getByText } = render(<DefenseLensPage />);
-    await waitFor(() => expect(getByText(/No .* found/i)).toBeInTheDocument());
-    // the CTA is a real create affordance, not a dead label
-    expect(getByText(/Create your first/i)).toBeInTheDocument();
-  });
-
-  it('ERROR: a failed feed shows role=alert + a working Retry that re-fetches (not a silent empty page)', async () => {
-    lensDataState.isError = true;
-    lensDataState.error = new Error('defense feed offline');
+  it('ERROR: every rollup failing shows role=alert + a working Retry that re-fetches', async () => {
+    let fail = true;
+    lensRun.mockImplementation((_domain: string, action: string) => {
+      if (fail) return reply({}, false);
+      if (action === 'asset-rollup') return reply(ASSET_ROLLUP);
+      if (action === 'threat-board') return reply(THREAT_BOARD);
+      if (action === 'personnel-roster') return reply(PERSONNEL_ROSTER);
+      if (action === 'supply-board') return reply(SUPPLY_BOARD);
+      return reply({});
+    });
     const { container, getByText } = render(<DefenseLensPage />);
 
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
-    expect(getByText(/defense feed offline/i)).toBeInTheDocument();
-    // a silent-empty page would show the "No … found" CTA instead — it must NOT.
-    expect(() => getByText(/No .* found/i)).toThrow();
+    expect(getByText(/defense readiness feed offline/i)).toBeInTheDocument();
 
-    // Retry must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Try again')); });
-    await waitFor(() => expect(refetch).toHaveBeenCalled());
+    const before = lensRun.mock.calls.length;
+    fail = false;
+    await act(async () => { fireEvent.click(getByText('Retry')); });
+    await waitFor(() => expect(lensRun.mock.calls.length).toBeGreaterThan(before));
+    await waitFor(() => expect(getByText('78.0%')).toBeInTheDocument());
   });
 
-  it('POPULATED: a real operation artifact renders with its title + objective', async () => {
-    lensDataState.items = [OPERATION];
+  it('POPULATED: renders the real roll-up numbers (not a fabricated stat)', async () => {
+    mockRollupsOk();
     const { getByText } = render(<DefenseLensPage />);
-    await waitFor(() => expect(getByText('Operation Vigilant Shield')).toBeInTheDocument());
-    expect(getByText(/Secure the northern perimeter/)).toBeInTheDocument();
+    await waitFor(() => expect(getByText('78.0%')).toBeInTheDocument()); // fleet readiness
+    expect(getByText('2')).toBeInTheDocument(); // active threats
+    expect(getByText('9')).toBeInTheDocument(); // personnel deployed
+    expect(getByText(/83% available/)).toBeInTheDocument();
+  });
+});
+
+describe('defense lens — Resource Allocation panel (resourceAllocation)', () => {
+  it('stages a resource + a mission and runs the real allocation macro', async () => {
+    mockRollupsOk();
+    lensRun.mockImplementation((_domain: string, action: string) => {
+      if (action === 'resourceAllocation') {
+        return reply({
+          totalResources: 1,
+          totalMissions: 1,
+          availableAfter: 0,
+          fullyStaffed: 1,
+          understaffed: 0,
+          allocations: [
+            { mission: 'Secure Bridgehead', priority: 'critical', resourcesNeeded: 1, resourcesAssigned: 1, status: 'fully-allocated' },
+          ],
+        });
+      }
+      if (action === 'asset-rollup') return reply(ASSET_ROLLUP);
+      if (action === 'threat-board') return reply(THREAT_BOARD);
+      if (action === 'personnel-roster') return reply(PERSONNEL_ROSTER);
+      if (action === 'supply-board') return reply(SUPPLY_BOARD);
+      return reply({});
+    });
+
+    render(<DefenseLensPage />);
+    await waitFor(() => expect(screen.getByText('Resource Allocation')).toBeInTheDocument());
+
+    // Stage one resource unit + one mission — the panel starts empty by
+    // design (no seeded rows) and only enables "Run Allocation" once both
+    // sides have at least one entry.
+    const resourceInput = screen.getByPlaceholderText(/Fireteam Alpha/i);
+    fireEvent.change(resourceInput, { target: { value: 'Fireteam Alpha' } });
+    fireEvent.click(screen.getByLabelText('Add resource unit'));
+
+    const missionInput = screen.getByPlaceholderText('Mission name');
+    fireEvent.change(missionInput, { target: { value: 'Secure Bridgehead' } });
+    fireEvent.click(screen.getByLabelText('Add mission'));
+
+    const runButton = screen.getByText('Run Allocation');
+    await act(async () => { fireEvent.click(runButton); });
+
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('defense', 'resourceAllocation', expect.any(Object)));
+    await waitFor(() => expect(screen.getByText('Fully allocated')).toBeInTheDocument());
+  });
+});
+
+describe('defense lens — tab navigation mounts real panels', () => {
+  it('Operations tab mounts MissionPlanner; Logistics tab mounts LogisticsBoard', async () => {
+    mockRollupsOk();
+    const { getByText, getByTestId, queryByTestId } = render(<DefenseLensPage />);
+    await waitFor(() => expect(lensRun).toHaveBeenCalled());
+
+    fireEvent.click(getByText('Operations'));
+    expect(getByTestId('mission-planner')).toBeInTheDocument();
+    expect(queryByTestId('logistics-board')).toBeNull();
+
+    fireEvent.click(getByText('Logistics'));
+    expect(getByTestId('logistics-board')).toBeInTheDocument();
   });
 });

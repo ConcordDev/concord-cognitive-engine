@@ -44,13 +44,12 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Siren, LayoutDashboard, Radio, Truck, AlertOctagon, Keyboard } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -76,19 +75,15 @@ const MODE_TABS: { key: ModeTab; label: string; icon: typeof Siren; hotkey: stri
 export default function EmergencyServicesLensPage() {
   useLensNav('emergency-services');
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
-    [
-      ...MODE_TABS.map((t) => ({
-        id: `mode-${t.key.toLowerCase()}`,
-        keys: t.hotkey,
-        description: t.label,
-        category: 'navigation' as const,
-        action: () => setActiveMode(t.key),
-      })),
-      { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation' as const, action: () => searchInputRef.current?.focus() },
-    ],
+    MODE_TABS.map((t) => ({
+      id: `mode-${t.key.toLowerCase()}`,
+      keys: t.hotkey,
+      description: t.label,
+      category: 'navigation' as const,
+      action: () => setActiveMode(t.key),
+    })),
     { lensId: 'emergency-services' }
   );
 
@@ -144,8 +139,8 @@ export default function EmergencyServicesLensPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-600" title="1–4 switch view · / focus search">
-              <Keyboard className="w-3.5 h-3.5" /> 1–4 · /
+            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-600" title="1–4 switch view">
+              <Keyboard className="w-3.5 h-3.5" /> 1–4
             </span>
             <DTUExportButton domain="emergency-services" data={{}} compact />
           </div>
@@ -175,7 +170,6 @@ export default function EmergencyServicesLensPage() {
 
         <div className="min-h-[240px]">{renderTab()}</div>
 
-        <section className="mt-2"><LensFeedButton domain="emergency-services" label="Live seismic-event feed" /></section>
         <RecentMineCard domain="emergency-services" limit={10} hideWhenEmpty className="mt-2" />
         <AutoActionStrip domain="emergency-services" hideWhenEmpty className="mt-3" title="More actions" />
         <CrossLensRecentsPanel lensId="emergency-services" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

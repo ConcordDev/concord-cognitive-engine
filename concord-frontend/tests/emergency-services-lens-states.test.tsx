@@ -1,104 +1,63 @@
 /**
  * /lenses/emergency-services — four-UX-state contract.
  *
- * Pins that the lens renders genuine loading / error (with a WORKING retry) /
- * empty (honest "no records" CTA) / populated states against its real backend
- * channel — the artifact list (useLensData('emergency-services', type) →
- * GET /api/lens/emergency-services) — and that the compute-action runner is
- * constructed on the 'emergency-services' domain (a regression to any other id
- * resolves to NO backend receiver, since the registered domain string is
- * 'emergency-services' even though the domain FILE is emergencyservices.js).
+ * Rewritten for the Frontend Rebuild Program pass (see
+ * `docs/lens-specs/emergency-services-capability-map.md`): the page no
+ * longer runs on a disconnected generic-CRUD artifact store
+ * (`useLensData('emergency-services', 'Call'|'Unit'|'FireIncident'|…)`) —
+ * two of those type strings never matched any registered backend macro, and
+ * the Dashboard's "Avg Response: 4.2m" tile was a literal hardcoded string
+ * with no computation behind it. Both are gone. The Dashboard tab is now
+ * `EmsOverviewPanel`, wiring the real `ems-dashboard` + `readiness-rollup`
+ * macros into honest KPI tiles, and the CAD Console / Quick Actions /
+ * Seismic Feed tabs are all real, pre-existing panels now reachable from
+ * the tab nav (they used to be bolted below it, unreachable).
  *
- * This closes the swallowed-fetch → silent-empty defect for a SAFETY-relevant
- * lens: a failed dispatch/CAD feed must surface the error + a working retry,
- * NOT a blank "no records" page that hides an outage from a dispatcher. No
- * fabricated data — every state is driven by a mocked useLensData standing in
- * for the real backend in the exact shape it returns.
+ * This closes the swallowed-fetch → silent-empty defect for a
+ * SAFETY-relevant lens: a failed CAD summary must surface the error + a
+ * working retry, NOT a blank/fabricated page that hides an outage from a
+ * dispatcher. No fabricated data: every state is driven by a mocked
+ * `lensRun` standing in for the real backend, returning exactly the shapes
+ * `server/domains/emergencyservices.js` returns.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, waitFor, act } from '@testing-library/react';
 import React from 'react';
 
-// ── main list channel: useLensData (controls loading/error/empty/populated) ──
-const lensDataState: {
-  items: unknown[];
-  isLoading: boolean;
-  isError: boolean;
-  error: Error | null;
-} = { items: [], isLoading: false, isError: false, error: null };
-const refetch = vi.fn();
-
-// ── compute-action channel: useRunArtifact mutate ───────────────────────────
-const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
-const useRunArtifactSpy = vi.fn();
-
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  useLensData: () => ({
-    items: lensDataState.items,
-    total: lensDataState.items.length,
-    isLoading: lensDataState.isLoading,
-    isError: lensDataState.isError,
-    error: lensDataState.error,
-    isSeeding: false,
-    refetch,
-    create: vi.fn(() => Promise.resolve({})),
-    update: vi.fn(() => Promise.resolve({})),
-    remove: vi.fn(() => Promise.resolve({})),
-    createMut: { isPending: false },
-    updateMut: { isPending: false },
-    deleteMut: { isPending: false },
-  }),
-}));
-
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: (domain: string) => {
-    useRunArtifactSpy(domain);
-    return { mutateAsync: (...a: unknown[]) => runMutate(...a), isPending: false };
-  },
-}));
-
+// ── lensRun mock — the real backend channel for EmsOverviewPanel ────────────
+const lensRun = vi.fn();
 vi.mock('@/lib/api/client', () => ({
-  api: { get: vi.fn(() => Promise.resolve({ data: null })), post: vi.fn(() => Promise.resolve({ data: {} })), delete: vi.fn(() => Promise.resolve({ data: {} })) },
-  apiHelpers: { lens: { runDomain: vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } })) } },
-  lensRun: vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } })),
-  isForbidden: () => false,
+  lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
-// ── headless chrome + heavy side panels: render-only / inert stubs ──────────
+vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
+
+// ── headless chrome: render-only / inert stubs ──────────────────────────────
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
-// LensPageShell: render the REAL component so its loading/error branches are
-// exercised (it owns the Loading + ErrorState surfaces). Only the page's own
-// empty/populated branches live in the page body.
-// Realtime overlay inside LensPageShell pulls react-query + a socket; stub it
-// inert so the shell's loading/error/data branches render without a live socket.
-vi.mock('@/hooks/useRealtimeLens', () => ({ useRealtimeLens: () => ({ isConnected: false, insights: [], alerts: [], lastUpdated: null }) }));
-vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
-vi.mock('@/components/lens/LensFeedButton', () => ({ LensFeedButton: () => null }));
-// emergency-services children — their own macros are covered by the
-// emergency-services-lens-macros server test → inert here.
-vi.mock('@/components/emergency-services/QuakeFeed', () => ({ QuakeFeed: () => null }));
-vi.mock('@/components/emergency-services/CADConsole', () => ({ CADConsole: () => null }));
-vi.mock('@/components/emergency-services/EmergencyServicesActionPanel', () => ({ EmergencyServicesActionPanel: () => null }));
-vi.mock('@/components/common/MapView', () => ({ __esModule: true, default: () => null }));
+vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
+// Pre-existing, real, macro-wired panels this rebuild didn't touch (their own
+// behavior/macros are out of scope here) — inert stubs let this test assert
+// on tab routing (they're now reachable from the tab nav) without
+// re-testing their internals.
+vi.mock('@/components/emergency-services/QuakeFeed', () => ({ QuakeFeed: () => React.createElement('div', { 'data-testid': 'quake-feed' }) }));
+vi.mock('@/components/emergency-services/CADConsole', () => ({ CADConsole: () => React.createElement('div', { 'data-testid': 'cad-console' }) }));
+vi.mock('@/components/emergency-services/EmergencyServicesActionPanel', () => ({ EmergencyServicesActionPanel: () => React.createElement('div', { 'data-testid': 'ems-action-panel' }) }));
 vi.mock('@/components/panel-polish', () => ({
   PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
   usePipe: () => ({ publish: vi.fn() }),
   useRecallableAction: () => ({ run: vi.fn() }),
   RecallSlot: () => null,
 }));
-// next/dynamic: resolve to an inert component synchronously.
-vi.mock('next/dynamic', () => ({ __esModule: true, default: () => () => null }));
 // framer-motion: render plain elements so animated nodes mount synchronously.
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
@@ -117,63 +76,98 @@ vi.mock('lucide-react', async (importOriginal) => {
   });
 });
 
+// EmsOverviewPanel is NOT mocked — it's the real, newly-added Dashboard
+// component this rebuild pass is responsible for, and the object of this test.
 import EmergencyServicesLensPage from '@/app/lenses/emergency-services/page';
 
-const CALL = {
-  id: 'art_1',
-  title: 'Structure fire — 4th & Main',
-  data: { callNumber: 'C-1001', type: 'fire', priority: 'echo', status: 'dispatched', location: '4th & Main' },
-  meta: { tags: [], status: 'dispatched', visibility: 'private' },
-  createdAt: '2026-06-27', updatedAt: '2026-06-27', version: 1,
+function reply(result: Record<string, unknown>, ok = true, error = 'CAD store offline') {
+  return Promise.resolve({ data: { ok, result, error: ok ? undefined : error } });
+}
+
+const EMS_DASHBOARD = {
+  incidents: 8,
+  openIncidents: 3,
+  units: 6,
+  availableUnits: 4,
+  byKind: { medical: 5, fire: 2, hazmat: 1 },
+};
+const READINESS_ROLLUP = {
+  totalUnits: 6, available: 4, committed: 1, outOfService: 1, readinessPct: 67,
+  status: 'operational', byStatus: {}, byKind: {}, kindCoverageGaps: ['hazmat'],
 };
 
+function mockDashboardOk() {
+  lensRun.mockImplementation((_domain: string, action: string) => {
+    if (action === 'ems-dashboard') return reply(EMS_DASHBOARD);
+    if (action === 'readiness-rollup') return reply(READINESS_ROLLUP);
+    return reply({});
+  });
+}
+
 beforeEach(() => {
-  lensDataState.items = [];
-  lensDataState.isLoading = false;
-  lensDataState.isError = false;
-  lensDataState.error = null;
-  refetch.mockReset();
-  runMutate.mockClear();
-  useRunArtifactSpy.mockClear();
-  window.localStorage.clear();
+  lensRun.mockReset();
 });
 
-describe('emergency-services lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the emergency-services domain', () => {
+describe('emergency-services lens — Dashboard four UX states (EmsOverviewPanel)', () => {
+  it('WIRING: the dashboard calls lensRun on the emergency-services domain', async () => {
+    mockDashboardOk();
     render(<EmergencyServicesLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('emergency-services');
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('emergency-services', 'ems-dashboard', {}));
+    expect(lensRun).toHaveBeenCalledWith('emergency-services', 'readiness-rollup', {});
   });
 
-  it('LOADING: an in-flight feed shows a loading indicator (not a blank page)', async () => {
-    lensDataState.isLoading = true;
-    const { getByText } = render(<EmergencyServicesLensPage />);
-    await waitFor(() => expect(getByText(/Loading emergency services/i)).toBeInTheDocument());
+  it('LOADING: shows a role=status indicator while the summary is in flight', async () => {
+    lensRun.mockImplementation(() => new Promise(() => {})); // never resolves
+    const { container } = render(<EmergencyServicesLensPage />);
+    await waitFor(() => expect(container.querySelector('[role="status"]')).toBeTruthy());
   });
 
-  it('EMPTY: an empty feed shows the honest "no records found" state', async () => {
-    lensDataState.items = [];
-    const { getByText } = render(<EmergencyServicesLensPage />);
-    await waitFor(() => expect(getByText(/No .* records found/i)).toBeInTheDocument());
+  it('ERROR: a failed ems-dashboard call shows role=alert + a working Retry that re-fetches (not a silent fabricated page)', async () => {
+    let fail = true;
+    lensRun.mockImplementation((_domain: string, action: string) => {
+      if (action === 'ems-dashboard') return fail ? reply({}, false) : reply(EMS_DASHBOARD);
+      if (action === 'readiness-rollup') return reply(READINESS_ROLLUP);
+      return reply({});
+    });
+    const { container, getByText } = render(<EmergencyServicesLensPage />);
+
+    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
+    expect(getByText('CAD store offline')).toBeInTheDocument();
+
+    const before = lensRun.mock.calls.length;
+    fail = false;
+    await act(async () => { fireEvent.click(getByText('Retry')); });
+    await waitFor(() => expect(lensRun.mock.calls.length).toBeGreaterThan(before));
+    await waitFor(() => expect(getByText('Open Incidents')).toBeInTheDocument());
   });
 
-  it('ERROR: a failed feed shows the error + a working retry that re-fetches (not a silent empty page)', async () => {
-    lensDataState.isError = true;
-    lensDataState.error = new Error('CAD store offline');
+  it('POPULATED: renders the real ops-summary counts (not the old fabricated "4.2m" stat)', async () => {
+    mockDashboardOk();
     const { getByText, queryByText } = render(<EmergencyServicesLensPage />);
-
-    await waitFor(() => expect(getByText('CAD store offline')).toBeInTheDocument());
-    // a silent-empty page would show the "no records found" copy instead — it must NOT.
-    expect(queryByText(/No .* records found/i)).toBeNull();
-
-    // The retry affordance must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Try again')); });
-    await waitFor(() => expect(refetch).toHaveBeenCalled());
+    await waitFor(() => expect(getByText('3')).toBeInTheDocument()); // openIncidents
+    expect(getByText('of 8 total')).toBeInTheDocument();
+    expect(getByText('4')).toBeInTheDocument(); // availableUnits
+    expect(getByText('67%')).toBeInTheDocument(); // readinessPct via StatTile
+    expect(getByText(/No available unit of type: hazmat/)).toBeInTheDocument();
+    // the old literal fabricated stat must never come back.
+    expect(queryByText('4.2m')).toBeNull();
   });
+});
 
-  it('POPULATED: a real dispatch call artifact renders with its title + location', async () => {
-    lensDataState.items = [CALL];
-    const { getByText } = render(<EmergencyServicesLensPage />);
-    await waitFor(() => expect(getByText('Structure fire — 4th & Main')).toBeInTheDocument());
-    expect(getByText('4th & Main')).toBeInTheDocument();
+describe('emergency-services lens — tab navigation mounts real panels', () => {
+  it('CAD Console / Quick Actions / Seismic Feed are all reachable from the tab nav', async () => {
+    mockDashboardOk();
+    const { getByText, getByTestId, queryByTestId } = render(<EmergencyServicesLensPage />);
+    await waitFor(() => expect(lensRun).toHaveBeenCalled());
+
+    fireEvent.click(getByText('CAD Console'));
+    expect(getByTestId('cad-console')).toBeInTheDocument();
+    expect(queryByTestId('quake-feed')).toBeNull();
+
+    fireEvent.click(getByText('Quick Actions'));
+    expect(getByTestId('ems-action-panel')).toBeInTheDocument();
+
+    fireEvent.click(getByText('Seismic Feed'));
+    expect(getByTestId('quake-feed')).toBeInTheDocument();
   });
 });
