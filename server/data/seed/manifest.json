@@ -2,7 +2,7 @@
   "version": 2,
   "format": "seed-packs",
   "generatedAt": "2026-07-02T00:00:00.000Z",
-  "totalDtus": 2002,
+  "totalDtus": 2000,
   "packCount": 12,
   "packs": [
     {
@@ -78,16 +78,16 @@
     {
       "file": "dtus-part8.json",
       "label": "Part 8: Meta-Closure, Recursive Self-Application (421-480)",
-      "count": 60,
-      "sizeKB": 274.6,
-      "sha256": "e8e2cca67f4c37f9499e6425baba88cc6eb598238c45dabc35fcb63c83b664d4"
+      "count": 59,
+      "sizeKB": 269.5,
+      "sha256": "879182383fe69e0071309bc32e4aa762077e6e681dbb9e305527adf5c131e63c"
     },
     {
       "file": "dtus-unassigned.json",
       "label": "Unassigned DTUs (481-1000)",
-      "count": 520,
-      "sizeKB": 953.6,
-      "sha256": "822098439dd778efdcb7444673222c7bdf8fbb9d9ec37d6509cec51f54aef934"
+      "count": 519,
+      "sizeKB": 951.7,
+      "sha256": "cc7ca891f0b297e1e738c388888ef429da5d3ae8790a1d7ee189a61e3f6eed57"
     }
   ]
 }
