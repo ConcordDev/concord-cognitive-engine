@@ -100,6 +100,8 @@ export function ComposePanel({ onClose, onPublished }: ComposePanelProps) {
       aria-labelledby="compose-announcement-title"
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-10 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+      tabIndex={-1}
     >
       <form
         onSubmit={handleSubmit}
