@@ -25,7 +25,7 @@ import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import type { DTU, DTUTier } from '@/lib/api/generated-types';
 import { VirtualDTUList } from '@/components/lists/VirtualDTUList';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
@@ -38,14 +38,74 @@ import {
   Search, Filter, Zap, LayoutGrid, List, Tag, Clock,
   Loader2, XCircle, GitFork, Award, Network, Layers, Copy, BarChart3, AlertTriangle,
 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { DomainProbeCard } from '@/components/system/DomainProbeCard';
 import { probesByGroup } from '@/lib/headless-probes';
 
 const PAGE_SIZE = 20;
 
 type ViewMode = 'list' | 'grid';
+
+/**
+ * Real, honest input for the 5 single-DTU "Compute Actions" macros
+ * (`dtus.lineageAnalysis`/`qualityScore`/`citationNetwork`/
+ * `tierRecommendation`/`duplicateDetection`), derived from the actually
+ * loaded corpus — never a generic lens-artifact placeholder. `citedBy`
+ * and `siblings` are honestly scoped to the currently-loaded page (the
+ * macros treat an empty array as "none known in scope," not a fabricated
+ * zero); `viewCount`/`forkCount` are left unset since the DTU substrate
+ * has no materialized counter for either.
+ */
+function buildComputeActionInput(action: string, target: DTU | undefined, targetId: string, corpus: DTU[]): Record<string, unknown> {
+  const base = {
+    dtuId: targetId,
+    id: targetId,
+    title: target?.title || target?.summary || targetId,
+  };
+  switch (action) {
+    case 'lineageAnalysis':
+      return {
+        ...base,
+        parentId: target?.parents?.[0] || null,
+        parents: target?.parents || [],
+        children: target?.children || [],
+      };
+    case 'qualityScore':
+      return {
+        ...base,
+        tags: target?.tags || [],
+        status: (target?.meta?.status as string) || undefined,
+        visibility: target?.isGlobal ? 'public' : 'personal',
+        citationCount: (target?.meta?.citationCount as number) || 0,
+        tier: target?.tier,
+        updatedAt: target?.updatedAt || target?.timestamp,
+      };
+    case 'citationNetwork': {
+      // Real citers found in the currently-loaded corpus (a DTU cites its
+      // parents, so anything whose parents include this id is a real citer).
+      const citedBy = corpus
+        .filter((d) => Array.isArray(d.parents) && d.parents.includes(targetId))
+        .map((d) => ({ id: d.id, title: d.title || d.summary || d.id, count: 1 }));
+      const cites = (target?.parents || []).map((id) => ({ id }));
+      return { ...base, citedBy, cites };
+    }
+    case 'tierRecommendation':
+      return {
+        ...base,
+        tier: target?.tier,
+        citationCount: (target?.meta?.citationCount as number) || 0,
+        qualityScore: target?.coherence !== undefined ? Math.round(target.coherence * 100) : undefined,
+      };
+    case 'duplicateDetection':
+      return {
+        ...base,
+        siblings: corpus
+          .filter((d) => d.id !== targetId)
+          .map((d) => ({ id: d.id, title: d.title || d.summary || d.id, tags: d.tags || [] })),
+      };
+    default:
+      return base;
+  }
+}
 
 export default function DTUBrowserPage() {
   useLensNav('dtus');
@@ -81,22 +141,23 @@ export default function DTUBrowserPage() {
   );
 
   // Backend action wiring
-  const runAction = useRunArtifact('dtus');
-  const { items: dtuLensItems } = useLensData<Record<string, unknown>>('dtus', 'dtu', { seed: [] });
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
 
-  const handleDtusAction = useCallback(async (action: string) => {
-    const targetId = selectedDtuId || dtuLensItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setIsRunning(null);
-  }, [selectedDtuId, dtuLensItems, runAction]);
-
+  // Target resolution: the DTU the user explicitly selected, falling back to
+  // the first row of the real loaded corpus (never a generic lens-artifact
+  // store — nothing in the codebase ever writes one under domain 'dtus',
+  // so reading from it here would have been a permanently-empty dead
+  // fallback, same failure class as the atlas-lens "always undefined"
+  // dead-store bug this program's audits have found elsewhere).
+  //
+  // Dispatched via `lensRun('dtus', action, input)` — the SAME virtual-
+  // artifact path every other panel on this page already uses — not the
+  // generic per-user-artifact `useRunArtifact`/`POST /api/lens/dtus/:id/run`
+  // mechanism, which looks the id up in `STATE.lensArtifacts` (a completely
+  // different store real DTU ids never populate, so it always returned
+  // `{ok:false, error:"not found"}` with no visible error surfaced in the
+  // UI — a real, silent, always-broken defect this rebuild fixes).
   // Build query params
   const queryParams = useMemo(() => ({
     limit: PAGE_SIZE,
@@ -121,6 +182,35 @@ export default function DTUBrowserPage() {
     staleTime: 15_000,
   });
 
+  const dtus: DTU[] = useMemo(() => data?.dtus || data?.items || [], [data?.dtus, data?.items]);
+
+  const handleDtusAction = useCallback(async (action: string) => {
+    const targetId = selectedDtuId || dtus[0]?.id;
+    if (!targetId) return;
+    setIsRunning(action);
+    try {
+      let target = dtus.find((d) => d.id === targetId);
+      if (!target) {
+        // Selected from the live feed / off the current page — fetch the
+        // real record rather than running the analysis on nothing.
+        const fetched = await apiHelpers.dtus.get(targetId).catch(() => null);
+        const dtu = (fetched?.data as { dtu?: DTU } | undefined)?.dtu;
+        if (dtu) target = dtu;
+      }
+      const input = buildComputeActionInput(action, target, targetId, dtus);
+      const res = await lensRun('dtus', action, input);
+      if (res.data.ok === false) {
+        setActionResult({ message: `Action failed: ${res.data.error || 'Unknown error'}` });
+      } else {
+        setActionResult(res.data.result as Record<string, unknown>);
+      }
+    } catch (e) {
+      console.error(`Action ${action} failed:`, e);
+      setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` });
+    }
+    setIsRunning(null);
+  }, [selectedDtuId, dtus]);
+
   // Real-time tier counts from the lattice store (populated by socket events)
   const tierCounts = useLatticeStore(selectDTUsByTier);
 
@@ -133,10 +223,16 @@ export default function DTUBrowserPage() {
   // Filtered DTUs from the lattice store (real-time, reflecting socket-pushed DTUs)
   const filteredStoreDTUs = useLatticeStore(selectFilteredDTUs);
 
-  const dtus: DTU[] = useMemo(() => data?.dtus || data?.items || [], [data?.dtus, data?.items]);
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const hasMore = data?.hasMore ?? (page + 1) < totalPages;
+
+  // What the Compute Actions panel will actually run against — the user's
+  // explicit selection, or the first row of the real loaded corpus.
+  const computeActionTargetId = selectedDtuId || dtus[0]?.id || null;
+  const computeActionTargetLabel = dtus.find((d) => d.id === computeActionTargetId)?.title
+    || dtus.find((d) => d.id === computeActionTargetId)?.summary
+    || computeActionTargetId;
 
   // Map DTUs into the format VirtualDTUList expects
   const listDtus = useMemo(() => dtus.map(d => ({
@@ -452,27 +548,34 @@ export default function DTUBrowserPage() {
       {/* ── Backend Action Panels ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-4">
         <div className="rounded-xl bg-lattice-deep border border-lattice-border p-4">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-neon-cyan" /> DTU Compute Actions
-          </h3>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Zap className="w-4 h-4 text-neon-cyan" /> DTU Compute Actions
+            </h3>
+            <span className="text-[11px] text-gray-400">
+              {computeActionTargetId
+                ? <>on <span className="text-gray-300">{String(computeActionTargetLabel).slice(0, 40)}</span>{!selectedDtuId && ' (first loaded — select one to target another)'}</>
+                : 'no DTU loaded to target'}
+            </span>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <button onClick={() => handleDtusAction('lineageAnalysis')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50">
+            <button onClick={() => handleDtusAction('lineageAnalysis')} disabled={isRunning !== null || !computeActionTargetId} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50">
               {isRunning === 'lineageAnalysis' ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" /> : <GitFork className="w-5 h-5 text-neon-cyan" />}
               <span className="text-xs text-gray-300">Lineage Analysis</span>
             </button>
-            <button onClick={() => handleDtusAction('qualityScore')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-neon-green/50 transition-colors disabled:opacity-50">
+            <button onClick={() => handleDtusAction('qualityScore')} disabled={isRunning !== null || !computeActionTargetId} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-neon-green/50 transition-colors disabled:opacity-50">
               {isRunning === 'qualityScore' ? <Loader2 className="w-5 h-5 text-neon-green animate-spin" /> : <Award className="w-5 h-5 text-neon-green" />}
               <span className="text-xs text-gray-300">Quality Score</span>
             </button>
-            <button onClick={() => handleDtusAction('citationNetwork')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50">
+            <button onClick={() => handleDtusAction('citationNetwork')} disabled={isRunning !== null || !computeActionTargetId} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50">
               {isRunning === 'citationNetwork' ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" /> : <Network className="w-5 h-5 text-neon-purple" />}
               <span className="text-xs text-gray-300">Citation Network</span>
             </button>
-            <button onClick={() => handleDtusAction('tierRecommendation')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-yellow-400/50 transition-colors disabled:opacity-50">
+            <button onClick={() => handleDtusAction('tierRecommendation')} disabled={isRunning !== null || !computeActionTargetId} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-yellow-400/50 transition-colors disabled:opacity-50">
               {isRunning === 'tierRecommendation' ? <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" /> : <Layers className="w-5 h-5 text-yellow-400" />}
               <span className="text-xs text-gray-300">Tier Recommendation</span>
             </button>
-            <button onClick={() => handleDtusAction('duplicateDetection')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-red-400/50 transition-colors disabled:opacity-50">
+            <button onClick={() => handleDtusAction('duplicateDetection')} disabled={isRunning !== null || !computeActionTargetId} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-red-400/50 transition-colors disabled:opacity-50">
               {isRunning === 'duplicateDetection' ? <Loader2 className="w-5 h-5 text-red-400 animate-spin" /> : <Copy className="w-5 h-5 text-red-400" />}
               <span className="text-xs text-gray-300">Duplicate Detection</span>
             </button>
