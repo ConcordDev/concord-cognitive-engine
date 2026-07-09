@@ -30,6 +30,56 @@ This rubric is the "good" layer. A rebuilt lens must clear the grader
 
 ---
 
+## 0. Prompting for premium design (how to actually get there)
+
+Sections 1-6 below are the *bar*. This section is the *technique* for
+clearing it — added 2026-07-09 per owner directive that top-notch polish
+be a hard invariant (CLAUDE.md §3), not an aspiration every agent
+independently reinvents. Bake these into every rebuild-dispatch prompt
+from this point forward, not just this doc.
+
+- **Name ONE precise reference app, not a vibe.** "Make it look nice" or
+  "make it professional" produces the exact generic-SaaS-dashboard look
+  this program exists to kill. "Make it read like Bloomberg Terminal,
+  specifically — dense dark background, monospace right-aligned numerals,
+  a persistent command line" produces a designed identity. This is the
+  same move as the reference-parity checklist (step 1.5) — do it for
+  visual language too, not just feature coverage. §3 below names five
+  identities already established (Finance/terminal, Code/IDE,
+  Music/DAW, News/research-tool, plus whatever destination family a new
+  lens belongs to) — extend that list, don't invent a sixth "modern
+  dashboard" identity.
+- **Specify the five things, every time**: reference app, color palette
+  (reuse `lib/design-system.ts` tokens — don't invent a one-off palette),
+  typography hierarchy (the existing type scale, not ad-hoc sizes),
+  spacing rhythm (`DENSITY_TOKENS`, not eyeballed padding), and the
+  intended emotion/read (terminal-cold-and-fast vs. warm-and-tactile vs.
+  clinical-and-precise — this should follow from the domain, not be
+  decorative).
+- **Design in grayscale first, add color last.** Forces hierarchy to
+  come from spacing, contrast, size, and type weight — not from "make
+  the important thing blue." A layout that only reads correctly once
+  color is added has a hierarchy problem color is papering over.
+- **Whitespace is removed, not added.** Start deliberately oversized,
+  then trim until it's tight — the opposite direction of the instinct to
+  keep adding padding until something "looks clean." A lens padded out
+  to fill the viewport with air (see §1's density minimums) is the
+  failure mode this produces when done backwards.
+- **Reduce, don't decorate.** "Reduce visual noise — remove anything
+  that isn't essential" and "make this more opinionated" are higher-yield
+  self-check questions than "what else could I add here." A page with
+  one fewer panel that's denser and better-considered beats a page with
+  one more panel that's decorative.
+- **Divide-and-conquer, not one giant prompt.** The capability-audit-first
+  methodology (step 1 of the rebuild loop) already does this for
+  features — describe each section's real content and interaction in
+  detail before implementing, rather than "build me a nice UI for X" in
+  one shot. The same discipline applies to visual design: settle the
+  layout/density/identity decisions explicitly (this section) before
+  writing component code, not as an afterthought polish pass.
+
+---
+
 ## 1. Information Density
 
 **The rule, not the vibe:** density is a function of the data's shape, not
