@@ -44,6 +44,26 @@ const ACTIVE_QUEST = {
   reward: { cc: 150, title: 'Wolfsbane' },
 };
 
+const COMPLETED_QUEST = {
+  id: 'q2',
+  title: 'Herbalist Errand',
+  description: 'Delivered the herbs.',
+  status: 'completed',
+  objectives: [
+    { id: 'o3', title: 'Deliver herbs', progress: 1, target: 1, complete: true },
+  ],
+  reward: { cc: 50 },
+};
+
+/** Routes lensRun calls to different envelopes by macro name — 'mine' vs 'completed'. */
+function mockMineAndCompleted(active: unknown[], completed: unknown[]) {
+  lensRun.mockImplementation((domain: string, name: string) => {
+    if (domain === 'quests' && name === 'mine') return Promise.resolve(questsEnvelope(active));
+    if (domain === 'quests' && name === 'completed') return Promise.resolve(questsEnvelope(completed));
+    return Promise.resolve(questsEnvelope([]));
+  });
+}
+
 beforeEach(() => {
   lensRun.mockReset();
   // No party by default.
@@ -112,5 +132,51 @@ describe('/lenses/quests — party share affordance', () => {
 
     render(<QuestsLensPage />);
     expect(await screen.findByLabelText(/Share Clear the Wolves with party/i)).toBeInTheDocument();
+  });
+});
+
+describe('/lenses/quests — completed tab (quests.completed macro)', () => {
+  it('calls quests.completed alongside quests.mine on load', async () => {
+    mockMineAndCompleted([], []);
+    render(<QuestsLensPage />);
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('quests', 'completed', {}));
+  });
+
+  it('renders real completed-quest data under the Completed tab (not filtered from quests.mine)', async () => {
+    mockMineAndCompleted([ACTIVE_QUEST], [COMPLETED_QUEST]);
+    render(<QuestsLensPage />);
+
+    // Active tab (default) shows the active quest only.
+    expect(await screen.findByText('Clear the Wolves')).toBeInTheDocument();
+    expect(screen.queryByText('Herbalist Errand')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'completed' }));
+    expect(await screen.findByText('Herbalist Errand')).toBeInTheDocument();
+    expect(screen.queryByText('Clear the Wolves')).not.toBeInTheDocument();
+  });
+
+  it('a completed-but-unclaimed quest shows a Claim button that calls quests.claimRewards', async () => {
+    mockMineAndCompleted([], [COMPLETED_QUEST]);
+    render(<QuestsLensPage />);
+    fireEvent.click(await screen.findByRole('tab', { name: 'completed' }));
+
+    const claimBtn = await screen.findByLabelText('Claim rewards for Herbalist Errand');
+    lensRun.mockResolvedValueOnce({ data: { ok: true, result: { ok: true, rewards: [{ type: 'gold', amount: 50 }] }, error: null } });
+    fireEvent.click(claimBtn);
+
+    expect(await screen.findByText('Rewards claimed.')).toBeInTheDocument();
+    expect(lensRun).toHaveBeenCalledWith('quests', 'claimRewards', { questId: 'q2' });
+    // Flips to a "Claimed" badge — the button is gone.
+    expect(await screen.findByText('Claimed')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Claim rewards for Herbalist Errand')).not.toBeInTheDocument();
+  });
+
+  it('a rewarded quest shows a Claimed badge, not a Claim button', async () => {
+    mockMineAndCompleted([], [{ ...COMPLETED_QUEST, status: 'rewarded' }]);
+    render(<QuestsLensPage />);
+    fireEvent.click(await screen.findByRole('tab', { name: 'completed' }));
+
+    expect(await screen.findByText('Claimed')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Claim rewards for Herbalist Errand')).not.toBeInTheDocument();
   });
 });
