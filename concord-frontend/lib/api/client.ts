@@ -1064,18 +1064,26 @@ export const apiHelpers = {
   },
 
   // Meta-learning
+  // NOTE: `define_strategy` (backend macro behind POST .../strategies) reads
+  // `input.domain` — there is no `type` concept on the backend model. A
+  // strategy's identity is its subject `domain` (used to group/rank via
+  // `best_strategy(domain)`); its tunable knobs are the `parameters` block
+  // the server derives (learningRate/explorationRate/batchSize/etc), not a
+  // client-chosen "type" label.
   metalearning: {
     status: () => api.get('/api/metalearning/status'),
     strategies: () => api.get('/api/metalearning/strategies'),
-    bestStrategy: () => api.get('/api/metalearning/strategies/best'),
-    createStrategy: (data: { name: string; type: string; params?: Record<string, unknown> }) =>
+    bestStrategy: (domain?: string) =>
+      api.get('/api/metalearning/strategies/best', { params: domain ? { domain } : undefined }),
+    createStrategy: (data: { name: string; domain?: string; params?: Record<string, unknown> }) =>
       api.post('/api/metalearning/strategies', data),
     adaptStrategy: (strategyId: string) =>
       api.post(`/api/metalearning/strategies/${strategyId}/adapt`, {}),
-    recordOutcome: (strategyId: string, data: { success: boolean; metrics?: Record<string, unknown> }) =>
+    recordOutcome: (strategyId: string, data: { success: boolean; performance?: number }) =>
       api.post(`/api/metalearning/strategies/${strategyId}/outcome`, data),
     curriculum: (data: { topic: string }) =>
       api.post('/api/metalearning/curriculum', data),
+    adaptations: () => api.get('/api/metalearning/adaptations'),
   },
 
   // Reasoning chains
