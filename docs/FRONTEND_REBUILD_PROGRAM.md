@@ -1,9 +1,10 @@
 # Frontend Rebuild Program — "Lenses Become Real Apps"
 
-> **🟢 STATUS (2026-07-09): APPROVED — Phase 0 in progress.** This is the
-> live arc for the frontend. Owner-approved plan (audit + web research
-> completed 2026-07-09). Sections below are the program spec; a per-phase
-> status ledger is appended at the bottom as work ships.
+> **🟢 STATUS (2026-07-09): Phases 0-2 shipped, Phase 3 Wave 1 6/10 shipped
+> (4 pending retry — hit the session token limit mid-run, not a quality
+> failure).** This is the live arc for the frontend. Sections below are the
+> program spec; a per-phase status ledger is appended at the bottom as
+> work ships.
 
 ## Context
 
@@ -204,4 +205,25 @@ the template":
 
 | Date | Phase | What shipped | Commit |
 |---|---|---|---|
-| 2026-07-09 | — | Program approved; audit evidence + plan committed as this doc | (this commit) |
+| 2026-07-09 | 3 (Wave 1) | courtship: partial capability-audit artifacts only, NOT integrated — agent hit the session token limit mid-run before touching page.tsx. Retry needed. | `07e0e660` |
+| 2026-07-09 | 3 (Wave 1) | garage rebuilt — fleet management app + honest world-owned bridge for driving (mount/dismount/move) | `2f9ed5f2` |
+| 2026-07-09 | 3 (Wave 1) | fishing rebuilt — species catalog + catch log, honest disclosure of the live bite/cast session gap | `13f3734d` |
+| 2026-07-09 | 3 (Wave 1) | detective rebuilt — case browser + evidence board, real 2-of-3+suspect-match lock-in preserved (8/8 tests) | `96b3d52f` |
+| 2026-07-09 | 3 (Wave 1) | announcements rebuilt — wired the previously-unsurfaced compose/post flow | `8856d667` |
+| 2026-07-09 | 3 (Wave 1) | achievements rebuilt — wired 2 backend features with zero prior frontend callers (recent-activity feed, titles equip/unequip) | `cab4dc7c` |
+| 2026-07-09 | 3 (Wave 1) | lattice — discovered lens/macro-domain naming collision, added honest disclosure instead of force-wiring unrelated macros | `9afea093` |
+| 2026-07-09 | 2 (Flagship 3/3) | Concordia (world lens) — killed a permanently-dead fake `progress={0}` loading bar, replaced with 3 real load-signal states; HUD visual-drift fix across 7 components | `2e048948` |
+| 2026-07-09 | 2 (Flagship 2/3) | News/Intelligence rebuilt — 39-macro audit, verified GDELT is a real live feed, real pull→DTU citation-chain flow | `3774451d` |
+| 2026-07-09 | 2 (Flagship 1/3) | Finance rebuilt — 73-macro audit, retired 9 fake artifact-stub macros, removed a synthetic fake portfolio chart | `6aabd5f1` |
+| 2026-07-09 | 1 | docs/UI_QUALITY_RUBRIC.md | `5603fc84` |
+| 2026-07-09 | 1 | perceived-perf kit (macro-dispatch feedback hook + lens state persistence) | `856a6430` |
+| 2026-07-09 | 1 | Workspace Bus (system-level DTU clipboard, generalizes the 80-consumer usePipe) | `96807730` |
+| 2026-07-09 | 1 | formalized lens contract fields + validator | `b72b761f` |
+| 2026-07-09 | 1 | 7 new components/ui/ primitives | `cfc3d266` |
+| 2026-07-09 | 1 | design-system token expansion (type scale, spacing, density, status colors) | `26c3048c` |
+| 2026-07-09 | 0 | shell diet — code-split/gate ~20 always-mounted components, cut idle polling | `76334f33` |
+| 2026-07-09 | 0 | frontend fake-data detector | `017a023c` |
+| 2026-07-09 | 0 | honest mode for grade-ux-polish.mjs — real scaffold count: 55 lenses (21%), not the initial ~164 estimate | `dc662513` |
+| 2026-07-09 | — | Program approved; audit evidence + plan committed as this doc | `dcf3cabb` |
+
+**Retry backlog (Wave 1 remainder):** `lfg`, `photos`, `quests`, `courtship` — all 4 failed purely on session token limit (reset 2:10pm UTC 2026-07-09), not on code/quality grounds; none were attempted. `courtship` additionally has 2 unintegrated WIP files (`07e0e660`) a retry agent should build on rather than re-derive.
