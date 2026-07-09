@@ -34,10 +34,16 @@ export function BreedExplorer() {
   const [species, setSpecies] = useState<'dog' | 'cat'>('dog');
   const [name, setName] = useState('');
   const [breeds, setBreeds] = useState<Breed[]>([]);
+  const [browsing, setBrowsing] = useState(false);
 
   const search = useMutation({
     mutationFn: async () => callMacro<{ breeds: Breed[] }>('breed-info', { species, name: name.trim() }),
-    onSuccess: (env) => { if (env.ok && env.result) setBreeds(env.result.breeds); else setBreeds([]); },
+    onSuccess: (env) => { setBrowsing(false); if (env.ok && env.result) setBreeds(env.result.breeds); else setBreeds([]); },
+  });
+
+  const browse = useMutation({
+    mutationFn: async () => callMacro<{ breeds: Breed[] }>('breeds-all', { species, limit: 60 }),
+    onSuccess: (env) => { setBrowsing(true); setName(''); if (env.ok && env.result) setBreeds(env.result.breeds); else setBreeds([]); },
   });
 
   return (
@@ -63,7 +69,15 @@ export function BreedExplorer() {
           {search.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
           Search
         </button>
+        <button type="button" onClick={() => browse.mutate()} disabled={browse.isPending}
+          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-50">
+          {browse.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          Browse all
+        </button>
       </form>
+      {browsing && breeds.length > 0 && (
+        <p className="text-[10px] text-zinc-500">Full catalog ({breeds.length} breeds) — pick a card's save button to keep one, or search a name for full detail.</p>
+      )}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {breeds.map((b) => (
           <motion.div key={b.id} layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="rounded-md border border-zinc-800 bg-zinc-950 p-3">
@@ -81,7 +95,7 @@ export function BreedExplorer() {
                 apiSource={species === 'dog' ? 'the-dog-api' : 'the-cat-api'}
                 apiUrl={b.wikipediaUrl}
                 title={`${b.name} — ${species}`}
-                content={`Breed: ${b.name}\nOrigin: ${b.origin}\nGroup: ${b.breedGroup}\nBred for: ${b.bredFor}\nLife span: ${b.lifeSpan}\nWeight (metric): ${b.weightMetric}\nHeight (metric): ${b.heightMetric}\nTemperament: ${b.temperament}\nHypoallergenic: ${b.hypoallergenic}\n${b.description || ''}\nWikipedia: ${b.wikipediaUrl}`}
+                content={`Breed: ${b.name}\nOrigin: ${b.origin ?? '—'}\nGroup: ${b.breedGroup ?? '—'}\nBred for: ${b.bredFor ?? '—'}\nLife span: ${b.lifeSpan ?? '—'}\nWeight (metric): ${b.weightMetric ?? '—'}\nHeight (metric): ${b.heightMetric ?? '—'}\nTemperament: ${b.temperament ?? '—'}\nHypoallergenic: ${b.hypoallergenic ?? 'unknown'}\n${b.description || ''}\n${b.wikipediaUrl ? `Wikipedia: ${b.wikipediaUrl}` : ''}`}
                 extraTags={['pets', species, b.breedGroup?.toLowerCase() || species]}
                 rawData={b}
               />
