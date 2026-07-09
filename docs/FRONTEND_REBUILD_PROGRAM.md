@@ -6,11 +6,22 @@
 > `isGenericScaffold`, weighted score 1.0 — fleet-wide, not just the
 > targeted 55.** `verify-lens-backends.mjs` holds at 258 WIRED / 2
 > by-design NO-BACKEND-CALL (0 broken), full project `tsc --noEmit` 0
-> errors. Next: **Wave 3** — audit the ~192-lens risk pool that already
-> scored "polished" under the pre-honest grader for anything the honest
-> pass might still miss (a lens can pass the scaffold detector's
-> structural signals while still hiding a dark macro or a subtler fake-
-> data pattern than the ones this wave's detector was tuned against).
+> errors.
+
+> **🟢 WAVE 3 SCOPE (owner directive, 2026-07-09): full per-lens rebuild
+> loop on every one of the remaining 191 lenses — not a triage-and-fix-
+> only-confirmed-gaps pass.** `scripts/lens-rebuild-backlog.mjs` (built
+> the same day) still orders the sweep by unsurfaced-macro depth ×
+> destination-traffic weight, since that ranking is real signal for
+> *where to start*, but it no longer gates *whether* a lens gets worked —
+> every remaining lens gets the same step-1/1.5/2-7 loop Wave 2 used
+> (capability audit, reference-parity checklist against a real
+> best-in-class app, real design + implementation, verify gate), with the
+> honest caveat that a lens whose audit finds nothing wrong gets a short,
+> honestly-say-so artifact rather than an invented diff — the "no
+> busywork" principle stays; the "don't have to look" scoping doesn't.
+> The 2 by-design `NO-BACKEND-CALL` lenses (`narrative-walk`, `ux-suite`)
+> are the only ones exempted, per their own documented header rationale.
 > See the phase-by-phase history below for what Waves 0-2 actually found
 > and fixed.
 
