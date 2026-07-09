@@ -9,21 +9,28 @@
 > Wave 0a (music, the flagship proof unit — all 7 gaps closed), 0b
 > (courtship finish-the-wire), and 0c (lfg/photos/quests verify-pass, found
 > + fixed real gaps in photos and quests) are all shipped and independently
-> re-verified — full frontend (550/550 files) + backend (26,796 tests) suite
-> swept clean afterward, surfacing and fixing 2 more real a11y issues
-> (keyboard-inaccessible modal backdrops in music + announcements) along the
-> way. **Wave 2 batches 1-3 shipped (20/55 scaffold lenses): Marketplace/
-> economy, Research/reference, Social/relationship, Creative/design-tool,
-> Maps/navigation, Health/life-sim, Reflection/knowledge-curation — all 7
-> smallest archetypes complete.** A container restart mid-batch-3 was
-> recovered cleanly (working tree + all commits survived; the 8 in-flight
-> lens rebuilds were individually re-verified against the live backend
-> before trusting/committing any of them — see the ledger). Remaining: 35
-> lenses across Space/lab science (6), Earth/environmental science (9),
-> Dev-tool/sim-console (9), Docs/B2B SaaS (11), then Wave 3's ~192-lens risk
-> pool. This is the live arc for the frontend. Sections below are the
-> program spec; a per-phase status ledger is appended at the bottom as work
-> ships.
+> re-verified — full frontend (551/551 files, 4,721/4,721 tests) + backend
+> (26,779/26,779 tests, after fixing an unrelated seed-manifest count/hash
+> drift found by the sweep) suite swept clean. **Wave 2 batches 1-4 shipped
+> (26/55 scaffold lenses): Marketplace/economy, Research/reference, Social/
+> relationship, Creative/design-tool, Maps/navigation, Health/life-sim,
+> Reflection/knowledge-curation, Space/lab science — all 8 smallest
+> archetypes complete.** Two container restarts (mid-batch-3, then again
+> mid-batch-4) were both recovered cleanly — working tree + all commits
+> survived each time; every in-flight lens rebuild was individually
+> re-verified against the live backend before trusting/committing it (see
+> the ledger). **A companion shared-component honesty fix** landed
+> alongside batch 4: `ManifestActionBar`/`UniversalActions` (mounted on
+> every not-yet-rebuilt lens) no longer claim success on a blind
+> no-parameter macro call or render permanently-disabled buttons with no
+> explanation — closing the gap where the wiring verifier's "the macro
+> gets called" check was passing while the actual click produced nothing
+> a user could trust, on ~150 lenses still waiting for their real rebuild.
+> **`PR #853` is open**, tracking all of this work against `main`.
+> Remaining: 29 lenses across Earth/environmental science (9), Dev-tool/
+> sim-console (9), Docs/B2B SaaS (11), then Wave 3's ~192-lens risk pool.
+> This is the live arc for the frontend. Sections below are the program
+> spec; a per-phase status ledger is appended at the bottom as work ships.
 
 ## Full-App-Parity amendment (2026-07-09)
 
@@ -348,6 +355,8 @@ to have):
 
 | Date | Phase | What shipped | Commit |
 |---|---|---|---|
+| 2026-07-09 | Shared-component fix | `ManifestActionBar`/`UniversalActions`/`LensActionBar` stop faking success — blind no-parameter macro calls no longer toast "ok" when the response is empty, and permanently-disabled buttons now say why. Fixes the interim honesty of ~150 not-yet-rebuilt lenses without a blanket strip (their real fix is still the per-lens rebuild). | `cf773c87` |
+| 2026-07-09 | Wave 2 batch 4 | astronomy, space, chem, bio, lab, materials rebuilt — Space/lab science archetype complete (6/6). chem fixed a reaction-chamber bug where every logged reaction rendered "Failed" (no `success` flag was ever set) and replaced a hardcoded periodic table + reaction list with the real Gaussian-elimination `balanceReaction` solver; bio killed a fabricated "Active Experiments" status list and a fabricated always-identical taxonomy tree, retiring a disconnected generic-CRUD organism store in favor of the real `profile-organism` macro. astronomy found the same self-inflicted honest-grader false positive as the earlier veterinary case (a doc comment naming retired components in literal JSX-tag syntax); bio's `LensFeaturePanel` was genuinely still mounted, not a false positive, and was retired for real. Two of the six lenses (astronomy, chem+bio) were left mid-rebuild by a container restart — recovered by reading each diff for coherence before finishing/committing, same discipline as the batch-3 restart recovery. | `7a25b240` |
 | 2026-07-09 | Wave 2 batch 3 | pets + veterinary rebuilt — pets killed a fabricated CRUD library disconnected from real health records (same defect class as supplychain/parenting); veterinary found and fixed a self-inflicted false positive where its own doc comment's literal JSX-tag syntax retriggered the honest grader's scaffold detector. Health/life-sim archetype (3-4/4) and Wave 2 batch 3 fully complete (8 lenses). | `cd6bd181` |
 | 2026-07-09 | Wave 2 batch 3 | suffering rebuilt — resolved the flagged hardcoded fake confidence-score cards finding; confirmed a real 2-generation 22-macro "pain board" backend. Reflection/knowledge-curation archetype complete (4/4). | `d4d20536` |
 | 2026-07-09 | Wave 2 batch 3 | reflection rebuilt — confirmed a real naming collision (an unrelated emergent self-critique system shares the domain name); the 45-macro Day-One-parity journal substrate is 21/45 DESIGNED with the remaining 24 honestly disclosed as a named follow-up, not silently dropped. | `572e4e20` |
