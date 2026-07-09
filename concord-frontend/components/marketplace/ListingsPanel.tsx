@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Tag, Loader2, Plus, Eye, EyeOff, Trash2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Tag, Loader2, Plus, Eye, EyeOff, Trash2, Sparkles, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -47,6 +47,8 @@ export function ListingsPanel() {
   const [aiResult, setAIResult] = useState<AIResult | null>(null);
   const [priceResult, setPriceResult] = useState<PriceResult | null>(null);
   const [aiLoading, setAILoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ title: '', priceUsd: '', description: '', tags: '', stockQty: '', shippingCostUsd: '' });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filter]);
@@ -91,6 +93,33 @@ export function ListingsPanel() {
     if (!confirm('Delete this listing?')) return;
     try { await lensRun({ domain: 'marketplace', action: 'listings-delete', input: { id } }); await refresh(); }
     catch (e) { console.error('[Listings] delete', e); }
+  }
+
+  function startEdit(l: Listing) {
+    setEditingId(l.id);
+    setEditDraft({
+      title: l.title, priceUsd: String(l.priceUsd), description: l.description,
+      tags: l.tags.join(', '), stockQty: l.stockQty === null ? '' : String(l.stockQty),
+      shippingCostUsd: String(l.shippingCostUsd || 0),
+    });
+  }
+
+  async function saveEdit(id: string) {
+    if (!editDraft.title.trim()) return;
+    try {
+      const r = await lensRun({
+        domain: 'marketplace', action: 'listings-update',
+        input: {
+          id, title: editDraft.title.trim(), priceUsd: Number(editDraft.priceUsd) || 0,
+          description: editDraft.description, tags: editDraft.tags.split(',').map(t => t.trim()).filter(Boolean),
+          stockQty: editDraft.stockQty === '' ? null : Number(editDraft.stockQty),
+          shippingCostUsd: Number(editDraft.shippingCostUsd) || 0,
+        },
+      });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      setEditingId(null);
+      await refresh();
+    } catch (e) { console.error('[Listings] update', e); }
   }
 
   async function runAI(id: string) {
@@ -182,21 +211,39 @@ export function ListingsPanel() {
                       ) : (
                         <button onClick={() => publish(l.id)} className="px-2 py-1 text-[10px] rounded bg-orange-500 text-black font-bold hover:bg-orange-400 inline-flex items-center gap-0.5"><Eye className="w-3 h-3" />Publish</button>
                       )}
-                      <button onClick={() => { setExpanded(isExp ? null : l.id); setAIResult(null); setPriceResult(null); }} className="p-1.5 rounded hover:bg-white/[0.05] text-gray-400" title={isExp ? 'Hide AI tools' : 'AI tools'}>
+                      <button onClick={() => { setExpanded(isExp ? null : l.id); setAIResult(null); setPriceResult(null); setEditingId(null); }} className="p-1.5 rounded hover:bg-white/[0.05] text-gray-400" title={isExp ? 'Hide details' : 'Edit / AI tools'}>
                         {isExp ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       </button>
                       <button onClick={() => remove(l.id)} className="p-1.5 rounded hover:bg-rose-500/20 text-rose-300" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                     {isExp && (
                       <div className="px-4 pb-3 bg-black/30 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => runAI(l.id)} disabled={aiLoading} className="px-2.5 py-1 text-xs rounded bg-orange-500/15 text-orange-300 border border-orange-500/30 hover:bg-orange-500/25 disabled:opacity-40 inline-flex items-center gap-1">
-                            {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}AI optimize listing
-                          </button>
-                          <button onClick={() => runPrice(l.id)} disabled={aiLoading} className="px-2.5 py-1 text-xs rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 disabled:opacity-40 inline-flex items-center gap-1">
-                            {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}AI price suggest
-                          </button>
-                        </div>
+                        {editingId === l.id ? (
+                          <div className="grid grid-cols-12 gap-2 pt-2">
+                            <input value={editDraft.title} onChange={e => setEditDraft({ ...editDraft, title: e.target.value })} placeholder="Title" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                            <input type="number" step="0.01" value={editDraft.priceUsd} onChange={e => setEditDraft({ ...editDraft, priceUsd: e.target.value })} placeholder="Price USD" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                            <input type="number" value={editDraft.stockQty} onChange={e => setEditDraft({ ...editDraft, stockQty: e.target.value })} placeholder="Stock (blank = ∞)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                            <input value={editDraft.tags} onChange={e => setEditDraft({ ...editDraft, tags: e.target.value })} placeholder="Tags (comma-separated)" className="col-span-8 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                            <input type="number" step="0.01" value={editDraft.shippingCostUsd} onChange={e => setEditDraft({ ...editDraft, shippingCostUsd: e.target.value })} placeholder="Shipping $" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                            <textarea value={editDraft.description} onChange={e => setEditDraft({ ...editDraft, description: e.target.value })} placeholder="Description" rows={3} className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                            <div className="col-span-12 flex gap-2">
+                              <button onClick={() => saveEdit(l.id)} className="flex-1 px-3 py-1.5 text-xs rounded bg-orange-500 text-black font-bold hover:bg-orange-400">Save changes</button>
+                              <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs rounded border border-white/10 text-gray-400 hover:text-white">Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => startEdit(l)} className="px-2.5 py-1 text-xs rounded bg-white/[0.05] text-gray-300 border border-white/10 hover:bg-white/[0.08] inline-flex items-center gap-1">
+                              <Pencil className="w-3 h-3" />Edit listing
+                            </button>
+                            <button onClick={() => runAI(l.id)} disabled={aiLoading} className="px-2.5 py-1 text-xs rounded bg-orange-500/15 text-orange-300 border border-orange-500/30 hover:bg-orange-500/25 disabled:opacity-40 inline-flex items-center gap-1">
+                              {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}AI optimize listing
+                            </button>
+                            <button onClick={() => runPrice(l.id)} disabled={aiLoading} className="px-2.5 py-1 text-xs rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 disabled:opacity-40 inline-flex items-center gap-1">
+                              {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}AI price suggest
+                            </button>
+                          </div>
+                        )}
                         {aiResult && (
                           <div className="rounded border border-orange-500/30 bg-orange-500/[0.05] p-2.5 text-xs space-y-1.5">
                             {aiResult.suggestedTitle && <div><span className="text-[10px] uppercase text-orange-300">Title:</span> <span className="text-white">{aiResult.suggestedTitle}</span></div>}

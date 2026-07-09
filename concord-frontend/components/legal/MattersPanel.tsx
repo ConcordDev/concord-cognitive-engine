@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Briefcase, Loader2, Plus, X, Archive, ChevronRight } from 'lucide-react';
+import { Briefcase, Loader2, Plus, X, Archive, ChevronRight, Pencil, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
@@ -27,6 +27,7 @@ interface Detail {
 
 const TYPES = ['litigation','transactional','family','probate','criminal','employment','ip','real_estate','corporate','immigration','tax','bankruptcy','other'];
 const BILLING = ['hourly','flat','contingency','pro_bono'];
+const STATUSES = ['intake','open','pending','closed','archived'];
 
 export function MattersPanel() {
   const [list, setList] = useState<Matter[]>([]);
@@ -37,6 +38,10 @@ export function MattersPanel() {
   const [draft, setDraft] = useState({ name: '', clientName: '', matterType: 'litigation', hourlyRate: '', jurisdiction: '', court: '', caseNumber: '', billingType: 'hourly', description: '', partyIds: [] as string[] });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState({ name: '', clientName: '', jurisdiction: '', court: '', caseNumber: '', hourlyRate: '', description: '', matterType: 'litigation', billingType: 'hourly', status: 'open' });
+  const [aiUpdate, setAiUpdate] = useState<{ summary: string; source: string } | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filter]);
@@ -77,10 +82,48 @@ export function MattersPanel() {
 
   async function openDetail(id: string) {
     setActiveId(id);
+    setEditing(false);
+    setAiUpdate(null);
     try {
       const r = await lensRun({ domain: 'legal', action: 'matters-detail', input: { id } });
       setDetail((r.data?.result as Detail) || null);
     } catch (e) { console.error('[Matters] detail failed', e); }
+  }
+
+  function startEdit() {
+    if (!detail) return;
+    const m = detail.matter;
+    setEditDraft({
+      name: m.name, clientName: m.clientName || '', jurisdiction: m.jurisdiction || '', court: m.court || '',
+      caseNumber: m.caseNumber || '', hourlyRate: m.hourlyRate ? String(m.hourlyRate) : '', description: m.description || '',
+      matterType: m.matterType, billingType: m.billingType, status: m.status,
+    });
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    if (!activeId || !editDraft.name.trim()) return;
+    try {
+      const r = await lensRun({
+        domain: 'legal', action: 'matters-update',
+        input: { id: activeId, ...editDraft, hourlyRate: Number(editDraft.hourlyRate) || 0 },
+      });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      setEditing(false);
+      await openDetail(activeId);
+      await refresh();
+    } catch (e) { console.error('[Matters] update failed', e); }
+  }
+
+  async function draftClientUpdate() {
+    if (!activeId) return;
+    setAiBusy(true);
+    try {
+      const r = await lensRun({ domain: 'legal', action: 'ai-matter-update', input: { matterId: activeId } });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      setAiUpdate({ summary: r.data?.result?.summary || '', source: r.data?.result?.source || 'deterministic' });
+    } catch (e) { console.error('[Matters] ai-update failed', e); }
+    finally { setAiBusy(false); }
   }
 
   return (
@@ -170,24 +213,56 @@ export function MattersPanel() {
           <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-amber-400" />
             <span className="text-sm font-semibold text-gray-200 flex-1 truncate">{detail.matter.name}</span>
+            {!editing && (
+              <button onClick={startEdit} className="p-1 rounded hover:bg-white/[0.05] text-gray-400 hover:text-amber-300" title="Edit matter" aria-label="Edit matter">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button aria-label="Close" onClick={() => { setActiveId(null); setDetail(null); }} className="p-1 rounded hover:bg-white/[0.05] text-gray-400"><X className="w-3.5 h-3.5" /></button>
           </header>
           <div className="p-4 space-y-3">
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <Tile label="Unbilled" value={`$${detail.totals.unbilled.toLocaleString()}`} sub={`${detail.totals.hours.toFixed(1)} hrs`} tone="amber" />
-              <Tile label="Billed" value={`$${detail.totals.billed.toLocaleString()}`} tone="emerald" />
-              <Tile label="Trust" value={`$${detail.totals.trustBalance.toLocaleString()}`} tone="cyan" />
-              <Tile label="Docs" value={String(detail.documents.length)} sub={`${detail.events.length} events`} tone="gray" />
-            </div>
+            {editing ? (
+              <div className="grid grid-cols-12 gap-2">
+                <input value={editDraft.name} onChange={e => setEditDraft({ ...editDraft, name: e.target.value })} placeholder="Matter name *" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                <input value={editDraft.clientName} onChange={e => setEditDraft({ ...editDraft, clientName: e.target.value })} placeholder="Client name" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                <select value={editDraft.matterType} onChange={e => setEditDraft({ ...editDraft, matterType: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                  {TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                </select>
+                <select value={editDraft.status} onChange={e => setEditDraft({ ...editDraft, status: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                  {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select value={editDraft.billingType} onChange={e => setEditDraft({ ...editDraft, billingType: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                  {BILLING.map(b => <option key={b} value={b}>{b.replace(/_/g, ' ')}</option>)}
+                </select>
+                <input type="number" value={editDraft.hourlyRate} onChange={e => setEditDraft({ ...editDraft, hourlyRate: e.target.value })} placeholder="$/hr" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                <input value={editDraft.jurisdiction} onChange={e => setEditDraft({ ...editDraft, jurisdiction: e.target.value })} placeholder="Jurisdiction" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                <input value={editDraft.court} onChange={e => setEditDraft({ ...editDraft, court: e.target.value })} placeholder="Court" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                <input value={editDraft.caseNumber} onChange={e => setEditDraft({ ...editDraft, caseNumber: e.target.value })} placeholder="Case #" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                <textarea value={editDraft.description} onChange={e => setEditDraft({ ...editDraft, description: e.target.value })} placeholder="Description" rows={2} className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                <div className="col-span-12 flex gap-2">
+                  <button onClick={saveEdit} className="flex-1 px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400">Save changes</button>
+                  <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs rounded border border-white/10 text-gray-400 hover:text-white">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <Tile label="Unbilled" value={`$${detail.totals.unbilled.toLocaleString()}`} sub={`${detail.totals.hours.toFixed(1)} hrs`} tone="amber" />
+                  <Tile label="Billed" value={`$${detail.totals.billed.toLocaleString()}`} tone="emerald" />
+                  <Tile label="Trust" value={`$${detail.totals.trustBalance.toLocaleString()}`} tone="cyan" />
+                  <Tile label="Docs" value={String(detail.documents.length)} sub={`${detail.events.length} events`} tone="gray" />
+                </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div><span className="text-gray-400">Type:</span> <span className="text-white">{detail.matter.matterType.replace(/_/g, ' ')}</span></div>
-              <div><span className="text-gray-400">Status:</span> <span className="text-white">{detail.matter.status}</span></div>
-              <div><span className="text-gray-400">Court:</span> <span className="text-white">{detail.matter.court || '—'}</span></div>
-              <div><span className="text-gray-400">Case #:</span> <span className="text-white font-mono">{detail.matter.caseNumber || '—'}</span></div>
-              <div><span className="text-gray-400">Jurisdiction:</span> <span className="text-white">{detail.matter.jurisdiction || '—'}</span></div>
-              <div><span className="text-gray-400">Opened:</span> <span className="text-white">{detail.matter.openedAt}</span></div>
-            </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="text-gray-400">Type:</span> <span className="text-white">{detail.matter.matterType.replace(/_/g, ' ')}</span></div>
+                  <div><span className="text-gray-400">Status:</span> <span className="text-white">{detail.matter.status}</span></div>
+                  <div><span className="text-gray-400">Court:</span> <span className="text-white">{detail.matter.court || '—'}</span></div>
+                  <div><span className="text-gray-400">Case #:</span> <span className="text-white font-mono">{detail.matter.caseNumber || '—'}</span></div>
+                  <div><span className="text-gray-400">Jurisdiction:</span> <span className="text-white">{detail.matter.jurisdiction || '—'}</span></div>
+                  <div><span className="text-gray-400">Opened:</span> <span className="text-white">{detail.matter.openedAt}</span></div>
+                </div>
+              </>
+            )}
 
             {detail.parties.length > 0 && (
               <div>
@@ -247,6 +322,28 @@ export function MattersPanel() {
                 </ul>
               </div>
             )}
+
+            <div className="border-t border-white/10 pt-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Draft client update</span>
+                <button onClick={draftClientUpdate} disabled={aiBusy}
+                  className="ml-auto px-2.5 py-1 text-[10px] rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 disabled:opacity-40 inline-flex items-center gap-1">
+                  {aiBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                  {aiUpdate ? 'Regenerate' : 'Draft'}
+                </button>
+              </div>
+              {aiUpdate ? (
+                <div className="rounded border border-amber-500/20 bg-black/20 p-2.5 text-xs text-gray-200 space-y-1">
+                  <p>{aiUpdate.summary}</p>
+                  <p className="text-[9px] text-gray-400 uppercase tracking-wide">
+                    {aiUpdate.source === 'brain' ? 'AI-drafted from this matter’s recent activity' : 'Deterministic summary (no AI brain online) — still grounded in the matter’s real activity log'}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[11px] text-gray-400 italic">Draft a short client-update blurb from this matter&apos;s time, documents, invoices and events over the last two weeks.</p>
+              )}
+            </div>
           </div>
         </div>
       )}
