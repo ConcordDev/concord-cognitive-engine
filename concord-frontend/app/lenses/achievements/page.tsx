@@ -64,7 +64,10 @@ const HIGHLIGHT_MS = 3600;
 function AchievementsLensInner() {
   const { user } = useAuth();
   const params = useSearchParams();
-  const deepLinkId = params.get('id');
+  // useSearchParams() can legitimately return null (Next.js docs — outside a
+  // router context, e.g. during certain test/static-render paths); guard the
+  // read instead of crashing the whole page on it.
+  const deepLinkId = params?.get('id') ?? null;
 
   const [catalog, setCatalog] = useState<AchievementCatalogEntry[]>([]);
   const [earned, setEarned] = useState<EarnedEntry[]>([]);
@@ -107,7 +110,12 @@ function AchievementsLensInner() {
       setEarned(mine?.ok && Array.isArray(mine.earned) ? mine.earned : []);
       setState('ready');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load achievements.');
+      // Log the real technical detail for debugging; show honest, human-
+      // readable copy to the user instead of a raw HTTP-status string
+      // ("catalog 500") — the underlying failure is still true, just not
+      // dumped verbatim into the UI.
+      console.error('[achievements] catalog fetch failed:', e);
+      setError('The achievement catalog couldn’t load. Check your connection and try again.');
       setState('error');
     }
   }, []);
