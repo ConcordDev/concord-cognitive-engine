@@ -49,6 +49,25 @@ const panelBare =
 const panelFloating =
   'bg-lattice-surface/90 backdrop-blur-sm border border-lattice-border rounded-lg shadow-lattice-md';
 
+/**
+ * World-lens HUD chrome — the canonical dark, THEME-INDEPENDENT panel for
+ * overlays floating over the Concordia 3D scene. Unlike `panelFloating` (which
+ * uses `lattice-surface` and therefore flips to white in light theme), a HUD
+ * over a 3D world must stay dark in both themes, so it uses a fixed
+ * `bg-black/80`. This is the idiom the core world-lens HUDs (AbilityCooldownHud,
+ * CharacterSheetPanel, TargetNameplate) already share; `hudPanel`/`hudPill`
+ * make it the single source of truth so sibling HUDs stop drifting
+ * (bg-zinc vs bg-black, blur-sm vs blur-md, rounded-lg vs rounded-xl).
+ * Add a semantic accent by overriding just the border color at the call site,
+ * e.g. `${ds.hudPanel} border-amber-500/40`.
+ */
+const hudPanel =
+  'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg shadow-lg';
+
+/** HUD pill — the compact rounded-full variant for status chips / summon buttons. */
+const hudPill =
+  'bg-black/80 backdrop-blur-sm border border-white/10 rounded-full shadow-lg';
+
 /** Buttons */
 const btnBase =
   'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-lattice-void disabled:opacity-50 disabled:pointer-events-none';
@@ -437,6 +456,8 @@ export const ds = {
   panelHover,
   panelBare,
   panelFloating,
+  hudPanel,
+  hudPill,
   btnBase,
   btnPrimary,
   btnSecondary,

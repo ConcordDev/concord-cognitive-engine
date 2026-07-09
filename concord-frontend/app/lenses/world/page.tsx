@@ -835,9 +835,6 @@ const SocialOverlay = dynamic(
   () => import('@/components/world-lens/SocialOverlay').then((m) => ({ default: m.SocialOverlay })),
   { ssr: false },
 );
-const LoadingTransitions = dynamic(() => import('@/components/world-lens/LoadingTransitions'), {
-  ssr: false,
-});
 
 // ── Builder / Tools (District mode) ───────────────────────────────
 const SnapBuildCatalog = dynamic(() => import('@/components/world-lens/SnapBuildCatalog'), {
@@ -1162,6 +1159,7 @@ import { api } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 // Wave 1 deferral 5: reads the player's stored quality preset (set via /lenses/settings)
 import { getStoredQualityPreset } from '@/lib/world-lens/quality-preset';
+import WorldEntryOverlay from '@/components/world-lens/WorldEntryOverlay';
 import { emitHitNumber, emitScreenShake, emitHitStop } from '@/components/world/ImpactFeedback';
 import type { LimbState, LimbArmorState } from '@/components/concordia/hud/CombatHUD';
 
@@ -2006,6 +2004,26 @@ export default function WorldLensPage() {
     };
     window.addEventListener('webglcontextlost', onContextLost, true);
     return () => window.removeEventListener('webglcontextlost', onContextLost, true);
+  }, []);
+
+  // ── Entry sequence (real load signals only) ────────────────────────────────
+  // The premium entry overlay (WorldEntryOverlay) is a pure function of three
+  // REAL signals — no fake/timed progress:
+  //   • engineChunkReady — the heavy three.js ConcordiaScene chunk finished
+  //     downloading + parsing (a real dynamic-import resolve).
+  //   • worldDataState   — the live world fetches resolved (derived below).
+  //   • sceneReady       — the scene built + painted its first frame
+  //     (ConcordiaScene.onSceneReady). Set once; the scene-build effect re-runs
+  //     on district change and re-fires onSceneReady, so we never reset it — the
+  //     entry overlay is an initial-entry experience only.
+  const [engineChunkReady, setEngineChunkReady] = useState(false);
+  const [sceneReady, setSceneReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    import('@/components/world-lens/ConcordiaScene')
+      .then(() => { if (!cancelled) setEngineChunkReady(true); })
+      .catch(() => { /* the dynamic <ConcordiaScene> mount reports its own failure */ });
+    return () => { cancelled = true; };
   }, []);
 
   // 2026 parity polish — slide-overs surfacing existing simulation.
@@ -4554,6 +4572,9 @@ export default function WorldLensPage() {
             onSceneReady={(lookup) => {
               deformLookupRef.current = lookup;
               replayDeformations(deformStoreRef.current, lookup);
+              // Real "world painted its first frame" signal — dismisses the
+              // entry overlay (progressive reveal). Set once; never reset.
+              setSceneReady(true);
             }}
             width="100%"
             height="100%"
@@ -4781,11 +4802,15 @@ export default function WorldLensPage() {
             myUserId={playerAvatar.id}
             nearbyPlayers={otherPlayers.map((p) => ({ id: p.id, name: p.name }))}
           />
-          <LoadingTransitions
-            transition="district"
-            destination={{ name: 'Loading...' }}
-            progress={0}
-            phase="terrain"
+          {/* Premium entry sequence — real load signals only, fades out on
+              first painted frame. Replaces a dead permanently-mounted
+              LoadingTransitions that was stuck at progress={0}. */}
+          <WorldEntryOverlay
+            worldName={activeDistrict.name}
+            engineReady={engineChunkReady}
+            dataState={worldDataState}
+            sceneReady={sceneReady}
+            previewColor={`#${(skyThemeColors?.horizon ?? 0x0e7490).toString(16).padStart(6, '0')}`}
           />
           <div className="absolute inset-0 pointer-events-none">
             <AvatarSystem3D

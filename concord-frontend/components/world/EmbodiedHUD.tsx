@@ -103,7 +103,7 @@ export default function EmbodiedHUD() {
   if (channels.length === 0 || Object.keys(readings).length === 0) return null;
 
   return (
-    <div className="fixed bottom-3 left-3 z-40 bg-zinc-950/85 backdrop-blur-md border border-zinc-700/50 rounded-xl p-2 shadow-xl pointer-events-auto">
+    <div className="fixed bottom-3 left-3 z-40 bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg p-2 shadow-lg pointer-events-auto">
       <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold mb-1.5 px-1">Sense</div>
       <div className="space-y-1">
         {channels.map(c => {

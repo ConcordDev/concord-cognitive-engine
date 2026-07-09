@@ -114,7 +114,7 @@ export default function CrossWorldPotencyHUD() {
     >
       <button
         onClick={() => setExpanded(v => !v)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/80 backdrop-blur ring-1 ring-zinc-700/60 shadow-lg text-xs font-medium text-zinc-100 hover:bg-zinc-800/90 transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-sm ring-1 ring-white/10 shadow-lg text-xs font-medium text-zinc-100 hover:bg-black/70 transition-colors"
         title="Click to see how every skill of yours performs here"
       >
         <span className="text-zinc-400">⊕</span>
@@ -132,7 +132,7 @@ export default function CrossWorldPotencyHUD() {
       </button>
 
       {expanded && (
-        <div className="mt-2 w-80 max-h-[60vh] overflow-y-auto rounded-xl bg-zinc-900/95 backdrop-blur ring-1 ring-zinc-700/60 shadow-2xl text-xs text-zinc-100">
+        <div className="mt-2 w-80 max-h-[60vh] overflow-y-auto rounded-lg bg-black/80 backdrop-blur-sm ring-1 ring-white/10 shadow-2xl text-xs text-zinc-100">
           <div className="px-4 py-3 border-b border-zinc-800">
             <div className="font-semibold text-zinc-100">Skill potency in {worldId}</div>
             {data.worldDescription && (
