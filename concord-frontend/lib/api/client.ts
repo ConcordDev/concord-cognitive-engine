@@ -1216,16 +1216,26 @@ export const apiHelpers = {
       api.post('/api/temporal/sim', data),
   },
 
-  // Grounding (embodied cognition)
+  // Grounding — embodied reality-anchoring substrate (distinct from the
+  // `lens.runDomain('grounding', ...)` fact-checking macros below; see
+  // docs/lens-specs/grounding-capability-map.md for the two-systems split).
   grounding: {
     sensors: () => api.get('/api/grounding/sensors'),
+    registerSensor: (data: { name: string; type?: string; unit?: string; endpoint?: string; pollInterval?: number }) =>
+      api.post('/api/grounding/sensors', data),
     readings: () => api.get('/api/grounding/readings'),
     addReading: (data: { sensorId: string; value: number; unit: string }) =>
       api.post('/api/grounding/readings', data),
     context: () => api.get('/api/grounding/context'),
     status: () => api.get('/api/grounding/status'),
-    ground: (dtuId: string) =>
-      api.post(`/api/grounding/ground/${dtuId}`, {}),
+    ground: (dtuId: string, data?: { location?: string; context?: string; confidence?: number }) =>
+      api.post(`/api/grounding/ground/${dtuId}`, data || {}),
+    linkCalendar: (dtuId: string, data: { title?: string; startTime?: string; endTime?: string; location?: string }) =>
+      api.post(`/api/grounding/calendar/${dtuId}`, data),
+    proposeAction: (data: { type?: string; description: string; payload?: Record<string, unknown>; goalId?: string }) =>
+      api.post('/api/grounding/actions', data),
+    approveAction: (actionId: string) =>
+      api.post(`/api/grounding/actions/${actionId}/approve`, {}),
     actions: { pending: () => api.get('/api/grounding/actions/pending') },
   },
 
