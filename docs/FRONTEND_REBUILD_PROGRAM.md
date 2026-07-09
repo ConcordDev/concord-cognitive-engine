@@ -26,11 +26,24 @@
 > explanation — closing the gap where the wiring verifier's "the macro
 > gets called" check was passing while the actual click produced nothing
 > a user could trust, on ~150 lenses still waiting for their real rebuild.
-> **`PR #853` is open**, tracking all of this work against `main`.
-> Remaining: 29 lenses across Earth/environmental science (9), Dev-tool/
-> sim-console (9), Docs/B2B SaaS (11), then Wave 3's ~192-lens risk pool.
-> This is the live arc for the frontend. Sections below are the program
-> spec; a per-phase status ledger is appended at the bottom as work ships.
+> **Wave 2 batch 5 shipped (35/55 scaffold lenses): Earth/environmental &
+> public-safety science, all 9 lenses complete** — geology, ocean,
+> forestry, energy, mining, desert, urban-planning, defense,
+> emergency-services. Every one of the 9 carried the same defect shape:
+> real, deep bespoke components (often 20-30+ real macros already
+> surfaced) sitting behind a disconnected generic-CRUD tab layer with
+> fabricated stats — a hardcoded `'4.2m'` average-response-time string in
+> `emergency-services`, a meaningless "Security Score" in `defense`, an
+> always-identical geologic time-scale table in `geology`, species counts
+> computed as `Math.floor(x*n) || <fallback>` in `ocean`. One sub-agent
+> run got confused and produced no work at all (reported "waiting for
+> other agents" without touching its assigned files) — caught by checking
+> `git status` before trusting the completion signal, and re-dispatched
+> successfully. **`PR #853` is open**, tracking all of this work against
+> `main`. Remaining: 20 lenses across Dev-tool/sim-console (9), Docs/B2B
+> SaaS (11), then Wave 3's ~192-lens risk pool. This is the live arc for
+> the frontend. Sections below are the program spec; a per-phase status
+> ledger is appended at the bottom as work ships.
 
 ## Full-App-Parity amendment (2026-07-09)
 
@@ -355,6 +368,9 @@ to have):
 
 | Date | Phase | What shipped | Commit |
 |---|---|---|---|
+| 2026-07-09 | Wave 2 batch 5 | urban-planning + defense + emergency-services rebuilt — Earth/environmental science archetype complete (9/9). emergency-services was the batch's worst offender: 7 of 9 tabs ran on a fake generic-CRUD store, two of its "types" didn't exist in the domain at all (always-empty tabs), and the average-response stat was a literal hardcoded `'4.2m'` string. A first sub-agent attempt at this unit got confused and produced zero real work before reporting done — caught via `git status` (no urban-planning/defense/emergency-services changes existed) and re-dispatched fresh. | `895e7837` |
+| 2026-07-09 | Wave 2 batch 5 | geology + ocean + forestry rebuilt — each had 24-33 real backend macros (live USGS/NOAA/InciWeb/NIFC/Macrostrat/GBIF data) already surfaced through solid bespoke components, sitting behind a disconnected generic-CRUD tab layer plus one outright-fabricated panel per lens (an unvarying geologic time-scale table, ocean species counts as `Math.floor(x*n) \|\| <fallback>`, a fake "Avg Health Score"). | `b95a9445` |
+| 2026-07-09 | Wave 2 batch 5 | energy + mining + desert rebuilt — mining needed zero new backend surfacing (all 24 macros already had real designed callers) but carried a fake 8-tab CRUD duplicate including a wholly fabricated "Environmental" tab; desert had 8 of 14 tabs fake, including a stat mislabeled "Species Cataloged" that was actually counting resource nodes. | `f76cffc7` |
 | 2026-07-09 | Shared-component fix | `ManifestActionBar`/`UniversalActions`/`LensActionBar` stop faking success — blind no-parameter macro calls no longer toast "ok" when the response is empty, and permanently-disabled buttons now say why. Fixes the interim honesty of ~150 not-yet-rebuilt lenses without a blanket strip (their real fix is still the per-lens rebuild). | `cf773c87` |
 | 2026-07-09 | Wave 2 batch 4 | astronomy, space, chem, bio, lab, materials rebuilt — Space/lab science archetype complete (6/6). chem fixed a reaction-chamber bug where every logged reaction rendered "Failed" (no `success` flag was ever set) and replaced a hardcoded periodic table + reaction list with the real Gaussian-elimination `balanceReaction` solver; bio killed a fabricated "Active Experiments" status list and a fabricated always-identical taxonomy tree, retiring a disconnected generic-CRUD organism store in favor of the real `profile-organism` macro. astronomy found the same self-inflicted honest-grader false positive as the earlier veterinary case (a doc comment naming retired components in literal JSX-tag syntax); bio's `LensFeaturePanel` was genuinely still mounted, not a false positive, and was retired for real. Two of the six lenses (astronomy, chem+bio) were left mid-rebuild by a container restart — recovered by reading each diff for coherence before finishing/committing, same discipline as the batch-3 restart recovery. | `7a25b240` |
 | 2026-07-09 | Wave 2 batch 3 | pets + veterinary rebuilt — pets killed a fabricated CRUD library disconnected from real health records (same defect class as supplychain/parenting); veterinary found and fixed a self-inflicted false positive where its own doc comment's literal JSX-tag syntax retriggered the honest grader's scaffold detector. Health/life-sim archetype (3-4/4) and Wave 2 batch 3 fully complete (8 lenses). | `cd6bd181` |
