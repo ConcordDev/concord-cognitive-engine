@@ -39,11 +39,22 @@
 > run got confused and produced no work at all (reported "waiting for
 > other agents" without touching its assigned files) — caught by checking
 > `git status` before trusting the completion signal, and re-dispatched
-> successfully. **`PR #853` is open**, tracking all of this work against
-> `main`. Remaining: 20 lenses across Dev-tool/sim-console (9), Docs/B2B
-> SaaS (11), then Wave 3's ~192-lens risk pool. This is the live arc for
-> the frontend. Sections below are the program spec; a per-phase status
-> ledger is appended at the bottom as work ships.
+> successfully. **Wave 2 batch 6 shipped (44/55 scaffold lenses): Dev-tool/
+> sim-console, all 9 lenses complete** — robotics, ml, offline, quantum,
+> fractal, neuro, metalearning, anon, fork. This batch skewed more subtle
+> than prior ones: robotics/ml/offline were already fully real (only the
+> dead generic-scaffold body needed removing), while quantum was already
+> complete against its IBM-Quantum-Composer parity target with nothing to
+> fix. The real defects that did exist were narrower — `metalearning`'s
+> frontend read `type`/`successRate` fields the backend doesn't return
+> (silently blanking every strategy badge), `fractal`/`neuro` each had
+> exactly 1-3 backend macros with zero UI hiding behind an otherwise-solid
+> page, and `fork`'s one broken panel produced a fabricated-looking "87 ·
+> healthy" fork-health score from missing-field defaults. **`PR #853` is
+> open**, tracking all of this work against `main`. Remaining: 11 lenses
+> in Docs/B2B SaaS, then Wave 3's ~192-lens risk pool. This is the live
+> arc for the frontend. Sections below are the program spec; a per-phase
+> status ledger is appended at the bottom as work ships.
 
 ## Full-App-Parity amendment (2026-07-09)
 
@@ -368,6 +379,9 @@ to have):
 
 | Date | Phase | What shipped | Commit |
 |---|---|---|---|
+| 2026-07-09 | Wave 2 batch 6 | metalearning + anon + fork rebuilt — Dev-tool/sim-console archetype complete (9/9). Subtler defects than most of the wave: metalearning's frontend read `type`/`successRate` fields the backend doesn't return (silently blanking badges, and a "type" dropdown that was discarded server-side); anon's privacy-compute macros were fed from a permanently-empty generic artifact store (dead-end buttons, not fake data); fork's one broken panel fabricated an "87 · healthy" fork-health score from missing-field defaults. | `f1bf9bfe` |
+| 2026-07-09 | Wave 2 batch 6 | quantum + fractal + neuro rebuilt — quantum was already fully complete against its IBM Quantum Composer parity target (confirmed, nothing to fix); fractal had 3 real analysis macros (fractalDimension/selfSimilarity/complexityMeasure) hidden behind a fake "Patterns" library where users hand-typed a depth/complexity number; neuro's one training macro had zero UI. Agent got cut off mid-wait on its own background tsc check — recovered by independently verifying and committing the already-complete work rather than re-dispatching. | `2694903a` |
+| 2026-07-09 | Wave 2 batch 6 | robotics + ml + offline rebuilt — all three were already fully real (every backend macro already had a designed caller); the only defect was the dead generic-scaffold body (`UniversalActions`/`LensFeaturePanel`) sitting on top with nothing domain-specific to add, since none of the three register `analyze`/`generate`/`suggest`. One real honesty gap found: ml's "Log epoch" button silently generated synthetic decay-curve metrics with no signal they weren't real — relabeled "Simulate epoch" + added a real manual-entry form. | `b3872388` |
 | 2026-07-09 | Wave 2 batch 5 | urban-planning + defense + emergency-services rebuilt — Earth/environmental science archetype complete (9/9). emergency-services was the batch's worst offender: 7 of 9 tabs ran on a fake generic-CRUD store, two of its "types" didn't exist in the domain at all (always-empty tabs), and the average-response stat was a literal hardcoded `'4.2m'` string. A first sub-agent attempt at this unit got confused and produced zero real work before reporting done — caught via `git status` (no urban-planning/defense/emergency-services changes existed) and re-dispatched fresh. | `895e7837` |
 | 2026-07-09 | Wave 2 batch 5 | geology + ocean + forestry rebuilt — each had 24-33 real backend macros (live USGS/NOAA/InciWeb/NIFC/Macrostrat/GBIF data) already surfaced through solid bespoke components, sitting behind a disconnected generic-CRUD tab layer plus one outright-fabricated panel per lens (an unvarying geologic time-scale table, ocean species counts as `Math.floor(x*n) \|\| <fallback>`, a fake "Avg Health Score"). | `b95a9445` |
 | 2026-07-09 | Wave 2 batch 5 | energy + mining + desert rebuilt — mining needed zero new backend surfacing (all 24 macros already had real designed callers) but carried a fake 8-tab CRUD duplicate including a wholly fabricated "Environmental" tab; desert had 8 of 14 tabs fake, including a stat mislabeled "Species Cataloged" that was actually counting resource nodes. | `f76cffc7` |
