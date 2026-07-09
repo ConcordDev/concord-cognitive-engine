@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+
+// ConnectionStatus now reads its polling cadence from useClientConfig()
+// (shell-diet: server-tunable poll interval, /api/config/client). Mocked to
+// the hook's own baked defaults per the tests/link-shell.test.tsx precedent
+// so the single `global.fetch` mock below stays scoped to the component's
+// own /api/brain/health check instead of also answering the config fetch.
+vi.mock('@/hooks/useClientConfig', () => ({
+  useClientConfig: () => ({ poll: { systemStatusMs: 30000, connectionStatusMs: 20000 } }),
+}));
+
 import { ConnectionStatus } from '@/components/common/ConnectionStatus';
 
 describe('ConnectionStatus', () => {
