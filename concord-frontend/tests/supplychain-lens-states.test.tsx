@@ -1,107 +1,61 @@
 /**
- * /lenses/supplychain — four-UX-state contract for the Supply Chain lens.
+ * /lenses/supplychain — four-UX-state contract for the Supply Chain
+ * Control Tower lens (Frontend Rebuild Program, Wave 2 rebuild).
  *
- * Pins that the lens renders genuine loading / error (with a WORKING Retry) /
- * empty (CTA) / populated states against its real backend channel: the artifact
- * list (useLensData('supplychain', type) → GET /api/lens/supplychain), and that
- * the compute-action runner is constructed on the 'supplychain' domain (a
- * regression to any other id resolves to NO backend receiver).
+ * The rebuild retired a generic multi-artifact-type CRUD library
+ * (PurchaseOrder/Supplier/InventoryItem/... backed by fabricated DTU
+ * artifacts unrelated to the real `supplychain` macros) that used to be
+ * this lens's PRIMARY surface. This test file previously pinned that
+ * generic library's four UX states; it now pins the same four states
+ * against the REAL surface that replaced it — `SupplyChainOverview`, the
+ * default "Overview" destination, which aggregates four live macro calls
+ * (shipmentList / networkGraph / workOrderList / exceptionScan) via
+ * `lensRun('supplychain', ...)`.
  *
- * a11y: loading is role=status, error is role=alert with a Retry that RE-FETCHES
- * (we assert refetch fires). This closes the swallowed-fetch → silent-empty
- * defect: a failed supplychain feed surfaces role=alert + Retry, not a blank
- * "no items" page. No fabricated data — every state is driven by a mocked
- * useLensData standing in for the real backend in the exact shape it returns.
- * The heavy planner/action children (SupplyChainPlanner / SupplyChainActionPanel /
- * SupplyChainFeed) carry their own macro coverage in
- * server/tests/supplychain-lens-macros.test.js and are inert here.
+ * a11y: loading is role=status, error is role=alert (with the real error
+ * message surfaced, not swallowed), empty is a real `EmptyState` CTA that
+ * jumps to the Control Tower destination, populated renders real KPI tile
+ * values sourced from the mocked macro results. No fabricated data —
+ * every state is driven by a mocked `lensRun` standing in for the real
+ * backend in the exact shape it returns. The heavy Control Tower /
+ * Scorecards / Industry Pulse children (SupplyChainPlanner /
+ * SupplyChainActionPanel / SupplyChainFeed) carry their own macro coverage
+ * in server/tests/supplychain-lens-macros.test.js and are inert here.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import React from 'react';
 
-// ── main list channel: useLensData (controls loading/error/empty/populated) ──
-const lensDataState: {
-  items: unknown[];
-  isLoading: boolean;
-  isError: boolean;
-  error: Error | null;
-} = { items: [], isLoading: false, isError: false, error: null };
-const refetch = vi.fn();
-
-// ── compute-action channel: useRunArtifact mutate ───────────────────────────
-const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
-const useRunArtifactSpy = vi.fn();
-
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  useLensData: () => ({
-    items: lensDataState.items,
-    total: lensDataState.items.length,
-    isLoading: lensDataState.isLoading,
-    isError: lensDataState.isError,
-    error: lensDataState.error,
-    isSeeding: false,
-    refetch,
-    create: vi.fn(() => Promise.resolve({})),
-    update: vi.fn(() => Promise.resolve({})),
-    remove: vi.fn(() => Promise.resolve({})),
-    createMut: { isPending: false },
-    updateMut: { isPending: false },
-    deleteMut: { isPending: false },
-  }),
-}));
-
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: (domain: string) => {
-    useRunArtifactSpy(domain);
-    return { mutateAsync: (...a: unknown[]) => runMutate(...a), isPending: false };
-  },
-}));
+// ── the single real data channel this page depends on: lensRun ─────────────
+type LensRunImpl = (domain: string, action: string, input?: unknown) => Promise<{ data: { ok: boolean; result?: unknown; error?: string } }>;
+const lensRunMock = vi.fn<Parameters<LensRunImpl>, ReturnType<LensRunImpl>>();
 
 vi.mock('@/lib/api/client', () => ({
   api: { get: vi.fn(() => Promise.resolve({ data: null })), post: vi.fn(() => Promise.resolve({ data: {} })), delete: vi.fn(() => Promise.resolve({ data: {} })) },
   apiHelpers: { lens: { runDomain: vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } })) } },
-  lensRun: vi.fn(() => Promise.resolve({ data: { ok: true, result: null } })),
+  lensRun: (...args: Parameters<LensRunImpl>) => lensRunMock(...args),
   isForbidden: () => false,
 }));
 
-vi.mock('@/hooks/useRealtimeLens', () => ({
-  useRealtimeLens: () => ({ latestData: null, isLive: false, lastUpdated: null, insights: [] }),
-}));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
-// ── headless chrome + heavy side panels: render-only / inert stubs ──────────
+// ── headless chrome + heavy destination panels: render-only / inert stubs ──
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
-vi.mock('@/components/lens/DraftedTextarea', () => ({ DraftedTextarea: () => null }));
-vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
-vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
-vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-vi.mock('@/components/lens/LensVerticalHero', () => ({ LensVerticalHero: () => null }));
-vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
-vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
-vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
-vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 // heavy supplychain children (their own backend macros are covered by the
-// supplychain server test) → inert here.
+// supplychain server test) → inert here; the Overview destination (default
+// on mount) is the one under test.
 vi.mock('@/components/supplychain/SupplyChainFeed', () => ({ SupplyChainFeed: () => null }));
 vi.mock('@/components/supplychain/SupplyChainActionPanel', () => ({ SupplyChainActionPanel: () => null }));
 vi.mock('@/components/supplychain/SupplyChainPlanner', () => ({ SupplyChainPlanner: () => null }));
 vi.mock('@/components/panel-polish', () => ({
   PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
-}));
-// framer-motion: render plain elements so animated nodes mount synchronously.
-vi.mock('framer-motion', () => ({
-  motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
 }));
 vi.mock('lucide-react', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -118,65 +72,77 @@ vi.mock('lucide-react', async (importOriginal) => {
 
 import SupplyChainLensPage from '@/app/lenses/supplychain/page';
 
-const ORDER = {
-  id: 'art_1',
-  title: 'Q1 steel order',
-  data: { name: 'Q1 steel order', type: 'PurchaseOrder', status: 'in_transit', description: '50t rebar', notes: '', supplier: 'Acme Steel', totalCost: 18500 },
-  meta: { tags: [], status: 'in_transit', visibility: 'private' },
-  createdAt: '2026-06-27', updatedAt: '2026-06-27', version: 1,
+function neverResolves() {
+  return new Promise<never>(() => {});
+}
+
+const EMPTY_RESULTS: Record<string, unknown> = {
+  shipmentList: { shipments: [], inTransit: 0, delivered: 0, delayed: 0 },
+  networkGraph: { counts: { supplier: 0, factory: 0, warehouse: 0, customer: 0 }, edgeCount: 0, criticalLeadTime: 0 },
+  workOrderList: { openValue: 0, overdueCount: 0, workOrders: [] },
+  exceptionScan: { critical: 0, warning: 0, alerts: [] },
 };
 
+const POPULATED_RESULTS: Record<string, unknown> = {
+  shipmentList: { shipments: [{ id: 's1' }, { id: 's2' }, { id: 's3' }], inTransit: 3, delivered: 1, delayed: 1 },
+  networkGraph: { counts: { supplier: 1, factory: 0, warehouse: 1, customer: 1 }, edgeCount: 2, criticalLeadTime: 14 },
+  workOrderList: { openValue: 500, overdueCount: 1, workOrders: [{ id: 'wo1' }] },
+  exceptionScan: { critical: 1, warning: 2, alerts: [{ id: 'a1', severity: 'critical', kind: 'late_shipment', message: 'Shipment SHP-1 is 6d late', detail: 'carrier DHL' }] },
+};
+
+function mockResolveWith(results: Record<string, unknown>) {
+  lensRunMock.mockImplementation((_domain, action) =>
+    Promise.resolve({ data: { ok: true, result: results[action] } }));
+}
+
 beforeEach(() => {
-  lensDataState.items = [];
-  lensDataState.isLoading = false;
-  lensDataState.isError = false;
-  lensDataState.error = null;
-  refetch.mockReset();
-  runMutate.mockClear();
-  useRunArtifactSpy.mockClear();
-  window.localStorage.clear();
+  lensRunMock.mockReset();
 });
 
-describe('supplychain lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the supplychain domain', () => {
+describe('supplychain lens — four UX states (Control Tower Overview)', () => {
+  it('WIRING: the overview dispatches real macros on the supplychain domain', async () => {
+    mockResolveWith(EMPTY_RESULTS);
     render(<SupplyChainLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('supplychain');
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalled());
+    const domains = lensRunMock.mock.calls.map((c) => c[0]);
+    expect(domains.every((d) => d === 'supplychain')).toBe(true);
+    const actions = lensRunMock.mock.calls.map((c) => c[1]);
+    expect(actions).toEqual(expect.arrayContaining(['shipmentList', 'networkGraph', 'workOrderList', 'exceptionScan']));
   });
 
-  it('LOADING: an in-flight feed shows a role=status indicator', async () => {
-    lensDataState.isLoading = true;
+  it('LOADING: an in-flight overview shows a role=status indicator', async () => {
+    lensRunMock.mockImplementation(() => neverResolves());
     const { container } = render(<SupplyChainLensPage />);
     await waitFor(() => expect(container.querySelector('[role="status"]')).toBeTruthy());
   });
 
-  it('EMPTY: an empty feed shows the honest "No … items yet" CTA', async () => {
-    lensDataState.items = [];
-    const { getByText } = render(<SupplyChainLensPage />);
-    await waitFor(() => expect(getByText(/No .* items yet/i)).toBeInTheDocument());
-    // the CTA is a real create affordance, not a dead label
-    expect(getByText(/Create First/i)).toBeInTheDocument();
+  it('EMPTY: an empty control tower shows the honest empty-state CTA (not fabricated data)', async () => {
+    mockResolveWith(EMPTY_RESULTS);
+    const { getByText, getAllByText } = render(<SupplyChainLensPage />);
+    await waitFor(() => expect(getByText(/control tower is empty/i)).toBeInTheDocument());
+    // the CTA is a real navigation affordance into the Control Tower destination
+    // (it appears both in the empty-state CTA and the quick-link card below).
+    expect(getAllByText(/Open Control Tower/i).length).toBeGreaterThan(0);
   });
 
-  it('ERROR: a failed feed shows role=alert + a working Retry that re-fetches (not a silent empty page)', async () => {
-    lensDataState.isError = true;
-    lensDataState.error = new Error('supplychain store offline');
-    const { container, getByText } = render(<SupplyChainLensPage />);
+  it('ERROR: a failed macro call shows role=alert with the real error (not a silent empty page)', async () => {
+    lensRunMock.mockImplementation(() => Promise.reject(new Error('supplychain store offline')));
+    const { container, getByText, queryByText } = render(<SupplyChainLensPage />);
 
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
     expect(getByText(/supplychain store offline/i)).toBeInTheDocument();
-    // a silent-empty page would show the "No … items yet" CTA instead — it must NOT.
-    expect(() => getByText(/No .* items yet/i)).toThrow();
-
-    // Retry must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Try again')); });
-    await waitFor(() => expect(refetch).toHaveBeenCalled());
+    // a silent-empty page would show the empty-state CTA instead — it must NOT.
+    expect(queryByText(/control tower is empty/i)).toBeNull();
   });
 
-  it('POPULATED: a real order artifact renders with its title + cost', async () => {
-    lensDataState.items = [ORDER];
+  it('POPULATED: real shipment/network/PO/exception counts render as KPI tiles', async () => {
+    mockResolveWith(POPULATED_RESULTS);
     const { getByText, getAllByText } = render(<SupplyChainLensPage />);
-    await waitFor(() => expect(getByText('Q1 steel order')).toBeInTheDocument());
-    // the real cost from the artifact renders (the item row shows $18,500)
-    expect(getAllByText(/\$18,500/).length).toBeGreaterThan(0);
+    // Shipments-in-transit tile: real value 3 from the mocked shipmentList.
+    await waitFor(() => expect(getAllByText('3').length).toBeGreaterThan(0));
+    // Open PO value tile: real $500 from the mocked workOrderList.
+    expect(getAllByText(/\$500/).length).toBeGreaterThan(0);
+    // Live exceptions panel renders the real alert message.
+    expect(getByText(/Shipment SHP-1 is 6d late/i)).toBeInTheDocument();
   });
 });
