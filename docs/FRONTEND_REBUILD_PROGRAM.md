@@ -1,13 +1,19 @@
 # Frontend Rebuild Program — "Lenses Become Real Apps"
 
 > **🟢 STATUS (2026-07-09): Phases 0-2 shipped, Phase 3 Wave 1 6/10 shipped,
-> Wave-1 test regressions fixed, Phase 0.5 (connection stability) shipped.**
-> The bar was raised the same day (see "Full-App-Parity amendment" below) —
-> every lens from Wave 0 onward must also close a researched feature-parity
-> checklist against a real best-in-class reference app, not just pass the
-> structural rebuild loop. Wave 0 (music gap-closure + courtship finish-the-
-> wire + lfg/photos/quests verify-pass) is in flight. This is the live arc
-> for the frontend. Sections below are the program spec; a per-phase status
+> Wave-1 test regressions fixed, Phase 0.5 (connection stability) shipped,
+> Wave 0 (a/b/c) shipped.** The bar was raised the same day (see
+> "Full-App-Parity amendment" below) — every lens from Wave 0 onward must
+> also close a researched feature-parity checklist against a real
+> best-in-class reference app, not just pass the structural rebuild loop.
+> Wave 0a (music, the flagship proof unit — all 7 gaps closed), 0b
+> (courtship finish-the-wire), and 0c (lfg/photos/quests verify-pass, found
+> + fixed real gaps in photos and quests) are all shipped and independently
+> re-verified — full frontend (550/550 files) + backend (26,796 tests) suite
+> swept clean afterward, surfacing and fixing 2 more real a11y issues
+> (keyboard-inaccessible modal backdrops in music + announcements) along the
+> way. Wave 2 (55 scaffold lenses by archetype) is next. This is the live
+> arc for the frontend. Sections below are the program spec; a per-phase status
 > ledger is appended at the bottom as work ships.
 
 ## Full-App-Parity amendment (2026-07-09)
@@ -333,6 +339,13 @@ to have):
 
 | Date | Phase | What shipped | Commit |
 |---|---|---|---|
+| 2026-07-09 | Wave 0 sweep | Post-Wave-0 full-suite run (550/550 frontend files, 26,796 backend tests) found + fixed 3 real regressions: 2 keyboard-inaccessible modal backdrops (music's new track-detail modal, announcements' compose panel — both `<div onClick>` with no keyboard equivalent, a real a11y gap the honest grader's anti-pattern check correctly caught) and one stale structural test (production-sprint.test.js grepped fishing's page.tsx source for text that Wave 1 legitimately moved into a sub-component). One unrelated, pre-existing seed-data manifest count drift left untouched (out of this program's scope). | `3add505c` |
+| 2026-07-09 | Wave 0c | quests verify-pass — found a real gap: the Completed tab was structurally dead (the underlying query can never return a completed quest) and `quests.claimRewards` had zero frontend callers; both fixed with a new `quests.completed` macro + a real Claim-rewards button | `7587d245` |
+| 2026-07-09 | Wave 0a | Music lens — all 7 Apple Music parity gaps closed (the flagship proof unit for the new reference-parity rubric): retired the generic-strip duplicate, collaborative playlists, jam-sync, queue play-next/clear/reorder, 3 zero-caller macros wired, device-transfer honestly relabeled, music.feed New Releases surfaced | `82eb753b` |
+| 2026-07-09 | Wave 0c | photos verify-pass — found a real gap: the gallery stored and served every other photo verb correctly but no route ever served the image bytes back to a browser; fixed with a new image route + real `<img>` render | `3599a04d` |
+| 2026-07-09 | Wave 0b | courtship — wired the 2 orphaned WIP files from `07e0e660` (HeartEventModal, pregnancy-cache) into the real page | `25e58421` |
+| 2026-07-09 | Wave 0c | lfg verify-pass — confirmed clean, no rebuild needed | `ca7f7001` |
+| 2026-07-09 | — | Amended the program doc with the Full-App-Parity phase (step 1.5 reference-parity checklist, extended verify gate, Wave 0/2/3 sequencing) | `e6299c82` |
 | 2026-07-09 | 0.5 | Connection stability — dev socket-URL default fix, prod polling opt-in env var, deploy-topology README note | `bf5c2345` |
 | 2026-07-09 | 3 (Wave 1 fix) | Repaired 4 pre-existing test files broken by the Wave 1 achievements/garage/fishing rebuilds (raw-`fetch` mocks vs the real `lensRun` macro dispatch the rebuilds correctly moved to); found + fixed a real crash (`useSearchParams()` can return `null`) and a real UX defect (a raw `"catalog 500"` string shown to users) surfaced by the fix. Full suite re-verified clean: 550/550 files, 4703/4703 tests, net of one previously-flaky unrelated file. | `c265510b` |
 | 2026-07-09 | 3 (Wave 1) | courtship: partial capability-audit artifacts only, NOT integrated — agent hit the session token limit mid-run before touching page.tsx. Retry needed. | `07e0e660` |
