@@ -1,76 +1,44 @@
 /**
- * /lenses/pharmacy — four-UX-state contract for the Pharmacy lens.
+ * /lenses/pharmacy — rebuilt destination shell (Frontend Rebuild Program,
+ * Wave 2, Health/life-sim archetype).
  *
- * Pins that the lens renders genuine loading / error (with a WORKING Retry) /
- * empty (CTA) / populated states against its real backend channel: the
- * medication artifact list (useLensData('pharmacy', 'medication') →
- * GET /api/lens/pharmacy), and that the compute-action runner is constructed on
- * the 'pharmacy' domain (a regression to any other id resolves to NO receiver).
+ * Supersedes the pre-rebuild version of this file, which pinned the old
+ * page's FAKE medication/interaction CRUD (`useLensData('pharmacy',
+ * 'medication'|'interaction')` — a disconnected generic DTU-artifact model
+ * that had zero relationship to the real `pharmacy` macros). That system,
+ * the duplicate "Pharmacy Analysis Engine" panel, and the generic-scaffold
+ * trio (ManifestActionBar/AutoActionStrip/RecentMineCard/
+ * CrossLensRecentsPanel) were retired in the rebuild — see
+ * docs/lens-specs/pharmacy-capability-map.md.
  *
- * a11y: loading is role=status, error is role=alert with a Retry that RE-FETCHES
- * (we assert refetch fires). This closes the swallowed-fetch → silent-empty
- * defect: a failed pharmacy feed now surfaces role=alert + Retry, not a blank
- * "no meds" page — which, for a dosing/interaction tool, is a safety regression.
- * No fabricated data: every state is driven by a mocked useLensData standing in
- * for the real backend in the exact shape it returns.
+ * This test pins the new primary surface instead: a 4-destination shell
+ * (Overview / My Meds / Drug Reference & Safety / Rx Bench) whose Overview
+ * destination drives real loading/error/empty/populated states off
+ * `pharmacy.pharmacy-dashboard` via `useMacroDispatchFeedback` — a real
+ * macro dispatch, not a fabricated artifact list.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, fireEvent, waitFor, screen, within } from '@testing-library/react';
 import React from 'react';
 
-// ── main list channel: useLensData (controls loading/error/empty/populated) ──
-const lensDataState: {
-  items: Array<Record<string, unknown>>;
-  isLoading: boolean;
-  isError: boolean;
-  error: Error | null;
-} = { items: [], isLoading: false, isError: false, error: null };
-const refetch = vi.fn();
+const dispatchMock = vi.fn();
+const dispatchState: {
+  status: 'idle' | 'dispatched' | 'running' | 'done' | 'error';
+  result: Record<string, unknown> | null;
+  error: string | null;
+} = { status: 'idle', result: null, error: null };
 
-// ── compute-action channel: useRunArtifact mutate ───────────────────────────
-const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
-const useRunArtifactSpy = vi.fn();
-
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  // The page calls useLensData('pharmacy', 'medication', {seed:[]}) AND
-  // useLensData('pharmacy', 'interaction', {seed:[]}). The first controls the
-  // medication feed states; the second is always empty here.
-  useLensData: (_domain: string, type: string) => {
-    if (type === 'medication') {
-      return {
-        items: lensDataState.items,
-        total: lensDataState.items.length,
-        isLoading: lensDataState.isLoading,
-        isError: lensDataState.isError,
-        error: lensDataState.error,
-        isSeeding: false,
-        refetch,
-        create: vi.fn(() => Promise.resolve({})),
-        update: vi.fn(() => Promise.resolve({})),
-        remove: vi.fn(() => Promise.resolve({})),
-        createMut: { isPending: false },
-        updateMut: { isPending: false },
-        deleteMut: { isPending: false },
-      };
-    }
-    return {
-      items: [], total: 0, isLoading: false, isError: false, error: null, isSeeding: false,
-      refetch: vi.fn(), create: vi.fn(() => Promise.resolve({})), update: vi.fn(), remove: vi.fn(),
-      createMut: { isPending: false }, updateMut: { isPending: false }, deleteMut: { isPending: false },
-    };
-  },
-}));
-
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: (domain: string) => {
-    useRunArtifactSpy(domain);
-    return { mutateAsync: (...a: unknown[]) => runMutate(...a), isPending: false };
-  },
-}));
-
-vi.mock('@/hooks/useRealtimeLens', () => ({
-  useRealtimeLens: () => ({ latestData: null, isLive: false, lastUpdated: null, insights: [] }),
+vi.mock('@/hooks/useMacroDispatchFeedback', () => ({
+  useMacroDispatchFeedback: () => ({
+    status: dispatchState.status,
+    runId: null, domain: null, action: null,
+    result: dispatchState.result,
+    error: dispatchState.error,
+    ms: null, stage: null,
+    dispatch: dispatchMock,
+    reset: vi.fn(),
+  }),
 }));
 
 vi.mock('@/lib/api/client', () => ({
@@ -80,42 +48,30 @@ vi.mock('@/lib/api/client', () => ({
   isForbidden: () => false,
 }));
 
-// ── headless chrome + heavy side panels: render-only / inert stubs ──────────
+// ── headless chrome: render-only / inert stubs ──────────────────────────────
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
-vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
-vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
 vi.mock('@/components/lens/LensFeedButton', () => ({ LensFeedButton: () => null }));
-vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
-vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
-vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
 vi.mock('@/components/lens/DraftedTextarea', () => ({ DraftedTextarea: () => null }));
+vi.mock('@/components/ui/DensityToggle', () => ({ DensityToggle: () => null }));
 // heavy pharmacy children (their own backend macros are covered by the
-// pharmacy-lens-macros server test) → inert here.
-vi.mock('@/components/pharmacy/PharmacyRxSection', () => ({ PharmacyRxSection: () => null }));
-vi.mock('@/components/pharmacy/FdaDrugReference', () => ({ FdaDrugReference: () => null }));
-vi.mock('@/components/pharmacy/FdaLivePanel', () => ({ FdaLivePanel: () => null }));
-vi.mock('@/components/pharmacy/PharmacyActionPanel', () => ({ PharmacyActionPanel: () => null }));
+// pharmacy-lens-macros server test and each component's own test) → inert here.
+vi.mock('@/components/pharmacy/PharmacyRxSection', () => ({ PharmacyRxSection: () => React.createElement('div', { 'data-testid': 'rx-section' }, 'RxSection') }));
+vi.mock('@/components/pharmacy/FdaDrugReference', () => ({ FdaDrugReference: () => React.createElement('div', { 'data-testid': 'fda-reference' }, 'FdaDrugReference') }));
+vi.mock('@/components/pharmacy/FdaLivePanel', () => ({ FdaLivePanel: () => React.createElement('div', { 'data-testid': 'fda-live' }, 'FdaLivePanel') }));
+vi.mock('@/components/pharmacy/RxFormularyToolsPanel', () => ({ RxFormularyToolsPanel: () => React.createElement('div', { 'data-testid': 'formulary-tools' }, 'FormularyTools') }));
+vi.mock('@/components/pharmacy/PharmacyActionPanel', () => ({ PharmacyActionPanel: () => React.createElement('div', { 'data-testid': 'action-panel' }, 'ActionPanel') }));
 vi.mock('@/components/panel-polish', () => ({
   PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
   usePipe: () => ({ publish: vi.fn() }),
   useRecallableAction: () => ({ run: vi.fn() }),
   RecallSlot: () => null,
-}));
-// framer-motion: render plain elements so animated nodes mount synchronously.
-vi.mock('framer-motion', () => ({
-  motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
 }));
 vi.mock('lucide-react', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -132,65 +88,82 @@ vi.mock('lucide-react', async (importOriginal) => {
 
 import PharmacyLensPage from '@/app/lenses/pharmacy/page';
 
-const MEDICATION = {
-  id: 'art_med_1',
-  title: 'Atorvastatin',
-  data: { name: 'Atorvastatin', dosage: '20mg', frequency: 'daily', route: 'oral', status: 'active', refillsLeft: 3 },
-  meta: { tags: [], status: 'active', visibility: 'private' },
-  createdAt: '2026-06-27', updatedAt: '2026-06-27', version: 1,
-};
-
 beforeEach(() => {
-  lensDataState.items = [];
-  lensDataState.isLoading = false;
-  lensDataState.isError = false;
-  lensDataState.error = null;
-  refetch.mockReset();
-  runMutate.mockClear();
-  useRunArtifactSpy.mockClear();
-  window.localStorage.clear();
+  dispatchState.status = 'idle';
+  dispatchState.result = null;
+  dispatchState.error = null;
+  dispatchMock.mockReset();
 });
 
-describe('pharmacy lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the pharmacy domain', () => {
+describe('pharmacy lens — destination shell', () => {
+  it('renders the safety disclaimer and 4-destination nav (no fake medication/interaction CRUD tabs)', () => {
     render(<PharmacyLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('pharmacy');
+    expect(screen.getByText(/Not medical or pharmaceutical advice/i)).toBeInTheDocument();
+    const nav = within(screen.getByRole('navigation', { name: /Pharmacy destinations/i }));
+    expect(nav.getByRole('button', { name: /Overview/i })).toBeInTheDocument();
+    expect(nav.getByRole('button', { name: /My Meds/i })).toBeInTheDocument();
+    expect(nav.getByRole('button', { name: /Drug Reference & Safety/i })).toBeInTheDocument();
+    expect(nav.getByRole('button', { name: /Rx Bench/i })).toBeInTheDocument();
+    // the retired fake tabs must not be present
+    expect(screen.queryByText(/No medications tracked yet\. Add one/i)).not.toBeInTheDocument();
   });
 
-  it('LOADING: an in-flight feed shows a role=status indicator', async () => {
-    lensDataState.isLoading = true;
+  it('OVERVIEW LOADING: shows a role=status indicator while the dashboard macro is in flight', () => {
+    dispatchState.status = 'dispatched';
     const { container } = render(<PharmacyLensPage />);
-    await waitFor(() => expect(container.querySelector('[role="status"]')).toBeTruthy());
+    expect(container.querySelector('[role="status"]')).toBeTruthy();
   });
 
-  it('EMPTY: an empty feed shows the honest "No medications tracked yet" + Add Medication CTA', async () => {
-    lensDataState.items = [];
-    const { getByText } = render(<PharmacyLensPage />);
-    await waitFor(() => expect(getByText(/No medications tracked yet/i)).toBeInTheDocument());
-    // the CTA is a real create affordance, not a dead label
-    expect(getByText(/Add Medication/i)).toBeInTheDocument();
-  });
-
-  it('ERROR: a failed feed shows role=alert + a working Retry that re-fetches (not a silent empty page)', async () => {
-    lensDataState.isError = true;
-    lensDataState.error = new Error('pharmacy store offline');
+  it('OVERVIEW ERROR: shows role=alert with a working Retry that re-dispatches', async () => {
+    dispatchState.status = 'error';
+    dispatchState.error = 'pharmacy store offline';
     const { container, getByText } = render(<PharmacyLensPage />);
-
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
     expect(getByText(/pharmacy store offline/i)).toBeInTheDocument();
-    // a silent-empty page would show the "No medications tracked yet" message instead — it must NOT.
-    expect(() => getByText(/No medications tracked yet/i)).toThrow();
-
-    // Retry must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Retry')); });
-    await waitFor(() => expect(refetch).toHaveBeenCalled());
+    fireEvent.click(getByText('Retry'));
+    await waitFor(() => expect(dispatchMock).toHaveBeenCalledWith('pharmacy', 'pharmacy-dashboard', {}));
   });
 
-  it('POPULATED: a real medication artifact renders with its name + dosage', async () => {
-    lensDataState.items = [MEDICATION];
-    const { getAllByText, getByText } = render(<PharmacyLensPage />);
-    await waitFor(() => expect(getAllByText('Atorvastatin').length).toBeGreaterThan(0));
-    // the real dosage line from the artifact renders (med row: "20mg - daily - oral")
-    expect(getByText(/20mg/)).toBeInTheDocument();
+  it('OVERVIEW EMPTY: a real zero-medication dashboard shows the honest empty state + a real nav CTA', async () => {
+    dispatchState.status = 'done';
+    dispatchState.result = { medications: 0, todayDoses: { total: 0, taken: 0, pending: 0 }, adherence30d: null, refillsDue: 0, openRefillRequests: 0 };
+    render(<PharmacyLensPage />);
+    await waitFor(() => expect(screen.getByText(/No medications tracked yet/i)).toBeInTheDocument());
+    const cta = screen.getByRole('button', { name: /Go to My Meds/i });
+    fireEvent.click(cta);
+    await waitFor(() => expect(screen.getByTestId('rx-section')).toBeInTheDocument());
+  });
+
+  it('OVERVIEW POPULATED: a real dashboard result renders stat tiles', async () => {
+    dispatchState.status = 'done';
+    dispatchState.result = { medications: 3, todayDoses: { total: 4, taken: 2, pending: 2 }, adherence30d: 87, refillsDue: 1, openRefillRequests: 1 };
+    render(<PharmacyLensPage />);
+    await waitFor(() => expect(screen.getByText('3')).toBeInTheDocument());
+    expect(screen.getByText('2/4')).toBeInTheDocument();
+  });
+
+  it('NAV: switching to My Meds mounts the real PharmacyRxSection (med-list/dose-log/reminders/refills/prices/adherence workbench)', async () => {
+    render(<PharmacyLensPage />);
+    const nav = within(screen.getByRole('navigation', { name: /Pharmacy destinations/i }));
+    fireEvent.click(nav.getByRole('button', { name: /My Meds/i }));
+    await waitFor(() => expect(screen.getByTestId('rx-section')).toBeInTheDocument());
+  });
+
+  it('NAV: switching to Drug Reference & Safety mounts FdaDrugReference by default, with Browse/Recalls and Formulary tools sub-tabs', async () => {
+    render(<PharmacyLensPage />);
+    const nav = within(screen.getByRole('navigation', { name: /Pharmacy destinations/i }));
+    fireEvent.click(nav.getByRole('button', { name: /Drug Reference & Safety/i }));
+    await waitFor(() => expect(screen.getByTestId('fda-reference')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Browse & Recalls/i }));
+    await waitFor(() => expect(screen.getByTestId('fda-live')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Formulary & Inventory Tools/i }));
+    await waitFor(() => expect(screen.getByTestId('formulary-tools')).toBeInTheDocument());
+  });
+
+  it('NAV: switching to Rx Bench mounts the real PharmacyActionPanel (label/interactions/adverse/dose + mint/DM/publish/agent)', async () => {
+    render(<PharmacyLensPage />);
+    const nav = within(screen.getByRole('navigation', { name: /Pharmacy destinations/i }));
+    fireEvent.click(nav.getByRole('button', { name: /Rx Bench/i }));
+    await waitFor(() => expect(screen.getByTestId('action-panel')).toBeInTheDocument());
   });
 });
