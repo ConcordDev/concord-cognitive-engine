@@ -12,9 +12,18 @@
 > re-verified — full frontend (550/550 files) + backend (26,796 tests) suite
 > swept clean afterward, surfacing and fixing 2 more real a11y issues
 > (keyboard-inaccessible modal backdrops in music + announcements) along the
-> way. Wave 2 (55 scaffold lenses by archetype) is next. This is the live
-> arc for the frontend. Sections below are the program spec; a per-phase status
-> ledger is appended at the bottom as work ships.
+> way. **Wave 2 batches 1-3 shipped (20/55 scaffold lenses): Marketplace/
+> economy, Research/reference, Social/relationship, Creative/design-tool,
+> Maps/navigation, Health/life-sim, Reflection/knowledge-curation — all 7
+> smallest archetypes complete.** A container restart mid-batch-3 was
+> recovered cleanly (working tree + all commits survived; the 8 in-flight
+> lens rebuilds were individually re-verified against the live backend
+> before trusting/committing any of them — see the ledger). Remaining: 35
+> lenses across Space/lab science (6), Earth/environmental science (9),
+> Dev-tool/sim-console (9), Docs/B2B SaaS (11), then Wave 3's ~192-lens risk
+> pool. This is the live arc for the frontend. Sections below are the
+> program spec; a per-phase status ledger is appended at the bottom as work
+> ships.
 
 ## Full-App-Parity amendment (2026-07-09)
 
@@ -339,6 +348,14 @@ to have):
 
 | Date | Phase | What shipped | Commit |
 |---|---|---|---|
+| 2026-07-09 | Wave 2 batch 3 | pets + veterinary rebuilt — pets killed a fabricated CRUD library disconnected from real health records (same defect class as supplychain/parenting); veterinary found and fixed a self-inflicted false positive where its own doc comment's literal JSX-tag syntax retriggered the honest grader's scaffold detector. Health/life-sim archetype (3-4/4) and Wave 2 batch 3 fully complete (8 lenses). | `cd6bd181` |
+| 2026-07-09 | Wave 2 batch 3 | suffering rebuilt — resolved the flagged hardcoded fake confidence-score cards finding; confirmed a real 2-generation 22-macro "pain board" backend. Reflection/knowledge-curation archetype complete (4/4). | `d4d20536` |
+| 2026-07-09 | Wave 2 batch 3 | reflection rebuilt — confirmed a real naming collision (an unrelated emergent self-critique system shares the domain name); the 45-macro Day-One-parity journal substrate is 21/45 DESIGNED with the remaining 24 honestly disclosed as a named follow-up, not silently dropped. | `572e4e20` |
+| 2026-07-09 | Wave 2 batch 3 | grounding rebuilt — split two unrelated real backend systems (a Ground-News-parity fact-checker + an embodied sensor "reality anchor") that were conflated under one misleading UI; killed hardcoded fake confidence-score cards (97/94/88/91/93). | `a5716915` |
+| 2026-07-09 | Wave 2 batch 3 | philosophy rebuilt — killed a disconnected generic CRUD system + a dead 'analyze' action that silently round-tripped to nowhere; fixed a dishonest "Simulated" DepthBadge chip. | `ee3e2cd6` |
+| 2026-07-09 | Wave 2 batch 3 | parenting rebuilt — killed a fabricated CRUD library with user-typed diagnosis/medication/percentile fields; fixed a real integration bug where two quick-action buttons always computed against age 0 due to a param-shape mismatch. | `1aa3a939` |
+| 2026-07-09 | Wave 2 batch 3 | pharmacy rebuilt — killed a fake medication/interaction tracker + a duplicate analysis panel sitting next to an already-real GoodRx/Medisafe-parity component suite. Health/life-sim archetype (1/4). | `772e2fc4` |
+| 2026-07-09 | — | Container restart mid-Wave-2-batch-3 (4 background bash tasks killed; working tree + all prior commits survived intact). Recovered by verifying each of the 8 in-flight lens rebuilds individually against the live backend before committing — 3 had already sent completion reports (pharmacy/parenting/philosophy), 5 had not (pets/veterinary/reflection/grounding/suffering) and were independently audited for completeness before trusting them. Found and fixed one real cross-commit dependency gap (a `lib/api/client.ts` addition omitted from the grounding commit) and one self-inflicted grader false-positive (veterinary's own doc comment). | `4cd74efe` |
 | 2026-07-09 | — | chat lens fix (URGENT, user-flagged) — the message column was collapsing to ~150px because two always-rendered panels were flex-row siblings instead of drawer content; moved into a default-closed right-side drawer. Swept the 10 largest lens pages for the same bug class — isolated to chat, no other lens affected. | `0840de3a` |
 | 2026-07-09 | Wave 2 batch 2 | atlas rebuilt — 5 real fake-data/duplication findings (a dead compute panel, a broken search parsing the wrong response shape, a fabricated straight-line "ETA" presented as real routing, split duplicate places stores, triple duplicate search boxes). Maps/navigation archetype complete. | `1d147993` |
 | 2026-07-09 | Wave 2 batch 2 | travel rebuilt — deleted a duplicated fake trip-CRUD system; found 4 real invisible bugs where quick-tools sent/read backend fields that don't exist (every click returned ok:true while rendering undefined); wired the previously-unsurfaced budget-set macro. | `8858630a` |
