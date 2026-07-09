@@ -1,57 +1,48 @@
 'use client';
 
 /**
- * JournalActionPanel — Day One-shape action surface for the reflection
- * lens. Self-contained entry composer + actions wiring the 3 existing
- * reflection macros plus mint/DM/publish/agent.
+ * JournalActionPanel — "Quick Actions" surface for sharing a real,
+ * already-written journal entry: save it as a DTU, DM it to a friend,
+ * publish a sanitized gratitude DTU, or ask the agent for a prompt.
  *
- *   1. Insights        → reflection.insightExtraction (themes, mood,
- *                          patterns from the entry text)
- *   2. Growth          → reflection.growthMetrics (run against
- *                          recent entries; trend metric)
- *   3. Habits          → reflection.habitTracking (parse mentioned
- *                          habits; surface streaks)
- *   4. Save entry      → dtu.create private journal DTU
- *   5. DM to a friend  → /api/social/dm with the entry text
- *   6. Publish gratitude → public DTU + flag published (sanitized
+ * Previously this panel ALSO surfaced "Insights / Growth / Habits" buttons
+ * that called `reflection.insightExtraction` / `growthMetrics` /
+ * `habitTracking` with `{ entry, mood }` / `{ window, currentEntry }` /
+ * `{ entry }` — but those macros read `artifact.data.entries` /
+ * `artifact.data.habits` (plural arrays), so every call landed on the
+ * macro's honest "not enough data" branch, and the buttons rendered fields
+ * (`mood`, `patterns`, `takeaways`, `trends`, `summary`) that the real
+ * macro response never contains — a response shape that does not exist.
+ * That real, correctly-wired analysis now lives in `RfAnalyticsPanel`
+ * (Analytics tab), which pulls the user's actual saved entries via
+ * `entry-list` and calls the macros with the shape they expect. Removed
+ * here rather than duplicated.
+ *
+ *   1. Save entry      → dtu.create private journal DTU
+ *   2. DM to a friend  → /api/social/dm with the entry text
+ *   3. Publish gratitude → public DTU + flag published (sanitized
  *                          for federation pickup if user opts in)
- *   7. Prompt me (agent) → chat_agent.do "give me a thoughtful
+ *   4. Prompt me (agent) → chat_agent.do "give me a thoughtful
  *                          journaling prompt based on recent themes"
  */
 
 import { useState } from 'react';
 import {
-  PenLine, TrendingUp, Activity, Lightbulb,
-  Sparkles, Send, Globe, Wand2, Heart,
+  PenLine, Sparkles, Send, Globe, Wand2, Heart,
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
-async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
-  const r = await apiHelpers.lens.runDomain('reflection', action, { input });
-  const data = (r as { data?: { ok: boolean; result?: T } }).data;
-  if (!data) return { ok: false, error: 'empty response' };
-  if (data.ok && data.result && typeof data.result === 'object' && 'ok' in data.result) {
-    return data.result as MacroEnvelope<T>;
-  }
-  return data as MacroEnvelope<T>;
-}
-
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'insights' | 'growth' | 'habits' | 'save' | 'dm' | 'publish' | 'agent';
+type ActionId = 'save' | 'dm' | 'publish' | 'agent';
 
 function pickMessage(e: unknown): string {
   const ax = e as { response?: { data?: { error?: string } }; message?: string };
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
-
-interface InsightResult { themes?: string[]; mood?: string; patterns?: string[]; takeaways?: string[]; sentiment?: number }
-interface GrowthResult { trends?: Array<{ metric: string; value: number; delta?: number }>; summary?: string }
-interface HabitResult { habits?: Array<{ name: string; streak?: number; missedDays?: number }>; total?: number }
 
 export function JournalActionPanel() {
   const [entryTitle, setEntryTitle] = useState('');
@@ -62,9 +53,6 @@ export function JournalActionPanel() {
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
-  const [insightResult, setInsightResult] = useState<InsightResult | null>(null);
-  const [growthResult, setGrowthResult] = useState<GrowthResult | null>(null);
-  const [habitResult, setHabitResult] = useState<HabitResult | null>(null);
   const [savedDtuId, setSavedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentPrompt, setAgentPrompt] = useState<string | null>(null);
@@ -88,38 +76,6 @@ export function JournalActionPanel() {
     },
   });
 
-  async function actInsights() {
-    if (!ready) { err('Write the entry first.'); return; }
-    setBusy('insights'); setFeedback(null);
-    try {
-      const r = await callMacro<InsightResult>('insightExtraction', { entry: entryBody.trim(), mood });
-      if (r.ok && r.result) { setInsightResult(r.result); pipe.publish('reflection.insights', r.result, { label: `${r.result.themes?.length ?? 0} themes` }); ok('Insights extracted.'); }
-      else err(r.error ?? 'insights failed');
-    } catch (e) { err(pickMessage(e)); }
-    finally { setBusy(null); }
-  }
-
-  async function actGrowth() {
-    setBusy('growth'); setFeedback(null);
-    try {
-      const r = await callMacro<GrowthResult>('growthMetrics', { window: 'last_30_days', currentEntry: entryBody.trim() });
-      if (r.ok && r.result) { setGrowthResult(r.result); pipe.publish('reflection.growth', r.result, { label: `${r.result.trends?.length ?? 0} trends` }); ok('Growth metrics ready.'); }
-      else err(r.error ?? 'growth metrics failed');
-    } catch (e) { err(pickMessage(e)); }
-    finally { setBusy(null); }
-  }
-
-  async function actHabits() {
-    if (!ready) { err('Write the entry first.'); return; }
-    setBusy('habits'); setFeedback(null);
-    try {
-      const r = await callMacro<HabitResult>('habitTracking', { entry: entryBody.trim() });
-      if (r.ok && r.result) { setHabitResult(r.result); pipe.publish('reflection.habits', r.result, { label: `${r.result.habits?.length ?? 0} habits` }); ok(`${r.result.habits?.length ?? 0} habits parsed.`); }
-      else err(r.error ?? 'habits failed');
-    } catch (e) { err(pickMessage(e)); }
-    finally { setBusy(null); }
-  }
-
   async function actSave() {
     if (!ready) { err('Write the entry first.'); return; }
     setBusy('save'); setFeedback(null);
@@ -139,8 +95,6 @@ export function JournalActionPanel() {
               mood,
               title: entryTitle.trim(),
               entry: entryBody.trim(),
-              insights: insightResult,
-              habits: habitResult,
             },
           },
         },
@@ -192,8 +146,6 @@ export function JournalActionPanel() {
               gratitude: {
                 date: new Date().toISOString().slice(0, 10),
                 mood,
-                themes: insightResult?.themes ?? [],
-                takeaways: insightResult?.takeaways ?? [],
                 body: entryBody.trim().slice(0, 2000),
               },
             },
@@ -216,8 +168,7 @@ export function JournalActionPanel() {
     try {
       const task = [
         `Give me a single thoughtful journaling prompt for today's entry.`,
-        insightResult?.themes?.length ? `Recent themes: ${insightResult.themes.join(', ')}.` : '',
-        insightResult?.mood ? `Current mood: ${insightResult.mood}.` : `Today's mood: ${mood}.`,
+        `Today's mood: ${mood}.`,
         ``,
         `Return only the prompt - one or two sentences, plaintext, no preamble. Make it specific and unobvious.`,
       ].filter(Boolean).join(' ');
@@ -235,12 +186,9 @@ export function JournalActionPanel() {
   }
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
-    { id: 'insights', label: 'Insights',  desc: 'Themes / mood / patterns from this entry',         icon: Lightbulb, accent: '#eab308', handler: actInsights, disabled: !ready },
-    { id: 'growth',   label: 'Growth',    desc: 'Trend across last 30 days of entries',             icon: TrendingUp, accent: '#06b6d4', handler: actGrowth },
-    { id: 'habits',   label: 'Habits',    desc: 'Parse habits + streaks from entry',                icon: Activity, accent: '#8b5cf6', handler: actHabits, disabled: !ready },
-    { id: 'save',     label: savedDtuId      ? 'Saved'     : 'Save entry',       desc: savedDtuId      ? `DTU ${savedDtuId.slice(0, 8)}…`      : 'Private journal DTU (mood + insights)',           icon: Sparkles, accent: '#3b82f6', handler: actSave,    disabled: !ready || !!savedDtuId },
+    { id: 'save',     label: savedDtuId      ? 'Saved'     : 'Save entry',       desc: savedDtuId      ? `DTU ${savedDtuId.slice(0, 8)}…`      : 'Private journal DTU',           icon: Sparkles, accent: '#3b82f6', handler: actSave,    disabled: !ready || !!savedDtuId },
     { id: 'dm',       label: 'DM friend', desc: 'Share entry with a trusted user',                  icon: Send,     accent: '#ec4899', handler: actDm, disabled: !ready },
-    { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish gratitude', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Sanitized public DTU with themes + takeaways',     icon: Globe,    accent: '#22c55e', handler: actPublish, disabled: !ready || !!publishedDtuId },
+    { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish gratitude', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Sanitized public gratitude DTU',     icon: Globe,    accent: '#22c55e', handler: actPublish, disabled: !ready || !!publishedDtuId },
     { id: 'agent',    label: 'Prompt me', desc: 'Agent surfaces a specific journaling prompt',      icon: Wand2,    accent: '#f97316', handler: actAgent },
   ];
 
@@ -248,12 +196,15 @@ export function JournalActionPanel() {
     <div className="rounded-lg border border-blue-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-blue-500/10 pb-2">
         <PenLine className="h-4 w-4 text-blue-400" />
-        <h3 className="text-sm font-semibold text-white">Journal entry</h3>
+        <h3 className="text-sm font-semibold text-white">Quick share</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-          day one
+          save / DM / publish
         </span>
         <span className="ml-auto text-[10px] text-zinc-400 font-mono">{new Date().toLocaleString([], { weekday: 'long', month: 'short', day: 'numeric' })}</span>
       </header>
+      <p className="text-[11px] text-zinc-400">
+        For full journaling — timeline, search, mood trends, prompts, media, encryption — use the tabs above. This is a quick composer for the DTU/DM/publish/agent-prompt actions below.
+      </p>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <input type="text" value={entryTitle} onChange={(e) => setEntryTitle(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/40" placeholder="Title (optional)" />
@@ -305,67 +256,6 @@ export function JournalActionPanel() {
           );
         })}
       </div>
-
-      {insightResult && (
-        <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-2.5 space-y-1">
-          <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold flex items-center gap-1.5">
-            <Lightbulb className="w-3 h-3" /> Insights
-          </div>
-          {insightResult.mood && <div className="text-[11px] text-zinc-300"><strong className="text-yellow-200">Mood:</strong> {insightResult.mood}</div>}
-          {insightResult.themes?.length ? (
-            <div className="text-[11px] text-zinc-300">
-              <strong className="text-yellow-200">Themes:</strong>{' '}
-              {insightResult.themes.map((t, i) => <span key={i} className="inline-block rounded bg-yellow-500/20 text-yellow-200 px-1.5 py-0.5 mr-1 mb-0.5">{t}</span>)}
-            </div>
-          ) : null}
-          {insightResult.patterns?.length ? (
-            <div className="text-[11px] text-zinc-300"><strong className="text-yellow-200">Patterns:</strong> {insightResult.patterns.join(' · ')}</div>
-          ) : null}
-          {insightResult.takeaways?.length ? (
-            <ul className="text-[11px] text-zinc-300 list-disc list-inside">
-              {insightResult.takeaways.map((t, i) => <li key={i}>{t}</li>)}
-            </ul>
-          ) : null}
-        </div>
-      )}
-
-      {growthResult && (
-        <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 space-y-1">
-          <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5">
-            <TrendingUp className="w-3 h-3" /> Growth (30 days)
-          </div>
-          {growthResult.summary && <p className="text-[11px] text-zinc-300">{growthResult.summary}</p>}
-          {growthResult.trends?.length ? (
-            <div className="grid grid-cols-3 gap-1">
-              {growthResult.trends.map((t, i) => (
-                <div key={i} className="rounded bg-zinc-900/60 px-2 py-1 text-[10px]">
-                  <div className="text-zinc-400">{t.metric}</div>
-                  <div className="text-cyan-300 font-mono">
-                    {t.value}{t.delta != null && <span className={cn('ml-1 text-[9px]', t.delta >= 0 ? 'text-emerald-300' : 'text-rose-300')}>({t.delta >= 0 ? '+' : ''}{t.delta})</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      )}
-
-      {habitResult && (
-        <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 space-y-1">
-          <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5">
-            <Activity className="w-3 h-3" /> Habits ({habitResult.total ?? habitResult.habits?.length ?? 0})
-          </div>
-          {habitResult.habits?.map((h, i) => (
-            <div key={i} className="flex items-center justify-between text-[11px] text-zinc-300">
-              <span>{h.name}</span>
-              <span className="font-mono">
-                {h.streak != null && <span className="text-emerald-300">🔥 {h.streak}d</span>}
-                {h.missedDays ? <span className="text-amber-300 ml-2">⚠ {h.missedDays} missed</span> : null}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {agentPrompt && (
         <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-3">

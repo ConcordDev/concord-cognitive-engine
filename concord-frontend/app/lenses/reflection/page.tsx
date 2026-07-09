@@ -3,37 +3,23 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ReflectionFeed } from '@/components/reflection/ReflectionFeed';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { ReflectionSection } from '@/components/reflection/ReflectionSection';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   TrendingUp, AlertTriangle, CheckCircle2,
   Brain, Eye, Shield, BarChart3, Layers, ChevronDown,
-  Flame, CalendarDays, Zap, X,
+  BookOpen, Users,
 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { ErrorState } from '@/components/common/EmptyState';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { JournalActionPanel } from '@/components/reflection/JournalActionPanel';
-import { JournalStudio } from '@/components/reflection/JournalStudio';
-import { ReflectionSection } from '@/components/reflection/ReflectionSection';
-import { PipingProvider } from '@/components/panel-polish';
 
 // Mirror icon alias
 const Mirror = Eye;
@@ -47,41 +33,25 @@ interface Reflection {
   corrections: string[];
 }
 
+type Mode = 'journal' | 'selfcritique';
+
 export default function ReflectionLensPage() {
   useLensNav('reflection');
-  const [showFeatures, setShowFeatures] = useState(true);
-  const { items: reflectionArtifacts } = useLensData('reflection', 'entry', { seed: [] });
-  const runReflectionAction = useRunArtifact('reflection');
-  const [reflActionResult, setReflActionResult] = useState<Record<string, unknown> | null>(null);
-  const [reflActiveAction, setReflActiveAction] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>('journal');
+  const [showFeatures, setShowFeatures] = useState(false);
 
-  const handleReflectionAction = async (action: string) => {
-    const id = reflectionArtifacts[0]?.id;
-    if (!id) return;
-    setReflActiveAction(action);
-    try {
-      const res = await runReflectionAction.mutateAsync({ id, action });
-      if (res.ok === false) { setReflActionResult({ action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setReflActionResult({ action, ...(res.result as Record<string, unknown>) }); }
-    } catch (err) { console.error('Reflection action failed:', err); }
-    finally { setReflActiveAction(null); }
-  };
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('reflection');
-
-  // --- Lens Bridge ---
-  const bridge = useLensBridge('reflection', 'reflection');
-
-  const { data: status, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
+  const { data: status, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['reflection-status'],
     queryFn: () => apiHelpers.reflection.status().then((r) => r.data),
     refetchInterval: 15000,
   });
 
-  const { data: recent, isError: isError2, error: error2, refetch: refetch2,} = useQuery({
+  const { data: recent, isError: isError2, error: error2, refetch: refetch2 } = useQuery({
     queryKey: ['reflection-recent'],
     queryFn: () => apiHelpers.reflection.recent(20).then((r) => r.data),
   });
 
-  const { data: selfModel, isError: isError3, error: error3, refetch: refetch3,} = useQuery({
+  const { data: selfModel, isError: isError3, error: error3, refetch: refetch3 } = useQuery({
     queryKey: ['reflection-self-model'],
     queryFn: () => apiHelpers.reflection.selfModel().then((r) => r.data),
   });
@@ -105,6 +75,8 @@ export default function ReflectionLensPage() {
 
   useLensCommand(
     [
+      { id: 'mode-journal', keys: 'j', description: 'Journal',          category: 'view', action: () => setMode('journal') },
+      { id: 'mode-critique',keys: 's', description: 'Self-Critique Log',category: 'view', action: () => setMode('selfcritique') },
       { id: 'refresh',     keys: 'r', description: 'Refresh',     category: 'actions',
         action: () => { refetch(); refetch2(); refetch3(); } },
       { id: 'band-all',    keys: '0', description: 'All quality', category: 'view', action: () => setQualityBand('all') },
@@ -114,14 +86,6 @@ export default function ReflectionLensPage() {
     ],
     { lensId: 'reflection' }
   );
-
-  // Bridge reflections into lens artifacts
-  useEffect(() => {
-    bridge.syncList(reflections, (r) => {
-      const ref = r as Reflection;
-      return { title: `Reflection ${ref.id}`, data: r as Record<string, unknown>, meta: { quality: String(ref.quality) } };
-    });
-  }, [reflections, bridge]);
 
   const avgQuality = reflections.length > 0
     ? reflections.reduce((s, r) => s + r.quality, 0) / reflections.length
@@ -134,7 +98,6 @@ export default function ReflectionLensPage() {
     completeness: 'Completeness',
     selfConsistency: 'Self-Consistency',
   };
-
 
   if (isLoading) {
     return (
@@ -154,333 +117,300 @@ export default function ReflectionLensPage() {
       </div>
     );
   }
+
   return (
     <LensShell lensId="reflection" asMain={false}>
       <FirstRunTour lensId="reflection" />
-      <ManifestActionBar />
-      <DepthBadge lensId="reflection" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
-        <ReflectionSection />
-      </div>
-    <div data-lens-theme="reflection" className="p-6 space-y-6">
-      <header className="flex items-center gap-3">
-        <span className="text-2xl">🪞</span>
-        <div>
-          <h1 className="text-xl font-bold">Reflection Lens</h1>
-          <p className="text-sm text-gray-400">
-            Self-critique loop — evaluates response quality and learns from output analysis
-          </p>
-        </div>
-
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="reflection" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-      </header>
-
-      {/* AI Actions */}
-      <UniversalActions domain="reflection" artifactId={bridge.selectedId} compact />
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="lens-card">
-          <CalendarDays className="w-5 h-5 text-neon-purple mb-2" />
-          <p className="text-2xl font-bold">{status?.reflections || reflections.length}</p>
-          <p className="text-sm text-gray-400">Entries</p>
-        </div>
-        <div className="lens-card">
-          <Flame className="w-5 h-5 text-orange-400 mb-2" />
-          <p className="text-2xl font-bold">{stats.reflectionsRun || 0}</p>
-          <p className="text-sm text-gray-400">Streak Days</p>
-        </div>
-        <div className="lens-card">
-          <TrendingUp className="w-5 h-5 text-neon-green mb-2" />
-          <p className="text-2xl font-bold">{(avgQuality * 100).toFixed(0)}%</p>
-          <p className="text-sm text-gray-400">Mood Avg</p>
-        </div>
-        <div className="lens-card">
-          <Shield className="w-5 h-5 text-neon-yellow mb-2" />
-          <p className="text-2xl font-bold">{((model.confidenceCalibration || 0) * 100).toFixed(0)}%</p>
-          <p className="text-sm text-gray-400">Calibration</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Self-Model */}
-        <div className="panel p-4 space-y-4">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Brain className="w-4 h-4 text-neon-purple" /> Self-Model
-          </h2>
-
-          {model.strengths?.length > 0 && (
+      <div data-lens-theme="reflection" className="p-6 space-y-6">
+        <header className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🪞</span>
             <div>
-              <p className="text-xs text-gray-400 uppercase mb-1">Strengths</p>
-              <div className="space-y-1">
-                {model.strengths.map((s: string, i: number) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-neon-green">
-                    <CheckCircle2 className="w-3 h-3" /> {checkNames[s] || s}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {model.weaknesses?.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-400 uppercase mb-1">Weaknesses</p>
-              <div className="space-y-1">
-                {model.weaknesses.map((w: string, i: number) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-yellow-400">
-                    <AlertTriangle className="w-3 h-3" /> {checkNames[w] || w}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {model.biases?.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-400 uppercase mb-1">Detected Biases</p>
-              {model.biases.map((b: string, i: number) => (
-                <p key={i} className="text-sm text-red-400">{b}</p>
-              ))}
-            </div>
-          )}
-
-          {!model.strengths?.length && !model.weaknesses?.length && (
-            <p className="text-sm text-gray-400">Self-model builds over time as reflections accumulate</p>
-          )}
-
-          <div className="border-t border-lattice-border pt-3 space-y-2">
-            <p className="text-xs text-gray-400 uppercase">Stats</p>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-400">Reflections run</span>
-              <span className="text-gray-300">{stats.reflectionsRun || 0}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-400">Self-corrections</span>
-              <span className="text-gray-300">{stats.selfCorrections || 0}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-400">Quality improvements</span>
-              <span className="text-neon-green">{stats.qualityImprovements || 0}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quality Breakdown */}
-        <div className="panel p-4">
-          <h2 className="font-semibold mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-neon-cyan" /> Quality Dimensions
-          </h2>
-          {reflections.length > 0 ? (
-            <div className="space-y-3">
-              {Object.entries(checkNames).map(([key, label]) => {
-                const avg = reflections.reduce((s, r) => s + (r.checks[key] || 0), 0) / reflections.length;
-                return (
-                  <div key={key}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-300">{label}</span>
-                      <span className={`${avg > 0.7 ? 'text-neon-green' : avg > 0.4 ? 'text-yellow-400' : 'text-red-400'}`}>
-                        {(avg * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                    <div className="h-2 bg-lattice-deep rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${avg > 0.7 ? 'bg-neon-green' : avg > 0.4 ? 'bg-yellow-400' : 'bg-red-400'}`}
-                        style={{ width: `${avg * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-center py-8 text-gray-400 text-sm">No reflections yet — interact with the system to generate data</p>
-          )}
-        </div>
-
-        {/* Recent Reflections */}
-        <div className="panel p-4">
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <h2 className="font-semibold flex items-center gap-2">
-              <Mirror className="w-4 h-4 text-neon-green" /> Recent Reflections
-              {qualityBand !== 'all' && (
-                <span className="text-xs text-gray-400 font-normal">
-                  ({visibleReflections.length} of {reflections.length})
-                </span>
-              )}
-            </h2>
-            <div className="flex items-center gap-1 text-[10px]">
-              {(['all', 'low', 'mid', 'high'] as const).map((b, i) => (
-                <button
-                  key={b}
-                  onClick={() => setQualityBand(b)}
-                  className={`px-2 py-0.5 rounded border transition-colors ${
-                    qualityBand === b
-                      ? b === 'low' ? 'border-red-400/40 bg-red-400/15 text-red-400'
-                      : b === 'mid' ? 'border-yellow-400/40 bg-yellow-400/15 text-yellow-400'
-                      : b === 'high' ? 'border-neon-green/40 bg-neon-green/15 text-neon-green'
-                      : 'border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan'
-                      : 'border-white/10 bg-white/5 text-gray-400 hover:bg-white/10'
-                  }`}
-                  title={b === 'low' ? 'Quality < 40%' : b === 'mid' ? '40-70%' : b === 'high' ? '> 70%' : 'All quality bands'}
-                >
-                  {b}<kbd className="text-[8px] opacity-60 ml-0.5">{i}</kbd>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {visibleReflections.map((r, index) => (
-              <motion.div key={r.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="lens-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400">{new Date(r.timestamp).toLocaleString()}</span>
-                  <span className={`text-sm font-bold ${r.quality > 0.7 ? 'text-neon-green' : r.quality > 0.4 ? 'text-yellow-400' : 'text-red-400'}`}>
-                    {(r.quality * 100).toFixed(0)}%
-                  </span>
-                </div>
-                {r.insights.length > 0 && (
-                  <div className="mt-1 space-y-1">
-                    {r.insights.map((ins, i) => (
-                      <p key={i} className="text-xs text-yellow-400">{ins.message}</p>
-                    ))}
-                  </div>
-                )}
-                {r.corrections.length > 0 && (
-                  <div className="mt-1 space-y-1">
-                    {r.corrections.map((c, i) => (
-                      <p key={i} className="text-xs text-red-400">{c}</p>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            ))}
-            {reflections.length === 0 && (
-              <p className="text-center py-4 text-gray-400 text-sm">No reflections recorded yet</p>
-            )}
-            {reflections.length > 0 && visibleReflections.length === 0 && (
-              <p className="text-center py-4 text-gray-400 text-sm">
-                No reflections in the <span className={qualityBand === 'low' ? 'text-red-400' : qualityBand === 'mid' ? 'text-yellow-400' : 'text-neon-green'}>{qualityBand}</span> band.
+              <h1 className="text-xl font-bold">Reflection</h1>
+              <p className="text-sm text-gray-400">
+                Two distinct systems share this name — a personal journal, and the engine&apos;s own self-critique log.
               </p>
-            )}
+            </div>
+            <DepthBadge lensId="reflection" size="sm" className="ml-2" />
           </div>
-        </div>
 
-      {/* Real-time Data Panel */}
-      {realtimeData && (
-        <RealtimeDataPanel
-          domain="reflection"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
-      </div>
-
-      {/* Journal Studio — Day One feature-parity surface */}
-      <JournalStudio />
-
-      {/* Reflection Domain Actions */}
-      <div className="panel p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-neon-blue flex items-center gap-2"><Brain className="w-4 h-4" /> Reflection Analysis</h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'insightExtraction', label: 'Extract Insights' },
-            { action: 'growthMetrics', label: 'Growth Metrics' },
-            { action: 'habitTracking', label: 'Habit Tracking' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleReflectionAction(action)} disabled={reflActiveAction === action || !reflectionArtifacts[0]?.id}
-              className="px-3 py-1.5 text-xs bg-neon-blue/10 border border-neon-blue/20 rounded-lg hover:bg-neon-blue/20 disabled:opacity-50 flex items-center gap-1.5">
-              {reflActiveAction === action ? <div className="w-3 h-3 border border-neon-blue border-t-transparent rounded-full animate-spin" /> : <Zap className="w-3 h-3 text-neon-blue" />}
-              {label}
+          {/* Mode switch — the honest disclosure that Journal (substrate B,
+              a Day One-parity personal journaling companion, backend:
+              server/domains/reflection.js) and Self-Critique Log (substrate
+              A, the cognitive engine's own post-response quality-evaluation
+              loop, backend: server.js "REFLECTION ENGINE MACROS" /
+              ensureReflectionEngine / STATE.reflection) are TWO UNRELATED
+              REAL SYSTEMS that happen to both be registered under the
+              domain name "reflection" — the same naming-collision pattern
+              documented for the `lattice` lens. They are never conflated
+              here: each mode only renders its own data. */}
+          <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-black/30 p-1" role="tablist" aria-label="Reflection mode">
+            <button
+              type="button" role="tab" aria-selected={mode === 'journal'}
+              onClick={() => setMode('journal')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                mode === 'journal' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" /> Journal <kbd className="text-[8px] opacity-60 ml-0.5">j</kbd>
             </button>
-          ))}
+            <button
+              type="button" role="tab" aria-selected={mode === 'selfcritique'}
+              onClick={() => setMode('selfcritique')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                mode === 'selfcritique' ? 'bg-neon-blue/80 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Brain className="w-3.5 h-3.5" /> Self-Critique Log <kbd className="text-[8px] opacity-60 ml-0.5">s</kbd>
+            </button>
+          </div>
+        </header>
+
+        {mode === 'journal' && (
+          <div className="space-y-6">
+            <ReflectionSection />
+            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-white mb-3">
+                <Users className="w-4 h-4 text-violet-400" /> Community
+              </h2>
+              <ReflectionFeed />
+            </section>
+          </div>
+        )}
+
+        {mode === 'selfcritique' && (
+          <div className="space-y-6">
+            <div className="rounded-lg border border-neon-blue/20 bg-neon-blue/5 px-3 py-2 text-xs text-gray-300 flex items-start gap-2">
+              <Shield className="w-3.5 h-3.5 text-neon-blue mt-0.5 shrink-0" />
+              <p>
+                This is the cognitive engine&apos;s own self-critique loop — not your personal journal. Every
+                {' '}{stats.reflectOnEveryNth ?? 5}th AI response is automatically evaluated for fact consistency,
+                relevance, grounding, completeness, and self-consistency, and the results below feed the engine&apos;s
+                self-model. It is a separate, real backend system from the Journal above; they only share the
+                &quot;reflection&quot; name.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <DTUExportButton domain="reflection" data={{ reflections, selfModel: model, stats }} compact />
+            </div>
+
+            {/* Stats Row — correctly labeled: these are engine self-critique
+                metrics, never "streak" (a journaling concept) or "mood" (the
+                journal's own mood field, in Journal mode above). */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="lens-card">
+                <BarChart3 className="w-5 h-5 text-neon-purple mb-2" />
+                <p className="text-2xl font-bold">{status?.reflections ?? reflections.length}</p>
+                <p className="text-sm text-gray-400">Reflections Logged</p>
+              </div>
+              <div className="lens-card">
+                <TrendingUp className="w-5 h-5 text-orange-400 mb-2" />
+                <p className="text-2xl font-bold">{stats.reflectionsRun || 0}</p>
+                <p className="text-sm text-gray-400">Responses Evaluated</p>
+              </div>
+              <div className="lens-card">
+                <CheckCircle2 className="w-5 h-5 text-neon-green mb-2" />
+                <p className="text-2xl font-bold">{(avgQuality * 100).toFixed(0)}%</p>
+                <p className="text-sm text-gray-400">Avg Quality</p>
+              </div>
+              <div className="lens-card">
+                <Shield className="w-5 h-5 text-neon-yellow mb-2" />
+                <p className="text-2xl font-bold">{((model.confidenceCalibration || 0) * 100).toFixed(0)}%</p>
+                <p className="text-sm text-gray-400">Confidence Calibration</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Self-Model */}
+              <div className="panel p-4 space-y-4">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-neon-purple" /> Self-Model
+                </h2>
+
+                {model.strengths?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase mb-1">Strengths</p>
+                    <div className="space-y-1">
+                      {model.strengths.map((s: string, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-sm text-neon-green">
+                          <CheckCircle2 className="w-3 h-3" /> {checkNames[s] || s}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {model.weaknesses?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase mb-1">Weaknesses</p>
+                    <div className="space-y-1">
+                      {model.weaknesses.map((w: string, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-sm text-yellow-400">
+                          <AlertTriangle className="w-3 h-3" /> {checkNames[w] || w}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {model.biases?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase mb-1">Detected Biases</p>
+                    {model.biases.map((b: string, i: number) => (
+                      <p key={i} className="text-sm text-red-400">{b}</p>
+                    ))}
+                  </div>
+                )}
+
+                {!model.strengths?.length && !model.weaknesses?.length && (
+                  <p className="text-sm text-gray-400">Self-model builds over time as reflections accumulate</p>
+                )}
+
+                <div className="border-t border-lattice-border pt-3 space-y-2">
+                  <p className="text-xs text-gray-400 uppercase">Stats</p>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Responses evaluated</span>
+                    <span className="text-gray-300">{stats.reflectionsRun || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Self-corrections</span>
+                    <span className="text-gray-300">{stats.selfCorrections || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Quality improvements</span>
+                    <span className="text-neon-green">{stats.qualityImprovements || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quality Breakdown */}
+              <div className="panel p-4">
+                <h2 className="font-semibold mb-3 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-neon-cyan" /> Quality Dimensions
+                </h2>
+                {reflections.length > 0 ? (
+                  <div className="space-y-3">
+                    {Object.entries(checkNames).map(([key, label]) => {
+                      const avg = reflections.reduce((s, r) => s + (r.checks[key] || 0), 0) / reflections.length;
+                      return (
+                        <div key={key}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-gray-300">{label}</span>
+                            <span className={`${avg > 0.7 ? 'text-neon-green' : avg > 0.4 ? 'text-yellow-400' : 'text-red-400'}`}>
+                              {(avg * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="h-2 bg-lattice-deep rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${avg > 0.7 ? 'bg-neon-green' : avg > 0.4 ? 'bg-yellow-400' : 'bg-red-400'}`}
+                              style={{ width: `${avg * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-center py-8 text-gray-400 text-sm">No reflections yet — interact with the system to generate data</p>
+                )}
+              </div>
+
+              {/* Recent Reflections */}
+              <div className="panel p-4">
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <h2 className="font-semibold flex items-center gap-2">
+                    <Mirror className="w-4 h-4 text-neon-green" /> Recent Reflections
+                    {qualityBand !== 'all' && (
+                      <span className="text-xs text-gray-400 font-normal">
+                        ({visibleReflections.length} of {reflections.length})
+                      </span>
+                    )}
+                  </h2>
+                  <div className="flex items-center gap-1 text-[10px]">
+                    {(['all', 'low', 'mid', 'high'] as const).map((b, i) => (
+                      <button
+                        key={b}
+                        onClick={() => setQualityBand(b)}
+                        className={`px-2 py-0.5 rounded border transition-colors ${
+                          qualityBand === b
+                            ? b === 'low' ? 'border-red-400/40 bg-red-400/15 text-red-400'
+                            : b === 'mid' ? 'border-yellow-400/40 bg-yellow-400/15 text-yellow-400'
+                            : b === 'high' ? 'border-neon-green/40 bg-neon-green/15 text-neon-green'
+                            : 'border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan'
+                            : 'border-white/10 bg-white/5 text-gray-400 hover:bg-white/10'
+                        }`}
+                        title={b === 'low' ? 'Quality < 40%' : b === 'mid' ? '40-70%' : b === 'high' ? '> 70%' : 'All quality bands'}
+                      >
+                        {b}<kbd className="text-[8px] opacity-60 ml-0.5">{i}</kbd>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {visibleReflections.map((r, index) => (
+                    <motion.div key={r.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="lens-card">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-400">{new Date(r.timestamp).toLocaleString()}</span>
+                        <span className={`text-sm font-bold ${r.quality > 0.7 ? 'text-neon-green' : r.quality > 0.4 ? 'text-yellow-400' : 'text-red-400'}`}>
+                          {(r.quality * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      {r.insights.length > 0 && (
+                        <div className="mt-1 space-y-1">
+                          {r.insights.map((ins, i) => (
+                            <p key={i} className="text-xs text-yellow-400">{ins.message}</p>
+                          ))}
+                        </div>
+                      )}
+                      {r.corrections.length > 0 && (
+                        <div className="mt-1 space-y-1">
+                          {r.corrections.map((c, i) => (
+                            <p key={i} className="text-xs text-red-400">{c}</p>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                  {reflections.length === 0 && (
+                    <p className="text-center py-4 text-gray-400 text-sm">No reflections recorded yet</p>
+                  )}
+                  {reflections.length > 0 && visibleReflections.length === 0 && (
+                    <p className="text-center py-4 text-gray-400 text-sm">
+                      No reflections in the <span className={qualityBand === 'low' ? 'text-red-400' : qualityBand === 'mid' ? 'text-yellow-400' : 'text-neon-green'}>{qualityBand}</span> band.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ConnectiveTissueBar */}
+        <ConnectiveTissueBar lensId="reflection" />
+
+        {/* Lens Features */}
+        <div className="border-t border-white/10">
+          <button
+            onClick={() => setShowFeatures(!showFeatures)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          >
+            <span className="flex items-center gap-2">
+              <Layers className="w-4 h-4" />
+              Lens Features & Capabilities
+            </span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          </button>
+          {showFeatures && (
+            <div className="px-4 pb-4">
+              <LensFeaturePanel lensId="reflection" />
+            </div>
+          )}
         </div>
-        {reflActionResult && (
-          <div className="p-3 bg-black/40 rounded-lg border border-neon-blue/20 text-xs space-y-2">
-            {reflActionResult.action === 'insightExtraction' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Entries: <span className="text-white font-mono">{String(reflActionResult.entriesAnalyzed ?? '')}</span></span>
-                  <span className="text-gray-400">Themes: <span className="text-neon-blue font-mono">{Array.isArray(reflActionResult.themes) ? (reflActionResult.themes as unknown[]).length : ''}</span></span>
-                </div>
-                {Array.isArray(reflActionResult.themes) && (
-                  <div className="flex flex-wrap gap-1">{(reflActionResult.themes as {theme:string;prevalence:number}[]).slice(0,8).map(({theme,prevalence}) => <span key={theme} className="px-2 py-0.5 bg-neon-blue/10 text-neon-blue rounded font-mono">{theme} <span className="text-gray-400">{Math.round(prevalence*100)}%</span></span>)}</div>
-                )}
-              </div>
-            )}
-            {reflActionResult.action === 'growthMetrics' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Sentiment trend: <span className={`font-mono ${(reflActionResult.sentiment as Record<string,unknown>)?.trend === 'improving' ? 'text-green-400' : (reflActionResult.sentiment as Record<string,unknown>)?.trend === 'declining' ? 'text-red-400' : 'text-yellow-400'}`}>{String((reflActionResult.sentiment as Record<string,unknown>)?.trend ?? '')}</span></span>
-                  <span className="text-gray-400">Depth: <span className="text-neon-blue font-mono">{String((reflActionResult.entryDepth as Record<string,unknown>)?.trend ?? '')}</span></span>
-                </div>
-                {!!(reflActionResult.sentiment as Record<string,unknown>)?.overall && <p className="text-gray-300">Avg sentiment: {String((reflActionResult.sentiment as Record<string,unknown>)?.overall ?? '')}</p>}
-              </div>
-            )}
-            {reflActionResult.action === 'habitTracking' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Habits tracked: <span className="text-white font-mono">{String(reflActionResult.totalHabits ?? '')}</span></span>
-                  <span className="text-gray-400">Consistency: <span className="text-neon-green font-mono">{String(Math.round(((reflActionResult.overallConsistency as number) ?? 0) * 100))}%</span></span>
-                </div>
-                {Array.isArray(reflActionResult.habitProfiles) && (
-                  <div className="space-y-0.5">{(reflActionResult.habitProfiles as {name:string;currentStreak:number;consistency:number}[]).slice(0,5).map(h => <div key={h.name} className="flex gap-3"><span className="text-gray-300">{h.name}</span><span className="text-neon-green font-mono">🔥{h.currentStreak}d</span><span className="text-gray-400">{Math.round(h.consistency*100)}%</span></div>)}</div>
-                )}
-              </div>
-            )}
-            <button onClick={() => setReflActionResult(null)} className="text-gray-600 hover:text-gray-400 text-xs flex items-center gap-1"><X className="w-3 h-3" /> Dismiss</button>
-          </div>
-        )}
+
+        {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+        <a href="#reflection-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to reflection content</a>
       </div>
-
-      {/* ConnectiveTissueBar */}
-      <ConnectiveTissueBar lensId="reflection" />
-
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="reflection" />
-          </div>
-        )}
-      </div>
-      {/* Day One-shape journal action panel: insights / growth / habits + actions */}
-      <PipingProvider>
-        <section className="mt-6">
-          <JournalActionPanel />
-        </section>
-      </PipingProvider>
-
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ReflectionFeed />
-      </section>
-    </div>
-
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <a href="#reflection-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to reflection content</a>
-          <RecentMineCard domain="reflection" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="reflection" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="reflection" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }
