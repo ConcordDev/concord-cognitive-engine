@@ -94,7 +94,7 @@ describe("ux-polish grader — ERROR_UI_RE recognizes real error idioms (no free
 // These tests run the REAL grader in both modes and assert the JSON output.
 // They are BIDIRECTIONAL and pin the three hard invariants:
 //   (a) default mode is UNCHANGED — still every-lens-polished, 0 capped;
-//   (b) --honest genuinely demotes a known scaffold (alliance);
+//   (b) --honest genuinely demotes a known scaffold (philosophy);
 //   (c) --honest does NOT demote a verified-bespoke lens even though it also
 //       mounts the trio footer (agents/wallet/all/tools) — no false positives.
 // The grader is a run-on-import script, so we invoke it as a subprocess and
@@ -137,13 +137,22 @@ describe("ux-polish grader — --honest generic-scaffold demotion (bidirectional
     assert.equal(honest.totals.functional, honest.scaffoldsCapped);
   });
 
-  it("(b) a known scaffold (alliance) is capped under --honest, polished by default", () => {
-    const d = byLens(dflt, "alliance");
-    const h = byLens(honest, "alliance");
-    assert.ok(d && h, "alliance lens present in both reports");
-    assert.equal(d.tier, "polished", "alliance scores polished in the blind default grader");
-    assert.equal(h.isGenericScaffold, true, "alliance is detected as the generated template shell");
-    assert.equal(h.honestCapped, true, "alliance is demoted under --honest");
+  it("(b) a known scaffold (philosophy) is capped under --honest, polished by default", () => {
+    // Fixture lens choice: NOT a magic constant — pick any lens still on the
+    // generic scaffold per the Frontend Rebuild Program's live backlog
+    // (docs/FRONTEND_REBUILD_PROGRAM.md). `alliance` filled this role until
+    // 2026-07-09's Wave 2 rebuild (commit 26ec0de2) graduated it to a real,
+    // bespoke lens — this test failed then for the correct reason (the grader
+    // was right, the fixture was stale), and was repointed at `philosophy`,
+    // confirmed still-scaffolded as of this edit. If this test fails again
+    // because ITS fixture lens also graduated, that's the same good failure —
+    // repoint to another lens still in the backlog, don't weaken the assertion.
+    const d = byLens(dflt, "philosophy");
+    const h = byLens(honest, "philosophy");
+    assert.ok(d && h, "philosophy lens present in both reports");
+    assert.equal(d.tier, "polished", "philosophy scores polished in the blind default grader");
+    assert.equal(h.isGenericScaffold, true, "philosophy is detected as the generated template shell");
+    assert.equal(h.honestCapped, true, "philosophy is demoted under --honest");
     assert.equal(h.tier, "functional");
   });
 
