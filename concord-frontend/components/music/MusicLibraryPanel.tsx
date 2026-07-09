@@ -6,12 +6,12 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Heart, Play, ListPlus, Trash2, ListMusic, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, Plus, Heart, Play, ListPlus, ListStart, Trash2, ListMusic, ChevronRight, ArrowUp, ArrowDown, Users, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
 
-interface Track { id: string; title: string; artist: string; album: string | null; genre: string; durationSec: number; liked: boolean; playCount: number }
+interface Track { id: string; title: string; artist: string; album: string | null; genre: string; durationSec: number; liked: boolean; playCount: number; addedAt?: string }
 interface Playlist { id: string; name: string; trackCount: number; durationSec: number }
 
 function dur(sec: number): string {
@@ -28,8 +28,12 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: '', artist: '', album: '', genre: 'pop', durationMin: '' });
   const [plName, setPlName] = useState('');
+  const [plCollab, setPlCollab] = useState(false);
   const [openPl, setOpenPl] = useState<string | null>(null);
   const [plTracks, setPlTracks] = useState<Track[]>([]);
+  const [showLiked, setShowLiked] = useState(false);
+  const [likedTracks, setLikedTracks] = useState<Track[]>([]);
+  const [detail, setDetail] = useState<Track | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -55,14 +59,33 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
     setShowAdd(false); setError(null);
     await refresh(); onChange();
   };
-  const like = async (id: string) => { await lensRun('music', 'track-like', { id }); await refresh(); onChange(); };
+  const loadLiked = useCallback(async () => {
+    const r = await lensRun('music', 'liked-songs', {});
+    setLikedTracks(r.data?.result?.tracks || []);
+  }, []);
+  const like = async (id: string) => {
+    await lensRun('music', 'track-like', { id });
+    await refresh(); onChange();
+    if (showLiked) await loadLiked();
+  };
   const play = async (id: string) => { await lensRun('music', 'play-track', { id }); await refresh(); onChange(); };
   const queue = async (id: string) => { await lensRun('music', 'queue-add', { trackId: id }); await refresh(); onChange(); };
+  // Play Next: prepend to the queue (queue-add's `next` flag unshifts to the front).
+  const queueNext = async (id: string) => { await lensRun('music', 'queue-add', { trackId: id, next: true }); await refresh(); onChange(); };
+  const toggleLiked = async () => {
+    const next = !showLiked;
+    setShowLiked(next);
+    if (next) await loadLiked();
+  };
+  const openDetail = async (id: string) => {
+    const r = await lensRun('music', 'track-detail', { id });
+    if (r.data?.ok !== false && r.data?.result?.track) setDetail(r.data.result.track as Track);
+  };
   const del = async (id: string) => { await lensRun('music', 'track-delete', { id }); await refresh(); onChange(); };
   const createPlaylist = async () => {
     if (!plName.trim()) { setError('Playlist name is required.'); return; }
-    await lensRun('music', 'playlist-create', { name: plName.trim() });
-    setPlName(''); setError(null);
+    await lensRun('music', 'playlist-create', { name: plName.trim(), collaborative: plCollab });
+    setPlName(''); setPlCollab(false); setError(null);
     await refresh(); onChange();
   };
   const openPlaylist = async (id: string) => {
@@ -101,9 +124,15 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <ListMusic className="w-3.5 h-3.5 text-emerald-400" /> Playlists
         </h3>
-        <div className="flex gap-2 mb-2">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
           <input value={plName} onChange={(e) => setPlName(e.target.value)} placeholder="New playlist name"
-            className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
+            className="flex-1 min-w-[140px] bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
+          <label className="flex items-center gap-1.5 text-[11px] text-zinc-300 select-none cursor-pointer"
+            title="Anyone can add tracks to a collaborative playlist">
+            <input type="checkbox" checked={plCollab} onChange={(e) => setPlCollab(e.target.checked)}
+              className="accent-emerald-500" />
+            <Users className="w-3.5 h-3.5 text-zinc-400" /> Collaborative
+          </label>
           <button type="button" onClick={createPlaylist}
             className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Create
@@ -153,6 +182,30 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
         )}
       </section>
 
+      {/* Liked Songs */}
+      <section>
+        <button type="button" onClick={toggleLiked}
+          className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2 hover:text-emerald-300">
+          <Heart className="w-3.5 h-3.5 text-emerald-400" /> Liked Songs
+          <ChevronRight className={cn('w-3.5 h-3.5 text-zinc-600 transition-transform', showLiked && 'rotate-90')} />
+        </button>
+        {showLiked && (
+          likedTracks.length === 0 ? (
+            <p className="text-[11px] text-zinc-400 italic">No liked songs yet — tap the heart on a track.</p>
+          ) : (
+            <ul className="space-y-1">
+              {likedTracks.map((t) => (
+                <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
+                  <button type="button" onClick={() => play(t.id)} aria-label={`Play ${t.title}`} className="text-emerald-400 hover:text-emerald-300 shrink-0"><Play className="w-3.5 h-3.5" /></button>
+                  <span className="text-[11px] text-zinc-200 truncate flex-1">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>
+                  <span className="text-[10px] text-zinc-400">{dur(t.durationSec)}</span>
+                </li>
+              ))}
+            </ul>
+          )
+        )}
+      </section>
+
       {/* Tracks */}
       <section>
         <div className="flex gap-2 mb-2">
@@ -198,15 +251,19 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
                 <button type="button" onClick={() => play(t.id)} aria-label={`Play ${t.title}`} className="text-emerald-400 hover:text-emerald-300 shrink-0">
                   <Play className="w-4 h-4" />
                 </button>
-                <div className="min-w-0 flex-1">
+                <button type="button" onClick={() => openDetail(t.id)} aria-label={`Details for ${t.title}`}
+                  className="min-w-0 flex-1 text-left hover:text-zinc-100" title="Track details">
                   <p className="text-xs text-zinc-200 truncate">{t.title}</p>
                   <p className="text-[10px] text-zinc-400 truncate">{t.artist}{t.album ? ` · ${t.album}` : ''} · {dur(t.durationSec)}{t.playCount > 0 ? ` · ${t.playCount} plays` : ''}</p>
-                </div>
+                </button>
                 <button type="button" onClick={() => like(t.id)} aria-label={t.liked ? `Unlike ${t.title}` : `Like ${t.title}`}
                   className={cn('shrink-0', t.liked ? 'text-emerald-400' : 'text-zinc-600 hover:text-zinc-400')}>
                   <Heart className={cn('w-3.5 h-3.5', t.liked && 'fill-current')} />
                 </button>
-                <button type="button" onClick={() => queue(t.id)} aria-label={`Queue ${t.title}`} className="text-zinc-600 hover:text-zinc-300 shrink-0">
+                <button type="button" onClick={() => queueNext(t.id)} aria-label={`Play ${t.title} next`} className="text-zinc-600 hover:text-emerald-300 shrink-0" title="Play next">
+                  <ListStart className="w-3.5 h-3.5" />
+                </button>
+                <button type="button" onClick={() => queue(t.id)} aria-label={`Queue ${t.title}`} className="text-zinc-600 hover:text-zinc-300 shrink-0" title="Add to queue">
                   <ListPlus className="w-3.5 h-3.5" />
                 </button>
                 <button type="button" onClick={() => del(t.id)} aria-label={`Delete ${t.title}`} className="text-zinc-600 hover:text-rose-400 shrink-0">
@@ -217,6 +274,43 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
           </ul>
         )}
       </section>
+
+      {/* Track detail modal (music.track-detail) */}
+      {detail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setDetail(null)}>
+          <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-2xl p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-zinc-100 truncate">{detail.title}</h3>
+                <p className="text-xs text-zinc-400 truncate">{detail.artist}{detail.album ? ` · ${detail.album}` : ''}</p>
+              </div>
+              <button type="button" onClick={() => setDetail(null)} aria-label="Close details" className="text-zinc-500 hover:text-zinc-200 shrink-0"><X className="w-4 h-4" /></button>
+            </div>
+            <dl className="grid grid-cols-2 gap-2 text-[11px]">
+              <Field label="Genre" value={detail.genre || '—'} />
+              <Field label="Duration" value={dur(detail.durationSec)} />
+              <Field label="Plays" value={String(detail.playCount ?? 0)} />
+              <Field label="Liked" value={detail.liked ? 'Yes' : 'No'} />
+              {detail.addedAt && <Field label="Added" value={new Date(detail.addedAt).toLocaleDateString()} />}
+            </dl>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { void play(detail.id); setDetail(null); }}
+                className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg"><Play className="w-3.5 h-3.5" /> Play</button>
+              <button type="button" onClick={() => { void queueNext(detail.id); setDetail(null); }}
+                className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg"><ListStart className="w-3.5 h-3.5" /> Play next</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
+      <dt className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</dt>
+      <dd className="text-zinc-200 truncate">{value}</dd>
     </div>
   );
 }
