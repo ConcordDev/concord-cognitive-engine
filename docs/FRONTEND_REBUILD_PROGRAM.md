@@ -1,10 +1,28 @@
 # Frontend Rebuild Program — "Lenses Become Real Apps"
 
-> **🟢 STATUS (2026-07-09): Phases 0-2 shipped, Phase 3 Wave 1 6/10 shipped
-> (4 pending retry — hit the session token limit mid-run, not a quality
-> failure).** This is the live arc for the frontend. Sections below are the
-> program spec; a per-phase status ledger is appended at the bottom as
-> work ships.
+> **🟢 STATUS (2026-07-09): Phases 0-2 shipped, Phase 3 Wave 1 6/10 shipped,
+> Wave-1 test regressions fixed, Phase 0.5 (connection stability) shipped.**
+> The bar was raised the same day (see "Full-App-Parity amendment" below) —
+> every lens from Wave 0 onward must also close a researched feature-parity
+> checklist against a real best-in-class reference app, not just pass the
+> structural rebuild loop. Wave 0 (music gap-closure + courtship finish-the-
+> wire + lfg/photos/quests verify-pass) is in flight. This is the live arc
+> for the frontend. Sections below are the program spec; a per-phase status
+> ledger is appended at the bottom as work ships.
+
+## Full-App-Parity amendment (2026-07-09)
+
+The owner escalated the standard mid-program: "no more lightweight surfaces,
+no more demo — the UI and UX needs to catch up to the capabilities of the
+backend." Worked example given: **the music lens vs. Apple Music — the only
+difference should be catalog size, nothing else.** Three read-only audits
+plus a synthesis pass grounded this into a concrete extension of the
+existing per-lens rebuild loop (not a restart) — see the new step 1.5 below,
+the extended verify gate, and the Wave 0/2/3 sequencing under Phase 3. A
+connection-stability complaint was root-caused and fixed in the same pass
+(Phase 0.5, below) — a config gap (no `.env.local` guidance, defaulting the
+dev socket to a dead same-origin connection), not a systemic architecture
+problem.
 
 ## Context
 
@@ -79,6 +97,32 @@ local-node bridge in scope, later phase.
    consolidate the 5 shell pollers onto useClientConfig cadences.
    Bundle-analyzer before/after recorded in audit/.
 
+### Phase 0.5 — Connection stability (shipped 2026-07-09, commit `bf5c2345`)
+Root-caused an owner-reported "constant lag and connection disruptions"
+complaint: `concord-frontend/lib/realtime/socket.ts`'s `SOCKET_URL` fell back
+to `''` when both `NEXT_PUBLIC_SOCKET_URL`/`NEXT_PUBLIC_API_URL` were unset —
+the socket then tried same-origin (nothing listening there), retried 5× over
+~17s, and left a persistent "Connection lost" banner up. The repo ships no
+`.env.local` and the README quickstart never said to create one from
+`.env.example`. Fixed:
+1. Dev-only default of the socket URL to the backend's known `:5050` port
+   (mirrors `next.config.js`'s own `BACKEND_URL || 'http://127.0.0.1:5050'`
+   convention); production keeps the empty fallback (same-origin + nginx
+   proxy is the correct, unchanged prod topology).
+2. A distinct `reconnect_failed` diagnostic for "was never configured" vs. a
+   genuine transient outage.
+3. Prod socket.io `transports` audited — found to be WebSocket-only by
+   **deliberate, already-documented design** (long-polling at 1000+ clients
+   floods the server), not an oversight, so the default was kept; a
+   `CONCORD_SOCKET_ALLOW_POLLING_FALLBACK` env var was added instead so a
+   deployment can opt into graceful degradation without changing the safe
+   default for everyone.
+4. README documents the `.env.local` step and that the frontend container
+   must sit behind nginx for realtime (Next.js `standalone` mode doesn't
+   forward WS `Upgrade` headers through its own `rewrites()` — a real,
+   still-open Next.js limitation the shipped docker-compose topology already
+   avoids by routing `/socket.io/` through nginx directly).
+
 ### Phase 1 — Platform primitives (what every rebuilt lens stands on)
 1. **Design system, for real**: lib/design-system.ts is 150 lines and
    components/ui/ is EMPTY — this gap is genuine. Build the token set
@@ -116,8 +160,33 @@ makes each lens a REAL app instead of a re-skinned template:
    generic-strip-only / unsurfaced / world-owned (lenses like fishing whose
    features correctly live in the world lens). The rebuild's coverage
    metric counts DESIGNED only — the map is the app's feature spec.
+1.5. **Reference-parity checklist (added 2026-07-09, mandatory from Wave 0
+   onward)** — generalizes the music-lens/Apple-Music case study. Do this in
+   the same research pass as step 2, not twice:
+   - **(a)** Name 1-2 real best-in-class reference apps for the domain's
+     category (Apple Music for `music`; the nearest real analog for every
+     other archetype — e.g. a USGS/NOAA-grade tool for Earth-science lenses,
+     a Linear/Notion-class tool for Docs/B2B lenses).
+   - **(b)** State the parity target explicitly in the capability-map
+     artifact, in the owner's own framing: "the only difference should be
+     [scale/catalog/data-source], nothing else."
+   - **(c)** Produce a real, researched feature checklist for the reference
+     app(s) — not an LLM's memory of the category.
+   - **(d)** Classify every checklist item into exactly one bucket:
+     **ALREADY REAL** (ship as-is), **BACKEND-CAPABLE-BUT-UNSURFACED**
+     (macro/route/param exists, no or incomplete UI caller — wire it, no
+     backend work needed), or **GENUINELY MISSING** (no real backend
+     capability, or a UI-cosmetic stub over nothing real) — every item in
+     this last bucket gets one of two explicit, non-silent dispositions:
+     **honest relabel** (rename to what it truthfully does, with a one-line
+     why) or **flagged as a scoped future build task** (explicit
+     macro(s)/size estimate, deliberately deferred). Never faked.
+   - This bucketing is the rebuild's real coverage metric from Wave 0
+     onward — "% of the reference checklist closed," replacing the vaguer
+     "% of domain macros surfaced by design decision" framing with an
+     externally-anchored, truthful number.
 2. Research best-in-class references for the domain (real products, not
-   generic dashboards).
+   generic dashboards) — folds into 1.5(a)/(c) above.
 3. Design the app around the FULL capability map: bespoke layout + panels on
    the ui primitives, domain identity, information density — macro depth
    surfaced deliberately (grouped workflows, inspector panels, keyboard
@@ -128,8 +197,16 @@ makes each lens a REAL app instead of a re-skinned template:
    DTU drag/cite, transitions, satisfying state changes).
 6. Polish pass (typography, spacing, loading/empty/error states, a11y,
    density toggle).
-7. Verify: rubric gates + honest grader + eslint/tsc/vitest + lens stays
-   WIRED in verify-lens-backends.
+7. **Verify (the "undeniable" gate)** — a rebuilt lens is not done until ALL
+   of: rubric gates (docs/UI_QUALITY_RUBRIC.md) pass; honest grader
+   (`grade-ux-polish.mjs --honest`) scores above the scaffold cap; eslint/
+   tsc/vitest clean on touched files; lens stays WIRED in
+   `verify-lens-backends.mjs`; **and (added 2026-07-09) every item in the
+   step-1.5 checklist has an explicit recorded disposition** — a lens
+   cannot be marked done with an unresolved "maybe missing" item; silence on
+   a checklist item is a fail, not a pass. Orchestrator independently
+   re-verifies all of the above before commit — never trust agent
+   self-report alone.
 
 ### Execution model — autonomous orchestra
 - **Orchestrator** (this session's model) owns backlogs, wave dispatch,
@@ -144,6 +221,13 @@ makes each lens a REAL app instead of a re-skinned template:
   authorization per the guard).
 - Salvage discipline, named-file staging, one-heavy-process-at-a-time, and
   guard protection all apply as in docs/DEPTH_FLEET_PLAN.md.
+- **Continuation note (2026-07-09, Wave 0 onward):** unchanged, continues at
+  fleet scale through Wave 2/3 — Sonnet-parallel-dispatch on disjoint-file
+  batches (4-5 lenses/batch in Wave 2), Opus escalation on hard problems/
+  architectural calls/twice-failed units, orchestrator-owned independent
+  re-verification before every commit. No new execution-model machinery —
+  this amendment is scoped to backlog content (what gets dispatched) and
+  gate content (what "done" means), not to how dispatch/verification works.
 
 ### Phase 2 — Flagship rebuilds (the design language, proven on 3)
 Full rebuild per lens through the loop above (orchestrator-led, Opus-tier
@@ -160,21 +244,65 @@ These three define the per-domain identity patterns (terminal / research /
 immersive) the waves reuse.
 
 ### Phase 3 — The rebuild waves (all remaining ~257 lenses)
-The autonomous orchestra (above) runs the per-lens rebuild loop at fleet
-scale — the unit of work is "rebuild this lens as a real app," never "patch
-the template":
-- Backlog script ranks lenses by honest-grader tier × domain backend depth
-  (macro count from the capability audit) × destination traffic. Grouped by
-  destination (Finance-family, Create-family, World-family...) so waves
-  share domain identity + components.
+The autonomous orchestra (above) runs the per-lens rebuild loop (now
+including step 1.5) at fleet scale — the unit of work is "rebuild this lens
+as a real app," never "patch the template". Concrete sequencing (added
+2026-07-09, supersedes the flat "one big backlog" framing this section used
+to have):
+
+- **Wave 0a — Music lens gap-closure.** Dispatched first: direct proof of
+  the step-1.5 parity rubric on the owner's own worked example. 7 already-
+  scoped gaps (generic-strip duplicate, collaborative-playlist checkbox,
+  jam-sync wiring, queue play-next/clear/reorder, 3 zero-caller macros,
+  device-transfer honest relabel, `music.feed` Browse/New-Releases surface).
+- **Wave 0b — Courtship finish-the-wire.** Tiny: wire 2 orphaned WIP files
+  (`components/courtship/HeartEventModal.tsx`, `pregnancy-cache.ts`) from
+  commit `07e0e660` into the already-real `app/lenses/courtship/page.tsx` —
+  not a rebuild.
+- **Wave 0c — lfg/photos/quests verify-pass.** 3 cheap parallel spot-checks,
+  NOT rebuilds — see the corrected note below; these were mis-filed as an
+  incomplete retry backlog when they're real bespoke pages needing
+  verification, not reconstruction.
+- **Wave 2 — the 55 confirmed-scaffold lenses** (`audit/ux-polish-
+  honest.json` @ commit `dc662513`), grouped into 11 archetype buckets by a
+  2026-07-09 audit (full lens lists in that audit's findings, reproducible
+  via the honest grader + a domain-file skim): Earth/environmental &
+  public-safety science (9: geology, ocean, forestry, energy, mining,
+  desert, urban-planning, defense, emergency-services), Space/lab science
+  (6: astronomy, space, chem, bio, lab, materials), Docs/B2B SaaS (11:
+  schema, audit, projects, queue, platform, transfer, export, legacy,
+  custom, hr, marketing), Dev-tool/sim-console (9: robotics, quantum, ml,
+  fractal, metalearning, neuro, anon, offline, fork), Health/life-sim (4:
+  parenting, pets, veterinary, pharmacy), Reflection/knowledge-curation (4:
+  philosophy, reflection, grounding, suffering), Maps/navigation (3: atlas,
+  ar, travel), Creative/design-tool (3: artistry, fashion, animation),
+  Marketplace/economy (2: questmarket, supplychain), Research/reference (2:
+  law, history), Social/relationship (2: mentorship, alliance). None are
+  world-owned thin bridges — all have real STATE-backed substrate and often
+  a real external API. For each archetype: one shared reference-pattern
+  pass first (pick the archetype's reference app(s), design ONE shared
+  component/pattern set — the same move Phase 2 made for terminal/research/
+  immersive identity, generalized), then dispatch lens units in 4-5-lens
+  parallel batches, smallest archetype first (validates the methodology
+  cheaply before the two largest archetypes — 20 of the 55 lenses — run).
+- **Wave 3 — the ~192-lens risk pool.** Lenses that score "polished" under
+  the honest grader but may only reach macros via generic action arrays
+  (structural polish ≠ real designed depth, per this doc's own Context
+  section). Build `scripts/lens-rebuild-backlog.mjs` first (ranks by honest
+  tier × macro-depth proxy × `lib/destinations.ts` grouping as a traffic
+  proxy — there is no real usage-telemetry source in this repo; don't
+  fabricate one) and dispatch fix units only where it confirms a real gap —
+  not a blanket rebuild of 192 lenses.
 - Sonnet agents execute; Opus takes the escalations; orchestrator verifies
-  and commits every unit. Each rebuilt lens: capability map committed,
-  generic template retired, fake data killed (wired real or honest-removed),
-  dead UI removed, micro-interactions + panels + state persistence +
-  skeletons in, rubric gates passed.
+  and commits every unit. Each rebuilt lens: capability map + step-1.5
+  checklist committed, generic template retired, fake data killed (wired
+  real or honest-removed), dead UI removed, micro-interactions + panels +
+  state persistence + skeletons in, full verify gate (step 7) passed.
 - Progress metric: honest-grader tier distribution per wave + fake-data
-  detector count → 0 + capability-coverage (% of domain macros surfaced by
-  design decision, not accident). Doc'd each wave (derived numbers only).
+  detector count → 0 + reference-checklist coverage (% of the step-1.5
+  checklist closed as ALREADY REAL or wired-from-UNSURFACED — an
+  externally-anchored, truthful number, not an internally-defined one).
+  Doc'd each wave (derived numbers only).
 
 ### Phase 4 — Later-phase platform items
 1. **Local-node ↔ cloud bridge**: dispatch client in lib/api/client.ts w/
@@ -205,6 +333,7 @@ the template":
 
 | Date | Phase | What shipped | Commit |
 |---|---|---|---|
+| 2026-07-09 | 0.5 | Connection stability — dev socket-URL default fix, prod polling opt-in env var, deploy-topology README note | `bf5c2345` |
 | 2026-07-09 | 3 (Wave 1 fix) | Repaired 4 pre-existing test files broken by the Wave 1 achievements/garage/fishing rebuilds (raw-`fetch` mocks vs the real `lensRun` macro dispatch the rebuilds correctly moved to); found + fixed a real crash (`useSearchParams()` can return `null`) and a real UX defect (a raw `"catalog 500"` string shown to users) surfaced by the fix. Full suite re-verified clean: 550/550 files, 4703/4703 tests, net of one previously-flaky unrelated file. | `c265510b` |
 | 2026-07-09 | 3 (Wave 1) | courtship: partial capability-audit artifacts only, NOT integrated — agent hit the session token limit mid-run before touching page.tsx. Retry needed. | `07e0e660` |
 | 2026-07-09 | 3 (Wave 1) | garage rebuilt — fleet management app + honest world-owned bridge for driving (mount/dismount/move) | `2f9ed5f2` |
@@ -227,4 +356,4 @@ the template":
 | 2026-07-09 | 0 | honest mode for grade-ux-polish.mjs — real scaffold count: 55 lenses (21%), not the initial ~164 estimate | `dc662513` |
 | 2026-07-09 | — | Program approved; audit evidence + plan committed as this doc | `dcf3cabb` |
 
-**Retry backlog (Wave 1 remainder):** `lfg`, `photos`, `quests`, `courtship` — all 4 failed purely on session token limit (reset 2:10pm UTC 2026-07-09), not on code/quality grounds; none were attempted. `courtship` additionally has 2 unintegrated WIP files (`07e0e660`) a retry agent should build on rather than re-derive.
+**Correction (2026-07-09, Wave-0 audit): the "retry backlog" framing above was wrong for 3 of 4 lenses.** `lfg`, `photos`, `quests` are real bespoke pages (213-278 lines, real macro/REST wiring, custom filters/forms, honest 4-state handling) — confirmed by absence of the `AutoActionStrip`/`RecentMineCard` generic-scaffold signature. They were never actually attempted and were mis-filed as a session-limit casualty; they need the cheap Wave 0c verify-pass (capability audit + dead-panel/fake-data check), not a rebuild. `courtship` is also a real bespoke page (312 lines) — its only gap is the 2 orphaned WIP files noted below, a finish-the-wire task (Wave 0b), not a rebuild. See Wave 0a/0b/0c under Phase 3 above for the corrected units.
