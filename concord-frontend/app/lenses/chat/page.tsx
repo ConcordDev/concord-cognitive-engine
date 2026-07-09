@@ -881,6 +881,33 @@ export default function ChatLensPage() {
     }
   }, [localMessages, selectedConversation]);
 
+  // Feed the server-side thread search index (chat.thread-index) so ⌘K /
+  // "Search chats" (ThreadSearchOverlay -> chat.threads-search) actually has
+  // something to search. Previously nothing ever called thread-index, so the
+  // overlay always reported "0 threads indexed" no matter how many real
+  // conversations existed. Debounced (2s of quiet) so a fast exchange doesn't
+  // fire one index write per token.
+  useEffect(() => {
+    if (!selectedConversation || localMessages.length === 0) return;
+    const t = setTimeout(() => {
+      const conv = storedConversations.find((c) => c.id === selectedConversation);
+      const title = conv?.title || 'Untitled conversation';
+      const lastMsg = localMessages[localMessages.length - 1];
+      const snippet = (lastMsg?.content || '').slice(0, 400);
+      api.post('/api/lens/run', {
+        domain: 'chat',
+        action: 'thread-index',
+        input: {
+          threadId: selectedConversation,
+          title,
+          snippet,
+          lastMsgAt: lastMsg?.timestamp || new Date().toISOString(),
+        },
+      }).catch(() => { /* best-effort — search staying stale is non-fatal */ });
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [localMessages, selectedConversation, storedConversations]);
+
   // Conversations are managed in local state (backed by localStorage)
   const conversations = storedConversations;
 
