@@ -1930,22 +1930,27 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'fashion',
     label: 'Fashion',
-    artifacts: ['garment', 'outfit', 'wardrobe', 'wishlist'],
+    artifacts: ['garment', 'outfit'],
     macros: { list: 'lens.fashion.list', get: 'lens.fashion.get', create: 'lens.fashion.create', update: 'lens.fashion.update', delete: 'lens.fashion.delete', run: 'lens.fashion.run', export: 'lens.fashion.export' },
     exports: ['json', 'csv', 'pdf'],
-    actions: ['outfitSuggest', 'seasonalRotation', 'donateList', 'styleAnalysis', 'wardrobeValue', 'colorPalette'],
+    // 2026-07-09 rebuild: these now name real, currently-registered
+    // fashion.* macros (server/domains/fashion.js) instead of macro names
+    // that never existed (seasonalRotation/donateList/styleAnalysis/
+    // wardrobeValue/colorPalette) \u2014 those were stale placeholder copy from
+    // before the Stylebook/Whering-parity substrate was built.
+    actions: ['ai-outfit-generate', 'closet-stats', 'declutter-suggestions', 'style-quiz-submit'],
     category: 'lifestyle',
     dataTier: 'REAL_FREE',
     emptyState: {
-      headline: "Manage your wardrobe.",
-      caption: "Garments, outfits, wardrobe, wishlist \u2014 suggest, rotate, donate, palette.",
-      firstActionLabel: "Add your first garment",
+      headline: "Build your digital closet.",
+      caption: "Catalog real items, build outfits, get weather-aware AI looks, track cost-per-wear.",
+      firstActionLabel: "Add your first item",
     },
     firstRunGuide: {
       steps: [
-        { caption: "outfitSuggest composes against weather + your style profile." },
-        { caption: "seasonalRotation surfaces what to swap in / out per season." },
-        { caption: "colorPalette analyzes your wardrobe for tonal balance." },
+        { caption: "AI Stylist composes real outfits from your closet against live weather + occasion." },
+        { caption: "Closet tracks cost-per-wear and flags pieces worth decluttering or reselling." },
+        { caption: "Style Quiz turns 5 questions into real recommendations from your closet's actual gaps." },
       ],
     },
   },
