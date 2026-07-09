@@ -629,6 +629,10 @@ export default function ChatLensPage() {
   // shield/mesh/intel state while responding). Endpoints are thin
   // REST wrappers that delegate to the corresponding macros server-side.
   const [systemsPanelOpen, setSystemsPanelOpen] = useState(false);
+  // Chat "Analysis & features" tools live in a right-side drawer (opened from
+  // the Workspace menu), NOT inline in the message column — see the drawer near
+  // the Systems drawer below. Default closed so the lens reads as a clean chat.
+  const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
   const [systemsTab, setSystemsTab] = useState<
     'shield' | 'mesh' | 'intel' | 'privacy' | 'initiatives'
   >('shield');
@@ -2710,7 +2714,7 @@ export default function ChatLensPage() {
     <LensShell lensId="chat" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="chat" />
       <DepthBadge lensId="chat" size="sm" className="ml-2" />
-    <div data-lens-theme="chat" className="h-full flex flex-col bg-lattice-bg">
+    <div data-lens-theme="chat" className="relative h-full flex flex-col bg-lattice-bg">
       {/* Real-time Enhancement Toolbar */}
       <div className="flex items-center gap-2 px-4 py-1 border-b border-lattice-border/30 flex-wrap">
         <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
@@ -3145,7 +3149,7 @@ export default function ChatLensPage() {
                 >
                   <LayoutGrid className="w-4 h-4" />
                   <span className="font-medium">Workspace</span>
-                  {(initiativesPaused || systemsPanelOpen || activeProject || studioOpen) && (
+                  {(initiativesPaused || systemsPanelOpen || toolsPanelOpen || activeProject || studioOpen) && (
                     <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan" aria-hidden="true" />
                   )}
                   <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
@@ -3177,6 +3181,7 @@ export default function ChatLensPage() {
                           { key: 'prompts', icon: BookOpen, label: 'Prompt library', onClick: () => setPromptsPanelOpen(true) },
                           { key: 'schedule', icon: Clock, label: 'Scheduled tasks', onClick: () => setScheduledPanelOpen(true) },
                           { key: 'studio', icon: Sparkles, label: 'Studio', active: studioOpen, dot: 'bg-violet-400', onClick: () => setStudioOpen(true) },
+                          { key: 'analysis', icon: Zap, label: 'Analysis & features', active: toolsPanelOpen, dot: 'bg-neon-yellow', onClick: () => setToolsPanelOpen((v) => !v) },
                           { key: 'systems', icon: Activity, label: 'Systems', active: systemsPanelOpen, dot: 'bg-neon-purple', onClick: () => setSystemsPanelOpen((v) => !v) },
                           { key: 'pause', icon: initiativesPaused ? PlayCircle : PauseCircle, label: initiativesPaused ? 'Resume Concord' : 'Pause Concord', active: initiativesPaused, dot: 'bg-amber-400', onClick: () => toggleInitiativesPaused() },
                         ].map((item) => {
@@ -3793,6 +3798,46 @@ export default function ChatLensPage() {
           </div>
         </main>
 
+        {/* Chat tools drawer — Analysis (thread-summarize / participant / topic)
+            + Lens features. Opened from the Workspace menu; slides in from the
+            right and is position:fixed so it is OUT of the chat column's flex
+            flow. Pre-fix these two panels were flex-row siblings of <main>,
+            stealing horizontal width and compressing the message thread into an
+            unusable sliver (the "scrunched / can't see messages" bug). */}
+        <AnimatePresence>
+          {toolsPanelOpen && (
+            <>
+              <button
+                type="button"
+                aria-label="Close chat tools"
+                tabIndex={-1}
+                onClick={() => setToolsPanelOpen(false)}
+                className="fixed inset-0 z-40 cursor-default"
+              />
+              <motion.aside
+                initial={{ x: 480, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 480, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                role="complementary"
+                aria-label="Chat analysis and features"
+                className="fixed top-20 right-4 bottom-4 w-[28rem] max-w-[92vw] z-50 flex flex-col bg-lattice-surface border border-lattice-border rounded-lg shadow-2xl overflow-hidden"
+              >
+                <div className="flex items-center justify-between px-4 py-3 border-b border-lattice-border flex-shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-neon-yellow" />
+                    <span className="text-sm font-semibold text-white">Analysis &amp; features</span>
+                  </div>
+                  <button
+                    onClick={() => setToolsPanelOpen(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                    title="Close"
+                    aria-label="Close chat tools"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
         {/* ── Chat Computational Actions ── */}
         <div className="border-t border-white/10 px-4 py-4 space-y-3">
           <div className="panel p-4">
@@ -4091,6 +4136,11 @@ export default function ChatLensPage() {
             </div>
           )}
         </div>
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* DTU Detail Overlay -- opened when clicking a DTU reference */}
