@@ -49,6 +49,10 @@ export function TimelineBuilder() {
   const [evForm, setEvForm] = useState({ title: '', year: '', category: '', description: '', track: '' });
   const [eraForm, setEraForm] = useState({ name: '', startYear: '', endYear: '', color: '#8b5cf6' });
   const [mediaOpen, setMediaOpen] = useState<string | null>(null);
+  // Real macro-dispatch pending state per triggering control — the specific
+  // button that fired the macro shows its own spinner + disabled state
+  // until the real response lands, instead of the whole panel going dark.
+  const [busyAction, setBusyAction] = useState<'create' | 'addEvent' | 'addEra' | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun<{ timelines: TimelineMeta[] }>('history', 'timeline-list', {});
@@ -65,10 +69,15 @@ export function TimelineBuilder() {
 
   async function createTimeline() {
     if (!newTimeline.trim()) return;
-    const r = await lensRun<{ timeline: { id: string } }>('history', 'timeline-create', { title: newTimeline.trim() });
-    setNewTimeline('');
-    await refresh();
-    if (r.data?.ok && r.data.result) await open(r.data.result.timeline.id);
+    setBusyAction('create');
+    try {
+      const r = await lensRun<{ timeline: { id: string } }>('history', 'timeline-create', { title: newTimeline.trim() });
+      setNewTimeline('');
+      await refresh();
+      if (r.data?.ok && r.data.result) await open(r.data.result.timeline.id);
+    } finally {
+      setBusyAction(null);
+    }
   }
   async function deleteTimeline(id: string) {
     if (!confirm('Delete this timeline?')) return;
@@ -78,13 +87,18 @@ export function TimelineBuilder() {
   }
   async function addEvent() {
     if (!active || !evForm.title.trim() || !evForm.year.trim()) return;
-    await lensRun('history', 'event-add', {
-      timelineId: active.id, title: evForm.title.trim(), year: Number(evForm.year),
-      category: evForm.category.trim(), description: evForm.description.trim(),
-      track: evForm.track.trim() || undefined,
-    });
-    setEvForm({ title: '', year: '', category: '', description: '', track: '' });
-    await reload(); await refresh();
+    setBusyAction('addEvent');
+    try {
+      await lensRun('history', 'event-add', {
+        timelineId: active.id, title: evForm.title.trim(), year: Number(evForm.year),
+        category: evForm.category.trim(), description: evForm.description.trim(),
+        track: evForm.track.trim() || undefined,
+      });
+      setEvForm({ title: '', year: '', category: '', description: '', track: '' });
+      await reload(); await refresh();
+    } finally {
+      setBusyAction(null);
+    }
   }
   async function delEvent(id: string) {
     if (!active) return;
@@ -93,14 +107,19 @@ export function TimelineBuilder() {
   }
   async function addEra() {
     if (!active || !eraForm.name.trim()) return;
-    await lensRun('history', 'era-add', {
-      timelineId: active.id, name: eraForm.name.trim(),
-      startYear: eraForm.startYear ? Number(eraForm.startYear) : undefined,
-      endYear: eraForm.endYear ? Number(eraForm.endYear) : undefined,
-      color: eraForm.color,
-    });
-    setEraForm({ name: '', startYear: '', endYear: '', color: '#8b5cf6' });
-    await reload(); await refresh();
+    setBusyAction('addEra');
+    try {
+      await lensRun('history', 'era-add', {
+        timelineId: active.id, name: eraForm.name.trim(),
+        startYear: eraForm.startYear ? Number(eraForm.startYear) : undefined,
+        endYear: eraForm.endYear ? Number(eraForm.endYear) : undefined,
+        color: eraForm.color,
+      });
+      setEraForm({ name: '', startYear: '', endYear: '', color: '#8b5cf6' });
+      await reload(); await refresh();
+    } finally {
+      setBusyAction(null);
+    }
   }
   async function delEra(id: string) {
     if (!active) return;
@@ -150,8 +169,9 @@ export function TimelineBuilder() {
           onKeyDown={(e) => { if (e.key === 'Enter') void createTimeline(); }}
           placeholder="New timeline"
           className="w-32 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200" />
-        <button aria-label="Add" onClick={createTimeline} className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white">
-          <Plus className="w-3.5 h-3.5" />
+        <button aria-label="Create timeline" onClick={createTimeline} disabled={busyAction === 'create' || !newTimeline.trim()}
+          className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50">
+          {busyAction === 'create' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
         </button>
       </div>
 
@@ -215,8 +235,9 @@ export function TimelineBuilder() {
               className="w-14 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-200" />
             <input type="color" value={eraForm.color} onChange={(e) => setEraForm({ ...eraForm, color: e.target.value })}
               title="Era color" className="w-6 h-6 bg-transparent border border-zinc-800 rounded cursor-pointer" />
-            <button onClick={addEra} className="px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Add era">
-              <Plus className="w-3 h-3" />
+            <button onClick={addEra} disabled={busyAction === 'addEra' || !eraForm.name.trim()}
+              className="px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-50" aria-label="Add era">
+              {busyAction === 'addEra' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
             </button>
           </div>
 
@@ -230,8 +251,9 @@ export function TimelineBuilder() {
               className="w-24 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
             <input value={evForm.track} onChange={(e) => setEvForm({ ...evForm, track: e.target.value })} placeholder="track"
               className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-            <button onClick={addEvent} disabled={!evForm.title.trim() || !evForm.year.trim()}
-              className="px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40">
+            <button onClick={addEvent} disabled={busyAction === 'addEvent' || !evForm.title.trim() || !evForm.year.trim()}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40">
+              {busyAction === 'addEvent' && <Loader2 className="w-3 h-3 animate-spin" />}
               Add event
             </button>
           </div>
