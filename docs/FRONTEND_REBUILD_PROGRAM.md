@@ -404,6 +404,9 @@ to have):
 
 | Date | Phase | What shipped | Commit |
 |---|---|---|---|
+| 2026-07-10 | Wave 3 | vote rebuilt — removed a fake parallel proposal/dashboard system (vote buttons wired to the wrong domain, macro calls against wrong field shapes); new `BallotAnalysisLab.tsx` wires `tallyVotes`/`fairnessCheck`/`consensusMeasure` correctly | `4b4a54b8` |
+| 2026-07-10 | Wave 3 | repos rebuilt — removed a fabricated repo/issue/commit browser duplicating the already-real `ConcordRepoWorkspace`; fixed an envelope-unwrap bug causing silent-failure-as-success on mutations and render crashes on reads; wired 3 previously-uncallable analysis macros (codeComplexity/commitAnalysis/dependencyAudit) | `410f7cfe` |
+| 2026-07-10 | Wave 3 | staking audited — confirmed clean frontend (0/13 macros unsurfaced, no fabrication); real defect found and deliberately flagged rather than silently patched (staking never touches the real wallet — a closed simulation), per the money-invariant escalation rule | `0c3d1ad6` |
 | 2026-07-10 | Wave 3 | integrations rebuilt — removed 2 fabricated tabs, wired 3 previously-dead analysis macros (apiHealthCheck/dataFlowMapping/compatibilityCheck), fixed ConnectorCatalog showing fake "Connected" status regardless of real OAuth state | `0d97f056` |
 | 2026-07-10 | Wave 3 | personas rebuilt — new `persona-envelope.ts` fixes the fabricated-success bug (outer transport `ok` checked instead of the wrapped macro's own `result.ok`) across all 5 persona components; confirmed `LENS_ACTIONS`-over-`MACROS` registration precedence | `7292fc8f` |
 | 2026-07-10 | Wave 3 | productivity rebuilt as real Todoist/Linear task manager — killed a fabricated "6 office tools" scaffold referencing non-existent macros | `9ddb25c6` |
