@@ -1121,18 +1121,25 @@ export const apiHelpers = {
     status: () => api.get('/api/hypothesis/status'),
   },
 
-  // Inference engine
+  // Inference engine. Field names below match the real macro handlers
+  // exactly (server.js `addInferenceFact`/`queryWithInference`/
+  // `syllogisticReason` — search those names) — they read flat
+  // subject/predicate/object (facts+query) or majorPremise/minorPremise
+  // (syllogism) directly off the POST body. Earlier shapes here
+  // ({facts:[...]}, {query:"..."}, {major,minor}) didn't match any of
+  // those, so every call silently no-opped against blank/wildcard
+  // fields — see docs/lens-specs/inference-capability-map.md.
   inference: {
     status: () => api.get('/api/inference/status'),
-    facts: (data: { facts: string[] }) =>
+    facts: (data: { subject: string; predicate: string; object: string; confidence?: number; negated?: boolean; universal?: boolean }) =>
       api.post('/api/inference/facts', data),
-    rules: (data: { rules: unknown[] }) =>
+    rules: (data: { name?: string; type?: string; antecedent: { subject?: string; predicate: string; object?: string }; consequent: { subject?: string; predicate: string; object?: string }; confidence?: number }) =>
       api.post('/api/inference/rules', data),
-    query: (data: { query: string }) =>
+    query: (data: { subject?: string; predicate?: string; object?: string }) =>
       api.post('/api/inference/query', data),
-    syllogism: (data: { major: string; minor: string }) =>
+    syllogism: (data: { majorPremise: string; minorPremise: string }) =>
       api.post('/api/inference/syllogism', data),
-    forwardChain: (data: { facts?: string[] }) =>
+    forwardChain: (data: { maxIterations?: number }) =>
       api.post('/api/inference/forward-chain', data),
   },
 

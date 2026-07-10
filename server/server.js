@@ -2862,14 +2862,31 @@ const ETHOS_INVARIANTS = Object.freeze({
 });
 
 // Guard: call before any external/persistent/monitoring-like action
+//
+// Token-boundary matching (2026-07-10 Wave 3 fix), not raw substring
+// `includes`. The naive substring check false-positived on any action
+// name that merely CONTAINS "ad" — which, in English, is nearly every verb
+// starting a mutation name: `inference_add_fact`, `inference_add_rule`,
+// `commonsense_add`, `metacognition_adapt`, `metacognition_adjust_confidence`,
+// `metalearning_adapt`, `metalearning_adaptations`. Every one of those threw
+// "Ethos invariant: ads forbidden" on every call — found live (not by
+// reading the code) while wiring up the inference lens's Add-Facts tab,
+// which called the correctly-shaped macro and STILL failed for this
+// unrelated reason. None of the ~134 registered action names is genuinely
+// about advertising, so the substring form never had a real true-positive
+// to protect — token matching preserves the invariant's actual intent
+// (still blocks a real `show_ads`/`ad_click`-shaped action name) while
+// no longer blocking ordinary CRUD verbs.
 function enforceEthosInvariant(actionName="") {
   const a = String(actionName||"").toLowerCase();
-  if (ETHOS_INVARIANTS.NO_TELEMETRY && a.includes("telemetry")) throw new Error("Ethos invariant: telemetry forbidden");
-  if (ETHOS_INVARIANTS.NO_ADS && (a.includes("ad") || a.includes("ads"))) throw new Error("Ethos invariant: ads forbidden");
-  if (ETHOS_INVARIANTS.NO_SECRET_MONITORING && (a.includes("monitor") || a.includes("tracking") || a.includes("track"))) {
+  const tokens = a.split(/[^a-z0-9]+/).filter(Boolean);
+  const hasToken = (...words) => tokens.some((t) => words.includes(t));
+  if (ETHOS_INVARIANTS.NO_TELEMETRY && hasToken("telemetry")) throw new Error("Ethos invariant: telemetry forbidden");
+  if (ETHOS_INVARIANTS.NO_ADS && hasToken("ad", "ads")) throw new Error("Ethos invariant: ads forbidden");
+  if (ETHOS_INVARIANTS.NO_SECRET_MONITORING && hasToken("monitor", "monitoring", "tracking", "track")) {
     throw new Error("Ethos invariant: secret monitoring forbidden");
   }
-  if (ETHOS_INVARIANTS.NO_USER_PROFILING && (a.includes("profile") || a.includes("fingerprint"))) throw new Error("Ethos invariant: user profiling forbidden");
+  if (ETHOS_INVARIANTS.NO_USER_PROFILING && hasToken("profile", "profiling", "fingerprint", "fingerprinting")) throw new Error("Ethos invariant: user profiling forbidden");
   return true;
 }
 
@@ -67593,6 +67610,18 @@ function queryWithInference(query) {
 }
 
 // Perform syllogistic reasoning: Given "All A are B" and "X is A", derive "X is B"
+// Minimal regular-plural singularizer for syllogisticReason's category
+// match. Handles the ordinary English cases (mammals->mammal, foxes->fox,
+// classes->class) used by "All X are Y" phrasing; irregular plurals
+// (mice/mouse) are an honest, documented limitation, not a new defect.
+function _singularizeCategory(word) {
+  const w = String(word || "");
+  if (/(ss|us)$/i.test(w)) return w; // class, bus — don't strip
+  if (/[sxz]es$|[cs]hes$/i.test(w)) return w.slice(0, -2); // foxes, classes, dishes
+  if (/s$/i.test(w) && w.length > 1) return w.slice(0, -1); // mammals -> mammal
+  return w;
+}
+
 function syllogisticReason(input = {}) {
   ensureReasoningEngine();
   ensureInferenceKnowledgeBase();
@@ -67605,7 +67634,13 @@ function syllogisticReason(input = {}) {
   if (!majorMatch) {
     return { ok: false, error: "Major premise must be in form 'All X are Y'" };
   }
-  const category = majorMatch[1].toLowerCase();
+  // The major premise's category is grammatically plural ("All mammals
+  // are...") while the minor premise's is singular ("A whale is a
+  // mammal") — singularize the major's category before comparing/storing
+  // so the canonical worked example in this function's own comment
+  // ("All mammals are warm-blooded" + "A whale is a mammal") actually
+  // succeeds instead of failing "mammal" !== "mammals" on every call.
+  const category = _singularizeCategory(majorMatch[1].toLowerCase());
   const property = majorMatch[2].toLowerCase();
 
   // Parse minor premise (Z is X)
