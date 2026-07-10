@@ -24,11 +24,35 @@ function freshState() {
 describe("lens state persistence — Bucket 2 Gap A", () => {
   beforeEach(() => { freshState(); });
 
-  it("exposes 26 lens state keys", () => {
-    assert.equal(LENS_STATE_KEYS.length, 26);
+  it("exposes 27 lens state keys", () => {
+    assert.equal(LENS_STATE_KEYS.length, 27);
     assert.ok(LENS_STATE_KEYS.includes("chatLens"));
     assert.ok(LENS_STATE_KEYS.includes("worldLens"));
     assert.ok(LENS_STATE_KEYS.includes("accountingLens"));
+    assert.ok(LENS_STATE_KEYS.includes("eventTimelineLens"));
+  });
+
+  it("roundtrips STATE.eventTimelineLens.views (event-timeline saved filter presets)", () => {
+    // Regression pin: server/domains/event-timeline.js#savedViewsMap() used
+    // to write to a flat STATE.eventTimelineViews field, which was NOT in
+    // LENS_STATE_KEYS — saveView()/deleteView() called persistState() but
+    // the data was silently dropped from every disk snapshot. Confirms the
+    // nested STATE.eventTimelineLens.views shape survives the round trip.
+    STATE.eventTimelineLens = {
+      views: new Map([
+        ["user_a", [
+          { id: "view_1", name: "combat-only", channels: ["combat:hit"], worldId: null, query: "", createdAt: 1 },
+        ]],
+      ]),
+    };
+    const persisted = serializeLensState(STATE);
+    freshState();
+    hydrateLensState(STATE, persisted);
+
+    assert.ok(STATE.eventTimelineLens.views instanceof Map);
+    const aliceViews = STATE.eventTimelineLens.views.get("user_a");
+    assert.ok(Array.isArray(aliceViews));
+    assert.equal(aliceViews[0].name, "combat-only");
   });
 
   it("serializes empty STATE to empty object", () => {

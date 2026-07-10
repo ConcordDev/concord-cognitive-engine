@@ -11243,8 +11243,14 @@ async function runMacro(domain, name, input, ctx) {
     // canonical domain registry.
     cross_world_effectiveness: new Set(["explain", "for_player", "list_domains"]),
     // event_timeline (Sprint 8) — unified firehose of socket events
-    // persisted to event_timeline_log. Powers /lenses/timeline.
-    event_timeline: new Set(["recent", "stats"]),
+    // persisted to event_timeline_log. Powers /lenses/event-timeline.
+    // `channels` added (Wave 3 activity-feed-parity audit): it's the same
+    // read-only/metadata-only shape as recent+stats (channel name, count,
+    // last_seen — no payload/actor content) and the lens's fetchLive()
+    // calls all three together unconditionally on mount; leaving it out
+    // silently blanked the channel-filter-chip row for logged-out callers
+    // while recent/stats rendered fine right next to it.
+    event_timeline: new Set(["recent", "stats", "channels"]),
     // guidance_waypoint (Sprint 9) — active objective + hint text for
     // the diegetic waypoint beacon + "?" recovery button.
     guidance_waypoint: new Set(["active_objective", "hint_for"]),
