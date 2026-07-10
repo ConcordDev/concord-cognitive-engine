@@ -52,14 +52,12 @@ import {
   Building,
   CreditCard,
   PieChart,
-  Activity,
   Layers,
   CircleDot,
   Timer,
   TrendingDown,
   ArrowDown,
   ArrowUp,
-  Eye,
   Printer,
   Send,
   Star,
@@ -74,11 +72,11 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
-import QuoteChart, { type QuoteSnapshot } from '@/components/lens/QuoteChart';
 import TradesWorkbench from '@/components/trades/TradesWorkbench';
 import TechniciansPanel from '@/components/trades/TechniciansPanel';
 import DispatchBoardPanel from '@/components/trades/DispatchBoardPanel';
 import QuotesPanel from '@/components/trades/QuotesPanel';
+import JobPhotosPanel from '@/components/trades/JobPhotosPanel';
 import BookingsPanel from '@/components/trades/BookingsPanel';
 import TimesheetsPanel from '@/components/trades/TimesheetsPanel';
 import PaymentsPanel from '@/components/trades/PaymentsPanel';
@@ -157,15 +155,6 @@ interface MaterialEntry {
   deliveryStatus: 'ordered' | 'shipped' | 'delivered' | 'backordered';
 }
 
-interface PhotoEntry {
-  id: string;
-  phase: 'before' | 'during' | 'after';
-  date: string;
-  location: string;
-  notes: string;
-  filename: string;
-}
-
 interface TradesArtifact {
   name: string;
   type: ArtifactType;
@@ -184,7 +173,6 @@ interface TradesArtifact {
   phases?: JobPhase[];
   changeOrders?: ChangeOrder[];
   timeEntries?: TimeEntry[];
-  photos?: PhotoEntry[];
   materialEntries?: MaterialEntry[];
   laborCostTotal?: number;
   materialCostTotal?: number;
@@ -260,16 +248,6 @@ const genId = () => `local-${Date.now()}-${++_idCounter}`;
 export default function TradesLensPage() {
   useLensNav('trades');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('trades');
-  // TradingView-style chart selection — defaults to NASDAQ Composite.
-  // Persists across navigations via localStorage.
-  const [chartSymbol, setChartSymbol] = useState<string>(() => {
-    if (typeof window === 'undefined') return '^IXIC';
-    return localStorage.getItem('concord_trades_chart_symbol') || '^IXIC';
-  });
-  const handleChangeSymbol = (s: string) => {
-    setChartSymbol(s);
-    try { localStorage.setItem('concord_trades_chart_symbol', s); } catch { /* private mode */ }
-  };
 
   // ----- Top-level navigation -----
   const [activeTab, setActiveTab] = useState<ModeTab>('jobs');
@@ -347,12 +325,6 @@ export default function TradesLensPage() {
   const [matQty, setMatQty] = useState('');
   const [matUnit, setMatUnit] = useState('ea');
   const [matUnitCost, setMatUnitCost] = useState('');
-
-  // ----- Photo Documentation state -----
-  const [photoEntries, setPhotoEntries] = useState<PhotoEntry[]>([]);
-  const [photoPhase, setPhotoPhase] = useState<'before' | 'during' | 'after'>('before');
-  const [photoLocation, setPhotoLocation] = useState('');
-  const [photoNotes, setPhotoNotes] = useState('');
 
   // ----- Invoice Generator state -----
   const [invLineItems, setInvLineItems] = useState<Array<{ description: string; quantity: number; unitPrice: number }>>([{ description: '', quantity: 1, unitPrice: 0 }]);
@@ -441,7 +413,6 @@ export default function TradesLensPage() {
     setChangeOrders(d.changeOrders || []);
     setTimeEntries(d.timeEntries || []);
     setMatEntries(d.materialEntries || []);
-    setPhotoEntries(d.photos || []);
     setEstLineItems(d.estimateLineItems || []);
   };
 
@@ -689,23 +660,6 @@ export default function TradesLensPage() {
 
   const updateMaterialStatus = (id: string, deliveryStatus: MaterialEntry['deliveryStatus']) => {
     setMatEntries(prev => prev.map(m => m.id === id ? { ...m, deliveryStatus } : m));
-  };
-
-  // ---------------------------------------------------------------------------
-  // Photo Documentation helpers
-  // ---------------------------------------------------------------------------
-
-  const addPhotoEntry = () => {
-    setPhotoEntries(prev => [...prev, {
-      id: genId(),
-      phase: photoPhase,
-      date: new Date().toISOString().split('T')[0],
-      location: photoLocation || 'Unspecified',
-      notes: photoNotes,
-      filename: `photo_${Date.now()}.jpg`,
-    }]);
-    setPhotoNotes('');
-    setPhotoLocation('');
   };
 
   // ---------------------------------------------------------------------------
@@ -1569,103 +1523,6 @@ export default function TradesLensPage() {
   };
 
   // ---------------------------------------------------------------------------
-  // Sub-view: Photo Documentation
-  // ---------------------------------------------------------------------------
-
-  const renderPhotoDocumentation = () => {
-    const phaseGroups = {
-      before: photoEntries.filter(p => p.phase === 'before'),
-      during: photoEntries.filter(p => p.phase === 'during'),
-      after: photoEntries.filter(p => p.phase === 'after'),
-    };
-
-    return (
-      <div className="space-y-4">
-        <div className={cn(ds.panel, 'space-y-4')}>
-          <div className="flex items-center justify-between">
-            <h3 className={cn(ds.heading3, 'flex items-center gap-2')}>
-              <Camera className="w-5 h-5 text-pink-400" /> Photo Documentation
-            </h3>
-            <span className={ds.textMuted}>{photoEntries.length} entries</span>
-          </div>
-
-          {/* Add photo entry form */}
-          <div className="flex items-end gap-3 flex-wrap p-3 rounded-lg bg-lattice-elevated/30">
-            <div className="w-32">
-              <label className={ds.label}>Phase</label>
-              <select value={photoPhase} onChange={e => setPhotoPhase(e.target.value as 'before' | 'during' | 'after')} className={ds.select}>
-                <option value="before">Before</option>
-                <option value="during">During</option>
-                <option value="after">After</option>
-              </select>
-            </div>
-            <div className="w-40">
-              <label className={ds.label}>Location</label>
-              <input value={photoLocation} onChange={e => setPhotoLocation(e.target.value)} className={ds.input} placeholder="e.g. Kitchen" />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <label className={ds.label}>Notes</label>
-              <input value={photoNotes} onChange={e => setPhotoNotes(e.target.value)} className={ds.input} placeholder="Description of what was documented..." />
-            </div>
-            <button onClick={addPhotoEntry} className={ds.btnPrimary}>
-              <Camera className="w-4 h-4" /> Log Entry
-            </button>
-          </div>
-
-          {/* Photo entries by phase */}
-          {photoEntries.length === 0 ? (
-            <div className="text-center py-8">
-              <Camera className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-              <p className={ds.textMuted}>No photo documentation entries yet. Log entries as you document the project.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {(['before', 'during', 'after'] as const).map(phase => {
-                const entries = phaseGroups[phase];
-                if (entries.length === 0) return null;
-                const phaseConfig = {
-                  before: { label: 'Before', color: 'text-blue-400', icon: Eye },
-                  during: { label: 'During', color: 'text-yellow-400', icon: Activity },
-                  after: { label: 'After', color: 'text-green-400', icon: CheckCircle2 },
-                };
-                const cfg = phaseConfig[phase];
-                return (
-                  <div key={phase}>
-                    <h4 className={cn('text-sm font-semibold mb-2 flex items-center gap-2', cfg.color)}>
-                      <cfg.icon className="w-4 h-4" /> {cfg.label} ({entries.length})
-                    </h4>
-                    <div className={ds.grid3}>
-                      {entries.map(entry => (
-                        <div key={entry.id} className="p-3 rounded-lg bg-lattice-elevated/30 hover:bg-lattice-elevated/50 group">
-                          {/* Placeholder for actual photo */}
-                          <div className="aspect-video rounded-lg bg-lattice-surface border border-lattice-border flex items-center justify-center mb-2">
-                            <Camera className="w-8 h-8 text-gray-600" />
-                          </div>
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="text-sm text-white">{entry.location}</p>
-                              <p className={ds.textMuted}>{entry.date}</p>
-                              {entry.notes && <p className="text-xs text-gray-400 mt-1">{entry.notes}</p>}
-                            </div>
-                            <button onClick={() => setPhotoEntries(prev => prev.filter(p => p.id !== entry.id))} className={cn(ds.btnSmall, 'text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100')} aria-label="Delete">
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                          <p className={cn(ds.textMono, 'text-[10px] text-gray-400 mt-1')}>{entry.filename}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // ---------------------------------------------------------------------------
   // Render: Artifact library (original, enhanced)
   // ---------------------------------------------------------------------------
 
@@ -2236,7 +2093,7 @@ export default function TradesLensPage() {
       case 'timeTracking': return renderTimeTracking();
       case 'profitLoss': return renderProfitLoss();
       case 'materialsTracker': return renderMaterialsTracker();
-      case 'photos': return renderPhotoDocumentation();
+      case 'photos': return <JobPhotosPanel jobId={selectedJobId} jobTitle={selectedJob?.title} />;
       case 'invoiceGenerator': return renderInvoiceGenerator();
       default: return renderLibrary();
     }
@@ -2309,17 +2166,6 @@ export default function TradesLensPage() {
         </div>
       </header>
 
-
-      {/* TradingView-style session chart for the selected index. Rolling
-          buffer accumulates Yahoo Finance ticks (every ~75s) into a
-          line chart; localStorage-persisted across page navigations. */}
-      <QuoteChart
-        symbol={chartSymbol}
-        quotes={(realtimeData as { quotes?: QuoteSnapshot[] } | null)?.quotes}
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-        onChangeSymbol={handleChangeSymbol}
-      />
 
       <RealtimeDataPanel domain="trades" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 

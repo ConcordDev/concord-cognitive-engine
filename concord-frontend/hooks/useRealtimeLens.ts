@@ -29,7 +29,6 @@ interface UseRealtimeLensResult {
 // Maps lens domain to WebSocket event names
 const DOMAIN_EVENTS: Record<string, string[]> = {
   finance: ['finance:ticker', 'finance:market_update', 'finance:alert'],
-  trades: ['finance:ticker', 'finance:market_update'],
   crypto: ['crypto:ticker', 'finance:alert'],
   market: ['finance:ticker', 'finance:market_update'],
   news: ['news:update', 'news:breaking'],
