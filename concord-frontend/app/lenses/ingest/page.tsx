@@ -13,10 +13,8 @@ import { PipelinePanel } from '@/components/ingest/PipelinePanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
 import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, Layers, ChevronDown, FileUp, FileJson, FileText, Image as ImageIcon, Gauge, ArrowDownToLine, Activity, BarChart3, Search, List } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
@@ -86,6 +84,9 @@ interface IngestJob {
 // Module-scoped so it's a stable reference (not re-created per render).
 const TEXT_BATCH_EXT = /\.(txt|md|markdown|json|csv|tsv|log|ya?ml|xml|html)$/i;
 
+// Ingest-analysis actions that read plain text (vs. a structured JSON array).
+const TEXT_ANALYSIS_ACTIONS = new Set(['parseDocument', 'extractEntities']);
+
 export default function IngestLensPage() {
   useLensNav('ingest');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('ingest');
@@ -101,24 +102,45 @@ export default function IngestLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  const { items: ingestArtifacts } = useLensData('ingest', 'ingest-job', { seed: [] });
-  const runAction = useRunArtifact('ingest');
-  const [ingestActionResult, setIngestActionResult] = useState<{ action: string; data: unknown } | null>(null);
+  // ── Ingest Analysis Actions — run the real ingest.* workbench macros on the
+  // content in the main text area (or a pasted JSON array). These call the live
+  // domain macros directly via lensRun(); the text/records the user supplies are
+  // the macro's actual input (POST /api/lens/run builds a virtual artifact whose
+  // .data IS the input body, so `artifact.data.text` === input.text here).
+  const [analysisResult, setAnalysisResult] = useState<{ action: string; data: unknown } | null>(null);
+  const [analysisPending, setAnalysisPending] = useState<string | null>(null);
+  const [expectedFields, setExpectedFields] = useState('');
 
-  const handleIngestAction = useCallback((action: string) => {
-    const artifactId = ingestArtifacts[0]?.id;
-    if (!artifactId) return;
-    runAction.mutate(
-      { id: artifactId, action, params: {} },
-      {
-        onSuccess: (res) => setIngestActionResult({ action, data: res.result }),
-        onError: (e) => {
-          console.error(`Action failed:`, e);
-          setIngestActionResult({ action, data: { error: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` } });
-        },
+  const runAnalysis = useCallback(async (action: string) => {
+    setAnalysisPending(action);
+    // Optimistic: clear the prior result immediately so the panel reads as "working".
+    setAnalysisResult(null);
+    try {
+      let input: Record<string, unknown>;
+      if (TEXT_ANALYSIS_ACTIONS.has(action)) {
+        input = { text: textInput };
+      } else {
+        // validateSchema / batchStatus operate on a JSON array of records/items.
+        let parsed: unknown = null;
+        try { parsed = JSON.parse(textInput); } catch { parsed = null; }
+        if (!Array.isArray(parsed)) {
+          setAnalysisResult({
+            action,
+            data: { message: `Paste a JSON array of ${action === 'validateSchema' ? 'records' : 'items'} into the text area, then run this action.` },
+          });
+          return;
+        }
+        input = action === 'validateSchema'
+          ? { records: parsed, expectedFields: expectedFields.split(',').map((s) => s.trim()).filter(Boolean) }
+          : { items: parsed };
       }
-    );
-  }, [ingestArtifacts, runAction]);
+      const r = await lensRun('ingest', action, input);
+      if (r.data.ok) setAnalysisResult({ action, data: r.data.result });
+      else setAnalysisResult({ action, data: { error: r.data.error || 'Action failed' } });
+    } finally {
+      setAnalysisPending(null);
+    }
+  }, [textInput, expectedFields]);
 
   // Fetch past ingestions
   const { data: historyData, isLoading, isError, error, refetch } = useQuery({
@@ -200,10 +222,12 @@ export default function IngestLensPage() {
         }))
       );
       try {
-        const res = await api.post('/api/lens/run', {
-          domain: 'ingest', action: 'batch-ingest', input: { files },
-        });
-        const r = (res.data?.result ?? res.data) as { ingested?: number; skipped?: number };
+        const res = await lensRun('ingest', 'batch-ingest', { files });
+        if (!res.data.ok) {
+          showToast('error', `Batch ingest failed${res.data.error ? `: ${res.data.error}` : ''}`);
+          return;
+        }
+        const r = (res.data.result ?? {}) as { ingested?: number; skipped?: number };
         const ingested = r?.ingested ?? 0;
         const skipped = r?.skipped ?? 0;
         showToast('success', `Ingested ${ingested} file(s)${skipped ? `, skipped ${skipped}` : ''}`);
@@ -409,6 +433,7 @@ export default function IngestLensPage() {
             >
               {ingestText.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {ingestText.isPending ? 'Ingesting...' : 'Ingest'}
+              <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-black/30 border border-white/10 text-[10px] font-mono text-neon-cyan/70">⌘↵</kbd>
             </button>
           </div>
 
@@ -535,41 +560,80 @@ export default function IngestLensPage() {
       {/* ELT Pipeline — connectors, schedules, transforms, runs, dedup, OCR, webhook */}
       <PipelinePanel />
 
-      {/* AI Ingest Actions Panel */}
+      {/* Ingest Analysis Actions — profile & validate the content in the text area */}
       <div className="panel p-4 space-y-4">
-        <h2 className="font-semibold flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-neon-cyan" />
-          Ingest Analysis Actions
-        </h2>
-        {!ingestArtifacts[0]?.id && (
-          <p className="text-xs text-gray-400">Create an ingest job to run AI actions.</p>
-        )}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="font-semibold flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-neon-cyan" />
+            Ingest Analysis
+          </h2>
+          <span className="text-[11px] text-gray-500">
+            Runs on the text above. Schema / batch expect a <span className="text-gray-300 font-mono">JSON array</span>.
+          </span>
+        </div>
+        <p className="text-xs text-gray-400">
+          Profile document structure, extract entities, and validate records before they become DTUs —
+          the same checks a real ETL loader runs on inbound data.
+        </p>
+        {/* Expected-fields input drives validateSchema (comma-separated). */}
+        <div className="flex items-center gap-2">
+          <label htmlFor="ingest-expected-fields" className="text-xs text-gray-400 whitespace-nowrap">Expected fields</label>
+          <input
+            id="ingest-expected-fields"
+            type="text"
+            value={expectedFields}
+            onChange={(e) => setExpectedFields(e.target.value)}
+            placeholder="id, name, email  (for Validate Schema — optional)"
+            className="flex-1 px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-neon-green font-mono"
+          />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
-            { action: 'parseDocument', label: 'Parse Document', icon: FileText, color: 'text-neon-cyan' },
-            { action: 'extractEntities', label: 'Extract Entities', icon: Search, color: 'text-neon-purple' },
-            { action: 'validateSchema', label: 'Validate Schema', icon: CheckCircle2, color: 'text-neon-green' },
-            { action: 'batchStatus', label: 'Batch Status', icon: List, color: 'text-yellow-400' },
-          ].map(({ action, label, icon: Icon, color }) => (
-            <button
-              key={action}
-              onClick={() => handleIngestAction(action)}
-              disabled={runAction.isPending || !ingestArtifacts[0]?.id}
-              className="flex items-center gap-2 px-4 py-3 bg-lattice-surface border border-lattice-border rounded-lg text-sm font-medium text-white hover:border-neon-cyan/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {runAction.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Icon className={`w-4 h-4 ${color}`} />
-              )}
-              {label}
-            </button>
-          ))}
+            { action: 'parseDocument', label: 'Parse Document', icon: FileText, color: 'text-neon-cyan', needsText: true },
+            { action: 'extractEntities', label: 'Extract Entities', icon: Search, color: 'text-neon-purple', needsText: true },
+            { action: 'validateSchema', label: 'Validate Schema', icon: CheckCircle2, color: 'text-neon-green', needsText: true },
+            { action: 'batchStatus', label: 'Batch Status', icon: List, color: 'text-yellow-400', needsText: true },
+          ].map(({ action, label, icon: Icon, color, needsText }) => {
+            const disabled = analysisPending !== null || (needsText && !textInput.trim());
+            return (
+              <button
+                key={action}
+                onClick={() => void runAnalysis(action)}
+                disabled={disabled}
+                title={needsText && !textInput.trim() ? 'Add text above first' : undefined}
+                className="flex items-center gap-2 px-4 py-3 bg-lattice-surface border border-lattice-border rounded-lg text-sm font-medium text-white hover:border-neon-cyan/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {analysisPending === action ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Icon className={`w-4 h-4 ${color}`} />
+                )}
+                {label}
+              </button>
+            );
+          })}
         </div>
 
-        {ingestActionResult && !runAction.isPending && (() => {
-          if (ingestActionResult.action === 'parseDocument') {
-            const d = ingestActionResult.data as ParseDocumentResult;
+        {analysisResult && analysisPending === null && (() => {
+          // Honest surface for empty-input / error returns (the macros return
+          // { message } for missing input and { error } for a real failure).
+          const meta = analysisResult.data as { message?: string; error?: string };
+          if (meta?.error) {
+            return (
+              <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
+                <AlertTriangle className="w-4 h-4" /> {meta.error}
+              </div>
+            );
+          }
+          if (meta?.message) {
+            return (
+              <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm text-yellow-300">
+                <AlertTriangle className="w-4 h-4" /> {meta.message}
+              </div>
+            );
+          }
+          if (analysisResult.action === 'parseDocument') {
+            const d = analysisResult.data as ParseDocumentResult;
             return (
               <div className="space-y-3 pt-2 border-t border-lattice-border">
                 <h3 className="text-sm font-semibold text-neon-cyan">Document Parse — {d.format}</h3>
@@ -602,8 +666,8 @@ export default function IngestLensPage() {
               </div>
             );
           }
-          if (ingestActionResult.action === 'extractEntities') {
-            const d = ingestActionResult.data as ExtractEntitiesResult;
+          if (analysisResult.action === 'extractEntities') {
+            const d = analysisResult.data as ExtractEntitiesResult;
             return (
               <div className="space-y-3 pt-2 border-t border-lattice-border">
                 <h3 className="text-sm font-semibold text-neon-purple">Extracted Entities</h3>
@@ -642,8 +706,8 @@ export default function IngestLensPage() {
               </div>
             );
           }
-          if (ingestActionResult.action === 'validateSchema') {
-            const d = ingestActionResult.data as ValidateSchemaResult;
+          if (analysisResult.action === 'validateSchema') {
+            const d = analysisResult.data as ValidateSchemaResult;
             return (
               <div className="space-y-3 pt-2 border-t border-lattice-border">
                 <h3 className="text-sm font-semibold text-neon-green">Schema Validation</h3>
@@ -672,8 +736,8 @@ export default function IngestLensPage() {
               </div>
             );
           }
-          if (ingestActionResult.action === 'batchStatus') {
-            const d = ingestActionResult.data as BatchStatusResult;
+          if (analysisResult.action === 'batchStatus') {
+            const d = analysisResult.data as BatchStatusResult;
             return (
               <div className="space-y-3 pt-2 border-t border-lattice-border">
                 <h3 className="text-sm font-semibold text-yellow-400">Batch Status</h3>
