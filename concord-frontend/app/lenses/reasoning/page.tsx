@@ -670,8 +670,11 @@ export default function ReasoningLensPage() {
   // ----- Derived data -----
   const chains: Chain[] = chainsData?.chains || chainsData || [];
   const status: Record<string, unknown> = statusData?.status || statusData || {};
-  const trace: Record<string, unknown> = traceData?.trace || traceData || {};
   const selectedMap = argumentMaps.find((m) => m.id === selectedMapId) || null;
+  const trace: Record<string, unknown> = useMemo(
+    () => traceData?.trace || traceData || {},
+    [traceData],
+  );
 
   // The Domain Actions Bar runs the real logicValidate/fallacyDetect/
   // strengthAssessment macros against the SELECTED CHAIN's actual reasoning
