@@ -1445,6 +1445,41 @@ Generate the plan.`;
     return 2 * R * Math.asin(Math.sqrt(h));
   }
 
+  // Derive real per-kilometre split times from a raw GPS point stream by
+  // walking cumulative distance and linearly interpolating the crossing
+  // time at each km boundary. Returns seconds-per-km array (Strava/Garmin
+  // "splits" shape) or [] when the track has no usable timestamps.
+  function computeKmSplits(points) {
+    const splits = [];
+    let cumM = 0;
+    let nextBoundary = 1000;
+    let splitStartT = null;
+    let firstT = null;
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const t = p.t != null ? new Date(p.t).getTime() : null;
+      if (t != null && Number.isFinite(t) && firstT == null) { firstT = t; splitStartT = t; }
+      if (i > 0) {
+        const prev = points[i - 1];
+        const segM = haversineM([Number(prev.lat), Number(prev.lon)], [Number(p.lat), Number(p.lon)]);
+        const prevT = prev.t != null ? new Date(prev.t).getTime() : null;
+        if (Number.isFinite(segM) && segM > 0 && t != null && prevT != null && t > prevT) {
+          const segStartCum = cumM;
+          cumM += segM;
+          // this segment may cross one or more km boundaries; interpolate
+          while (cumM >= nextBoundary) {
+            const frac = (nextBoundary - segStartCum) / segM;
+            const crossT = prevT + (t - prevT) * frac;
+            if (splitStartT != null) splits.push(Math.round((crossT - splitStartT) / 1000));
+            splitStartT = crossT;
+            nextBoundary += 1000;
+          }
+        }
+      }
+    }
+    return splits;
+  }
+
   // Reduce a GPS point stream to summary metrics: distance, elevation
   // gain, moving time, bounds. Points: {lat,lon,ele?,t?(epoch ms or ISO)}.
   function summarizeTrack(points) {
@@ -1558,6 +1593,7 @@ Generate the plan.`;
       gearId: params.gearId ? String(params.gearId) : null,
       kudos: [], comments: [], photos: [],
       hasGps: true, source: imported ? "gpx_import" : "gps_recording",
+      splits: computeKmSplits(points),
       createdAt: fnow(),
     };
     act.relativeEffort = relativeEffort(act);
