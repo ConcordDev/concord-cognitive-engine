@@ -20,6 +20,7 @@ import { CrossDomainSearch } from '@/components/all/CrossDomainSearch';
 import { PinnedShelf } from '@/components/all/PinnedShelf';
 import { RecentLensesStrip } from '@/components/all/RecentLensesStrip';
 import { CommandPalette } from '@/components/all/CommandPalette';
+import { SubstratePulsePanel } from '@/components/all/SubstratePulsePanel';
 import { lensRun } from '@/lib/api/client';
 
 interface LensBadge { count: number; lastSeenAt: string | null; total: number }
@@ -146,6 +147,7 @@ export default function AllLensesPage() {
 
       <PinnedShelf refreshKey={launcherRefresh} onChange={() => setLauncherRefresh((n) => n + 1)} />
       <RecentLensesStrip refreshKey={launcherRefresh} />
+      <SubstratePulsePanel />
 
       <div className="panel p-4">
         <label className="relative block">

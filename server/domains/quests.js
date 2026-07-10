@@ -12,6 +12,7 @@
 
 import {
   getActiveQuests,
+  getCompletedQuests,
   getQuestProgress,
   recordObjectiveProgress,
   checkQuestCompletion,
@@ -40,6 +41,54 @@ function badNumericField(input, keys) {
     if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
   }
   return null;
+}
+
+// Reshapes an engine quest row (world_quests + joined player_quests, with a
+// raw `objectives` array from quest_objectives and `rewards` from
+// quest_rewards attached) into the { id, title, description, status,
+// objectives[{title,progress,target,complete}], reward } shape /lenses/quests
+// renders. Per-objective progress is a SEPARATE join (player_quest_progress,
+// via getQuestProgress) — the raw `quest_objectives` rows carry no
+// current_count/completed_at of their own — so this merges the two. Shared
+// by `quests.mine` and `quests.completed` so the two macros can never drift
+// into different shapes for the same underlying row kind.
+function reshapeQuestForLens(db, userId, worldId, q) {
+  const progress = getQuestProgress(db, userId, worldId, q.id);
+  const byObjId = new Map(progress.map((p) => [p.id, p]));
+  const objectives = (q.objectives || []).map((o) => {
+    const p = byObjId.get(o.id) || {};
+    const cur = Number(p.current_count || 0);
+    const target = Number(o.required_count || 1);
+    return {
+      id: o.id,
+      title: o.description || `${o.type} ${o.target}`,
+      description: o.description || undefined,
+      progress: cur,
+      target,
+      complete: !!p.obj_completed_at || cur >= target,
+    };
+  });
+  let reward = {};
+  try {
+    if (q.reward_json) reward = JSON.parse(q.reward_json);
+  } catch { reward = {}; }
+  if ((q.rewards || []).length) {
+    // Prefer the structured quest_rewards rows when present.
+    const cc = q.rewards
+      .filter((r) => r.reward_type === "gold" || r.reward_type === "xp")
+      .reduce((s, r) => s + Number(r.amount || 0), 0);
+    if (cc > 0) reward.cc = cc;
+    const titleRow = q.rewards.find((r) => r.reward_type === "skill_unlock" && r.reward_key);
+    if (titleRow) reward.title = reward.title || titleRow.reward_key;
+  }
+  return {
+    id: q.id,
+    title: q.title || q.id,
+    description: q.description || undefined,
+    status: q.status || "active",
+    objectives,
+    reward,
+  };
 }
 
 export default function registerQuestsMacros(register) {
@@ -71,46 +120,29 @@ export default function registerQuestsMacros(register) {
     const worldId = ctxWorld(ctx, input);
 
     const rows = getActiveQuests(db, userId, worldId);
-    const quests = rows.map((q) => {
-      const progress = getQuestProgress(db, userId, worldId, q.id);
-      const byObjId = new Map(progress.map((p) => [p.id, p]));
-      const objectives = (q.objectives || []).map((o) => {
-        const p = byObjId.get(o.id) || {};
-        const cur = Number(p.current_count || 0);
-        const target = Number(o.required_count || 1);
-        return {
-          id: o.id,
-          title: o.description || `${o.type} ${o.target}`,
-          description: o.description || undefined,
-          progress: cur,
-          target,
-          complete: !!p.obj_completed_at || cur >= target,
-        };
-      });
-      let reward = {};
-      try {
-        if (q.reward_json) reward = JSON.parse(q.reward_json);
-      } catch { reward = {}; }
-      if ((q.rewards || []).length) {
-        // Prefer the structured quest_rewards rows when present.
-        const cc = q.rewards
-          .filter((r) => r.reward_type === "gold" || r.reward_type === "xp")
-          .reduce((s, r) => s + Number(r.amount || 0), 0);
-        if (cc > 0) reward.cc = cc;
-        const titleRow = q.rewards.find((r) => r.reward_type === "skill_unlock" && r.reward_key);
-        if (titleRow) reward.title = reward.title || titleRow.reward_key;
-      }
-      return {
-        id: q.id,
-        title: q.title || q.id,
-        description: q.description || undefined,
-        status: q.status || "active",
-        objectives,
-        reward,
-      };
-    });
+    const quests = rows.map((q) => reshapeQuestForLens(db, userId, worldId, q));
     return { ok: true, quests };
   }, { note: "lens-shaped active quest list for /lenses/quests" });
+
+  /**
+   * quests.completed — lens-shaped quest HISTORY (status completed OR
+   * rewarded). `quests.mine` deliberately excludes these rows (it only ever
+   * returns the active set — see getActiveQuests), so a "Completed" tab
+   * needs this separate macro rather than client-side-filtering `mine`'s
+   * result (which can never contain a completed row).
+   * input: { userId?, worldId? }  → { ok, quests }
+   */
+  register("quests", "completed", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctxUser(ctx, input);
+    if (!userId) return { ok: false, reason: "no_user" };
+    const worldId = ctxWorld(ctx, input);
+
+    const rows = getCompletedQuests(db, userId, worldId);
+    const quests = rows.map((q) => reshapeQuestForLens(db, userId, worldId, q));
+    return { ok: true, quests };
+  }, { note: "lens-shaped completed/rewarded quest history for /lenses/quests" });
 
   /**
    * quests.progress — objective rows for a quest with merged player progress.

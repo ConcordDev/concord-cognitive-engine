@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   MessageSquare, GitPullRequest, Search, Users, SlidersHorizontal,
   BarChart3, Workflow, FolderGit2, Loader2, AlertTriangle, CheckCircle2,
+  ShieldCheck,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz/ChartKit';
@@ -355,23 +356,66 @@ interface ReviewResult {
   filesChanged: number; linesAdded: number; linesRemoved: number;
   findings: Finding[]; findingCount: number; blockingCount: number; verdict: string;
 }
+type FixDecision = 'accepted' | 'rejected' | 'ignored';
+interface GateResult {
+  passed: boolean; failOn: string; minSeverity: number;
+  totalFindings: number; blockingFindings: number; verdict: string; summary: string;
+}
 
 function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
   const [diff, setDiff] = useState('');
   const [codebaseId, setCodebaseId] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReviewResult | null>(null);
+  const [decisions, setDecisions] = useState<Record<string, FixDecision>>({});
+  const [gateFailOn, setGateFailOn] = useState<'error' | 'warning' | 'any'>('error');
+  const [gate, setGate] = useState<GateResult | null>(null);
+  const [gateLoading, setGateLoading] = useState(false);
 
   const run = async () => {
     if (!diff.trim()) return;
-    setLoading(true); setResult(null);
+    setLoading(true); setResult(null); setDecisions({}); setGate(null);
     try {
       const r = await lensRun('dx-platform', 'reviewDiff', { diff, codebaseId: codebaseId || undefined });
       if (r.data?.ok && r.data.result) {
-        setResult(r.data.result as ReviewResult);
+        const rr = r.data.result as ReviewResult;
+        setResult(rr);
+        // Best-effort telemetry: log one detector-fire count per detector
+        // that produced findings here, so the Analytics tab (which reads
+        // dx-platform.usageAnalytics) reflects real review activity instead
+        // of staying permanently empty — nothing in this workbench called
+        // recordDetectorFire before this wire.
+        const counts = new Map<string, number>();
+        for (const f of rr.findings) counts.set(f.detectorId, (counts.get(f.detectorId) || 0) + 1);
+        void Promise.all(
+          [...counts.entries()].map(([detectorId, count]) =>
+            lensRun('dx-platform', 'recordDetectorFire', { detectorId, count, codebaseId: codebaseId || undefined }).catch(() => null),
+          ),
+        );
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const decide = (f: Finding, decision: FixDecision) => {
+    setDecisions((d) => ({ ...d, [f.id]: decision }));
+    void lensRun('dx-platform', 'recordFixOutcome', {
+      detectorId: f.detectorId, decision, codebaseId: codebaseId || undefined,
+    }).catch(() => null);
+  };
+
+  const checkGate = async () => {
+    if (!result) return;
+    setGateLoading(true); setGate(null);
+    try {
+      const r = await lensRun('dx-platform', 'ciGateCheck', {
+        findings: result.findings.map((f) => ({ severity: f.severity })),
+        failOn: gateFailOn,
+      });
+      if (r.data?.ok && r.data.result) setGate(r.data.result as GateResult);
+    } finally {
+      setGateLoading(false);
     }
   };
 
@@ -416,18 +460,90 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
             <span className="text-zinc-400">{result.findingCount} findings</span>
             <span className="text-orange-300">{result.blockingCount} blocking</span>
           </div>
+
+          {result.findings.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded border border-zinc-800 bg-zinc-900/60 px-2.5 py-2">
+              <ShieldCheck className="h-3.5 w-3.5 text-amber-400" aria-hidden />
+              <span className="text-[11px] text-zinc-400">CI gate check:</span>
+              <select
+                value={gateFailOn}
+                onChange={(e) => setGateFailOn(e.target.value as 'error' | 'warning' | 'any')}
+                className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-[11px] text-white"
+                aria-label="Gate fail-on threshold"
+              >
+                <option value="error">Fail on errors (S4+)</option>
+                <option value="warning">Fail on warnings (S3+)</option>
+                <option value="any">Fail on any finding</option>
+              </select>
+              <button
+                type="button"
+                onClick={checkGate}
+                disabled={gateLoading}
+                className="rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-200 hover:border-zinc-600 disabled:opacity-40"
+              >
+                {gateLoading ? 'Checking…' : 'Check gate'}
+              </button>
+              {gate && (
+                <span className={`rounded border px-2 py-0.5 text-[11px] ${
+                  gate.passed ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                    : 'border-red-500/30 bg-red-500/10 text-red-300'}`}
+                >
+                  {gate.verdict.toUpperCase()} — {gate.blockingFindings}/{gate.totalFindings} blocking at S{gate.minSeverity}+
+                </span>
+              )}
+            </div>
+          )}
+
           {result.findings.length > 0 ? (
             <ul className="space-y-1.5">
-              {result.findings.map((f) => (
-                <li key={f.id} className="rounded border border-zinc-800 bg-zinc-900 p-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded border px-1.5 py-0.5 text-[10px] ${SEV_COLOR[f.severity]}`}>S{f.severity}</span>
-                    <span className="text-xs text-zinc-200">{f.detectorLabel}</span>
-                    <span className="ml-auto font-mono text-[10px] text-zinc-400">{f.path}:{f.line}</span>
-                  </div>
-                  <code className="mt-1 block text-[11px] text-zinc-400">{f.snippet}</code>
-                </li>
-              ))}
+              {result.findings.map((f) => {
+                const decision = decisions[f.id];
+                return (
+                  <li key={f.id} className="rounded border border-zinc-800 bg-zinc-900 p-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded border px-1.5 py-0.5 text-[10px] ${SEV_COLOR[f.severity]}`}>S{f.severity}</span>
+                      <span className="text-xs text-zinc-200">{f.detectorLabel}</span>
+                      <span className="ml-auto font-mono text-[10px] text-zinc-400">{f.path}:{f.line}</span>
+                    </div>
+                    <code className="mt-1 block text-[11px] text-zinc-400">{f.snippet}</code>
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      {decision ? (
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] ${
+                          decision === 'accepted' ? 'bg-emerald-500/15 text-emerald-300'
+                            : decision === 'rejected' ? 'bg-red-500/15 text-red-300'
+                              : 'bg-zinc-500/15 text-zinc-300'}`}
+                        >
+                          {decision}
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => decide(f, 'accepted')}
+                            className="rounded border border-emerald-700/40 px-1.5 py-0.5 text-[10px] text-emerald-300 hover:bg-emerald-500/10"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => decide(f, 'rejected')}
+                            className="rounded border border-red-700/40 px-1.5 py-0.5 text-[10px] text-red-300 hover:bg-red-500/10"
+                          >
+                            Reject
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => decide(f, 'ignored')}
+                            className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-500/10"
+                          >
+                            Ignore
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <Empty>No detector findings in the added lines.</Empty>

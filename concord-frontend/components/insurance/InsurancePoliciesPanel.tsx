@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, ChevronLeft, Trash2, FileText, CreditCard, Users } from 'lucide-react';
+import { Loader2, Plus, ChevronLeft, Trash2, FileText, CreditCard, Users, CalendarClock, Pencil, Save } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -17,8 +17,16 @@ interface Policy {
 interface PolicyDoc { id: string; title: string; kind: string }
 interface Payment { id: string; amount: number; date: string; method: string | null }
 interface Beneficiary { id: string; name: string; relationship: string | null; sharePct: number }
+interface Schedule {
+  frequency: string; installment: number; perYear: number; annualPremium: number;
+  lastPaymentDate: string; nextDueDate: string; nextDueStatus: 'overdue' | 'due_soon' | 'scheduled' | 'none';
+}
+
+const FREQ_LABEL: Record<string, string> = { monthly: 'Monthly', quarterly: 'Quarterly', semiannual: 'Semiannual', annual: 'Annual' };
+const DUE_COLOR: Record<string, string> = { overdue: 'text-rose-400', due_soon: 'text-amber-400', scheduled: 'text-emerald-400', none: 'text-zinc-400' };
 
 const KINDS = ['auto', 'home', 'health', 'life', 'umbrella', 'renters', 'pet', 'travel', 'business'];
+const POLICY_STATUSES = ['active', 'lapsed', 'cancelled', 'pending'];
 const STATUS_COLOR: Record<string, string> = {
   active: 'text-emerald-400', lapsed: 'text-amber-400', cancelled: 'text-zinc-400', pending: 'text-sky-400',
 };
@@ -37,6 +45,12 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
   const [payAmt, setPayAmt] = useState('');
   const [docForm, setDocForm] = useState({ title: '', kind: 'declaration' });
   const [benForm, setBenForm] = useState({ name: '', relationship: '', sharePct: '100' });
+  const [schedule, setSchedule] = useState<Schedule | null>(null);
+  const [scheduleFreq, setScheduleFreq] = useState('monthly');
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ status: 'active', annualPremium: '', deductible: '', renewalDate: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -49,6 +63,9 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
 
   const openPolicy = useCallback(async (p: Policy) => {
     setSelected(p);
+    setSchedule(null);
+    setEditing(false);
+    setEditForm({ status: p.status, annualPremium: String(p.annualPremium), deductible: String(p.deductible), renewalDate: p.renewalDate || '' });
     const [d, c] = await Promise.all([
       lensRun('insurance', 'policy-detail', { id: p.id }),
       lensRun('insurance', 'id-card', { policyId: p.id }),
@@ -58,6 +75,15 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
     setCard((c.data?.result?.card as Record<string, unknown>) || null);
     const b = await lensRun('insurance', 'beneficiary-list', { policyId: p.id });
     setBeneficiaries(b.data?.ok === false ? [] : (b.data?.result?.beneficiaries || []));
+  }, []);
+
+  const loadSchedule = useCallback(async (policyId: string, frequency: string) => {
+    setScheduleLoading(true);
+    try {
+      const r = await lensRun('insurance', 'premium-schedule', { policyId, frequency });
+      setSchedule(r.data?.ok === false ? null : ((r.data?.result as Schedule) || null));
+      if (r.data?.ok === false) setError(r.data?.error || 'Failed to compute schedule');
+    } finally { setScheduleLoading(false); }
   }, []);
 
   const addPolicy = async () => {
@@ -75,6 +101,23 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
     await lensRun('insurance', 'policy-delete', { id });
     if (selected?.id === id) setSelected(null);
     await refresh(); onChange();
+  };
+  const saveEdit = async () => {
+    if (!selected) return;
+    setSavingEdit(true); setError(null);
+    try {
+      const r = await lensRun('insurance', 'policy-update', {
+        id: selected.id, status: editForm.status,
+        annualPremium: Number(editForm.annualPremium) || 0,
+        deductible: Number(editForm.deductible) || 0,
+        renewalDate: editForm.renewalDate || undefined,
+      });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Update failed'); return; }
+      const updated = (r.data?.result as { policy?: Policy } | undefined)?.policy;
+      if (updated) setSelected(updated);
+      setEditing(false);
+      await refresh(); onChange();
+    } finally { setSavingEdit(false); }
   };
   const logPayment = async () => {
     if (!selected || !(Number(payAmt) > 0)) { setError('Enter a payment amount.'); return; }
@@ -106,10 +149,43 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
   if (selected) {
     return (
       <div className="space-y-4">
-        <button type="button" onClick={() => setSelected(null)}
-          className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200">
-          <ChevronLeft className="w-3.5 h-3.5" /> All policies
-        </button>
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={() => setSelected(null)}
+            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200">
+            <ChevronLeft className="w-3.5 h-3.5" /> All policies
+          </button>
+          <button type="button" onClick={() => setEditing((v) => !v)}
+            className="flex items-center gap-1 text-xs text-blue-300 hover:text-blue-200">
+            <Pencil className="w-3.5 h-3.5" /> {editing ? 'Cancel edit' : 'Edit policy'}
+          </button>
+        </div>
+
+        {editing && (
+          <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-blue-800/40 rounded-xl p-3">
+            <label className="text-[11px] text-zinc-400">Status
+              <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                className="mt-0.5 w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                {POLICY_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+            <label className="text-[11px] text-zinc-400">Renewal date
+              <input type="date" value={editForm.renewalDate} onChange={(e) => setEditForm({ ...editForm, renewalDate: e.target.value })}
+                className="mt-0.5 w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            </label>
+            <label className="text-[11px] text-zinc-400">Annual premium ($)
+              <input inputMode="decimal" value={editForm.annualPremium} onChange={(e) => setEditForm({ ...editForm, annualPremium: e.target.value })}
+                className="mt-0.5 w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            </label>
+            <label className="text-[11px] text-zinc-400">Deductible ($)
+              <input inputMode="decimal" value={editForm.deductible} onChange={(e) => setEditForm({ ...editForm, deductible: e.target.value })}
+                className="mt-0.5 w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            </label>
+            <button type="button" onClick={saveEdit} disabled={savingEdit}
+              className="col-span-2 mt-1 flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg px-2 py-1.5">
+              {savingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save changes
+            </button>
+          </div>
+        )}
 
         {/* ID card */}
         {card && (
@@ -131,6 +207,35 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
         )}
 
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+
+        {/* Payment plan */}
+        <section>
+          <h4 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+            <CalendarClock className="w-3.5 h-3.5 text-blue-400" /> Payment plan
+          </h4>
+          <div className="flex gap-1 mb-2">
+            <select value={scheduleFreq} onChange={(e) => setScheduleFreq(e.target.value)}
+              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+              {Object.entries(FREQ_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <button type="button" onClick={() => void loadSchedule(selected.id, scheduleFreq)} disabled={scheduleLoading}
+              className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg inline-flex items-center gap-1">
+              {scheduleLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null} Compute
+            </button>
+          </div>
+          {schedule && (
+            <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg p-3 text-[11px]">
+              <div><span className="text-zinc-400">Installment</span> <span className="text-zinc-100 font-mono">${schedule.installment}</span> × {schedule.perYear}/yr</div>
+              <div><span className="text-zinc-400">Last paid</span> <span className="text-zinc-200">{schedule.lastPaymentDate}</span></div>
+              <div className="col-span-2">
+                <span className="text-zinc-400">Next due</span> <span className="text-zinc-200">{schedule.nextDueDate}</span>{' '}
+                <span className={cn('uppercase text-[10px] font-bold', DUE_COLOR[schedule.nextDueStatus] || 'text-zinc-400')}>
+                  {schedule.nextDueStatus.replace('_', ' ')}
+                </span>
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* Payments */}
         <section>

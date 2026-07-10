@@ -15,6 +15,7 @@ import { lensRun } from '@/lib/api/client';
 import {
   Play, Save, Download, Upload, Trash2, Crosshair, Box,
   RotateCcw, Loader2, Film, Palette, Image as ImageIcon,
+  Ruler, GitCompareArrows, Braces,
 } from 'lucide-react';
 
 type FractalType = 'mandelbrot' | 'julia' | 'burning-ship' | 'tricorn' | 'multibrot';
@@ -58,6 +59,34 @@ interface RenderRecord {
   format: string;
   bytes: number;
   createdAt: string;
+}
+
+// --- analysis result shapes (wire fractal.fractalDimension / .selfSimilarity / .complexityMeasure) ---
+interface DimensionResult {
+  method: string;
+  fractalDimension: number;
+  rSquared: number;
+  classification: string;
+  pointCount: number;
+  scalesAnalyzed: number;
+  confidence: string;
+}
+interface SelfSimilarityResult {
+  seriesLength: number;
+  scalesAnalyzed: number;
+  motifCount: number;
+  selfSimilarityScore: number;
+  selfSimilarityLabel: string;
+  crossScaleSimilarity: { scale1: number; scale2: number; correlation: number; isSelfSimilar: boolean }[];
+  bestMotif: { length: number; distance: number; similarity: number } | null;
+}
+interface ComplexityResult {
+  sequenceLength: number;
+  uniqueSymbols: number;
+  lempelZiv: { complexity: number; normalized: number; dictionarySize: number };
+  shannonEntropy: { value: number; maxPossible: number; normalized: number };
+  complexityLabel: string;
+  compositeScore: number;
 }
 
 const DEFAULT_VIEW: ViewState = {
@@ -134,6 +163,15 @@ export function FractalRenderer() {
 
   // Orbit inspector
   const [orbit, setOrbit] = useState<{ point: number[]; iterations: number; inSet: boolean; orbit: number[][] } | null>(null);
+
+  // Analysis of the currently-rendered view (wires fractal.fractalDimension /
+  // .selfSimilarity / .complexityMeasure against real escape-time samples of
+  // the live view — never a canned/decorative number).
+  const [analysisBusy, setAnalysisBusy] = useState<'dimension' | 'similarity' | 'complexity' | null>(null);
+  const [dimResult, setDimResult] = useState<DimensionResult | null>(null);
+  const [simResult, setSimResult] = useState<SelfSimilarityResult | null>(null);
+  const [cplxResult, setCplxResult] = useState<ComplexityResult | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // Mandelbulb 3D
   const bulbCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -221,6 +259,13 @@ export function FractalRenderer() {
     return () => { cancelled = true; idRef.current++; };
   }, [view, refreshPalette, renderCanvas]);
 
+  // Analysis results describe a specific view — once the user navigates
+  // (pan/zoom/type/param change) they're stale, so clear them rather than
+  // let a dimension/complexity readout silently outlive the view it measured.
+  useEffect(() => {
+    setDimResult(null); setSimResult(null); setCplxResult(null); setAnalysisError(null);
+  }, [view.type, view.centerX, view.centerY, view.scale, view.juliaRe, view.juliaIm, view.power]);
+
   // --- pointer interactions: click-zoom + drag-pan + wheel-zoom --------------
   const toWorld = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current!;
@@ -284,6 +329,84 @@ export function FractalRenderer() {
     if (res.data?.ok && res.data.result) setOrbit(res.data.result);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
+
+  // --- analysis sampling: turn the current escape-time view into real ----
+  // point / signal data for the three analysis macros. GRID_N is deliberately
+  // small (fast, synchronous) — the analysis reads the SAME escapeIter() used
+  // to paint the canvas, just at a coarser resolution and a capped iteration
+  // count so a deep zoom with maxIter=2000 doesn't stall the main thread.
+  const GRID_N = 96;
+  const ANALYSIS_MAX_ITER = 220;
+  const sampleGrid = useCallback((): number[][] => {
+    const { type, centerX, centerY, scale, power, juliaRe, juliaIm } = view;
+    const step = scale * (600 / GRID_N); // 600px is the DEFAULT_VIEW reference width
+    const grid: number[][] = [];
+    for (let iy = 0; iy < GRID_N; iy++) {
+      const wy = centerY + (iy - GRID_N / 2) * step;
+      const row: number[] = [];
+      for (let ix = 0; ix < GRID_N; ix++) {
+        const wx = centerX + (ix - GRID_N / 2) * step;
+        row.push(escapeIter(type, wx, wy, ANALYSIS_MAX_ITER, power, juliaRe, juliaIm));
+      }
+      grid.push(row);
+    }
+    return grid;
+  }, [view]);
+
+  // Boundary points: grid cells whose escaped/in-set state differs from a
+  // neighbour — i.e. the actual set boundary at this zoom level, which is
+  // exactly what box-counting dimension is meant to measure.
+  const boundaryPoints = useCallback((grid: number[][]): { x: number; y: number }[] => {
+    const pts: { x: number; y: number }[] = [];
+    const inSet = (v: number) => v >= ANALYSIS_MAX_ITER;
+    for (let iy = 1; iy < GRID_N - 1; iy++) {
+      for (let ix = 1; ix < GRID_N - 1; ix++) {
+        const here = inSet(grid[iy][ix]);
+        if (here !== inSet(grid[iy][ix - 1]) || here !== inSet(grid[iy][ix + 1]) ||
+            here !== inSet(grid[iy - 1][ix]) || here !== inSet(grid[iy + 1][ix])) {
+          pts.push({ x: ix, y: iy });
+        }
+      }
+    }
+    return pts;
+  }, []);
+
+  const runDimensionAnalysis = useCallback(async () => {
+    setAnalysisBusy('dimension'); setAnalysisError(null);
+    await new Promise(r => setTimeout(r, 0)); // let the spinner paint first
+    try {
+      const grid = sampleGrid();
+      const points = boundaryPoints(grid);
+      if (points.length < 3) { setAnalysisError('Boundary too sparse at this zoom — zoom toward an edge.'); return; }
+      const res = await lensRun<DimensionResult>('fractal', 'fractalDimension', { points, method: 'box-counting' });
+      if (res.data?.ok && res.data.result) setDimResult(res.data.result);
+      else setAnalysisError(res.data?.error || 'dimension analysis failed');
+    } finally { setAnalysisBusy(null); }
+  }, [sampleGrid, boundaryPoints]);
+
+  const runSelfSimilarityAnalysis = useCallback(async () => {
+    setAnalysisBusy('similarity'); setAnalysisError(null);
+    await new Promise(r => setTimeout(r, 0));
+    try {
+      const grid = sampleGrid();
+      const scanline = grid[Math.floor(GRID_N / 2)];
+      const res = await lensRun<SelfSimilarityResult>('fractal', 'selfSimilarity', { values: scanline });
+      if (res.data?.ok && res.data.result) setSimResult(res.data.result);
+      else setAnalysisError(res.data?.error || 'self-similarity analysis failed');
+    } finally { setAnalysisBusy(null); }
+  }, [sampleGrid]);
+
+  const runComplexityAnalysis = useCallback(async () => {
+    setAnalysisBusy('complexity'); setAnalysisError(null);
+    await new Promise(r => setTimeout(r, 0));
+    try {
+      const grid = sampleGrid();
+      const scanline = grid[Math.floor(GRID_N / 2)];
+      const res = await lensRun<ComplexityResult>('fractal', 'complexityMeasure', { values: scanline });
+      if (res.data?.ok && res.data.result) setCplxResult(res.data.result);
+      else setAnalysisError(res.data?.error || 'complexity analysis failed');
+    } finally { setAnalysisBusy(null); }
+  }, [sampleGrid]);
 
   // --- preset persistence (wires save/list/delete/import/export) ------------
   async function loadPresets() {
@@ -512,6 +635,76 @@ export function FractalRenderer() {
             <p className="mt-1.5 text-center text-[10px] text-zinc-400">
               depth-composited z-slices with diffuse lighting (power {view.power < 3 ? 8 : view.power})
             </p>
+          </div>
+
+          {/* structural analysis of the current view */}
+          <div className={panel}>
+            <div className="mb-2 flex items-center gap-2">
+              <Ruler className="h-4 w-4 text-emerald-400" />
+              <span className="text-sm font-semibold text-white">Analyze Current View</span>
+            </div>
+            <p className="mb-2 text-[10px] text-zinc-400">
+              Measured from a {GRID_N}×{GRID_N} escape-time re-sample of exactly what&apos;s on screen — pan/zoom
+              first, then analyze.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={runDimensionAnalysis} disabled={!!analysisBusy} className={btn} title="fractal.fractalDimension">
+                {analysisBusy === 'dimension' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Ruler className="h-3 w-3" />}
+                Dimension
+              </button>
+              <button onClick={runSelfSimilarityAnalysis} disabled={!!analysisBusy} className={btn} title="fractal.selfSimilarity">
+                {analysisBusy === 'similarity' ? <Loader2 className="h-3 w-3 animate-spin" /> : <GitCompareArrows className="h-3 w-3" />}
+                Self-Similarity
+              </button>
+              <button onClick={runComplexityAnalysis} disabled={!!analysisBusy} className={btn} title="fractal.complexityMeasure">
+                {analysisBusy === 'complexity' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Braces className="h-3 w-3" />}
+                Complexity
+              </button>
+            </div>
+
+            {analysisError && (
+              <p className="mt-2 rounded border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-[10px] text-amber-300">
+                {analysisError}
+              </p>
+            )}
+
+            {dimResult && (
+              <div className="mt-2 rounded border border-emerald-500/20 bg-emerald-500/5 p-2 text-[11px]">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-lg font-bold text-emerald-300">D ≈ {dimResult.fractalDimension}</span>
+                  <span className={`text-[10px] ${dimResult.confidence === 'high' ? 'text-emerald-400' : dimResult.confidence === 'medium' ? 'text-yellow-400' : 'text-red-400'}`}>
+                    {dimResult.confidence} confidence (R² {dimResult.rSquared})
+                  </span>
+                </div>
+                <p className="text-zinc-400">{dimResult.classification} · {dimResult.pointCount} boundary points across {dimResult.scalesAnalyzed} scales</p>
+              </div>
+            )}
+
+            {simResult && (
+              <div className="mt-2 rounded border border-fuchsia-500/20 bg-fuchsia-500/5 p-2 text-[11px]">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-sm font-bold text-fuchsia-300">{(simResult.selfSimilarityScore * 100).toFixed(0)}%</span>
+                  <span className="text-[10px] text-zinc-400 capitalize">{simResult.selfSimilarityLabel}</span>
+                </div>
+                <p className="text-zinc-400">
+                  {simResult.motifCount} repeating motif{simResult.motifCount === 1 ? '' : 's'} across {simResult.scalesAnalyzed} scale levels
+                  {simResult.bestMotif && ` · best match ${(simResult.bestMotif.similarity * 100).toFixed(0)}% similar`}
+                </p>
+              </div>
+            )}
+
+            {cplxResult && (
+              <div className="mt-2 rounded border border-cyan-500/20 bg-cyan-500/5 p-2 text-[11px]">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-sm font-bold text-cyan-300">{cplxResult.complexityLabel}</span>
+                  <span className="text-[10px] text-zinc-400">composite {cplxResult.compositeScore}</span>
+                </div>
+                <p className="text-zinc-400">
+                  Lempel-Ziv {cplxResult.lempelZiv.normalized} (dict {cplxResult.lempelZiv.dictionarySize}) ·
+                  {' '}Shannon entropy {cplxResult.shannonEntropy.normalized} of max
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

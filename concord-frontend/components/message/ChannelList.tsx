@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, Archive, ChevronDown, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChannelIcon } from './SlackShell';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,8 @@ export function ChannelList({
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ name: '', kind: 'channel' as 'channel' | 'dm' | 'group_dm', isPrivate: false });
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, []);
@@ -56,8 +58,20 @@ export function ChannelList({
     } catch (e) { console.error('[Channels] create', e); }
   }
 
+  async function archive(id: string) {
+    if (!confirm('Archive this channel? It will be hidden from the workspace list.')) return;
+    setArchivingId(id);
+    try {
+      const r = await lensRun({ domain: 'message', action: 'channels-archive', input: { id } });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      await refresh();
+    } catch (e) { console.error('[Channels] archive', e); }
+    finally { setArchivingId(null); }
+  }
+
   const channels = list.filter(c => c.kind === 'channel' && !c.archived);
   const dms = list.filter(c => c.kind === 'dm' || c.kind === 'group_dm');
+  const archivedChannels = list.filter(c => c.kind === 'channel' && c.archived);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -96,8 +110,29 @@ export function ChannelList({
           <div className="p-3 text-xs text-gray-400 italic">No channels.</div>
         ) : (
           <>
-            <Section title="Channels" items={channels} activeId={activeId} onSelect={onSelect} />
+            <Section title="Channels" items={channels} activeId={activeId} onSelect={onSelect} onArchive={archive} archivingId={archivingId} />
             {dms.length > 0 && <Section title="Direct messages" items={dms} activeId={activeId} onSelect={onSelect} />}
+            {archivedChannels.length > 0 && (
+              <div className="border-b border-white/5">
+                <button
+                  onClick={() => setShowArchived(v => !v)}
+                  className="w-full flex items-center gap-1 px-3 py-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold hover:text-gray-200"
+                >
+                  {showArchived ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                  Archived · {archivedChannels.length}
+                </button>
+                {showArchived && (
+                  <ul>
+                    {archivedChannels.map(c => (
+                      <li key={c.id} className="flex items-center gap-1.5 px-3 py-1 text-xs text-gray-500">
+                        <Archive className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate flex-1 line-through">{c.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -105,7 +140,12 @@ export function ChannelList({
   );
 }
 
-function Section({ title, items, activeId, onSelect }: { title: string; items: Channel[]; activeId: string | null; onSelect: (id: string) => void }) {
+function Section({
+  title, items, activeId, onSelect, onArchive, archivingId,
+}: {
+  title: string; items: Channel[]; activeId: string | null; onSelect: (id: string) => void;
+  onArchive?: (id: string) => void; archivingId?: string | null;
+}) {
   return (
     <div className="border-b border-white/5">
       <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold">{title}</div>
@@ -113,11 +153,11 @@ function Section({ title, items, activeId, onSelect }: { title: string; items: C
         {items.map(c => {
           const active = activeId === c.id;
           return (
-            <li key={c.id}>
+            <li key={c.id} className="group flex items-center">
               <button
                 onClick={() => onSelect(c.id)}
                 className={cn(
-                  'w-full flex items-center gap-1.5 px-3 py-1 text-xs text-left',
+                  'flex-1 min-w-0 flex items-center gap-1.5 px-3 py-1 text-xs text-left',
                   active ? 'bg-violet-500/15 text-white' : 'text-gray-400 hover:text-white hover:bg-white/[0.04]',
                   c.unread > 0 && !active && 'text-white font-semibold',
                 )}
@@ -128,6 +168,17 @@ function Section({ title, items, activeId, onSelect }: { title: string; items: C
                   <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-mono">{c.unread}</span>
                 )}
               </button>
+              {onArchive && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onArchive(c.id); }}
+                  disabled={archivingId === c.id}
+                  aria-label={`Archive #${c.name}`}
+                  title="Archive channel"
+                  className="opacity-0 group-hover:opacity-100 p-1 mr-1 text-gray-500 hover:text-amber-300 disabled:opacity-40 flex-shrink-0"
+                >
+                  {archivingId === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Archive className="w-3 h-3" />}
+                </button>
+              )}
             </li>
           );
         })}

@@ -60,11 +60,13 @@ export function ProStudioPanel({
   layerId,
   selectedIds,
   onApplied,
+  canvas,
 }: {
   artworkId: string;
   layerId: string;
   selectedIds: string[];
   onApplied: () => void;
+  canvas?: HTMLCanvasElement | null;
 }) {
   const [tab, setTab] = useState<ProTab>('filters');
   const [busy, setBusy] = useState<string | null>(null);
@@ -222,6 +224,21 @@ export function ProStudioPanel({
   };
 
   // ── timelapse ──
+  // Downscale the live canvas to a small JPEG so a frame comfortably clears
+  // the server's 500KB-per-snapshot cap regardless of the artwork's real
+  // resolution.
+  const captureSnapshot = useCallback((): string | null => {
+    if (!canvas) return null;
+    const scale = Math.min(1, 480 / Math.max(canvas.width, canvas.height));
+    const tc = document.createElement('canvas');
+    tc.width = Math.max(1, Math.round(canvas.width * scale));
+    tc.height = Math.max(1, Math.round(canvas.height * scale));
+    const tctx = tc.getContext('2d');
+    if (!tctx) return null;
+    tctx.drawImage(canvas, 0, 0, tc.width, tc.height);
+    return tc.toDataURL('image/jpeg', 0.55);
+  }, [canvas]);
+
   const startTimelapse = async () => {
     await run('timelapse-start', {}, 'Recording timelapse');
     setTlRecording(true);
@@ -238,6 +255,25 @@ export function ProStudioPanel({
     setTlFrames([]);
     setTlRecording(false);
   };
+
+  // Actually record frames while a timelapse is running — the start/stop
+  // pair alone never captured anything (art.timelapse-frame was registered
+  // server-side but no caller ever invoked it, so every recording finished
+  // with frameCount 0). Fires every 4s, only while genuinely recording.
+  useEffect(() => {
+    if (!tlRecording) return;
+    const id = window.setInterval(() => {
+      const snapshot = captureSnapshot();
+      if (!snapshot) return;
+      void lensRun('art', 'timelapse-frame', { artworkId, snapshot }).then((r) => {
+        if (r.data?.ok) {
+          const res = r.data.result as { frameCount?: number };
+          setTlFrames((prev) => [...prev, { t: Date.now(), snapshot, strokeCount: 0 }].slice(-(res.frameCount || 999)));
+        }
+      });
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [tlRecording, artworkId, captureSnapshot]);
 
   // ── fills ──
   const commitGradient = async () => {

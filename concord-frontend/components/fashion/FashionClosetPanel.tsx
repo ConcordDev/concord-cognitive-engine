@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Repeat, Scissors } from 'lucide-react';
+import { Loader2, Plus, Trash2, Repeat, Scissors, Eye } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +30,8 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', category: 'top', brand: '', color: '', cost: '', photo: '' });
   const [bgBusy, setBgBusy] = useState<string | null>(null);
+  const [visionBusy, setVisionBusy] = useState(false);
+  const [visionNote, setVisionNote] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -48,7 +50,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setForm({ name: '', category: 'top', brand: '', color: '', cost: '', photo: '' });
-    setShowAdd(false); setError(null);
+    setShowAdd(false); setError(null); setVisionNote(null);
     await refresh(); onChange();
   };
   const wear = async (id: string) => { await lensRun('fashion', 'item-wear', { id }); await refresh(); onChange(); };
@@ -59,6 +61,15 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
     setBgBusy(null);
     if (r.data?.ok === false) { setError(r.data?.error || 'Background removal failed'); return; }
     await refresh();
+  };
+  const analyzePhoto = async () => {
+    if (!form.photo.trim()) { setError('Add a photo URL first.'); return; }
+    setVisionBusy(true); setVisionNote(null); setError(null);
+    const r = await lensRun('fashion', 'vision', { imageUrl: form.photo.trim() });
+    setVisionBusy(false);
+    if (r.data?.ok === false) { setError(r.data?.error || 'Vision analysis unavailable'); return; }
+    const content = (r.data?.result as { content?: string } | undefined)?.content;
+    setVisionNote(content || 'No description returned.');
   };
 
   if (loading) {
@@ -102,8 +113,18 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Cost ($)" inputMode="decimal" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Photo URL (optional)" value={form.photo} onChange={(e) => setForm({ ...form, photo: e.target.value })}
-            className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <input placeholder="Photo URL (optional)" value={form.photo} onChange={(e) => { setForm({ ...form, photo: e.target.value }); setVisionNote(null); }}
+            className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <button type="button" onClick={analyzePhoto} disabled={visionBusy || !form.photo.trim()}
+            className="flex items-center justify-center gap-1 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-200 text-xs font-medium rounded-lg px-2 py-1.5">
+            {visionBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+            Analyze photo
+          </button>
+          {visionNote && (
+            <p className="col-span-3 text-[11px] text-zinc-400 bg-zinc-950/60 border border-zinc-800 rounded-lg px-2.5 py-2">
+              <span className="text-fuchsia-300 font-semibold">AI read of this photo</span> (not auto-filled — use it to fill the fields yourself): {visionNote}
+            </p>
+          )}
           <button type="button" onClick={add}
             className="col-span-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add to closet</button>
         </div>

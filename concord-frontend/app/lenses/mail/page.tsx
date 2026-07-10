@@ -10,10 +10,20 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Mail, Send, Inbox, Pencil, Coins, Package, RefreshCcw, X, Check, AlertCircle } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
+import { Mail, Send, Inbox, Pencil, Coins, Package, RefreshCcw, X, Check, AlertCircle, Paperclip, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { subscribe } from '@/lib/realtime/socket';
+import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
+import type { DTU } from '@/lib/api/generated-types';
+
+// Mirrors server/lib/player-mail.js MAX_ATTACHMENTS — client-side cap is a
+// UX guard only; the server slices to the same limit and is the real gate.
+const MAX_ATTACHMENTS = 12;
+
+const STATUS_FILTERS = ['all', 'unread', 'read', 'claimed', 'expired'] as const;
+type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 interface MailRow {
   id: string;
@@ -44,10 +54,14 @@ export default function MailLensPage() {
   const [composeBody, setComposeBody] = useState('');
   const [composeCc, setComposeCc] = useState(0);
   const [composeCod, setComposeCod] = useState(0);
+  const [composeAttachments, setComposeAttachments] = useState<DTU[]>([]);
+  const [showDtuPicker, setShowDtuPicker] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [query, setQuery] = useState('');
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
@@ -126,21 +140,50 @@ export default function MailLensPage() {
           body: composeBody,
           attachmentCc: composeCc,
           codCc: composeCod,
+          attachmentDtuIds: composeAttachments.map((d) => d.id),
         }),
       });
       const j = await r.json();
       if (j.ok) {
         showFlash('ok', 'Mail sent.');
         setComposeTo(''); setComposeSubject(''); setComposeBody(''); setComposeCc(0); setComposeCod(0);
+        setComposeAttachments([]);
         setTab('sent');
         refresh();
       } else {
         showFlash('err', j.error || 'send failed');
       }
     } finally { setBusy(null); }
-  }, [composeTo, composeSubject, composeBody, composeCc, composeCod, refresh, showFlash]);
+  }, [composeTo, composeSubject, composeBody, composeCc, composeCod, composeAttachments, refresh, showFlash]);
 
-  const rows = tab === 'sent' ? sent : inbox;
+  const handleAttachDtu = useCallback((dtu: DTU) => {
+    setComposeAttachments((prev) => {
+      if (prev.some((d) => d.id === dtu.id) || prev.length >= MAX_ATTACHMENTS) return prev;
+      return [...prev, dtu];
+    });
+  }, []);
+
+  const handleRemoveAttachment = useCallback((dtuId: string) => {
+    setComposeAttachments((prev) => prev.filter((d) => d.id !== dtuId));
+  }, []);
+
+  const folderRows = tab === 'sent' ? sent : inbox;
+  const rows = useMemo(() => {
+    let base = folderRows;
+    if (tab === 'inbox' && statusFilter !== 'all') {
+      base = base.filter((m) => m.status === statusFilter);
+    }
+    const q = query.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter((m) => {
+      const other = tab === 'inbox' ? m.fromUser : m.toUser;
+      return (
+        m.subject?.toLowerCase().includes(q) ||
+        m.body?.toLowerCase().includes(q) ||
+        other?.toLowerCase().includes(q)
+      );
+    });
+  }, [folderRows, tab, statusFilter, query]);
   const unreadCount = useMemo(() => inbox.filter((m) => m.status === 'unread').length, [inbox]);
 
   return (
@@ -198,6 +241,33 @@ export default function MailLensPage() {
             <>
               {/* Mail list */}
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-2" aria-busy={loading}>
+                <div className="mb-2 space-y-1.5 px-0.5">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search subject, body, sender…"
+                      aria-label="Search mail"
+                      className="w-full rounded-md border border-slate-700 bg-slate-900/60 py-1 pl-6 pr-2 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-fuchsia-500/50 focus:outline-none"
+                    />
+                  </div>
+                  {tab === 'inbox' && (
+                    <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by status">
+                      {STATUS_FILTERS.map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setStatusFilter(f)}
+                          aria-pressed={statusFilter === f}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] capitalize ${statusFilter === f ? 'border-fuchsia-400 bg-fuchsia-500/20 text-fuchsia-100' : 'border-slate-700 bg-slate-800/30 text-slate-400 hover:bg-slate-700/40'}`}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {loading && (
                   <div role="status" aria-live="polite" className="space-y-1.5 px-1 py-2">
                     <span className="sr-only">Loading mail…</span>
@@ -222,7 +292,9 @@ export default function MailLensPage() {
                 )}
                 {!loading && !loadError && rows.length === 0 && (
                   <p className="px-2 py-4 text-center text-[11px] text-slate-500">
-                    {tab === 'inbox' ? 'No mail. Friends can send you mail from the friends panel.' : 'Nothing sent yet.'}
+                    {folderRows.length > 0
+                      ? 'No mail matches this filter or search.'
+                      : tab === 'inbox' ? 'No mail. Friends can send you mail from the friends panel.' : 'Nothing sent yet.'}
                   </p>
                 )}
                 <ul className="space-y-1">
@@ -360,6 +432,41 @@ export default function MailLensPage() {
                   />
                 </label>
               </div>
+              <div className="mb-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">DTU attachments</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDtuPicker(true)}
+                    disabled={composeAttachments.length >= MAX_ATTACHMENTS}
+                    className="flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
+                  >
+                    <Paperclip className="h-3 w-3" /> Attach from my DTUs
+                  </button>
+                </div>
+                {composeAttachments.length === 0 ? (
+                  <p className="mt-1 text-[10px] text-slate-500">No DTUs attached. Only DTUs you own can be attached — ownership transfers to the recipient on claim.</p>
+                ) : (
+                  <ul className="mt-1.5 space-y-1">
+                    {composeAttachments.map((d) => (
+                      <li key={d.id} className="flex items-center justify-between rounded-md border border-cyan-500/20 bg-cyan-500/5 px-2 py-1 text-[11px]">
+                        <span className="truncate text-cyan-100">{d.title || d.id}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAttachment(d.id)}
+                          aria-label={`Remove attachment ${d.title || d.id}`}
+                          className="ml-2 shrink-0 rounded p-0.5 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {composeAttachments.length >= MAX_ATTACHMENTS && (
+                  <p className="mt-1 text-[10px] text-amber-400">Max {MAX_ATTACHMENTS} attachments reached.</p>
+                )}
+              </div>
               <button
                 type="submit"
                 disabled={!composeTo.trim() || !composeSubject.trim() || busy === 'send'}
@@ -371,6 +478,18 @@ export default function MailLensPage() {
             </form>
           )}
         </section>
+
+        <AnimatePresence>
+          {showDtuPicker && (
+            <DTUPickerModal
+              lens="mail"
+              title="Attach a DTU (transfers ownership on claim)"
+              filter="user"
+              onClose={() => setShowDtuPicker(false)}
+              onSelect={handleAttachDtu}
+            />
+          )}
+        </AnimatePresence>
       </main>
     </LensShell>
   );

@@ -197,6 +197,23 @@ docker-compose up
 ```
 Requires `JWT_SECRET` in production. Five Ollama instances are tuned for an RTX PRO 4500 Blackwell (override any model via env). See [`docs/CONNECTORS_GO_LIVE.md`](docs/CONNECTORS_GO_LIVE.md) for connector setup.
 
+Running the frontend standalone (`npm run dev`, not `docker-compose up`)? Copy
+`concord-frontend/.env.example` to `concord-frontend/.env.local` first — an
+unconfigured `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_SOCKET_URL` is the #1 cause of
+a persistent "Connection lost" banner in dev (the frontend defaults to the
+backend's `:5050` dev port automatically now if you skip this, but a real
+`.env.local` pointed at your actual backend host is still the correct setup
+for anything other than same-box localhost).
+
+**Realtime requires the nginx layer in front of the frontend container.**
+`docker-compose up`'s `nginx` service proxies `/socket.io/` directly to the
+backend with correct WebSocket `Upgrade` headers (`nginx/conf.d/
+default.conf`); Next.js's own `output: 'standalone'` server does not forward
+WS upgrade headers through its `rewrites()`, so any deploy path that hits the
+frontend container directly — bypassing nginx — will silently break socket
+reconnection. Always route through nginx (or an equivalent WS-aware proxy) in
+production.
+
 ---
 
 ## Repo map

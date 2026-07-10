@@ -14,22 +14,18 @@ import { EtlWorkbench } from '@/components/transfer/EtlWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  Shuffle, Search, ArrowRight, History, Layers, GitCompare, ChevronDown, Network, Zap, SendHorizontal, CheckCircle2, X,
+  Shuffle, Search, ArrowRight, History, Layers, GitCompare, Network, SendHorizontal, CheckCircle2,
 } from 'lucide-react';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
+import { TransferAnalysisPanel } from '@/components/transfer/TransferAnalysisPanel';
 
 export default function TransferLensPage() {
   useLensNav('transfer');
@@ -39,29 +35,8 @@ export default function TransferLensPage() {
   const [targetDomain, setTargetDomain] = useState('');
   const [classifyText, setClassifyText] = useState('');
   const [results, setResults] = useState<unknown>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
   const sourceInputRef = useRef<HTMLTextAreaElement>(null);
   const classifyInputRef = useRef<HTMLInputElement>(null);
-
-  const { items: transferItems } = useLensData<Record<string, unknown>>('transfer', 'analogy');
-  const runTransferAction = useRunArtifact('transfer');
-  const [transferActionResult, setTransferActionResult] = useState<{ action: string; result: Record<string, unknown> } | null>(null);
-  const [transferActiveAction, setTransferActiveAction] = useState<string | null>(null);
-
-  const handleTransferAction = useCallback(async (action: string) => {
-    const id = transferItems[0]?.id;
-    if (!id) return;
-    setTransferActiveAction(action);
-    try {
-      const res = await runTransferAction.mutateAsync({ id, action });
-      if (res.ok) setTransferActionResult({ action, result: res.result as Record<string, unknown> });
-    } finally {
-      setTransferActiveAction(null);
-    }
-  }, [transferItems, runTransferAction]);
-
-  // --- Lens Bridge ---
-  const bridge = useLensBridge('transfer', 'analogy');
 
   const { data: history, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
     queryKey: ['transfer-history'],
@@ -91,14 +66,6 @@ export default function TransferLensPage() {
     ],
     { lensId: 'transfer' }
   );
-
-  // Bridge transfer history into lens artifacts
-  useEffect(() => {
-    bridge.syncList(Array.isArray(transfers) ? transfers : [], (t) => {
-      const xfer = t as Record<string, unknown>;
-      return { title: `Transfer: ${xfer.source || xfer.id || 'unknown'}`, data: xfer };
-    });
-  }, [transfers, bridge]);
 
   if (isLoading) {
     return (
@@ -145,9 +112,6 @@ export default function TransferLensPage() {
         )}
       </div>
       </header>
-
-      {/* AI Actions */}
-      <UniversalActions domain="transfer" artifactId={bridge.selectedId} compact />
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -289,126 +253,9 @@ export default function TransferLensPage() {
 
       <ConnectiveTissueBar lensId="transfer" />
 
-      {/* Transfer Actions Panel */}
-      <div className="p-4 border-t border-white/10">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-neon-purple" />
-            Transfer Actions
-          </h3>
-          {transferActionResult && (
-            <button onClick={() => setTransferActionResult(null)} className="p-1 rounded hover:bg-white/5 text-gray-400" aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {(['schemaMapping', 'dataQuality', 'migrationPlan'] as const).map((action) => (
-            <button
-              key={action}
-              onClick={() => handleTransferAction(action)}
-              disabled={!transferItems[0]?.id || transferActiveAction !== null}
-              className="px-3 py-1.5 text-sm rounded-lg bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {transferActiveAction === action ? (
-                <div className="w-3 h-3 border border-neon-purple border-t-transparent rounded-full animate-spin" />
-              ) : null}
-              {action === 'schemaMapping' ? 'Schema Mapping' : action === 'dataQuality' ? 'Data Quality' : 'Migration Plan'}
-            </button>
-          ))}
-        </div>
-        {transferActionResult && (
-          <div className="panel p-3 space-y-2 text-sm">
-            {transferActionResult.action === 'schemaMapping' && (() => {
-              const r = transferActionResult.result;
-              const coverage = r.coverage as Record<string, unknown> | undefined;
-              return (
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-4 text-xs">
-                    <span className="text-gray-400">Mappings: <span className="text-white font-medium">{String(r.mappingCount ?? 0)}</span></span>
-                    <span className="text-gray-400">Avg Confidence: <span className="text-white font-medium">{String(r.averageConfidence ?? 0)}</span></span>
-                    <span className="text-gray-400">Transforms Needed: <span className="text-white font-medium">{String(r.transformsRequired ?? 0)}</span></span>
-                  </div>
-                  {coverage && (
-                    <div className="flex gap-4 text-xs">
-                      <span className="text-gray-400">Source Coverage: <span className="text-neon-cyan">{String(coverage.sourceFieldsMapped ?? '-')}</span></span>
-                      <span className="text-gray-400">Target Coverage: <span className="text-neon-cyan">{String(coverage.targetFieldsMapped ?? '-')}</span></span>
-                      <span className={`text-xs font-medium ${(coverage.allRequiredMapped) ? 'text-neon-green' : 'text-red-400'}`}>
-                        {coverage.allRequiredMapped ? '✓ All required mapped' : '✗ Required fields missing'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-            {transferActionResult.action === 'dataQuality' && (() => {
-              const r = transferActionResult.result;
-              const quality = r.overallQuality as Record<string, unknown> | undefined;
-              const grade = String(quality?.grade ?? '-');
-              const gradeColor = grade === 'A' ? 'text-neon-green' : grade === 'B' ? 'text-blue-400' : grade === 'C' ? 'text-yellow-400' : 'text-red-400';
-              return (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-400 text-xs">Grade:</span>
-                    <span className={`text-lg font-bold ${gradeColor}`}>{grade}</span>
-                    <span className="text-gray-400 text-xs ml-2">Score: <span className="text-white">{String(quality?.compositeScore ?? 0)}</span></span>
-                    <span className={`text-xs ml-2 font-medium ${r.transferReadiness === 'ready' ? 'text-neon-green' : 'text-yellow-400'}`}>
-                      {r.transferReadiness === 'ready' ? '✓ Ready' : '⚠ Needs Remediation'}
-                    </span>
-                  </div>
-                  {quality && (
-                    <div className="flex gap-4 text-xs">
-                      <span className="text-gray-400">Completeness: <span className="text-white">{String(quality.completeness ?? 0)}</span></span>
-                      <span className="text-gray-400">Accuracy: <span className="text-white">{String(quality.accuracy ?? 0)}</span></span>
-                      <span className="text-gray-400">Consistency: <span className="text-white">{String(quality.consistency ?? 0)}</span></span>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-            {transferActionResult.action === 'migrationPlan' && (() => {
-              const r = transferActionResult.result;
-              const summary = r.summary as Record<string, unknown> | undefined;
-              const critPath = Array.isArray(r.criticalPath) ? r.criticalPath as string[] : [];
-              return (
-                <div className="space-y-2">
-                  {summary && (
-                    <div className="flex flex-wrap gap-3 text-xs">
-                      <span className="text-gray-400">Entities: <span className="text-white">{String(summary.totalEntities ?? 0)}</span></span>
-                      <span className="text-gray-400">Batches: <span className="text-white">{String(summary.totalBatches ?? 0)}</span></span>
-                      <span className="text-gray-400">Checkpoints: <span className="text-white">{String(summary.totalCheckpoints ?? 0)}</span></span>
-                      <span className="text-gray-400">Phases: <span className="text-white">{String(summary.totalPhases ?? 0)}</span></span>
-                      <span className="text-gray-400">Steps: <span className="text-white">{String(r.estimatedSteps ?? 0)}</span></span>
-                    </div>
-                  )}
-                  {critPath.length > 0 && (
-                    <div className="text-xs text-gray-400">Critical Path: {critPath.map((c, i) => <span key={i} className="text-neon-cyan ml-1">{c}</span>)}</div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-        )}
-      </div>
+      {/* Migration analysis — schema mapping, data quality, migration plan */}
+      <TransferAnalysisPanel />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="transfer" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TransferRepos />
       </section>

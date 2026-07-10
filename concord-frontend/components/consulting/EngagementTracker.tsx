@@ -8,12 +8,14 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Briefcase, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Briefcase, Plus, Trash2, Loader2, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface TimeEntry { id: string; hours: number; note: string; date: string }
 interface Engagement { id: string; name: string; client: string; rate: number; budgetHours: number; status: string; timeEntries: TimeEntry[]; loggedHours: number; billed: number; utilizationPct: number }
 interface Dash { engagements: number; active: number; loggedHours: number; billed: number }
+
+const EDITABLE_STATUSES = ['active', 'on_hold', 'complete'] as const;
 
 export function EngagementTracker() {
   const [engs, setEngs] = useState<Engagement[]>([]);
@@ -22,6 +24,8 @@ export function EngagementTracker() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', client: '', rate: '', budgetHours: '' });
   const [timeForm, setTimeForm] = useState({ hours: '', note: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ rate: '', budgetHours: '', status: 'active' as string });
 
   const refresh = useCallback(async () => {
     const [el, d] = await Promise.all([
@@ -52,6 +56,20 @@ export function EngagementTracker() {
     if (!timeForm.hours) return;
     await lensRun('consulting', 'time-log', { engagementId, hours: Number(timeForm.hours), note: timeForm.note.trim() });
     setTimeForm({ hours: '', note: '' });
+    await refresh();
+  }
+  function openEdit(e: Engagement) {
+    setEditingId(e.id);
+    setEditForm({ rate: String(e.rate), budgetHours: String(e.budgetHours), status: e.status });
+  }
+  async function saveEdit(id: string) {
+    await lensRun('consulting', 'engagement-update', {
+      id,
+      rate: editForm.rate ? Number(editForm.rate) : undefined,
+      budgetHours: editForm.budgetHours ? Number(editForm.budgetHours) : undefined,
+      status: editForm.status,
+    });
+    setEditingId(null);
     await refresh();
   }
 
@@ -97,8 +115,27 @@ export function EngagementTracker() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{e.name}</p>
                 <p className="text-[10px] text-zinc-400">{e.client} · {e.loggedHours}h logged · ${e.billed.toLocaleString()} billed · {e.utilizationPct}% of budget · {e.status}</p>
               </button>
+              <button aria-label={`Edit ${e.name}`} onClick={() => openEdit(e)} className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-indigo-300"><Pencil className="w-3 h-3" /></button>
               <button aria-label="Delete" onClick={() => delEng(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
+            {editingId === e.id && (
+              <div className="mt-2 pt-2 border-t border-zinc-800 flex flex-wrap items-center gap-1.5">
+                <label className="text-[10px] text-zinc-400">Rate $/hr
+                  <input value={editForm.rate} onChange={e2 => setEditForm({ ...editForm, rate: e2.target.value })}
+                    className="ml-1.5 w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
+                </label>
+                <label className="text-[10px] text-zinc-400">Budget h
+                  <input value={editForm.budgetHours} onChange={e2 => setEditForm({ ...editForm, budgetHours: e2.target.value })}
+                    className="ml-1.5 w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
+                </label>
+                <select value={editForm.status} onChange={e2 => setEditForm({ ...editForm, status: e2.target.value })}
+                  className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200">
+                  {EDITABLE_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                </select>
+                <button onClick={() => saveEdit(e.id)} className="px-2 py-1 text-[11px] rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold inline-flex items-center gap-1"><Check className="w-3 h-3" />Save</button>
+                <button onClick={() => setEditingId(null)} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 inline-flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
+              </div>
+            )}
             {active === e.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800">
                 {e.timeEntries.map(t => (

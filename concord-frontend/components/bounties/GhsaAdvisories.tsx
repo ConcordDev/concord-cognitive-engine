@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ShieldAlert, Loader2, ExternalLink, Coins } from 'lucide-react';
+import { ShieldAlert, Loader2, ExternalLink, Hammer } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface Advisory {
@@ -17,6 +17,13 @@ interface Advisory {
   type?: string;
 }
 
+export interface BountyDraftFromAdvisory {
+  title: string;
+  description: string;
+  category: string;
+  tags: string;
+}
+
 const SEV_COLOR: Record<string, string> = {
   critical: 'border-red-500/40 bg-red-500/10 text-red-200',
   high: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
@@ -24,7 +31,7 @@ const SEV_COLOR: Record<string, string> = {
   low: 'border-cyan-500/30 bg-cyan-500/5 text-cyan-200',
 };
 
-export function GhsaAdvisories() {
+export function GhsaAdvisories({ onConvertToBounty }: { onConvertToBounty?: (draft: BountyDraftFromAdvisory) => void }) {
   const [severity, setSeverity] = useState<'all' | 'critical' | 'high'>('high');
 
   const advisories = useQuery({
@@ -71,30 +78,49 @@ export function GhsaAdvisories() {
       <div className="space-y-2 max-h-[500px] overflow-y-auto">
         {(advisories.data || []).map((a) => {
           const cls = SEV_COLOR[a.severity] || SEV_COLOR.low;
+          const pkgList = (a.vulnerabilities || [])
+            .slice(0, 4)
+            .map((v) => `${v.package?.ecosystem}/${v.package?.name}${v.vulnerable_version_range ? ` ${v.vulnerable_version_range}` : ''}`)
+            .filter(Boolean);
           return (
-            <a key={a.ghsa_id} href={a.html_url} target="_blank" rel="noopener noreferrer" className={`block rounded-lg border-l-4 ${cls.split(' ')[0]} border border-zinc-800 bg-zinc-950/40 p-3 hover:bg-zinc-950/70`}>
+            <div key={a.ghsa_id} className={`rounded-lg border-l-4 ${cls.split(' ')[0]} border border-zinc-800 bg-zinc-950/40 p-3 hover:bg-zinc-950/70`}>
               <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
+                <a href={a.html_url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-mono text-sm text-white">{a.ghsa_id}</span>
                     {a.cve_id && <span className="font-mono text-[11px] text-zinc-400">{a.cve_id}</span>}
                     <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${cls}`}>{a.severity.toUpperCase()}</span>
                     {a.cvss?.score && <span className="font-mono text-[10px] text-cyan-300">CVSS {a.cvss.score.toFixed(1)}</span>}
-                    <span title="Bounty-eligible via vendor program"><Coins className="h-3 w-3 text-amber-300" /></span>
                   </div>
                   <p className="mt-1 line-clamp-2 text-[12px] text-zinc-200">{a.summary}</p>
-                  {a.vulnerabilities && a.vulnerabilities.length > 0 && (
+                  {pkgList.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
-                      {a.vulnerabilities.slice(0, 4).map((v, i) => (
-                        <span key={i} className="rounded bg-zinc-800 px-1 font-mono text-cyan-300/80">{v.package?.ecosystem}/{v.package?.name}{v.vulnerable_version_range ? ` ${v.vulnerable_version_range}` : ''}</span>
+                      {pkgList.map((p, i) => (
+                        <span key={i} className="rounded bg-zinc-800 px-1 font-mono text-cyan-300/80">{p}</span>
                       ))}
                     </div>
                   )}
                   <div className="mt-1 text-[10px] text-zinc-400">published {new Date(a.published_at).toLocaleDateString()}</div>
+                </a>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <ExternalLink className="h-3 w-3 text-zinc-400" />
+                  {onConvertToBounty && (
+                    <button
+                      onClick={() => onConvertToBounty({
+                        title: `Fix ${a.ghsa_id}${a.cve_id ? ` (${a.cve_id})` : ''}`,
+                        description: `${a.summary}\n\nAffected: ${pkgList.join(', ') || 'see advisory'}\nSeverity: ${a.severity}${a.cvss?.score ? ` (CVSS ${a.cvss.score.toFixed(1)})` : ''}\nAdvisory: ${a.html_url}`,
+                        category: 'security',
+                        tags: `ghsa,security,${a.severity}`,
+                      })}
+                      className="flex items-center gap-1 rounded bg-amber-600/20 hover:bg-amber-600/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-300"
+                      title="Open a draft on the Concord bounty board for this advisory"
+                    >
+                      <Hammer className="h-3 w-3" /> Bounty this
+                    </button>
+                  )}
                 </div>
-                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
               </div>
-            </a>
+            </div>
           );
         })}
       </div>

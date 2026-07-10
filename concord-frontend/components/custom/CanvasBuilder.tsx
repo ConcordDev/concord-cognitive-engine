@@ -56,7 +56,14 @@ async function call<T = Record<string, unknown>>(name: string, input: Record<str
   return r.data;
 }
 
-export function CanvasBuilder() {
+export interface CanvasBuilderStats {
+  canvasCount: number;
+  publishedCount: number;
+  bindingCount: number;
+  paletteCount: number;
+}
+
+export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBuilderStats) => void } = {}) {
   const [palette, setPalette] = useState<PaletteComp[]>([]);
   const [canvases, setCanvases] = useState<Canvas[]>([]);
   const [bindings, setBindings] = useState<Binding[]>([]);
@@ -107,6 +114,18 @@ export function CanvasBuilder() {
       await loadPublished();
     })();
   }, [loadCanvases, loadBindings, loadPublished]);
+
+  // Report real, live counts up to the page for its header stat tiles —
+  // avoids a second disconnected fetch of the same lists.
+  useEffect(() => {
+    onStatsChange?.({
+      canvasCount: canvases.length,
+      publishedCount: published.length,
+      bindingCount: bindings.length,
+      paletteCount: palette.length,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvases.length, published.length, bindings.length, palette.length]);
 
   // open a canvas into the editor
   const openCanvas = useCallback(async (cid: string) => {

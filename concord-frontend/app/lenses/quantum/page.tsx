@@ -4,9 +4,8 @@
 // page component's render path); this page always renders its shell.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Atom, Zap, Play, Loader2, Layers, ChevronDown, X, StepForward,
+  Atom, Zap, Play, Loader2, Layers, X, StepForward,
   StepBack, Save, FolderOpen, Trash2, Download, Upload, Sparkles,
 } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -19,7 +18,6 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { QuantumArxiv } from '@/components/quantum/QuantumArxiv';
 import { ChartKit } from '@/components/viz';
@@ -115,7 +113,6 @@ export default function QuantumLensPage() {
   // saved circuits
   const [saved, setSaved] = useState<SavedCircuitMeta[]>([]);
   const [qasm, setQasm] = useState('');
-  const [showFeatures, setShowFeatures] = useState(false);
 
   const circuit = useMemo(() => buildCircuit(qubits, placed), [qubits, placed]);
 
@@ -634,33 +631,6 @@ export default function QuantumLensPage() {
               ))}
             </div>
           )}
-        </div>
-
-        {/* Lens features */}
-        <div className="border-t border-white/10">
-          <button
-            onClick={() => setShowFeatures(!showFeatures)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-          >
-            <span className="flex items-center gap-2">
-              <Layers className="w-4 h-4" /> Lens Features &amp; Capabilities
-            </span>
-            <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-          </button>
-          <AnimatePresence>
-            {showFeatures && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="px-4 pb-4">
-                  <LensFeaturePanel lensId="quantum" />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
         <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

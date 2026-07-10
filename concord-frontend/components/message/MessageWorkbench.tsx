@@ -247,6 +247,14 @@ function ReactionsTab() {
     } catch (e) { console.error(e); }
   };
 
+  const unreact = async (emoji: string) => {
+    if (!messageId.trim()) return;
+    try {
+      await lensRun({ domain: 'message', action: 'unreact', input: { messageId, emoji } });
+      await load();
+    } catch (e) { console.error(e); }
+  };
+
   return (
     <div className="p-3 space-y-3">
       <p className="text-[10px] text-gray-400">Add reactions to any message by messageId.</p>
@@ -268,9 +276,18 @@ function ReactionsTab() {
       {Object.keys(reactions).length > 0 && (
         <div className="rounded border border-white/10 bg-black/20 p-3 space-y-1">
           {Object.entries(reactions).map(([emoji, count]) => (
-            <div key={emoji} className="flex justify-between text-sm">
+            <div key={emoji} className="flex items-center justify-between text-sm group">
               <span>{emoji}</span>
-              <span className="font-mono text-gray-300">×{count}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-gray-300">×{count}</span>
+                <button
+                  type="button"
+                  onClick={() => unreact(emoji)}
+                  className="opacity-0 group-hover:opacity-100 text-[10px] px-1.5 py-0.5 rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                  aria-label={`Remove my ${emoji} reaction`}
+                  title="Remove your reaction"
+                >remove</button>
+              </div>
             </div>
           ))}
         </div>

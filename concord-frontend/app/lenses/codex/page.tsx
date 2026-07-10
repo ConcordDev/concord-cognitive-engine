@@ -14,6 +14,15 @@
  * Four explicit UX states are rendered: loading, error, empty (no matches), and
  * populated. Filters + the cosmology spine + bookmarks are all real backend
  * reads/writes — no mock/seed data lives in this file.
+ *
+ * Wave 3 rebuild: `lore.list` already returns significance/factions_involved/
+ * known_by/tags on every event (server/lib/authored-lore.js#publicEvent) but
+ * only description was rendered in the expanded row — the rest sat fetched and
+ * unused. Now surfaced, plus tags are clickable cross-references (client-side
+ * filter over the already-fetched set, no extra round-trip) so browsing one
+ * entry's tag narrows the canon to every other entry that shares it — the
+ * "related entries" pattern a compendium reader (Destiny 2's Lore Book, Hades'
+ * Codex) is expected to have.
  */
 
 import { LensShell } from '@/components/lens/LensShell';
@@ -30,6 +39,7 @@ interface LoreEvent {
   significance?: string;
   world_id?: string;
   factions_involved?: string[];
+  known_by?: string[];
   tags?: string[];
 }
 interface Facets { worlds: string[]; types: string[]; eras: string[]; count: number }
@@ -54,6 +64,11 @@ export default function CodexLensPage() {
   const [world, setWorld] = useState<string>('');
   const [type, setType] = useState<string>('');
   const [q, setQ] = useState<string>('');
+  // Tag filter is applied client-side: `lore.list` already returns tags on
+  // every event, so no extra round-trip is needed. Clicking a tag on any
+  // entry narrows the visible set to entries sharing that tag — a real
+  // cross-reference path through the canon, not a cosmetic decoration.
+  const [activeTag, setActiveTag] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -121,17 +136,22 @@ export default function CodexLensPage() {
 
   useEffect(() => { const t = setTimeout(load, 200); return () => clearTimeout(t); }, [load]);
 
+  const tagFiltered = useMemo(
+    () => activeTag ? events.filter(e => (e.tags || []).includes(activeTag)) : events,
+    [events, activeTag],
+  );
+
   const grouped = useMemo(() => {
     const m = new Map<string, LoreEvent[]>();
-    for (const e of events) {
+    for (const e of tagFiltered) {
       const k = e.world_id || 'concordia-hub';
       if (!m.has(k)) m.set(k, []);
       m.get(k)!.push(e);
     }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [events]);
+  }, [tagFiltered]);
 
-  const hasFilters = !!(world || type || q.trim());
+  const hasFilters = !!(world || type || q.trim() || activeTag);
 
   return (
     <LensShell lensId="codex">
@@ -169,6 +189,14 @@ export default function CodexLensPage() {
           <option value="">All kinds</option>
           {facets?.types.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
+        {activeTag && (
+          <button
+            onClick={() => setActiveTag('')}
+            title="Clear tag filter"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 999, background: COLORS.accent, border: `1px solid ${COLORS.accentBorder}`, color: COLORS.fg, cursor: 'pointer', fontSize: 13 }}>
+            #{activeTag} ✕
+          </button>
+        )}
       </div>
 
       {saveErr && (
@@ -189,7 +217,7 @@ export default function CodexLensPage() {
               Retry
             </button>
           </div>
-        ) : events.length === 0 ? (
+        ) : tagFiltered.length === 0 ? (
           <div style={{ padding: 24, borderRadius: 10, textAlign: 'center', background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }}>
             <p style={{ fontWeight: 600, margin: '0 0 6px' }}>
               {hasFilters ? 'No truths match this query.' : 'The records are empty.'}
@@ -200,7 +228,7 @@ export default function CodexLensPage() {
                 : 'The authored cosmology has not been seeded for this instance yet.'}
             </p>
             {hasFilters && (
-              <button onClick={() => { setWorld(''); setType(''); setQ(''); }} style={{ marginTop: 12, padding: '6px 14px', borderRadius: 8, background: COLORS.input, border: `1px solid ${COLORS.inputBorder}`, color: COLORS.fg, cursor: 'pointer' }}>
+              <button onClick={() => { setWorld(''); setType(''); setQ(''); setActiveTag(''); }} style={{ marginTop: 12, padding: '6px 14px', borderRadius: 8, background: COLORS.input, border: `1px solid ${COLORS.inputBorder}`, color: COLORS.fg, cursor: 'pointer' }}>
                 Clear filters
               </button>
             )}
@@ -235,7 +263,44 @@ export default function CodexLensPage() {
                           {isBookmarked ? '★' : '☆'}
                         </button>
                       </div>
-                      {isOpen && <p style={{ opacity: 0.85, margin: '8px 0 0', lineHeight: 1.55 }}>{e.description}</p>}
+                      {isOpen && (
+                        <div style={{ marginTop: 8 }}>
+                          <p style={{ opacity: 0.85, margin: 0, lineHeight: 1.55 }}>{e.description}</p>
+                          {e.significance && (
+                            <p style={{ opacity: 0.75, margin: '8px 0 0', lineHeight: 1.5, fontStyle: 'italic', borderLeft: `2px solid ${COLORS.accentBorder}`, paddingLeft: 10 }}>
+                              {e.significance}
+                            </p>
+                          )}
+                          {(e.factions_involved && e.factions_involved.length > 0) && (
+                            <p style={{ margin: '8px 0 0', fontSize: 13, opacity: 0.7 }}>
+                              <strong style={{ opacity: 0.85 }}>Factions:</strong> {e.factions_involved.join(', ')}
+                            </p>
+                          )}
+                          {(e.known_by && e.known_by.length > 0) && (
+                            <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.7 }}>
+                              <strong style={{ opacity: 0.85 }}>Known by:</strong> {e.known_by.join(', ')}
+                            </p>
+                          )}
+                          {(e.tags && e.tags.length > 0) && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                              {e.tags.map(t => (
+                                <button
+                                  key={t}
+                                  onClick={(ev) => { ev.stopPropagation(); setActiveTag(activeTag === t ? '' : t); }}
+                                  title={`Filter the canon by #${t}`}
+                                  style={{
+                                    fontSize: 12, padding: '2px 8px', borderRadius: 999, cursor: 'pointer',
+                                    background: activeTag === t ? COLORS.accent : 'transparent',
+                                    border: `1px solid ${activeTag === t ? COLORS.accentBorder : COLORS.panelBorder}`,
+                                    color: COLORS.fg, opacity: activeTag === t ? 1 : 0.7,
+                                  }}>
+                                  #{t}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </article>
                   );
                 })}

@@ -23,15 +23,12 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CreatorStudioSection } from '@/components/creator/CreatorStudioSection';
 import { CreatorLeaderboard } from '@/components/creator/CreatorLeaderboard';
 import LensAgentFab from '@/components/lens/LensAgentFab';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import KnowledgeEntrepreneurBadge from '@/components/creator/KnowledgeEntrepreneurBadge';
 import {
@@ -39,7 +36,7 @@ import {
   useCreateArtifact,
 } from '@/lib/hooks/use-lens-artifacts';
 import {
-  Coins, TrendingUp, TrendingDown, Users, Trophy, RefreshCw,
+  Coins, TrendingDown, Users, Trophy, RefreshCw,
   ListChecks, Settings, MessageSquare, Activity, GitBranch,
   UserPlus, X, Save, Loader2, Sparkles,
 } from 'lucide-react';
@@ -98,22 +95,6 @@ interface WithdrawalStatus {
   error?: string;
 }
 
-interface Leader {
-  userId: string;
-  dtuCount: number;
-  citations: number;
-  downloads: number;
-  score: number;
-}
-
-interface TrendingHit {
-  id: string;
-  title: string;
-  domain: string;
-  ownerId: string;
-  newCitations24h: number;
-}
-
 interface DriftHit {
   userId: string;
   recentCitations: number;
@@ -162,25 +143,23 @@ export default function CreatorDashboardPage() {
   );
 
   // ── Shared dashboard ──────────────────────────────────────────────
+  // Leaderboard + trending-citations data lives in <CreatorLeaderboard>
+  // (mounted once, inside the Overview tab) — it owns its own polling via
+  // react-query, so this page no longer double-fetches the same two
+  // endpoints into unused local state.
   const [me, setMe] = useState<DashboardResponse | null>(null);
-  const [leaderboard, setLeaderboard] = useState<Leader[]>([]);
-  const [trending, setTrending] = useState<TrendingHit[]>([]);
   const [drift, setDrift] = useState<DriftHit[]>([]);
   const [myListings, setMyListings] = useState<MyListing[]>([]);
   const [withdrawal, setWithdrawal] = useState<WithdrawalStatus | null>(null);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
 
   const refreshDashboard = useCallback(async () => {
-    const [m, l, t, d, p] = await Promise.all([
+    const [m, d, p] = await Promise.all([
       fetch('/api/creator/dashboard',          { credentials: 'include' }).then((r) => r.json()).catch(() => null),
-      fetch('/api/creator/leaderboard?limit=10', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
-      fetch('/api/creator/trending-citations',  { credentials: 'include' }).then((r) => r.json()).catch(() => null),
       fetch('/api/creator/influence-drift',     { credentials: 'include' }).then((r) => r.json()).catch(() => null),
       fetch('/api/social/profile',              { credentials: 'include' }).then((r) => r.json()).catch(() => null),
     ]);
     setMe(m as DashboardResponse | null);
-    setLeaderboard((l?.creators ?? []) as Leader[]);
-    setTrending((t?.trending ?? []) as TrendingHit[]);
     setDrift((d?.drift ?? []) as DriftHit[]);
     setProfile(p?.ok && p.profile ? (p.profile as SocialProfile) : null);
   }, []);
@@ -208,7 +187,6 @@ export default function CreatorDashboardPage() {
   return (
     <LensShell lensId="creator" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="creator" />
-      <ManifestActionBar />
       <DepthBadge lensId="creator" size="sm" className="ml-2" />
       <div className="px-4 mt-3">
         <CreatorStudioSection />
@@ -241,34 +219,29 @@ export default function CreatorDashboardPage() {
         </nav>
 
         {tab === 'overview' && (
-          <OverviewTab
-            me={me}
-            leaderboard={leaderboard}
-            trending={trending}
-            drift={drift}
-            withdrawal={withdrawal}
-            profile={profile}
-            onWithdrawalDone={refreshWithdrawal}
-          />
+          <>
+            <OverviewTab
+              me={me}
+              drift={drift}
+              withdrawal={withdrawal}
+              profile={profile}
+              onWithdrawalDone={refreshWithdrawal}
+            />
+            <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <CreatorLeaderboard />
+            </section>
+          </>
         )}
         {tab === 'listings'  && <ListingsTab listings={myListings} onChanged={() => { refreshListings(); refreshDashboard(); refreshWithdrawal(); }} />}
         {tab === 'profile'   && <ProfileTab profile={profile} onSaved={refreshDashboard} />}
         {tab === 'followers' && <FollowersTab profile={profile} />}
         {tab === 'cascade'   && <CascadePanel topCited={me?.topCitedDTUs ?? []} />}
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <CreatorLeaderboard />
-        </section>
+        <CrossLensRecentsPanel lensId="creator" sinceDays={7} limit={6} hideWhenEmpty className="mt-6" />
       </div>
       <LensAgentFab
         lensId="creator"
         lensPrompt="You're inside Concord's Creator lens — the royalty cascade + earnings + listings dashboard. Prefer expert_mode for cited research about growth, run_lens_action for listing/profile updates, create_dtu to save analysis."
       />
-    
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
-          <RecentMineCard domain="creator" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="creator" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="creator" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }
@@ -276,11 +249,9 @@ export default function CreatorDashboardPage() {
 // ── Overview tab (existing dashboard, repacked) ─────────────────────
 
 function OverviewTab({
-  me, leaderboard, trending, drift, withdrawal, profile, onWithdrawalDone,
+  me, drift, withdrawal, profile, onWithdrawalDone,
 }: {
   me: DashboardResponse | null;
-  leaderboard: Leader[];
-  trending: TrendingHit[];
   drift: DriftHit[];
   withdrawal: WithdrawalStatus | null;
   profile: SocialProfile | null;
@@ -332,78 +303,43 @@ function OverviewTab({
         <WithdrawalSection withdrawal={withdrawal} onDone={onWithdrawalDone} />
       )}
 
-      <div className={GRID}>
-        <section className={PANEL}>
-          <h2 className="text-violet-300 font-semibold mb-3 inline-flex items-center gap-1.5">
-            <Trophy className="w-4 h-4" /> Top creators
-          </h2>
-          {leaderboard.length === 0 ? (
-            <div className="text-gray-400 italic">No data yet.</div>
-          ) : (
-            <ol className="space-y-1 text-sm">
-              {leaderboard.map((c, i) => (
-                <li key={c.userId} className="flex items-center gap-3">
-                  <span className="w-6 text-amber-400 font-mono">{i + 1}</span>
-                  <span className="flex-1 truncate text-gray-200">{c.userId}</span>
-                  <span className="text-violet-300 font-mono">{Math.round(c.score)}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-
-        <section className={PANEL}>
-          <h2 className="text-emerald-300 font-semibold mb-3 inline-flex items-center gap-1.5">
-            <TrendingUp className="w-4 h-4" /> Trending citations (24h)
-          </h2>
-          {trending.length === 0 ? (
-            <div className="text-gray-400 italic">No surge.</div>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {trending.slice(0, 8).map((t) => (
-                <li key={t.id} className="border-l-2 border-emerald-400/40 pl-3">
-                  <div className="text-gray-100 font-medium truncate">{t.title}</div>
-                  <div className="text-xs text-gray-400">{t.domain} · +{t.newCitations24h} new citations</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className={`${PANEL} md:col-span-2`}>
-          <h2 className="text-rose-300 font-semibold mb-3 inline-flex items-center gap-1.5">
-            <TrendingDown className="w-4 h-4" /> Influence drift (7d)
-          </h2>
-          {drift.length === 0 ? (
-            <div className="text-gray-400 italic">No significant drift.</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="text-gray-400 text-xs uppercase tracking-wider">
-                <tr>
-                  <th className="text-left py-1">Creator</th>
-                  <th className="text-right py-1">Recent</th>
-                  <th className="text-right py-1">Prior</th>
-                  <th className="text-right py-1">Change</th>
+      {/* Top creators + trending citations live in <CreatorLeaderboard>,
+          mounted once directly below this tab (real-time via react-query) —
+          this used to duplicate the exact same two /api/creator/* endpoints
+          in a second, differently-styled panel underneath every tab. */}
+      <section className={PANEL}>
+        <h2 className="text-rose-300 font-semibold mb-3 inline-flex items-center gap-1.5">
+          <TrendingDown className="w-4 h-4" /> Influence drift (7d)
+        </h2>
+        {drift.length === 0 ? (
+          <div className="text-gray-400 italic">No significant drift.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="text-gray-400 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="text-left py-1">Creator</th>
+                <th className="text-right py-1">Recent</th>
+                <th className="text-right py-1">Prior</th>
+                <th className="text-right py-1">Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              {drift.map((d) => (
+                <tr key={d.userId} className="border-t border-white/5">
+                  <td className="py-1 text-gray-200 truncate">{d.userId}</td>
+                  <td className="py-1 text-right text-gray-300">{d.recentCitations}</td>
+                  <td className="py-1 text-right text-gray-400">{d.priorCitations}</td>
+                  <td className={`py-1 text-right font-mono ${
+                    d.change > 0 ? 'text-emerald-400' : d.change < 0 ? 'text-rose-400' : 'text-gray-400'
+                  }`}>
+                    {d.change > 0 ? '+' : ''}{d.change}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {drift.map((d) => (
-                  <tr key={d.userId} className="border-t border-white/5">
-                    <td className="py-1 text-gray-200 truncate">{d.userId}</td>
-                    <td className="py-1 text-right text-gray-300">{d.recentCitations}</td>
-                    <td className="py-1 text-right text-gray-400">{d.priorCitations}</td>
-                    <td className={`py-1 text-right font-mono ${
-                      d.change > 0 ? 'text-emerald-400' : d.change < 0 ? 'text-rose-400' : 'text-gray-400'
-                    }`}>
-                      {d.change > 0 ? '+' : ''}{d.change}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
     </>
   );
 }

@@ -61,7 +61,6 @@ import {
   CircleDot,
   Minus,
   Bell,
-  Layers,
   Map,
 } from 'lucide-react';
 
@@ -74,7 +73,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import RealEstateWorkbench from '@/components/realestate/RealEstateWorkbench';
 import ListingsBrowser, { type Listing as REListing } from '@/components/realestate/ListingsBrowser';
@@ -95,6 +93,7 @@ import PreApprovalFlow from '@/components/realestate/PreApprovalFlow';
 import SavedSearchAlerts from '@/components/realestate/SavedSearchAlerts';
 import PropertyDetailPanel from '@/components/realestate/PropertyDetailPanel';
 import ContactAgentForm from '@/components/realestate/ContactAgentForm';
+import WorldPropertiesPanel from '@/components/realestate/WorldPropertiesPanel';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 
 /* ------------------------------------------------------------------ */
@@ -415,6 +414,18 @@ const fmtFull = (v: number) =>
 
 const pct = (v: number) => `${v.toFixed(2)}%`;
 
+// Standard amortization P&I formula — same math the calc-mortgage macro
+// uses server-side. Used to derive a mortgage payment for the cashFlow
+// domain action from a Deal record's rate/term/down-payment fields, since
+// no persisted artifact carries a precomputed monthly-payment field.
+const estMonthlyPI = (principal: number, ratePct: number, years: number) => {
+  if (!principal || !ratePct || !years) return 0;
+  const r = ratePct / 100 / 12;
+  const n = years * 12;
+  if (r === 0) return principal / n;
+  return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+};
+
 const daysBetween = (a: string, b: string) => {
   const d1 = new Date(a);
   const d2 = new Date(b);
@@ -429,7 +440,6 @@ export default function RealEstateLensPage() {
   useLensNav('realestate');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('realestate');
 
-  const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<ModeTab>('Dashboard');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
 
@@ -847,8 +857,52 @@ export default function RealEstateLensPage() {
   const handleAction = async (action: string, artifactId?: string) => {
     const targetId = artifactId || selectedActionItem || editingItem?.id || filtered[0]?.id;
     if (!targetId) return;
+
+    // Field-shape bridge: the persisted artifact schema (RealEstateArtifact)
+    // predates the capRate/cashFlow/closingTimeline/vacancyReport macros and
+    // uses different field names (noi vs netOperatingIncome, monthlyRent vs
+    // rentAmount, closingDate vs contractDate, one-record-per-unit vs a
+    // units[] portfolio array). Each macro already accepts a `params`
+    // fallback for exactly this reason; without it these buttons silently
+    // read undefined fields and always render a zeroed-out result.
+    const targetItem = items.find((i) => i.id === targetId);
+    const d = targetItem?.data as unknown as RealEstateArtifact | undefined;
+    let params: Record<string, unknown> = {};
+    if (d && action === 'capRate') {
+      params = { noi: d.noi, purchasePrice: d.purchasePrice ?? d.price };
+    } else if (d && action === 'cashFlow') {
+      const loanAmount = (d.purchasePrice ?? d.price ?? 0) - (d.downPayment ?? 0);
+      params = {
+        monthlyRent: d.grossRent ?? d.monthlyRent,
+        expenses: d.operatingExpenses,
+        mortgage: estMonthlyPI(loanAmount, d.mortgageRate ?? 0, d.mortgageTerm ?? 0),
+      };
+    } else if (d && action === 'closingTimeline') {
+      params = { contractDate: d.closingDate || d.date };
+    } else if (action === 'vacancyReport') {
+      const rentalUnits = items.filter(
+        (i) => (i.data as unknown as RealEstateArtifact).artifactType === 'RentalUnit'
+      );
+      params = {
+        units: rentalUnits.map((i) => {
+          const rd = i.data as unknown as RealEstateArtifact;
+          return {
+            unit: i.title,
+            status: rd.status === 'vacant' ? 'vacant' : 'occupied',
+            tenant: rd.tenantName,
+            rentAmount: rd.monthlyRent,
+            vacantSince: rd.status === 'vacant' ? rd.leaseStart : undefined,
+          };
+        }),
+      };
+    }
+
+    // Surface the panel that actually renders actionResult — buttons on
+    // Transactions/Rentals/Investing cards previously called this without
+    // ever opening it, so the computed result had nowhere to render.
+    setShowActionPanel(true);
     try {
-      const result = await runAction.mutateAsync({ id: targetId, action });
+      const result = await runAction.mutateAsync({ id: targetId, action, params });
       if (result.ok === false) {
         setActionResult({
           message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}`,
@@ -3347,25 +3401,12 @@ export default function RealEstateLensPage() {
         </div>
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="real_estate" />
-          </div>
-        )}
+      {/* World property market — real in-world building ownership / listing /
+          lease engine (the `real_estate` domain, server/domains/real-estate.js).
+          Previously reachable only through a generic <LensFeaturePanel> button
+          wall; now a bespoke buy/sell/lease workbench. */}
+      <div className="border-t border-white/10 pt-4">
+        <WorldPropertiesPanel />
       </div>
     </div>
     

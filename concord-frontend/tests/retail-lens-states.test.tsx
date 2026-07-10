@@ -1,64 +1,26 @@
 /**
- * /lenses/retail — four-UX-state contract for the Retail & Commerce lens.
+ * /lenses/retail — real-backend wiring contract for the Retail & Commerce lens.
  *
- * Pins that the lens renders genuine loading / error (with a WORKING Retry) /
- * empty / populated states against its real backend channel: the artifact list
- * (useLensData('retail', type) → GET /api/lens/retail), and that the
- * compute-action panel drives the 'retail' domain via useRunArtifact.
- *
- * Load-bearing wiring assertion: the action runner must be constructed on the
- * 'retail' domain — a regression to any other id would resolve to NO backend
- * receiver (the silent-dead class).
- *
- * Swallowed-fetch guard: the ERROR state must surface the real error message
- * and a Retry that RE-FETCHES (we assert refetch fires + recovery to populated),
- * never a silent blank/empty that hides a failed load.
- *
- * No fabricated data — every state is driven by a mocked useLensData standing
- * in for the real backend in the exact shape it returns.
+ * Historical note: this file used to pin a generic `useLensData`/`useRunArtifact`
+ * artifact-CRUD system that stood in front of `server/domains/retail.js`'s 85
+ * macros — six fake tabs (Products/Orders/Customers/Pipeline/Support/Displays)
+ * backed by a client-side artifact store with NO backing macro for
+ * create/update/delete, running in parallel to (and completely disconnected
+ * from) the real STATE-backed product/order/customer system already surfaced
+ * by RetailWorkbench, CustomersPanel, CommerceSuite, etc. That system has been
+ * removed (Wave 3 Frontend Rebuild Program pass — see
+ * docs/lens-specs/retail-capability-map.md). The page no longer imports
+ * `useLensData` or `useRunArtifact` at all — every surface is one of the real,
+ * macro-backed panels. This file now pins that the page mounts cleanly and
+ * that the real panels + the Retail Workbench toggle are wired, instead of
+ * asserting behavior of the removed fake CRUD system.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, fireEvent, screen } from '@testing-library/react';
 import React from 'react';
-
-// ── main list channel: useLensData (controls loading/error/empty/populated) ──
-const lensDataState: {
-  items: unknown[];
-  isLoading: boolean;
-  isError: boolean;
-  error: Error | null;
-} = { items: [], isLoading: false, isError: false, error: null };
-const refetch = vi.fn();
-
-// ── compute-action channel: useRunArtifact mutate ───────────────────────────
-const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
-const useRunArtifactSpy = vi.fn();
-
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  useLensData: () => ({
-    items: lensDataState.items,
-    total: lensDataState.items.length,
-    isLoading: lensDataState.isLoading,
-    isError: lensDataState.isError,
-    error: lensDataState.error,
-    isSeeding: false,
-    refetch,
-    create: vi.fn(() => Promise.resolve({})),
-    update: vi.fn(() => Promise.resolve({})),
-    remove: vi.fn(() => Promise.resolve({})),
-    createMut: { isPending: false },
-    updateMut: { isPending: false },
-    deleteMut: { isPending: false },
-  }),
-}));
-
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: (domain: string) => {
-    useRunArtifactSpy(domain);
-    return { mutateAsync: (...a: unknown[]) => runMutate(...a), isPending: false };
-  },
-}));
+import fs from 'node:fs';
+import path from 'node:path';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: null, isLoading: false }),
@@ -88,19 +50,24 @@ vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => nul
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-vi.mock('@/components/lens/DraftedTextarea', () => ({ DraftedTextarea: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
 vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
 vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
 vi.mock('@/components/lens/LiveFeed', () => ({ default: () => null }));
 vi.mock('@/components/lens/ShellPreview', () => ({ ShellPreview: () => null }));
-vi.mock('@/components/retail/RetailWorkbench', () => ({ default: () => null }));
+
+const workbenchProps: { open?: boolean } = {};
+vi.mock('@/components/retail/RetailWorkbench', () => ({
+  default: (props: { open: boolean }) => {
+    workbenchProps.open = props.open;
+    return props.open ? React.createElement('div', { 'data-testid': 'retail-workbench-open' }, 'Workbench open') : null;
+  },
+}));
 vi.mock('@/components/retail/TaxRatesPanel', () => ({ TaxRatesPanel: () => null }));
-vi.mock('@/components/retail/LivePosTerminal', () => ({ LivePosTerminal: () => null }));
-vi.mock('@/components/retail/RetailActionPanel', () => ({ RetailActionPanel: () => null }));
-vi.mock('@/components/retail/CustomersPanel', () => ({ default: () => null }));
+vi.mock('@/components/retail/LivePosTerminal', () => ({ LivePosTerminal: () => React.createElement('div', { 'data-testid': 'live-pos-terminal' }) }));
+vi.mock('@/components/retail/RetailActionPanel', () => ({ RetailActionPanel: () => React.createElement('div', { 'data-testid': 'retail-action-panel' }) }));
+vi.mock('@/components/retail/CustomersPanel', () => ({ default: () => React.createElement('div', { 'data-testid': 'customers-panel' }) }));
 vi.mock('@/components/retail/DiscountsManager', () => ({ default: () => null }));
 vi.mock('@/components/retail/AbandonedCartsPanel', () => ({ default: () => null }));
 vi.mock('@/components/retail/ShippingZonesEditor', () => ({ default: () => null }));
@@ -108,10 +75,9 @@ vi.mock('@/components/retail/GiftCardsPanel', () => ({ default: () => null }));
 vi.mock('@/components/retail/RefundsPanel', () => ({ default: () => null }));
 vi.mock('@/components/retail/CollectionsPanel', () => ({ default: () => null }));
 vi.mock('@/components/retail/InventoryTransfers', () => ({ default: () => null }));
-vi.mock('@/components/retail/SalesAnalytics', () => ({ default: () => null }));
-vi.mock('@/components/retail/CommerceSuite', () => ({ default: () => null }));
+vi.mock('@/components/retail/SalesAnalytics', () => ({ default: () => React.createElement('div', { 'data-testid': 'sales-analytics' }) }));
+vi.mock('@/components/retail/CommerceSuite', () => ({ default: () => React.createElement('div', { 'data-testid': 'commerce-suite' }) }));
 vi.mock('@/components/panel-polish', () => ({ PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children) }));
-// framer-motion: render plain elements so animated nodes mount synchronously.
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
@@ -119,62 +85,43 @@ vi.mock('framer-motion', () => ({
 
 import RetailLens from '@/app/lenses/retail/page';
 
-const PRODUCT = {
-  id: 'art_1',
-  title: 'Aurora Lamp',
-  data: { name: 'Aurora Lamp', sku: 'LMP-001', price: 49.99, stock: 12, reorderPoint: 5 },
-  meta: { tags: [], status: 'active', visibility: 'private' },
-  createdAt: '2026-06-27', updatedAt: '2026-06-27', version: 1,
-};
-
 beforeEach(() => {
-  lensDataState.items = [];
-  lensDataState.isLoading = false;
-  lensDataState.isError = false;
-  lensDataState.error = null;
-  refetch.mockReset();
-  runMutate.mockReset();
-  runMutate.mockImplementation(() => Promise.resolve({ ok: true, result: {} }));
-  useRunArtifactSpy.mockReset();
+  workbenchProps.open = undefined;
 });
 
-describe('retail lens — wiring', () => {
-  it('drives the compute-action runner on the retail domain', () => {
+describe('retail lens — real macro-backed surfaces (no fabricated artifact CRUD)', () => {
+  it('mounts inside LensShell without crashing', () => {
     render(<RetailLens />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('retail');
-  });
-});
-
-describe('retail lens — four UX states', () => {
-  it('LOADING: shows a spinner + Loading cue while the list is in flight', () => {
-    lensDataState.isLoading = true;
-    const { getByText } = render(<RetailLens />);
-    expect(getByText(/Loading/i)).toBeInTheDocument();
+    expect(screen.getByTestId('lens-shell')).toBeInTheDocument();
   });
 
-  it('ERROR: a failed load surfaces the real error message + a working Retry that re-fetches', async () => {
-    lensDataState.isError = true;
-    lensDataState.error = new Error('inventory service offline');
-    const { getByText } = render(<RetailLens />);
-    // swallowed-fetch guard: the real error string must be visible, not a blank/empty
-    expect(getByText(/inventory service offline/i)).toBeInTheDocument();
-    expect(getByText(/Something went wrong/i)).toBeInTheDocument();
-
-    // Retry must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Try again')); });
-    await waitFor(() => expect(refetch).toHaveBeenCalled());
+  it('mounts the real POS terminal, sales analytics (default workbench tab), commerce suite, and ops action panel', () => {
+    render(<RetailLens />);
+    expect(screen.getByTestId('live-pos-terminal')).toBeInTheDocument();
+    expect(screen.getByTestId('sales-analytics')).toBeInTheDocument();
+    expect(screen.getByTestId('commerce-suite')).toBeInTheDocument();
+    expect(screen.getByTestId('retail-action-panel')).toBeInTheDocument();
   });
 
-  it('EMPTY: shows an honest empty cue when the product list is empty', () => {
-    lensDataState.items = [];
-    const { getAllByText } = render(<RetailLens />);
-    // default Products library view: "No Products found" + "Create one to get started."
-    expect(getAllByText(/No Products? found|Create one to get started/i).length).toBeGreaterThan(0);
+  it('Retail workbench sub-tabs switch to the real customers panel (not a fake CRM tab)', () => {
+    render(<RetailLens />);
+    expect(screen.queryByTestId('customers-panel')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Customers'));
+    expect(screen.getByTestId('customers-panel')).toBeInTheDocument();
   });
 
-  it('POPULATED: renders the real product row from the backend list', () => {
-    lensDataState.items = [PRODUCT];
-    const { getAllByText } = render(<RetailLens />);
-    expect(getAllByText(/Aurora Lamp/i).length).toBeGreaterThan(0);
+  it('Retail Workbench starts closed and opens on click (real POS/catalog/orders/low-stock modal, not a fake CRUD editor)', () => {
+    render(<RetailLens />);
+    expect(workbenchProps.open).toBe(false);
+    fireEvent.click(screen.getByText('Retail Workbench'));
+    expect(workbenchProps.open).toBe(true);
+    expect(screen.getByTestId('retail-workbench-open')).toBeInTheDocument();
+  });
+
+  it('no longer imports the generic artifact-CRUD hooks (useLensData / useRunArtifact)', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../app/lenses/retail/page.tsx'), 'utf8');
+    expect(source).not.toMatch(/use-lens-data/);
+    expect(source).not.toMatch(/use-lens-artifacts/);
+    expect(source).not.toMatch(/useLensData|useRunArtifact/);
   });
 });

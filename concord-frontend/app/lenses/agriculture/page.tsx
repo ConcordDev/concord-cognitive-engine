@@ -553,7 +553,7 @@ export default function AgricultureLensPage() {
     setEditorOpen(false);
   };
 
-  const handleAction = async (action: string, artifactId?: string) => {
+  const handleAction = async (action: string, artifactId?: string): Promise<void> => {
     const targetId = artifactId || editingItem?.id || filtered[0]?.id;
     if (!targetId) return;
     try {
@@ -562,11 +562,23 @@ export default function AgricultureLensPage() {
         setActionResult({
           message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}`,
         });
-      } else {
-        setActionResult(result.result as Record<string, unknown>);
+        return;
       }
+      const payload = (result.result || {}) as Record<string, unknown>;
+      // The generic "analyze" dispatcher (and any future router in the same
+      // shape) returns { dispatched: '<macro-name>' } instead of computing
+      // an answer itself when it recognizes the artifact's kind — follow
+      // through to the real macro so the click surfaces the actual report
+      // instead of a dead-end "use X directly" redirect note.
+      const dispatched = typeof payload.dispatched === 'string' ? payload.dispatched : null;
+      if (dispatched && dispatched !== action) {
+        await handleAction(dispatched, targetId);
+        return;
+      }
+      setActionResult(payload);
     } catch (err) {
       console.error('Action failed:', err);
+      setActionResult({ message: 'Action failed: request error' });
     }
   };
 
@@ -1936,6 +1948,118 @@ export default function AgricultureLensPage() {
               </div>
             </div>
           )}
+          {/* plan-crop */}
+          {actionResult.recommended !== undefined && actionResult.plantingWindow !== undefined && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-green-400 capitalize">{String(actionResult.recommended)}</p>
+                  <p className="text-[10px] text-gray-400">Recommended Next</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-neon-cyan">
+                    {String((actionResult.plantingWindow as { start?: string })?.start)}–{String((actionResult.plantingWindow as { end?: string })?.end)}
+                  </p>
+                  <p className="text-[10px] text-gray-400">Planting Window</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-neon-cyan">
+                    {String((actionResult.expectedYield as { low?: number })?.low)}–{String((actionResult.expectedYield as { high?: number })?.high)} {String((actionResult.expectedYield as { unit?: string })?.unit || '')}
+                  </p>
+                  <p className="text-[10px] text-gray-400">Expected Yield</p>
+                </div>
+              </div>
+              {Array.isArray(actionResult.candidates) && (actionResult.candidates as { crop?: string; soilFit?: string; historyAvoidance?: string }[]).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {(actionResult.candidates as { crop?: string; soilFit?: string; historyAvoidance?: string }[]).map((c, i) => (
+                    <span key={i} className={cn('text-[10px] px-2 py-0.5 rounded-full border', c.crop === actionResult.recommended ? 'border-green-500/40 bg-green-500/10 text-green-300' : 'border-lattice-border text-gray-400')}>
+                      {c.crop} · soil {c.soilFit}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {typeof actionResult.rationale === 'string' && (
+                <p className="text-[11px] text-gray-400">{actionResult.rationale}</p>
+              )}
+            </div>
+          )}
+          {/* predict-yield */}
+          {actionResult.estimatedYieldPerAcre !== undefined && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-neon-cyan">
+                    {String(actionResult.estimatedYieldPerAcre)} {String(actionResult.unit || '')}/ac
+                  </p>
+                  <p className="text-[10px] text-gray-400">Per Acre</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-green-400">
+                    {String(actionResult.totalYield)} {String(actionResult.unit || '')}
+                  </p>
+                  <p className="text-[10px] text-gray-400">Total Yield</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-gray-200">
+                    {String((actionResult.band as { low?: number })?.low)}–{String((actionResult.band as { high?: number })?.high)}
+                  </p>
+                  <p className="text-[10px] text-gray-400">Reference Band</p>
+                </div>
+              </div>
+              {typeof actionResult.summary === 'string' && (
+                <p className="text-[11px] text-gray-400">{actionResult.summary}</p>
+              )}
+            </div>
+          )}
+          {/* analyze-soil */}
+          {actionResult.recommendations !== undefined && actionResult.trends !== undefined && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-1.5">
+                {Object.entries(actionResult.trends as Record<string, { latest?: number | null; status?: string }>).map(([key, t]) => (
+                  <div key={key} className="p-2 bg-lattice-surface rounded text-center">
+                    <p className={cn('text-sm font-bold', t.status === 'low' ? 'text-red-400' : t.status === 'high' ? 'text-amber-400' : 'text-green-400')}>
+                      {t.latest ?? '—'}
+                    </p>
+                    <p className="text-[10px] text-gray-400">{key}</p>
+                  </div>
+                ))}
+              </div>
+              {Array.isArray(actionResult.recommendations) && (actionResult.recommendations as { priority?: string; action?: string }[]).length > 0 && (
+                <ul className="space-y-1">
+                  {(actionResult.recommendations as { priority?: string; action?: string }[]).map((r, i) => (
+                    <li key={i} className="text-[11px] flex items-center gap-1.5">
+                      <span className={cn('px-1.5 py-0.5 rounded text-[9px] uppercase', r.priority === 'high' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300')}>{r.priority}</span>
+                      <span className="text-gray-300">{r.action}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {typeof actionResult.summary === 'string' && (
+                <p className="text-[11px] text-gray-400">{actionResult.summary}</p>
+              )}
+            </div>
+          )}
+          {/* Fallback — any result shape not covered by a dedicated card above.
+              Never render a blank panel: fall back to the message/note the
+              macro provided, or an honest raw dump so nothing looks like a
+              silent no-op. */}
+          {actionResult.fields === undefined &&
+            actionResult.fieldsAnalyzed === undefined &&
+            actionResult.overdueCount === undefined &&
+            actionResult.totalGallonsAllFields === undefined &&
+            actionResult.recommended === undefined &&
+            actionResult.estimatedYieldPerAcre === undefined &&
+            actionResult.recommendations === undefined && (
+              <div className="space-y-1.5 text-sm">
+                {typeof actionResult.message === 'string' && <p className="text-gray-200">{actionResult.message}</p>}
+                {typeof actionResult.note === 'string' && <p className="text-gray-400 text-xs">{actionResult.note}</p>}
+                {typeof actionResult.message !== 'string' && typeof actionResult.note !== 'string' && (
+                  <pre className="text-[10px] text-gray-400 whitespace-pre-wrap break-words bg-lattice-surface rounded p-2 max-h-64 overflow-y-auto">
+                    {JSON.stringify(actionResult, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
         </div>
       )}
 

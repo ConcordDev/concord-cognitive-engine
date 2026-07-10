@@ -22,8 +22,8 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { Coins, Loader2, AlertTriangle, RefreshCw, Trophy, Target, Wrench } from 'lucide-react';
-import { GhsaAdvisories } from '@/components/bounties/GhsaAdvisories';
-import { CreateBountyForm } from '@/components/bounties/CreateBountyForm';
+import { GhsaAdvisories, type BountyDraftFromAdvisory } from '@/components/bounties/GhsaAdvisories';
+import { CreateBountyForm, type BountyPrefill } from '@/components/bounties/CreateBountyForm';
 import { BountyCard } from '@/components/bounties/BountyCard';
 import { BountyFilters, type FilterState } from '@/components/bounties/BountyFilters';
 import { BountyLeaderboard } from '@/components/bounties/BountyLeaderboard';
@@ -65,6 +65,12 @@ export default function BountiesPage() {
   const currentUserId = user?.id || 'anon';
 
   const [tab, setTab] = useState<'board' | 'autofix'>('board');
+  const [bountyPrefill, setBountyPrefill] = useState<BountyPrefill | null>(null);
+
+  const convertAdvisoryToBounty = useCallback((draft: BountyDraftFromAdvisory) => {
+    setBountyPrefill(draft);
+    setTab('board');
+  }, []);
 
   // ── Bounty board state ──────────────────────────────────────────────
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
@@ -194,7 +200,11 @@ export default function BountiesPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Main column */}
             <div className="lg:col-span-2 space-y-4">
-              <CreateBountyForm onCreated={onBountyCreated} />
+              <CreateBountyForm
+                onCreated={onBountyCreated}
+                prefill={bountyPrefill}
+                onConsumePrefill={() => setBountyPrefill(null)}
+              />
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2">
@@ -367,7 +377,7 @@ export default function BountiesPage() {
             )}
 
             <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <GhsaAdvisories />
+              <GhsaAdvisories onConvertToBounty={convertAdvisoryToBounty} />
             </section>
           </div>
         )}

@@ -6,10 +6,10 @@
  */
 
 import React from 'react';
-import { MapPin, Bookmark, ListChecks, Route, Navigation, History, Sparkles, Compass } from 'lucide-react';
+import { MapPin, Bookmark, ListChecks, Route, Navigation, History, Sparkles, Compass, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type AtlasNav = 'explore' | 'places' | 'lists' | 'trips' | 'directions' | 'planner' | 'recent';
+export type AtlasNav = 'explore' | 'places' | 'lists' | 'trips' | 'directions' | 'planner' | 'tools' | 'recent';
 
 interface NavItem { id: AtlasNav; label: string; icon: typeof MapPin; badge?: number | string }
 
@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { id: 'trips',      label: 'Trips',       icon: Route },
   { id: 'directions', label: 'Directions',  icon: Navigation },
   { id: 'planner',    label: 'AI planner',  icon: Sparkles },
+  { id: 'tools',      label: 'Tools',       icon: Wrench },
   { id: 'recent',     label: 'Recent',      icon: History },
 ];
 

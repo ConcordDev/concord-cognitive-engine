@@ -169,8 +169,26 @@ function Stat({ label, value, tone }: { label: string; value: string | number; t
 
 // ---- main -------------------------------------------------------------------
 
-export function RFPlanner() {
-  const [tab, setTab] = useState<SubTab>('sites');
+export const RF_PLANNER_TABS: { key: SubTab; label: string }[] = [
+  { key: 'sites', label: 'Sites' },
+  { key: 'propagation', label: 'RF Coverage' },
+  { key: 'interference', label: 'Interference' },
+  { key: 'capacity', label: 'Capacity Plan' },
+  { key: 'topology', label: 'Topology' },
+  { key: 'spectrum', label: 'Spectrum' },
+  { key: 'outages', label: 'Outages / SLA' },
+  { key: 'drivetest', label: 'Drive Test' },
+];
+
+export function RFPlanner({ tab: controlledTab, onTabChange }: {
+  /** Optional controlled active sub-tab — lets the host page drive discoverable
+   * keyboard shortcuts. Falls back to internal state when omitted. */
+  tab?: SubTab;
+  onTabChange?: (tab: SubTab) => void;
+} = {}) {
+  const [internalTab, setInternalTab] = useState<SubTab>('sites');
+  const tab = controlledTab ?? internalTab;
+  const setTab = onTabChange ?? setInternalTab;
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);

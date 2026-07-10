@@ -1,10 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { GitFork, Loader2, Star, Eye, AlertCircle, Archive, ExternalLink, Github } from 'lucide-react';
+import { GitFork, Loader2, Star, Eye, AlertCircle, Archive, ExternalLink, Github, HeartPulse } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+
+interface HealthResult {
+  name: string;
+  healthScore: number;
+  healthLevel: string;
+  factors: Record<string, { score: number }>;
+  recommendations: string[];
+}
 
 interface RepoDetail {
   fullName: string; owner?: string; description?: string; htmlUrl?: string;
@@ -55,10 +63,12 @@ export function ForkNetworkExplorer() {
   const [parent, setParent] = useState<RepoDetail | null>(null);
   const [forks, setForks] = useState<Fork[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [health, setHealth] = useState<Record<string, HealthResult | 'loading' | 'error'>>({});
 
   const load = useMutation({
     mutationFn: async () => {
       setError(null);
+      setHealth({});
       const [p, f] = await Promise.all([
         callMacro<RepoDetail>('github-repo', { owner, repo }),
         callMacro<{ forks: Fork[] }>('github-forks', { owner, repo, sort, limit: 30 }),
@@ -68,6 +78,28 @@ export function ForkNetworkExplorer() {
       else setForks([]);
     },
   });
+
+  // fork.forkHealth is a real weighted health score (sync freshness, activity,
+  // commit-count divergence, contributor count, open issues) — derived here
+  // from the fork/parent metadata this explorer already fetched live from
+  // GitHub, rather than left dangling on the disconnected generic artifact
+  // store the lens used to feed it. Commit/contributor counts aren't part of
+  // the /forks or /repos payload, so those two factors default inside the
+  // macro (contributors→1, commitCount→0) — an honest degrade, not a guess.
+  const computeHealth = useCallback(async (f: Fork) => {
+    setHealth((h) => ({ ...h, [f.fullName]: 'loading' }));
+    const r = await callMacro<HealthResult>('forkHealth', {
+      fork: {
+        name: f.fullName,
+        createdAt: f.createdAt,
+        lastSyncAt: f.pushedAt,
+        lastCommitAt: f.pushedAt,
+        openIssues: f.openIssues,
+        upstream: parent ? { lastCommitAt: parent.pushedAt } : undefined,
+      },
+    });
+    setHealth((h) => ({ ...h, [f.fullName]: r.ok && r.result ? r.result : 'error' }));
+  }, [parent]);
 
   return (
     <div className="space-y-4">
@@ -130,31 +162,56 @@ export function ForkNetworkExplorer() {
       <div className="space-y-2 max-h-[500px] overflow-y-auto">
         {forks.map((f) => {
           const fr = freshness(f.pushedAt);
+          const h = health[f.fullName];
           return (
-            <a key={f.id} href={f.htmlUrl} target="_blank" rel="noopener noreferrer" className={`block rounded border ${BANDS[fr.band]} bg-zinc-950/40 p-2 hover:bg-zinc-950/70`}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="line-clamp-1 text-sm text-white">{f.fullName}</span>
-                    {f.archived && <span className="rounded bg-amber-500/10 px-1 text-[9px] text-amber-300">archived</span>}
+            <div key={f.id} className={`rounded border ${BANDS[fr.band]} bg-zinc-950/40 p-2`}>
+              <a href={f.htmlUrl} target="_blank" rel="noopener noreferrer" className="block hover:opacity-90">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="line-clamp-1 text-sm text-white">{f.fullName}</span>
+                      {f.archived && <span className="rounded bg-amber-500/10 px-1 text-[9px] text-amber-300">archived</span>}
+                    </div>
+                    {f.description && <p className="line-clamp-1 text-[11px] text-zinc-400">{f.description}</p>}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
+                      <span className="inline-flex items-center gap-0.5"><Star className="h-3 w-3" /> {f.stargazers?.toLocaleString()}</span>
+                      <span className="inline-flex items-center gap-0.5"><GitFork className="h-3 w-3" /> {f.forks?.toLocaleString()}</span>
+                      {f.language && <span className="font-mono text-cyan-300/80">{f.language}</span>}
+                      {f.license && <span className="font-mono">{f.license}</span>}
+                    </div>
                   </div>
-                  {f.description && <p className="line-clamp-1 text-[11px] text-zinc-400">{f.description}</p>}
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
-                    <span className="inline-flex items-center gap-0.5"><Star className="h-3 w-3" /> {f.stargazers?.toLocaleString()}</span>
-                    <span className="inline-flex items-center gap-0.5"><GitFork className="h-3 w-3" /> {f.forks?.toLocaleString()}</span>
-                    {f.language && <span className="font-mono text-cyan-300/80">{f.language}</span>}
-                    {f.license && <span className="font-mono">{f.license}</span>}
-                  </div>
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase ${BANDS[fr.band]}`}>{fr.band} · {fr.days}d</span>
                 </div>
-                <span className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase ${BANDS[fr.band]}`}>{fr.band} · {fr.days}d</span>
+              </a>
+              <div className="mt-1.5 flex items-center gap-2">
+                <button
+                  onClick={() => computeHealth(f)}
+                  disabled={h === 'loading'}
+                  className="inline-flex items-center gap-1 rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20 disabled:opacity-50"
+                >
+                  {h === 'loading' ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <HeartPulse className="h-2.5 w-2.5" />}
+                  Compute health
+                </button>
+                {h && h !== 'loading' && h !== 'error' && (
+                  <span className={`text-[10px] ${h.healthScore >= 80 ? 'text-emerald-300' : h.healthScore >= 60 ? 'text-amber-300' : 'text-red-300'}`}>
+                    {h.healthScore}/100 · {h.healthLevel}
+                    {h.recommendations.length > 0 && ` — ${h.recommendations[0]}`}
+                  </span>
+                )}
+                {h === 'error' && <span className="text-[10px] text-red-400">health check failed</span>}
               </div>
-            </a>
+            </div>
           );
         })}
         {forks.length === 0 && !load.isPending && !error && (
           <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">No forks yet — load a repo to see its network.</div>
         )}
       </div>
+      <p className="text-[10px] text-zinc-500">
+        Health scores are estimated from live push/issue metadata — GitHub&apos;s forks
+        endpoint doesn&apos;t expose commit or contributor counts, so those two factors
+        default inside the scorer rather than being guessed.
+      </p>
     </div>
   );
 }

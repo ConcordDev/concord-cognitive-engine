@@ -7,7 +7,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { PawPrint, Plus, HeartPulse, Activity, BellRing, CalendarHeart, ShieldCheck, Loader2 } from 'lucide-react';
+import { PawPrint, Plus, HeartPulse, Activity, BellRing, CalendarHeart, ShieldCheck, Loader2, Sparkles, Compass, Zap } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { PetHealthPanel } from './PetHealthPanel';
@@ -15,17 +16,29 @@ import { PetWellnessPanel } from './PetWellnessPanel';
 import { PetRemindersPanel } from './PetRemindersPanel';
 import { PetServicesPanel } from './PetServicesPanel';
 import { PetRecordsPanel } from './PetRecordsPanel';
+import { ActivityWeightDashboard } from './ActivityWeightDashboard';
+import { PetCarePlanner } from './PetCarePlanner';
+import { BreedExplorer } from './BreedExplorer';
+import { CatFactsPanel } from './CatFactsPanel';
+import { DogPanel } from './DogPanel';
+import { PetActionDrawer } from './PetActionDrawer';
 
-interface Pet { id: string; name: string; species: string; breed: string | null }
+interface Pet {
+  id: string; name: string; species: string; breed: string | null;
+  weightKg?: number; microchipId?: string | null;
+  age?: { years: number; months: number; totalMonths: number } | null;
+}
 interface Dash { pets: number; overdueVaccines: number; openReminders: number; overdueReminders: number; monthSpend: number; activeBookings: number }
 
-type TabId = 'health' | 'wellness' | 'reminders' | 'services' | 'records';
+type TabId = 'health' | 'wellness' | 'reminders' | 'services' | 'records' | 'insights' | 'discover';
 const TABS: { id: TabId; label: string; icon: typeof HeartPulse }[] = [
   { id: 'health', label: 'Health', icon: HeartPulse },
   { id: 'wellness', label: 'Weight & Care', icon: Activity },
   { id: 'reminders', label: 'Reminders', icon: BellRing },
   { id: 'services', label: 'Care Services', icon: CalendarHeart },
   { id: 'records', label: 'Records & ID', icon: ShieldCheck },
+  { id: 'insights', label: 'Insights', icon: Sparkles },
+  { id: 'discover', label: 'Discover', icon: Compass },
 ];
 
 export function PetCareSection() {
@@ -35,6 +48,7 @@ export function PetCareSection() {
   const [tab, setTab] = useState<TabId>('health');
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', species: 'dog', breed: '', birthdate: '', weightKg: '' });
 
@@ -108,6 +122,13 @@ export function PetCareSection() {
           className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white rounded-full whitespace-nowrap">
           <Plus className="w-3 h-3" /> Add pet
         </button>
+        {selected && (
+          <button type="button" onClick={() => setShowDrawer(true)}
+            className="ml-auto flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 rounded-full whitespace-nowrap"
+            aria-label="Quick actions for the selected pet">
+            <Zap className="w-3 h-3" /> Quick actions
+          </button>
+        )}
       </div>
 
       {showAdd && (
@@ -167,9 +188,51 @@ export function PetCareSection() {
                 />
               );
             })()}
+            {tab === 'insights' && (() => {
+              const sel = pets.find((p) => p.id === selected);
+              if (!sel) return null;
+              return (
+                <div className="space-y-4">
+                  <ActivityWeightDashboard
+                    petId={sel.id} petName={sel.name} species={sel.species}
+                    ageYears={sel.age?.years ?? null} weightKg={sel.weightKg}
+                  />
+                  <PetCarePlanner
+                    petId={sel.id} petName={sel.name} species={sel.species}
+                    weightKg={sel.weightKg} ageYears={sel.age?.years ?? null}
+                  />
+                </div>
+              );
+            })()}
+            {tab === 'discover' && (
+              <div className="space-y-4">
+                <BreedExplorer />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <CatFactsPanel />
+                  <DogPanel />
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
+
+      <AnimatePresence>
+        {showDrawer && selected && (() => {
+          const sel = pets.find((p) => p.id === selected);
+          if (!sel) return null;
+          return (
+            <PetActionDrawer
+              pet={{
+                id: sel.id, name: sel.name, species: sel.species, breed: sel.breed,
+                weightKg: sel.weightKg || 0, microchipId: sel.microchipId || null, age: sel.age,
+              }}
+              onClose={() => setShowDrawer(false)}
+              onChange={refresh}
+            />
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }

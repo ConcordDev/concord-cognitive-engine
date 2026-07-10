@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Plus, X, Coins, Loader2, Milestone as MilestoneIcon } from 'lucide-react';
 import type { PlatformBounty } from './types';
@@ -10,7 +10,19 @@ const DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
 
 interface DraftMilestone { title: string; rewardCc: number }
 
-export function CreateBountyForm({ onCreated }: { onCreated: (b: PlatformBounty) => void }) {
+export interface BountyPrefill {
+  title?: string;
+  description?: string;
+  category?: string;
+  tags?: string;
+}
+
+export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
+  onCreated: (b: PlatformBounty) => void;
+  /** External draft (e.g. "Bounty this" from a GHSA advisory) — opens the form pre-filled. */
+  prefill?: BountyPrefill | null;
+  onConsumePrefill?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -23,6 +35,17 @@ export function CreateBountyForm({ onCreated }: { onCreated: (b: PlatformBounty)
   const [milestones, setMilestones] = useState<DraftMilestone[]>([{ title: '', rewardCc: 50 }]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!prefill) return;
+    setTitle(prefill.title || '');
+    setDescription(prefill.description || '');
+    if (prefill.category && CATEGORIES.includes(prefill.category)) setCategory(prefill.category);
+    setTags(prefill.tags || '');
+    setOpen(true);
+    onConsumePrefill?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   const reset = () => {
     setTitle(''); setDescription(''); setTags(''); setRewardCc(100); setDeadline('');

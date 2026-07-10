@@ -32,9 +32,7 @@ import {
   Target,
   Magnet,
   Layers,
-  Loader2,
 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -46,6 +44,7 @@ import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import PhysicsWorkbench from '@/components/physics/PhysicsWorkbench';
 import { PhysicsLab } from '@/components/physics/PhysicsLab';
 import { PhysicsActionPanel } from '@/components/physics/PhysicsActionPanel';
+import { PhysicsAdvancedLab } from '@/components/physics/PhysicsAdvancedLab';
 import { PipingProvider } from '@/components/panel-polish';
 
 // Physics body types
@@ -260,20 +259,7 @@ export default function PhysicsLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('physics');
   const { items: savedSims, create: saveSim, remove: removeSim, isError, error, refetch } = useLensData<Record<string, unknown>>('physics', 'simulation', { noSeed: true });
 
-  const runAction = useRunArtifact('physics');
-  const [physicsActionResult, setPhysicsActionResult] = useState<Record<string, unknown> | null>(null);
-  const [physicsIsRunning, setPhysicsIsRunning] = useState<string | null>(null);
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
-  const handlePhysicsAction = async (action: string) => {
-    const targetId = savedSims[0]?.id;
-    if (!targetId) { setPhysicsActionResult({ message: 'Save a simulation first to run physics analysis.' }); return; }
-    setPhysicsIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setPhysicsActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setPhysicsActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setPhysicsActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setPhysicsIsRunning(null); }
-  };
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
@@ -1629,92 +1615,12 @@ export default function PhysicsLensPage() {
           simulator, curriculum labs, measurement tools, share/embed. */}
       <PhysicsLab />
 
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Gauge className="w-4 h-4 text-neon-cyan" />
-          Physics Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'kinematicsSim', label: 'Kinematics Sim' },
-            { action: 'orbitalMechanics', label: 'Orbital Mechanics' },
-            { action: 'waveInterference', label: 'Wave Interference' },
-            { action: 'thermodynamics', label: 'Thermodynamics' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handlePhysicsAction(action)} disabled={!!physicsIsRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
-              {physicsIsRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        {physicsActionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'bodies' in physicsActionResult && Array.isArray(physicsActionResult.bodies) && (
-              <div className="space-y-2">
-                <p className="text-xs text-gray-400 uppercase tracking-wider">Bodies ({(physicsActionResult.bodies as unknown[]).length})</p>
-                {(physicsActionResult.bodies as Array<Record<string, unknown>>).map((b, i) => (
-                  <div key={i} className="bg-lattice-surface rounded px-2 py-1 text-xs">
-                    <span className="text-gray-300">{String(b.name || `Body ${i + 1}`)}</span>
-                    {b.maxHeight !== undefined && <span className="ml-2 text-neon-cyan">Max h: {String(b.maxHeight)}</span>}
-                    {b.range !== undefined && <span className="ml-2 text-neon-green">Range: {String(b.range)}</span>}
-                    {b.flightTime !== undefined && <span className="ml-2 text-yellow-400">t: {String(b.flightTime)}s</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-            {'elements' in physicsActionResult && (
-              <div className="space-y-2">
-                {'elements' in physicsActionResult && physicsActionResult.elements !== null && typeof physicsActionResult.elements === 'object' && (
-                  <div className="flex flex-wrap gap-3 text-xs">
-                    {Object.entries(physicsActionResult.elements as Record<string, unknown>).slice(0, 4).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-cyan">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-                {'hohmannTransfer' in physicsActionResult && physicsActionResult.hohmannTransfer !== null && typeof physicsActionResult.hohmannTransfer === 'object' && (
-                  <div className="flex flex-wrap gap-3 text-xs">
-                    {Object.entries(physicsActionResult.hohmannTransfer as Record<string, unknown>).slice(0, 3).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-green">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'beatFrequency' in physicsActionResult && (
-              <div className="flex flex-wrap gap-4 text-xs">
-                <span className="text-gray-400">Beat Freq: <span className="text-neon-cyan font-bold">{String(physicsActionResult.beatFrequency)} Hz</span></span>
-                {'sources' in physicsActionResult && Array.isArray(physicsActionResult.sources) && (
-                  <span className="text-gray-400">Sources: <span className="text-neon-cyan">{String((physicsActionResult.sources as unknown[]).length)}</span></span>
-                )}
-              </div>
-            )}
-            {'process' in physicsActionResult && 'energetics' in physicsActionResult && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-4 text-xs">
-                  <span className="text-gray-400">Process: <span className="text-neon-purple">{String(physicsActionResult.process)}</span></span>
-                </div>
-                {'energetics' in physicsActionResult && physicsActionResult.energetics !== null && typeof physicsActionResult.energetics === 'object' && (
-                  <div className="flex flex-wrap gap-3 text-xs">
-                    {Object.entries(physicsActionResult.energetics as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-cyan">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-                {'efficiency' in physicsActionResult && physicsActionResult.efficiency !== null && typeof physicsActionResult.efficiency === 'object' && (
-                  <div className="flex flex-wrap gap-3 text-xs">
-                    {Object.entries(physicsActionResult.efficiency as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-green">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'message' in physicsActionResult && <p className="text-gray-400">{String(physicsActionResult.message)}</p>}
-          </div>
-        )}
-      </div>
+      {/* Advanced solvers — kinematicsSim / orbitalMechanics / waveInterference /
+          thermodynamics, called directly with bespoke input (not gated on a
+          saved canvas-sandbox artifact, whose 2D {bodies,constraints,forceFields}
+          shape doesn't match what these macros read — see PhysicsAdvancedLab
+          header comment for the field-shape mismatch this replaced). */}
+      <PhysicsAdvancedLab />
 
       {/* Lens Features */}
       <div className="border-t border-white/10">

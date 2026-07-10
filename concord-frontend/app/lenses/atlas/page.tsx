@@ -2,31 +2,19 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AtlasSection } from '@/components/atlas/AtlasSection';
-import { OsmGeocodePanel } from '@/components/atlas/OsmGeocodePanel';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { PlacesGraph } from '@/components/atlas/PlacesGraph';
-import { NavigationSuite } from '@/components/atlas/NavigationSuite';
-import { AtlasActionPanel } from '@/components/atlas/AtlasActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { SafeCard } from '@/components/common/SafeCard';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { motion } from 'framer-motion';
 import {
   Map, Layers, Radio, AlertTriangle, RefreshCw,
-  ChevronDown, Compass, Globe, Radar,
-  Loader2, XCircle, Zap, MapPin, BarChart3, Route, Navigation,
+  Compass, Globe, Radar, Loader2, MapPinned, Satellite, Info,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { MapMarker } from '@/components/common/MapView';
@@ -34,65 +22,99 @@ import AtlasPublicView from '@/components/chat/AtlasPublicView';
 import AtlasResearchView from '@/components/chat/AtlasResearchView';
 import AtlasSignalView from '@/components/chat/AtlasSignalView';
 import AtlasOverlay from '@/components/chat/AtlasOverlay';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { PlaceFinder } from '@/components/atlas/PlaceFinder';
-import { DistanceMatrixPanel } from '@/components/atlas/DistanceMatrixPanel';
-import { MapsDirections } from '@/components/atlas/MapsDirections';
-import { RouteStops } from '@/components/atlas/RouteStops';
-import { SavedPlaces } from '@/components/atlas/SavedPlaces';
 
 // Leaflet requires dynamic import (no SSR)
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type Tab = 'terrain' | 'signals' | 'anomalies' | 'coverage';
+type Mode = 'map' | 'tomography';
+type TomoTab = 'terrain' | 'signals' | 'anomalies' | 'coverage';
 
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function AtlasLensPage() {
   useLensNav('atlas');
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('atlas');
+  const [mode, setMode] = useState<Mode>('map');
 
-  // Backend action wiring
-  const runAction = useRunArtifact('atlas');
-  const { items: atlasItems } = useLensData<Record<string, unknown>>('atlas', 'location', { seed: [] });
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-
-  const handleAtlasAction = async (action: string) => {
-    const targetId = atlasItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setIsRunning(null);
-  };
-
-  const [tab, setTab] = useState<Tab>('terrain');
-  const [showFeatures, setShowFeatures] = useState(true);
-  const [queryLat, setQueryLat] = useState('');
-  const [queryLng, setQueryLng] = useState('');
-
-  // Lens-scoped keyboard commands. Mapping-tool idiom: t/s/a/c jump
-  // between layers (terrain/signals/anomalies/coverage).
   useLensCommand(
     [
-      { id: 'tab-terrain', keys: 't', description: 'Terrain', category: 'navigation', action: () => setTab('terrain') },
-      { id: 'tab-signals', keys: 's', description: 'Signals', category: 'navigation', action: () => setTab('signals') },
-      { id: 'tab-anomalies', keys: 'a', description: 'Anomalies', category: 'navigation', action: () => setTab('anomalies') },
-      { id: 'tab-coverage', keys: 'c', description: 'Coverage', category: 'navigation', action: () => setTab('coverage') },
+      { id: 'mode-map', keys: 'g m', description: 'Map & trips', category: 'navigation', action: () => setMode('map') },
+      { id: 'mode-tomo', keys: 'g s', description: 'Signal tomography', category: 'navigation', action: () => setMode('tomography') },
     ],
     { lensId: 'atlas' }
   );
 
-  // ── Data fetching ──────────────────────────────────────────────────────
+  return (
+    <LensShell lensId="atlas" asMain={false}>
+      <FirstRunTour lensId="atlas" />
+      <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 space-y-4">
+        {/* Header + mode toggle. Two distinct backends live under this one
+            lens: a real Google-Maps-parity places/trips/directions tool
+            (server/domains/atlas.js) and a sci-fi signal-tomography
+            reconstruction concept (server/lib/foundation-atlas.js +
+            atlas-signal-cortex.js). See docs/lens-specs/atlas-capability-map.md
+            for why these are two modes instead of one blended surface. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-teal-500/20 flex items-center justify-center">
+              <Map className="w-5 h-5 text-teal-400" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">Atlas</h1>
+              <p className="text-sm text-zinc-400">{mode === 'map' ? 'Places, trips & navigation' : 'Signal tomography & spatial intelligence'}</p>
+            </div>
+            <DepthBadge lensId="atlas" size="sm" className="ml-1" />
+          </div>
+          <div className="flex items-center gap-1 rounded-lg bg-zinc-900 border border-zinc-800 p-1" role="tablist" aria-label="Atlas mode">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'map'}
+              onClick={() => setMode('map')}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${mode === 'map' ? 'bg-teal-500/20 text-teal-200' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              <MapPinned className="w-3.5 h-3.5" /> Map &amp; trips
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'tomography'}
+              onClick={() => setMode('tomography')}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${mode === 'tomography' ? 'bg-purple-500/20 text-purple-200' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              <Satellite className="w-3.5 h-3.5" /> Signal tomography
+            </button>
+          </div>
+        </div>
+
+        {mode === 'map' ? (
+          <PipingProvider>
+            <AtlasSection />
+          </PipingProvider>
+        ) : (
+          <SignalTomography />
+        )}
+      </div>
+    </LensShell>
+  );
+}
+
+// ── Signal Tomography mode ──────────────────────────────────────────────
+//
+// A distinct, honestly-disclosed secondary product: reconstructing terrain
+// from mesh-network signal deltas (server/lib/foundation-atlas.js). The
+// underlying store (`_atlasState`) is only ever populated by
+// `collectSignal(...)`, and nothing in this deployment calls it — no mesh
+// signal-ingestion pipeline is wired yet. Every query below is REAL (hits
+// real REST routes backed by real code), but will honestly return empty/
+// zero results until that pipeline exists. The banner below says so
+// explicitly instead of leaving the user to guess why every panel is blank.
+
+function SignalTomography() {
+  const [tab, setTab] = useState<TomoTab>('terrain');
+  const [queryLat, setQueryLat] = useState('');
+  const [queryLng, setQueryLng] = useState('');
 
   const { data: coverageData, isLoading: coverageLoading, isError: coverageError, refetch: refetchCoverage } = useQuery({
     queryKey: ['atlas-coverage'],
@@ -130,7 +152,8 @@ export default function AtlasLensPage() {
     refetchInterval: 30000,
   });
 
-  // Build map markers from coverage/live data
+  // Build map markers from live tomography nodes — real (currently empty
+  // in this deployment; see the disclosure banner above the map).
   const markers: MapMarker[] = [];
   if (liveData?.nodes) {
     (liveData.nodes as Array<{ lat: number; lng: number; id?: string; status?: string }>).forEach(
@@ -149,7 +172,7 @@ export default function AtlasLensPage() {
     refetchTile();
   }
 
-  const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  const TABS: { id: TomoTab; label: string; icon: React.ReactNode }[] = [
     { id: 'terrain', label: 'Terrain', icon: <Map className="w-4 h-4" /> },
     { id: 'signals', label: 'Signals', icon: <Radio className="w-4 h-4" /> },
     { id: 'anomalies', label: 'Anomalies', icon: <AlertTriangle className="w-4 h-4" /> },
@@ -157,25 +180,28 @@ export default function AtlasLensPage() {
   ];
 
   return (
-    <LensShell lensId="atlas" asMain={false}>
-      <FirstRunTour lensId="atlas" />
-      <ManifestActionBar />
-      <DepthBadge lensId="atlas" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
-        <AtlasSection />
+    <div className="space-y-4">
+      {/* Honest disclosure — this is not a "currently empty, might fill in"
+          message, it is structurally accurate: nothing in this deployment
+          feeds the signal store yet. */}
+      <div className="flex items-start gap-2 rounded-lg border border-purple-500/20 bg-purple-500/[0.04] p-3 text-xs text-purple-200">
+        <Info className="w-4 h-4 shrink-0 mt-0.5 text-purple-300" />
+        <p>
+          Signal tomography reconstructs terrain, materials, and change-over-time from
+          mesh-network signal deltas (real code — <code className="text-purple-100">server/lib/foundation-atlas.js</code>).
+          This deployment has no mesh signal-ingestion pipeline wired yet, so every query
+          below is a real, honestly-empty lookup — not simulated or fabricated. It will fill in
+          automatically once a mesh network starts feeding it.
+        </p>
       </div>
-    <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
-      {/* Phase 4 — REAL OpenStreetMap Nominatim search. Tier-1 honest live geocode. */}
-      <OsmGeocodePanel />
-      {/* ── Four UX states for the tomography channel ── */}
-      {/* LOADING */}
+
+      {/* ── Four UX states ── */}
       {(coverageLoading || anomalyLoading) && !coverageError && !anomalyError && (
         <div role="status" aria-live="polite" className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 flex items-center gap-2">
-          <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+          <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
           <p className="text-sm text-zinc-400">Scanning signal tomography…</p>
         </div>
       )}
-      {/* ERROR — role=alert + a working Retry that RE-FETCHES (not a full reload) */}
       {(coverageError || anomalyError) && (
         <div role="alert" className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center justify-between">
           <p className="text-red-400 text-sm">Some data sources failed to load. Showing available data.</p>
@@ -187,42 +213,20 @@ export default function AtlasLensPage() {
           </button>
         </div>
       )}
-      {/* EMPTY — honest CTA when every tomography source resolved with no rows */}
       {!coverageLoading && !anomalyLoading && !coverageError && !anomalyError &&
         markers.length === 0 &&
         ((taxonomyData as { signals?: unknown[]; total?: number })?.signals?.length || (taxonomyData as { total?: number })?.total || 0) === 0 &&
         ((anomalyData as { anomalies?: unknown[]; total?: number })?.anomalies?.length || (anomalyData as { total?: number })?.total || 0) === 0 && (
         <div className="bg-zinc-900 border border-dashed border-zinc-700 rounded-lg p-4 text-center">
           <p className="text-sm text-zinc-300 font-medium">No signal coverage yet</p>
-          <p className="text-xs text-zinc-500 mt-1">Query a tile by latitude/longitude below, or save a place to seed your atlas.</p>
+          <p className="text-xs text-zinc-500 mt-1">Query a tile by latitude/longitude below to confirm — or check back once a mesh network is feeding this pipeline.</p>
         </div>
       )}
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-            <Map className="w-5 h-5 text-emerald-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">Atlas</h1>
-            <p className="text-sm text-zinc-400">Signal Tomography & Spatial Intelligence</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap ml-4">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="atlas" data={realtimeData || {}} compact />
-            {realtimeAlerts.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Active Nodes', value: markers.length, icon: Radar, color: 'text-emerald-400 bg-emerald-500/10' },
+          { label: 'Active Nodes', value: markers.length, icon: Radar, color: 'text-purple-400 bg-purple-500/10' },
           { label: 'Signals', value: (taxonomyData as { signals?: unknown[] })?.signals?.length || (taxonomyData as { total?: number })?.total || 0, icon: Radio, color: 'text-cyan-400 bg-cyan-500/10' },
           { label: 'Anomalies', value: (anomalyData as { anomalies?: unknown[] })?.anomalies?.length || (anomalyData as { total?: number })?.total || 0, icon: AlertTriangle, color: 'text-amber-400 bg-amber-500/10' },
           { label: 'Coverage', value: (coverageData as { coverage?: number })?.coverage ? `${((coverageData as { coverage: number }).coverage * 100).toFixed(0)}%` : '--', icon: Globe, color: 'text-blue-400 bg-blue-500/10' },
@@ -244,35 +248,21 @@ export default function AtlasLensPage() {
       </div>
 
       {/* Zoom Level Indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        className="flex items-center gap-2 text-xs text-zinc-400"
-      >
-        <Compass className="w-3.5 h-3.5 text-emerald-400" />
+      <div className="flex items-center gap-2 text-xs text-zinc-400">
+        <Compass className="w-3.5 h-3.5 text-purple-400" />
         <span>Lat: {queryLat || '--'}</span>
         <span className="text-zinc-700">|</span>
         <span>Lng: {queryLng || '--'}</span>
         <span className="text-zinc-700">|</span>
-        <span className="text-emerald-400">{markers.length} markers loaded</span>
-      </motion.div>
+        <span className="text-purple-400">{markers.length} markers loaded</span>
+      </div>
 
-      {/* Interactive Map */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="rounded-lg overflow-hidden border border-zinc-800"
-      >
-        <SafeCard label="Map view" className="h-[360px]">
-          <MapView
-            markers={markers}
-            className="h-[360px]"
-            onMarkerClick={handleMarkerClick}
-          />
+      {/* Map */}
+      <div className="rounded-lg overflow-hidden border border-zinc-800">
+        <SafeCard label="Signal tomography map" className="h-[320px]">
+          <MapView markers={markers} className="h-[320px]" onMarkerClick={handleMarkerClick} />
         </SafeCard>
-      </motion.div>
+      </div>
 
       {/* Coordinate Query */}
       <div className="flex items-center gap-3">
@@ -295,7 +285,7 @@ export default function AtlasLensPage() {
         <button
           onClick={() => refetchTile()}
           disabled={!queryLat || !queryLng}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Query Tile
         </button>
@@ -325,9 +315,6 @@ export default function AtlasLensPage() {
       <div className="space-y-4">
         {tab === 'terrain' && (
           <>
-            {/* Force-directed graph of the user's REAL saved atlas data —
-                saved places + lists, fetched live. No mock seed data. */}
-            <PlacesGraph />
             <AtlasPublicView
               data={tileData ? { ok: true, view: 'terrain', terrain: { tile: tileData.tile } } : coverageData ? { ok: true, view: 'coverage', coverage: coverageData } : null}
               loading={tileLoading || coverageLoading}
@@ -370,173 +357,6 @@ export default function AtlasLensPage() {
           />
         )}
       </div>
-
-      {/* ── Backend Action Panels ── */}
-      <div className="panel p-4">
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-neon-cyan" /> Atlas Compute Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button onClick={() => handleAtlasAction('geocode')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50">
-            {isRunning === 'geocode' ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" /> : <MapPin className="w-5 h-5 text-neon-cyan" />}
-            <span className="text-xs text-gray-300">Geocode</span>
-          </button>
-          <button onClick={() => handleAtlasAction('distanceMatrix')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50">
-            {isRunning === 'distanceMatrix' ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" /> : <Navigation className="w-5 h-5 text-neon-purple" />}
-            <span className="text-xs text-gray-300">Distance Matrix</span>
-          </button>
-          <button onClick={() => handleAtlasAction('regionStats')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-green-400/50 transition-colors disabled:opacity-50">
-            {isRunning === 'regionStats' ? <Loader2 className="w-5 h-5 text-green-400 animate-spin" /> : <BarChart3 className="w-5 h-5 text-green-400" />}
-            <span className="text-xs text-gray-300">Region Stats</span>
-          </button>
-          <button onClick={() => handleAtlasAction('routeOptimize')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-orange-400/50 transition-colors disabled:opacity-50">
-            {isRunning === 'routeOptimize' ? <Loader2 className="w-5 h-5 text-orange-400 animate-spin" /> : <Route className="w-5 h-5 text-orange-400" />}
-            <span className="text-xs text-gray-300">Route Optimize</span>
-          </button>
-        </div>
-        {actionResult && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-lattice-deep rounded-lg border border-lattice-border">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-neon-cyan" /> Result</h4>
-              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white" aria-label="Xcircle"><XCircle className="w-4 h-4" /></button>
-            </div>
-            {/* Geocode */}
-            {actionResult.resolved !== undefined && actionResult.count !== undefined && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.resolvedCount as number || 0}</p><p className="text-[10px] text-gray-400">Resolved</p></div>
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-red-400">{actionResult.unresolvedCount as number || 0}</p><p className="text-[10px] text-gray-400">Unresolved</p></div>
-                </div>
-                {(actionResult.resolved as Array<{ name: string; lat: number; lon: number; distanceFromOriginKm?: number }>)?.slice(0, 5).map((p, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs p-1.5 bg-lattice-surface rounded">
-                    <span className="text-white">{p.name}</span>
-                    <span className="text-gray-400">{p.lat?.toFixed(2)}, {p.lon?.toFixed(2)}</span>
-                    {p.distanceFromOriginKm !== undefined && <span className="text-neon-cyan">{p.distanceFromOriginKm}km</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* Distance Matrix */}
-            {actionResult.matrix !== undefined && (
-              <div className="space-y-2">
-                <div className="text-xs text-gray-400">{actionResult.pointCount as number} points, {(actionResult.stats as Record<string, unknown>)?.totalPairs as number} pairs</div>
-                {(actionResult.stats as Record<string, unknown>)?.minDistancePair ? <div className="text-xs text-neon-green">Closest: {((actionResult.stats as Record<string, unknown>).minDistancePair as string[])?.join(' - ')} ({(actionResult.stats as Record<string, unknown>).minDistanceKm as number}km)</div> : null}
-                {(actionResult.stats as Record<string, unknown>)?.maxDistancePair ? <div className="text-xs text-red-400">Farthest: {((actionResult.stats as Record<string, unknown>).maxDistancePair as string[])?.join(' - ')} ({(actionResult.stats as Record<string, unknown>).maxDistanceKm as number}km)</div> : null}
-              </div>
-            )}
-            {/* Region Stats */}
-            {actionResult.totals !== undefined && actionResult.rankings !== undefined && (
-              <div className="space-y-2">
-                <div className="text-lg font-bold text-green-400">{actionResult.regionCount as number} Regions</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(actionResult.totals as Record<string, unknown>).map(([key, val]) => (
-                    <div key={`total-${key}`} className="p-2 bg-lattice-surface rounded"><p className="text-[10px] text-gray-400 capitalize">Total {key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{String(val)}</p></div>
-                  ))}
-                  {Object.entries(actionResult.averages as Record<string, unknown>).map(([key, val]) => (
-                    <div key={`avg-${key}`} className="p-2 bg-lattice-surface rounded"><p className="text-[10px] text-gray-400 capitalize">Avg {key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{String(val)}</p></div>
-                  ))}
-                </div>
-                {actionResult.distribution ? (
-                  <div className="p-2 bg-lattice-surface rounded">
-                    <p className="text-[10px] text-gray-400">Distribution</p>
-                    <p className="text-sm font-bold text-white">{String((actionResult.distribution as Record<string, unknown>).concentration)}</p>
-                  </div>
-                ) : null}
-              </div>
-            )}
-            {/* Route Optimize */}
-            {actionResult.optimizedRoute !== undefined && actionResult.totalDistanceKm !== undefined && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.totalDistanceKm as number}km</p><p className="text-[10px] text-gray-400">Total Distance</p></div>
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{(actionResult.optimizedRoute as unknown[])?.length || 0}</p><p className="text-[10px] text-gray-400">Stops</p></div>
-                </div>
-                {(actionResult.optimizedRoute as Array<{ name: string; step: number }>)?.map((s, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs p-1.5 bg-lattice-surface rounded">
-                    <span className="text-orange-400 font-bold w-5 text-center">{s.step}</span>
-                    <span className="text-white">{s.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {!!actionResult.message && !actionResult.resolved && !actionResult.matrix && !actionResult.totals && !actionResult.optimizedRoute && (
-              <p className="text-sm text-gray-400">{actionResult.message as string}</p>
-            )}
-          </motion.div>
-        )}
-      </div>
-
-      {/* Real-time Data Panel */}
-      <UniversalActions domain="atlas" artifactId={null} compact />
-      {realtimeData && (
-        <RealtimeDataPanel
-          domain="atlas"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
-
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="atlas" />
-          </div>
-        )}
-      </div>
-
-      {/* Bespoke OSM place finder (Nominatim + Overpass) with SVG map + Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PlaceFinder />
-      </section>
-
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <DistanceMatrixPanel />
-      </section>
-
-      <section className="mt-6">
-        <MapsDirections />
-      </section>
-
-      <section className="mt-6">
-        <RouteStops />
-      </section>
-
-      <section className="mt-6">
-        <SavedPlaces />
-      </section>
-
-      {/* Google-Maps-parity navigation suite: multi-modal directions,
-          live traffic, transit, real-time navigation, street imagery,
-          place details, offline map areas. */}
-      <section className="mt-6">
-        <NavigationSuite />
-      </section>
-
-      <PipingProvider>
-        <section className="mt-6">
-          <AtlasActionPanel />
-        </section>
-      </PipingProvider>
     </div>
-
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
-      <a href="#atlas-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to atlas content</a>
-          <RecentMineCard domain="atlas" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="atlas" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="atlas" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-    </LensShell>
   );
 }

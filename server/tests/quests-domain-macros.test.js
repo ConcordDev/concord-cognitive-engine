@@ -67,7 +67,7 @@ describe("quests domain — registration", () => {
   it("registers the full macro surface", () => {
     const m = buildMacros();
     for (const name of [
-      "quests.active", "quests.mine", "quests.progress",
+      "quests.active", "quests.mine", "quests.completed", "quests.progress",
       "quests.recordProgress", "quests.checkCompletion", "quests.claimRewards",
       "quests.addObjectives", "quests.addRewards",
     ]) {
@@ -206,5 +206,46 @@ describe("quests domain — full lifecycle round-trip", () => {
     const r = await macros.get("quests.claimRewards")(makeCtx(db), { questId: QUEST });
     assert.equal(r.ok, false);
     assert.match(r.error, /not completed/i);
+  });
+
+  it("quests.completed excludes an in-progress quest and quests.mine excludes a completed one (partition, no overlap)", async () => {
+    // Still active — must not show up in the completed history.
+    let completed = await macros.get("quests.completed")(makeCtx(db), {});
+    assert.equal(completed.ok, true);
+    assert.equal(completed.quests.length, 0);
+
+    // Complete + claim it.
+    await macros.get("quests.recordProgress")(makeCtx(db), { type: "kill", target: "wolf", count: 3 });
+    await macros.get("quests.recordProgress")(makeCtx(db), { type: "gather", target: "herb", count: 2 });
+    await macros.get("quests.claimRewards")(makeCtx(db), { questId: QUEST });
+
+    // Now it's the ONLY thing quests.completed shows, lens-shaped identically
+    // to quests.mine's shape (objectives with real merged progress, reward).
+    completed = await macros.get("quests.completed")(makeCtx(db), {});
+    assert.equal(completed.ok, true);
+    assert.equal(completed.quests.length, 1);
+    const q = completed.quests[0];
+    assert.equal(q.id, QUEST);
+    assert.equal(q.status, "rewarded");
+    assert.deepEqual(
+      q.objectives.map((o) => [o.progress, o.target, o.complete]),
+      [[3, 3, true], [2, 2, true]],
+    );
+    assert.equal(q.reward.cc, 150);
+
+    // ...and it has dropped out of quests.mine's active-only view — the two
+    // macros partition the same underlying rows, never double-report.
+    const mine = await macros.get("quests.mine")(makeCtx(db), {});
+    assert.equal(mine.quests.length, 0);
+  });
+
+  it("quests.completed rejects without a db or user, same as the other read macros", async () => {
+    const noDb = await macros.get("quests.completed")({ actor: { userId: USER } }, {});
+    assert.equal(noDb.ok, false);
+    assert.equal(noDb.reason, "no_db");
+
+    const noUser = await macros.get("quests.completed")({ db, actor: {} }, {});
+    assert.equal(noUser.ok, false);
+    assert.equal(noUser.reason, "no_user");
   });
 });

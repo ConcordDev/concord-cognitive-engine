@@ -26,6 +26,11 @@ import {
   ShoppingCart,
   Filter,
   Scissors,
+  Pencil,
+  Save,
+  ShieldAlert,
+  Clock3,
+  Calculator,
 } from 'lucide-react';
 
 // ── Shapes mirrored from server/domains/diy.js ──────────────────────
@@ -125,6 +130,34 @@ interface DCutList {
   totalWaste: number;
   wasteTip: string;
 }
+interface DEstimate {
+  totalEstimate: number;
+  perUnit: number;
+  budgetTip: string;
+  breakdown: {
+    materialsCost: number; wasteAllowance: number; adjustedMaterials: number;
+    laborCost: number; laborHours: number; hourlyRate: number;
+    contingency: number; contingencyRate: string;
+  };
+}
+interface DSafety {
+  riskLevel: string;
+  requiredPPE: string[];
+  hazards: string[];
+  precautions: string[];
+  safetyScore: number;
+  clearToStart: boolean;
+  firstAid: string[];
+}
+interface DBuildTime {
+  grandTotalMinutes: number;
+  grandTotalHours: number;
+  setupCleanupMinutes: number;
+  weekends: number;
+  experienceMultiplier: number;
+  tip: string;
+  steps?: { step: string; baseMinutes: number; adjustedMinutes: number }[];
+}
 
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
 const CATEGORIES = ['Woodworking', 'Electronics', 'Sewing', 'Metalwork', 'Painting', '3D Printing', 'Plumbing', 'Automotive', 'Garden', 'Other'];
@@ -142,7 +175,7 @@ const statusColor: Record<string, string> = {
   completed: 'bg-green-500/20 text-green-300',
 };
 
-type WTab = 'steps' | 'bom' | 'tools' | 'cutlist';
+type WTab = 'steps' | 'bom' | 'tools' | 'cutlist' | 'insights';
 
 export function ProjectWorkshop() {
   const [projects, setProjects] = useState<DProject[]>([]);
@@ -645,6 +678,7 @@ function ProjectDetail({
           { id: 'bom', label: 'Materials', icon: Package },
           { id: 'tools', label: 'Tool Gate', icon: Wrench },
           { id: 'cutlist', label: 'Cut List', icon: Scissors },
+          { id: 'insights', label: 'Insights', icon: Calculator },
         ] as { id: WTab; label: string; icon: typeof ListChecks }[]).map((t) => (
           <button
             key={t.id}
@@ -663,6 +697,7 @@ function ProjectDetail({
       {tab === 'bom' && <BomEditor project={project} busy={busy} run={run} onChanged={onChanged} />}
       {tab === 'tools' && <ToolGate project={project} busy={busy} run={run} />}
       {tab === 'cutlist' && <CutListPanel busy={busy} run={run} />}
+      {tab === 'insights' && <InsightsPanel project={project} busy={busy} run={run} />}
     </div>
   );
 }
@@ -692,9 +727,30 @@ function StepBuilder({
   const [text, setText] = useState('');
   const [photo, setPhoto] = useState('');
   const [minutes, setMinutes] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ title: '', text: '', estimatedMinutes: '' });
 
   const apply = (res: any) => {
     if (res?.project) onChanged(res.project);
+  };
+
+  const startEdit = (s: DStep) => {
+    setEditingId(s.id);
+    setEditDraft({ title: s.title, text: s.text, estimatedMinutes: String(s.estimatedMinutes || '') });
+  };
+  const saveEdit = async (stepId: string) => {
+    await run(
+      'step-update',
+      {
+        projectId: project.id,
+        stepId,
+        title: editDraft.title.trim(),
+        text: editDraft.text.trim(),
+        estimatedMinutes: editDraft.estimatedMinutes ? parseFloat(editDraft.estimatedMinutes) : 0,
+      },
+      apply,
+    );
+    setEditingId(null);
   };
 
   const addStep = async () => {
@@ -738,18 +794,61 @@ function StepBuilder({
                 )}
               </button>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="rounded bg-orange-500/20 px-1.5 py-0.5 font-mono text-[10px] text-orange-300">
-                    {s.order}
-                  </span>
-                  <span className={cn('text-sm', s.complete ? 'text-zinc-400 line-through' : 'text-white')}>
-                    {s.title}
-                  </span>
-                  {s.estimatedMinutes > 0 && (
-                    <span className="text-[10px] text-zinc-400">~{s.estimatedMinutes} min</span>
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-zinc-400">{s.text}</p>
+                {editingId === s.id ? (
+                  <div className="space-y-1.5">
+                    <input
+                      value={editDraft.title}
+                      onChange={(e) => setEditDraft((d) => ({ ...d, title: e.target.value }))}
+                      className="w-full rounded border border-orange-600/50 bg-zinc-900 px-2 py-1 text-sm text-white focus:outline-none"
+                      placeholder="Step title"
+                    />
+                    <textarea
+                      value={editDraft.text}
+                      onChange={(e) => setEditDraft((d) => ({ ...d, text: e.target.value }))}
+                      rows={2}
+                      className="w-full rounded border border-orange-600/50 bg-zinc-900 px-2 py-1 text-xs text-white focus:outline-none"
+                      placeholder="Step instructions"
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={0}
+                        value={editDraft.estimatedMinutes}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, estimatedMinutes: e.target.value }))}
+                        className="w-24 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white focus:outline-none"
+                        placeholder="Minutes"
+                      />
+                      <button
+                        onClick={() => void saveEdit(s.id)}
+                        disabled={busy || editDraft.title.trim().length === 0}
+                        className="flex items-center gap-1 rounded bg-orange-600 px-2 py-1 text-[11px] text-white disabled:opacity-40"
+                      >
+                        <Save className="h-3 w-3" /> Save
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="text-[11px] text-zinc-400 hover:text-zinc-200"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded bg-orange-500/20 px-1.5 py-0.5 font-mono text-[10px] text-orange-300">
+                        {s.order}
+                      </span>
+                      <span className={cn('text-sm', s.complete ? 'text-zinc-400 line-through' : 'text-white')}>
+                        {s.title}
+                      </span>
+                      {s.estimatedMinutes > 0 && (
+                        <span className="text-[10px] text-zinc-400">~{s.estimatedMinutes} min</span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-400">{s.text}</p>
+                  </>
+                )}
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {s.photoUrl && (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -777,6 +876,14 @@ function StepBuilder({
                 </div>
               </div>
               <div className="flex shrink-0 flex-col gap-1">
+                <button
+                  onClick={() => startEdit(s)}
+                  disabled={busy || editingId === s.id}
+                  aria-label="Edit step"
+                  className={ds.btnGhost}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
                 <button
                   onClick={() => run('step-reorder', { projectId: project.id, stepId: s.id, toIndex: i - 1 }, apply)}
                   disabled={busy || i === 0}
@@ -1307,6 +1414,141 @@ function CutListPanel({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Project insights — cost estimate, safety check, build-time estimate.
+// Every input is mechanically derived from the project's own BOM/steps/
+// difficulty (never hand-typed placeholder data): diy.estimateProject,
+// diy.safetyCheck and diy.buildTimeEstimate are pure-compute macros that
+// read `artifact.data`, so the real project state IS the artifact here.
+function InsightsPanel({
+  project,
+  busy,
+  run,
+}: {
+  project: DProject;
+  busy: boolean;
+  run: (a: string, i: Record<string, unknown>, after?: (r: any) => void) => Promise<any>;
+}) {
+  const [estimate, setEstimate] = useState<DEstimate | null>(null);
+  const [safety, setSafety] = useState<DSafety | null>(null);
+  const [buildTime, setBuildTime] = useState<DBuildTime | null>(null);
+
+  const runEstimate = () => run('estimateProject', {
+    name: project.name,
+    category: project.category,
+    difficulty: project.difficulty,
+    estimatedHours: project.estimatedHours,
+    materials: project.bom.map((b) => ({ name: b.item, quantity: b.quantity, unit: b.unit, unitPrice: b.unitPrice })),
+  }, (r) => setEstimate(r as DEstimate));
+
+  const runSafety = () => run('safetyCheck', {
+    category: project.category,
+    difficulty: project.difficulty,
+    materials: project.bom.map((b) => b.item),
+  }, (r) => setSafety(r as DSafety));
+
+  const runBuildTime = () => run('buildTimeEstimate', {
+    difficulty: project.difficulty,
+    estimatedHours: project.estimatedHours,
+    steps: project.steps.map((s) => ({ name: s.title, estimatedMinutes: s.estimatedMinutes })),
+  }, (r) => setBuildTime(r as DBuildTime));
+
+  const riskTone: Record<string, string> = {
+    low: 'text-green-400', moderate: 'text-orange-400', high: 'text-red-400',
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Cost estimate */}
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="flex items-center gap-1.5 text-xs font-semibold text-white">
+            <Calculator className="h-3.5 w-3.5 text-orange-300" /> Full cost estimate
+          </h4>
+          <button onClick={runEstimate} disabled={busy} className={cn(ds.btnSecondary, 'text-[11px]')}>
+            Compute from {project.bom.length} BOM line{project.bom.length === 1 ? '' : 's'}
+          </button>
+        </div>
+        {estimate ? (
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-4 gap-2">
+              <Stat label="Total" value={`$${estimate.totalEstimate.toFixed(0)}`} />
+              <Stat label="Materials" value={`$${estimate.breakdown.adjustedMaterials.toFixed(0)}`} />
+              <Stat label="Labor" value={`$${estimate.breakdown.laborCost.toFixed(0)}`} />
+              <Stat label="Contingency" value={`$${estimate.breakdown.contingency.toFixed(0)} (${estimate.breakdown.contingencyRate})`} />
+            </div>
+            <p className="text-[11px] text-zinc-400">{estimate.budgetTip}</p>
+          </div>
+        ) : (
+          <p className="text-[11px] text-zinc-500 italic">Rolls materials cost + labor ({project.estimatedHours}h) + waste + contingency into one number.</p>
+        )}
+      </div>
+
+      {/* Safety check */}
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="flex items-center gap-1.5 text-xs font-semibold text-white">
+            <ShieldAlert className="h-3.5 w-3.5 text-orange-300" /> Safety check
+          </h4>
+          <button onClick={runSafety} disabled={busy} className={cn(ds.btnSecondary, 'text-[11px]')}>
+            Assess hazards
+          </button>
+        </div>
+        {safety ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              <span className={cn('text-sm font-bold uppercase', riskTone[safety.riskLevel] || 'text-zinc-300')}>{safety.riskLevel} risk</span>
+              <span className="text-[11px] text-zinc-400">safety score {safety.safetyScore}/100</span>
+              <span className={cn('text-[11px]', safety.clearToStart ? 'text-green-400' : 'text-red-400')}>
+                {safety.clearToStart ? 'clear to start' : 'review before starting'}
+              </span>
+            </div>
+            {safety.requiredPPE.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {safety.requiredPPE.map((p) => (
+                  <span key={p} className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300">{p}</span>
+                ))}
+              </div>
+            )}
+            {safety.hazards.length > 0 && (
+              <ul className="list-inside list-disc text-[11px] text-zinc-400">
+                {safety.hazards.map((h, i) => <li key={i}>{h}</li>)}
+              </ul>
+            )}
+          </div>
+        ) : (
+          <p className="text-[11px] text-zinc-500 italic">
+            Derives PPE + hazards from this project&apos;s material list. Add tools in the Tool Gate tab first for tool-based hazards too.
+          </p>
+        )}
+      </div>
+
+      {/* Build-time estimate */}
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="flex items-center gap-1.5 text-xs font-semibold text-white">
+            <Clock3 className="h-3.5 w-3.5 text-orange-300" /> Build-time estimate
+          </h4>
+          <button onClick={runBuildTime} disabled={busy} className={cn(ds.btnSecondary, 'text-[11px]')}>
+            Compute from {project.stepCount} step{project.stepCount === 1 ? '' : 's'}
+          </button>
+        </div>
+        {buildTime ? (
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-3 gap-2">
+              <Stat label="Total time" value={`${buildTime.grandTotalHours}h`} />
+              <Stat label="Setup/cleanup" value={`${buildTime.setupCleanupMinutes}m`} />
+              <Stat label="Weekends" value={`${buildTime.weekends}`} />
+            </div>
+            <p className="text-[11px] text-zinc-400">{buildTime.tip}</p>
+          </div>
+        ) : (
+          <p className="text-[11px] text-zinc-500 italic">Adjusts step time for &quot;{project.difficulty}&quot; experience and adds 15% setup/cleanup overhead.</p>
+        )}
+      </div>
     </div>
   );
 }

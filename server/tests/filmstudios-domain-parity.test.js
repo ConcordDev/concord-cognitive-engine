@@ -207,6 +207,22 @@ describe("film-studios — locations & screenplay", () => {
     assert.equal(call("scene-script-get", ctxA, { sceneId: sid }).result.locationId, null);
   });
 
+  it("location-update edits a location in place without creating a new row (wired to FsProductionPanel's edit control)", () => {
+    const pid = newProject();
+    const loc = call("location-create", ctxA, { projectId: pid, name: "Rooftop", address: "123 Sky Ave" }).result.location;
+    const r = call("location-update", ctxA, { id: loc.id, name: "Rooftop Terrace", contact: "Jamie" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.location.name, "Rooftop Terrace");
+    assert.equal(r.result.location.address, "123 Sky Ave"); // untouched field preserved
+    assert.equal(r.result.location.contact, "Jamie");
+    assert.equal(call("location-list", ctxA, { projectId: pid }).result.count, 1); // no duplicate row
+  });
+
+  it("location-update on an unknown id fails honestly", () => {
+    const r = call("location-update", ctxA, { id: "loc_missing", name: "X" });
+    assert.equal(r.ok, false);
+  });
+
   it("assembles a screenplay with page count", () => {
     const pid = newProject();
     call("scene-add", ctxA, { projectId: pid, location: "Bar", pageEighths: 12 });
@@ -317,6 +333,28 @@ describe("film-studios — NLE timeline trim / ripple / reorder", () => {
     assert.equal(cut.result.tracks.V1.length, 1);
     assert.equal(cut.result.tracks.V1[0].startTimecode, "00:00:00:00");
     assert.ok(c2);
+  });
+
+  it("cut-list exposes the clip's linked source media (wired to FsEditPanel's media-link select)", () => {
+    const { pid, seq, c1 } = seqWithClips();
+    const media = call("media-register", ctxA, { projectId: pid, name: "CAM_A_001.mov", kind: "video" }).result.media;
+    let cut = call("cut-list", ctxA, { sequenceId: seq.id });
+    assert.equal(cut.result.tracks.V1.find((c) => c.id === c1.id).mediaId, null);
+
+    const link = call("clip-set-media", ctxA, { clipId: c1.id, mediaId: media.id, mcamAngle: 2 });
+    assert.equal(link.ok, true);
+    assert.equal(link.result.mediaId, media.id);
+    assert.equal(link.result.mcamAngle, 2);
+
+    cut = call("cut-list", ctxA, { sequenceId: seq.id });
+    const linkedClip = cut.result.tracks.V1.find((c) => c.id === c1.id);
+    assert.equal(linkedClip.mediaId, media.id);
+    assert.equal(linkedClip.mcamAngle, 2);
+
+    const unlink = call("clip-set-media", ctxA, { clipId: c1.id, mediaId: null });
+    assert.equal(unlink.result.mediaId, null);
+    cut = call("cut-list", ctxA, { sequenceId: seq.id });
+    assert.equal(cut.result.tracks.V1.find((c) => c.id === c1.id).mediaId, null);
   });
 });
 

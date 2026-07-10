@@ -10,6 +10,7 @@ import { TreeDiagram, type TreeNode } from '@/components/viz';
 import {
   Network, Plus, Trash2, Link2, GitMerge, Scissors, Route, Upload,
   ShieldCheck, Loader2, Database, X, Search, FileJson, Pencil, Globe2,
+  BarChart3, AlertTriangle, CheckCircle2, XCircle,
 } from 'lucide-react';
 
 // ── Domain shapes ──────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ async function run<T = any>(name: string, params: Record<string, unknown> = {}):
 
 // ── Workbench ──────────────────────────────────────────────────────────────
 
-type Tab = 'graph' | 'schemas' | 'merge' | 'path' | 'import' | 'provenance';
+type Tab = 'graph' | 'schemas' | 'merge' | 'path' | 'import' | 'provenance' | 'analyze';
 
 export function KnowledgeGraphWorkbench() {
   const [tab, setTab] = useState<Tab>('graph');
@@ -63,6 +64,10 @@ export function KnowledgeGraphWorkbench() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  // Set by the Analyze tab's duplicate-detection panel ("Review in Merge tab")
+  // so a suggested pair pre-fills the Merge/Split tab instead of making the
+  // user re-find the same two nodes by name.
+  const [mergePrefill, setMergePrefill] = useState<{ sourceId: string; targetId: string } | null>(null);
 
   const refresh = useCallback(async () => {
     const g = await run<GraphState>('graph-get');
@@ -74,6 +79,15 @@ export function KnowledgeGraphWorkbench() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // WikidataSearch (mounted separately below this workbench on the page) can
+  // import a match as a graph node too (entity.import-wikidata) — it has no
+  // other way to tell this component's own graph-get poll to refetch.
+  useEffect(() => {
+    const onChanged = () => refresh();
+    window.addEventListener('entity:graph-changed', onChanged);
+    return () => window.removeEventListener('entity:graph-changed', onChanged);
+  }, [refresh]);
 
   const flash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setNotice({ kind, msg });
@@ -117,6 +131,7 @@ export function KnowledgeGraphWorkbench() {
     { id: 'path', label: 'Path Finder', icon: Route },
     { id: 'import', label: 'Import', icon: Upload },
     { id: 'provenance', label: 'Provenance', icon: ShieldCheck },
+    { id: 'analyze', label: 'Analyze', icon: BarChart3 },
   ];
 
   return (
@@ -172,7 +187,7 @@ export function KnowledgeGraphWorkbench() {
             <SchemasTab schemas={graph.schemas} busy={busy} mutate={mutate} />
           )}
           {tab === 'merge' && (
-            <MergeSplitTab graph={graph} busy={busy} mutate={mutate} />
+            <MergeSplitTab graph={graph} busy={busy} mutate={mutate} prefill={mergePrefill} onPrefillConsumed={() => setMergePrefill(null)} />
           )}
           {tab === 'path' && (
             <PathTab graph={graph} />
@@ -182,6 +197,15 @@ export function KnowledgeGraphWorkbench() {
           )}
           {tab === 'provenance' && (
             <ProvenanceTab />
+          )}
+          {tab === 'analyze' && (
+            <AnalyzeTab
+              graph={graph}
+              onReviewMerge={(sourceId, targetId) => {
+                setMergePrefill({ sourceId, targetId });
+                setTab('merge');
+              }}
+            />
           )}
         </>
       )}
@@ -600,10 +624,12 @@ function SchemasTab({ schemas, busy, mutate }: {
 
 // ── Merge / Split tab ──────────────────────────────────────────────────────
 
-function MergeSplitTab({ graph, busy, mutate }: {
+function MergeSplitTab({ graph, busy, mutate, prefill, onPrefillConsumed }: {
   graph: GraphState;
   busy: boolean;
   mutate: (n: string, p: Record<string, unknown>, m: string) => Promise<boolean>;
+  prefill?: { sourceId: string; targetId: string } | null;
+  onPrefillConsumed?: () => void;
 }) {
   const [mode, setMode] = useState<'merge' | 'split'>('merge');
 
@@ -611,6 +637,18 @@ function MergeSplitTab({ graph, busy, mutate }: {
   const [sourceId, setSourceId] = useState('');
   const [targetId, setTargetId] = useState('');
   const [fieldChoices, setFieldChoices] = useState<Record<string, 'source' | 'target'>>({});
+
+  // A duplicate suggestion from the Analyze tab lands here — switch into merge
+  // mode and pre-select the pair so the user doesn't have to re-find them.
+  useEffect(() => {
+    if (!prefill) return;
+    setMode('merge');
+    setSourceId(prefill.sourceId);
+    setTargetId(prefill.targetId);
+    setFieldChoices({});
+    onPrefillConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   // Split state.
   const [splitId, setSplitId] = useState('');
@@ -1114,6 +1152,377 @@ function ProvenanceTab() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── Analyze tab — entityResolution / relationshipGraph / attributeValidation
+// run directly against the live graph (nodes/edges/schemas), not a
+// separately-created artifact. These three macros pre-date the graph store —
+// they read `artifact.data.records` / `.entities`+`.relationships` /
+// `.entity`+`.schema` — and /api/lens/run builds a *virtual* artifact whose
+// `.data` IS the params object for a registerLensAction handler, so calling
+// them with the graph's own shape works with no artifact ever created. ─────
+
+type AnalyzeSub = 'duplicates' | 'centrality' | 'validate';
+
+function flattenAttrs(attrs: Record<string, AttrEntry>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(attrs).map(([k, a]) => [k, a.value]));
+}
+
+function AnalyzeTab({ graph, onReviewMerge }: {
+  graph: GraphState;
+  onReviewMerge: (sourceId: string, targetId: string) => void;
+}) {
+  const [sub, setSub] = useState<AnalyzeSub>('duplicates');
+  const subs: Array<{ id: AnalyzeSub; label: string }> = [
+    { id: 'duplicates', label: 'Duplicates' },
+    { id: 'centrality', label: 'Graph Analytics' },
+    { id: 'validate', label: 'Schema Validation' },
+  ];
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-gray-400">
+        Run the entity-resolution, graph-centrality, and schema-validation
+        engines directly against this graph&apos;s current nodes, edges, and
+        schemas &mdash; no separate artifact needed.
+      </p>
+      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 w-fit flex-wrap">
+        {subs.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setSub(s.id)}
+            className={`py-1 px-3 rounded-md text-xs font-medium ${
+              sub === s.id ? 'bg-zinc-800 text-white' : 'text-zinc-400'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+      {sub === 'duplicates' && <DuplicatesPanel graph={graph} onReviewMerge={onReviewMerge} />}
+      {sub === 'centrality' && <CentralityPanel graph={graph} />}
+      {sub === 'validate' && <ValidatePanel graph={graph} />}
+    </div>
+  );
+}
+
+// ── Duplicates panel (entityResolution) ─────────────────────────────────────
+
+interface ResolutionResult {
+  message?: string;
+  totalRecords: number;
+  matchesFound: number;
+  uniqueEntities: number;
+  duplicateRate: number;
+  mergeGroups: { count: number; groups: Array<{ groupId: number; memberCount: number; members: string[]; avgConfidence: number }> };
+  matches: Array<{ recordA: string; recordB: string; confidence: number; fieldsCompared: number; fieldScores: Record<string, number> }>;
+  parameters: { threshold: number; matchFields: string | string[] };
+}
+
+function DuplicatesPanel({ graph, onReviewMerge }: {
+  graph: GraphState;
+  onReviewMerge: (sourceId: string, targetId: string) => void;
+}) {
+  const [threshold, setThreshold] = useState(0.85);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<ResolutionResult | null>(null);
+  const nameOf = (id: string) => graph.nodes.find((n) => n.id === id)?.name || id;
+
+  const findDuplicates = async () => {
+    setRunning(true);
+    setResult(null);
+    // Compare on name + provenance-tracked attributes — the same fields the
+    // Merge tab lets you reconcile — never on id/entityType/createdAt.
+    const records = graph.nodes.map((n) => ({ id: n.id, fields: { name: n.name, ...flattenAttrs(n.attributes) } }));
+    const r = await run<ResolutionResult>('entityResolution', { records, threshold });
+    setResult(r);
+    setRunning(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-400">
+        Jaro-Winkler probabilistic record linkage over every node&apos;s name +
+        attributes &mdash; surfaces likely duplicate entities to merge.
+      </p>
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="flex items-center gap-2 text-xs text-gray-400">
+          Confidence threshold
+          <input
+            type="number" min={0.5} max={1} step={0.05}
+            value={threshold}
+            onChange={(e) => setThreshold(Math.min(1, Math.max(0.5, Number(e.target.value) || 0.85)))}
+            className="input-lattice text-xs w-16"
+          />
+        </label>
+        <button
+          disabled={graph.nodes.length < 2 || running}
+          onClick={findDuplicates}
+          className="btn-neon cyan text-sm flex items-center gap-1.5"
+        >
+          {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          Find Duplicates
+        </button>
+        {graph.nodes.length < 2 && (
+          <span className="text-[11px] text-gray-400">Need at least 2 nodes.</span>
+        )}
+      </div>
+
+      {result && (result.message ? (
+        <div className="text-xs text-yellow-300 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">{result.message}</div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: 'Records', value: result.totalRecords },
+              { label: 'Matches', value: result.matchesFound },
+              { label: 'Unique', value: result.uniqueEntities },
+              { label: 'Dup. rate', value: `${result.duplicateRate}%` },
+            ].map((s) => (
+              <div key={s.label} className="bg-zinc-900 rounded-lg p-2.5 border border-zinc-800 text-center">
+                <p className="text-lg font-bold text-cyan-300">{s.value}</p>
+                <p className="text-[10px] text-gray-400">{s.label}</p>
+              </div>
+            ))}
+          </div>
+          {result.matches.length === 0 ? (
+            <div className="flex items-center gap-2 text-xs text-neon-green p-2.5 bg-neon-green/5 rounded-lg border border-neon-green/20">
+              <CheckCircle2 className="w-3.5 h-3.5" /> No duplicates found above {result.parameters.threshold}.
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {result.matches.slice(0, 20).map((m, i) => (
+                <div key={i} className="bg-zinc-900 rounded-lg p-2.5 border border-zinc-800 flex items-center gap-2">
+                  <div className="flex-1 min-w-0 text-xs">
+                    <span className="text-cyan-300">{nameOf(m.recordA)}</span>
+                    <span className="text-gray-400 mx-1.5">↔</span>
+                    <span className="text-cyan-300">{nameOf(m.recordB)}</span>
+                    <span className="ml-2 text-[10px] text-gray-400">{m.fieldsCompared} fields compared</span>
+                  </div>
+                  <span className={`text-xs font-bold shrink-0 ${m.confidence >= 0.95 ? 'text-neon-green' : m.confidence >= 0.85 ? 'text-yellow-400' : 'text-red-400'}`}>
+                    {(m.confidence * 100).toFixed(0)}%
+                  </span>
+                  <button
+                    onClick={() => onReviewMerge(m.recordA, m.recordB)}
+                    className="btn-neon purple text-[11px] shrink-0"
+                  >
+                    Review in Merge tab
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Graph Analytics panel (relationshipGraph) ───────────────────────────────
+
+interface RelGraphResult {
+  message?: string;
+  entityCount: number;
+  relationshipCount: number;
+  graphDensity: number;
+  connectedComponents: number;
+  largestComponentSize: number;
+  cycles: { count: number; items: Array<{ path: string[]; length: number }> };
+  keyConnectors: { count: number; entities: Array<{ id: string; name?: string; type?: string; degree: number; betweennessCentrality: number; degreeCentrality: number }> };
+  entities: Array<{ id: string; name?: string; type?: string; degree: number; betweennessCentrality: number; closenessCentrality: number; degreeCentrality: number; isKeyConnector: boolean }>;
+  relationshipTypes: string[];
+}
+
+function CentralityPanel({ graph }: { graph: GraphState }) {
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<RelGraphResult | null>(null);
+
+  const analyze = async () => {
+    setRunning(true);
+    setResult(null);
+    const entities = graph.nodes.map((n) => ({ id: n.id, name: n.name, type: n.entityType }));
+    const relationships = graph.edges.map((e) => ({ from: e.from, to: e.to, type: e.relType, weight: e.weight }));
+    const r = await run<RelGraphResult>('relationshipGraph', { entities, relationships });
+    setResult(r);
+    setRunning(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-400">
+        Betweenness/closeness/degree centrality, cycle detection, and connected
+        components over this graph&apos;s current nodes and edges.
+      </p>
+      <button
+        disabled={graph.nodes.length === 0 || running}
+        onClick={analyze}
+        className="btn-neon purple text-sm flex items-center gap-1.5"
+      >
+        {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
+        Analyze Graph
+      </button>
+      {graph.nodes.length === 0 && <p className="text-[11px] text-gray-400">Add entity nodes first.</p>}
+
+      {result && (result.message ? (
+        <div className="text-xs text-yellow-300 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">{result.message}</div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {[
+              { label: 'Entities', value: result.entityCount },
+              { label: 'Relationships', value: result.relationshipCount },
+              { label: 'Components', value: result.connectedComponents },
+              { label: 'Largest component', value: result.largestComponentSize },
+              { label: 'Cycles', value: result.cycles.count },
+              { label: 'Key connectors', value: result.keyConnectors.count },
+            ].map((s) => (
+              <div key={s.label} className="bg-zinc-900 rounded-lg p-2.5 border border-zinc-800 text-center">
+                <p className="text-lg font-bold text-purple-300">{s.value}</p>
+                <p className="text-[10px] text-gray-400">{s.label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="bg-zinc-900 rounded-lg p-2.5 border border-zinc-800 space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">Graph density</span>
+              <span className="font-mono text-purple-300">{Math.round(result.graphDensity * 100)}%</span>
+            </div>
+            <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400" style={{ width: `${Math.min(result.graphDensity * 100, 100)}%` }} />
+            </div>
+          </div>
+          {result.keyConnectors.entities.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] uppercase text-gray-400">Key connectors</p>
+              {result.keyConnectors.entities.map((e) => (
+                <div key={e.id} className="flex items-center gap-2 text-xs bg-zinc-900 rounded p-2 border border-cyan-500/20">
+                  <span className="text-white flex-1 truncate">{e.name || e.id}</span>
+                  <span className="text-cyan-300 font-mono">{e.degree} links</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {result.cycles.count > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase text-yellow-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Cycles</p>
+              {result.cycles.items.map((c, i) => (
+                <div key={i} className="text-[11px] font-mono text-yellow-300 bg-zinc-900 rounded p-1.5 border border-yellow-500/20">
+                  {c.path.map((id) => graph.nodes.find((n) => n.id === id)?.name || id).join(' → ')}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Schema Validation panel (attributeValidation) ───────────────────────────
+
+interface ValidationResult {
+  entityId: string;
+  validationScore: number;
+  valid: boolean;
+  status: string;
+  totalFields: number;
+  fieldsValid: number;
+  errors: { count: number; items: Array<{ field: string; type: string; message: string; value?: string }> };
+  warnings: { count: number; items: Array<{ field: string; type?: string; message: string }> };
+}
+
+function ValidatePanel({ graph }: { graph: GraphState }) {
+  const [nodeId, setNodeId] = useState('');
+  const [schemaId, setSchemaId] = useState('');
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<ValidationResult | null>(null);
+
+  const validate = async () => {
+    const node = graph.nodes.find((n) => n.id === nodeId);
+    const schema = graph.schemas.find((s) => s.id === schemaId);
+    if (!node || !schema) return;
+    setRunning(true);
+    setResult(null);
+    const schemaFields: Record<string, { type: string; format?: string; required: boolean }> = {};
+    for (const a of schema.attributes) {
+      schemaFields[a.name] = a.type === 'email' || a.type === 'url'
+        ? { type: 'string', format: a.type, required: a.required }
+        : { type: a.type, required: a.required };
+    }
+    const r = await run<ValidationResult>('attributeValidation', {
+      entity: { id: node.id, fields: flattenAttrs(node.attributes) },
+      schema: { fields: schemaFields },
+    });
+    setResult(r);
+    setRunning(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-400">
+        Check a node&apos;s attributes against one of this graph&apos;s entity-class
+        schemas: required fields, type checks, and email/url format checks.
+      </p>
+      <div className="flex gap-2 flex-wrap items-center">
+        <select value={nodeId} onChange={(e) => setNodeId(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
+          <option value="">Select node…</option>
+          {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+        </select>
+        <select value={schemaId} onChange={(e) => setSchemaId(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
+          <option value="">Select schema…</option>
+          {graph.schemas.map((s) => <option key={s.id} value={s.id}>{s.className}</option>)}
+        </select>
+        <button
+          disabled={!nodeId || !schemaId || running}
+          onClick={validate}
+          className="btn-neon green text-sm flex items-center gap-1.5"
+        >
+          {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+          Validate
+        </button>
+      </div>
+      {graph.schemas.length === 0 && (
+        <p className="text-[11px] text-gray-400">No entity classes defined yet — create one in the Schemas tab first.</p>
+      )}
+
+      {result && (
+        <div className="space-y-3">
+          <div className="bg-zinc-900 rounded-lg p-3 border border-zinc-800 flex items-center justify-between">
+            <span className="text-xs text-gray-400">Validation score</span>
+            <span className={`text-xl font-bold ${result.validationScore >= 80 ? 'text-neon-green' : result.validationScore >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+              {result.validationScore}%
+            </span>
+          </div>
+          {result.errors.count > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase text-red-400 flex items-center gap-1"><XCircle className="w-3 h-3" /> Errors</p>
+              {result.errors.items.map((e, i) => (
+                <div key={i} className="text-[11px] bg-zinc-900 rounded p-2 border border-red-500/20">
+                  <span className="font-mono font-bold text-white">{e.field}</span>
+                  <span className="text-gray-300 ml-2">{e.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {result.warnings.count > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase text-yellow-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Warnings</p>
+              {result.warnings.items.map((w, i) => (
+                <div key={i} className="text-[11px] bg-zinc-900 rounded p-2 border border-yellow-500/20">
+                  <span className="font-mono font-bold text-yellow-300">{w.field}</span>
+                  <span className="text-gray-300 ml-2">{w.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {result.valid && (
+            <div className="flex items-center gap-2 text-xs text-neon-green p-2.5 bg-neon-green/5 rounded-lg border border-neon-green/20">
+              <CheckCircle2 className="w-3.5 h-3.5" /> All fields passed validation.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

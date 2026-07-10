@@ -455,15 +455,22 @@ export default function registerWhiteboardActions(registerLensAction) {
       title = String(params.title || "Untitled shared board").slice(0, 80);
     }
     const sharedId = String(params.sharedId || `shared_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`);
+    // Named recipients are granted access immediately (real invite, not a
+    // link they still need to separately "join") — added as participants
+    // right away so `shared-list` surfaces the board for them without
+    // requiring a manual join-shared call first.
+    const invited = Array.isArray(params.userIds)
+      ? Array.from(new Set(params.userIds.map((u) => String(u || "").trim()).filter(Boolean)))
+      : [];
     const board = {
       id: sharedId, title, scene, ownerId: userId,
-      participants: new Set([userId]),
+      participants: new Set([userId, ...invited]),
       createdAt: nowIsoWb(), updatedAt: nowIsoWb(),
       sourcePrivateId,
     };
     s.sharedBoards.set(sharedId, board);
     saveWhiteboardState();
-    return { ok: true, result: { board: sharedBoardSummary(board) } };
+    return { ok: true, result: { board: sharedBoardSummary(board), sharedWith: invited.length } };
   });
 
   registerLensAction("whiteboard", "shared-list", (ctx, _artifact, _params = {}) => {

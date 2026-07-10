@@ -698,33 +698,50 @@ export default function registerHomeImprovementActions(registerLensAction) {
 
   // feed — ingest real consumer-product recalls from the U.S. Consumer
   // Product Safety Commission as visible DTUs. Free public API, no key.
+  // params.op: 'pull' (default; fetch + ingest new recalls) | 'list'
+  // (return the persisted recall summaries with no network call — added so
+  // a frontend view doesn't have to re-hit CPSC just to render what's
+  // already been ingested).
   registerLensAction("home-improvement", "feed", async (ctx, _a, params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    if (!Array.isArray(s.recalls)) s.recalls = [];
+
+    if (params.op === "list") {
+      return { ok: true, result: { recalls: s.recalls.slice(0, 100), count: s.recalls.length, source: "cpsc-recalls" } };
+    }
+
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
     try {
       const r = await fetch("https://www.saferproducts.gov/RestWebServices/Recall?format=json");
       if (!r.ok) return { ok: false, error: `cpsc ${r.status}` };
       const data = await r.json();
       const recalls = (Array.isArray(data) ? data : []).slice(0, limit);
-      let ingested = 0, skipped = 0; const dtuIds = [];
+      let ingested = 0, skipped = 0; const dtuIds = []; const newSummaries = [];
       for (const rec of recalls) {
         const id = `cpsc_${rec.RecallID || rec.RecallNumber}`;
         if (s.feedSeen.has(id)) { skipped++; continue; }
         const product = (rec.Products?.[0]?.Name || rec.Title || "Product recall").slice(0, 90);
         const hazard = rec.Hazards?.[0]?.Name || "?";
+        const remedy = rec.Remedies?.[0]?.Name || "?";
         const title = `Product recall: ${product}`;
         const res = await ctx.macro.run("dtu", "create", {
           title,
-          creti: `${title}\n\nHazard: ${hazard}\nRemedy: ${(rec.Remedies?.[0]?.Name) || "?"}\nRecall date: ${rec.RecallDate || "?"}\nDescription: ${(rec.Description || "").replace(/<[^>]+>/g, "").slice(0, 600)}\nSource: U.S. Consumer Product Safety Commission`,
+          creti: `${title}\n\nHazard: ${hazard}\nRemedy: ${remedy}\nRecall date: ${rec.RecallDate || "?"}\nDescription: ${(rec.Description || "").replace(/<[^>]+>/g, "").slice(0, 600)}\nSource: U.S. Consumer Product Safety Commission`,
           tags: ["home-improvement", "feed", "product-recall", "cpsc"],
           source: "cpsc-feed",
           meta: { recallId: rec.RecallID, product, hazard, recallDate: rec.RecallDate },
         });
-        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+        if (res?.ok && res.dtu) {
+          ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id);
+          const summary = { id, recallId: rec.RecallID || rec.RecallNumber || null, product, hazard, remedy, recallDate: rec.RecallDate || null, dtuId: res.dtu.id };
+          newSummaries.push(summary);
+          s.recalls.unshift(summary);
+        }
       }
+      if (s.recalls.length > 200) s.recalls.length = 200;
       saveHi();
-      return { ok: true, result: { ingested, skipped, source: "cpsc-recalls", dtuIds } };
+      return { ok: true, result: { ingested, skipped, source: "cpsc-recalls", dtuIds, recalls: newSummaries } };
     } catch (e) {
       return { ok: false, error: `cpsc unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }

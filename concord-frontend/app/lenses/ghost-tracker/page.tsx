@@ -3,13 +3,17 @@
 /**
  * /lenses/ghost-tracker — Phase V ghost-hunt game mode.
  *
- * Wires the full ghost-hunt domain surface:
+ * Wires the full ghost-hunt domain surface (9 macros — the domain string is
+ * "ghost-hunt", not "ghost-tracker"; see the capability map for why):
  *   residues     — list + filter + sort spectral drift residues
  *   detail       — full investigation view (ResidueDetail modal)
+ *   progress     — active-hunt overlay (ActiveHunts)
  *   advance      — multi-stage hunt progression (track → investigate → confront)
  *   confront     — resolve a haunting, award rewards
  *   history      — confront outcome ledger (ConfrontHistory)
  *   leaderboard  — hunter ranks (HunterLeaderboard)
+ *   create       — mint a Spectral Dossier DTU (ResidueDetail "Save case file")
+ *   dossiers     — list the calling hunter's own saved dossiers (below)
  *
  * Residues are plotted on the spectral plane via ResidueMap and scoped to
  * the active world (concordia:activeWorldId).
@@ -17,7 +21,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -53,6 +56,24 @@ interface ResiduesResult {
   severities?: string[];
 }
 
+interface Dossier {
+  id: string;
+  title: string;
+  visibility: string;
+  createdAt: string;
+  residueId: string | null;
+  drift_type: string | null;
+  severity: string | null;
+  stage: string | null;
+  outcome: string | null;
+}
+
+interface DossiersResult {
+  ok: boolean;
+  dossiers?: Dossier[];
+  count?: number;
+}
+
 const ACTIVE_WORLD_KEY = 'concordia:activeWorldId';
 const SORTS = [
   { id: 'recent', label: 'Most recent' },
@@ -78,18 +99,29 @@ export default function GhostTrackerPage() {
   const [sort, setSort] = useState<string>('recent');
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Saved Spectral Dossiers — real artifact-backed persistence (no mock seed).
-  // The canonical dossier DTU is minted by ghost-hunt.create from ResidueDetail;
-  // this index pins them per-user so they survive a reload + are listable here.
-  const {
-    items: dossiers,
-    isLoading: dossiersLoading,
-    isError: dossiersError,
-  } = useLensData<{ residueId?: string; drift_type?: string; severity?: string }>(
-    'ghost-tracker',
-    'spectral_dossier',
-    { noSeed: true, limit: 20 },
-  );
+  // Saved Spectral Dossiers — real DTU-backed persistence, no seed. The
+  // dossier DTU is minted by ghost-hunt.create from ResidueDetail (once a
+  // hunt has been engaged past 'track'); ghost-hunt.dossiers reads the same
+  // `dtus` rows back and unpacks drift_type/severity/outcome from body_json.
+  const [dossiers, setDossiers] = useState<Dossier[]>([]);
+  const [dossiersLoading, setDossiersLoading] = useState(true);
+  const [dossiersError, setDossiersError] = useState(false);
+
+  const refreshDossiers = useCallback(async () => {
+    setDossiersLoading(true);
+    setDossiersError(false);
+    const r = await lensRun<DossiersResult>('ghost-hunt', 'dossiers', { limit: 20 });
+    const result = r.data.result;
+    if (result?.ok) {
+      setDossiers(result.dossiers ?? []);
+    } else {
+      setDossiers([]);
+      setDossiersError(true);
+    }
+    setDossiersLoading(false);
+  }, []);
+
+  useEffect(() => { refreshDossiers(); }, [refreshDossiers, refreshKey]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -249,24 +281,47 @@ export default function GhostTrackerPage() {
           )}
           {!dossiersLoading && !dossiersError && dossiers.length === 0 && (
             <p className="text-xs text-gray-400">
-              No dossiers yet. Confront a residue, then save its case file.
+              No dossiers yet. Investigate a residue, then save its case file.
             </p>
           )}
           {!dossiersLoading && !dossiersError && dossiers.length > 0 && (
             <ul className="space-y-1.5">
-              {dossiers.map((d) => (
-                <li
-                  key={d.id}
-                  className="rounded border border-violet-700/30 bg-violet-900/10 px-3 py-2 text-xs text-gray-200"
-                >
-                  <span className="font-medium text-violet-200">{d.title}</span>
-                  {d.data?.drift_type && (
-                    <span className="ml-2 text-gray-400">
-                      {d.data.drift_type} · {d.data.severity}
-                    </span>
-                  )}
-                </li>
-              ))}
+              {dossiers.map((d) => {
+                const stillTracked = d.residueId ? residues.some((r) => r.id === d.residueId) : false;
+                const Item = stillTracked ? 'button' : 'div';
+                return (
+                  <li key={d.id}>
+                    <Item
+                      type={stillTracked ? 'button' : undefined}
+                      onClick={stillTracked ? () => setSelected(d.residueId) : undefined}
+                      className={`flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded border border-violet-700/30 bg-violet-900/10 px-3 py-2 text-left text-xs text-gray-200 ${
+                        stillTracked ? 'cursor-pointer hover:border-violet-500/50 hover:bg-violet-900/20' : ''
+                      }`}
+                    >
+                      <span className="font-medium text-violet-200">{d.title}</span>
+                      {d.drift_type && (
+                        <span className="text-gray-400">
+                          {d.drift_type}{d.severity ? ` · ${d.severity}` : ''}
+                        </span>
+                      )}
+                      {d.outcome && (
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] ${
+                            d.outcome === 'win'
+                              ? 'bg-emerald-600/25 text-emerald-200'
+                              : 'bg-rose-600/25 text-rose-200'
+                          }`}
+                        >
+                          {d.outcome === 'win' ? 'extinguished' : 'resisted'}
+                        </span>
+                      )}
+                      <span className="ml-auto text-[10px] text-gray-500">
+                        {new Date(d.createdAt.includes('T') ? d.createdAt : `${d.createdAt.replace(' ', 'T')}Z`).toLocaleDateString()}
+                      </span>
+                    </Item>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

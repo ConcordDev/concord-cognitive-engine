@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Play, Square, ShieldAlert, Gamepad2, BarChart3, RotateCcw } from 'lucide-react';
+import { Loader2, Play, Square, ShieldAlert, Gamepad2, BarChart3, RotateCcw, ListOrdered, ChevronDown, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +44,10 @@ interface PlaytestReport {
   avgCollected?: number; avgFurthestX?: number;
   difficultyVerdict?: string; rebalanceHint?: string;
 }
+interface PlaytestRun {
+  id: string; outcome: string; durationMs: number; deaths: number; damageTaken: number;
+  collected: number; furthestX: number; recordedAt?: string;
+}
 
 const TILE_COLORS: Record<string, string> = {
   grass: '#4ade80', dirt: '#a16207', stone: '#71717a', sand: '#fde047', water: '#38bdf8',
@@ -61,6 +65,8 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
   const [scene, setScene] = useState<Scene | null>(null);
   const [collision, setCollision] = useState<Collision | null>(null);
   const [report, setReport] = useState<PlaytestReport | null>(null);
+  const [runs, setRuns] = useState<PlaytestRun[]>([]);
+  const [showRuns, setShowRuns] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -98,9 +104,13 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
   }, []);
 
   const loadReport = useCallback(async (id: string) => {
-    if (!id) { setReport(null); return; }
-    const r = await lensRun('game-design', 'playtest-report', { gameId, levelId: id });
-    setReport((r.data?.result as PlaytestReport) || null);
+    if (!id) { setReport(null); setRuns([]); return; }
+    const [rep, list] = await Promise.all([
+      lensRun('game-design', 'playtest-report', { gameId, levelId: id }),
+      lensRun('game-design', 'playtest-list', { gameId, levelId: id }),
+    ]);
+    setReport((rep.data?.result as PlaytestReport) || null);
+    setRuns(((list.data?.result as { runs?: PlaytestRun[] } | null)?.runs || []).slice().reverse());
   }, [gameId]);
 
   useEffect(() => { void loadCollision(levelId); void loadReport(levelId); }, [levelId, loadCollision, loadReport]);
@@ -485,6 +495,33 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
             )}
             {report.rebalanceHint && (
               <p className="text-[11px] text-zinc-400">Rebalance: <span className="text-zinc-200">{report.rebalanceHint}</span></p>
+            )}
+            {runs.length > 0 && (
+              <div className="pt-1 border-t border-zinc-800">
+                <button type="button" onClick={() => setShowRuns(!showRuns)}
+                  className="flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-zinc-200">
+                  {showRuns ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                  <ListOrdered className="w-3.5 h-3.5" /> Recent runs ({runs.length})
+                </button>
+                {showRuns && (
+                  <ul className="mt-1.5 space-y-1 max-h-48 overflow-y-auto">
+                    {runs.slice(0, 50).map((r, i) => (
+                      <li key={r.id || i} className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 rounded-lg px-2 py-1 text-[10px]">
+                        <span className={cn('px-1.5 rounded uppercase font-semibold',
+                          r.outcome === 'completed' ? 'text-emerald-400 bg-emerald-950/40'
+                            : r.outcome === 'died' ? 'text-rose-400 bg-rose-950/40' : 'text-zinc-400 bg-zinc-800')}>
+                          {r.outcome}
+                        </span>
+                        <span className="text-zinc-400">{(r.durationMs / 1000).toFixed(1)}s</span>
+                        <span className="text-zinc-400">{r.deaths} deaths</span>
+                        <span className="text-zinc-400">{r.collected} collected</span>
+                        <div className="flex-1" />
+                        {r.recordedAt && <span className="text-zinc-600">{new Date(r.recordedAt).toLocaleTimeString()}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </>
         )}

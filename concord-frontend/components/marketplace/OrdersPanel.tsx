@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Package, Loader2, CheckCircle, Truck, XCircle } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Package, Loader2, CheckCircle, Truck, XCircle, Plus, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,7 @@ interface Order {
   placedAt: string; shippedAt: string | null; deliveredAt: string | null;
   trackingNumber?: string; carrier?: string;
 }
+interface PublishedListing { id: string; title: string; priceUsd: number; stockQty: number | null }
 
 const STATUS_COLOUR: Record<Order['status'], string> = {
   pending:   'bg-gray-500/20 text-gray-300',
@@ -29,17 +30,46 @@ export function OrdersPanel() {
   const [filter, setFilter] = useState<'all' | Order['status']>('all');
   const [loading, setLoading] = useState(true);
   const [shipForm, setShipForm] = useState<{ id: string; trackingNumber: string; carrier: string } | null>(null);
+  const [listings, setListings] = useState<PublishedListing[]>([]);
+  const [showManual, setShowManual] = useState(false);
+  const [manual, setManual] = useState({ listingId: '', qty: '1', buyerName: '', buyerEmail: '', buyerAddress: '', notes: '' });
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [manualBusy, setManualBusy] = useState(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { refresh(); }, [filter]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await lensRun({ domain: 'marketplace', action: 'orders-list', input: { status: filter } });
-      setList((r.data?.result?.orders || []) as Order[]);
+      const [o, l] = await Promise.all([
+        lensRun({ domain: 'marketplace', action: 'orders-list', input: { status: filter } }),
+        lensRun({ domain: 'marketplace', action: 'listings-list', input: { status: 'published' } }),
+      ]);
+      setList((o.data?.result?.orders || []) as Order[]);
+      setListings((l.data?.result?.listings || []) as PublishedListing[]);
     } catch (e) { console.error('[Orders] failed', e); }
     finally { setLoading(false); }
+  }, [filter]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  async function recordManualSale() {
+    if (!manual.listingId) { setManualError('Pick a listing.'); return; }
+    setManualBusy(true);
+    setManualError(null);
+    try {
+      const r = await lensRun({
+        domain: 'marketplace', action: 'orders-create',
+        input: {
+          listingId: manual.listingId, qty: Number(manual.qty) || 1,
+          buyerName: manual.buyerName.trim() || undefined, buyerEmail: manual.buyerEmail.trim() || undefined,
+          buyerAddress: manual.buyerAddress.trim() || undefined, notes: manual.notes.trim() || undefined,
+        },
+      });
+      if (r.data?.ok === false) { setManualError(r.data?.error || 'Could not record sale'); return; }
+      setManual({ listingId: '', qty: '1', buyerName: '', buyerEmail: '', buyerAddress: '', notes: '' });
+      setShowManual(false);
+      await refresh();
+    } catch (e) { console.error('[Orders] manual sale', e); setManualError('Could not record sale'); }
+    finally { setManualBusy(false); }
   }
 
   async function ship() {
@@ -75,7 +105,30 @@ export function OrdersPanel() {
           <option value="delivered">Delivered</option>
           <option value="refunded">Refunded</option>
         </select>
+        <button onClick={() => setShowManual(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 inline-flex items-center gap-1">
+          <Plus className="w-3 h-3" />Record sale
+        </button>
       </header>
+
+      {showManual && (
+        <div className="px-4 py-3 border-b border-white/10 bg-orange-500/[0.04] grid grid-cols-12 gap-2">
+          <p className="col-span-12 text-[10px] text-gray-400 -mb-1">Record an offline / in-person / phone sale against one of your published listings — decrements stock and appears in Orders like any other sale.</p>
+          <select value={manual.listingId} onChange={e => setManual({ ...manual, listingId: e.target.value })} className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+            <option value="">Pick a published listing…</option>
+            {listings.map(l => <option key={l.id} value={l.id}>{l.title} · ${l.priceUsd.toFixed(2)}{l.stockQty !== null ? ` (${l.stockQty} in stock)` : ''}</option>)}
+          </select>
+          <input type="number" min={1} value={manual.qty} onChange={e => setManual({ ...manual, qty: e.target.value })} placeholder="Qty" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input value={manual.buyerName} onChange={e => setManual({ ...manual, buyerName: e.target.value })} placeholder="Buyer name" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={manual.buyerEmail} onChange={e => setManual({ ...manual, buyerEmail: e.target.value })} placeholder="Buyer email" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={manual.buyerAddress} onChange={e => setManual({ ...manual, buyerAddress: e.target.value })} placeholder="Shipping address (if physical)" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={manual.notes} onChange={e => setManual({ ...manual, notes: e.target.value })} placeholder="Notes (optional)" className="col-span-10 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <button onClick={recordManualSale} disabled={manualBusy} className="col-span-2 px-2 py-1.5 text-xs rounded bg-orange-500 text-black font-bold hover:bg-orange-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
+            {manualBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}Save
+          </button>
+          {manualError && <div className="col-span-12 text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded px-2 py-1.5">{manualError}</div>}
+          <button onClick={() => setShowManual(false)} aria-label="Cancel" className="col-span-12 text-[10px] text-gray-400 hover:text-gray-200 text-right inline-flex items-center justify-end gap-1"><X className="w-3 h-3" />Cancel</button>
+        </div>
+      )}
 
       {shipForm && (
         <div className="px-4 py-3 border-b border-white/10 bg-cyan-500/[0.04] grid grid-cols-12 gap-2">

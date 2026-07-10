@@ -8,9 +8,10 @@
 
 import { useState } from 'react';
 import {
-  Activity, TrendingUp, Mountain, Target, Users, MapPin, Watch, Radio, CalendarDays,
+  Activity, TrendingUp, Mountain, Target, Users, MapPin, Watch, Radio, CalendarDays, LayoutDashboard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { StravaDashboardPanel } from './StravaDashboardPanel';
 import { StravaActivitiesPanel } from './StravaActivitiesPanel';
 import { StravaTrainingPanel } from './StravaTrainingPanel';
 import { StravaSegmentsPanel } from './StravaSegmentsPanel';
@@ -21,9 +22,10 @@ import { StravaWearablePanel } from './StravaWearablePanel';
 import { StravaBeaconPanel } from './StravaBeaconPanel';
 import { StravaPlanPanel } from './StravaPlanPanel';
 
-type TabId = 'activities' | 'gps' | 'training' | 'plan' | 'segments' | 'goals' | 'wearables' | 'beacon' | 'clubs';
+type TabId = 'dashboard' | 'activities' | 'gps' | 'training' | 'plan' | 'segments' | 'goals' | 'wearables' | 'beacon' | 'clubs';
 
 const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'activities', label: 'Activities', icon: Activity },
   { id: 'gps', label: 'GPS & Heatmap', icon: MapPin },
   { id: 'training', label: 'Training', icon: TrendingUp },
@@ -36,7 +38,7 @@ const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
 ];
 
 export function FitnessStravaSection() {
-  const [tab, setTab] = useState<TabId>('activities');
+  const [tab, setTab] = useState<TabId>('dashboard');
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
@@ -70,6 +72,7 @@ export function FitnessStravaSection() {
       </nav>
 
       <div className="p-4">
+        {tab === 'dashboard' && <StravaDashboardPanel />}
         {tab === 'activities' && <StravaActivitiesPanel />}
         {tab === 'gps' && <StravaGpsPanel />}
         {tab === 'training' && <StravaTrainingPanel />}

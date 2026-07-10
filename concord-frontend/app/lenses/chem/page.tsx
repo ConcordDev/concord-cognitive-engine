@@ -12,24 +12,23 @@ import { PubChemPanel } from '@/components/chem/PubChemPanel';
 import { PeriodicTable } from '@/components/chem/PeriodicTable';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { apiHelpers } from '@/lib/api/client';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Atom, Beaker, FlaskConical, Sparkles, Zap, Layers, ChevronDown, AlertTriangle, TestTube2, Loader2, XCircle, BarChart3 } from 'lucide-react';
+import { Atom, Beaker, FlaskConical, Sparkles, Zap, TestTube2, AlertTriangle } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import ChemWorkbench from '@/components/chem/ChemWorkbench';
 import ChemStructureLab from '@/components/chem/ChemStructureLab';
 import { ChemActionPanel } from '@/components/chem/ChemActionPanel';
+import { ChemSafetyPanel } from '@/components/chem/ChemSafetyPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
 interface Compound {
@@ -37,7 +36,7 @@ interface Compound {
   name: string;
   formula: string;
   type: 'catalyst' | 'reagent' | 'product';
-  stability: number;
+  molecularWeight?: number | null;
 }
 
 interface Reaction {
@@ -52,7 +51,6 @@ export default function ChemLensPage() {
 
   const [selectedCompound, setSelectedCompound] = useState<string | null>(null);
   const [reactionInput, setReactionInput] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'elements' | 'reactions' | 'compounds'>('reactions');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('chem');
@@ -66,19 +64,36 @@ export default function ChemLensPage() {
     { lensId: 'chem' }
   );
 
-  // Backend action wiring
-  const runAction = useRunArtifact('chem');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-
-  const { items: compoundItems, isLoading, isError: isError, error: error, refetch: refetch } = useLensData<Record<string, unknown>>('chem', 'compound', { seed: [] });
+  const { items: compoundItems, isLoading, isError: isError, error: error, refetch: refetch, create: createCompound } = useLensData<Record<string, unknown>>('chem', 'compound', { seed: [] });
   const compounds = compoundItems.map(i => ({ id: i.id, ...(i.data || {}) })) as unknown as Compound[];
 
   const { items: reactionItems, isError: isError2, error: error2, refetch: refetch2, create: createReaction } = useLensData<Record<string, unknown>>('chem', 'reaction', { seed: [] });
   const reactions = reactionItems.map(i => ({ id: i.id, ...(i.data || {}) })) as unknown as Reaction[];
 
+  // Reaction Chamber runs the REAL chem.balanceReaction Gaussian-elimination
+  // solver (server/domains/chem.js) — this used to just archive whatever
+  // string the user typed with no chemistry behind it, and `success` was
+  // never set so every reaction rendered "Failed". Now the reaction record
+  // stores the actual balanced equation + the solver's real balanced flag,
+  // and each product gets minted into the Compound Library with its real
+  // molecular weight (from chem.molecularAnalysis) — never a fabricated
+  // stability number.
   const runReaction = useMutation({
-    mutationFn: (formula: string) => createReaction({ title: formula, data: { formula, ranAt: new Date().toISOString() } }),
+    mutationFn: async (equation: string) => {
+      const r = await apiHelpers.lens.runDomain('chem', 'balanceReaction', { input: { equation } });
+      const env = (r.data as { ok?: boolean; result?: { ok?: boolean; error?: string; equation?: string; balanced?: boolean; reactants?: { formula: string }[]; products?: { formula: string }[] } })?.result;
+      if (!env || env.ok === false) throw new Error(env?.error || 'Could not balance that equation.');
+      await createReaction({ title: env.equation, data: { formula: env.equation, ranAt: new Date().toISOString(), success: !!env.balanced } });
+      for (const p of env.products || []) {
+        try {
+          const mwR = await apiHelpers.lens.runDomain('chem', 'molecular-weight', { input: { formula: p.formula } });
+          const mw = (mwR.data as { result?: { ok?: boolean; molecularWeight?: number } })?.result;
+          const weight = mw && mw.ok !== false ? mw.molecularWeight ?? null : null;
+          await createCompound({ title: p.formula, data: { name: p.formula, formula: p.formula, type: 'product', molecularWeight: weight } });
+        } catch { /* MW lookup is best-effort — an unparseable formula still keeps the compound record */ }
+      }
+      return env;
+    },
     onSuccess: () => {
       refetch();
       refetch2();
@@ -91,19 +106,6 @@ export default function ChemLensPage() {
     catalyst: 'bg-neon-purple/20 text-neon-purple border-neon-purple/30',
     reagent: 'bg-neon-blue/20 text-neon-blue border-neon-blue/30',
     product: 'bg-neon-green/20 text-neon-green border-neon-green/30',
-  };
-
-  const handleChemAction = async (action: string) => {
-    const targetId = compoundItems[0]?.id || reactionItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) {
-      console.error(`Chem action ${action} failed:`, e);
-    }
-    setIsRunning(null);
   };
 
   if (isLoading) {
@@ -201,89 +203,12 @@ export default function ChemLensPage() {
         ))}
       </div>
 
-      {/* AI Actions */}
-      <UniversalActions domain="chem" artifactId={compoundItems[0]?.id} compact />
-
       <AnimatePresence mode="wait">
       {activeTab === 'elements' && (
         <motion.div key="elements" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-          {/* Mini Periodic Table Reference */}
+          {/* Full 118-element periodic table (chem.periodic-table), click-to-detail + Save-as-DTU. */}
           <div className="panel p-4">
-            <h3 className="font-semibold mb-3 flex items-center gap-2"><Atom className="w-4 h-4 text-neon-blue" /> Periodic Table Quick Reference</h3>
-            <div className="grid grid-cols-6 md:grid-cols-9 gap-1">
-              {[
-                { sym: 'H', num: 1, name: 'Hydrogen', cat: 'nonmetal' },
-                { sym: 'He', num: 2, name: 'Helium', cat: 'noble' },
-                { sym: 'Li', num: 3, name: 'Lithium', cat: 'alkali' },
-                { sym: 'Be', num: 4, name: 'Beryllium', cat: 'alkaline' },
-                { sym: 'B', num: 5, name: 'Boron', cat: 'metalloid' },
-                { sym: 'C', num: 6, name: 'Carbon', cat: 'nonmetal' },
-                { sym: 'N', num: 7, name: 'Nitrogen', cat: 'nonmetal' },
-                { sym: 'O', num: 8, name: 'Oxygen', cat: 'nonmetal' },
-                { sym: 'F', num: 9, name: 'Fluorine', cat: 'halogen' },
-                { sym: 'Ne', num: 10, name: 'Neon', cat: 'noble' },
-                { sym: 'Na', num: 11, name: 'Sodium', cat: 'alkali' },
-                { sym: 'Mg', num: 12, name: 'Magnesium', cat: 'alkaline' },
-                { sym: 'Al', num: 13, name: 'Aluminum', cat: 'metal' },
-                { sym: 'Si', num: 14, name: 'Silicon', cat: 'metalloid' },
-                { sym: 'P', num: 15, name: 'Phosphorus', cat: 'nonmetal' },
-                { sym: 'S', num: 16, name: 'Sulfur', cat: 'nonmetal' },
-                { sym: 'Cl', num: 17, name: 'Chlorine', cat: 'halogen' },
-                { sym: 'Ar', num: 18, name: 'Argon', cat: 'noble' },
-              ].map((el, i) => {
-                const catColors: Record<string, string> = {
-                  nonmetal: 'bg-green-500/20 border-green-500/30 text-green-400',
-                  noble: 'bg-purple-500/20 border-purple-500/30 text-purple-400',
-                  alkali: 'bg-red-500/20 border-red-500/30 text-red-400',
-                  alkaline: 'bg-orange-500/20 border-orange-500/30 text-orange-400',
-                  metalloid: 'bg-teal-500/20 border-teal-500/30 text-teal-400',
-                  halogen: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
-                  metal: 'bg-blue-500/20 border-blue-500/30 text-blue-400',
-                };
-                return (
-                  <motion.div key={el.sym} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}
-                    className={`p-1.5 rounded border text-center cursor-pointer hover:scale-105 transition-transform ${catColors[el.cat] || ''}`}
-                    title={el.name}>
-                    <span className="text-[10px] text-gray-400">{el.num}</span>
-                    <p className="text-sm font-bold">{el.sym}</p>
-                    <p className="text-[9px] text-gray-400 truncate">{el.name}</p>
-                  </motion.div>
-                );
-              })}
-            </div>
-            <div className="flex flex-wrap gap-3 mt-3">
-              {[
-                { cat: 'Nonmetal', color: 'bg-green-500' }, { cat: 'Noble Gas', color: 'bg-purple-500' },
-                { cat: 'Alkali Metal', color: 'bg-red-500' }, { cat: 'Alkaline Earth', color: 'bg-orange-500' },
-                { cat: 'Metalloid', color: 'bg-teal-500' }, { cat: 'Halogen', color: 'bg-yellow-500' },
-              ].map(l => (
-                <span key={l.cat} className="flex items-center gap-1 text-xs text-gray-400">
-                  <span className={`w-2 h-2 rounded-sm ${l.color}`} /> {l.cat}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Reaction Equation Display */}
-          <div className="panel p-4">
-            <h3 className="font-semibold mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-neon-purple" /> Common Reaction Equations</h3>
-            <div className="space-y-2">
-              {[
-                { eq: '2H\u2082 + O\u2082 \u2192 2H\u2082O', name: 'Water Synthesis', type: 'Combustion' },
-                { eq: 'CH\u2084 + 2O\u2082 \u2192 CO\u2082 + 2H\u2082O', name: 'Methane Combustion', type: 'Combustion' },
-                { eq: 'NaOH + HCl \u2192 NaCl + H\u2082O', name: 'Neutralization', type: 'Acid-Base' },
-                { eq: '6CO\u2082 + 6H\u2082O \u2192 C\u2086H\u2081\u2082O\u2086 + 6O\u2082', name: 'Photosynthesis', type: 'Biochemical' },
-              ].map((rxn, i) => (
-                <motion.div key={rxn.name} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-                  className="flex items-center justify-between p-3 bg-black/20 rounded-lg border border-white/5">
-                  <div>
-                    <p className="font-mono text-sm text-neon-cyan">{rxn.eq}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{rxn.name}</p>
-                  </div>
-                  <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{rxn.type}</span>
-                </motion.div>
-              ))}
-            </div>
+            <PeriodicTable />
           </div>
         </motion.div>
       )}
@@ -325,6 +250,12 @@ export default function ChemLensPage() {
               {runReaction.isPending ? 'Reacting...' : 'React'}
             </button>
           </div>
+          {runReaction.isError && (
+            <p className="text-xs text-red-400 flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5" /> {runReaction.error instanceof Error ? runReaction.error.message : 'Could not balance that equation.'}
+            </p>
+          )}
+          <p className="text-xs text-gray-500">Runs the real chem.balanceReaction Gaussian-elimination solver — coefficients are computed, not guessed. Each product is minted into the Compound Library with its real molecular weight.</p>
         </div>
 
         {/* Compound Library */}
@@ -354,21 +285,9 @@ export default function ChemLensPage() {
                   </span>
                 </div>
                 <p className="font-mono text-sm text-gray-400">{compound.formula}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-xs text-gray-400">Stability:</span>
-                  <div className="flex-1 h-1 bg-lattice-deep rounded">
-                    <div
-                      className={`h-full rounded ${
-                        compound.stability > 0.7
-                          ? 'bg-neon-green'
-                          : compound.stability > 0.4
-                          ? 'bg-neon-blue'
-                          : 'bg-neon-pink'
-                      }`}
-                      style={{ width: `${compound.stability * 100}%` }}
-                    />
-                  </div>
-                </div>
+                {compound.molecularWeight != null && (
+                  <p className="text-xs text-gray-500 mt-1">MW: <span className="text-gray-300 font-mono">{compound.molecularWeight} g/mol</span></p>
+                )}
               </button>
             ))}
           </div>
@@ -445,14 +364,9 @@ export default function ChemLensPage() {
                     <span className={`text-xs px-2 py-0.5 rounded border ${typeColors[compound.type]}`}>{compound.type}</span>
                   </div>
                   <p className="font-mono text-sm text-gray-400">{compound.formula}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="text-xs text-gray-400">Stability:</span>
-                    <div className="flex-1 h-1 bg-lattice-deep rounded">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${compound.stability * 100}%` }}
-                        className={`h-full rounded ${compound.stability > 0.7 ? 'bg-neon-green' : compound.stability > 0.4 ? 'bg-neon-blue' : 'bg-neon-pink'}`}
-                      />
-                    </div>
-                  </div>
+                  {compound.molecularWeight != null && (
+                    <p className="text-xs text-gray-500 mt-1">MW: <span className="text-gray-300 font-mono">{compound.molecularWeight} g/mol</span></p>
+                  )}
                 </motion.button>
               ))}
             </div>
@@ -461,197 +375,12 @@ export default function ChemLensPage() {
       )}
       </AnimatePresence>
 
-      {/* Backend Computational Actions */}
-      <div className="panel p-4 space-y-4">
-        <h3 className="font-semibold text-white flex items-center gap-2">
-          <Zap className="w-4 h-4 text-neon-cyan" /> Computational Actions
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <button
-            onClick={() => handleChemAction('molecularAnalysis')}
-            disabled={isRunning !== null}
-            className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50"
-          >
-            {isRunning === 'molecularAnalysis'
-              ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
-              : <Atom className="w-5 h-5 text-neon-cyan" />}
-            <span className="text-xs text-gray-300">Molecular Analysis</span>
-          </button>
-          <button
-            onClick={() => handleChemAction('balanceReaction')}
-            disabled={isRunning !== null}
-            className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50"
-          >
-            {isRunning === 'balanceReaction'
-              ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" />
-              : <FlaskConical className="w-5 h-5 text-neon-purple" />}
-            <span className="text-xs text-gray-300">Balance Reaction</span>
-          </button>
-          <button
-            onClick={() => handleChemAction('solutionChemistry')}
-            disabled={isRunning !== null}
-            className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-green/50 transition-colors disabled:opacity-50"
-          >
-            {isRunning === 'solutionChemistry'
-              ? <Loader2 className="w-5 h-5 text-neon-green animate-spin" />
-              : <Beaker className="w-5 h-5 text-neon-green" />}
-            <span className="text-xs text-gray-300">Solution Chemistry</span>
-          </button>
-        </div>
-
-        {/* Action Result Display */}
-        {actionResult && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-3 p-4 bg-black/30 rounded-lg border border-white/10"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold text-white flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-neon-cyan" /> Action Result
-              </h4>
-              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white transition-colors" aria-label="Xcircle">
-                <XCircle className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Molecular Analysis Result */}
-            {actionResult.formula !== undefined && actionResult.molecularWeight !== undefined && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="font-mono text-lg font-bold text-neon-cyan">{actionResult.formula as string}</span>
-                  <span className="text-sm text-gray-300">MW: <span className="font-bold text-white">{actionResult.molarMass as string}</span></span>
-                  {actionResult.degreeOfUnsaturation !== null && actionResult.degreeOfUnsaturation !== undefined && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">DoU: {actionResult.degreeOfUnsaturation as number}</span>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <div className="p-2 bg-lattice-bg rounded text-center">
-                    <p className="text-sm font-bold text-neon-green">{actionResult.totalAtoms as number}</p>
-                    <p className="text-[10px] text-gray-400">Total Atoms</p>
-                  </div>
-                  <div className="p-2 bg-lattice-bg rounded text-center">
-                    <p className="text-sm font-bold text-neon-blue">{actionResult.empiricalFormula as string}</p>
-                    <p className="text-[10px] text-gray-400">Empirical Formula</p>
-                  </div>
-                  <div className="p-2 bg-lattice-bg rounded text-center">
-                    <p className="text-sm font-bold text-neon-purple">{actionResult.formulaToEmpiricalRatio as number}×</p>
-                    <p className="text-[10px] text-gray-400">Formula Ratio</p>
-                  </div>
-                  <div className="p-2 bg-lattice-bg rounded text-center">
-                    <p className="text-sm font-bold text-neon-cyan">{actionResult.molesPerGram as number}</p>
-                    <p className="text-[10px] text-gray-400">mol/g</p>
-                  </div>
-                </div>
-                {(actionResult.elements as Array<{ element: string; count: number; massPercent: number }>)?.length > 0 && (
-                  <div className="space-y-1">
-                    {(actionResult.elements as Array<{ element: string; count: number; massPercent: number }>).map(el => (
-                      <div key={el.element} className="flex items-center gap-2 text-xs">
-                        <span className="w-6 font-mono text-gray-300">{el.element}</span>
-                        <div className="flex-1 h-1.5 bg-lattice-deep rounded overflow-hidden">
-                          <div className="h-full bg-neon-cyan rounded" style={{ width: `${el.massPercent}%` }} />
-                        </div>
-                        <span className="text-gray-400 w-10 text-right">{el.massPercent}%</span>
-                        <span className="text-gray-400 w-8 text-right">×{el.count}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Balance Reaction Result */}
-            {actionResult.equation !== undefined && actionResult.coefficients !== undefined && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${(actionResult.balanced as boolean) ? 'bg-neon-green/20 text-neon-green' : 'bg-neon-pink/20 text-neon-pink'}`}>
-                    {(actionResult.balanced as boolean) ? 'Balanced' : 'Unbalanced'}
-                  </span>
-                </div>
-                <p className="font-mono text-sm text-neon-cyan p-2 bg-black/30 rounded">{actionResult.equation as string}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Reactants</p>
-                    {(actionResult.reactants as Array<{ formula: string; coefficient: number }>)?.map(r => (
-                      <div key={r.formula} className="flex items-center gap-2 text-xs py-0.5">
-                        <span className="font-bold text-neon-blue w-6">{r.coefficient}</span>
-                        <span className="font-mono text-gray-300">{r.formula}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Products</p>
-                    {(actionResult.products as Array<{ formula: string; coefficient: number }>)?.map(p => (
-                      <div key={p.formula} className="flex items-center gap-2 text-xs py-0.5">
-                        <span className="font-bold text-neon-green w-6">{p.coefficient}</span>
-                        <span className="font-mono text-gray-300">{p.formula}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Solution Chemistry Result */}
-            {actionResult.pH !== undefined && actionResult.nature !== undefined && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="text-3xl font-bold text-neon-cyan">{actionResult.pH as number}</div>
-                  <div>
-                    <span className={`text-sm font-medium px-2 py-0.5 rounded ${
-                      (actionResult.nature as string) === 'acidic' ? 'bg-red-500/20 text-red-400' :
-                      (actionResult.nature as string) === 'basic' ? 'bg-blue-500/20 text-blue-400' :
-                      'bg-gray-500/20 text-gray-400'
-                    }`}>
-                      {(actionResult.nature as string).charAt(0).toUpperCase() + (actionResult.nature as string).slice(1)}
-                    </span>
-                    <p className="text-xs text-gray-400 mt-1">{actionResult.type as string} · {actionResult.concentration as number} mol/L</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-lattice-bg rounded text-center">
-                    <p className="text-sm font-bold text-neon-green">{actionResult.pOH as number}</p>
-                    <p className="text-[10px] text-gray-400">pOH</p>
-                  </div>
-                  <div className="p-2 bg-lattice-bg rounded text-center">
-                    <p className="text-sm font-bold text-neon-blue">{actionResult.hydrogenIonConc as number}</p>
-                    <p className="text-[10px] text-gray-400">[H⁺] mol/L</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Fallback: generic JSON display */}
-            {actionResult.formula === undefined && actionResult.equation === undefined && actionResult.pH === undefined && !!actionResult.message && (
-              <p className="text-sm text-gray-400">{actionResult.message as string}</p>
-            )}
-            {actionResult.formula === undefined && actionResult.equation === undefined && actionResult.pH === undefined && !actionResult.message && (
-              <pre className="text-xs font-mono text-gray-400 overflow-auto max-h-48">{JSON.stringify(actionResult, null, 2)}</pre>
-            )}
-          </motion.div>
-        )}
-      </div>
-
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="chem" />
-          </div>
-        )}
-      </div>
+      {/* Compound safety data sheet + interaction checker + element reference —
+          chem.generate-safety / chem.check-interactions / chem.explore-element
+          had zero bespoke UI before this rebuild. */}
+      <ChemSafetyPanel />
     </div>
-    
+
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <a href="#chem-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to chem content</a>
 
@@ -671,11 +400,6 @@ export default function ChemLensPage() {
       <div className="mt-6">
         <ChemStructureLab />
       </div>
-
-      {/* Bespoke 118-element periodic table with click-to-detail + Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PeriodicTable />
-      </section>
 
       <PipingProvider>
         <section className="mt-6">

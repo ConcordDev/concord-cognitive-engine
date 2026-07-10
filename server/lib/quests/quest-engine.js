@@ -32,6 +32,34 @@ export function getActiveQuests(db, userId, worldId) {
 }
 
 /**
+ * Return all completed (and rewarded) quests for a player in a world, with
+ * objectives and rewards attached. Mirrors getActiveQuests but for the
+ * complementary status set — getActiveQuests deliberately excludes these
+ * rows (`pq.status IS NULL OR pq.status = 'active'`), so a caller needing
+ * quest HISTORY (e.g. a "Completed" tab) must call this instead.
+ */
+export function getCompletedQuests(db, userId, worldId) {
+  const rows = db.prepare(`
+    SELECT q.*, pq.user_id AS accepted_by, pq.status, pq.completed_at, pq.rewarded_at
+    FROM world_quests q
+    JOIN player_quests pq ON pq.quest_id = q.id
+    WHERE pq.user_id = ? AND pq.world_id = ? AND pq.status IN ('completed', 'rewarded')
+    ORDER BY pq.completed_at DESC
+    LIMIT 50
+  `).all(userId, worldId);
+
+  return rows.map(q => ({
+    ...q,
+    objectives: db.prepare(
+      'SELECT * FROM quest_objectives WHERE quest_id = ? ORDER BY order_index'
+    ).all(q.id),
+    rewards: db.prepare(
+      'SELECT * FROM quest_rewards WHERE quest_id = ?'
+    ).all(q.id),
+  }));
+}
+
+/**
  * Return objective rows for a quest with current player progress merged in.
  */
 export function getQuestProgress(db, userId, worldId, questId) {

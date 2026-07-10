@@ -1,18 +1,38 @@
 'use client';
 
 /**
- * ReflectionSection — Day One 2026-shape journaling companion. Tab
- * chrome owns nav state; panels hydrate via lensRun().
+ * ReflectionSection — the "Journal" surface (Day One 2026-shape journaling
+ * companion). Tab chrome owns nav state; panels hydrate via lensRun().
+ *
+ * This is the ONLY substrate-B (personal journaling) entry point on the
+ * lens page — everything that used to be three separately-stacked panels
+ * (this component's own 4 tabs, the standalone `JournalStudio` widget, and
+ * the standalone `JournalActionPanel` widget) is now one tab bar, so only
+ * one composer is visible at a time instead of three competing ones.
+ * `Studio` nests the Day One-parity backlog surface (media/geo/voice/
+ * encryption/timeline-map/reminders/sync/export); `Share` nests the
+ * DTU-save/DM/publish/agent-prompt quick actions; `Analytics` is the
+ * correctly-wired real analysis (see `RfAnalyticsPanel`'s header comment
+ * for what was broken about the two prior attempts at this).
+ *
+ * This is substrate B. The self-critique engine log (substrate A — a
+ * completely different backend system that also happens to be registered
+ * under the domain name "reflection") is NOT rendered here — see the
+ * "Self-Critique Log" mode on the lens page for that disclosure.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { BookOpen, NotebookPen, CalendarClock, TrendingUp, Lightbulb, Loader2 } from 'lucide-react';
+import { BookOpen, NotebookPen, CalendarClock, TrendingUp, Lightbulb, Loader2, Wand2, Share2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { RfEntriesPanel } from './RfEntriesPanel';
 import { RfOnThisDayPanel } from './RfOnThisDayPanel';
 import { RfInsightsPanel } from './RfInsightsPanel';
 import { RfPromptsPanel } from './RfPromptsPanel';
+import { RfAnalyticsPanel } from './RfAnalyticsPanel';
+import { JournalStudio } from './JournalStudio';
+import { JournalActionPanel } from './JournalActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 interface Dash {
   currentStreak: number; longestStreak: number; totalEntries: number;
@@ -20,12 +40,15 @@ interface Dash {
   latestMood: string | null; wroteToday: boolean;
   promptOfTheDay: { category: string; text: string };
 }
-type TabId = 'entries' | 'onthisday' | 'insights' | 'prompts';
+type TabId = 'entries' | 'onthisday' | 'insights' | 'analytics' | 'prompts' | 'studio' | 'share';
 const TABS: { id: TabId; label: string; icon: typeof NotebookPen }[] = [
   { id: 'entries', label: 'Entries', icon: NotebookPen },
   { id: 'onthisday', label: 'On This Day', icon: CalendarClock },
   { id: 'insights', label: 'Insights', icon: TrendingUp },
+  { id: 'analytics', label: 'Analytics', icon: Wand2 },
   { id: 'prompts', label: 'Prompts', icon: Lightbulb },
+  { id: 'studio', label: 'Studio', icon: BookOpen },
+  { id: 'share', label: 'Share', icon: Share2 },
 ];
 
 export function ReflectionSection() {
@@ -80,7 +103,14 @@ export function ReflectionSection() {
         {tab === 'entries' && <RfEntriesPanel onChange={refreshDash} />}
         {tab === 'onthisday' && <RfOnThisDayPanel />}
         {tab === 'insights' && <RfInsightsPanel />}
+        {tab === 'analytics' && <RfAnalyticsPanel />}
         {tab === 'prompts' && <RfPromptsPanel onChange={refreshDash} />}
+        {tab === 'studio' && <JournalStudio />}
+        {tab === 'share' && (
+          <PipingProvider>
+            <JournalActionPanel />
+          </PipingProvider>
+        )}
       </div>
     </div>
   );

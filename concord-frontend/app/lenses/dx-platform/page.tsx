@@ -20,6 +20,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DevToolingPulse } from "@/components/dx-platform/DevToolingPulse";
 import { DxWorkbench } from "@/components/dx-platform/DxWorkbench";
+import { SeverityWeightsPanel } from "@/components/dx-platform/SeverityWeightsPanel";
 
 interface OnboardingProgress {
   installed?: { vscode?: boolean; jetbrains?: boolean };
@@ -182,6 +183,12 @@ export default function DxPlatformPage() {
             <li><strong>Council macros</strong> (the small subset that consult the conscious brain for repair suggestions) round-trip to the cloud; you can disable them per-rule via severity weights.</li>
           </ul>
         </section>
+
+        {/* Per-codebase severity weights — the real dx.list_codebases /
+            dx.list_weights registry the "Per-codebase severity" quick-link
+            card above points at (id="severity"). */}
+        <SeverityWeightsPanel />
+
         {/* DX workbench — chat-with-codebase, PR review, search, team
             dashboard, detector config, usage analytics, CI integration */}
         <section aria-labelledby="workbench-heading" className="space-y-3">

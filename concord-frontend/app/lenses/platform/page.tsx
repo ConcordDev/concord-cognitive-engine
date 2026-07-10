@@ -17,24 +17,22 @@ import {
   Activity, Brain, FlaskConical, Layers, Radio,
   BarChart3, Zap, Shield, Database,
   Heart, Clock, CheckCircle, AlertTriangle,
-  ChevronDown, ChevronRight, Eye, Server, Gauge, Play, Loader2, Rocket,
+  ChevronDown, ChevronRight, Eye, Server, Gauge, Rocket,
 } from 'lucide-react';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import PipelineMonitor from '@/components/platform/PipelineMonitor';
 import NerveCenter from '@/components/platform/NerveCenter';
 import EmpiricalGatesPanel from '@/components/platform/EmpiricalGatesPanel';
 import ScopeControls from '@/components/platform/ScopeControls';
 import PlatformConsole from '@/components/platform/PlatformConsole';
+import { PlatformAnalysisPanel } from '@/components/platform/PlatformAnalysisPanel';
 import { usePlatformEvents } from '@/components/platform/usePlatformEvents';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
-type Tab = 'overview' | 'console' | 'pipeline' | 'nerve' | 'empirical' | 'scope' | 'events';
+type Tab = 'overview' | 'console' | 'pipeline' | 'nerve' | 'empirical' | 'scope' | 'events' | 'analysis';
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; desc: string }[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3, desc: 'System-wide dashboard' },
@@ -44,6 +42,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: 'empirical', label: 'Empirical', icon: FlaskConical, desc: 'Math, units, constants' },
   { id: 'scope', label: 'Scopes', icon: Layers, desc: 'Global/Local/Marketplace' },
   { id: 'events', label: 'Live Events', icon: Radio, desc: 'Real-time event stream' },
+  { id: 'analysis', label: 'Analysis', icon: Gauge, desc: 'SLA, capacity planning, incident timeline, dependency map' },
 ];
 
 function EventStreamPanel({ events = [], connected }: { events?: Array<{ type: string; data: Record<string, unknown>; timestamp: string }>; connected: boolean }) {
@@ -340,25 +339,11 @@ export default function PlatformPage() {
       { id: 'tab-empirical', keys: 'e', description: 'Empirical', category: 'navigation', action: () => setActiveTab('empirical') },
       { id: 'tab-scope', keys: 's', description: 'Scope', category: 'navigation', action: () => setActiveTab('scope') },
       { id: 'tab-events', keys: 'v', description: 'Events', category: 'navigation', action: () => setActiveTab('events') },
+      { id: 'tab-analysis', keys: 'g', description: 'Analysis', category: 'navigation', action: () => setActiveTab('analysis') },
     ],
     { lensId: 'platform' }
   );
-  const [showFeatures, setShowFeatures] = useState(true);
   const { events, connected } = usePlatformEvents();
-  const { items: platformItems } = useLensData('platform', 'service', { noSeed: true });
-  const runAction = useRunArtifact('platform');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = platformItems[0]?.id;
-    if (!targetId) { setActionResult({ message: 'No platform service data found. Add service data first.' }); return; }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
 
   return (
     <LensShell lensId="platform" asMain={false}>
@@ -437,6 +422,7 @@ export default function PlatformPage() {
         {activeTab === 'empirical' && <EmpiricalGatesPanel />}
         {activeTab === 'scope' && <ScopeControls />}
         {activeTab === 'events' && <EventStreamPanel events={events} connected={connected} />}
+        {activeTab === 'analysis' && <PlatformAnalysisPanel />}
 
       {/* Real-time Data Panel */}
       {realtimeData && (
@@ -451,121 +437,6 @@ export default function PlatformPage() {
       )}
       </div>
 
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Server className="w-4 h-4 text-neon-blue" />
-          Platform Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'slaCompute', label: 'SLA Compute' },
-            { action: 'capacityPlan', label: 'Capacity Plan' },
-            { action: 'incidentTimeline', label: 'Incident Timeline' },
-            { action: 'dependencyMap', label: 'Dependency Map' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleAction(action)} disabled={!!isRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
-              {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'uptimePercent' in actionResult && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <span className="text-neon-green font-bold text-lg">{String(actionResult.uptimePercent)}%</span>
-                  <span className={`text-xs px-2 py-0.5 rounded ${actionResult.meetsTarget ? 'bg-neon-green/20 text-neon-green' : 'bg-red-400/20 text-red-400'}`}>
-                    {actionResult.meetsTarget ? 'Meets SLA' : 'Below SLA'}
-                  </span>
-                  <span className="text-gray-400 text-xs">{String(actionResult.nines)} nines</span>
-                </div>
-                {'errorBudget' in actionResult && actionResult.errorBudget !== null && typeof actionResult.errorBudget === 'object' && (
-                  <div className="flex flex-wrap gap-3 text-xs">
-                    {Object.entries(actionResult.errorBudget as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-cyan">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'resources' in actionResult && actionResult.resources !== null && typeof actionResult.resources === 'object' && (
-              <div className="space-y-2">
-                <span className="text-gray-400 text-xs">Overall: <span className={`font-bold ${
-                  actionResult.overallHealth === 'healthy' ? 'text-neon-green' :
-                  actionResult.overallHealth === 'warning' ? 'text-yellow-400' : 'text-red-400'
-                }`}>{String(actionResult.overallHealth)}</span></span>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  {Object.entries(actionResult.resources as Record<string, unknown>).map(([k, v]) => (
-                    v && typeof v === 'object' ? (
-                      <div key={k} className="bg-lattice-surface rounded px-2 py-1">
-                        <span className="text-gray-400 uppercase text-[10px]">{k}</span>
-                        <div className="flex gap-2 text-xs mt-0.5">
-                          {Object.entries(v as Record<string, unknown>).map(([ik, iv]) => (
-                            <span key={ik} className="text-gray-300">{ik}: <span className="text-neon-cyan">{String(iv)}</span></span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null
-                  ))}
-                </div>
-              </div>
-            )}
-            {'timeline' in actionResult && Array.isArray(actionResult.timeline) && (
-              <div className="space-y-2">
-                <span className="text-gray-400 text-xs">Timeline events: <span className="text-neon-cyan">{String((actionResult.timeline as unknown[]).length)}</span></span>
-                {'cascades' in actionResult && Array.isArray(actionResult.cascades) && actionResult.cascades.length > 0 && (
-                  <div>
-                    <p className="text-xs text-red-400 font-semibold mb-1">Cascades</p>
-                    {(actionResult.cascades as Array<Record<string, unknown>>).map((c, i) => (
-                      <div key={i} className="text-xs bg-red-400/10 border border-red-400/20 rounded px-2 py-1 mb-1 text-red-400">
-                        {String(c.trigger || c.event)}: {String(c.affected || '')}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'healthScore' in actionResult && 'singlePointsOfFailure' in actionResult && (
-              <div className="space-y-2">
-                <span className="text-neon-cyan font-bold">Health: {String(actionResult.healthScore)}%</span>
-                {'singlePointsOfFailure' in actionResult && Array.isArray(actionResult.singlePointsOfFailure) && actionResult.singlePointsOfFailure.length > 0 && (
-                  <div>
-                    <p className="text-xs text-red-400 font-semibold mb-1">Single Points of Failure</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(actionResult.singlePointsOfFailure as Array<{service: string; dependentCount: number; dependents: string[]; tier: string}>).map((s, i) => (
-                        <span key={i} className="text-xs bg-red-400/10 border border-red-400/20 rounded px-2 py-0.5 text-red-400">{s.service} ({s.dependentCount})</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
-          </div>
-        )}
-      </div>
-
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="platform" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PlatformRepos />
       </section>

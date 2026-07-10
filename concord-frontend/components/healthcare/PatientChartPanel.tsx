@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardList, Loader2, Plus, Search } from 'lucide-react';
+import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardList, Loader2, Plus, Search, Pencil, X, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface Patient { id: string; mrn: string; firstName: string; lastName: string; dob: string; sex: string; phone: string; email: string; insurancePlan: string; address: string }
+interface Patient { id: string; mrn: string; firstName: string; lastName: string; dob: string; sex: string; phone: string; email: string; insurancePlan: string; insuranceMemberId?: string; address: string; emergencyContact?: string; preferredPharmacy?: string }
 interface Problem { id: string; name: string; icd10: string; status: 'active' | 'resolved' | 'inactive'; onsetDate: string; resolvedDate: string | null }
 interface Allergy { id: string; allergen: string; kind: string; severity: 'mild' | 'moderate' | 'severe' | 'life_threatening'; reaction: string }
 interface Vital { id: string; recordedAt: string; systolic: number | null; diastolic: number | null; heartRate: number | null; tempF: number | null; spo2: number | null; weightLb: number | null; heightIn: number | null; bmi?: number; flags: string[] }
@@ -56,6 +56,13 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   const [showVitalsForm, setShowVitalsForm] = useState(false);
   const [labDraft, setLabDraft] = useState({ test: 'glucose', value: '' });
   const [showLabForm, setShowLabForm] = useState(false);
+  const [knownTests, setKnownTests] = useState<{ test: string; unit: string; low: number; high: number }[]>([]);
+  // healthcare.patients-update — was a real macro with no editor anywhere:
+  // a patient's demographics/contact/insurance could be created once
+  // (patients-create) but never corrected.
+  const [editingPatient, setEditingPatient] = useState(false);
+  const [patientDraft, setPatientDraft] = useState<Partial<Patient>>({});
+  const [savingPatient, setSavingPatient] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only patientId should retrigger
   useEffect(() => { refresh(); }, [patientId]);
@@ -63,10 +70,31 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const r = await lensRun({ domain: 'healthcare', action: 'patients-detail', input: { id: patientId } });
+      const [r, kt] = await Promise.all([
+        lensRun({ domain: 'healthcare', action: 'patients-detail', input: { id: patientId } }),
+        lensRun<{ tests: { test: string; unit: string; low: number; high: number }[] }>({ domain: 'healthcare', action: 'labs-known-tests', input: {} }),
+      ]);
       setData((r.data?.result as ChartDetail) || null);
+      if (kt.data?.ok && kt.data.result?.tests?.length) setKnownTests(kt.data.result.tests);
     } catch (e) { console.error('[Chart] failed', e); }
     finally { setLoading(false); }
+  }
+
+  function startEditPatient() {
+    if (!data) return;
+    setPatientDraft({ ...data.patient });
+    setEditingPatient(true);
+  }
+  async function savePatient() {
+    if (!data) return;
+    setSavingPatient(true);
+    try {
+      const r = await lensRun({ domain: 'healthcare', action: 'patients-update', input: { id: data.patient.id, ...patientDraft } });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      setEditingPatient(false);
+      await refresh();
+    } catch (e) { console.error('[Chart] patients-update', e); }
+    finally { setSavingPatient(false); }
   }
 
   async function lookupICD(q: string) {
@@ -162,9 +190,31 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
           </div>
           <div className="col-span-2"><div className="text-[10px] text-gray-400">DOB / Age</div><div className="text-xs text-white">{p.dob || '—'}</div></div>
           <div className="col-span-1"><div className="text-[10px] text-gray-400">Sex</div><div className="text-xs text-white">{p.sex}</div></div>
-          <div className="col-span-3"><div className="text-[10px] text-gray-400">Phone / Email</div><div className="text-xs text-white truncate">{p.phone || '—'} {p.email && `· ${p.email}`}</div></div>
+          <div className="col-span-2"><div className="text-[10px] text-gray-400">Phone / Email</div><div className="text-xs text-white truncate">{p.phone || '—'} {p.email && `· ${p.email}`}</div></div>
           <div className="col-span-3"><div className="text-[10px] text-gray-400">Insurance</div><div className="text-xs text-white truncate">{p.insurancePlan || '—'}</div></div>
+          <div className="col-span-1 flex justify-end">
+            <button onClick={startEditPatient} aria-label="Edit patient" className="p-1.5 rounded text-gray-400 hover:text-cyan-300 hover:bg-white/5">
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
+
+        {editingPatient && (
+          <div className="mt-2 border border-white/10 rounded p-3 grid grid-cols-4 gap-2 bg-black/30">
+            <input value={patientDraft.phone || ''} onChange={e => setPatientDraft({ ...patientDraft, phone: e.target.value })} placeholder="Phone" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.email || ''} onChange={e => setPatientDraft({ ...patientDraft, email: e.target.value })} placeholder="Email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.address || ''} onChange={e => setPatientDraft({ ...patientDraft, address: e.target.value })} placeholder="Address" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.insurancePlan || ''} onChange={e => setPatientDraft({ ...patientDraft, insurancePlan: e.target.value })} placeholder="Insurance plan" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.insuranceMemberId || ''} onChange={e => setPatientDraft({ ...patientDraft, insuranceMemberId: e.target.value })} placeholder="Member ID" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.emergencyContact || ''} onChange={e => setPatientDraft({ ...patientDraft, emergencyContact: e.target.value })} placeholder="Emergency contact" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.preferredPharmacy || ''} onChange={e => setPatientDraft({ ...patientDraft, preferredPharmacy: e.target.value })} placeholder="Preferred pharmacy" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <div className="col-span-4 flex items-center gap-2 justify-end">
+              <button onClick={() => setEditingPatient(false)} className="px-2.5 py-1 text-xs rounded text-gray-400 hover:text-white inline-flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
+              <button onClick={savePatient} disabled={savingPatient} className="px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center gap-1"><Check className="w-3 h-3" />{savingPatient ? 'Saving…' : 'Save'}</button>
+            </div>
+          </div>
+        )}
+
         {/* Critical alerts row */}
         {(lifeThreatAllergies.length > 0 || criticalLabs.length > 0) && (
           <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -363,10 +413,16 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
               {showLabForm && (
                 <div className="border border-white/10 rounded p-3 grid grid-cols-12 gap-2 bg-black/30">
                   <select value={labDraft.test} onChange={e => setLabDraft({ ...labDraft, test: e.target.value })} className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
-                    {KNOWN_TESTS.map(t => <option key={t} value={t}>{t}</option>)}
+                    {(knownTests.length > 0 ? knownTests.map(t => t.test) : KNOWN_TESTS).map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                   <input type="number" step="0.01" value={labDraft.value} onChange={e => setLabDraft({ ...labDraft, value: e.target.value })} placeholder="Value *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
                   <button onClick={recordLab} className="col-span-3 px-2 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Save</button>
+                  {(() => {
+                    const range = knownTests.find(t => t.test === labDraft.test);
+                    return range ? (
+                      <p className="col-span-12 text-[10px] text-gray-400">Reference range: {range.low}–{range.high} {range.unit}</p>
+                    ) : null;
+                  })()}
                 </div>
               )}
               {data.labs.length === 0 ? (

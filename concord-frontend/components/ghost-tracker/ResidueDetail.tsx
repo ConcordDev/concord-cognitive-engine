@@ -4,9 +4,12 @@
 
 /**
  * ResidueDetail — full investigation view for a single spectral residue.
- * Mounts ghost-hunt.detail (context + hints + map coords + reward) and the
+ * Mounts ghost-hunt.detail (context + hints + map coords + reward), the
  * multi-stage hunt chain (track → investigate → confront) driven by
- * ghost-hunt.advance and ghost-hunt.confront.
+ * ghost-hunt.advance and ghost-hunt.confront, and — once the hunt has moved
+ * past 'track' — a "Save case file" form that mints a real Spectral Dossier
+ * DTU via ghost-hunt.create (the lens's persistent artifact; previously
+ * registered at the backend but never called from anywhere in the frontend).
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -50,6 +53,13 @@ interface ConfrontResult {
   stage?: string;
 }
 
+interface CreateDossierResult {
+  ok: boolean;
+  dtuId?: string;
+  title?: string;
+  reason?: string;
+}
+
 export function ResidueDetail({
   residueId,
   onClose,
@@ -64,6 +74,13 @@ export function ResidueDetail({
   const [acting, setActing] = useState(false);
   const [lastConfront, setLastConfront] = useState<ConfrontResult | null>(null);
 
+  const [showDossierForm, setShowDossierForm] = useState(false);
+  const [dossierTitle, setDossierTitle] = useState('');
+  const [dossierNotes, setDossierNotes] = useState('');
+  const [dossierVisibility, setDossierVisibility] = useState<'private' | 'public'>('private');
+  const [savingDossier, setSavingDossier] = useState(false);
+  const [savedDossier, setSavedDossier] = useState<CreateDossierResult | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     const r = await lensRun<DetailResult>('ghost-hunt', 'detail', { residueId });
@@ -71,8 +88,13 @@ export function ResidueDetail({
     setLoading(false);
   }, [residueId]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [residueId]);
+  useEffect(() => {
+    load();
+    setShowDossierForm(false);
+    setSavedDossier(null);
+    setDossierTitle('');
+    setDossierNotes('');
+  }, [residueId, load]);
 
   const advance = useCallback(async () => {
     setActing(true);
@@ -91,6 +113,22 @@ export function ResidueDetail({
     onChanged();
     setActing(false);
   }, [residueId, load, onChanged]);
+
+  const saveDossier = useCallback(async () => {
+    setSavingDossier(true);
+    const r = await lensRun<CreateDossierResult>('ghost-hunt', 'create', {
+      residueId,
+      title: dossierTitle.trim() || undefined,
+      notes: dossierNotes.trim() || undefined,
+      visibility: dossierVisibility,
+    });
+    setSavedDossier(r.data.result);
+    if (r.data.result?.ok) {
+      setShowDossierForm(false);
+      onChanged();
+    }
+    setSavingDossier(false);
+  }, [residueId, dossierTitle, dossierNotes, dossierVisibility, onChanged]);
 
   const r = data?.residue;
   const stage = data?.stage || 'track';
@@ -219,6 +257,102 @@ export function ResidueDetail({
                 </span>
               )}
             </div>
+
+            {/* Save case file — mints a real Spectral Dossier DTU via
+                ghost-hunt.create. Gated on having actually engaged the
+                residue (past track), so a hunter files a case on
+                something they've investigated, not a bare listing. */}
+            {stage !== 'track' && (
+              <div className="mt-5 border-t border-white/10 pt-4">
+                {!showDossierForm && !savedDossier && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDossierForm(true)}
+                    className="rounded border border-amber-500/40 bg-amber-900/15 px-4 py-2 text-sm text-amber-200 hover:bg-amber-900/25"
+                  >
+                    Save case file
+                  </button>
+                )}
+
+                {showDossierForm && (
+                  <div className="space-y-2 rounded border border-amber-600/25 bg-amber-950/10 p-3">
+                    <div className="text-xs uppercase tracking-wide text-amber-300">New Spectral Dossier</div>
+                    <input
+                      type="text"
+                      value={dossierTitle}
+                      onChange={(e) => setDossierTitle(e.target.value)}
+                      placeholder={`Spectral Dossier — ${r.drift_type} (${r.severity})`}
+                      maxLength={200}
+                      className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-gray-600"
+                    />
+                    <textarea
+                      value={dossierNotes}
+                      onChange={(e) => setDossierNotes(e.target.value)}
+                      placeholder="Field notes (optional)…"
+                      rows={3}
+                      maxLength={4000}
+                      className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-gray-600"
+                    />
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 text-xs text-gray-400">
+                        <span>Visibility</span>
+                        <select
+                          value={dossierVisibility}
+                          onChange={(e) => setDossierVisibility(e.target.value as 'private' | 'public')}
+                          className="rounded border border-zinc-700 bg-zinc-950 px-1.5 py-1 text-xs text-white"
+                        >
+                          <option value="private">Private</option>
+                          <option value="public">Public</option>
+                        </select>
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowDossierForm(false)}
+                          className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-100"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={savingDossier}
+                          onClick={saveDossier}
+                          className="rounded border border-amber-500/40 bg-amber-600/30 px-3 py-1.5 text-xs text-amber-100 hover:bg-amber-600/50 disabled:opacity-50"
+                        >
+                          {savingDossier ? 'Saving…' : 'Save dossier'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {savedDossier && (
+                  savedDossier.ok ? (
+                    <div className="rounded border border-emerald-600/30 bg-emerald-900/15 px-3 py-2 text-xs text-emerald-200">
+                      Case file saved: “{savedDossier.title}”.{' '}
+                      <button
+                        type="button"
+                        onClick={() => setSavedDossier(null)}
+                        className="ml-1 underline hover:text-emerald-100"
+                      >
+                        Save another
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded border border-rose-600/30 bg-rose-900/15 px-3 py-2 text-xs text-rose-200">
+                      Could not save the case file ({savedDossier.reason || 'unknown error'}).{' '}
+                      <button
+                        type="button"
+                        onClick={() => { setSavedDossier(null); setShowDossierForm(true); }}
+                        className="ml-1 underline hover:text-rose-100"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

@@ -57,7 +57,7 @@ interface Tip { kind: 'lore' | 'gameplay'; text: string }
 // Founding Compact, the Purge, the Trade Wars, the Gate Crisis, etc. They're
 // authored for the load screen specifically: shorter than the full lore
 // entries, written to land on a player who hasn't read any of it yet.
-const loreTips: string[] = [
+export const loreTips: string[] = [
   'The Founding Compact has held for seventy-five years. Some of it has been honored.',
   'The Wardens closed the investigation into the burning of the Scholars\' archive in four days.',
   'The locks on the Scholars\' vaults were opened from the outside. No one has answered for it yet.',
@@ -77,7 +77,7 @@ const loreTips: string[] = [
   'A merchant who refuses the Compact is asked to leave. A merchant who agrees but doesn\'t mean it is allowed to stay.',
 ];
 
-const gameplayTips: string[] = [
+export const gameplayTips: string[] = [
   'Buildings cited by other creators earn passive royalties.',
   'Infrastructure must be validated before it becomes permanent.',
   'The Exchange is the busiest trading district in Concordia.',

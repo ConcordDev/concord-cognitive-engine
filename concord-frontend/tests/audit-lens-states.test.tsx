@@ -17,6 +17,19 @@
  * No fabricated data: every state is driven by a mocked useQuery standing in for
  * the real /api/events backend in the exact shape the page consumes
  * ({ data, isLoading, isError, error, refetch }).
+ *
+ * Frontend Rebuild Program, Wave 2 note (2026-07-09): the page used to also
+ * mount a "Backend Audit Actions" panel driving complianceCheck/trailAnalysis/
+ * riskScore/samplingPlan off a generic per-domain artifact store
+ * (useLensData('audit','entry') + useRunArtifact('audit')) that was never
+ * populated by anything real — every click ran those macros against an
+ * artifact whose `.data` never carried the `records`/`rules`/`events`/
+ * `controls` shape the macros actually read, so it always degraded to the
+ * macro's own empty-input branch. The real, already-shipped surface for
+ * those four macros is `AuditActionPanel` (a JSON-input bench wired directly
+ * via `apiHelpers.lens.runDomain`), already mounted lower on the page — the
+ * duplicate generic-store panel was removed rather than fixed forward, since
+ * it added no capability the real panel didn't already have.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -41,23 +54,6 @@ vi.mock('@tanstack/react-query', () => ({
     refetch,
   }),
   useMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
-}));
-
-// ── compute-action channel: useRunArtifact mutate (audit domain wiring) ──────
-const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
-const useRunArtifactSpy = vi.fn();
-
-// ── audit-store list (drives the "actions available once entries present") ───
-const lensDataState: { items: unknown[] } = { items: [] };
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  useLensData: () => ({
-    items: lensDataState.items,
-    total: lensDataState.items.length,
-    isLoading: false, isError: false, error: null, isSeeding: false,
-    refetch: vi.fn(),
-    create: vi.fn(() => Promise.resolve({})), update: vi.fn(() => Promise.resolve({})), remove: vi.fn(() => Promise.resolve({})),
-    createMut: { isPending: false }, updateMut: { isPending: false }, deleteMut: { isPending: false },
-  }),
 }));
 
 vi.mock('@/lib/api/client', () => ({
@@ -91,10 +87,6 @@ vi.mock('@/components/audit/CveSearch', () => ({ CveSearch: () => null }));
 vi.mock('@/components/audit/AuditActionPanel', () => ({ AuditActionPanel: () => null }));
 vi.mock('@/components/audit/ComplianceSuite', () => ({ ComplianceSuite: () => null }));
 vi.mock('@/components/panel-polish', () => ({ PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children) }));
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: (domain: string) => { useRunArtifactSpy(domain); return { mutateAsync: (...a: unknown[]) => runMutate(...a), mutate: vi.fn(), isPending: false }; },
-  useCreateArtifact: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
-}));
 
 // ErrorState is a real component (renders "Something went wrong" + a Try again
 // button) — the page wraps it in a role="alert" container, so we keep it real.
@@ -122,19 +114,11 @@ beforeEach(() => {
   eventsState.isLoading = false;
   eventsState.isError = false;
   eventsState.error = null;
-  lensDataState.items = [];
   refetch.mockReset();
-  runMutate.mockClear();
-  useRunArtifactSpy.mockClear();
   window.localStorage.clear();
 });
 
 describe('audit lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the audit domain', () => {
-    render(<AuditLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('audit');
-  });
-
   it('LOADING: an in-flight /api/events feed shows a role=status indicator', async () => {
     eventsState.isLoading = true;
     const { container } = render(<AuditLensPage />);
@@ -163,8 +147,6 @@ describe('audit lens — four UX states', () => {
     // the DTU chain renders an honest empty line, not a fake genesis node.
     expect(getByText(/No DTU chain entries yet/i)).toBeInTheDocument();
     expect(queryByText(/Genesis Block/i)).toBeNull();
-    // actions are gated honestly until store entries exist.
-    expect(getByText(/No audit entries in store yet/i)).toBeInTheDocument();
   });
 
   it('POPULATED: real events render their action label', async () => {

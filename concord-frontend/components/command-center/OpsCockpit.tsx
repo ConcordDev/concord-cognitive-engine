@@ -18,6 +18,7 @@ import { TimelineView, type TimelineEvent } from '@/components/viz/TimelineView'
 import {
   Activity, AlertTriangle, BarChart3, GitBranch, LayoutDashboard,
   Network, Play, Plus, ShieldCheck, Trash2, Check, BellOff, FileText,
+  Radar, Share2, ArrowUpCircle, RefreshCw,
 } from 'lucide-react';
 
 // ── Domain types ─────────────────────────────────────────────────────────────
@@ -55,6 +56,49 @@ interface RunbookExecution { id: string; finishedAt: string; stepCount: number; 
 interface Runbook {
   id: string; name: string; trigger: string | null; steps: RunbookStep[];
   runCount: number; lastRunAt: string | null; executions: RunbookExecution[];
+}
+interface FeedSeverityBreakdown { critical: number; high: number; medium: number; low: number }
+interface FeedSummary {
+  source: string; status: string; totalItems: number; unresolvedCount: number;
+  resolvedCount: number; health: number; severityBreakdown: FeedSeverityBreakdown;
+}
+interface SitrepCriticalItem { id?: string; severity?: string; description?: string; source?: string }
+interface SitrepResult {
+  message?: string;
+  overallStatus?: 'RED' | 'AMBER' | 'YELLOW' | 'GREEN';
+  readinessScore?: number;
+  readinessLabel?: string;
+  feeds?: FeedSummary[];
+  criticalItems?: { count: number; items: SitrepCriticalItem[] };
+  totals?: { allItems: number; unresolved: number; resolved: number; resolutionRate: number };
+  tempo?: { itemsPerHour: number; spanHours: number } | null;
+  crossSourceIssues?: { sources: string[]; potentialOverlaps: number }[];
+  generatedAt?: string;
+}
+interface IncidentCorrelationPair {
+  incidentA: string; incidentB: string; correlation: number;
+  matchedAttributes: string[]; timeDeltaMs: number | null;
+}
+interface IncidentCorrelationResult {
+  message?: string;
+  totalIncidents?: number;
+  correlationsFound?: number;
+  correlations?: IncidentCorrelationPair[];
+  clusters?: { clusterId: number; memberCount: number; members: string[] }[];
+  uncorrelatedCount?: number;
+}
+interface EscalationLevelEntry {
+  level: number; label?: string; responders?: string[];
+  slaMinutes?: number; thresholdMinutes?: number; triggered: boolean; triggerReason?: string | null;
+}
+interface EscalationResult {
+  incidentId?: string;
+  severity: string;
+  urgencyScore: number;
+  urgencyLabel: string;
+  sla: { totalMinutes: number; elapsedMinutes: number; remainingMinutes: number; percentUsed: number; breached: boolean };
+  escalation: { currentLevel: number; maxLevel: number; path: EscalationLevelEntry[] };
+  recommendedActions: string[];
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -717,6 +761,251 @@ function RunbooksSection() {
   );
 }
 
+// ── 8 — Situation Room: sitrep, incident correlation, escalation analysis ──
+// These three macros (situationReport / incidentCorrelation / escalationEngine)
+// take structured batch input (feeds / incidents / an incident+policy) rather
+// than a single record, so — unlike the sections above — they're driven from
+// a REAL snapshot of this operator's own alert rules + incident timeline
+// (re-fetched fresh on each run), never user-typed or fabricated numbers.
+
+const STATUS_TONE_SITREP: Record<string, string> = {
+  RED: 'text-red-400 border-red-500/30 bg-red-500/5',
+  AMBER: 'text-orange-400 border-orange-500/30 bg-orange-500/5',
+  YELLOW: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/5',
+  GREEN: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5',
+};
+
+function SituationRoomSection() {
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+
+  const [sitrep, setSitrep] = useState<SitrepResult | null>(null);
+  const [sitrepLoading, setSitrepLoading] = useState(false);
+
+  const [correlation, setCorrelation] = useState<IncidentCorrelationResult | null>(null);
+  const [correlationLoading, setCorrelationLoading] = useState(false);
+
+  const [selectedIncidentId, setSelectedIncidentId] = useState('');
+  const [escalation, setEscalation] = useState<EscalationResult | null>(null);
+  const [escalationLoading, setEscalationLoading] = useState(false);
+
+  // Loads the operator's live incidents + alert rules — the shared source
+  // material for all three analyses below. Runs on mount so the incident
+  // picker (for escalation analysis) is populated without an extra click.
+  const loadSources = useCallback(async () => {
+    const [incRes, ruleRes] = await Promise.all([
+      run<{ incidents: Incident[] }>('listIncidents'),
+      run<{ rules: AlertRule[] }>('listAlertRules'),
+    ]);
+    const liveIncidents = incRes?.incidents ?? [];
+    setIncidents(liveIncidents);
+    // Functional update so a refresh never clobbers an operator's manual pick
+    // in the escalation dropdown below (this callback is memoized once, so a
+    // closed-over `selectedIncidentId` would always read its mount-time value).
+    if (liveIncidents.length > 0) {
+      setSelectedIncidentId((prev) => (prev && liveIncidents.some((i) => i.id === prev)) ? prev : liveIncidents[0].id);
+    }
+    return { liveIncidents, liveRules: ruleRes?.rules ?? [] };
+  }, []);
+  useEffect(() => { loadSources(); }, [loadSources]);
+
+  const generateSitrep = useCallback(async () => {
+    setSitrepLoading(true);
+    const { liveIncidents, liveRules } = await loadSources();
+    const feeds: Array<{ source: string; status: string; items: Array<{ id: string; severity: string; description: string; timestamp?: string; resolved: boolean }> }> = [];
+    if (liveRules.length > 0) {
+      feeds.push({
+        source: 'alert-rules',
+        status: liveRules.some((r) => r.state === 'breaching' && !r.acknowledged) ? 'degraded' : 'nominal',
+        items: liveRules.map((r) => ({
+          id: r.id, severity: r.severity, description: `${r.name} (${r.metric} ${r.comparator} ${r.threshold})`,
+          timestamp: r.lastFiredAt || undefined, resolved: r.state !== 'breaching',
+        })),
+      });
+    }
+    if (liveIncidents.length > 0) {
+      feeds.push({
+        source: 'incidents',
+        status: liveIncidents.some((i) => i.status !== 'resolved') ? 'degraded' : 'nominal',
+        items: liveIncidents.map((i) => ({
+          id: i.id, severity: i.severity, description: i.title,
+          timestamp: i.openedAt, resolved: i.status === 'resolved',
+        })),
+      });
+    }
+    const r = await run<SitrepResult>('situationReport', { feeds });
+    setSitrep(r);
+    setSitrepLoading(false);
+  }, [loadSources]);
+
+  const correlateIncidentsNow = useCallback(async () => {
+    setCorrelationLoading(true);
+    const { liveIncidents } = await loadSources();
+    const payload = liveIncidents.map((i) => ({
+      id: i.id, source: 'incidents', timestamp: i.openedAt,
+      attributes: { status: i.status, severity: i.severity },
+      severity: i.severity, description: i.title,
+    }));
+    const r = await run<IncidentCorrelationResult>('incidentCorrelation', { incidents: payload });
+    setCorrelation(r);
+    setCorrelationLoading(false);
+  }, [loadSources]);
+
+  const analyzeEscalation = useCallback(async () => {
+    if (!selectedIncidentId) return;
+    setEscalationLoading(true);
+    const incident = incidents.find((i) => i.id === selectedIncidentId);
+    if (!incident) { setEscalationLoading(false); return; }
+    const r = await run<EscalationResult>('escalationEngine', {
+      incident: { id: incident.id, severity: incident.severity, createdAt: incident.openedAt, description: incident.title },
+    });
+    setEscalation(r);
+    setEscalationLoading(false);
+  }, [selectedIncidentId, incidents]);
+
+  return (
+    <section className="space-y-5">
+      <h4 className="text-xs font-semibold uppercase tracking-wider text-cyan-500/70 flex items-center gap-2">
+        <Radar className="w-3.5 h-3.5" /> Situation Room
+      </h4>
+
+      {/* Situation report */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-cyan-600/60">Rolls alert rules + incidents into one cross-source sitrep.</p>
+          <button
+            onClick={generateSitrep}
+            disabled={sitrepLoading}
+            className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 disabled:opacity-50"
+          >
+            {sitrepLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Radar className="w-3 h-3" />} Generate Situation Report
+          </button>
+        </div>
+        {sitrep?.message && <p className="text-xs text-cyan-700/50 py-1">{sitrep.message}</p>}
+        {sitrep?.overallStatus && (
+          <div className={`rounded-lg border p-3 space-y-2 ${STATUS_TONE_SITREP[sitrep.overallStatus]}`}>
+            <div className="flex items-center gap-3">
+              <span className="text-xl font-mono font-bold">{sitrep.overallStatus}</span>
+              <span className="text-sm">readiness {sitrep.readinessScore} — {sitrep.readinessLabel}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(sitrep.feeds ?? []).map((f) => (
+                <span key={f.source} className="text-[10px] bg-[#0a0f18] border border-cyan-900/30 rounded-full px-2 py-0.5 text-cyan-300/80">
+                  {f.source}: {f.health}/100 health · {f.unresolvedCount} open
+                </span>
+              ))}
+            </div>
+            {(sitrep.criticalItems?.items?.length ?? 0) > 0 && (
+              <div className="space-y-1">
+                <p className="text-[10px] uppercase tracking-wider text-cyan-600/60">Critical items</p>
+                {sitrep.criticalItems!.items.slice(0, 8).map((it, i) => (
+                  <div key={it.id || i} className="text-[11px] bg-[#0a0f18] rounded p-1.5 border border-cyan-900/20 flex items-center gap-2">
+                    <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded border ${SEV_COLOR[it.severity || 'medium']}`}>{it.severity}</span>
+                    <span className="text-cyan-100 truncate flex-1">{it.description}</span>
+                    <span className="text-cyan-700/50">{it.source}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {sitrep.tempo && (
+              <p className="text-[10px] text-cyan-600/60">tempo: {sitrep.tempo.itemsPerHour} items/hr over {sitrep.tempo.spanHours}h</p>
+            )}
+            {(sitrep.crossSourceIssues?.length ?? 0) > 0 && (
+              <p className="text-[10px] text-amber-400">
+                {sitrep.crossSourceIssues!.length} possible cross-source overlap{sitrep.crossSourceIssues!.length !== 1 ? 's' : ''} detected (similar descriptions across sources).
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Incident correlation */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-cyan-600/60">Correlates the incidents above by time, shared attributes, and description.</p>
+          <button
+            onClick={correlateIncidentsNow}
+            disabled={correlationLoading}
+            className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 disabled:opacity-50"
+          >
+            {correlationLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Share2 className="w-3 h-3" />} Correlate Incidents
+          </button>
+        </div>
+        {correlation?.message && <p className="text-xs text-cyan-700/50 py-1">{correlation.message}</p>}
+        {correlation && !correlation.message && (
+          <div className="space-y-1.5">
+            <p className="text-[11px] text-cyan-600/60">
+              {correlation.correlationsFound} correlation{correlation.correlationsFound !== 1 ? 's' : ''} across {correlation.totalIncidents} incidents ·{' '}
+              {(correlation.clusters ?? []).length} cluster{(correlation.clusters ?? []).length !== 1 ? 's' : ''} · {correlation.uncorrelatedCount} standalone
+            </p>
+            {(correlation.correlations ?? []).slice(0, 6).map((c, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs bg-[#0a0f18] rounded-lg border border-cyan-900/25 p-2">
+                <span className="text-cyan-100 font-mono truncate max-w-[8rem]">{c.incidentA}</span>
+                <span className="text-cyan-700/50">↔</span>
+                <span className="text-cyan-100 font-mono truncate max-w-[8rem]">{c.incidentB}</span>
+                <span className="ml-auto font-mono text-cyan-300">r={c.correlation}</span>
+                {c.matchedAttributes.length > 0 && <span className="text-[10px] text-cyan-700/50">{c.matchedAttributes.join(', ')}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Escalation analysis */}
+      <div className="space-y-2">
+        <p className="text-[11px] text-cyan-600/60">Pick an open incident and compute its SLA / escalation path.</p>
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label="Incident">
+            <select
+              className={inputCls}
+              value={selectedIncidentId}
+              onChange={(e) => setSelectedIncidentId(e.target.value)}
+              disabled={incidents.length === 0}
+            >
+              {incidents.length === 0 && <option value="">no incidents yet</option>}
+              {incidents.map((i) => (
+                <option key={i.id} value={i.id}>{i.title} ({i.severity}, {i.status})</option>
+              ))}
+            </select>
+          </Field>
+          <button
+            onClick={analyzeEscalation}
+            disabled={escalationLoading || !selectedIncidentId}
+            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 disabled:opacity-40"
+          >
+            {escalationLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ArrowUpCircle className="w-3 h-3" />} Analyze Escalation
+          </button>
+        </div>
+        {escalation && (
+          <div className="rounded-lg border border-cyan-900/25 bg-[#0a0f18] p-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-mono font-bold text-cyan-100">{escalation.urgencyScore}</span>
+              <span className={`text-xs uppercase px-1.5 py-0.5 rounded border ${SEV_COLOR[escalation.severity] || SEV_COLOR.medium}`}>{escalation.urgencyLabel} urgency</span>
+              <span className="text-[10px] text-cyan-600/60 ml-auto">
+                SLA {escalation.sla.percentUsed}% used {escalation.sla.breached ? '(BREACHED)' : `(${escalation.sla.remainingMinutes}m left)`}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {escalation.escalation.path.map((lvl, i) => (
+                <span
+                  key={i}
+                  className={`text-[10px] rounded-full px-2 py-0.5 border ${lvl.triggered ? 'border-red-500/40 text-red-300 bg-red-500/10' : 'border-cyan-900/30 text-cyan-600/60'}`}
+                >
+                  L{lvl.level}{lvl.label ? ` ${lvl.label}` : ''}{lvl.triggered ? ' ●' : ''}
+                </span>
+              ))}
+            </div>
+            {escalation.recommendedActions.length > 0 && (
+              <ul className="text-[11px] text-cyan-300/80 list-disc ml-4 space-y-0.5">
+                {escalation.recommendedActions.map((a, i) => <li key={i}>{a}</li>)}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ── Cockpit shell ────────────────────────────────────────────────────────────
 
 export function OpsCockpit() {
@@ -738,6 +1027,7 @@ export function OpsCockpit() {
       <CorrelationSection />
       <DashboardsSection />
       <RunbooksSection />
+      <SituationRoomSection />
     </div>
   );
 }

@@ -8,8 +8,9 @@
  * surfaces the FULL FIREHOSE of substrate emits: combat, quests, NPCs,
  * world-state, cross-world plots, cognition.
  *
- * Activity-feed parity surface — every panel here is backed by a real
- * `event_timeline` macro:
+ * Activity-feed parity surface — every panel that renders substrate data
+ * is backed by a real `event_timeline` macro (all 11 registered in
+ * server/domains/event-timeline.js are wired below):
  *   - recent       — live paged feed (5s poll / live-tail)
  *   - stats        — per-channel 24h counts
  *   - channels     — distinct channels for the filter chips
@@ -19,6 +20,15 @@
  *   - timeseries   — per-channel trend sparklines (ChannelTrends)
  *   - exportEvents — filtered slice → CSV / JSON download
  *   - saveView / listViews / deleteView — per-user filter presets
+ *
+ * The `OnThisDay` section at the bottom is deliberately NOT one of these
+ * — it queries Wikipedia's public /feed/onthisday REST API directly
+ * (real, honestly-labeled external data, not a `event_timeline` macro)
+ * and lets the user capture an entry into their own DTU corpus via
+ * SaveAsDtuButton (provenance-stamped ingest: apiSource/apiUrl/rawData).
+ * It shares the "on this day" concept with `history/WikipediaOnThisDayPanel`
+ * and `reflection/RfOnThisDayPanel` — see the capability map at
+ * docs/lens-specs/event-timeline-capability-map.md for the full note.
  */
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors.
 // Empty state: handled inline when data is empty.
