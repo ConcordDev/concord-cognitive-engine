@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Video, Film, Camera } from 'lucide-react';
+import { Loader2, Plus, Trash2, Video, Film, Camera, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +37,8 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
   const [form, setForm] = useState({ name: '', kind: 'video', camera: '', sourceUrl: '', proxyUrl: '' });
   const [grpName, setGrpName] = useState('');
   const [grpPick, setGrpPick] = useState<string[]>([]);
+  const [analyzing, setAnalyzing] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     const [mr, gr] = await Promise.all([
@@ -74,6 +76,20 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
     await lensRun('film-studios', 'media-delete', { id });
     setGrpPick((p) => p.filter((x) => x !== id));
     await refresh();
+  };
+
+  // LLaVA vision analysis of a still/poster image — real macro
+  // (film-studios.vision), previously unwired anywhere in the lens.
+  const analyzeImage = async (m: Media) => {
+    if (!m.sourceUrl) return;
+    setAnalyzing(m.id);
+    const r = await lensRun<{ content?: string; error?: string }>('film-studios', 'vision', { imageUrl: m.sourceUrl });
+    setAnalyzing(null);
+    if (r.data?.ok && r.data.result?.content) {
+      setAnalysis((a) => ({ ...a, [m.id]: r.data.result!.content as string }));
+    } else {
+      setAnalysis((a) => ({ ...a, [m.id]: `Analysis unavailable: ${r.data?.error || r.data?.result?.error || 'vision service unreachable'}` }));
+    }
   };
 
   const toggleGrpPick = (id: string) => {
@@ -144,7 +160,8 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
         ) : (
           <ul className="space-y-1.5">
             {media.map((m) => (
-              <li key={m.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
+              <li key={m.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 space-y-1.5">
+                <div className="flex items-center gap-2">
                 <input type="checkbox" checked={grpPick.includes(m.id)} onChange={() => toggleGrpPick(m.id)}
                   className="accent-fuchsia-500" aria-label={`Select ${m.name} for multicam group`} />
                 <Film className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
@@ -160,6 +177,13 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
                     </p>
                   )}
                 </div>
+                {m.kind === 'image' && m.sourceUrl && (
+                  <button type="button" onClick={() => analyzeImage(m)} disabled={analyzing === m.id}
+                    className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-fuchsia-900/40 text-fuchsia-200 hover:bg-fuchsia-900/60 disabled:opacity-40 shrink-0"
+                    title="Vision-analyze this still (composition, lighting, mood)">
+                    {analyzing === m.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} Analyze
+                  </button>
+                )}
                 <select value={m.quality} onChange={(e) => setQuality(m.id, e.target.value)}
                   className={cn('text-[10px] rounded px-1.5 py-0.5 border-0 font-medium', QUALITY_COLOR[m.quality] || 'bg-zinc-700 text-zinc-300')}>
                   {QUALITIES.map((q) => <option key={q} value={q}>{q}</option>)}
@@ -167,6 +191,12 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
                 <button aria-label="Delete" type="button" onClick={() => delMedia(m.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
+                </div>
+                {analysis[m.id] && (
+                  <p className="text-[11px] text-zinc-300 bg-zinc-950/60 border border-zinc-800 rounded p-2 leading-relaxed">
+                    {analysis[m.id]}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
