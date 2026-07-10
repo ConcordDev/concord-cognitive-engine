@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ScanLine, Loader2, AlertTriangle } from 'lucide-react';
+import { ScanLine, Loader2, AlertTriangle, Search } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
@@ -14,6 +14,13 @@ interface Product {
   nutriScore?: string; ecoScore?: string; novaGroup?: number;
   nutrition?: Record<string, number | undefined>;
   imageUrl?: string;
+}
+
+interface SearchHit {
+  barcode: string; name?: string; brand?: string; nutriScore?: string; imageUrl?: string; quantity?: string;
+}
+interface SearchResult {
+  query: string; products: SearchHit[]; count: number; totalResults?: number; page: number;
 }
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -40,10 +47,17 @@ export function BarcodeLookup() {
   const [barcode, setBarcode] = useState('');
   const [product, setProduct] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const lookup = useMutation({
     mutationFn: async () => callMacro<Product>('off-product-lookup', { barcode }),
     onSuccess: (env) => { if (env.ok && env.result) { setProduct(env.result); setError(null); } else { setProduct(null); setError(env.error || 'not found'); } },
+  });
+
+  const search = useMutation({
+    mutationFn: async () => callMacro<SearchResult>('off-product-search', { query, pageSize: 12 }),
+    onSuccess: (env) => { if (!(env.ok && env.result)) setSearchError(env.error || 'no results'); else setSearchError(null); },
   });
 
   return (
@@ -62,6 +76,35 @@ export function BarcodeLookup() {
           Lookup
         </button>
       </form>
+      <form onSubmit={(e) => { e.preventDefault(); if (query.trim().length >= 2) search.mutate(); }} className="flex items-center gap-2">
+        <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Don't know the barcode? Search by name/brand…" className="flex-1 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-white" />
+        <button type="submit" disabled={query.trim().length < 2 || search.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-50">
+          {search.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+          Search
+        </button>
+      </form>
+      {searchError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{searchError}</div>}
+      {search.data?.ok && search.data.result && (
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
+          {search.data.result.products.length === 0 && (
+            <div className="col-span-full text-[11px] text-zinc-500 italic">No matches for &quot;{search.data.result.query}&quot;.</div>
+          )}
+          {search.data.result.products.map((hit) => (
+            <button
+              key={hit.barcode}
+              type="button"
+              onClick={() => { setBarcode(hit.barcode); setQuery(''); lookup.mutate(); }}
+              className="flex flex-col items-start gap-1 rounded-md border border-zinc-800 bg-zinc-950 p-2 text-left hover:border-cyan-500/40 hover:bg-zinc-900"
+            >
+              <span className="line-clamp-2 text-[11px] font-medium text-zinc-200">{hit.name || hit.barcode}</span>
+              <span className="text-[10px] text-zinc-500">{hit.brand}{hit.quantity ? ` · ${hit.quantity}` : ''}</span>
+              {hit.nutriScore && (
+                <span className={`rounded px-1 py-0.5 text-[9px] font-bold uppercase ${NUTRI_COLOR[hit.nutriScore] || 'bg-zinc-800 text-zinc-500'}`}>nutri-{hit.nutriScore}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
       {product && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 via-zinc-950/60 to-zinc-950/80 p-4">
