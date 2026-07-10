@@ -17,7 +17,6 @@ import HeartRateZones from '@/components/fitness/HeartRateZones';
 import SleepRecovery from '@/components/fitness/SleepRecovery';
 import ActivityRings from '@/components/fitness/ActivityRings';
 import WorkoutPlanner from '@/components/fitness/WorkoutPlanner';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -33,7 +32,7 @@ import {
   MapPin, Phone, Mail,
   Brain, Layers, ArrowUpRight, ArrowDownRight, Minus,
   ClipboardList, UserPlus, Eye, FileText, ChevronDown, AlertTriangle,
-  Flame, Footprints, Clock,
+  Flame,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -321,205 +320,6 @@ function StatCard({ icon: Icon, label, value, sub, color = 'red-400' }: { icon: 
 }
 
 /* ------------------------------------------------------------------ */
-/*  Intensity color helper                                             */
-/* ------------------------------------------------------------------ */
-
-const INTENSITY_COLORS: Record<string, { ring: string; text: string; bg: string; label: string }> = {
-  low:      { ring: '#22c55e', text: 'text-green-400',  bg: 'bg-green-400/10',  label: 'Light'    },
-  moderate: { ring: '#eab308', text: 'text-yellow-400', bg: 'bg-yellow-400/10', label: 'Moderate' },
-  high:     { ring: '#f97316', text: 'text-orange-400', bg: 'bg-orange-400/10', label: 'Intense'  },
-  extreme:  { ring: '#ef4444', text: 'text-red-400',    bg: 'bg-red-400/10',    label: 'Extreme'  },
-};
-
-/* ------------------------------------------------------------------ */
-/*  Workout Streak Counter                                             */
-/* ------------------------------------------------------------------ */
-
-function WorkoutStreakCounter() {
-  const [streak, setStreak] = useState(7);
-  const [bestStreak, setBestStreak] = useState(14);
-  const days = ['M','T','W','T','F','S','S'];
-  const [activeDays, setActiveDays] = useState([true, true, true, true, false, true, true]);
-
-  const toggleDay = (dayIndex: number) => {
-    setActiveDays(prev => {
-      const next = [...prev];
-      next[dayIndex] = !next[dayIndex];
-      // Recalculate streak from active days
-      const newStreak = next.filter(Boolean).length;
-      setStreak(newStreak);
-      if (newStreak > bestStreak) setBestStreak(newStreak);
-      return next;
-    });
-  };
-
-  return (
-    <div className="panel p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Flame className="w-4 h-4 text-orange-400" /> Workout Streak
-        </h3>
-        <span className="text-xs text-gray-400">Best: {bestStreak} days</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="relative w-16 h-16 shrink-0">
-          <svg className="w-full h-full -rotate-90" viewBox="0 0 56 56">
-            <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="5" />
-            <circle cx="28" cy="28" r="24" fill="none"
-              stroke="#f97316" strokeWidth="5" strokeLinecap="round"
-              strokeDasharray={`${(streak / bestStreak) * 150.8} 150.8`}
-              style={{ transition: 'stroke-dasharray 0.6s ease' }} />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-lg font-bold text-orange-400">{streak}</span>
-          </div>
-        </div>
-        <div className="flex-1 space-y-2">
-          <p className="text-sm font-medium text-white">{streak}-day streak</p>
-          <div className="flex gap-1">
-            {days.map((d, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <button onClick={() => toggleDay(i)} className={cn('w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer',
-                  activeDays[i] ? 'bg-orange-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                )}>{d}</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Daily Goals Progress Rings                                         */
-/* ------------------------------------------------------------------ */
-
-function DailyGoalsRings() {
-  const goals = [
-    { label: 'Steps',    icon: Footprints, current: 7432,  target: 10000, color: '#22c55e',  unit: 'steps' },
-    { label: 'Calories', icon: Flame,      current: 1840,  target: 2500,  color: '#f97316',  unit: 'kcal'  },
-    { label: 'Minutes',  icon: Clock,      current: 38,    target: 60,    color: '#06b6d4',  unit: 'min'   },
-  ];
-
-  return (
-    <div className="panel p-4">
-      <h3 className="font-semibold mb-4 text-sm">Daily Goals</h3>
-      <div className="grid grid-cols-3 gap-4">
-        {goals.map((g) => {
-          const pct = Math.min(100, (g.current / g.target) * 100);
-          const r = 28;
-          const circ = 2 * Math.PI * r;
-          const dash = (pct / 100) * circ;
-          return (
-            <div key={g.label} className="flex flex-col items-center gap-2">
-              <div className="relative w-16 h-16">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
-                  <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="5" />
-                  <circle cx="32" cy="32" r={r} fill="none"
-                    stroke={g.color} strokeWidth="5" strokeLinecap="round"
-                    strokeDasharray={`${dash} ${circ}`}
-                    style={{ transition: 'stroke-dasharray 0.6s ease' }} />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <g.icon className="w-4 h-4" style={{ color: g.color }} />
-                </div>
-              </div>
-              <div className="text-center">
-                <p className="text-xs font-semibold" style={{ color: g.color }}>{Math.round(pct)}%</p>
-                <p className="text-xs text-gray-400">{g.label}</p>
-                <p className="text-xs text-gray-400">{g.current.toLocaleString()}/{g.target.toLocaleString()}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Exercise Set Tracker                                               */
-/* ------------------------------------------------------------------ */
-
-interface SetLog { reps: number; weight: number; done: boolean }
-
-function ExerciseSetTracker() {
-  const [sets, setSets] = useState<SetLog[]>([
-    { reps: 10, weight: 60, done: false },
-    { reps: 10, weight: 60, done: false },
-    { reps: 8,  weight: 65, done: false },
-  ]);
-  const [exerciseName, setExerciseName] = useState('Bench Press');
-  const [intensity, setIntensity] = useState<'low'|'moderate'|'high'|'extreme'>('moderate');
-  const intConf = INTENSITY_COLORS[intensity];
-
-  const toggleSet = (i: number) =>
-    setSets(prev => prev.map((s, idx) => idx === i ? { ...s, done: !s.done } : s));
-  const addSet = () =>
-    setSets(prev => [...prev, { reps: prev[prev.length-1]?.reps || 10, weight: prev[prev.length-1]?.weight || 0, done: false }]);
-  const removeSet = (i: number) =>
-    setSets(prev => prev.filter((_, idx) => idx !== i));
-  const updateSet = (i: number, field: 'reps'|'weight', val: number) =>
-    setSets(prev => prev.map((s, idx) => idx === i ? { ...s, [field]: val } : s));
-
-  const doneSets = sets.filter(s => s.done).length;
-
-  return (
-    <div className="panel p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Dumbbell className="w-4 h-4 text-red-400" />
-          <input value={exerciseName} onChange={e => setExerciseName(e.target.value)}
-            className="bg-transparent border-none focus:outline-none font-semibold text-sm text-white" />
-        </div>
-        <div className="flex items-center gap-2">
-          <select value={intensity} onChange={e => setIntensity(e.target.value as typeof intensity)}
-            className={cn('text-xs px-2 py-0.5 rounded border', intConf.text, intConf.bg, 'border-current/30')}>
-            <option value="low">Light</option>
-            <option value="moderate">Moderate</option>
-            <option value="high">Intense</option>
-            <option value="extreme">Extreme</option>
-          </select>
-        </div>
-      </div>
-      <div className="text-xs text-gray-400 flex items-center gap-2">
-        <span className={cn('px-2 py-0.5 rounded font-medium', intConf.text, intConf.bg)}>{intConf.label}</span>
-        <span>{doneSets}/{sets.length} sets done</span>
-      </div>
-      <div className="space-y-1.5">
-        {sets.map((s, i) => (
-          <motion.div key={i} layout
-            className={cn('flex items-center gap-2 rounded-lg px-3 py-2 transition-colors',
-              s.done ? 'bg-green-500/10 border border-green-500/20' : 'bg-white/4 border border-white/8'
-            )}>
-            <button onClick={() => toggleSet(i)}
-              className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
-                s.done ? 'bg-green-500 border-green-500' : 'border-gray-500 hover:border-green-400'
-              )}>
-              {s.done && <span className="text-white text-xs">✓</span>}
-            </button>
-            <span className="text-xs text-gray-400 w-8">Set {i+1}</span>
-            <input type="number" value={s.weight} onChange={e => updateSet(i, 'weight', parseFloat(e.target.value)||0)}
-              className="w-14 bg-white/5 border border-white/10 rounded px-2 py-0.5 text-xs text-center" />
-            <span className="text-xs text-gray-400">kg ×</span>
-            <input type="number" value={s.reps} onChange={e => updateSet(i, 'reps', parseInt(e.target.value)||0)}
-              className="w-12 bg-white/5 border border-white/10 rounded px-2 py-0.5 text-xs text-center" />
-            <span className="text-xs text-gray-400">reps</span>
-            <button onClick={() => removeSet(i)} className="ml-auto text-gray-600 hover:text-red-400" aria-label="Close">
-              <X className="w-3 h-3" />
-            </button>
-          </motion.div>
-        ))}
-      </div>
-      <button onClick={addSet} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1">
-        <Plus className="w-3 h-3" /> Add Set
-      </button>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  Main Component                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -529,7 +329,6 @@ export default function FitnessLensPage() {
 
   /* ---------- core state ---------- */
   const [showFeatures, setShowFeatures] = useState(true);
-  const [showDailyPanel, setShowDailyPanel] = useState(false);
   const [activeTab, setActiveTab] = useState<ModeTab>('Clients');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
@@ -955,8 +754,8 @@ export default function FitnessLensPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowDailyPanel(p => !p)}
-            className={cn(ds.btnSecondary, showDailyPanel && 'bg-orange-500/20 border-orange-500/40 text-orange-400')}>
+          <button onClick={() => setActiveTab('Activity')}
+            className={cn(ds.btnSecondary, activeTab === 'Activity' && 'bg-orange-500/20 border-orange-500/40 text-orange-400')}>
             <Flame className="w-4 h-4" /> Daily Tracker
           </button>
           <button onClick={() => setShowBodyComp(true)} className={ds.btnSecondary}>
@@ -1005,24 +804,6 @@ export default function FitnessLensPage() {
         <StatCard icon={CalendarDays} label="Active Classes" value={stats.weeklyClasses} color="amber-400" />
         <StatCard icon={Medal} label="Prospects" value={stats.prospects} color="red-400" />
       </div>
-
-      {/* ========== Daily Tracker Panel ========== */}
-      <AnimatePresence>
-        {showDailyPanel && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-              <WorkoutStreakCounter />
-              <DailyGoalsRings />
-              <ExerciseSetTracker />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ========== Domain Actions ========== */}
       <div className={ds.panel}>
@@ -1477,6 +1258,103 @@ export default function FitnessLensPage() {
                 </div>
               </div>
             )}
+            {/* bodyCompReport */}
+            {actionResult.bmi !== undefined && actionResult.bmiCategory !== undefined && (() => {
+              const r = actionResult as {
+                name?: string; bmi: number; bmiCategory: string; bodyFatPct: number | null;
+                fatMass: { kg: number; lbs: number } | null; leanMass: { kg: number; lbs: number } | null;
+              };
+              return (
+                <div className="space-y-2">
+                  {r.name && <p className="text-xs text-gray-400">{r.name}</p>}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-2 bg-lattice-surface rounded text-center">
+                      <p className="text-sm font-bold text-neon-cyan">{r.bmi}</p>
+                      <p className="text-[10px] text-gray-400 capitalize">BMI &middot; {r.bmiCategory}</p>
+                    </div>
+                    <div className="p-2 bg-lattice-surface rounded text-center">
+                      <p className="text-sm font-bold text-neon-cyan">{r.bodyFatPct != null ? `${r.bodyFatPct}%` : '—'}</p>
+                      <p className="text-[10px] text-gray-400">Body fat (Navy)</p>
+                    </div>
+                    <div className="p-2 bg-lattice-surface rounded text-center">
+                      <p className="text-sm font-bold text-neon-cyan">{r.leanMass ? `${r.leanMass.kg}kg` : '—'}</p>
+                      <p className="text-[10px] text-gray-400">Lean mass</p>
+                    </div>
+                  </div>
+                  {r.bodyFatPct == null && (
+                    <p className="text-[10px] text-gray-400">Add waist + neck (+ hip for female) measurements to estimate body fat.</p>
+                  )}
+                </div>
+              );
+            })()}
+            {/* attendanceReport */}
+            {actionResult.attendanceRate !== undefined && (() => {
+              const r = actionResult as {
+                className?: string; totalSessions: number; attended: number; missed: number;
+                attendanceRate: number; currentStreak: number; longestStreak: number; message?: string;
+              };
+              return r.totalSessions === 0 ? (
+                <p className={cn(ds.textMuted, 'text-center py-2')}>{r.message || 'No attendance data.'}</p>
+              ) : (
+                <div className="space-y-2">
+                  {r.className && <p className="text-xs text-gray-400">{r.className}</p>}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400">{r.attended}/{r.totalSessions} sessions attended</span>
+                    <span className="text-sm font-bold text-neon-cyan">{r.attendanceRate}%</span>
+                  </div>
+                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${Math.min(100, r.attendanceRate)}%` }} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-2 bg-lattice-surface rounded text-center">
+                      <p className="text-sm font-bold text-neon-cyan">{r.missed}</p>
+                      <p className="text-[10px] text-gray-400">Missed</p>
+                    </div>
+                    <div className="p-2 bg-lattice-surface rounded text-center">
+                      <p className="text-sm font-bold text-neon-cyan">{r.currentStreak}</p>
+                      <p className="text-[10px] text-gray-400">Current streak</p>
+                    </div>
+                    <div className="p-2 bg-lattice-surface rounded text-center">
+                      <p className="text-sm font-bold text-neon-cyan">{r.longestStreak}</p>
+                      <p className="text-[10px] text-gray-400">Longest streak</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+            {/* generate-program / workout-plan-generate */}
+            {actionResult.plan !== undefined && (() => {
+              const p = actionResult.plan as {
+                goal: string; weeks: number; daysPerWeek: number; composedBy?: string;
+                template: { day: string; focus: string; duration: number; exercises: { name: string; sets: number; reps: string; restSec: number }[] }[];
+                progression: string; nutrition: string;
+              };
+              return (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400">
+                    {p.goal.replace(/_/g, ' ')} &bull; {p.weeks}w &times; {p.daysPerWeek}d/wk
+                    {p.composedBy && <span className="ml-1 text-[10px] text-gray-500">({p.composedBy})</span>}
+                  </p>
+                  <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                    {p.template.map((d, i) => (
+                      <div key={i} className="p-2 bg-lattice-surface rounded">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-neon-cyan">{d.day} &middot; {d.focus}</span>
+                          <span className="text-[10px] text-gray-400">{d.duration} min</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-400">
+                          {d.exercises.map((ex, j) => <span key={j}>{ex.name} {ex.sets}&times;{ex.reps}</span>)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-400">
+                    <p><span className="text-gray-300 font-medium">Progression:</span> {p.progression}</p>
+                    <p><span className="text-gray-300 font-medium">Nutrition:</span> {p.nutrition}</p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
