@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { lensRun } from '@/lib/api/client';
+import { runPersona } from './persona-envelope';
 
 interface PersonaCard {
   id: string;
@@ -42,20 +42,20 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
     setError(null);
     try {
       const [b, f] = await Promise.all([
-        lensRun('personas', 'browse', { query, tag, category, sort }),
-        lensRun('personas', 'facets', {}),
+        runPersona('browse', { query, tag, category, sort }),
+        runPersona('facets', {}),
       ]);
-      if (b.data?.ok) {
-        const res = b.data.result as any;
+      if (b.ok) {
+        const res = b.data as any;
         setRows((res.personas || []) as PersonaCard[]);
         setTotal(res.total || 0);
       } else {
-        // Fail closed: an unreachable browse macro must surface, not render
-        // as an empty (but "loaded") marketplace.
-        setError(b.data?.error || 'Could not load the marketplace.');
+        // Fail closed: an unreachable or rejected browse macro must surface,
+        // not render as an empty (but "loaded") marketplace.
+        setError(b.error || 'Could not load the marketplace.');
       }
-      if (f.data?.ok) {
-        const res = f.data.result as any;
+      if (f.ok) {
+        const res = f.data as any;
         setTags((res.tags || []) as Facet[]);
         setCategories((res.categories || []) as Facet[]);
       }
