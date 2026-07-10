@@ -128,10 +128,13 @@ interface TemplateDefinition {
 
 interface Chain {
   id: string;
-  premise: string;
+  question: string;
   type?: string;
-  steps?: Record<string, unknown>[];
-  conclusion?: string;
+  steps?: string[];
+  // The backend stores a structured conclusion object ({statement,
+  // confidence, supportingSteps, assumptions, derivedAt}), not a string —
+  // null until the chain is concluded.
+  conclusion?: { statement?: string; confidence?: number } | null;
   status?: string;
   createdAt?: string;
 }
@@ -210,6 +213,22 @@ const FALLACY_DESCRIPTIONS: Record<FallacyType, string> = {
   slippery_slope: 'Assuming one event will inevitably lead to extreme consequences',
   tu_quoque: 'Deflecting criticism by pointing to the accuser\'s behavior',
   equivocation: 'Using ambiguous language to mislead',
+};
+
+// Maps the real backend fallacyDetect macro's pattern names
+// (server/domains/reasoning.js FALLACY_PATTERNS) onto this page's FallacyType
+// enum. "Appeal to Emotion" and "Bandwagon" have no exact match in the
+// enum — bucketed to the closest conceptual neighbor (red_herring: an
+// off-topic persuasion device) rather than a wrong specific label.
+const FALLACY_NAME_TO_TYPE: Record<string, FallacyType> = {
+  'Ad Hominem': 'ad_hominem',
+  'Straw Man': 'straw_man',
+  'False Dichotomy': 'false_dichotomy',
+  'Appeal to Authority': 'appeal_to_authority',
+  'Slippery Slope': 'slippery_slope',
+  'Circular Reasoning': 'circular_reasoning',
+  'Appeal to Emotion': 'red_herring',
+  'Bandwagon': 'red_herring',
 };
 
 const ARGUMENT_TEMPLATES: TemplateDefinition[] = [
@@ -544,6 +563,10 @@ export default function ReasoningLensPage() {
   const [chainType, setChainType] = useState<ChainType>('deductive');
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const [newStep, setNewStep] = useState('');
+  // The backend hard-requires a justification per step (see addReasoningStep
+  // in server.js) — a bare step conclusion with no "why" is rejected.
+  const [newStepJustification, setNewStepJustification] = useState('');
+  const [newConclusionStatement, setNewConclusionStatement] = useState('');
 
   // ----- Template state -----
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -552,6 +575,9 @@ export default function ReasoningLensPage() {
   // ----- Analysis action state -----
   const [analysisResult, setAnalysisResult] = useState<Record<string, unknown> | null>(null);
   const [analysisRunning, setAnalysisRunning] = useState<string | null>(null);
+  // Result of the last Domain Actions Bar click (Validate Logic / Assess
+  // Strength) — the bar previously gave zero visible feedback on click.
+  const [domainActionResult, setDomainActionResult] = useState<Record<string, unknown> | null>(null);
 
   // ----- API queries -----
   const { data: chainsData, isError: isError2, error: error2, refetch: refetch2 } = useQuery({
@@ -572,8 +598,11 @@ export default function ReasoningLensPage() {
   });
 
   // ----- API mutations -----
+  // Field names below match the real backend contract (createReasoningChain /
+  // addReasoningStep / concludeChain in server.js) — see the client.ts
+  // comment for the pre-fix defect this replaced.
   const createChain = useMutation({
-    mutationFn: () => apiHelpers.reasoning.create({ premise: newPremise, type: chainType }),
+    mutationFn: () => apiHelpers.reasoning.create({ question: newPremise, type: chainType }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['reasoning-chains'] });
       setNewPremise('');
@@ -586,12 +615,19 @@ export default function ReasoningLensPage() {
   const addStep = useMutation({
     mutationFn: () => {
       if (!selectedChain) return Promise.reject('No chain selected');
-      return apiHelpers.reasoning.addStep(selectedChain, { content: newStep });
+      const priorSteps = (trace?.steps as Record<string, unknown>[] | undefined) || [];
+      const lastConclusion = priorSteps.length ? (priorSteps[priorSteps.length - 1].conclusion as string) : '';
+      return apiHelpers.reasoning.addStep(selectedChain, {
+        conclusion: newStep,
+        justification: newStepJustification,
+        premises: lastConclusion ? [lastConclusion] : [],
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reasoning-chains'] });
       queryClient.invalidateQueries({ queryKey: ['reasoning-trace', selectedChain] });
       setNewStep('');
+      setNewStepJustification('');
     },
     onError: (err) => console.error('addStep failed:', err instanceof Error ? err.message : err),
   });
@@ -599,11 +635,12 @@ export default function ReasoningLensPage() {
   const concludeChain = useMutation({
     mutationFn: () => {
       if (!selectedChain) return Promise.reject('No chain selected');
-      return apiHelpers.reasoning.conclude(selectedChain);
+      return apiHelpers.reasoning.conclude(selectedChain, { statement: newConclusionStatement });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reasoning-chains'] });
       queryClient.invalidateQueries({ queryKey: ['reasoning-trace', selectedChain] });
+      setNewConclusionStatement('');
     },
     onError: (err) => console.error('concludeChain failed:', err instanceof Error ? err.message : err),
   });
@@ -623,8 +660,8 @@ export default function ReasoningLensPage() {
       chainSeeded.current = true;
       const first = allChains[0];
       createChainArtifact({
-        title: first.premise || 'Reasoning Chain',
-        data: { chainId: first.id, type: first.type, premise: first.premise },
+        title: first.question || 'Reasoning Chain',
+        data: { chainId: first.id, type: first.type, question: first.question },
         meta: { status: first.status || 'active', tags: ['auto-synced'] },
       });
     }
@@ -635,6 +672,20 @@ export default function ReasoningLensPage() {
   const status: Record<string, unknown> = statusData?.status || statusData || {};
   const trace: Record<string, unknown> = traceData?.trace || traceData || {};
   const selectedMap = argumentMaps.find((m) => m.id === selectedMapId) || null;
+
+  // The Domain Actions Bar runs the real logicValidate/fallacyDetect/
+  // strengthAssessment macros against the SELECTED CHAIN's actual reasoning
+  // (each step's conclusion as a premise, the chain's own conclusion/last
+  // step as the conclusion) — not the stale auto-synced generic artifact.
+  const chainPremises = useMemo(() => {
+    const stepsArr = (trace?.steps as Record<string, unknown>[] | undefined) || [];
+    return stepsArr.map((s) => String(s.conclusion || '')).filter(Boolean);
+  }, [trace]);
+  const chainConclusionText = useMemo(() => {
+    const c = (trace?.conclusion as { statement?: string } | null) || null;
+    if (c?.statement) return c.statement;
+    return chainPremises.length ? chainPremises[chainPremises.length - 1] : '';
+  }, [trace, chainPremises]);
 
   // ----- Computed stats -----
   const totalArguments = argumentMaps.length;
@@ -882,32 +933,52 @@ export default function ReasoningLensPage() {
   }, [templateFormValues]);
 
   // ----- Domain action handlers -----
+  // Field names + macro targets fixed 2026-07 (Wave 3 reasoning-lens audit):
+  // these used to send only {chainId} as params (ignored by the target
+  // macros, which read artifact.data — the stale auto-synced artifact never
+  // carried premises/conclusion) and aliased to a generic "validate" stub
+  // that vacuously returned {valid:true} on empty data under all 3 labels.
   const handleValidateLogic = useCallback(() => {
-    if (!selectedChain) return;
+    if (!selectedChain || chainPremises.length === 0) return;
     const artifactId = chainArtifacts[0]?.id;
     if (!artifactId) return;
     runAction.mutate(
-      { id: artifactId, action: 'validate_logic', params: { chainId: selectedChain } },
+      { id: artifactId, action: 'validate_logic', params: { premises: chainPremises, conclusion: chainConclusionText } },
       {
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reasoning-chains'] }),
+        onSuccess: (res) => {
+          queryClient.invalidateQueries({ queryKey: ['reasoning-chains'] });
+          setDomainActionResult((res as { result?: Record<string, unknown> })?.result ?? null);
+        },
         onError: (e) => {
           console.error('Action failed:', e);
         },
       }
     );
-  }, [selectedChain, chainArtifacts, runAction, queryClient]);
+  }, [selectedChain, chainArtifacts, chainPremises, chainConclusionText, runAction, queryClient]);
 
   const handleCheckFallacies = useCallback(() => {
     if (!selectedChain) return;
     const artifactId = chainArtifacts[0]?.id;
     if (!artifactId) return;
+    const argumentText = [...chainPremises, chainConclusionText].filter(Boolean).join('. ');
     runAction.mutate(
-      { id: artifactId, action: 'check_fallacies', params: { chainId: selectedChain } },
+      { id: artifactId, action: 'check_fallacies', params: { argument: argumentText } },
       {
         onSuccess: (res) => {
-          const detected = (res as Record<string, unknown>).result as { fallacies?: FallacyFlag[] } | undefined;
-          if (detected?.fallacies) {
-            setFallacyFlags((prev) => [...prev, ...detected.fallacies!]);
+          const result = (res as { result?: { fallacies?: Array<{ fallacy: string; description: string; severity: 'high' | 'moderate' }> } })?.result;
+          setDomainActionResult((result as Record<string, unknown>) ?? null);
+          if (result?.fallacies?.length) {
+            const mapped: FallacyFlag[] = result.fallacies.map((f) => ({
+              id: genId(),
+              type: FALLACY_NAME_TO_TYPE[f.fallacy] ?? 'circular_reasoning',
+              severity: f.severity === 'high' ? 'error' : 'warning',
+              nodeId: selectedNodeId || '',
+              chainId: selectedChain || '',
+              description: `${f.fallacy}: ${f.description}`,
+              flaggedBy: 'automated',
+              resolved: false,
+            }));
+            setFallacyFlags((prev) => [...prev, ...mapped]);
           }
         },
         onError: (e) => {
@@ -915,21 +986,24 @@ export default function ReasoningLensPage() {
         },
       }
     );
-  }, [selectedChain, chainArtifacts, runAction]);
+  }, [selectedChain, chainArtifacts, chainPremises, chainConclusionText, runAction, selectedNodeId]);
 
   const handleAssessStrength = useCallback(() => {
-    if (!selectedChain) return;
+    if (!selectedChain || chainPremises.length === 0) return;
     const artifactId = chainArtifacts[0]?.id;
     if (!artifactId) return;
     runAction.mutate(
-      { id: artifactId, action: 'assess_strength', params: { chainId: selectedChain } },
+      { id: artifactId, action: 'assess_strength', params: { premises: chainPremises, conclusion: chainConclusionText } },
       {
+        onSuccess: (res) => {
+          setDomainActionResult((res as { result?: Record<string, unknown> })?.result ?? null);
+        },
         onError: (e) => {
           console.error('Action failed:', e);
         },
       }
     );
-  }, [selectedChain, chainArtifacts, runAction]);
+  }, [selectedChain, chainArtifacts, chainPremises, chainConclusionText, runAction]);
 
   const handleExportMap = useCallback(() => {
     if (!selectedMap) return;
@@ -944,16 +1018,29 @@ export default function ReasoningLensPage() {
   }, [selectedMap]);
 
   // ----- Analysis tab backend action handler -----
+  // action is one of 'deepAnalysis' | 'counterArgumentGen' | 'strengthAssessment'
+  // — three REAL macros registered in server/domains/reasoning.js. These used
+  // to have no backend registration at all: the artifact-scoped `lens.run`
+  // macro's unregistered-action fallback silently routed them to the generic
+  // utility brain and returned {ok:true, source:"utility-brain"} — a real,
+  // live instance of the "unregistered macro masked as AI success" defect
+  // documented elsewhere in this codebase as fixed (it wasn't fixed here).
+  // Fixed 2026-07 (Wave 3 reasoning-lens audit): real deterministic handlers
+  // now exist, and premises/conclusion are drawn from the selected chain.
   const handleAnalysisAction = useCallback(async (action: string) => {
     const artifactId = chainArtifacts[0]?.id;
     if (!artifactId) {
       setAnalysisResult({ message: 'No reasoning artifacts synced yet. Create a chain or argument map first.' });
       return;
     }
+    if (chainPremises.length === 0) {
+      setAnalysisResult({ message: 'Selected chain has no steps yet — add reasoning steps in the Arguments tab first.' });
+      return;
+    }
     setAnalysisRunning(action);
     setAnalysisResult(null);
     try {
-      const res = await runAction.mutateAsync({ id: artifactId, action, params: { chainId: selectedChain } });
+      const res = await runAction.mutateAsync({ id: artifactId, action, params: { premises: chainPremises, conclusion: chainConclusionText } });
       if (res.ok === false) {
         setAnalysisResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` });
       } else {
@@ -966,7 +1053,7 @@ export default function ReasoningLensPage() {
     } finally {
       setAnalysisRunning(null);
     }
-  }, [chainArtifacts, runAction, selectedChain, queryClient]);
+  }, [chainArtifacts, runAction, chainPremises, chainConclusionText, queryClient]);
 
   // ----- Error state -----
   if (isLoading) {
@@ -1073,11 +1160,11 @@ export default function ReasoningLensPage() {
         })}
       </div>
 
-      {/* ---- Domain Actions Bar ---- */}
+      {/* ---- Domain Actions Bar — runs against the selected reasoning chain ---- */}
       <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={handleValidateLogic}
-          disabled={!selectedChain || runAction.isPending}
+          disabled={!selectedChain || chainPremises.length === 0 || runAction.isPending}
           className={cn(ds.btnSmall, 'bg-green-400/10 text-green-400 border border-green-400/30 hover:bg-green-400/20')}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1093,7 +1180,7 @@ export default function ReasoningLensPage() {
         </button>
         <button
           onClick={handleAssessStrength}
-          disabled={!selectedChain || runAction.isPending}
+          disabled={!selectedChain || chainPremises.length === 0 || runAction.isPending}
           className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20')}
         >
           <Zap className="w-3.5 h-3.5" />
@@ -1113,6 +1200,17 @@ export default function ReasoningLensPage() {
           </span>
         )}
       </div>
+      {domainActionResult && (
+        <div className={cn(ds.panel, 'text-xs')}>
+          {'message' in domainActionResult ? (
+            <p className={ds.textMuted}>{String(domainActionResult.message)}</p>
+          ) : (
+            <pre className="whitespace-pre-wrap text-xs text-gray-300 font-mono max-h-40 overflow-y-auto">
+              {JSON.stringify(domainActionResult, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
 
       {/* ================================================================ */}
       {/*  TAB: ARGUMENTS                                                  */}
@@ -1206,7 +1304,7 @@ export default function ReasoningLensPage() {
                       selectedChain === chain.id && 'ring-1 ring-neon-cyan'
                     )}
                   >
-                    <p className="text-sm font-medium truncate text-white">{chain.premise}</p>
+                    <p className="text-sm font-medium truncate text-white">{chain.question}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={ds.textMuted}>{chain.type || 'deductive'}</span>
                       <span className={cn(
@@ -1352,8 +1450,9 @@ export default function ReasoningLensPage() {
                       <div className="flex flex-col items-center">
                         <div className={cn(
                           'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold',
-                          step.validated ? 'bg-green-400/20 text-green-400' : 'bg-lattice-surface text-gray-400 border border-lattice-border'
-                        )}>
+                          Number(step.confidence ?? 0) >= 0.75 ? 'bg-green-400/20 text-green-400' : 'bg-lattice-surface text-gray-400 border border-lattice-border'
+                        )}
+                        title={`confidence ${Math.round(Number(step.confidence ?? 0) * 100)}%`}>
                           {i + 1}
                         </div>
                         {i < ((trace.steps as unknown[] | undefined)?.length || 0) - 1 && (
@@ -1361,7 +1460,10 @@ export default function ReasoningLensPage() {
                         )}
                       </div>
                       <div className={cn(ds.panel, 'flex-1')}>
-                        <p className="text-sm text-white">{step.content as string}</p>
+                        <p className="text-sm text-white">{step.conclusion as string}</p>
+                        {Boolean(step.justification) && (
+                          <p className="text-xs text-gray-400 mt-0.5">because {step.justification as string}</p>
+                        )}
                         {Boolean(step.type) && (
                           <span className={ds.textMuted}>{step.type as string}</span>
                         )}
@@ -1371,41 +1473,66 @@ export default function ReasoningLensPage() {
                     <p className={ds.textMuted}>Loading trace...</p>
                   )}
 
-                  {Boolean(trace?.conclusion) && (
+                  {Boolean((trace?.conclusion as { statement?: string } | null)?.statement) && (
                     <div className="p-3 rounded-lg bg-green-400/10 border border-green-400/30">
                       <p className="text-sm font-semibold text-green-400 flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4" /> Conclusion
                       </p>
-                      <p className="text-sm mt-1 text-white">{trace.conclusion as string}</p>
+                      <p className="text-sm mt-1 text-white">{(trace.conclusion as { statement?: string }).statement}</p>
+                      {typeof (trace.conclusion as { confidence?: number })?.confidence === 'number' && (
+                        <p className="text-xs text-green-300/70 mt-1">
+                          confidence {Math.round(((trace.conclusion as { confidence?: number }).confidence || 0) * 100)}%
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
 
-                {/* Add Step */}
-                {!trace?.conclusion && (
-                  <div className="flex gap-2 mt-4">
+                {/* Add Step — the backend requires BOTH a conclusion and a
+                    justification for every step (addReasoningStep in
+                    server.js hard-rejects a step with no justification). */}
+                {!(trace?.conclusion as { statement?: string } | null)?.statement && (
+                  <div className="space-y-2 mt-4">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newStep}
+                        onChange={(e) => setNewStep(e.target.value)}
+                        placeholder="This step concludes..."
+                        className={cn(ds.input, 'flex-1')}
+                      />
+                      <button
+                        onClick={() => addStep.mutate()}
+                        disabled={!newStep.trim() || !newStepJustification.trim() || addStep.isPending}
+                        className={ds.btnPrimary}
+                      aria-label="Add reasoning step">
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
                     <input
                       type="text"
-                      value={newStep}
-                      onChange={(e) => setNewStep(e.target.value)}
-                      placeholder="Add reasoning step..."
-                      className={cn(ds.input, 'flex-1')}
+                      value={newStepJustification}
+                      onChange={(e) => setNewStepJustification(e.target.value)}
+                      placeholder="...because (justification, required)"
+                      className={cn(ds.input, 'w-full')}
                     />
-                    <button
-                      onClick={() => addStep.mutate()}
-                      disabled={!newStep || addStep.isPending}
-                      className={ds.btnPrimary}
-                    aria-label="Forward">
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => concludeChain.mutate()}
-                      disabled={concludeChain.isPending}
-                      className={cn(ds.btnSecondary)}
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      Conclude
-                    </button>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newConclusionStatement}
+                        onChange={(e) => setNewConclusionStatement(e.target.value)}
+                        placeholder="Final conclusion statement..."
+                        className={cn(ds.input, 'flex-1')}
+                      />
+                      <button
+                        onClick={() => concludeChain.mutate()}
+                        disabled={!newConclusionStatement.trim() || concludeChain.isPending}
+                        className={cn(ds.btnSecondary)}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Conclude
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2000,7 +2127,7 @@ export default function ReasoningLensPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-lattice-border">
-                      <th className="text-left py-2 px-3 text-gray-400 font-medium">Premise</th>
+                      <th className="text-left py-2 px-3 text-gray-400 font-medium">Question</th>
                       <th className="text-left py-2 px-3 text-gray-400 font-medium">Type</th>
                       <th className="text-left py-2 px-3 text-gray-400 font-medium">Steps</th>
                       <th className="text-left py-2 px-3 text-gray-400 font-medium">Status</th>
@@ -2009,7 +2136,7 @@ export default function ReasoningLensPage() {
                   <tbody>
                     {chains.map((chain) => (
                       <tr key={chain.id} className="border-b border-lattice-border/50 hover:bg-lattice-elevated/30">
-                        <td className="py-2 px-3 text-white max-w-xs truncate">{chain.premise}</td>
+                        <td className="py-2 px-3 text-white max-w-xs truncate">{chain.question}</td>
                         <td className="py-2 px-3">
                           <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{chain.type || 'deductive'}</span>
                         </td>

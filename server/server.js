@@ -41962,10 +41962,14 @@ registerUniversalLensActions();
 // Wire aliases so EVERY frontend button hits a REAL handler, no AI catch-all.
 {
   const aliases = [
-    // Reasoning lens: frontend calls validate_logic, check_fallacies, assess_strength
-    ["reasoning", "validate_logic", "validate"],
-    ["reasoning", "check_fallacies", "validate"],
-    ["reasoning", "assess_strength", "validate"],
+    // Reasoning lens: frontend calls validate_logic, check_fallacies, assess_strength.
+    // Fixed 2026-07 (Wave 3 reasoning-lens audit) — all three used to alias to the
+    // same generic artifact-only "validate" stub (steps.every(s=>s.content)), which
+    // vacuously returned {valid:true} on empty data under three different labels,
+    // including "Check Fallacies" — which never ran fallacy detection at all.
+    ["reasoning", "validate_logic", "logicValidate"],
+    ["reasoning", "check_fallacies", "fallacyDetect"],
+    ["reasoning", "assess_strength", "strengthAssessment"],
 
     // Council lens: frontend calls synthesize, generate-minutes
     ["council", "synthesize", "debate"],
@@ -67021,6 +67025,7 @@ function createReasoningChain(input = {}) {
     id,
     question: String(input.question || "").slice(0, 1000),
     goal: String(input.goal || "derive_conclusion").slice(0, 200),
+    type: String(input.type || "deductive").slice(0, 50),
     steps: [],
     assumptions: [],
     conclusion: null,
