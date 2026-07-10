@@ -24,6 +24,7 @@ import {
   Hammer, MessageSquare, History, FolderTree, Eye, Share2,
   Image as ImageIcon, RefreshCw, Loader2, Send, GitBranch,
   RotateCcw, FileCode, Check, Copy, AlertTriangle, Plus,
+  FolderOpen, Clock,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
@@ -54,6 +55,22 @@ interface ProjectState {
   versionId: string;
   code: string;
   files: FileEntry[];
+}
+interface SavedProject {
+  projectId: string;
+  appName: string;
+  template: string;
+  versions: number;
+  currentVersion: string;
+  createdAt: number;
+}
+
+function relTime(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
 }
 
 const TEMPLATES = [
@@ -87,6 +104,11 @@ export function ForgeStudio() {
   const [templateId, setTemplateId] = useState('blank');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Saved projects (resume after reload) ──────────────────────────────
+  const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [reopeningId, setReopeningId] = useState<string | null>(null);
 
   const [tab, setTab] = useState<TabId>('chat');
 
@@ -160,6 +182,56 @@ export function ForgeStudio() {
       setFiles((r.data.result as { files: FileEntry[] }).files || []);
     }
   }, []);
+
+  // ── listProjects — the user's server-side projects, to resume ─────────
+  const loadSaved = useCallback(async () => {
+    setLoadingSaved(true);
+    const r = await lensRun('forge', 'listProjects', {});
+    setLoadingSaved(false);
+    if (r.data.ok && r.data.result) {
+      const list = (r.data.result as { projects: SavedProject[] }).projects || [];
+      list.sort((a, b) => b.createdAt - a.createdAt);
+      setSavedProjects(list);
+    }
+  }, []);
+
+  // Load the resume list whenever the builder returns to the "no project" state.
+  useEffect(() => {
+    if (!project) void loadSaved();
+  }, [project, loadSaved]);
+
+  // ── reopen a saved project (rehydrate code via restoreVersion) ────────
+  const handleReopen = useCallback(async (meta: SavedProject) => {
+    setReopeningId(meta.projectId);
+    setError(null);
+    // restoreVersion on the already-current version is idempotent and is the
+    // one call that returns the code string for a project we don't hold locally.
+    const r = await lensRun('forge', 'restoreVersion', {
+      projectId: meta.projectId, versionId: meta.currentVersion,
+    });
+    setReopeningId(null);
+    if (!r.data.ok || !r.data.result) {
+      setError(r.data.error || 'Could not reopen this project.');
+      return;
+    }
+    const res = r.data.result as { currentVersion: string; code: string };
+    const proj: ProjectState = {
+      projectId: meta.projectId,
+      appName: meta.appName,
+      template: meta.template,
+      versionId: res.currentVersion,
+      code: res.code,
+      files: [],
+    };
+    setProject(proj);
+    setSandboxHtml(null);
+    setShareUrl(null);
+    setDiff(null);
+    setTab('chat');
+    await refreshFiles(meta.projectId);
+    await refreshThread(meta.projectId);
+    await refreshVersions(meta.projectId);
+  }, [refreshFiles, refreshThread, refreshVersions]);
 
   // ── createProject ─────────────────────────────────────────────────────
   const handleCreate = useCallback(async () => {
@@ -414,6 +486,51 @@ export function ForgeStudio() {
             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Create project
           </button>
+
+          {/* Resume a saved project (forge.listProjects) */}
+          {(savedProjects.length > 0 || loadingSaved) && (
+            <div className="mt-2 border-t border-zinc-800 pt-4">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <FolderOpen className="h-3.5 w-3.5" /> Resume a project
+                {loadingSaved && <Loader2 className="h-3 w-3 animate-spin" />}
+                <button
+                  type="button"
+                  onClick={() => void loadSaved()}
+                  className="ml-auto rounded p-1 text-slate-500 hover:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  aria-label="Refresh project list"
+                  title="Refresh"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </button>
+              </div>
+              <ul className="space-y-1.5">
+                {savedProjects.map((sp) => (
+                  <li key={sp.projectId}>
+                    <button
+                      type="button"
+                      onClick={() => handleReopen(sp)}
+                      disabled={reopeningId != null}
+                      className="flex w-full items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-left text-xs transition-colors hover:border-amber-500/40 hover:bg-amber-500/5 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+                    >
+                      <Hammer className="h-3.5 w-3.5 shrink-0 text-amber-400/70" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-slate-200">{sp.appName}</div>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                          <span>{sp.template}</span>
+                          <span>·</span>
+                          <span>{sp.versions} version{sp.versions === 1 ? '' : 's'}</span>
+                          <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" />{relTime(sp.createdAt)}</span>
+                        </div>
+                      </div>
+                      {reopeningId === sp.projectId
+                        ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-amber-400" />
+                        : <FolderOpen className="h-3.5 w-3.5 shrink-0 text-slate-500" />}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
