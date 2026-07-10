@@ -1029,20 +1029,25 @@ export const apiHelpers = {
     health: () => api.get('/api/affect/health'),
   },
 
-  // Goals system
+  // Agent self-directed goal governance (server.js "GOAL SYSTEM MACROS" —
+  // distinct from the personal-OKR `goals` domain macros in domains/goals.js;
+  // this is Concord's own propose->evaluate->founder-approve->activate loop
+  // for its autonomous knowledge-work goals). Surfaced by AgentAutonomyPanel.
   goals: {
-    list: () => api.get('/api/goals'),
+    list: (params?: { state?: string; type?: string; limit?: number }) => api.get('/api/goals', { params }),
     get: (goalId: string) => api.get(`/api/goals/${goalId}`),
-    create: (data: { title: string; description?: string; targetDate?: string; priority?: string }) =>
+    create: (data: { title: string; description?: string; type?: string; priority?: number; tags?: string[] }) =>
       api.post('/api/goals', data),
+    evaluate: (goalId: string) => api.post(`/api/goals/${goalId}/evaluate`, {}),
+    approve: (goalId: string) => api.post(`/api/goals/${goalId}/approve`, {}),
     progress: (goalId: string, data: { progress: number; note?: string }) =>
       api.post(`/api/goals/${goalId}/progress`, data),
     complete: (goalId: string) => api.post(`/api/goals/${goalId}/complete`, {}),
     activate: (goalId: string) => api.post(`/api/goals/${goalId}/activate`, {}),
-    abandon: (goalId: string) => api.post(`/api/goals/${goalId}/abandon`, {}),
+    abandon: (goalId: string, reason?: string) => api.post(`/api/goals/${goalId}/abandon`, { reason }),
     status: () => api.get('/api/goals/status'),
     autoPropose: () => api.post('/api/goals/auto-propose', {}),
-    config: () => api.get('/api/goals/config'),
+    config: (data?: Record<string, unknown>) => (data ? api.post('/api/goals/config', data) : api.get('/api/goals/config')),
   },
 
   // Metacognition
