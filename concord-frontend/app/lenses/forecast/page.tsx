@@ -50,10 +50,6 @@ const TABS: Array<{ id: Tab; label: string }> = [
 ];
 
 export default function ForecastPage() {
-  useLensCommand([
-    { id: 'forecast-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
-  ], { lensId: 'forecast' });
-
   const [worldId, setWorldId] = useState('concordia-hub');
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,6 +88,21 @@ export default function ForecastPage() {
     }
     setComposing(false);
   };
+
+  useLensCommand(
+    [
+      { id: 'tab-now', keys: '1', description: '24h forecast', category: 'navigation', action: () => setTab('now') },
+      { id: 'tab-multiday', keys: '2', description: 'Multi-day outlook', category: 'navigation', action: () => setTab('multiday') },
+      { id: 'tab-hourly', keys: '3', description: 'Hourly breakdown', category: 'navigation', action: () => setTab('hourly') },
+      { id: 'tab-regional', keys: '4', description: 'Per-district forecast', category: 'navigation', action: () => setTab('regional') },
+      { id: 'tab-accuracy', keys: '5', description: 'Forecast accuracy', category: 'navigation', action: () => setTab('accuracy') },
+      { id: 'tab-archive', keys: '6', description: 'Historical archive', category: 'navigation', action: () => setTab('archive') },
+      { id: 'tab-alerts', keys: '7', description: 'Alert subscriptions', category: 'navigation', action: () => setTab('alerts') },
+      { id: 'compose-fresh', keys: 'c', description: 'Compose fresh forecast', category: 'actions', action: () => { void composeFresh(); } },
+      { id: 'refresh', keys: 'r', description: 'Refresh from cache', category: 'actions', action: () => { void refresh(); } },
+    ],
+    { lensId: 'forecast' },
+  );
 
   return (
     <LensShell lensId="forecast">
