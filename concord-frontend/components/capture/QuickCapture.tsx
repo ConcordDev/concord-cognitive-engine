@@ -327,19 +327,8 @@ export function QuickCapture({ isOpen, onClose, onCapture }: QuickCaptureProps) 
   );
 }
 
-// Hook to manage quick capture state
-export function useQuickCapture() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  useHotkeys('mod+shift+n', (e) => {
-    e.preventDefault();
-    setIsOpen(true);
-  }, { enableOnFormTags: ['INPUT', 'TEXTAREA'] });
-
-  return {
-    isOpen,
-    open: () => setIsOpen(true),
-    close: () => setIsOpen(false),
-    toggle: () => setIsOpen(!isOpen)
-  };
-}
+// Hook to manage quick capture state — moved to ./useQuickCapture.ts
+// (shell-diet pass) so it can be statically imported without pulling in
+// this file's heavy render tree. Re-exported here for back-compat (barrel
+// export + anything still importing it from this path).
+export { useQuickCapture } from './useQuickCapture';

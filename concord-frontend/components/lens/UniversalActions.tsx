@@ -207,7 +207,7 @@ function UniversalActions({
             key={a.id}
             onClick={() => handleAction(a.id)}
             disabled={!artifactId || runAction.isPending}
-            title={a.description}
+            title={!artifactId ? 'Select an artifact first — this action needs one to run' : a.description}
             className={cn(
               ds.btnSmall,
               `text-neon-${a.color} hover:bg-neon-${a.color}/20 border border-transparent hover:border-neon-${a.color}/30`
@@ -218,6 +218,7 @@ function UniversalActions({
           </button>
         ))}
         {runAction.isPending && <RefreshCw className="w-4 h-4 text-neon-cyan animate-spin" />}
+        {!artifactId && <span className="text-xs text-gray-400">Select an artifact first</span>}
       </div>
     );
   }

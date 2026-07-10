@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   PenTool, Plus, BookText, LayoutGrid, Users, GitBranch, TrendingUp, Loader2,
-  Globe, FileDown, Target, BarChart3, GitCompare,
+  Globe, FileDown, Target, BarChart3, GitCompare, Settings2, Check, X,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -55,6 +55,8 @@ export function CreativeWritingSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', genre: 'fiction', targetWords: '' });
+  const [editingSettings, setEditingSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({ title: '', genre: '', targetWords: '' });
 
   const refreshProjects = useCallback(async () => {
     const r = await lensRun('creative-writing', 'project-list', {});
@@ -88,6 +90,30 @@ export function CreativeWritingSection() {
   const delProject = async (id: string) => {
     await lensRun('creative-writing', 'project-delete', { id });
     await refreshProjects();
+  };
+
+  const activeProjectMeta = projects.find((p) => p.id === activeProject) || null;
+
+  const openSettings = () => {
+    if (!activeProjectMeta) return;
+    setSettingsForm({
+      title: activeProjectMeta.title,
+      genre: activeProjectMeta.genre || 'fiction',
+      targetWords: activeProjectMeta.targetWords ? String(activeProjectMeta.targetWords) : '',
+    });
+    setEditingSettings(true);
+  };
+  const saveSettings = async () => {
+    if (!activeProject || !settingsForm.title.trim()) { setError('Manuscript title is required.'); return; }
+    const r = await lensRun('creative-writing', 'project-update', {
+      id: activeProject, title: settingsForm.title.trim(), genre: settingsForm.genre.trim() || 'fiction',
+      targetWords: Number(settingsForm.targetWords) || 0,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    setError(null);
+    setEditingSettings(false);
+    await refreshProjects();
+    await refreshDash();
   };
 
   return (
@@ -133,14 +159,45 @@ export function CreativeWritingSection() {
             <p className="text-[11px] text-zinc-400 italic px-4 py-8 text-center">Create a manuscript to begin.</p>
           ) : (
             <>
-              {dash && (
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 px-4 py-3 border-b border-zinc-800">
-                  <Stat label="Words" value={dash.wordCount.toLocaleString()} />
-                  <Stat label="Target" value={dash.targetWords ? dash.targetWords.toLocaleString() : '—'} />
-                  <Stat label="Chapters" value={dash.chapters} />
-                  <Stat label="Scenes" value={dash.scenes} />
-                  <Stat label="Characters" value={dash.characters} />
-                  <Stat label="Threads" value={dash.threads} />
+              {editingSettings ? (
+                <div className="px-4 py-3 border-b border-zinc-800 space-y-2 bg-zinc-900/40">
+                  <p className="text-[10px] font-semibold text-zinc-400 uppercase">Manuscript settings</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <input placeholder="Title" value={settingsForm.title}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, title: e.target.value })}
+                      className="bg-zinc-950 border border-amber-600/50 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                    <input placeholder="Genre" value={settingsForm.genre}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, genre: e.target.value })}
+                      className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                    <input placeholder="Word target" inputMode="numeric" value={settingsForm.targetWords}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, targetWords: e.target.value })}
+                      className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={saveSettings}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+                      <Check className="w-3.5 h-3.5" /> Save
+                    </button>
+                    <button type="button" onClick={() => setEditingSettings(false)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg">
+                      <X className="w-3.5 h-3.5" /> Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : dash && (
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 flex-1">
+                    <Stat label="Words" value={dash.wordCount.toLocaleString()} />
+                    <Stat label="Target" value={dash.targetWords ? dash.targetWords.toLocaleString() : '—'} />
+                    <Stat label="Chapters" value={dash.chapters} />
+                    <Stat label="Scenes" value={dash.scenes} />
+                    <Stat label="Characters" value={dash.characters} />
+                    <Stat label="Threads" value={dash.threads} />
+                  </div>
+                  <button aria-label="Manuscript settings" type="button" onClick={openSettings}
+                    className="text-zinc-500 hover:text-amber-300 shrink-0" title="Edit manuscript settings">
+                    <Settings2 className="w-4 h-4" />
+                  </button>
                 </div>
               )}
               <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">

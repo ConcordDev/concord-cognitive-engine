@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, BookMarked, ChevronLeft, Trash2, Copy, FileText, ExternalLink } from 'lucide-react';
+import { Loader2, Plus, BookMarked, ChevronLeft, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +16,7 @@ interface Reference {
 }
 interface Annotation { id: string; page: number | null; quote: string | null; text: string | null; color: string }
 interface PdfAttachment { id: string; referenceId: string; url: string; filename: string; pages: number | null }
+interface TagCount { tag: string; count: number }
 
 const TYPES = ['article', 'book', 'chapter', 'conference', 'thesis', 'report', 'preprint', 'dataset'];
 const STATUS_COLOR: Record<string, string> = {
@@ -27,32 +28,99 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [tags, setTags] = useState<TagCount[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: '', authors: '', year: '', type: 'article', journal: '', doi: '', tags: '' });
   const [selected, setSelected] = useState<Reference | null>(null);
-  const [citations, setCitations] = useState<{ apa: string; mla: string; bibtex: string } | null>(null);
+  const [citations, setCitations] = useState<{ apa: string; mla: string; bibtex: string; chicago?: string } | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annForm, setAnnForm] = useState({ page: '', quote: '', text: '' });
   const [pdfs, setPdfs] = useState<PdfAttachment[]>([]);
   const [pdfForm, setPdfForm] = useState({ url: '', filename: '', pages: '' });
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', authors: '', year: '', journal: '', doi: '', tags: '' });
+  const [related, setRelated] = useState<Reference[]>([]);
+  const [relateQuery, setRelateQuery] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('research', 'reference-list', query.trim() ? { query: query.trim() } : {});
+    const params: Record<string, string> = {};
+    if (query.trim()) params.query = query.trim();
+    if (activeTag) params.tag = activeTag;
+    const r = await lensRun('research', 'reference-list', params);
     setReferences(r.data?.result?.references || []);
     setLoading(false);
-  }, [query]);
+  }, [query, activeTag]);
+
+  const refreshTags = useCallback(async () => {
+    const r = await lensRun<{ tags: TagCount[] }>('research', 'tag-list', {});
+    setTags(r.data?.result?.tags || []);
+  }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void refreshTags(); }, [refreshTags]);
+
+  const loadRelated = useCallback(async (refId: string) => {
+    const r = await lensRun<{ related: Reference[] }>('research', 'reference-related', { id: refId });
+    setRelated(r.data?.result?.related || []);
+  }, []);
 
   const openRef = useCallback(async (ref: Reference) => {
     setSelected(ref);
+    setEditing(false);
     const r = await lensRun('research', 'reference-detail', { id: ref.id });
-    setCitations(r.data?.result?.citations || null);
+    const baseCitations = r.data?.result?.citations || null;
+    setCitations(baseCitations);
     setAnnotations(r.data?.result?.annotations || []);
     const p = await lensRun<{ pdfs: PdfAttachment[] }>('research', 'reference-pdfs', { referenceId: ref.id });
     setPdfs(p.data?.result?.pdfs || []);
-  }, []);
+    await loadRelated(ref.id);
+    // reference-detail only returns apa/mla/bibtex — fetch chicago via cite-format
+    // so all four citation styles this domain supports are actually reachable.
+    const chi = await lensRun<{ citation: string }>('research', 'cite-format', { id: ref.id, style: 'chicago' });
+    if (chi.data?.ok !== false) {
+      setCitations((prev) => (prev ? { ...prev, chicago: chi.data?.result?.citation } : prev));
+    }
+  }, [loadRelated]);
+
+  const startEdit = () => {
+    if (!selected) return;
+    setEditForm({
+      title: selected.title, authors: selected.authors || '', year: selected.year ? String(selected.year) : '',
+      journal: selected.journal || '', doi: selected.doi || '', tags: selected.tags.join(', '),
+    });
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!selected) return;
+    if (!editForm.title.trim()) { setError('Title is required.'); return; }
+    const r = await lensRun('research', 'reference-update', {
+      id: selected.id, title: editForm.title.trim(), authors: editForm.authors.trim(),
+      year: editForm.year ? Number(editForm.year) : null, journal: editForm.journal.trim(), doi: editForm.doi.trim(),
+      tags: editForm.tags.split(',').map((t) => t.trim()).filter(Boolean),
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed to update'); return; }
+    const updated = r.data?.result?.reference as Reference | undefined;
+    if (updated) setSelected(updated);
+    setEditing(false); setError(null);
+    await refresh(); await refreshTags(); onChange();
+  };
+
+  const linkRelated = async () => {
+    if (!selected || !relateQuery) return;
+    const r = await lensRun('research', 'reference-relate', { referenceId: selected.id, relatedId: relateQuery });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not link'); return; }
+    setRelateQuery(''); setError(null);
+    await loadRelated(selected.id);
+  };
+
+  const unlinkRelated = async (relatedId: string) => {
+    if (!selected) return;
+    await lensRun('research', 'reference-relate', { referenceId: selected.id, relatedId, unrelate: true });
+    await loadRelated(selected.id);
+  };
 
   const attachPdf = async () => {
     if (!selected) return;
@@ -85,9 +153,9 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setForm({ title: '', authors: '', year: '', type: 'article', journal: '', doi: '', tags: '' });
     setShowAdd(false); setError(null);
-    await refresh(); onChange();
+    await refresh(); await refreshTags(); onChange();
   };
-  const del = async (id: string) => { await lensRun('research', 'reference-delete', { id }); await refresh(); onChange(); };
+  const del = async (id: string) => { await lensRun('research', 'reference-delete', { id }); await refresh(); await refreshTags(); onChange(); };
   const setStatus = async (ref: Reference, status: string) => {
     await lensRun('research', 'reference-set-status', { id: ref.id, status });
     await refresh(); onChange();
@@ -119,20 +187,51 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
           <ChevronLeft className="w-3.5 h-3.5" /> Library
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
-          <h3 className="text-base font-bold text-zinc-100">{selected.title}</h3>
-          <p className="text-xs text-zinc-400">
-            {selected.authors || 'Unknown'}{selected.year ? ` · ${selected.year}` : ''}
-            {selected.journal ? ` · ${selected.journal}` : ''} · {selected.type}
-          </p>
-          <div className="flex gap-1 mt-2">
-            {['to_read', 'reading', 'read'].map((st) => (
-              <button key={st} type="button" onClick={() => setStatus(selected, st)}
-                className={cn('text-[10px] px-2 py-0.5 rounded border capitalize',
-                  selected.status === st ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400')}>
-                {st.replace(/_/g, ' ')}
-              </button>
-            ))}
-          </div>
+          {editing ? (
+            <div className="grid grid-cols-2 gap-2">
+              <input placeholder="Title" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="Authors" value={editForm.authors} onChange={(e) => setEditForm({ ...editForm, authors: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="Year" inputMode="numeric" value={editForm.year} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="Journal" value={editForm.journal} onChange={(e) => setEditForm({ ...editForm, journal: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="DOI" value={editForm.doi} onChange={(e) => setEditForm({ ...editForm, doi: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="Tags (comma-separated)" value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+                className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <div className="col-span-2 flex gap-2">
+                <button type="button" onClick={saveEdit}
+                  className="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save changes</button>
+                <button type="button" onClick={() => setEditing(false)}
+                  className="px-3 py-1.5 text-xs rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-base font-bold text-zinc-100">{selected.title}</h3>
+                <button type="button" onClick={startEdit} aria-label="Edit reference"
+                  className="shrink-0 flex items-center gap-1 text-[10px] text-zinc-400 hover:text-red-300 border border-zinc-700 rounded px-1.5 py-0.5">
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
+              </div>
+              <p className="text-xs text-zinc-400">
+                {selected.authors || 'Unknown'}{selected.year ? ` · ${selected.year}` : ''}
+                {selected.journal ? ` · ${selected.journal}` : ''} · {selected.type}
+              </p>
+              <div className="flex gap-1 mt-2">
+                {['to_read', 'reading', 'read'].map((st) => (
+                  <button key={st} type="button" onClick={() => setStatus(selected, st)}
+                    className={cn('text-[10px] px-2 py-0.5 rounded border capitalize',
+                      selected.status === st ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400')}>
+                    {st.replace(/_/g, ' ')}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
@@ -140,11 +239,11 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         {citations && (
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-1.5">
             <h4 className="text-xs font-semibold text-zinc-300">Citations</h4>
-            {(['apa', 'mla', 'bibtex'] as const).map((style) => (
+            {(['apa', 'mla', 'chicago', 'bibtex'] as const).filter((style) => citations[style]).map((style) => (
               <div key={style} className="flex items-start gap-2">
                 <span className="text-[10px] uppercase text-zinc-400 w-12 shrink-0 pt-0.5">{style}</span>
                 <code className="flex-1 text-[10px] text-zinc-400 break-all whitespace-pre-wrap">{citations[style]}</code>
-                <button type="button" onClick={() => copy(citations[style])} aria-label={`Copy ${style} citation`} className="text-zinc-600 hover:text-zinc-300 shrink-0">
+                <button type="button" onClick={() => copy(citations[style] as string)} aria-label={`Copy ${style} citation`} className="text-zinc-600 hover:text-zinc-300 shrink-0">
                   <Copy className="w-3 h-3" />
                 </button>
               </div>
@@ -209,6 +308,35 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             </ul>
           )}
         </div>
+
+        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+          <h4 className="text-xs font-semibold text-zinc-300 mb-2 flex items-center gap-1"><Link2 className="w-3.5 h-3.5" /> Related references</h4>
+          <div className="flex gap-2 mb-2">
+            <select value={relateQuery} onChange={(e) => setRelateQuery(e.target.value)}
+              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+              <option value="">Link a reference…</option>
+              {references.filter((r) => r.id !== selected.id && !related.some((x) => x.id === r.id)).map((r) => (
+                <option key={r.id} value={r.id}>{r.title}</option>
+              ))}
+            </select>
+            <button type="button" onClick={linkRelated} disabled={!relateQuery}
+              className="px-2.5 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg">Link</button>
+          </div>
+          {related.length === 0 ? (
+            <p className="text-[11px] text-zinc-400 italic">No related references linked yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {related.map((r) => (
+                <li key={r.id} className="flex items-center justify-between text-[11px] bg-zinc-950/60 border border-zinc-800 rounded-lg px-2 py-1.5">
+                  <button type="button" onClick={() => openRef(r)} className="text-left text-zinc-300 hover:text-red-300 truncate flex-1">{r.title}</button>
+                  <button type="button" onClick={() => unlinkRelated(r.id)} aria-label="Unlink reference" className="text-zinc-600 hover:text-rose-400 shrink-0">
+                    <X className="w-3 h-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     );
   }
@@ -224,6 +352,23 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
           <Plus className="w-3.5 h-3.5" /> Add
         </button>
       </div>
+
+      {tags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Tag className="w-3 h-3 text-zinc-500" />
+          {tags.slice(0, 20).map((t) => (
+            <button key={t.tag} type="button"
+              onClick={() => setActiveTag((cur) => (cur === t.tag ? null : t.tag))}
+              className={cn('text-[10px] px-1.5 py-0.5 rounded border',
+                activeTag === t.tag ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200')}>
+              {t.tag} <span className="text-zinc-600">{t.count}</span>
+            </button>
+          ))}
+          {activeTag && (
+            <button type="button" onClick={() => setActiveTag(null)} className="text-[10px] text-zinc-500 hover:text-zinc-300 underline">clear</button>
+          )}
+        </div>
+      )}
 
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 

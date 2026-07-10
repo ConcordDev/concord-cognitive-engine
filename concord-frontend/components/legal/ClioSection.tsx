@@ -10,6 +10,7 @@ import { ContactsPanel } from './ContactsPanel';
 import { TimeTracker } from './TimeTracker';
 import { TrustAccountsPanel } from './TrustAccountsPanel';
 import { InvoicesPanel } from './InvoicesPanel';
+import { PaymentsPanel } from './PaymentsPanel';
 import { DocumentsPanel } from './DocumentsPanel';
 import { ESignaturePanel } from './ESignaturePanel';
 import { CalendarPanel } from './CalendarPanel';
@@ -52,6 +53,7 @@ export function ClioSection() {
       {nav === 'calendar'  && <CalendarPanel />}
       {nav === 'time'      && <TimeTracker />}
       {nav === 'invoices'  && <InvoicesPanel />}
+      {nav === 'payments'  && <PaymentsPanel />}
       {nav === 'trust'     && <TrustAccountsPanel />}
       {nav === 'documents' && <DocumentsPanel defaultTab="documents" />}
       {nav === 'templates' && <DocumentsPanel defaultTab="templates" />}

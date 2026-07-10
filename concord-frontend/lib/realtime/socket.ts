@@ -2,12 +2,29 @@ import { io, Socket } from 'socket.io-client';
 import { updateClockOffset } from '../offline/db';
 
 // Socket URL: explicit NEXT_PUBLIC_SOCKET_URL wins; otherwise fall back
-// to the API base URL (which is the backend's host:port). Defaulting
-// to empty string meant the socket tried same-origin (the frontend
-// port), which has no socket server — surfaced as the persistent
-// "Connection lost. Working offline with cached data." banner on
-// every lens load in dev.
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL || '';
+// to the API base URL (which is the backend's host:port). Defaulting to
+// empty string meant the socket tried same-origin (the frontend port),
+// which has no socket server — surfaced as the persistent "Connection
+// lost. Working offline with cached data." banner on every lens load in
+// dev, for the common case of running `npm run dev` without ever having
+// copied `.env.example` to `.env.local` (the README quickstart doesn't
+// say to). In development only, default to the backend's known dev port
+// instead — mirrors the same `BACKEND_URL || 'http://127.0.0.1:5050'`
+// convention `next.config.js`'s rewrites() already use, and matches what
+// `.env.example` documents as the correct dev value. Production keeps the
+// empty-string fallback: same-origin + the nginx `/socket.io/` proxy
+// (`nginx/conf.d/default.conf`) is the correct, already-working prod
+// topology — defaulting prod to a hardcoded port would be wrong there.
+const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV !== 'production' ? 'http://localhost:5050' : '');
+
+// Tracked so a reconnect-exhaustion failure can tell "genuinely never
+// configured" apart from "was configured but the backend is unreachable" —
+// the former gets a distinct, more actionable diagnostic (see below).
+const SOCKET_URL_WAS_UNCONFIGURED =
+  !process.env.NEXT_PUBLIC_SOCKET_URL && !process.env.NEXT_PUBLIC_API_URL;
 
 let socket: Socket | null = null;
 
@@ -159,6 +176,25 @@ export function getSocket(): Socket {
         console.warn('[Socket] Authentication required - please log in');
       } else {
         console.debug('[Socket] Connection error (will retry):', error.message);
+      }
+    });
+
+    // reconnect_failed fires once, after all `reconnectionAttempts` are
+    // exhausted (~5-6s here) — a genuinely different situation from a single
+    // transient `connect_error`. Give the "was never configured" case (the
+    // pre-fix default-empty-string failure mode above) its own distinct,
+    // actionable diagnostic instead of blending into the generic "will
+    // retry" debug noise, since it's a config problem a developer can fix in
+    // seconds, not a real backend outage.
+    socket.on('reconnect_failed', () => {
+      if (SOCKET_URL_WAS_UNCONFIGURED) {
+        console.warn(
+          '[Socket] Giving up after 5 reconnect attempts — NEXT_PUBLIC_SOCKET_URL and ' +
+            'NEXT_PUBLIC_API_URL are both unset. Copy concord-frontend/.env.example to ' +
+            '.env.local (or set one of those vars) and restart the dev server.'
+        );
+      } else {
+        console.debug('[Socket] Giving up after 5 reconnect attempts against', SOCKET_URL);
       }
     });
 

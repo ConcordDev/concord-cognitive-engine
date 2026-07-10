@@ -8,6 +8,9 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import registerEventTimelineMacros from "../domains/event-timeline.js";
 import {
@@ -221,5 +224,53 @@ describe("event_timeline saved views", () => {
     const bob = await call("listViews", { db, actor: { userId: "bob" } }, {});
     assert.equal(bob.ok, true);
     assert.ok(!bob.views.some(v => v.name === "alice-view"));
+  });
+  it("persists under STATE.eventTimelineLens.views (the disk-snapshot-eligible shape, not a flat STATE key)", async () => {
+    // Regression pin: saveView() used to write to a flat
+    // globalThis._concordSTATE.eventTimelineViews field, which
+    // lib/lens-state-persistence.js#LENS_STATE_KEYS never listed, so the
+    // disk snapshot silently dropped every saved view on restart. Assert
+    // the write lands in the nested, whitelisted shape instead.
+    const c = { db, actor: { userId: "carol" } };
+    const save = await call("saveView", c, { name: "carol-view" });
+    assert.equal(save.ok, true);
+    const STATE = globalThis._concordSTATE;
+    assert.ok(STATE.eventTimelineLens, "STATE.eventTimelineLens must exist");
+    assert.ok(STATE.eventTimelineLens.views instanceof Map, "views must be a Map nested under eventTimelineLens");
+    assert.equal(STATE.eventTimelineViews, undefined, "the old flat, non-persisted field must not exist");
+    const carolViews = STATE.eventTimelineLens.views.get("carol");
+    assert.ok(carolViews.some(v => v.name === "carol-view"));
+  });
+});
+
+describe("event_timeline Gate-2 publicReadDomains (server.js)", () => {
+  // Wave 3 audit fix: the frontend's fetchLive() calls recent + stats +
+  // channels together, unconditionally, on every mount (including for a
+  // logged-out visitor). `channels` is the same read-only/metadata-only
+  // shape as recent/stats (channel name, count, last_seen — no payload or
+  // actor content) but was left out of the Gate-2 allowlist when the
+  // activity-feed-parity sprint added it, so the channel-filter-chip row
+  // silently disappeared for anonymous callers while the rest of the live
+  // feed rendered fine. Source-text assertion (matches the existing
+  // three-gate-consistency.test.js / lens-auth-gate.test.js convention) —
+  // booting the full server.js monolith is out of scope for this suite.
+  const SERVER_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../server.js");
+  const source = readFileSync(SERVER_PATH, "utf8");
+  const m = source.match(/event_timeline:\s*new Set\(\[([^\]]*)\]\)/);
+
+  it("finds the event_timeline publicReadDomains entry", () => {
+    assert.ok(m, "publicReadDomains.event_timeline entry not found in server.js");
+  });
+
+  it("allows the three cheap, metadata-only reads used unauthenticated by fetchLive()", () => {
+    for (const w of ["recent", "stats", "channels"]) {
+      assert.ok(new RegExp(`["']${w}["']`).test(m[1]), `event_timeline public set must include "${w}"`);
+    }
+  });
+
+  it("does NOT publicly expose payload-bearing or per-user macros", () => {
+    for (const w of ["search", "range", "detail", "timeseries", "exportEvents", "saveView", "listViews", "deleteView"]) {
+      assert.ok(!new RegExp(`["']${w}["']`).test(m[1]), `event_timeline public set must NOT include "${w}"`);
+    }
   });
 });

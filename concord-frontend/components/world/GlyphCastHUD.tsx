@@ -138,7 +138,7 @@ export default function GlyphCastHUD({ worldId = 'concordia-hub', playerPos }: {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-16 right-3 z-30 bg-zinc-900/85 backdrop-blur-md border border-purple-700/50 text-purple-300 rounded-xl px-3 py-2 shadow-md text-xs font-mono hover:bg-zinc-800/90"
+        className="fixed bottom-16 right-3 z-30 bg-black/80 backdrop-blur-sm border border-purple-700/50 text-purple-300 rounded-lg px-3 py-2 shadow-md text-xs font-mono hover:bg-black/70"
         title="Open glyph spellbook"
       >
         ⟐ {spells.length} spell{spells.length === 1 ? '' : 's'}
@@ -147,7 +147,7 @@ export default function GlyphCastHUD({ worldId = 'concordia-hub', playerPos }: {
   }
 
   return (
-    <div className="fixed bottom-16 right-3 z-30 max-w-xs bg-zinc-950/90 backdrop-blur-md border border-purple-800/50 rounded-xl p-3 shadow-xl pointer-events-auto">
+    <div className="fixed bottom-16 right-3 z-30 max-w-xs bg-black/80 backdrop-blur-sm border border-purple-800/50 rounded-lg p-3 shadow-xl pointer-events-auto">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-xs font-bold text-purple-300 uppercase tracking-wider">Spellbook</h3>
         <button type="button" onClick={() => setOpen(false)} className="text-[10px] text-zinc-400 hover:text-white" aria-label="Close">✕</button>

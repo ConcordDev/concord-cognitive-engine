@@ -8,7 +8,7 @@
  * Six purpose-built tabs, each wired to a registered `lab.*` macro:
  *   - Notebook   → notebook-create / -list / -update / -sign
  *   - Inventory  → inventory-add / -list / -consume / -remove
- *   - Protocols  → protocol-create / -list / -revise / -run
+ *   - Protocols  → protocol-create / -list / -revise (versioning) / -run
  *   - Plates     → plate-design / -list
  *   - Runs       → run-import / -list
  *   - Constructs → construct-register / -list / -analyze
@@ -22,7 +22,7 @@ import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import {
   Notebook, Boxes, ListChecks, Grid3x3, FileSpreadsheet, Dna, LineChart as LineChartIcon,
-  Plus, Trash2, PenLine, Stamp, RefreshCw, Play, AlertTriangle, CheckCircle2, Loader2,
+  Plus, Trash2, PenLine, Stamp, RefreshCw, Play, AlertTriangle, CheckCircle2, Loader2, History,
 } from 'lucide-react';
 
 const DOMAIN = 'lab';
@@ -330,7 +330,7 @@ function InventoryTab() {
 /* ── Protocols ──────────────────────────────────────────────────────────── */
 
 interface ProtoStep { order: number; text: string; durationMinutes: number; critical: boolean; done?: boolean }
-interface Protocol { id: string; name: string; category: string; version: number; steps: ProtoStep[]; stepCount: number; totalMinutes: number }
+interface Protocol { id: string; name: string; category: string; version: number; steps: ProtoStep[]; stepCount: number; totalMinutes: number; history?: unknown[] }
 interface ProtoRun { runId: string; protocolName: string; protocolVersion: number; steps: ProtoStep[]; currentStep: number; estimatedMinutes: number }
 
 function ProtocolsTab() {
@@ -342,6 +342,8 @@ function ProtocolsTab() {
   const [stepText, setStepText] = useState('');
   const [activeRun, setActiveRun] = useState<ProtoRun | null>(null);
   const [runDone, setRunDone] = useState<Set<number>>(new Set());
+  const [revisingId, setRevisingId] = useState<string | null>(null);
+  const [reviseText, setReviseText] = useState('');
 
   const refresh = useCallback(async () => {
     try { const res = await run('protocol-list', {}); setProtocols(res.protocols || []); setErr(null); }
@@ -371,6 +373,23 @@ function ProtocolsTab() {
       setActiveRun(res.run);
       setRunDone(new Set());
     } catch (e) { setErr(e instanceof Error ? e.message : 'run failed'); }
+    finally { setBusy(false); }
+  };
+
+  const openRevise = (p: Protocol) => {
+    setRevisingId(p.id);
+    setReviseText(p.steps.map((s) => s.text).join('\n'));
+  };
+
+  const saveRevision = async (id: string) => {
+    const steps = reviseText.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (steps.length === 0) { setErr('a revision needs at least one step'); return; }
+    setBusy(true);
+    try {
+      await run('protocol-revise', { id, steps });
+      setRevisingId(null); setReviseText('');
+      await refresh();
+    } catch (e) { setErr(e instanceof Error ? e.message : 'revise failed'); }
     finally { setBusy(false); }
   };
 
@@ -420,14 +439,37 @@ function ProtocolsTab() {
       <div className="space-y-2">
         {protocols.length === 0 && <p className="text-center py-6 text-gray-400 text-sm">No protocols in the library.</p>}
         {protocols.map((p) => (
-          <div key={p.id} className="lens-card flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <p className="font-medium text-sm">{p.name} <span className="text-xs text-gray-400">v{p.version}</span></p>
-              <p className="text-xs text-gray-400">{p.category} · {p.stepCount} steps · {p.totalMinutes} min</p>
+          <div key={p.id} className="lens-card space-y-2">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <p className="font-medium text-sm">{p.name} <span className="text-xs text-gray-400">v{p.version}</span></p>
+                <p className="text-xs text-gray-400">{p.category} · {p.stepCount} steps · {p.totalMinutes} min
+                  {p.history?.length ? ` · ${p.history.length} prior version(s)` : ''}</p>
+              </div>
+              <div className="flex gap-2">
+                {revisingId !== p.id && (
+                  <button onClick={() => openRevise(p)} disabled={busy} className="btn-neon text-xs flex items-center gap-1">
+                    <History className="w-3 h-3" /> Revise
+                  </button>
+                )}
+                <button onClick={() => startRun(p.id)} disabled={busy} className="btn-neon purple text-xs flex items-center gap-1">
+                  <Play className="w-3 h-3" /> Run
+                </button>
+              </div>
             </div>
-            <button onClick={() => startRun(p.id)} disabled={busy} className="btn-neon purple text-xs flex items-center gap-1">
-              <Play className="w-3 h-3" /> Run
-            </button>
+            {revisingId === p.id && (
+              <div className="space-y-2 border-t border-white/10 pt-2">
+                <p className="text-xs text-gray-400">Editing steps publishes v{p.version + 1}; v{p.version} is archived to history.</p>
+                <textarea value={reviseText} onChange={(e) => setReviseText(e.target.value)}
+                  className="input-lattice text-sm h-24 resize-none w-full font-mono" />
+                <div className="flex gap-2">
+                  <button onClick={() => saveRevision(p.id)} disabled={busy} className="btn-neon cyan text-xs flex items-center gap-1">
+                    {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <History className="w-3 h-3" />} Publish v{p.version + 1}
+                  </button>
+                  <button onClick={() => { setRevisingId(null); setReviseText(''); }} className="btn-neon text-xs">Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

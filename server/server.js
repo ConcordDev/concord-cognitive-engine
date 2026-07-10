@@ -1001,6 +1001,18 @@ registerHeartbeat("land-claims-cycle", {
   handler: runLandClaimsCycle,
 });
 
+// Wire-the-unwired: goddess.compose_now (lib/goddess-broadcaster.js) had no
+// caller anywhere — no heartbeat, no frontend button — so the /lenses/
+// goddess page's "composed hourly" claim was false and the feed stayed
+// permanently empty in any real deployment. Every ~240 ticks (~1h), walk
+// active worlds and compose+record one dispatch each. Kill-switch:
+// CONCORD_GODDESS_BROADCAST=0.
+import { runGoddessBroadcastCycle } from "./emergent/goddess-broadcast-cycle.js";
+registerHeartbeat("goddess-broadcast-cycle", {
+  frequency: 240,
+  handler: runGoddessBroadcastCycle,
+});
+
 // Civic Capital — auto-pause stalled bond drives (kill-switch CONCORD_CIVIC_BONDS).
 import { runCivicBondCycle, CIVIC_BOND_CYCLE_FREQUENCY } from "./emergent/civic-bond-cycle.js";
 registerHeartbeat("civic-bond-cycle", {
@@ -2850,14 +2862,31 @@ const ETHOS_INVARIANTS = Object.freeze({
 });
 
 // Guard: call before any external/persistent/monitoring-like action
+//
+// Token-boundary matching (2026-07-10 Wave 3 fix), not raw substring
+// `includes`. The naive substring check false-positived on any action
+// name that merely CONTAINS "ad" — which, in English, is nearly every verb
+// starting a mutation name: `inference_add_fact`, `inference_add_rule`,
+// `commonsense_add`, `metacognition_adapt`, `metacognition_adjust_confidence`,
+// `metalearning_adapt`, `metalearning_adaptations`. Every one of those threw
+// "Ethos invariant: ads forbidden" on every call — found live (not by
+// reading the code) while wiring up the inference lens's Add-Facts tab,
+// which called the correctly-shaped macro and STILL failed for this
+// unrelated reason. None of the ~134 registered action names is genuinely
+// about advertising, so the substring form never had a real true-positive
+// to protect — token matching preserves the invariant's actual intent
+// (still blocks a real `show_ads`/`ad_click`-shaped action name) while
+// no longer blocking ordinary CRUD verbs.
 function enforceEthosInvariant(actionName="") {
   const a = String(actionName||"").toLowerCase();
-  if (ETHOS_INVARIANTS.NO_TELEMETRY && a.includes("telemetry")) throw new Error("Ethos invariant: telemetry forbidden");
-  if (ETHOS_INVARIANTS.NO_ADS && (a.includes("ad") || a.includes("ads"))) throw new Error("Ethos invariant: ads forbidden");
-  if (ETHOS_INVARIANTS.NO_SECRET_MONITORING && (a.includes("monitor") || a.includes("tracking") || a.includes("track"))) {
+  const tokens = a.split(/[^a-z0-9]+/).filter(Boolean);
+  const hasToken = (...words) => tokens.some((t) => words.includes(t));
+  if (ETHOS_INVARIANTS.NO_TELEMETRY && hasToken("telemetry")) throw new Error("Ethos invariant: telemetry forbidden");
+  if (ETHOS_INVARIANTS.NO_ADS && hasToken("ad", "ads")) throw new Error("Ethos invariant: ads forbidden");
+  if (ETHOS_INVARIANTS.NO_SECRET_MONITORING && hasToken("monitor", "monitoring", "tracking", "track")) {
     throw new Error("Ethos invariant: secret monitoring forbidden");
   }
-  if (ETHOS_INVARIANTS.NO_USER_PROFILING && (a.includes("profile") || a.includes("fingerprint"))) throw new Error("Ethos invariant: user profiling forbidden");
+  if (ETHOS_INVARIANTS.NO_USER_PROFILING && hasToken("profile", "profiling", "fingerprint", "fingerprinting")) throw new Error("Ethos invariant: user profiling forbidden");
   return true;
 }
 
@@ -6482,6 +6511,14 @@ function authMiddleware(req, res, next) {
   // Phase U6 — public world-marker reads so the world map shows pings
   // without requiring login (write requires auth).
   if (req.method === "GET" && /^\/api\/worlds\/[^/]+\/markers$/.test(req.path) && !_hasAuthHeader) return next();
+  // Photo-gallery image bytes — anon <img src> requests for a PUBLIC
+  // (shared) photo must not 401 (no way to attach a bearer header from an
+  // <img> tag), so an unauthenticated GET is allowed to reach the handler,
+  // which does its own owner-or-public gate before serving the blob. An
+  // authenticated request (cookie present) still runs the full pipeline
+  // above via `_hasAuthHeader`, so req.user is populated for the owner
+  // case too.
+  if (req.method === "GET" && /^\/api\/photos\/[^/]+\/image$/.test(req.path) && !_hasAuthHeader) return next();
   // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
@@ -8191,11 +8228,22 @@ async function tryInitWebSockets(server) {
       methods: ["GET", "POST"],
       credentials: true
     },
-    // In production, restrict to WebSocket only. Long-polling fallback at
-    // scale (1000+ clients) creates a flood of HTTP requests on flaky
-    // networks (1-5s polling × 1000 clients = 200-1000 req/s overhead).
-    // Dev keeps polling for local dev tools and proxy interop.
-    transports: NODE_ENV === "production" ? ["websocket"] : ["websocket", "polling"],
+    // In production, restrict to WebSocket only by default. Long-polling
+    // fallback at scale (1000+ clients) creates a flood of HTTP requests on
+    // flaky networks (1-5s polling × 1000 clients = 200-1000 req/s overhead)
+    // — a deliberate tradeoff, not an oversight, so this stays the default.
+    // But WS-only also means zero graceful-degradation path: if a deploy's
+    // WS upgrade is broken end-to-end (e.g. the frontend container is hit
+    // directly, bypassing the nginx `/socket.io/` proxy that forwards
+    // `Upgrade` headers correctly — see nginx/conf.d/default.conf and
+    // README's deploy section), clients go fully dark instead of degrading.
+    // CONCORD_SOCKET_ALLOW_POLLING_FALLBACK opts a deployment into the
+    // polling fallback without changing the safe default for the documented
+    // at-scale topology. Dev always keeps polling for local dev tools/proxy
+    // interop.
+    transports: NODE_ENV === "production"
+      ? (process.env.CONCORD_SOCKET_ALLOW_POLLING_FALLBACK === "true" ? ["websocket", "polling"] : ["websocket"])
+      : ["websocket", "polling"],
     pingTimeout: 60000,
     pingInterval: 25000,
     // G-5 — tighten the inbound frame ceiling (default 1MB). Game packets are
@@ -11224,8 +11272,14 @@ async function runMacro(domain, name, input, ctx) {
     // canonical domain registry.
     cross_world_effectiveness: new Set(["explain", "for_player", "list_domains"]),
     // event_timeline (Sprint 8) — unified firehose of socket events
-    // persisted to event_timeline_log. Powers /lenses/timeline.
-    event_timeline: new Set(["recent", "stats"]),
+    // persisted to event_timeline_log. Powers /lenses/event-timeline.
+    // `channels` added (Wave 3 activity-feed-parity audit): it's the same
+    // read-only/metadata-only shape as recent+stats (channel name, count,
+    // last_seen — no payload/actor content) and the lens's fetchLive()
+    // calls all three together unconditionally on mount; leaving it out
+    // silently blanked the channel-filter-chip row for logged-out callers
+    // while recent/stats rendered fine right next to it.
+    event_timeline: new Set(["recent", "stats", "channels"]),
     // guidance_waypoint (Sprint 9) — active objective + hint text for
     // the diegetic waypoint beacon + "?" recovery button.
     guidance_waypoint: new Set(["active_objective", "hint_for"]),
@@ -40783,19 +40837,32 @@ registerLensAction("marketplace", "distribute_royalties", (ctx, artifact, params
 });
 
 // === Forum ===
-registerLensAction("forum", "vote", (ctx, artifact, params) => {
-  const vote = { id: uid("fvote"), postId: artifact.id, direction: params.direction || "up", voterId: ctx.actor?.userId || "anon", votedAt: nowISO() };
-  const votes = artifact.data?.votes || 0;
-  artifact.data = { ...artifact.data, votes: votes + (params.direction === "down" ? -1 : 1) };
+// NOTE (Wave 3 rebuild, 2026-07): a `forum.vote` used to be registered here
+// too, but `server/domains/forum.js` (loaded LATER, via `domainModules.forEach`
+// at the `await import('./domains/index.js')` call below this point in the
+// file) registers its own `forum.vote` for the real Discourse+Reddit STATE
+// substrate (categories/topics/posts) — since `registerLensAction` just does
+// `LENS_ACTIONS.set(key, handler)`, the later registration silently overwrote
+// this one. The artifact-scoped `vote` below was therefore DEAD CODE: it could
+// never run, on any build, ever. Removed rather than left as a red herring —
+// see docs/lens-specs/forum-capability-map.md for the full collision writeup.
+// The five actions below (pin/moderate/rank_posts/extract_thesis/
+// generate_summary_dtu) operate on the OTHER forum surface: a single persisted
+// "post" lens-artifact (`useLensData('forum','post',...)` in the page), not
+// the STATE.forumLens substrate. Real Post objects carry `content`/`score`,
+// never the `body`/`votes` fields these handlers originally read — an honest
+// field-mismatch bug fixed in the same pass that wired them to real UI
+// (PostInsightsPanel.tsx). `content`/`body` and `score`/`votes` are read
+// interchangeably below for back-compat with any caller still using the old
+// shape (e.g. a hand-built params object).
+registerLensAction("forum", "pin", (ctx, artifact, params) => {
+  // Toggleable (params.pinned === false unpins); defaults to true so any
+  // existing no-param caller keeps the original always-pin behavior.
+  const pinned = params?.pinned !== false;
+  artifact.data = { ...artifact.data, pinned, pinnedAt: pinned ? nowISO() : (artifact.data?.pinnedAt ?? null) };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
-  return { ok: true, vote, newScore: artifact.data.votes };
-});
-registerLensAction("forum", "pin", (ctx, artifact, _params) => {
-  artifact.data = { ...artifact.data, pinned: true, pinnedAt: nowISO() };
-  artifact.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, pinned: true };
+  return { ok: true, pinned };
 });
 registerLensAction("forum", "moderate", (ctx, artifact, params) => {
   const action = params.action || "flag";
@@ -40805,8 +40872,15 @@ registerLensAction("forum", "moderate", (ctx, artifact, params) => {
   return { ok: true, moderation: { action, moderatedAt: nowISO() } };
 });
 registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
-  const upvotes = artifact.data?.upvotes || Math.max(0, artifact.data?.votes || 0);
-  const downvotes = artifact.data?.downvotes || 0;
+  const d = artifact.data || {};
+  // Real forum posts track one net `score` (+ the caller's own `userVote`) —
+  // there is no per-voter up/down ledger. Derive an honest split from the net
+  // score (all-positive above zero, all-negative below) instead of reading a
+  // `votes` field no live post shape sets; explicit upvotes/downvotes still
+  // win when a caller supplies them.
+  const netScore = Number.isFinite(Number(d.score)) ? Number(d.score) : (Number.isFinite(Number(d.votes)) ? Number(d.votes) : 0);
+  const upvotes = Number.isFinite(Number(d.upvotes)) ? Number(d.upvotes) : Math.max(0, netScore);
+  const downvotes = Number.isFinite(Number(d.downvotes)) ? Number(d.downvotes) : Math.max(0, -netScore);
   const totalVotes = upvotes + downvotes;
   let wilsonScore = 0;
   if (totalVotes > 0) {
@@ -40820,7 +40894,7 @@ registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
   const ageHours = (Date.now() - new Date(artifact.createdAt || 0).getTime()) / 3600000;
   const gravity = params.gravity || 1.8;
   const hotScore = totalVotes > 0 ? (upvotes - downvotes) / Math.pow(ageHours + 2, gravity) : 0;
-  const commentCount = artifact.data?.commentCount || 0;
+  const commentCount = d.commentCount || 0;
   const engagementFactor = Math.log2(1 + commentCount);
   const compositeScore = Math.round((wilsonScore * 100 + hotScore * 10 + engagementFactor) * 100) / 100;
   return {
@@ -40836,7 +40910,7 @@ registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
   };
 });
 registerLensAction("forum", "extract_thesis", (ctx, artifact, _params) => {
-  const body = artifact.data?.body || artifact.title || "";
+  const body = artifact.data?.content || artifact.data?.body || artifact.title || "";
   const sentences = (body.match(/[^.!?]+[.!?]+/g) || [body]).map(s => s.trim()).filter(Boolean);
   const thesisIndicators = ["i believe", "i think", "i argue", "my thesis", "the point is", "in conclusion", "therefore", "thus", "hence", "the argument is", "we should", "it is clear"];
   let thesis = sentences[0] || body;
@@ -40858,10 +40932,11 @@ registerLensAction("forum", "extract_thesis", (ctx, artifact, _params) => {
   return { ok: true, thesis: { text: thesis, confidence, sentenceCount: sentences.length, method: confidence >= 0.85 ? "indicator_match" : confidence >= 0.75 ? "conclusion_position" : "heuristic", extractedAt: nowISO() } };
 });
 registerLensAction("forum", "generate_summary_dtu", (ctx, artifact, _params) => {
-  const body = artifact.data?.body || "";
-  const votes = artifact.data?.votes || 0;
-  const commentCount = artifact.data?.commentCount || 0;
-  const tags = artifact.data?.tags || [];
+  const d = artifact.data || {};
+  const body = d.content || d.body || "";
+  const votes = Number.isFinite(Number(d.score)) ? Number(d.score) : (d.votes || 0);
+  const commentCount = d.commentCount || 0;
+  const tags = d.tags || [];
   const words = body.split(/\s+/).filter(Boolean);
   const sentences = (body.match(/[^.!?]+[.!?]+/g) || []).map(s => s.trim());
   return { ok: true, dtu: { type: "forum_summary", postId: artifact.id, title: artifact.title, excerpt: sentences.slice(0, 2).join(" ") || body.slice(0, 200), wordCount: words.length, votes, commentCount, tags, engagement: votes + commentCount, generatedAt: nowISO() } };
@@ -52420,6 +52495,33 @@ app.get("/api/photos/mine", requireAuth(), asyncHandler(async (req, res) => {
 app.get("/api/photos/world/:worldId/public", asyncHandler(async (req, res) => {
   const { listPublicPhotosInWorld } = await import("./lib/photo-gallery.js");
   res.json({ ok: true, photos: listPublicPhotosInWorld(db, req.params.worldId, Number(req.query.limit) || 50) });
+}));
+
+// The actual PNG bytes for a photo. Mirrors the `photos.get` macro's
+// owner-or-public gate: the owner (via cookie auth, best-effort-decoded
+// above even on this Gate-1-bypassed path) can always view their own
+// photo; anyone else only when it has been shared (visibility='public').
+// Verify-pass fix (2026-07-09): the gallery lib + share/DTU-mint path were
+// fully real, but nothing ever served the stored blob back to a browser —
+// every gallery card rendered caption/timestamp text only, no image.
+app.get("/api/photos/:photoId/image", asyncHandler(async (req, res) => {
+  const row = db.prepare(
+    `SELECT user_id, visibility, blob_path FROM user_photos WHERE id = ?`,
+  ).get(req.params.photoId);
+  if (!row) return res.status(404).json({ ok: false, error: "not_found" });
+  const userId = req.user?.id || req.user?.userId;
+  if (row.visibility !== "public" && row.user_id !== userId) {
+    // Don't disclose existence of a private photo to a non-owner.
+    return res.status(404).json({ ok: false, error: "not_found" });
+  }
+  if (!row.blob_path || !fs.existsSync(row.blob_path)) {
+    return res.status(404).json({ ok: false, error: "blob_missing" });
+  }
+  res.setHeader(
+    "Cache-Control",
+    row.visibility === "public" ? "public, max-age=3600" : "private, no-store",
+  );
+  res.sendFile(path.resolve(row.blob_path));
 }));
 
 // Phase BB3 — operator announcements. Admin only on POST; public read.
@@ -67508,6 +67610,18 @@ function queryWithInference(query) {
 }
 
 // Perform syllogistic reasoning: Given "All A are B" and "X is A", derive "X is B"
+// Minimal regular-plural singularizer for syllogisticReason's category
+// match. Handles the ordinary English cases (mammals->mammal, foxes->fox,
+// classes->class) used by "All X are Y" phrasing; irregular plurals
+// (mice/mouse) are an honest, documented limitation, not a new defect.
+function _singularizeCategory(word) {
+  const w = String(word || "");
+  if (/(ss|us)$/i.test(w)) return w; // class, bus — don't strip
+  if (/[sxz]es$|[cs]hes$/i.test(w)) return w.slice(0, -2); // foxes, classes, dishes
+  if (/s$/i.test(w) && w.length > 1) return w.slice(0, -1); // mammals -> mammal
+  return w;
+}
+
 function syllogisticReason(input = {}) {
   ensureReasoningEngine();
   ensureInferenceKnowledgeBase();
@@ -67520,7 +67634,13 @@ function syllogisticReason(input = {}) {
   if (!majorMatch) {
     return { ok: false, error: "Major premise must be in form 'All X are Y'" };
   }
-  const category = majorMatch[1].toLowerCase();
+  // The major premise's category is grammatically plural ("All mammals
+  // are...") while the minor premise's is singular ("A whale is a
+  // mammal") — singularize the major's category before comparing/storing
+  // so the canonical worked example in this function's own comment
+  // ("All mammals are warm-blooded" + "A whale is a mammal") actually
+  // succeeds instead of failing "mammal" !== "mammals" on every call.
+  const category = _singularizeCategory(majorMatch[1].toLowerCase());
   const property = majorMatch[2].toLowerCase();
 
   // Parse minor premise (Z is X)

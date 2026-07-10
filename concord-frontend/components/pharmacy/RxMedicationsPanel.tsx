@@ -7,13 +7,24 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Pill, Check, X, Clock, Archive } from 'lucide-react';
+import { Loader2, Plus, Pill, Check, X, Clock, Archive, ChevronDown, ChevronRight, Pencil, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Medication { id: string; name: string; strength: string | null; form: string; quantity: number; refillsRemaining: number; hasSchedule: boolean }
 interface TodayDose { medId: string; medName: string; time: string; doseAmount: string; status: string }
 interface AdherenceRow { medId: string; name: string; pct: number | null }
+interface MedDetailSchedule { times: string[]; doseAmount: string; daysOfWeek: number[] }
+interface MedDetail {
+  // med-detail returns the raw stored record — it does NOT carry the
+  // list-only `hasSchedule` derived field, so this is deliberately its
+  // own shape rather than `Medication & {...}`.
+  medication: { id: string; name: string; strength: string | null; form: string; quantity: number; refillsRemaining: number; condition: string | null; prescriber: string | null };
+  schedule: MedDetailSchedule | null;
+  adherence30d: { scheduled: number; taken: number; pct: number | null };
+  daysOfSupply: number | null;
+}
+interface DoseHistoryEntry { id: string; medId: string; status: string; scheduledTime: string | null; date: string; createdAt: string }
 
 export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
   const [meds, setMeds] = useState<Medication[]>([]);
@@ -25,6 +36,17 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
   const [form, setForm] = useState({ name: '', strength: '', form: 'tablet', quantity: '', refillsRemaining: '' });
   const [schedFor, setSchedFor] = useState<string | null>(null);
   const [schedTimes, setSchedTimes] = useState('08:00, 20:00');
+  const [query, setQuery] = useState('');
+
+  // Details expand — pharmacy.med-detail + pharmacy.dose-history.
+  const [detailFor, setDetailFor] = useState<string | null>(null);
+  const [detail, setDetail] = useState<MedDetail | null>(null);
+  const [history, setHistory] = useState<DoseHistoryEntry[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // Inline edit — pharmacy.med-update.
+  const [editFor, setEditFor] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ strength: '', condition: '', prescriber: '', quantity: '', refillsRemaining: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -66,6 +88,45 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
     await refresh(); onChange();
   };
   const archive = async (id: string) => { await lensRun('pharmacy', 'med-archive', { id }); await refresh(); onChange(); };
+
+  const loadDetail = async (medId: string) => {
+    setDetailLoading(true);
+    const [d, h] = await Promise.all([
+      lensRun('pharmacy', 'med-detail', { id: medId }),
+      lensRun('pharmacy', 'dose-history', { medId }),
+    ]);
+    setDetail(d.data?.ok === false ? null : ((d.data?.result as MedDetail) || null));
+    setHistory(h.data?.ok === false ? [] : ((h.data?.result as { doses?: DoseHistoryEntry[] })?.doses || []));
+    setDetailLoading(false);
+  };
+  const toggleDetail = async (medId: string) => {
+    if (detailFor === medId) { setDetailFor(null); setDetail(null); setHistory([]); return; }
+    setDetailFor(medId);
+    await loadDetail(medId);
+  };
+
+  const startEdit = (m: Medication & { condition?: string | null; prescriber?: string | null }) => {
+    setEditFor(m.id);
+    setEditForm({
+      strength: m.strength || '', condition: (detail?.medication.id === m.id ? detail.medication.condition : '') || '',
+      prescriber: (detail?.medication.id === m.id ? detail.medication.prescriber : '') || '',
+      quantity: String(m.quantity ?? ''), refillsRemaining: String(m.refillsRemaining ?? ''),
+    });
+  };
+  const saveEdit = async (medId: string) => {
+    const r = await lensRun('pharmacy', 'med-update', {
+      id: medId, strength: editForm.strength.trim(), condition: editForm.condition.trim(), prescriber: editForm.prescriber.trim(),
+      quantity: Number(editForm.quantity) || 0, refillsRemaining: Number(editForm.refillsRemaining) || 0,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    setEditFor(null); setError(null);
+    await refresh(); onChange();
+    if (detailFor === medId) await loadDetail(medId);
+  };
+
+  const visibleMeds = query.trim()
+    ? meds.filter((m) => m.name.toLowerCase().includes(query.trim().toLowerCase()))
+    : meds;
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
@@ -125,6 +186,15 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
 
+        {meds.length > 3 && (
+          <div className="relative mb-2">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter medications…"
+              aria-label="Filter medications"
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-zinc-100" />
+          </div>
+        )}
+
         {showAdd && (
           <div className="grid grid-cols-3 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 mb-2">
             <input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -146,10 +216,14 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
 
         {meds.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">No medications. Add one to start tracking doses.</p>
+        ) : visibleMeds.length === 0 ? (
+          <p className="text-[11px] text-zinc-400 italic">No medications match &quot;{query}&quot;.</p>
         ) : (
           <ul className="space-y-2">
-            {meds.map((m) => {
+            {visibleMeds.map((m) => {
               const adh = adherence.perMed.find((x) => x.medId === m.id);
+              const isDetailOpen = detailFor === m.id;
+              const isEditing = editFor === m.id;
               return (
                 <li key={m.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
                   <div className="flex items-start justify-between">
@@ -162,10 +236,81 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
                         {adh?.pct != null ? ` · ${adh.pct}% adherence` : ''}
                       </p>
                     </div>
-                    <button aria-label="Archive" type="button" onClick={() => archive(m.id)} className="text-zinc-600 hover:text-zinc-400">
-                      <Archive className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button type="button" onClick={() => startEdit(m)} aria-label={`Edit ${m.name}`}
+                        className="text-zinc-600 hover:text-amber-400 p-1">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" onClick={() => toggleDetail(m.id)} aria-label={isDetailOpen ? `Hide details for ${m.name}` : `Show details for ${m.name}`}
+                        aria-expanded={isDetailOpen} className="text-zinc-600 hover:text-zinc-300 p-1">
+                        {isDetailOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                      </button>
+                      <button aria-label={`Archive ${m.name}`} type="button" onClick={() => archive(m.id)} className="text-zinc-600 hover:text-zinc-400 p-1">
+                        <Archive className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
+
+                  {isEditing && (
+                    <div className="grid grid-cols-2 gap-2 mt-2 bg-zinc-950/60 border border-zinc-800 rounded-lg p-2.5">
+                      <input placeholder="Strength" value={editForm.strength} onChange={(e) => setEditForm({ ...editForm, strength: e.target.value })}
+                        className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                      <input placeholder="Condition" value={editForm.condition} onChange={(e) => setEditForm({ ...editForm, condition: e.target.value })}
+                        className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                      <input placeholder="Prescriber" value={editForm.prescriber} onChange={(e) => setEditForm({ ...editForm, prescriber: e.target.value })}
+                        className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                      <input placeholder="Qty on hand" inputMode="numeric" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
+                        className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                      <input placeholder="Refills left" inputMode="numeric" value={editForm.refillsRemaining} onChange={(e) => setEditForm({ ...editForm, refillsRemaining: e.target.value })}
+                        className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                      <div className="flex gap-1.5">
+                        <button type="button" onClick={() => saveEdit(m.id)}
+                          className="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-medium rounded-lg px-2 py-1">Save</button>
+                        <button type="button" onClick={() => setEditFor(null)}
+                          className="px-2 py-1 text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {isDetailOpen && (
+                    <div className="mt-2 bg-zinc-950/60 border border-zinc-800 rounded-lg p-2.5 text-[11px] text-zinc-300 space-y-1.5">
+                      {detailLoading ? (
+                        <div className="flex items-center gap-1.5 text-zinc-400"><Loader2 className="w-3 h-3 animate-spin" /> Loading details…</div>
+                      ) : detail && detail.medication.id === m.id ? (
+                        <>
+                          <p>
+                            {detail.medication.condition && <span>Condition: {detail.medication.condition}. </span>}
+                            {detail.medication.prescriber && <span>Prescriber: {detail.medication.prescriber}. </span>}
+                            {detail.daysOfSupply != null && <span>Days of supply: {detail.daysOfSupply}. </span>}
+                          </p>
+                          {detail.adherence30d.scheduled > 0 && (
+                            <p className="text-zinc-400">
+                              30d adherence: {detail.adherence30d.taken}/{detail.adherence30d.scheduled} doses
+                              {detail.adherence30d.pct != null ? ` (${detail.adherence30d.pct}%)` : ''}
+                            </p>
+                          )}
+                          <div>
+                            <p className="text-zinc-400 mb-1">Recent dose history</p>
+                            {history.length === 0 ? (
+                              <p className="italic text-zinc-500">No doses logged yet.</p>
+                            ) : (
+                              <ul className="space-y-0.5">
+                                {history.slice(0, 8).map((h) => (
+                                  <li key={h.id} className="flex items-center justify-between">
+                                    <span>{h.date}{h.scheduledTime ? ` · ${h.scheduledTime}` : ''}</span>
+                                    <span className={cn('capitalize', h.status === 'taken' ? 'text-emerald-400' : h.status === 'missed' ? 'text-rose-400' : 'text-zinc-400')}>{h.status}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="italic text-zinc-500">Details unavailable.</p>
+                      )}
+                    </div>
+                  )}
+
                   {schedFor === m.id ? (
                     <div className="flex gap-1 mt-2">
                       <input value={schedTimes} onChange={(e) => setSchedTimes(e.target.value)} placeholder="08:00, 20:00"

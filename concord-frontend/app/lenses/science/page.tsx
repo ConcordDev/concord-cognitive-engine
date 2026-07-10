@@ -11,7 +11,6 @@ import { ScienceArxiv } from '@/components/science/ScienceArxiv';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -31,13 +30,10 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle2,
-  Archive,
   Users,
-  ShieldCheck,
   Activity,
   PieChart,
   FileText,
-  Target,
   Hash,
   Eye,
   GraduationCap,
@@ -47,7 +43,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
-import { showToast } from '@/components/common/Toasts';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -374,7 +369,6 @@ export default function ScienceLensPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
 
   const [formTitle, setFormTitle] = useState('');
   const [formStatus, setFormStatus] = useState<string>('planned');
@@ -397,8 +391,6 @@ export default function ScienceLensPage() {
     seed: [],
   });
 
-  const runAction = useRunArtifact('science');
-  const editingItem = items.find((i) => i.id === editingId) || null;
 
   /* ---- filtering ---- */
   const filtered = useMemo(() => {
@@ -442,24 +434,6 @@ export default function ScienceLensPage() {
 
   const handleDelete = async (id: string) => {
     await remove(id);
-  };
-
-  const handleAction = async (action: string, artifactId?: string) => {
-    const targetId = artifactId || editingItem?.id || filtered[0]?.id;
-    if (!targetId) return;
-    try {
-      const result = await runAction.mutateAsync({ id: targetId, action });
-      if (result.ok === false) {
-        setActionResult({
-          message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}`,
-        });
-      } else {
-        setActionResult(result.result as unknown as Record<string, unknown>);
-      }
-    } catch (err) {
-      console.error('Action failed:', err);
-      showToast('error', 'Action failed');
-    }
   };
 
   /* ---- export geojson ---- */
@@ -1921,26 +1895,18 @@ export default function ScienceLensPage() {
         </div>
       )}
 
-      {/* Domain Actions */}
-      {mode !== 'Dashboard' && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => handleAction('validateProtocol')} className={ds.btnSecondary}>
-            <ShieldCheck className="w-4 h-4" /> Validate Protocol
-          </button>
-          <button onClick={() => handleAction('sampleAudit')} className={ds.btnSecondary}>
-            <Archive className="w-4 h-4" /> Sample Audit
-          </button>
-          <button onClick={() => handleAction('calibrationCheck')} className={ds.btnSecondary}>
-            <Wrench className="w-4 h-4" /> Equipment Calibration Check
-          </button>
-          <button onClick={() => handleAction('dataQualityReport')} className={ds.btnSecondary}>
-            <Target className="w-4 h-4" /> Data Quality Report
-          </button>
-          {runAction.isPending && (
-            <span className="text-xs text-neon-blue animate-pulse">Running...</span>
-          )}
-        </div>
-      )}
+      {/* Note: the four analysis macros formerly triggered here (validateProtocol,
+          sampleAudit, calibrationCheck, dataQualityReport) are now correctly wired
+          in the Experiment workbench below (real structured inputs — the shapes
+          those macros actually read) and, for dataQualityReport, in the Science
+          Workbench's Data Grid tab. This bar previously ran them against whichever
+          fabricated CRUD artifact happened to be first in the CURRENT tab's filtered
+          list — e.g. clicking "Equipment Calibration Check" while on the Notebook
+          tab passed an Experiment record with none of the fields the macro reads,
+          silently producing a constant "unknown"/near-empty result regardless of
+          input. Removed as broken-and-redundant rather than field-shape-patched
+          in place, since a correct implementation already exists elsewhere on
+          this page. */}
 
       {/* Content */}
       {mode === 'Dashboard' ? (
@@ -1966,121 +1932,6 @@ export default function ScienceLensPage() {
         </>
       )}
 
-      {/* Action result */}
-      {actionResult && (
-        <div className={ds.panel}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-3">
-            {/* chainOfCustody */}
-            {actionResult.intact !== undefined &&
-              actionResult.transfers !== undefined &&
-              !('equipment' in actionResult) && (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p
-                        className={`text-sm font-bold ${actionResult.intact ? 'text-green-400' : 'text-red-400'}`}
-                      >
-                        {actionResult.intact ? 'Intact' : 'Broken'}
-                      </p>
-                      <p className="text-[10px] text-gray-400">Chain Status</p>
-                    </div>
-                    <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p className="text-sm font-bold text-neon-cyan">
-                        {String(actionResult.transfers)}
-                      </p>
-                      <p className="text-[10px] text-gray-400">Transfers</p>
-                    </div>
-                    <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p
-                        className={`text-sm font-bold ${Array.isArray(actionResult.gaps) && (actionResult.gaps as unknown[]).length > 0 ? 'text-red-400' : 'text-green-400'}`}
-                      >
-                        {Array.isArray(actionResult.gaps)
-                          ? (actionResult.gaps as unknown[]).length
-                          : 0}
-                      </p>
-                      <p className="text-[10px] text-gray-400">Gaps</p>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-gray-400">Sample: {String(actionResult.sample)}</p>
-                </div>
-              )}
-            {/* calibrationCheck */}
-            {'equipment' in actionResult && actionResult.status !== undefined && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-lattice-surface rounded text-center">
-                    <p
-                      className={`text-sm font-bold capitalize ${actionResult.status === 'overdue' ? 'text-red-400' : actionResult.status === 'due_soon' ? 'text-amber-400' : 'text-green-400'}`}
-                    >
-                      {String(actionResult.status).replace(/_/g, ' ')}
-                    </p>
-                    <p className="text-[10px] text-gray-400">Calibration Status</p>
-                  </div>
-                  <div className="p-2 bg-lattice-surface rounded text-center">
-                    <p
-                      className={`text-sm font-bold ${actionResult.daysUntilDue !== null && Number(actionResult.daysUntilDue) < 0 ? 'text-red-400' : 'text-neon-cyan'}`}
-                    >
-                      {actionResult.daysUntilDue !== null
-                        ? `${String(actionResult.daysUntilDue)}d`
-                        : 'N/A'}
-                    </p>
-                    <p className="text-[10px] text-gray-400">Days Until Due</p>
-                  </div>
-                </div>
-                <p className="text-[10px] text-gray-400">
-                  Next: {String(actionResult.nextCalibration || 'Not set')}
-                </p>
-              </div>
-            )}
-            {/* dataExport */}
-            {actionResult.records !== undefined && actionResult.format !== undefined && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 bg-lattice-surface rounded text-center">
-                  <p className="text-sm font-bold text-neon-cyan">{String(actionResult.records)}</p>
-                  <p className="text-[10px] text-gray-400">Records Exported</p>
-                </div>
-                <div className="p-2 bg-lattice-surface rounded text-center">
-                  <p className="text-sm font-bold text-neon-cyan uppercase">
-                    {String(actionResult.format)}
-                  </p>
-                  <p className="text-[10px] text-gray-400">Format</p>
-                </div>
-              </div>
-            )}
-            {/* spatialCluster */}
-            {actionResult.clusters !== undefined && Array.isArray(actionResult.clusters) && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="p-2 bg-lattice-surface rounded text-center">
-                    <p className="text-sm font-bold text-neon-cyan">
-                      {(actionResult.clusters as unknown[]).length}
-                    </p>
-                    <p className="text-[10px] text-gray-400">Clusters</p>
-                  </div>
-                  <div className="p-2 bg-lattice-surface rounded text-center">
-                    <p className="text-sm font-bold text-neon-cyan">
-                      {String(actionResult.totalObservations)}
-                    </p>
-                    <p className="text-[10px] text-gray-400">Observations</p>
-                  </div>
-                  <div className="p-2 bg-lattice-surface rounded text-center">
-                    <p className="text-sm font-bold text-neon-cyan">
-                      {String(actionResult.radiusKm)} km
-                    </p>
-                    <p className="text-[10px] text-gray-400">Radius</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Editor Modal */}
       {showEditor && (

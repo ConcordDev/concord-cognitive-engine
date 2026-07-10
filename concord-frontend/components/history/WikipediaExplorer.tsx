@@ -24,7 +24,7 @@ import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Search, ExternalLink, Loader2, Calendar, ChevronLeft, ChevronRight,
-  GraduationCap, Skull, Users2,
+  GraduationCap, Skull, Users2, Star,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
@@ -54,7 +54,7 @@ interface OnThisDayEntry {
   pages: Array<{ title: string; extract?: string; url?: string; thumbnail?: string }>;
 }
 
-type DayKind = 'events' | 'births' | 'deaths' | 'holidays';
+type DayKind = 'selected' | 'events' | 'births' | 'deaths' | 'holidays';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 
@@ -299,11 +299,18 @@ function OnThisDay() {
 
   const lookupMutation = useMutation({
     mutationFn: async (params: { month: number; day: number; kind: DayKind }) => callMacro<{ events?: OnThisDayEntry[]; births?: OnThisDayEntry[]; deaths?: OnThisDayEntry[]; holidays?: OnThisDayEntry[]; selected?: OnThisDayEntry[] }>('on-this-day', params),
-    onSuccess: (env) => {
+    onSuccess: (env, params) => {
       if (!env.ok || !env.result) { setEntries([]); return; }
       const r = env.result;
-      const list = r.events || r.births || r.deaths || r.holidays || r.selected || [];
-      setEntries(list);
+      // Keyed lookup by the requested kind — NOT `a || b || c` chaining. The
+      // backend macro only populates the field matching the requested `kind`
+      // (Wikipedia's per-kind REST endpoint); the others come back as `[]`,
+      // which is truthy in JS, so `||` chaining always resolved to whichever
+      // field is checked first and silently emptied every non-`events` tab.
+      const byKind: Record<DayKind, OnThisDayEntry[] | undefined> = {
+        selected: r.selected, events: r.events, births: r.births, deaths: r.deaths, holidays: r.holidays,
+      };
+      setEntries(byKind[params.kind] || []);
     },
   });
 
@@ -362,6 +369,7 @@ function OnThisDay() {
       {/* Kind tabs */}
       <div className="flex gap-1 border-b border-zinc-800">
         {([
+          { id: 'selected' as const, label: 'Featured', icon: Star },
           { id: 'events' as const, label: 'Events', icon: Calendar },
           { id: 'births' as const, label: 'Births', icon: Users2 },
           { id: 'deaths' as const, label: 'Deaths', icon: Skull },

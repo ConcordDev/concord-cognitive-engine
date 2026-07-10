@@ -10,15 +10,13 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
+import { lensRun } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Lock, Zap, BarChart3, XCircle, Loader2, Fingerprint, ShieldAlert,
-  Waves, AlertTriangle, CheckCircle, MessageSquare,
+  Waves, AlertTriangle, CheckCircle, MessageSquare, Database, Plus, Trash2, Sparkles,
 } from 'lucide-react';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -26,18 +24,49 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { TorNetworkStatus } from '@/components/anon/TorNetworkStatus';
 import { AnonMessenger } from '@/components/anon/AnonMessenger';
 
+interface PrivacyRecord { age: number; zipcode: string; condition: string }
+
+// A canonical HIPAA-Safe-Harbor-style teaching dataset (age/zip/diagnosis
+// quasi-identifiers over a small population) — the standard illustration
+// used in k-anonymity literature. Clearly an example, not live user data;
+// it exists so the privacy-compute actions below have something real to
+// operate on before a user pastes in their own rows.
+const EXAMPLE_RECORDS: PrivacyRecord[] = [
+  { age: 28, zipcode: '94110', condition: 'Flu' },
+  { age: 29, zipcode: '94110', condition: 'Flu' },
+  { age: 31, zipcode: '94112', condition: 'Migraine' },
+  { age: 34, zipcode: '94112', condition: 'Asthma' },
+  { age: 42, zipcode: '94115', condition: 'Diabetes' },
+  { age: 45, zipcode: '94115', condition: 'Diabetes' },
+  { age: 45, zipcode: '94117', condition: 'Hypertension' },
+  { age: 61, zipcode: '94117', condition: 'Arthritis' },
+  { age: 63, zipcode: '94118', condition: 'Arthritis' },
+  { age: 22, zipcode: '94103', condition: 'Flu' },
+];
+
 export default function AnonLensPage() {
   useLensNav('anon');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('anon');
 
-  // Privacy-compute artifact store (anonymize / privacyRisk / differentialPrivacy).
-  const { items: privacyItems } = useLensData<Record<string, unknown>>('anon', 'privacy-set', {
-    seed: [],
-  });
-  const runAction = useRunArtifact('anon');
+  // Privacy-compute dataset. anonymize/privacyRisk/differentialPrivacy need
+  // structured record data — driven by a small real table editor here and
+  // run directly via lensRun (the input becomes the macro's artifact.data),
+  // rather than round-tripping through the unrelated generic artifact store.
+  const [records, setRecords] = useState<PrivacyRecord[]>([]);
+  const [newRecord, setNewRecord] = useState({ age: '', zipcode: '', condition: '' });
+  const [epsilon, setEpsilon] = useState(1.0);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  const addRecord = () => {
+    const age = Number(newRecord.age);
+    if (!Number.isFinite(age) || !newRecord.zipcode.trim()) return;
+    setRecords((prev) => [...prev, { age, zipcode: newRecord.zipcode.trim(), condition: newRecord.condition.trim() || 'unspecified' }]);
+    setNewRecord({ age: '', zipcode: '', condition: '' });
+  };
+  const loadExample = () => setRecords(EXAMPLE_RECORDS);
+  const clearRecords = () => setRecords([]);
 
   // Lens-scoped keyboard commands.
   useLensCommand(
@@ -45,7 +74,7 @@ export default function AnonLensPage() {
       {
         id: 'run-anonymize',
         keys: 'mod+k',
-        description: 'Run anonymize on first artifact',
+        description: 'Run anonymize on the current dataset',
         category: 'actions',
         action: () => handleAnonAction('anonymize'),
       },
@@ -53,21 +82,22 @@ export default function AnonLensPage() {
     { lensId: 'anon' },
   );
 
-  const handleAnonAction = async (action: string) => {
-    const targetId = privacyItems[0]?.id;
-    if (!targetId) {
-      setActionResult({ message: 'No privacy dataset artifact found. Create one to run analytics.' });
+  const handleAnonAction = async (action: 'anonymize' | 'privacyRisk' | 'differentialPrivacy') => {
+    if (records.length === 0) {
+      setActionResult({ message: 'No records yet — load the example dataset or add a few rows first.' });
       return;
     }
     setIsRunning(action);
     try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) {
-        setActionResult({
-          message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
-        });
+      const input = action === 'differentialPrivacy'
+        ? { values: records.map((r) => r.age) }
+        : { records, quasiIdentifiers: ['age', 'zipcode'], sensitiveFields: ['condition'] };
+      const params = action === 'differentialPrivacy' ? { epsilon } : {};
+      const res = await lensRun('anon', action, { ...input, ...params });
+      if (res.data.ok === false) {
+        setActionResult({ message: `Action failed: ${res.data.error || 'Unknown error'}` });
       } else {
-        setActionResult(res.result as Record<string, unknown>);
+        setActionResult(res.data.result as Record<string, unknown>);
       }
     } catch (e) {
       setActionResult({
@@ -111,19 +141,69 @@ export default function AnonLensPage() {
           <AnonMessenger />
         </section>
 
-        {/* AI actions on the privacy-set artifact */}
-        <UniversalActions domain="anon" artifactId={privacyItems[0]?.id} compact />
-
         {/* ── Privacy-compute analytics ── */}
-        <div className="panel p-4">
-          <h3 className="mb-3 flex items-center gap-2 font-semibold">
+        <div className="panel p-4 space-y-3">
+          <h3 className="flex items-center gap-2 font-semibold">
             <Zap className="h-4 w-4 text-neon-green" />
             Privacy Compute Actions
           </h3>
-          <p className="mb-3 text-xs text-gray-400">
-            Run k-anonymity, re-identification risk and differential-privacy analytics on the
-            first stored privacy dataset artifact.
+          <p className="text-xs text-gray-400">
+            Run k-anonymity generalization, re-identification risk (prosecutor / journalist /
+            marketer attack models), and Laplace-mechanism differential privacy against a real
+            dataset below.
           </p>
+
+          {/* Dataset editor */}
+          <div className="rounded-lg border border-lattice-border bg-lattice-deep p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="flex items-center gap-1.5 text-xs font-semibold text-gray-300">
+                <Database className="h-3.5 w-3.5 text-neon-cyan" /> Dataset ({records.length} records)
+              </h4>
+              <div className="flex items-center gap-2">
+                <button onClick={loadExample} className="flex items-center gap-1 rounded bg-neon-cyan/10 px-2 py-1 text-[11px] text-neon-cyan hover:bg-neon-cyan/20">
+                  <Sparkles className="h-3 w-3" /> Load example dataset
+                </button>
+                {records.length > 0 && (
+                  <button onClick={clearRecords} className="flex items-center gap-1 rounded bg-white/5 px-2 py-1 text-[11px] text-gray-400 hover:text-red-400">
+                    <Trash2 className="h-3 w-3" /> Clear
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="space-y-1 text-[11px] text-gray-400">
+                <span>Age</span>
+                <input type="number" value={newRecord.age} onChange={(e) => setNewRecord((p) => ({ ...p, age: e.target.value }))} placeholder="34" className="input-lattice w-20 text-xs" />
+              </label>
+              <label className="space-y-1 text-[11px] text-gray-400">
+                <span>Zipcode</span>
+                <input value={newRecord.zipcode} onChange={(e) => setNewRecord((p) => ({ ...p, zipcode: e.target.value }))} placeholder="94110" className="input-lattice w-24 text-xs" />
+              </label>
+              <label className="space-y-1 text-[11px] text-gray-400">
+                <span>Condition (sensitive)</span>
+                <input value={newRecord.condition} onChange={(e) => setNewRecord((p) => ({ ...p, condition: e.target.value }))} placeholder="Flu" className="input-lattice w-32 text-xs" />
+              </label>
+              <button onClick={addRecord} disabled={!newRecord.age || !newRecord.zipcode} className="flex items-center gap-1 rounded bg-neon-green/10 px-2 py-1.5 text-xs text-neon-green hover:bg-neon-green/20 disabled:opacity-40">
+                <Plus className="h-3.5 w-3.5" /> Add row
+              </button>
+            </div>
+            {records.length > 0 && (
+              <div className="max-h-32 space-y-1 overflow-y-auto">
+                {records.map((r, i) => (
+                  <div key={i} className="flex items-center justify-between rounded bg-lattice-surface px-2 py-1 text-[11px] text-gray-300">
+                    <span>age {r.age} · zip {r.zipcode} · {r.condition}</span>
+                    <button onClick={() => setRecords((p) => p.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-400">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <label className="flex items-center gap-2 text-[11px] text-gray-400">
+              <span>Differential-privacy epsilon (ε)</span>
+              <input type="number" min={0.01} max={10} step={0.1} value={epsilon} onChange={(e) => setEpsilon(Math.max(0.01, Math.min(10, Number(e.target.value) || 1)))} className="input-lattice w-20 text-xs" />
+              <span className="text-gray-500">lower = stronger privacy, more noise</span>
+            </label>
+          </div>
+
           <div className="grid grid-cols-3 gap-3">
             <button
               onClick={() => handleAnonAction('anonymize')}

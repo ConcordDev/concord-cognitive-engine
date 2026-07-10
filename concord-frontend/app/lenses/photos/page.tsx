@@ -183,6 +183,21 @@ export default function PhotosLensPage() {
             <ul data-testid="photos-list" className="grid grid-cols-1 gap-3 animate-in fade-in duration-200 motion-reduce:animate-none sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {rows.map((p) => (
                 <li key={p.id} className="rounded-xl border border-sky-500/20 bg-zinc-950/60 p-3">
+                  <div className="mb-2 aspect-video w-full overflow-hidden rounded-lg bg-slate-900/70">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/photos/${p.id}/image`}
+                      alt={p.caption || 'Untitled photo'}
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        // Honest degrade — hide the broken-image icon rather
+                        // than fabricate a placeholder thumbnail; the caption
+                        // text below still identifies the entry.
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
                   <h3 className="truncate text-[12px] font-medium text-sky-100">{p.caption || 'Untitled'}</h3>
                   <p className="mt-0.5 text-[10px] text-slate-500">
                     {p.world_id && `${p.world_id} · `}{timeAgo(p.taken_at)}

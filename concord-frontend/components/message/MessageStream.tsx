@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send, Loader2, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, Pin } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, Pin, ListChecks, Mic, Square } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ChannelIcon } from './SlackShell';
 import { ChannelExtrasBar } from './ChannelExtrasBar';
 import { RichComposer } from './RichComposer';
+import { mediaRecorderSupported } from '@/lib/voice/mediarecorder-stt';
 
 export interface Message {
   id: string;
@@ -38,6 +39,8 @@ export function MessageStream({
   const [sending, setSending] = useState(false);
   const [summary, setSummary] = useState<{ summary: string; source: string; messageCount: number } | null>(null);
   const [summarizing, setSummarizing] = useState(false);
+  const [actionItems, setActionItems] = useState<Array<{ id: string; text: string; owner: string | null; due: string | null }> | null>(null);
+  const [extractingActions, setExtractingActions] = useState(false);
   const [smartReplies, setSmartReplies] = useState<string[]>([]);
   const [scheduleAt, setScheduleAt] = useState<string>('');
   const [showSchedule, setShowSchedule] = useState(false);
@@ -51,8 +54,22 @@ export function MessageStream({
   const lastTsRef = useRef<string | null>(null);
   const typingSentRef = useRef(false);
 
+  // Voice notes: record → transcribe via the existing /api/voice/transcribe-raw
+  // route (the same one lib/voice/mediarecorder-stt.ts uses for ConKay dictation)
+  // → send as a normal message → register real duration/transcript metadata via
+  // message.voice-register. Degrades honestly: if Whisper isn't configured or
+  // no speech is detected, the message still sends with a plain placeholder
+  // body and a 0-length transcript is never fabricated.
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [voiceDurations, setVoiceDurations] = useState<Record<string, number>>({});
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordChunksRef = useRef<Blob[]>([]);
+  const recordStreamRef = useRef<MediaStream | null>(null);
+  const recordStartRef = useRef<number>(0);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (channel) { refresh(); markRead(); } else { setMsgs([]); setSummary(null); setSmartReplies([]); setTypers([]); } }, [channel?.id]);
+  useEffect(() => { setActionItems(null); if (channel) { refresh(); markRead(); void loadVoiceDurations(); } else { setMsgs([]); setSummary(null); setSmartReplies([]); setTypers([]); } }, [channel?.id]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs.length]);
 
   // Live-delivery poll — every 4s ask the server for typing handles +
@@ -139,6 +156,72 @@ export function MessageStream({
     finally { setSending(false); }
   }
 
+  async function loadVoiceDurations() {
+    try {
+      const r = await lensRun({ domain: 'message', action: 'voice-list', input: {} });
+      const voices = (r.data?.result?.voices || []) as Array<{ messageId: string; durationMs: number }>;
+      const map: Record<string, number> = {};
+      for (const v of voices) map[v.messageId] = v.durationMs;
+      setVoiceDurations(map);
+    } catch { /* best-effort */ }
+  }
+
+  async function startRecording() {
+    if (!channel || recording || !mediaRecorderSupported()) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordStreamRef.current = stream;
+      recordChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) recordChunksRef.current.push(e.data); };
+      recorder.start();
+      recorderRef.current = recorder;
+      recordStartRef.current = Date.now();
+      setRecording(true);
+    } catch (e) { console.error('[Stream] mic access failed', e); }
+  }
+
+  async function stopRecording() {
+    const recorder = recorderRef.current;
+    if (!recorder || !channel) return;
+    setRecording(false);
+    setTranscribing(true);
+    const durationMs = Date.now() - recordStartRef.current;
+    const stopped = new Promise<Blob>((resolve) => {
+      recorder.onstop = () => resolve(new Blob(recordChunksRef.current, { type: recorder.mimeType || 'audio/webm' }));
+    });
+    recorder.stop();
+    recordStreamRef.current?.getTracks().forEach((t) => t.stop());
+    recordStreamRef.current = null;
+    recorderRef.current = null;
+    try {
+      const blob = await stopped;
+      let transcript = '';
+      if (blob.size > 1024) {
+        try {
+          const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+          const res = await fetch(`${apiBase}/api/voice/transcribe-raw`, {
+            method: 'POST', headers: { 'Content-Type': blob.type || 'audio/webm' }, body: blob, credentials: 'include',
+          });
+          const json = await res.json().catch(() => null);
+          if (json?.ok) transcript = String(json.transcript || '').trim();
+        } catch { /* transcription unavailable — honest fallback below */ }
+      }
+      const sendResult = await lensRun({
+        domain: 'message', action: 'messages-send',
+        input: { channelId: channel.id, body: transcript || '🎤 Voice message (transcription unavailable)' },
+      });
+      const messageId = sendResult.data?.result?.message?.id;
+      if (messageId) {
+        await lensRun({ domain: 'message', action: 'voice-register', input: { messageId, durationMs, transcript } });
+      }
+      await refresh();
+      await loadVoiceDurations();
+      onMessageActivity?.();
+    } catch (e) { console.error('[Stream] voice note failed', e); }
+    finally { setTranscribing(false); }
+  }
+
   async function scheduleSend() {
     if (!channel || !body.trim() || !scheduleAt) return;
     try {
@@ -160,6 +243,21 @@ export function MessageStream({
       setSummary(r.data?.result || null);
     } catch (e) { console.error('[Stream] summarize', e); }
     finally { setSummarizing(false); }
+  }
+
+  async function extractActionItems() {
+    if (!channel || msgs.length === 0) return;
+    setExtractingActions(true);
+    try {
+      // ai-action-items takes raw transcript text (channel-agnostic) — build
+      // the same "Sender: body" transcript ai-summarize-channel composes
+      // server-side, over the messages already loaded in this stream.
+      const text = msgs.slice(-50).map((m) => `${m.senderName}: ${m.body}`).join('\n');
+      const r = await lensRun({ domain: 'message', action: 'ai-action-items', input: { text } });
+      if (r.data?.ok === false) { setActionItems([]); return; }
+      setActionItems((r.data?.result?.actionItems || []) as Array<{ id: string; text: string; owner: string | null; due: string | null }>);
+    } catch (e) { console.error('[Stream] action-items', e); }
+    finally { setExtractingActions(false); }
   }
 
   async function saveEdit(m: Message) {
@@ -205,7 +303,10 @@ export function MessageStream({
         <ChannelIcon kind={channel.kind} isPrivate={channel.isPrivate} className="w-4 h-4 text-violet-400" />
         <span className="text-sm font-semibold text-gray-200">{channel.name}</span>
         {channel.topic && <span className="text-[10px] text-gray-400">· {channel.topic}</span>}
-        <button onClick={summarize} disabled={summarizing} className="ml-auto px-2 py-1 text-xs rounded border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 disabled:opacity-40 inline-flex items-center gap-1">
+        <button onClick={extractActionItems} disabled={extractingActions || msgs.length === 0} className="ml-auto px-2 py-1 text-xs rounded border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40 inline-flex items-center gap-1">
+          {extractingActions ? <Loader2 className="w-3 h-3 animate-spin" /> : <ListChecks className="w-3 h-3" />}Action items
+        </button>
+        <button onClick={summarize} disabled={summarizing} className="px-2 py-1 text-xs rounded border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 disabled:opacity-40 inline-flex items-center gap-1">
           {summarizing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}Summarize
         </button>
       </header>
@@ -220,6 +321,30 @@ export function MessageStream({
             <div className="text-[10px] text-violet-400/70 mt-0.5">{summary.messageCount} messages · {summary.source}</div>
           </div>
           <button onClick={() => setSummary(null)} className="text-violet-300 text-lg">×</button>
+        </div>
+      )}
+
+      {actionItems && (
+        <div className="px-4 py-2 bg-emerald-500/[0.06] border-b border-emerald-500/20 text-xs text-emerald-100">
+          <div className="flex items-start gap-2">
+            <ListChecks className="w-3 h-3 text-emerald-300 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              {actionItems.length === 0 ? (
+                <div className="text-emerald-300/70 italic">No action items found in the recent conversation.</div>
+              ) : (
+                <ul className="space-y-1">
+                  {actionItems.map((item) => (
+                    <li key={item.id} className="flex items-start gap-1.5">
+                      <span className="flex-1">{item.text}</span>
+                      {item.owner && <span className="text-emerald-300 whitespace-nowrap">@{item.owner}</span>}
+                      {item.due && <span className="text-[10px] text-emerald-400/70 whitespace-nowrap">due {item.due}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <button onClick={() => setActionItems(null)} className="text-emerald-300 text-lg">×</button>
+          </div>
         </div>
       )}
 
@@ -241,6 +366,11 @@ export function MessageStream({
                 <span className="font-semibold text-white">{m.senderName}</span>
                 <span className="text-gray-400 font-mono">{new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 {m.edited && <span className="text-gray-400 italic">(edited)</span>}
+                {voiceDurations[m.id] != null && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/25 text-rose-300 inline-flex items-center gap-1" title="Voice message">
+                    <Mic className="w-2.5 h-2.5" />{(voiceDurations[m.id] / 1000).toFixed(1)}s
+                  </span>
+                )}
                 <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1">
                   <button onClick={() => onOpenThread(m.id)} className="p-1 text-gray-400 hover:text-white" title="Reply in thread"><MessageSquare className="w-3 h-3" /></button>
                   <button onClick={() => pinMsg(m)} className="p-1 text-gray-400 hover:text-amber-300" title="Pin to channel"><Pin className="w-3 h-3" /></button>
@@ -312,6 +442,16 @@ export function MessageStream({
               disabled={sending}
             />
           </div>
+          {mediaRecorderSupported() && (
+            <button
+              onClick={recording ? stopRecording : startRecording}
+              disabled={transcribing}
+              className={cn('p-2 rounded inline-flex items-center gap-1', recording ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse' : 'text-gray-400 hover:text-white')}
+              title={recording ? 'Stop recording' : 'Record a voice message'}
+            >
+              {transcribing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : recording ? <Square className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+            </button>
+          )}
           <button onClick={() => setShowSchedule(v => !v)} className={cn('p-2 rounded', showSchedule ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'text-gray-400 hover:text-white')} title="Schedule send">
             <Calendar className="w-3.5 h-3.5" />
           </button>

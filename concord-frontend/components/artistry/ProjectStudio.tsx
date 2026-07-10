@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useUIStore } from '@/store/ui';
 import {
   FolderPlus, Eye, Heart, MessageSquare, Trash2, X, Plus, Loader2, ImageIcon, ListOrdered,
 } from 'lucide-react';
@@ -99,6 +100,20 @@ export function ProjectStudio() {
       setCommentBody('');
     }
   }, [commentBody, openId, detail]);
+
+  // commentDelete — server-enforced to the comment's own author (see
+  // artistry.js#commentDelete: `c.userId === artAid(ctx)`). Shown on every
+  // comment (we don't know the viewer's id client-side); an attempt on
+  // someone else's comment is rejected honestly rather than hidden client-side.
+  const removeComment = useCallback(async (commentId: string) => {
+    if (!openId || !detail) return;
+    const r = await lensRun('artistry', 'commentDelete', { projectId: openId, commentId });
+    if (r.data?.ok) {
+      setDetail({ ...detail, comments: detail.comments.filter((c) => c.id !== commentId) });
+    } else {
+      useUIStore.getState().addToast({ type: 'error', message: 'You can only delete your own comments.' });
+    }
+  }, [openId, detail]);
 
   return (
     <div className="space-y-4">
@@ -241,9 +256,14 @@ export function ProjectStudio() {
                   <div className="space-y-2 border-t border-white/10 pt-3">
                     <h4 className="text-sm font-semibold flex items-center gap-1.5"><MessageSquare className="w-4 h-4" /> Comments ({detail.comments.length})</h4>
                     {detail.comments.map((c) => (
-                      <div key={c.id} className="bg-white/5 border border-white/10 rounded-lg p-2.5">
-                        <div className="text-[11px] text-gray-400">{c.userId} · {new Date(c.createdAt).toLocaleDateString()}</div>
-                        <p className="text-sm text-gray-300 mt-0.5">{c.body}</p>
+                      <div key={c.id} className="bg-white/5 border border-white/10 rounded-lg p-2.5 flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-[11px] text-gray-400">{c.userId} · {new Date(c.createdAt).toLocaleDateString()}</div>
+                          <p className="text-sm text-gray-300 mt-0.5">{c.body}</p>
+                        </div>
+                        <button onClick={() => removeComment(c.id)} aria-label="Delete comment" className="text-gray-500 hover:text-red-400 shrink-0">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ))}
                     <div className="flex gap-2">

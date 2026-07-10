@@ -2,14 +2,28 @@ import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { stampIngestedRecord } from "../lib/provenance-ingest.js";
 
 export default function registerGovernmentActions(registerLensAction) {
+  // Field-alias note (Wave 3 audit, docs/lens-specs/government-capability-
+  // map.md): these four macros are driven by the generic "Permit"/
+  // "Violation"/"EmergencyPlan"/"Record" case-management artifacts the
+  // GovernmentLensPage editor creates (app/lenses/government/page.tsx
+  // renderFormFields). The editor's actual field names — submittedDate,
+  // retentionYears, a single `zone` string, etc. — didn't match what these
+  // macros originally read (applicationDate/approvalDate, retentionPeriod,
+  // a `zones` array), so every real click degraded to a null/default
+  // result no matter what the user entered. Fixed with backward-compatible
+  // aliases (existing callers that pass the original field names, e.g. the
+  // behavior tests, are unaffected) plus a single-zone fallback for
+  // resourceStaging (the editor has no multi-zone entry UI — an explicit
+  // `zones` array, e.g. from an API/MCP caller, still works as before).
   registerLensAction("government", "permitTimeline", (ctx, artifact, _params) => {
-    const applicationDate = artifact.data?.applicationDate ? new Date(artifact.data.applicationDate) : null;
+    const applicationDate = (artifact.data?.applicationDate || artifact.data?.submittedDate)
+      ? new Date(artifact.data.applicationDate || artifact.data.submittedDate) : null;
     const approvalDate = artifact.data?.approvalDate ? new Date(artifact.data.approvalDate) : null;
     let processingDays = null;
     if (applicationDate && approvalDate) {
       processingDays = Math.ceil((approvalDate - applicationDate) / (1000 * 60 * 60 * 24));
     }
-    const permitType = artifact.data?.type || 'general';
+    const permitType = String(artifact.data?.type || 'general').toLowerCase();
     const benchmarks = { building: 30, electrical: 14, plumbing: 14, grading: 21, business: 10, general: 21 };
     const benchmark = benchmarks[permitType] || 21;
     return { ok: true, result: { permitId: artifact.id, permitType, processingDays, benchmark, onTime: processingDays !== null ? processingDays <= benchmark : null } };
@@ -30,8 +44,20 @@ export default function registerGovernmentActions(registerLensAction) {
   });
 
   registerLensAction("government", "resourceStaging", (ctx, artifact, params) => {
-    const zones = artifact.data?.zones || [];
-    const resources = artifact.data?.resources || [];
+    const rawZones = artifact.data?.zones;
+    // Fallback: the real EmergencyPlan editor captures one `zone` (string)
+    // + one `activationLevel`, not a structured multi-zone array — build a
+    // single-zone view from those real fields when no explicit zones array
+    // was supplied, so the button reflects the plan the user actually made.
+    const zones = Array.isArray(rawZones) && rawZones.length > 0
+      ? rawZones
+      : (artifact.data?.zone ? [{ id: artifact.data.zone, name: artifact.data.zone, population: null, riskLevel: null }] : []);
+    const rawResources = artifact.data?.resources;
+    // The editor's Resources field is a flat string[] (comma-separated
+    // equipment/personnel names), not {name,type,quantity,zone} objects.
+    const resources = Array.isArray(rawResources)
+      ? rawResources.map(r => (typeof r === "string" ? { name: r, type: null, quantity: 1 } : r))
+      : [];
     const threatType = artifact.data?.type || params.threatType || 'general';
     const staging = zones.map(zone => {
       const assignedResources = resources.filter(r => r.zone === zone.id || !r.zone).map(r => ({
@@ -43,8 +69,9 @@ export default function registerGovernmentActions(registerLensAction) {
   });
 
   registerLensAction("government", "retentionCheck", (ctx, artifact, _params) => {
-    const retentionPeriod = artifact.data?.retentionPeriod || 7;
-    const createdDate = artifact.data?.date ? new Date(artifact.data.date) : new Date(artifact.createdAt);
+    const retentionPeriod = artifact.data?.retentionPeriod ?? artifact.data?.retentionYears ?? 7;
+    const dateSource = artifact.data?.date || artifact.data?.filedDate;
+    const createdDate = dateSource ? new Date(dateSource) : new Date(artifact.createdAt);
     const now = new Date();
     const yearsHeld = (now - createdDate) / (1000 * 60 * 60 * 24 * 365);
     const pastRetention = yearsHeld >= retentionPeriod;
@@ -1454,7 +1481,14 @@ export default function registerGovernmentActions(registerLensAction) {
     const d = artifact.data || {};
     const lines = _arr(d.lineItems || d.expenses || d.allocations);
     const totalBudget = _num(d.budget ?? d.totalBudget ?? lines.reduce((s, l) => s + _num(l?.budgeted ?? l?.amount), 0));
-    const spent = lines.reduce((s, l) => s + _num(l?.spent ?? l?.actual ?? 0), 0);
+    // The real Public Works editor (app/lenses/government/page.tsx) captures
+    // top-level `budget`/`spent` numbers, not an itemized line-item array —
+    // fall back to the top-level field when there are no lines, so the
+    // number the user actually typed drives the report instead of a
+    // hardcoded 0.
+    const spent = lines.length > 0
+      ? lines.reduce((s, l) => s + _num(l?.spent ?? l?.actual ?? 0), 0)
+      : _num(d.spent ?? d.actualSpent ?? 0);
     const byCategory = {};
     for (const l of lines) { const c = String(l?.category || l?.name || "general"); byCategory[c] = (byCategory[c] || 0) + _num(l?.spent ?? l?.amount); }
     return { ok: true, result: { entity: artifact.title || "budget", totalBudget, spent, remaining: Math.round((totalBudget - spent) * 100) / 100, utilizationPct: totalBudget > 0 ? Math.round((spent / totalBudget) * 1000) / 10 : 0, lineCount: lines.length, byCategory } };
@@ -1462,10 +1496,24 @@ export default function registerGovernmentActions(registerLensAction) {
 
   registerLensAction("government", "citizen_impact_report", (ctx, artifact, _p = {}) => {
     const d = artifact.data || {};
+    // Honest-by-construction: the real Public Works editor has no numeric
+    // population/impact-area fields, only a free-text "Citizen Impact
+    // Assessment" textarea (citizenImpact). Previously an artifact with NO
+    // impact data at all silently reported "affects ~0 residents... [low]"
+    // — a false-precision claim. Distinguish "genuinely measured as zero"
+    // from "never measured": report `null`/"unspecified" and surface the
+    // real narrative text instead of fabricating a number.
+    const hasNumericImpact = d.affectedPopulation != null || d.population != null || d.citizensImpacted != null;
     const affected = _num(d.affectedPopulation ?? d.population ?? d.citizensImpacted);
     const areas = _arr(d.impactAreas || d.areas || d.neighborhoods).map((a) => a?.name || a);
-    const severity = d.severity || (affected > 10000 ? "high" : affected > 1000 ? "moderate" : "low");
-    return { ok: true, result: { subject: artifact.title || "initiative", affectedPopulation: affected, impactAreas: areas, areaCount: areas.length, severity, summary: `${artifact.title || "This action"} affects ~${affected.toLocaleString()} resident(s) across ${areas.length} area(s) [${severity}].` } };
+    const narrative = typeof d.citizenImpact === "string" ? d.citizenImpact.trim() : "";
+    const severity = d.severity || (!hasNumericImpact ? "unspecified" : affected > 10000 ? "high" : affected > 1000 ? "moderate" : "low");
+    const summary = hasNumericImpact
+      ? `${artifact.title || "This action"} affects ~${affected.toLocaleString()} resident(s) across ${areas.length} area(s) [${severity}].`
+      : narrative
+        ? `${artifact.title || "This action"}: ${narrative}`
+        : `${artifact.title || "This action"} — no impact data recorded.`;
+    return { ok: true, result: { subject: artifact.title || "initiative", affectedPopulation: hasNumericImpact ? affected : null, impactAreas: areas, areaCount: areas.length, severity, narrativeImpact: narrative || null, summary } };
   });
 
   registerLensAction("government", "compliance_check", (ctx, artifact, _p = {}) => {
@@ -1473,7 +1521,15 @@ export default function registerGovernmentActions(registerLensAction) {
     const reqs = _arr(d.requirements || d.checklist || d.codes);
     const met = reqs.filter((r) => r?.met === true || r?.status === "met" || r?.compliant === true);
     const violations = reqs.filter((r) => !(r?.met === true || r?.status === "met" || r?.compliant === true)).map((r) => r?.name || r?.code || "requirement");
-    const score = reqs.length ? Math.round((met.length / reqs.length) * 100) : 100;
+    // Honest-by-construction: no structured checklist entered ≠ "100%
+    // compliant." Previously an artifact with zero requirements — the only
+    // shape the real Code Enforcement editor can produce, since it has no
+    // checklist-building UI — always reported `compliant: true, verdict:
+    // "compliant"`, a false-positive clearance nobody actually checked.
+    if (reqs.length === 0) {
+      return { ok: true, result: { subject: artifact.title || "item", requirementCount: 0, metCount: 0, violations: [], compliancePct: null, compliant: null, verdict: "unchecked", note: "No structured compliance checklist recorded for this item." } };
+    }
+    const score = Math.round((met.length / reqs.length) * 100);
     return { ok: true, result: { subject: artifact.title || "item", requirementCount: reqs.length, metCount: met.length, violations, compliancePct: score, compliant: violations.length === 0, verdict: score === 100 ? "compliant" : score >= 80 ? "minor_issues" : "non_compliant" } };
   });
 
@@ -1495,8 +1551,23 @@ export default function registerGovernmentActions(registerLensAction) {
   registerLensAction("government", "fee_collection_status", (ctx, artifact, _p = {}) => {
     const d = artifact.data || {};
     const fees = _arr(d.fees || d.charges);
+    // The real Court Admin editor has flat feesCollected/feesOwed numbers,
+    // not an itemized fees[] array — use those when present so the report
+    // reflects what court staff actually entered.
+    if (fees.length === 0 && (d.feesCollected != null || d.feesOwed != null)) {
+      const collected = _num(d.feesCollected);
+      const owed = _num(d.feesOwed);
+      const totalDue = collected + owed;
+      return { ok: true, result: { account: artifact.title || "account", feeCount: null, totalDue, collected, outstanding: Math.round(owed * 100) / 100, collectionRatePct: totalDue > 0 ? Math.round((collected / totalDue) * 1000) / 10 : 100, status: owed <= 0 ? "paid_in_full" : collected > 0 ? "partial" : "unpaid" } };
+    }
     const totalDue = fees.reduce((s, f) => s + _num(f?.amount ?? f?.due), 0);
     const collected = fees.reduce((s, f) => s + _num(f?.paid ?? (f?.status === "paid" ? (f?.amount ?? f?.due) : 0)), 0);
+    // Honest-by-construction: zero fee records on file is unknown status,
+    // not "paid in full" — previously this defaulted to paid_in_full,
+    // a false-positive clearance.
+    if (fees.length === 0) {
+      return { ok: true, result: { account: artifact.title || "account", feeCount: 0, totalDue: 0, collected: 0, outstanding: 0, collectionRatePct: null, status: "no_fees_on_record" } };
+    }
     return { ok: true, result: { account: artifact.title || "account", feeCount: fees.length, totalDue, collected, outstanding: Math.round((totalDue - collected) * 100) / 100, collectionRatePct: totalDue > 0 ? Math.round((collected / totalDue) * 1000) / 10 : 100, status: collected >= totalDue ? "paid_in_full" : collected > 0 ? "partial" : "unpaid" } };
   });
 
@@ -1523,7 +1594,11 @@ export default function registerGovernmentActions(registerLensAction) {
   registerLensAction("government", "permit_fee_estimate", (ctx, artifact, _p = {}) => {
     const d = artifact.data || {};
     const valuation = _num(d.valuation ?? d.projectValue ?? 0);
-    const type = String(d.permitType || d.type || "general");
+    // The real Permits editor's "Permit Type" select stores capitalized
+    // labels (Building/Electrical/...) — lowercase before matching the fee
+    // table, or every real permit silently fell to the $100 generic base
+    // fee regardless of type.
+    const type = String(d.permitType || d.type || "general").toLowerCase();
     const baseFee = { building: 250, electrical: 120, plumbing: 110, mechanical: 130, demolition: 200 }[type] || 100;
     const valuationFee = Math.round(valuation * 0.005 * 100) / 100; // 0.5% of valuation
     const planReview = Math.round(baseFee * 0.65 * 100) / 100;
@@ -1545,7 +1620,13 @@ export default function registerGovernmentActions(registerLensAction) {
   registerLensAction("government", "redaction_review", (ctx, artifact, _p = {}) => {
     const d = artifact.data || {};
     const SENSITIVE = /ssn|social.?security|dob|birth|address|phone|email|account|medical|salary|password/i;
-    const text = String(d.content || d.body || "");
+    // The real Public Records editor's free-text is `description` (or
+    // `reviewNotes`/`notes` on other artifact types) — not `content`/
+    // `body`. Previously a record created through the actual UI always
+    // scanned an empty string here, so every real FOIA record was reported
+    // "clean... cleared for public release" without the inline-PII scan
+    // ever running on its actual text. Scan every real free-text field.
+    const text = [d.content, d.body, d.description, d.reviewNotes, d.notes, d.redactionNotes].filter(Boolean).join(" ");
     const fields = Object.keys(d).filter((k) => SENSITIVE.test(k));
     const inlineMatches = (text.match(/\b\d{3}-\d{2}-\d{4}\b|\b\d{16}\b|[\w.+-]+@[\w-]+\.\w+/g) || []).length;
     const flags = fields.length + inlineMatches;
@@ -1554,10 +1635,22 @@ export default function registerGovernmentActions(registerLensAction) {
 
   registerLensAction("government", "schedule_hearing", (ctx, artifact, _p = {}) => {
     const d = artifact.data || {};
-    const caseType = String(d.caseType || d.type || "general");
-    const leadDays = { criminal: 21, civil: 30, traffic: 14, zoning: 45, appeal: 60 }[caseType] || 28;
+    // Lowercase (labels like "Civil"/"Traffic" from the real Court Admin
+    // editor's Case Type select would otherwise never match the lead-time
+    // table below) and take the first word (the editor's CASE_TYPES include
+    // two-word labels like "Zoning Violation" / "Landlord-Tenant").
+    const caseTypeRaw = String(d.caseType || d.type || "general");
+    const caseType = caseTypeRaw.toLowerCase();
+    const leadDays = { criminal: 21, civil: 30, traffic: 14, zoning: 45, appeal: 60 }[caseType]
+      ?? { criminal: 21, civil: 30, traffic: 14, zoning: 45, appeal: 60 }[caseType.split(/[\s-]/)[0]]
+      ?? 28;
     const date = new Date(Date.now() + leadDays * 86400000).toISOString().slice(0, 10);
-    return { ok: true, result: { caseType, hearingId: `HRG-${Date.now().toString(36).toUpperCase()}`, proposedDate: date, leadTimeDays: leadDays, location: d.courtroom || d.location || "Courtroom TBD", parties: _arr(d.parties).map((p) => p?.name || p) } };
+    // The real Court Admin editor stores plaintiff/defendant, not a
+    // generic parties[] array — fall back to those when parties is absent.
+    const parties = _arr(d.parties).length > 0
+      ? _arr(d.parties).map((p) => p?.name || p)
+      : [d.plaintiff, d.defendant].filter(Boolean);
+    return { ok: true, result: { caseType, hearingId: `HRG-${Date.now().toString(36).toUpperCase()}`, proposedDate: date, leadTimeDays: leadDays, location: d.courtroom || d.location || "Courtroom TBD", parties } };
   });
 };
 

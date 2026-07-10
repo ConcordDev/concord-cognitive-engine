@@ -1,18 +1,75 @@
 'use client';
 
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ * CONCORD // FINANCE TERMINAL  — flagship rebuild (Frontend Rebuild Program)
+ * ─────────────────────────────────────────────────────────────────────────
+ * Bloomberg/terminal identity: dense dark monospace grids, real market data,
+ * keyboard-driven navigation, high information-per-pixel. Built on the shared
+ * ui/ primitives (DataTable, StatTile, StatusDot, EmptyState, ErrorState,
+ * Skeleton, DensityToggle).
+ *
+ * Honest-by-construction — every number on screen traces to a REAL source:
+ *   • header KPIs        → finance.dashboard-summary   (real; zeros when empty)
+ *   • net-worth chart    → finance.net-worth-history   (real snapshots; honest
+ *                          empty state — NOT the removed synthetic sine chart)
+ *   • cash-flow mini     → finance.monthly-trend       (real ledger)
+ *   • market monitor     → useRealtimeLens('finance')  (live Yahoo indices)
+ *   • record snapshot    → finance.net-worth-snapshot  (honest macro spinner)
+ *   • grouped panels     → bespoke components, each wired to its real macro
+ *   • macro data         → FRED / World Bank / CoinGecko (live external APIs)
+ *
+ * REMOVED (fabrication the old page shipped): synthetic sine-wave "portfolio
+ * performance" chart, fake 24h high/low (price×1.05 / ×0.95), fake order-book
+ * depth, and the facade trade/orders/alerts surfaces (finance has no order
+ * book — that lives in the separate `markets` domain). RETIRED generic
+ * scaffold: AutoActionStrip, ShellPreview, UniversalActions strip, raw button
+ * walls, RecentMineCard, CrossLensRecentsPanel.
+ *
+ * Full capability map: docs/lens-specs/finance-capability-map.md
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  TrendingUp,
+  RefreshCw,
+  Loader2,
+  Plus,
+  X,
+  Briefcase,
+  ArrowLeftRight,
+  Building2,
+  Target,
+  Receipt,
+  Globe2,
+  Sparkles,
+  PieChart,
+  Keyboard,
+} from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
-import { MarketsPulse } from '@/components/finance/MarketsPulse';
-import { WorldBankPanel } from '@/components/global/WorldBankPanel';
-import { FredSeriesPanel } from '@/components/finance/FredSeriesPanel';
-import { FinanceActionPanel } from '@/components/finance/FinanceActionPanel';
-import { PipingProvider } from '@/components/panel-polish';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import {
+  DataTable,
+  StatTile,
+  StatTileGrid,
+  EmptyState,
+  ErrorState,
+  Skeleton,
+  StatusDot,
+  DensityToggle,
+} from '@/components/ui';
+import type { DataTableColumn } from '@/components/ui';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
+import { useDensity } from '@/lib/hooks/useDensity';
+import { lensRun } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
+
+// Bespoke, already-real sub-panels (each wired to its own real macro).
 import NetWorthTracker from '@/components/finance/NetWorthTracker';
 import EnvelopeBudget from '@/components/finance/EnvelopeBudget';
 import InvestmentCheckup from '@/components/finance/InvestmentCheckup';
@@ -37,2470 +94,669 @@ import CreditScoreMonitor from '@/components/finance/CreditScoreMonitor';
 import CashFlowSankey from '@/components/finance/CashFlowSankey';
 import BillReminders from '@/components/finance/BillReminders';
 import RolloverRules from '@/components/finance/RolloverRules';
-import { ShellPreview } from '@/components/lens/ShellPreview';
-import { useLensNav } from '@/hooks/useLensNav';
-import { useLensCommand } from "@/hooks/useLensCommand";
-import { useTilePush } from '@/hooks/useTilePush';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useUIStore } from '@/store/ui';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  TrendingUp,
-  PieChart,
-  ArrowUpRight,
-  ArrowDownRight,
-  Activity,
-  Bell,
-  Settings,
-  Plus,
-  Search,
-  Filter,
-  Download,
-  RefreshCw,
-  Eye,
-  EyeOff,
-  Star,
-  X,
-  ExternalLink,
-  AlertTriangle,
-  Lock,
-  ArrowRight,
-  LineChart,
-  CandlestickChart,
-  BarChart2,
-  Layers,
-  Newspaper,
-  ChevronDown,
-  Loader2,
-  Zap,
-  DollarSign,
-  BarChart3,
-  CreditCard,
-  Wallet,
-  Target,
-  Calculator,
-  PiggyBank,
-  Repeat,
-  Calendar as CalendarIcon,
-  Briefcase,
-  Coins,
-  BarChart3 as InsightsIcon,
-  Filter as FilterIcon,
-  Scissors,
-  Building2,
-  Sparkles,
-  Landmark,
-  Receipt,
-  Users,
-  Gauge,
-  Workflow,
-  BellRing,
-  Recycle,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { ErrorState } from '@/components/common/EmptyState';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { MarketsPulse } from '@/components/finance/MarketsPulse';
+import { FredSeriesPanel } from '@/components/finance/FredSeriesPanel';
+import { WorldBankPanel } from '@/components/global/WorldBankPanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 
-interface Asset {
-  id: string;
+// ── Real macro result shapes ───────────────────────────────────────────────
+
+interface DashboardSummary {
+  netWorth: number;
+  delta: number;
+  deltaPct: number;
+  breakdown: { cash: number; investments: number; credit: number; loans: number };
+  buyingPower: number;
+  budgetUsedPct: number;
+  activeGoalCount: number;
+  accountCount: number;
+  positionCount: number;
+}
+
+interface NetWorthSnapshot {
+  date: string;
+  total: number;
+  cash?: number;
+  investments?: number;
+}
+
+interface MonthlyTrendPoint {
+  month: string;
+  income: number;
+  spend: number;
+  net: number;
+  savingsRate: number;
+}
+
+interface MonthlyTrend {
+  series: MonthlyTrendPoint[];
+  avgMonthlyIncome: number;
+  avgMonthlySpend: number;
+  avgNet: number;
+}
+
+interface IndexQuote {
   symbol: string;
   name: string;
-  type: 'crypto' | 'stock' | 'dtu' | 'nft' | 'commodity';
   price: number;
-  change24h: number;
-  changePercent24h: number;
-  volume24h: number;
-  marketCap?: number;
-  holdings: number;
-  value: number;
-  avgBuyPrice: number;
-  pnl: number;
-  pnlPercent: number;
-  allocation: number;
-  sparkline?: number[];
-  isFavorite?: boolean;
+  change: number;
+  changePercent: number;
 }
 
-interface Transaction {
-  id: string;
-  type: 'buy' | 'sell' | 'transfer' | 'stake' | 'reward';
-  asset: string;
-  symbol: string;
-  amount: number;
-  price: number;
-  value: number;
-  fee?: number;
-  timestamp: string;
-  status: 'completed' | 'pending' | 'failed';
-  txHash?: string;
-}
-
-interface Order {
-  id: string;
-  type: 'limit' | 'market' | 'stop';
-  side: 'buy' | 'sell';
-  asset: string;
-  symbol: string;
-  amount: number;
-  price?: number;
-  stopPrice?: number;
-  filled: number;
-  status: 'open' | 'partial' | 'filled' | 'cancelled';
-  createdAt: string;
-}
-
-interface PriceAlert {
-  id: string;
-  asset: string;
-  symbol: string;
-  condition: 'above' | 'below';
-  price: number;
-  active: boolean;
-}
-
-interface NewsItem {
-  id: string;
-  title: string;
-  source: string;
-  timestamp: string;
-  sentiment: 'positive' | 'negative' | 'neutral';
-  assets: string[];
-}
-
-type TimeRange = '1H' | '24H' | '7D' | '30D' | '90D' | '1Y' | 'ALL';
-type ViewMode = 'overview' | 'trade' | 'orders' | 'alerts' | 'news' | 'networth' | 'budget' | 'checkup' | 'taxes' | 'retirement' | 'subscriptions' | 'bills' | 'goals' | 'recurring' | 'holdings' | 'dividends' | 'insights' | 'rules' | 'taxloss' | 'accounts' | 'assistant' | 'banksync' | 'transactions' | 'household' | 'credit' | 'cashflow' | 'reminders' | 'rollover';
-type ChartType = 'line' | 'candle' | 'area';
-
-/** Hook: animates a number from 0 to `target` over `duration` ms on mount / when target changes. */
-function useAnimatedNumber(target: number, duration = 1000): number {
-  const [display, setDisplay] = useState(0);
-  const prevTarget = useRef(0);
-
-  useEffect(() => {
-    const start = prevTarget.current;
-    const delta = target - start;
-    if (delta === 0) return;
-
-    const t0 = performance.now();
-
-    let raf: number;
-    const step = (now: number) => {
-      const elapsed = now - t0;
-      const progress = Math.min(elapsed / duration, 1);
-      // ease-out quad
-      const eased = 1 - (1 - progress) * (1 - progress);
-      setDisplay(start + delta * eased);
-      if (progress < 1) {
-        raf = requestAnimationFrame(step);
-      } else {
-        prevTarget.current = target;
-      }
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
-
-  return display;
-}
-
-export default function FinanceLensPage() {
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  useLensCommand(
-    [
-      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
-    ],
-    { lensId: "finance" }
-  );
-
-  useLensNav('finance');
-  // Phase 12 (Item 8 cont.) — flash + invalidate on finance realtime
-  // ticks (finance:ticker / market_update / alert / economy:update).
-  useTilePush({ lensId: 'finance' });
-  const {
-    isError: isError,
-    error: error,
-    refetch: refetch,
-    isLoading: isLoadingAssets,
-    items: assetItems,
-  } = useLensData<Asset>('finance', 'asset', {
-    seed: [],
-  });
-  const {
-    isError: isError2,
-    error: error2,
-    refetch: refetch2,
-    isLoading: isLoadingTx,
-    items: txItems,
-  } = useLensData<Transaction>('finance', 'transaction', {
-    seed: [],
-  });
-  const {
-    isError: isError3,
-    error: error3,
-    refetch: refetch3,
-    isLoading: isLoadingOrders,
-    items: orderItems,
-  } = useLensData<Order>('finance', 'order', {
-    seed: [],
-  });
-  const {
-    isError: isError4,
-    error: error4,
-    refetch: refetch4,
-    isLoading: isLoadingAlerts,
-    items: alertItems,
-  } = useLensData<PriceAlert>('finance', 'alert', {
-    seed: [],
-  });
-  const {
-    isError: isError5,
-    error: error5,
-    refetch: refetch5,
-    isLoading: isLoadingNews,
-    items: newsItems,
-  } = useLensData<NewsItem>('finance', 'news', {
-    seed: [],
-  });
-  const { create: createOrderMut } = useLensData<Order>('finance', 'order', { noSeed: true });
-
-  // Backend action wiring
-  const runFinanceAction = useRunArtifact('finance');
-  const [financeActionResult, setFinanceActionResult] = useState<Record<string, unknown> | null>(
-    null
-  );
-  const [financeRunning, setFinanceRunning] = useState<string | null>(null);
-
-  const handleFinanceAction = useCallback(
-    async (action: string) => {
-      const targetId = assetItems[0]?.id;
-      if (!targetId) return;
-      setFinanceRunning(action);
-      try {
-        const res = await runFinanceAction.mutateAsync({ id: targetId, action });
-        if (res.ok === false) {
-          setFinanceActionResult({
-            _action: action,
-            message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
-          });
-        } else {
-          setFinanceActionResult({ _action: action, ...(res.result as Record<string, unknown>) });
-        }
-      } catch (e) {
-        console.error(`Finance action ${action} failed:`, e);
-        setFinanceActionResult({
-          message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`,
-        });
-      }
-      setFinanceRunning(null);
-    },
-    [assetItems, runFinanceAction]
-  );
-
-  // Live market feed (Yahoo Finance — NASDAQ ^IXIC, S&P ^GSPC, Dow
-  // ^DJI, Russell 2000 ^RUT, VIX ^VIX). Pre-this-fix realtimeData
-  // populated only the side RealtimeDataPanel — now folded into the
-  // main asset list so the trading dashboard's ticker grid shows real
-  // market data, not just the user-portfolio shape.
-  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('finance');
-
-  const liveAssets: Asset[] = useMemo(() => {
-    const quotes = ((realtimeData as { quotes?: Array<Record<string, unknown>> } | null)?.quotes) || [];
-    return quotes.map((q) => {
-      const sym = String(q.symbol || '').replace('^', '');
-      const price = Number(q.price) || 0;
-      const change = Number(q.change) || 0;
-      const changePct = Number(q.changePercent) || 0;
-      const NAME_MAP: Record<string, string> = { GSPC: 'S&P 500', DJI: 'Dow Jones', IXIC: 'NASDAQ Composite', RUT: 'Russell 2000', VIX: 'CBOE VIX' };
-      return {
-        id: `live-${sym}`,
-        symbol: sym,
-        name: NAME_MAP[sym] || sym,
-        type: 'stock',
-        price,
-        change24h: change,
-        changePercent24h: changePct,
-        volume24h: 0,
-        holdings: 0,
-        value: 0,
-        avgBuyPrice: 0,
-        pnl: 0,
-        pnlPercent: 0,
-        allocation: 0,
-      } as Asset;
-    });
-  }, [realtimeData]);
-
-  const userAssets: Asset[] = assetItems.map((i) => ({ ...(i.data as unknown as Asset), id: i.id }));
-  // Live indices first (market overview), then user-portfolio assets.
-  // Dedup by symbol so a user-held NASDAQ-listed ticker doesn't appear twice.
-  const assets: Asset[] = useMemo(() => {
-    const seen = new Set<string>();
-    const out: Asset[] = [];
-    for (const a of [...liveAssets, ...userAssets]) {
-      const key = (a.symbol || a.id || '').toUpperCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(a);
-    }
-    return out;
-  }, [liveAssets, userAssets]);
-  const transactions: Transaction[] = txItems.map((i) => ({
-    ...(i.data as unknown as Transaction),
-    id: i.id,
-  }));
-  const orders: Order[] = orderItems.map((i) => ({ ...(i.data as unknown as Order), id: i.id }));
-  const alerts: PriceAlert[] = alertItems.map((i) => ({
-    ...(i.data as unknown as PriceAlert),
-    id: i.id,
-  }));
-  const news: NewsItem[] = newsItems.map((i) => ({ ...(i.data as unknown as NewsItem), id: i.id }));
-
-  const isLoading =
-    isLoadingAssets || isLoadingTx || isLoadingOrders || isLoadingAlerts || isLoadingNews;
-
-  const chartRef = useRef<HTMLCanvasElement>(null);
-
-  // State
-  const [viewMode, setViewMode] = useState<ViewMode>('overview');
-  const [timeRange, setTimeRange] = useState<TimeRange>('7D');
-  const [chartType, setChartType] = useState<ChartType>('line');
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const [showBalances, setShowBalances] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Trading state
-  const [tradeAsset, setTradeAsset] = useState('DTU');
-  const [tradeSide, setTradeSide] = useState<'buy' | 'sell'>('buy');
-  const [orderType, setOrderType] = useState<'market' | 'limit' | 'stop'>('market');
-  const [tradeAmount, setTradeAmount] = useState('');
-  const [tradePrice, setTradePrice] = useState('');
-  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
-
-  // Chart tooltip state
-  const [chartTooltip, setChartTooltip] = useState<{
-    x: number;
-    y: number;
-    value: number;
-    index: number;
-    min?: number;
-  } | null>(null);
-  const chartDataRef = useRef<number[]>([]);
-  const chartMetaRef = useRef<{
-    padding: number;
-    width: number;
-    height: number;
-    minVal: number;
-    maxVal: number;
-    range: number;
-  }>({ padding: 40, width: 1000, height: 320, minVal: 0, maxVal: 1, range: 1 });
-
-  const handleSubmitOrder = async () => {
-    if (!tradeAmount || isSubmittingOrder) return;
-    const amount = parseFloat(tradeAmount);
-    if (isNaN(amount) || amount <= 0) return;
-
-    setIsSubmittingOrder(true);
-    try {
-      const selectedTradingAsset = assets.find((a) => a.symbol === tradeAsset) || assets[0];
-      const price =
-        orderType === 'market' ? selectedTradingAsset?.price : parseFloat(tradePrice || '0');
-      const orderData: Partial<Order> = {
-        type: orderType,
-        side: tradeSide,
-        asset: selectedTradingAsset?.name || tradeAsset,
-        symbol: tradeAsset,
-        amount,
-        ...(orderType === 'limit' ? { price } : {}),
-        ...(orderType === 'stop' ? { stopPrice: price } : {}),
-        filled: 0,
-        status: orderType === 'market' ? 'filled' : 'open',
-        createdAt: new Date().toISOString(),
-      };
-      await createOrderMut({
-        title: `${tradeSide} ${tradeAsset}`,
-        data: orderData,
-      });
-      setTradeAmount('');
-      setTradePrice('');
-    } catch (err) {
-      console.error('Failed to submit order:', err);
-    } finally {
-      setIsSubmittingOrder(false);
-    }
-  };
-
-  // Computed values
-  const totalValue = assets.reduce((sum, a) => sum + a.value, 0);
-  const totalPnl = assets.reduce((sum, a) => sum + a.pnl, 0);
-  const totalPnlPercent =
-    totalValue - totalPnl !== 0 ? (totalPnl / (totalValue - totalPnl)) * 100 : 0;
-
-  // Animated KPI values
-  const animatedTotalValue = useAnimatedNumber(totalValue);
-  const animatedTotalPnl = useAnimatedNumber(totalPnl);
-  const animatedVolume = useAnimatedNumber(assets.reduce((sum, a) => sum + a.volume24h, 0));
-  const animatedAlertCount = useAnimatedNumber(alerts.filter((a) => a.active).length, 600);
-
-  // Chart rendering
-  useEffect(() => {
-    const canvas = chartRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
-    const padding = 40;
-
-    ctx.fillStyle = 'transparent';
-    ctx.fillRect(0, 0, width, height);
-
-    // Generate chart data deterministically from totalValue
-    const dataPoints = 100;
-    const data: number[] = [];
-    let value = totalValue * 0.85;
-
-    for (let i = 0; i < dataPoints; i++) {
-      // Deterministic pseudo-movement using layered sine waves seeded from totalValue
-      const wave =
-        Math.sin(i * 0.15) * 0.3 + Math.sin(i * 0.07 + 2) * 0.4 + Math.cos(i * 0.23 + 1) * 0.25;
-      value = value + wave * (totalValue * 0.02);
-      value = Math.max(value, totalValue * 0.7);
-      value = Math.min(value, totalValue * 1.1);
-      data.push(value);
-    }
-    data[data.length - 1] = totalValue;
-
-    // Store for tooltip handler
-    chartDataRef.current = data;
-
-    const minVal = Math.min(...data) * 0.95;
-    const maxVal = Math.max(...data) * 1.05;
-    const range = maxVal - minVal;
-
-    chartMetaRef.current = { padding, width, height, minVal, maxVal, range };
-
-    // Draw grid
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-
-    for (let i = 0; i <= 5; i++) {
-      const y = padding + ((height - padding * 2) / 5) * i;
-      ctx.beginPath();
-      ctx.moveTo(padding, y);
-      ctx.lineTo(width - padding, y);
-      ctx.stroke();
-
-      const val = maxVal - (range / 5) * i;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.font = '10px monospace';
-      ctx.textAlign = 'right';
-      ctx.fillText(`${(val / 1000).toFixed(1)}k`, padding - 5, y + 4);
-    }
-
-    if (chartType === 'line' || chartType === 'area') {
-      // Draw area fill
-      if (chartType === 'area') {
-        const gradient = ctx.createLinearGradient(0, padding, 0, height - padding);
-        gradient.addColorStop(0, 'rgba(0, 212, 255, 0.3)');
-        gradient.addColorStop(1, 'rgba(0, 212, 255, 0)');
-
-        ctx.beginPath();
-        ctx.moveTo(padding, height - padding);
-
-        for (let i = 0; i < data.length; i++) {
-          const x = padding + (i / (data.length - 1)) * (width - padding * 2);
-          const y = padding + ((maxVal - data[i]) / range) * (height - padding * 2);
-          ctx.lineTo(x, y);
-        }
-
-        ctx.lineTo(width - padding, height - padding);
-        ctx.closePath();
-        ctx.fillStyle = gradient;
-        ctx.fill();
-      }
-
-      // Draw line
-      const lineGradient = ctx.createLinearGradient(0, 0, width, 0);
-      lineGradient.addColorStop(0, '#00d4ff');
-      lineGradient.addColorStop(0.5, '#7c3aed');
-      lineGradient.addColorStop(1, '#00d4ff');
-
-      ctx.beginPath();
-      ctx.strokeStyle = lineGradient;
-      ctx.lineWidth = 2;
-
-      for (let i = 0; i < data.length; i++) {
-        const x = padding + (i / (data.length - 1)) * (width - padding * 2);
-        const y = padding + ((maxVal - data[i]) / range) * (height - padding * 2);
-
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-
-      ctx.stroke();
-
-      // Draw current value dot
-      const lastX = width - padding;
-      const lastY = padding + ((maxVal - data[data.length - 1]) / range) * (height - padding * 2);
-
-      ctx.beginPath();
-      ctx.arc(lastX, lastY, 6, 0, Math.PI * 2);
-      ctx.fillStyle = '#00d4ff';
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    } else if (chartType === 'candle') {
-      // Draw candlesticks
-      const candleWidth = (width - padding * 2) / 20 - 4;
-
-      for (let i = 0; i < 20; i++) {
-        const baseIndex = Math.floor((i / 20) * data.length);
-        const open = data[baseIndex];
-        const close = data[Math.min(baseIndex + 5, data.length - 1)];
-        const high = Math.max(open, close) * 1.01;
-        const low = Math.min(open, close) * 0.99;
-
-        const x = padding + (i / 19) * (width - padding * 2);
-        const openY = padding + ((maxVal - open) / range) * (height - padding * 2);
-        const closeY = padding + ((maxVal - close) / range) * (height - padding * 2);
-        const highY = padding + ((maxVal - high) / range) * (height - padding * 2);
-        const lowY = padding + ((maxVal - low) / range) * (height - padding * 2);
-
-        const isGreen = close >= open;
-        ctx.fillStyle = isGreen ? '#22c55e' : '#ef4444';
-        ctx.strokeStyle = isGreen ? '#22c55e' : '#ef4444';
-
-        // Wick
-        ctx.beginPath();
-        ctx.moveTo(x, highY);
-        ctx.lineTo(x, lowY);
-        ctx.stroke();
-
-        // Body
-        ctx.fillRect(
-          x - candleWidth / 2,
-          Math.min(openY, closeY),
-          candleWidth,
-          Math.abs(closeY - openY) || 2
-        );
-      }
-    }
-  }, [timeRange, chartType, totalValue]);
-
-  // Chart hover handler — draws crosshair and sets tooltip state
-  const handleChartMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = chartRef.current;
-    if (!canvas) return;
-    const data = chartDataRef.current;
-    if (data.length === 0) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const mouseX = (e.clientX - rect.left) * scaleX;
-    const { padding, width, height, minVal, maxVal, range } = chartMetaRef.current;
-
-    // Find nearest data index
-    const chartWidth = width - padding * 2;
-    const relX = mouseX - padding;
-    const index = Math.round((relX / chartWidth) * (data.length - 1));
-    const clampedIndex = Math.max(0, Math.min(data.length - 1, index));
-    const val = data[clampedIndex];
-
-    // Position tooltip relative to the container div
-    const tooltipX = e.clientX - rect.left;
-    const tooltipY = e.clientY - rect.top;
-
-    setChartTooltip({ x: tooltipX, y: tooltipY, value: val, index: clampedIndex, min: minVal });
-
-    // Redraw crosshair on canvas — trigger a re-render of chart + crosshair
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // We need to redraw the chart first. Instead, we'll overlay a crosshair by saving/restoring.
-    // For simplicity, draw the crosshair as an overlay stroke.
-    // The chart effect will redraw on next render; for now draw directly:
-    const dataX = padding + (clampedIndex / (data.length - 1)) * chartWidth;
-    const dataY = padding + ((maxVal - val) / range) * (height - padding * 2);
-
-    // Clear previous crosshair area by re-triggering render is expensive;
-    // instead we use a compositing trick — store image and redraw:
-    // Actually the simplest approach: the chart useEffect stores an image we can restore.
-    // For now, just overlay on existing canvas (will accumulate until next full redraw).
-
-    // Save the base chart image once
-    if (!(canvas as unknown as Record<string, unknown>).__baseImage) {
-      (canvas as unknown as Record<string, unknown>).__baseImage = ctx.getImageData(
-        0,
-        0,
-        width,
-        height
-      );
-    }
-    const baseImage = (canvas as unknown as Record<string, unknown>).__baseImage as ImageData;
-    ctx.putImageData(baseImage, 0, 0);
-
-    // Vertical crosshair line
-    ctx.save();
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(dataX, padding);
-    ctx.lineTo(dataX, height - padding);
-    ctx.stroke();
-
-    // Highlight dot
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.arc(dataX, dataY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#00d4ff';
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-  }, []);
-
-  const handleChartMouseLeave = useCallback(() => {
-    setChartTooltip(null);
-    // Restore base image
-    const canvas = chartRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const baseImage = (canvas as unknown as Record<string, unknown>).__baseImage as
-      | ImageData
-      | undefined;
-    if (baseImage) {
-      ctx.putImageData(baseImage, 0, 0);
-    }
-  }, []);
-
-  // After chart renders, store the base image for crosshair overlay
-  useEffect(() => {
-    const canvas = chartRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    (canvas as unknown as Record<string, unknown>).__baseImage = ctx.getImageData(
-      0,
-      0,
-      canvas.width,
-      canvas.height
+type GroupId =
+  | 'overview'
+  | 'positions'
+  | 'cashflow'
+  | 'accounts'
+  | 'planning'
+  | 'bills'
+  | 'macro'
+  | 'assistant';
+
+const GROUPS: { id: GroupId; label: string; hotkey: string; icon: typeof PieChart }[] = [
+  { id: 'overview', label: 'Overview', hotkey: '1', icon: PieChart },
+  { id: 'positions', label: 'Positions', hotkey: '2', icon: Briefcase },
+  { id: 'cashflow', label: 'Cash-flow', hotkey: '3', icon: ArrowLeftRight },
+  { id: 'accounts', label: 'Accounts', hotkey: '4', icon: Building2 },
+  { id: 'planning', label: 'Planning', hotkey: '5', icon: Target },
+  { id: 'bills', label: 'Bills & Budget', hotkey: '6', icon: Receipt },
+  { id: 'macro', label: 'Macro data', hotkey: '7', icon: Globe2 },
+  { id: 'assistant', label: 'Assistant', hotkey: '8', icon: Sparkles },
+];
+
+const INDEX_NAMES: Record<string, string> = {
+  GSPC: 'S&P 500',
+  DJI: 'Dow Jones',
+  IXIC: 'NASDAQ Composite',
+  RUT: 'Russell 2000',
+  VIX: 'CBOE VIX',
+};
+
+const fmtUsd = (v: number, opts: Intl.NumberFormatOptions = {}) =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    ...opts,
+  }).format(v);
+
+const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+
+// ── Net-worth trajectory — real snapshots only ─────────────────────────────
+
+function NetWorthChart({ snapshots }: { snapshots: NetWorthSnapshot[] }) {
+  if (snapshots.length === 0) {
+    return (
+      <EmptyState
+        compact
+        icon={<TrendingUp className="h-5 w-5" aria-hidden="true" />}
+        title="No net-worth snapshots yet."
+        description="Record a snapshot to start tracking your real net-worth trajectory over time. Nothing here is simulated."
+        ariaLabel="Net worth history empty"
+      />
     );
-  }, [timeRange, chartType, totalValue]);
+  }
 
-  const formatCurrency = (value: number, compact = false) => {
-    if (compact) {
-      if (value >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
-      if (value >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
-      if (value >= 1e3) return `${(value / 1e3).toFixed(2)}K`;
-    }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+  const W = 640;
+  const H = 160;
+  const PAD = 8;
+  const totals = snapshots.map((s) => s.total);
+  const min = Math.min(...totals);
+  const max = Math.max(...totals);
+  const range = max - min || Math.abs(max) || 1;
+  const pts = snapshots.map((s, i) => {
+    const x = PAD + (i / Math.max(1, snapshots.length - 1)) * (W - PAD * 2);
+    const y = PAD + (1 - (s.total - min) / range) * (H - PAD * 2);
+    return { x, y, s };
+  });
+  const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const areaPath = `${path} L${pts[pts.length - 1].x.toFixed(1)},${H - PAD} L${pts[0].x.toFixed(1)},${H - PAD} Z`;
+  const latest = snapshots[snapshots.length - 1];
+  const first = snapshots[0];
+  const rising = latest.total >= first.total;
+  const stroke = rising ? '#34d399' : '#fb7185';
 
-  const formatPercent = (value: number) => {
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(2)}%`;
-  };
-
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / 3600000);
-
-    if (hours < 1) return 'Just now';
-    if (hours < 24) return `${hours}h ago`;
-    return date.toLocaleDateString();
-  };
-
-  const renderMiniSparkline = (data: number[]) => {
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min || 1;
-    const width = 80;
-    const height = 24;
-
-    const points = data
-      .map((val, i) => {
-        const x = (i / (data.length - 1)) * width;
-        const y = height - ((val - min) / range) * height;
-        return `${x},${y}`;
-      })
-      .join(' ');
-
-    const isPositive = data[data.length - 1] >= data[0];
-
-    const SparklineWithHover = () => {
-      const [hoverInfo, setHoverInfo] = useState<{ x: number; y: number; value: number } | null>(
-        null
-      );
-      const svgRef = useRef<SVGSVGElement>(null);
-
-      const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-        const svg = svgRef.current;
-        if (!svg) return;
-        const rect = svg.getBoundingClientRect();
-        const relX = e.clientX - rect.left;
-        const idx = Math.round((relX / rect.width) * (data.length - 1));
-        const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
-        const val = data[clampedIdx];
-        const x = (clampedIdx / (data.length - 1)) * width;
-        const y = height - ((val - min) / range) * height;
-        setHoverInfo({ x, y, value: val });
-      };
-
-      return (
-        <div className="relative inline-block">
-          <svg
-            ref={svgRef}
-            width={width}
-            height={height}
-            className="overflow-visible cursor-crosshair"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={() => setHoverInfo(null)}
-          >
-            <polyline
-              points={points}
-              fill="none"
-              stroke={isPositive ? '#22c55e' : '#ef4444'}
-              strokeWidth="1.5"
-            />
-            {hoverInfo && (
-              <>
-                <circle
-                  cx={hoverInfo.x}
-                  cy={hoverInfo.y}
-                  r={3}
-                  fill={isPositive ? '#22c55e' : '#ef4444'}
-                  stroke="#fff"
-                  strokeWidth={1}
-                />
-                <line
-                  x1={hoverInfo.x}
-                  y1={0}
-                  x2={hoverInfo.x}
-                  y2={height}
-                  stroke="rgba(255,255,255,0.3)"
-                  strokeWidth={0.5}
-                  strokeDasharray="2,2"
-                />
-              </>
-            )}
-          </svg>
-          {hoverInfo && (
-            <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-lattice-elevated border border-lattice-border rounded text-[10px] font-mono whitespace-nowrap pointer-events-none z-10">
-              ${hoverInfo.value.toFixed(2)}
-            </div>
-          )}
-        </div>
-      );
-    };
-
-    return <SparklineWithHover />;
-  };
-
-  const renderOverview = () => (
-    <div className="space-y-6">
-      {/* Portfolio Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="lens-card bg-[#111820] border-emerald-900/20 font-mono">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-emerald-500/70">Total Balance</span>
-            <button
-              onClick={() => setShowBalances(!showBalances)}
-              className="text-gray-400 hover:text-white"
-            >
-              {showBalances ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-            </button>
-          </div>
-          <p className="text-3xl font-bold font-mono tracking-tight">
-            {showBalances ? formatCurrency(animatedTotalValue) : '••••••'}
-          </p>
-          <div
-            className={cn(
-              'flex items-center gap-1 mt-1 text-sm font-mono',
-              totalPnlPercent >= 0 ? 'text-green-400' : 'text-red-400'
-            )}
-          >
-            {totalPnlPercent >= 0 ? (
-              <ArrowUpRight className="w-4 h-4" />
-            ) : (
-              <ArrowDownRight className="w-4 h-4" />
-            )}
-            <span>{showBalances ? formatCurrency(animatedTotalPnl) : '••••'}</span>
-            <span>({formatPercent(totalPnlPercent)})</span>
-          </div>
-        </div>
-
-        <div className="lens-card">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-green-400" />
-            <span className="text-sm text-gray-400">Best Performer</span>
-          </div>
-          <p className="text-xl font-bold">
-            {assets.length > 0
-              ? [...assets].sort((a, b) => b.pnlPercent - a.pnlPercent)[0].symbol
-              : '--'}
-          </p>
-          <p
-            className={cn(
-              'text-sm',
-              assets.length > 0 &&
-                [...assets].sort((a, b) => b.pnlPercent - a.pnlPercent)[0].pnlPercent >= 0
-                ? 'text-green-400'
-                : 'text-red-400'
-            )}
-          >
-            {assets.length > 0
-              ? formatPercent([...assets].sort((a, b) => b.pnlPercent - a.pnlPercent)[0].pnlPercent)
-              : '--'}
-          </p>
-        </div>
-
-        <div className="lens-card">
-          <div className="flex items-center gap-2 mb-2">
-            <Activity className="w-4 h-4 text-neon-blue" />
-            <span className="text-sm text-gray-400">24h Volume</span>
-          </div>
-          <p className="text-xl font-bold">{formatCurrency(animatedVolume, true)}</p>
-          <p className="text-gray-400 text-sm">Across all assets</p>
-        </div>
-
-        <div className="lens-card">
-          <div className="flex items-center gap-2 mb-2">
-            <Bell className="w-4 h-4 text-neon-yellow" />
-            <span className="text-sm text-gray-400">Active Alerts</span>
-          </div>
-          <p className="text-xl font-bold">{Math.round(animatedAlertCount)}</p>
-          <p className="text-gray-400 text-sm">
-            {orders.filter((o) => o.status === 'open').length} open orders
-          </p>
-        </div>
-      </div>
-
-      {/* Main Chart */}
-      <div className="panel p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-bold">Portfolio Performance</h2>
-            <p className="text-sm text-gray-400">Total value over time</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1 bg-lattice-deep rounded-lg p-1">
-              {(['line', 'area', 'candle'] as ChartType[]).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setChartType(type)}
-                  className={cn(
-                    'p-2 rounded-md transition-colors',
-                    chartType === type
-                      ? 'bg-lattice-elevated text-neon-cyan'
-                      : 'text-gray-400 hover:text-white'
-                  )}
-                >
-                  {type === 'line' && <LineChart className="w-4 h-4" />}
-                  {type === 'area' && <BarChart2 className="w-4 h-4" />}
-                  {type === 'candle' && <CandlestickChart className="w-4 h-4" />}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-1">
-              {(['1H', '24H', '7D', '30D', '90D', '1Y', 'ALL'] as TimeRange[]).map((range) => (
-                <button
-                  key={range}
-                  onClick={() => setTimeRange(range)}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg text-sm transition-colors',
-                    timeRange === range
-                      ? 'bg-neon-cyan/20 text-neon-cyan'
-                      : 'text-gray-400 hover:text-white'
-                  )}
-                >
-                  {range}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="relative h-80">
-          <canvas
-            ref={chartRef}
-            width={1000}
-            height={320}
-            className="w-full h-full cursor-crosshair"
-            onMouseMove={handleChartMouseMove}
-            onMouseLeave={handleChartMouseLeave}
-          />
-          {chartTooltip && (
-            <div
-              className="absolute pointer-events-none z-20"
-              style={{
-                left: chartTooltip.x,
-                top: chartTooltip.y - 48,
-                transform: 'translateX(-50%)',
-              }}
-            >
-              <div className="bg-lattice-elevated/95 border border-lattice-border rounded-lg px-3 py-1.5 shadow-lg backdrop-blur-sm text-center">
-                <p className="text-xs text-gray-400 font-mono">Point {chartTooltip.index + 1}</p>
-                <p className="text-sm font-bold font-mono text-white">
-                  {formatCurrency(chartTooltip.value)}
-                </p>
-                {chartTooltip.min !== undefined && (
-                  <p className="text-[10px] text-gray-400 font-mono">
-                    Min: {formatCurrency(chartTooltip.min)}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Assets Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Holdings */}
-        <div className="lg:col-span-2 panel p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Holdings</h3>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  ref={searchInputRef}
-              type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search assets..."
-                  className="pl-9 pr-4 py-1.5 bg-lattice-deep rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan w-48"
-                />
-              </div>
-              <button
-                onClick={() =>
-                  useUIStore.getState().addToast({ type: 'info', message: 'Filter options' })
-                }
-                className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-              aria-label="Filter">
-                <Filter className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs text-gray-400 border-b border-lattice-border">
-                  <th className="pb-3 font-medium">Asset</th>
-                  <th className="pb-3 font-medium">Price</th>
-                  <th className="pb-3 font-medium">24h</th>
-                  <th className="pb-3 font-medium hidden md:table-cell">Chart</th>
-                  <th className="pb-3 font-medium text-right">Holdings</th>
-                  <th className="pb-3 font-medium text-right">Value</th>
-                  <th className="pb-3 font-medium text-right">P&L</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assets.filter(
-                  (a) =>
-                    a.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    a.name.toLowerCase().includes(searchQuery.toLowerCase())
-                ).length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-8 text-center text-gray-400">
-                      {searchQuery ? 'No assets match your search' : 'No assets in portfolio'}
-                    </td>
-                  </tr>
-                )}
-                {assets
-                  .filter(
-                    (a) =>
-                      a.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      a.name.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                  .map((asset) => (
-                    <tr
-                      key={asset.id}
-                      onClick={() => setSelectedAsset(asset)}
-                      className="border-b border-lattice-border/50 hover:bg-lattice-elevated/50 cursor-pointer transition-colors"
-                    >
-                      <td className="py-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={cn(
-                              'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold',
-                              asset.type === 'dtu' && 'bg-neon-cyan/20 text-neon-cyan',
-                              asset.type === 'crypto' && 'bg-neon-purple/20 text-neon-purple',
-                              asset.type === 'stock' && 'bg-neon-green/20 text-neon-green'
-                            )}
-                          >
-                            {asset.symbol.slice(0, 2)}
-                          </div>
-                          <div>
-                            <p className="font-medium">{asset.symbol}</p>
-                            <p className="text-xs text-gray-400">{asset.name}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 font-mono">{formatCurrency(asset.price)}</td>
-                      <td
-                        className={cn(
-                          'py-4',
-                          asset.changePercent24h >= 0 ? 'text-green-400' : 'text-red-400'
-                        )}
-                      >
-                        <div className="flex items-center gap-1">
-                          {asset.changePercent24h >= 0 ? (
-                            <ArrowUpRight className="w-3 h-3" />
-                          ) : (
-                            <ArrowDownRight className="w-3 h-3" />
-                          )}
-                          {formatPercent(asset.changePercent24h)}
-                        </div>
-                      </td>
-                      <td className="py-4 hidden md:table-cell">
-                        {asset.sparkline && renderMiniSparkline(asset.sparkline)}
-                      </td>
-                      <td className="py-4 text-right font-mono">
-                        {showBalances ? asset.holdings.toLocaleString() : '••••'}
-                      </td>
-                      <td className="py-4 text-right font-mono">
-                        {showBalances ? formatCurrency(asset.value) : '••••••'}
-                      </td>
-                      <td
-                        className={cn(
-                          'py-4 text-right',
-                          asset.pnl >= 0 ? 'text-green-400' : 'text-red-400'
-                        )}
-                      >
-                        {showBalances ? (
-                          <div>
-                            <p>{formatCurrency(asset.pnl)}</p>
-                            <p className="text-xs">{formatPercent(asset.pnlPercent)}</p>
-                          </div>
-                        ) : (
-                          '••••'
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Allocation */}
-        <div className="panel p-4">
-          <h3 className="font-semibold mb-4">Asset Allocation</h3>
-
-          <div className="relative w-full aspect-square max-w-[200px] mx-auto mb-6">
-            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-              {(() => {
-                let offset = 0;
-                return assets.map((asset, i) => {
-                  const circumference = 2 * Math.PI * 40;
-                  const strokeDasharray = (asset.allocation / 100) * circumference;
-                  const strokeDashoffset = -offset;
-                  offset += strokeDasharray;
-
-                  const colors = ['#00d4ff', '#7c3aed', '#22c55e', '#f59e0b', '#ef4444'];
-
-                  return (
-                    <circle
-                      key={asset.id}
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      fill="none"
-                      stroke={colors[i % colors.length]}
-                      strokeWidth="12"
-                      strokeDasharray={`${strokeDasharray} ${circumference}`}
-                      strokeDashoffset={strokeDashoffset}
-                      className="transition-all duration-500"
-                    />
-                  );
-                });
-              })()}
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-2xl font-bold">{assets.length}</p>
-                <p className="text-xs text-gray-400">Assets</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {assets.map((asset, i) => {
-              const colors = [
-                'bg-neon-cyan',
-                'bg-neon-purple',
-                'bg-green-500',
-                'bg-amber-500',
-                'bg-red-500',
-              ];
-              return (
-                <div key={asset.id} className="flex items-center gap-3">
-                  <div className={cn('w-3 h-3 rounded-full', colors[i % colors.length])} />
-                  <span className="flex-1 text-sm">{asset.symbol}</span>
-                  <span className="text-sm text-gray-400">{asset.allocation}%</span>
-                  <span className="text-sm font-mono">
-                    {showBalances ? formatCurrency(asset.value, true) : '••••'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Transactions + News */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Transactions */}
-        <div className="panel p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Recent Transactions</h3>
-            <button
-              onClick={() => setViewMode('orders')}
-              className="text-sm text-neon-cyan hover:underline"
-            >
-              View all
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {transactions.slice(0, 5).map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center gap-4 p-3 rounded-lg bg-lattice-deep/50"
-              >
-                <div
-                  className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center',
-                    tx.type === 'buy' && 'bg-green-500/20 text-green-400',
-                    tx.type === 'sell' && 'bg-red-500/20 text-red-400',
-                    tx.type === 'transfer' && 'bg-blue-500/20 text-blue-400',
-                    tx.type === 'stake' && 'bg-purple-500/20 text-purple-400',
-                    tx.type === 'reward' && 'bg-yellow-500/20 text-yellow-400'
-                  )}
-                >
-                  {tx.type === 'buy' && <ArrowDownRight className="w-5 h-5" />}
-                  {tx.type === 'sell' && <ArrowUpRight className="w-5 h-5" />}
-                  {tx.type === 'transfer' && <ArrowRight className="w-5 h-5" />}
-                  {tx.type === 'stake' && <Lock className="w-5 h-5" />}
-                  {tx.type === 'reward' && <Star className="w-5 h-5" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium capitalize">{tx.type}</p>
-                    <span className="text-sm text-gray-400">{tx.symbol}</span>
-                  </div>
-                  <p className="text-xs text-gray-400">{formatTime(tx.timestamp)}</p>
-                </div>
-                <div className="text-right">
-                  <p
-                    className={cn(
-                      'font-mono',
-                      tx.type === 'sell' || tx.type === 'reward'
-                        ? 'text-green-400'
-                        : tx.type === 'buy'
-                          ? 'text-red-400'
-                          : 'text-gray-300'
-                    )}
-                  >
-                    {tx.type === 'sell' || tx.type === 'reward'
-                      ? '+'
-                      : tx.type === 'buy'
-                        ? '-'
-                        : ''}
-                    {formatCurrency(tx.value)}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {tx.amount} {tx.symbol}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* News */}
-        <div className="panel p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Newspaper className="w-4 h-4 text-neon-cyan" />
-              Market News
-            </h3>
-            <button
-              onClick={() =>
-                useUIStore
-                  .getState()
-                  .addToast({ type: 'info', message: 'Loading more market news' })
-              }
-              className="text-sm text-neon-cyan hover:underline"
-            >
-              More
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {news.map((newsItem) => (
-              <div
-                key={newsItem.id}
-                className="p-3 rounded-lg bg-lattice-deep/50 hover:bg-lattice-elevated/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={cn(
-                      'w-2 h-2 rounded-full mt-2',
-                      newsItem.sentiment === 'positive' && 'bg-green-400',
-                      newsItem.sentiment === 'negative' && 'bg-red-400',
-                      newsItem.sentiment === 'neutral' && 'bg-gray-400'
-                    )}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm leading-tight">{newsItem.title}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-gray-400">{newsItem.source}</span>
-                      <span className="text-xs text-gray-400">·</span>
-                      <span className="text-xs text-gray-400">
-                        {formatTime(newsItem.timestamp)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 mt-2">
-                      {newsItem.assets.map((asset) => (
-                        <span
-                          key={asset}
-                          className="px-2 py-0.5 bg-lattice-elevated rounded text-xs"
-                        >
-                          {asset}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-40" role="img" aria-label="Net worth over time">
+        <defs>
+          <linearGradient id="nwfill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity="0.22" />
+            <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#nwfill)" />
+        <path d={path} fill="none" stroke={stroke} strokeWidth={1.5} />
+        <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r={3} fill={stroke} />
+      </svg>
+      <div className="flex items-center justify-between text-[11px] text-gray-400 font-mono mt-1">
+        <span>{first.date}</span>
+        <span className="text-gray-300">
+          {snapshots.length} snapshot{snapshots.length === 1 ? '' : 's'}
+        </span>
+        <span>{latest.date}</span>
       </div>
     </div>
   );
+}
 
-  const renderTrade = () => {
-    const selectedTradingAsset = assets.find((a) => a.symbol === tradeAsset) || assets[0];
-    if (!selectedTradingAsset)
-      return <div className="p-8 text-center text-gray-400">No assets available for trading.</div>;
-    const estimatedValue =
-      parseFloat(tradeAmount || '0') *
-      (orderType === 'market' ? selectedTradingAsset.price : parseFloat(tradePrice || '0'));
+// ── Monthly cash-flow mini (income vs spend) — real ledger ─────────────────
 
+function CashFlowMini({ trend }: { trend: MonthlyTrend | null }) {
+  if (!trend || trend.series.length === 0) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Order Book / Chart */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="panel p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <select
-                  value={tradeAsset}
-                  onChange={(e) => setTradeAsset(e.target.value)}
-                  className="bg-lattice-deep rounded-lg px-4 py-2 font-semibold focus:outline-none focus:ring-1 focus:ring-neon-cyan"
-                >
-                  {assets.map((asset) => (
-                    <option key={asset.id} value={asset.symbol}>
-                      {asset.symbol}/USD
-                    </option>
-                  ))}
-                </select>
-                <div>
-                  <p className="text-2xl font-bold">{formatCurrency(selectedTradingAsset.price)}</p>
-                  <p
-                    className={cn(
-                      'text-sm',
-                      selectedTradingAsset.changePercent24h >= 0 ? 'text-green-400' : 'text-red-400'
-                    )}
-                  >
-                    {formatPercent(selectedTradingAsset.changePercent24h)} today
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {(['1H', '24H', '7D', '30D'] as TimeRange[]).map((range) => (
-                  <button
-                    key={range}
-                    onClick={() => setTimeRange(range)}
-                    className={cn(
-                      'px-3 py-1 rounded text-sm',
-                      timeRange === range ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-400'
-                    )}
-                  >
-                    {range}
-                  </button>
-                ))}
-              </div>
+      <EmptyState
+        compact
+        icon={<ArrowLeftRight className="h-5 w-5" aria-hidden="true" />}
+        title="No ledger activity yet."
+        description="Ingest or import transactions in the Cash-flow tab to see monthly income vs. spend."
+        ariaLabel="Monthly trend empty"
+      />
+    );
+  }
+  const series = trend.series.slice(-12);
+  const peak = Math.max(1, ...series.map((m) => Math.max(m.income, m.spend)));
+  return (
+    <div>
+      <div className="flex items-end gap-1.5 h-28">
+        {series.map((m) => (
+          <div key={m.month} className="flex-1 flex flex-col items-center gap-0.5 group" title={`${m.month}  net ${fmtUsd(m.net)}`}>
+            <div className="w-full flex items-end justify-center gap-0.5 h-24">
+              <div
+                className="w-1/2 rounded-sm bg-emerald-500/70"
+                style={{ height: `${(m.income / peak) * 100}%` }}
+                aria-hidden="true"
+              />
+              <div
+                className="w-1/2 rounded-sm bg-rose-500/60"
+                style={{ height: `${(m.spend / peak) * 100}%` }}
+                aria-hidden="true"
+              />
             </div>
-
-            <div className="h-64">
-              <canvas ref={chartRef} width={800} height={256} className="w-full h-full" />
-            </div>
+            <span className="text-[9px] text-gray-500 font-mono">{m.month.slice(5)}</span>
           </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-4 mt-2 text-[11px] font-mono">
+        <span className="flex items-center gap-1 text-gray-400">
+          <span className="w-2 h-2 rounded-sm bg-emerald-500/70" /> Income {fmtUsd(trend.avgMonthlyIncome)}/mo
+        </span>
+        <span className="flex items-center gap-1 text-gray-400">
+          <span className="w-2 h-2 rounded-sm bg-rose-500/60" /> Spend {fmtUsd(trend.avgMonthlySpend)}/mo
+        </span>
+        <span className={cn('ml-auto', trend.avgNet >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
+          Net {fmtUsd(trend.avgNet)}/mo
+        </span>
+      </div>
+    </div>
+  );
+}
 
-          {/* Order Book */}
-          <div className="panel p-4">
-            <h3 className="font-semibold mb-4">Order Book</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {/* Bids */}
-              <div>
-                <div className="text-xs text-gray-400 mb-2 flex justify-between">
-                  <span>Price (USD)</span>
-                  <span>Amount ({tradeAsset})</span>
-                </div>
-                {orders.filter(
-                  (o) => o.side === 'buy' && (o.status === 'open' || o.status === 'partial')
-                ).length > 0 ? (
-                  orders
-                    .filter(
-                      (o) => o.side === 'buy' && (o.status === 'open' || o.status === 'partial')
-                    )
-                    .slice(0, 8)
-                    .map((order, i) => {
-                      const depth = (order.filled / order.amount) * 100 || ((i + 1) / 8) * 100;
-                      return (
-                        <div key={order.id} className="relative flex justify-between text-sm py-1">
-                          <div
-                            className="absolute inset-0 bg-green-500/10"
-                            style={{ width: `${depth}%` }}
-                          />
-                          <span className="relative text-green-400 font-mono">
-                            {formatCurrency(order.price || selectedTradingAsset.price)}
-                          </span>
-                          <span className="relative text-gray-400 font-mono">
-                            {order.amount.toFixed(4)}
-                          </span>
-                        </div>
-                      );
-                    })
-                ) : (
-                  <div className="text-center text-xs text-gray-400 py-4">No buy orders yet</div>
-                )}
-              </div>
+// ── Record-snapshot modal — real macro dispatch w/ honest spinner ──────────
 
-              {/* Asks */}
-              <div>
-                <div className="text-xs text-gray-400 mb-2 flex justify-between">
-                  <span>Price (USD)</span>
-                  <span>Amount ({tradeAsset})</span>
-                </div>
-                {orders.filter(
-                  (o) => o.side === 'sell' && (o.status === 'open' || o.status === 'partial')
-                ).length > 0 ? (
-                  orders
-                    .filter(
-                      (o) => o.side === 'sell' && (o.status === 'open' || o.status === 'partial')
-                    )
-                    .slice(0, 8)
-                    .map((order, i) => {
-                      const depth = (order.filled / order.amount) * 100 || ((i + 1) / 8) * 100;
-                      return (
-                        <div key={order.id} className="relative flex justify-between text-sm py-1">
-                          <div
-                            className="absolute inset-0 right-0 bg-red-500/10"
-                            style={{ width: `${depth}%`, marginLeft: 'auto' }}
-                          />
-                          <span className="relative text-red-400 font-mono">
-                            {formatCurrency(
-                              order.price || order.stopPrice || selectedTradingAsset.price
-                            )}
-                          </span>
-                          <span className="relative text-gray-400 font-mono">
-                            {order.amount.toFixed(4)}
-                          </span>
-                        </div>
-                      );
-                    })
-                ) : (
-                  <div className="text-center text-xs text-gray-400 py-4">No sell orders yet</div>
-                )}
-              </div>
-            </div>
-          </div>
+function SnapshotModal({ onClose, onRecorded }: { onClose: () => void; onRecorded: () => void }) {
+  const { status, error, dispatch } = useMacroDispatchFeedback();
+  const [form, setForm] = useState({ cash: '', investments: '', realEstate: '', crypto: '', liabilities: '' });
+  const busy = status === 'dispatched' || status === 'running';
+
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const submit = async () => {
+    if (busy) return;
+    const input = {
+      cash: parseFloat(form.cash) || 0,
+      investments: parseFloat(form.investments) || 0,
+      realEstate: parseFloat(form.realEstate) || 0,
+      crypto: parseFloat(form.crypto) || 0,
+      liabilities: parseFloat(form.liabilities) || 0,
+    };
+    const res = await dispatch('finance', 'net-worth-snapshot', input);
+    if (res) {
+      onRecorded();
+      onClose();
+    }
+  };
+
+  const fields: { k: keyof typeof form; label: string }[] = [
+    { k: 'cash', label: 'Cash' },
+    { k: 'investments', label: 'Investments' },
+    { k: 'realEstate', label: 'Real estate' },
+    { k: 'crypto', label: 'Crypto' },
+    { k: 'liabilities', label: 'Liabilities' },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.96, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.96, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-lg border border-lattice-border bg-lattice-surface p-5 font-mono"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Record net-worth snapshot"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-emerald-100">Record net-worth snapshot</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Close">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-
-        {/* Order Form */}
-        <div className="panel p-4">
-          <div className="flex items-center gap-2 mb-6">
-            <button
-              onClick={() => setTradeSide('buy')}
-              className={cn(
-                'flex-1 py-3 rounded-lg font-semibold transition-colors',
-                tradeSide === 'buy'
-                  ? 'bg-green-500 text-white'
-                  : 'bg-lattice-deep text-gray-400 hover:text-white'
-              )}
-            >
-              Buy
-            </button>
-            <button
-              onClick={() => setTradeSide('sell')}
-              className={cn(
-                'flex-1 py-3 rounded-lg font-semibold transition-colors',
-                tradeSide === 'sell'
-                  ? 'bg-red-500 text-white'
-                  : 'bg-lattice-deep text-gray-400 hover:text-white'
-              )}
-            >
-              Sell
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs text-gray-400 mb-1 block">Order Type</label>
-              <div className="flex items-center gap-2">
-                {(['market', 'limit', 'stop'] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setOrderType(type)}
-                    className={cn(
-                      'flex-1 py-2 rounded-lg text-sm capitalize',
-                      orderType === type
-                        ? 'bg-neon-cyan/20 text-neon-cyan'
-                        : 'bg-lattice-deep text-gray-400'
-                    )}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {orderType !== 'market' && (
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">
-                  {orderType === 'limit' ? 'Limit Price' : 'Stop Price'}
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                  <input
-                    type="number"
-                    value={tradePrice}
-                    onChange={(e) => setTradePrice(e.target.value)}
-                    placeholder={selectedTradingAsset.price.toString()}
-                    className="w-full pl-8 pr-4 py-3 bg-lattice-deep rounded-lg focus:outline-none focus:ring-1 focus:ring-neon-cyan font-mono"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="text-xs text-gray-400 mb-1 block">Amount</label>
-              <div className="relative">
+        <div className="space-y-2.5">
+          {fields.map((f) => (
+            <label key={f.k} className="flex items-center justify-between gap-3 text-xs">
+              <span className="text-gray-400 w-24">{f.label}</span>
+              <div className="relative flex-1">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                 <input
                   type="number"
-                  value={tradeAmount}
-                  onChange={(e) => setTradeAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full pr-20 py-3 bg-lattice-deep rounded-lg focus:outline-none focus:ring-1 focus:ring-neon-cyan font-mono"
+                  inputMode="decimal"
+                  value={form[f.k]}
+                  onChange={set(f.k)}
+                  placeholder="0"
+                  className="w-full pl-5 pr-2 py-1.5 rounded bg-lattice-deep border border-lattice-border text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  {tradeAsset}
-                </span>
               </div>
-              <div className="flex items-center gap-2 mt-2">
-                {[25, 50, 75, 100].map((pct) => (
-                  <button
-                    key={pct}
-                    onClick={() =>
-                      setTradeAmount(((selectedTradingAsset.holdings * pct) / 100).toString())
-                    }
-                    className="flex-1 py-1 text-xs bg-lattice-deep rounded hover:bg-lattice-elevated"
-                  >
-                    {pct}%
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-lattice-border">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Available</span>
-                <span>
-                  {showBalances
-                    ? `${selectedTradingAsset.holdings.toFixed(4)} ${tradeAsset}`
-                    : '••••'}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm mb-4">
-                <span className="text-gray-400">Estimated Value</span>
-                <span className="font-mono">{formatCurrency(estimatedValue)}</span>
-              </div>
-
-              <button
-                onClick={handleSubmitOrder}
-                disabled={isSubmittingOrder || !tradeAmount}
-                className={cn(
-                  'w-full py-4 rounded-lg font-bold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
-                  tradeSide === 'buy'
-                    ? 'bg-green-500 hover:bg-green-600 text-white'
-                    : 'bg-red-500 hover:bg-red-600 text-white'
-                )}
-              >
-                {isSubmittingOrder
-                  ? 'Submitting...'
-                  : `${tradeSide === 'buy' ? 'Buy' : 'Sell'} ${tradeAsset}`}
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="mt-6 pt-4 border-t border-lattice-border space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">24h High</span>
-              <span className="text-green-400 font-mono">
-                {formatCurrency(selectedTradingAsset.price * 1.05)}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">24h Low</span>
-              <span className="text-red-400 font-mono">
-                {formatCurrency(selectedTradingAsset.price * 0.95)}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">24h Volume</span>
-              <span className="font-mono">
-                {formatCurrency(selectedTradingAsset.volume24h, true)}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Market Cap</span>
-              <span className="font-mono">
-                {formatCurrency(selectedTradingAsset.marketCap || 0, true)}
-              </span>
-            </div>
-          </div>
+            </label>
+          ))}
         </div>
-      </div>
-    );
-  };
-
-  const renderOrders = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Open Orders</h2>
+        {status === 'error' && (
+          <p className="mt-3 text-xs text-rose-300" role="alert">
+            {error || 'Failed to record snapshot.'}
+          </p>
+        )}
         <button
-          onClick={() =>
-            useUIStore.getState().addToast({ type: 'info', message: 'Opening order form...' })
-          }
-          className="btn-neon"
+          onClick={submit}
+          disabled={busy}
+          className="mt-4 w-full py-2.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          New Order
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          {busy ? 'Recording…' : 'Record snapshot'}
         </button>
-      </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
-      <div className="panel overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-lattice-deep text-left text-xs text-gray-400">
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Pair</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Side</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3">Amount</th>
-              <th className="px-4 py-3">Filled</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.length === 0 && (
-              <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
-                  No orders yet
-                </td>
-              </tr>
-            )}
-            {orders.map((order) => (
-              <tr
-                key={order.id}
-                className="border-t border-lattice-border hover:bg-lattice-elevated/30"
-              >
-                <td className="px-4 py-4 text-sm text-gray-400">{formatTime(order.createdAt)}</td>
-                <td className="px-4 py-4 font-medium">{order.symbol}/USD</td>
-                <td className="px-4 py-4 capitalize text-sm">{order.type}</td>
-                <td className="px-4 py-4">
-                  <span
-                    className={cn(
-                      'px-2 py-1 rounded text-xs font-medium',
-                      order.side === 'buy'
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-red-500/20 text-red-400'
-                    )}
-                  >
-                    {order.side.toUpperCase()}
-                  </span>
-                </td>
-                <td className="px-4 py-4 font-mono text-sm">
-                  {order.price
-                    ? formatCurrency(order.price)
-                    : order.stopPrice
-                      ? `Stop: ${formatCurrency(order.stopPrice)}`
-                      : 'Market'}
-                </td>
-                <td className="px-4 py-4 font-mono text-sm">{order.amount}</td>
-                <td className="px-4 py-4">
-                  <div className="w-20 h-2 bg-lattice-deep rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-neon-cyan"
-                      style={{ width: `${(order.filled / order.amount) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-400">
-                    {((order.filled / order.amount) * 100).toFixed(0)}%
-                  </span>
-                </td>
-                <td className="px-4 py-4">
-                  <span
-                    className={cn(
-                      'px-2 py-1 rounded text-xs',
-                      order.status === 'open' && 'bg-yellow-500/20 text-yellow-400',
-                      order.status === 'partial' && 'bg-blue-500/20 text-blue-400',
-                      order.status === 'filled' && 'bg-green-500/20 text-green-400',
-                      order.status === 'cancelled' && 'bg-gray-500/20 text-gray-400'
-                    )}
-                  >
-                    {order.status}
-                  </span>
-                </td>
-                <td className="px-4 py-4">
-                  <button
-                    onClick={() =>
-                      useUIStore
-                        .getState()
-                        .addToast({ type: 'info', message: `Cancelling order ${order.id}` })
-                    }
-                    className="p-2 rounded hover:bg-lattice-elevated text-gray-400 hover:text-red-400"
-                  aria-label="Close">
-                    <X className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+// ── Section frame ──────────────────────────────────────────────────────────
+
+function Panel({ title, right, children, className }: { title: string; right?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn('rounded-lg border border-lattice-border bg-lattice-surface/60 overflow-hidden', className)}>
+      <header className="flex items-center justify-between px-3 py-2 border-b border-lattice-border bg-lattice-elevated/40">
+        <h2 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">{title}</h2>
+        {right}
+      </header>
+      <div className="p-3">{children}</div>
+    </section>
+  );
+}
+
+export default function FinanceTerminalPage() {
+  useLensNav('finance');
+  const { density } = useDensity();
+  const tableDensity: 'compact' | 'comfortable' = density === 'low' ? 'comfortable' : 'compact';
+
+  const [group, setGroup] = useState<GroupId>('overview');
+  const [showSnapshot, setShowSnapshot] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<string | null>(null);
+
+  // Live market indices (real Yahoo Finance via useRealtimeLens).
+  const { latestData, isLive, lastUpdated } = useRealtimeLens('finance');
+  const indices: IndexQuote[] = useMemo(() => {
+    const quotes = ((latestData as { quotes?: Array<Record<string, unknown>> } | null)?.quotes) || [];
+    return quotes.map((q) => {
+      const symbol = String(q.symbol || '').replace('^', '');
+      return {
+        symbol,
+        name: INDEX_NAMES[symbol] || symbol,
+        price: Number(q.price) || 0,
+        change: Number(q.change) || 0,
+        changePercent: Number(q.changePercent) || 0,
+      };
+    });
+  }, [latestData]);
+
+  // Dashboard state (real macros).
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [history, setHistory] = useState<NetWorthSnapshot[]>([]);
+  const [trend, setTrend] = useState<MonthlyTrend | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  const loadDashboard = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setLoadError(null);
+    try {
+      const [sumRes, histRes, trendRes] = await Promise.all([
+        lensRun<DashboardSummary>('finance', 'dashboard-summary', {}),
+        lensRun<{ snapshots: NetWorthSnapshot[] }>('finance', 'net-worth-history', { range: 'ALL' }),
+        lensRun<MonthlyTrend>('finance', 'monthly-trend', { months: 12 }),
+      ]);
+      if (!mounted.current) return;
+      if (sumRes.data.ok && sumRes.data.result) setSummary(sumRes.data.result);
+      else if (!sumRes.data.ok) setLoadError(sumRes.data.error || 'Failed to load dashboard summary.');
+      setHistory(histRes.data.result?.snapshots || []);
+      setTrend(trendRes.data.result || null);
+    } catch (e) {
+      if (mounted.current) setLoadError(e instanceof Error ? e.message : 'Failed to load finance data.');
+    } finally {
+      if (mounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboard(false);
+  }, [loadDashboard]);
+
+  // Keyboard: 1-8 switch groups; r refresh; s snapshot.
+  useLensCommand(
+    [
+      ...GROUPS.map((g) => ({
+        id: `group-${g.id}`,
+        keys: g.hotkey,
+        description: `Go to ${g.label}`,
+        category: 'navigation' as const,
+        action: () => setGroup(g.id),
+      })),
+      { id: 'refresh', keys: 'r', description: 'Refresh dashboard', category: 'actions', action: () => loadDashboard(true) },
+      { id: 'snapshot', keys: 's', description: 'Record net-worth snapshot', category: 'actions', action: () => setShowSnapshot(true) },
+    ],
+    { lensId: 'finance' }
   );
 
-  const renderAlerts = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Price Alerts</h2>
-        <button
-          onClick={() =>
-            useUIStore.getState().addToast({ type: 'info', message: 'Creating new price alert...' })
-          }
-          className="btn-neon"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Alert
-        </button>
+  const indexColumns: DataTableColumn<IndexQuote>[] = [
+    { id: 'symbol', header: 'Index', accessor: (r) => (
+      <div className="flex flex-col leading-tight">
+        <span className="text-gray-100 font-semibold">{r.symbol}</span>
+        <span className="text-[10px] text-gray-500">{r.name}</span>
       </div>
+    ), sortValue: (r) => r.symbol, sortable: true },
+    { id: 'price', header: 'Last', accessor: (r) => r.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), sortValue: (r) => r.price, align: 'right', sortable: true, monospace: true },
+    { id: 'change', header: 'Chg', accessor: (r) => (
+      <span className={r.change >= 0 ? 'text-emerald-300' : 'text-rose-300'}>
+        {r.change >= 0 ? '+' : ''}{r.change.toFixed(2)}
+      </span>
+    ), sortValue: (r) => r.change, align: 'right', sortable: true, monospace: true },
+    { id: 'pct', header: '%', accessor: (r) => (
+      <span className={r.changePercent >= 0 ? 'text-emerald-300' : 'text-rose-300'}>{fmtPct(r.changePercent)}</span>
+    ), sortValue: (r) => r.changePercent, align: 'right', sortable: true, monospace: true },
+  ];
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {alerts.map((alert) => {
-          const asset = assets.find((a) => a.symbol === alert.symbol);
-          const triggered =
-            alert.condition === 'above'
-              ? (asset?.price || 0) >= alert.price
-              : (asset?.price || 0) <= alert.price;
+  const selectedQuote = indices.find((q) => q.symbol === selectedIndex) || null;
 
-          return (
-            <div key={alert.id} className={cn('panel p-4', triggered && 'ring-2 ring-neon-yellow')}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-neon-cyan/20 flex items-center justify-center text-neon-cyan font-bold">
-                    {alert.symbol.slice(0, 2)}
-                  </div>
-                  <div>
-                    <p className="font-medium">{alert.symbol}</p>
-                    <p className="text-xs text-gray-400">{alert.asset}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() =>
-                    useUIStore
-                      .getState()
-                      .addToast({
-                        type: 'info',
-                        message: alert.active ? 'Alert paused' : 'Alert activated',
-                      })
+  const renderGroup = () => {
+    switch (group) {
+      case 'overview':
+        return (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <Panel
+              title="Market monitor — live indices"
+              right={
+                <StatusDot
+                  state={isLive ? 'live' : 'idle'}
+                  size="sm"
+                  label={isLive ? 'Live' : 'Offline'}
+                  showLabel
+                />
+              }
+            >
+              {indices.length === 0 ? (
+                <EmptyState
+                  compact
+                  title={isLive ? 'Awaiting first market tick…' : 'Market feed offline.'}
+                  description={
+                    isLive
+                      ? 'Connected — the live index feed will populate on the next tick.'
+                      : 'The realtime market feed (Yahoo Finance indices) is not currently connected. No prices are shown rather than fabricated ones.'
                   }
-                  className={cn(
-                    'p-2 rounded-lg',
-                    alert.active ? 'text-neon-green' : 'text-gray-400'
+                  ariaLabel="Market monitor empty"
+                />
+              ) : (
+                <>
+                  <DataTable
+                    columns={indexColumns}
+                    rows={indices}
+                    getRowId={(r) => r.symbol}
+                    density={tableDensity}
+                    selectedRowId={selectedIndex}
+                    onRowClick={(r) => setSelectedIndex((cur) => (cur === r.symbol ? null : r.symbol))}
+                    caption="Live market indices"
+                    defaultSort={{ columnId: 'pct', direction: 'desc' }}
+                  />
+                  {selectedQuote && (
+                    <div className="mt-2 flex items-center gap-4 px-3 py-2 rounded bg-lattice-deep/60 text-xs font-mono">
+                      <span className="text-gray-300 font-semibold">{selectedQuote.name}</span>
+                      <span className="text-gray-400">Last {selectedQuote.price.toLocaleString()}</span>
+                      <span className={selectedQuote.changePercent >= 0 ? 'text-emerald-300' : 'text-rose-300'}>
+                        {selectedQuote.change >= 0 ? '+' : ''}{selectedQuote.change.toFixed(2)} ({fmtPct(selectedQuote.changePercent)})
+                      </span>
+                    </div>
                   )}
-                >
-                  {alert.active ? <Bell className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2 mb-3">
-                {alert.condition === 'above' ? (
-                  <ArrowUpRight className="w-5 h-5 text-green-400" />
-                ) : (
-                  <ArrowDownRight className="w-5 h-5 text-red-400" />
-                )}
-                <span className="text-sm text-gray-400">Price goes {alert.condition}</span>
-                <span className="font-mono font-bold">{formatCurrency(alert.price)}</span>
-              </div>
-
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Current:</span>
-                <span className="font-mono">{formatCurrency(asset?.price || 0)}</span>
-              </div>
-
-              {triggered && (
-                <div className="mt-3 p-2 bg-neon-yellow/10 rounded text-neon-yellow text-sm flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Alert triggered!
-                </div>
+                </>
               )}
+            </Panel>
+
+            <Panel title="Net-worth trajectory — your snapshots">
+              <NetWorthChart snapshots={history} />
+            </Panel>
+
+            <Panel title="Monthly cash-flow — income vs. spend" className="xl:col-span-2">
+              <CashFlowMini trend={trend} />
+            </Panel>
+          </div>
+        );
+      case 'positions':
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 space-y-4">
+              <HoldingsManager />
+              <InvestmentCheckup />
             </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  if (isError || isError2 || isError3 || isError4 || isError5) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState
-          error={
-            error?.message ||
-            error2?.message ||
-            error3?.message ||
-            error4?.message ||
-            error5?.message
-          }
-          onRetry={() => {
-            refetch();
-            refetch2();
-            refetch3();
-            refetch4();
-            refetch5();
-          }}
-        />
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 text-neon-cyan animate-spin" />
-          <p className="text-gray-400">Loading finance data...</p>
-        </div>
-      </div>
-    );
-  }
+            <AllocationPie />
+          </div>
+        );
+      case 'cashflow':
+        return (
+          <div className="space-y-4">
+            <TransactionFeed />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <CashFlowSankey />
+              <SpendingInsights />
+            </div>
+          </div>
+        );
+      case 'accounts':
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <AccountsPanel />
+            <BankAggregation />
+            <CreditScoreMonitor />
+            <NetWorthTracker />
+          </div>
+        );
+      case 'planning':
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <GoalsTracker />
+            <RetirementSimulator />
+            <TaxEstimator />
+            <TaxLossHarvester />
+          </div>
+        );
+      case 'bills':
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <BillsCalendar />
+            <BillReminders />
+            <EnvelopeBudget />
+            <RolloverRules />
+            <HouseholdBudgets />
+            <RecurringInvestments />
+            <SubscriptionDetector />
+            <DividendTracker />
+            <CategorisationRules />
+          </div>
+        );
+      case 'macro':
+        return (
+          <div className="space-y-4">
+            <FredSeriesPanel />
+            <WorldBankPanel domain="finance" />
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <MarketsPulse />
+            </div>
+            <LensFeedPanel lensId="finance" />
+          </div>
+        );
+      case 'assistant':
+        return <FinanceAssistant />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <LensShell lensId="finance" asMain={false}>
-      <FirstRunTour lensId="finance" />
-      <DepthBadge lensId="finance" size="sm" className="ml-2" />
-    <div data-lens-theme="finance" className="p-6 space-y-6 bg-[#0c0f14] font-mono">
-      <ShellPreview lensId="finance" defaultOpen={true} />
-      {/* Phase 4 (sixth wave) — REAL World Bank country indicators. */}
-      <WorldBankPanel domain="finance" />
-      {/* REAL FRED economic time series (FRED_API_KEY-gated; honest empty/no-key states). */}
-      <FredSeriesPanel />
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded bg-emerald-900/40 border border-emerald-700/30 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-emerald-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold font-mono tracking-tight text-emerald-100">
-                Finance Lens
-              </h1>
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+      <div data-lens-theme="finance" className="min-h-full bg-[#0a0d12] text-gray-200 font-mono p-4 space-y-4">
+        {/* Command bar */}
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded bg-emerald-900/40 border border-emerald-700/30 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-emerald-400" />
             </div>
-            <p className="text-sm text-gray-400">Portfolio tracking & trading dashboard</p>
+            <div>
+              <h1 className="text-sm font-bold tracking-tight text-emerald-100">
+                CONCORD <span className="text-gray-600">{'//'}</span> FINANCE TERMINAL
+              </h1>
+              <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                <StatusDot state={isLive ? 'live' : 'idle'} size="xs" />
+                <span>{isLive ? 'Market feed live' : 'Market feed idle'}</span>
+                {lastUpdated && <span className="text-gray-600">· {new Date(lastUpdated).toLocaleTimeString()}</span>}
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <DTUExportButton domain="finance" data={{}} compact />
-          <button
-            onClick={() => {
-              refetch();
-              refetch2();
-              refetch3();
-              refetch4();
-              refetch5();
-            }}
-            className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-          aria-label="Refresh">
-            <RefreshCw className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => {
-              const data = JSON.stringify({ assets: assetItems, transactions: txItems }, null, 2);
-              const blob = new Blob([data], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'finance-export.json';
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-            className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-          aria-label="Download">
-            <Download className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() =>
-              useUIStore.getState().addToast({ type: 'info', message: 'Finance settings' })
-            }
-            className="p-2 rounded-lg hover:bg-lattice-elevated text-gray-400"
-          aria-label="Settings">
-            <Settings className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
-
-      <RealtimeDataPanel
-        domain="finance"
-        data={realtimeData}
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-        insights={insights}
-        compact
-      />
-      <UniversalActions domain="finance" artifactId={null} compact />
-
-      {/* Finance Actions */}
-      <div className="bg-white/5 border border-emerald-900/20 rounded-xl p-4 space-y-3">
-        <h2 className="font-semibold text-sm flex items-center gap-2">
-          <Zap className="w-4 h-4 text-emerald-400" />
-          Finance Analysis
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {[
-            {
-              action: 'portfolioAnalysis',
-              label: 'Portfolio Analysis',
-              icon: BarChart3,
-              color: 'text-emerald-400',
-            },
-            {
-              action: 'budgetTracker',
-              label: 'Budget Tracker',
-              icon: DollarSign,
-              color: 'text-neon-cyan',
-            },
-            {
-              action: 'compoundInterest',
-              label: 'Compound Interest',
-              icon: TrendingUp,
-              color: 'text-neon-green',
-            },
-            { action: 'debtPayoff', label: 'Debt Payoff', icon: CreditCard, color: 'text-red-400' },
-          ].map(({ action, label, icon: Icon, color }) => (
+          <div className="flex items-center gap-2">
+            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-600" title="1–8 switch view · r refresh · s snapshot">
+              <Keyboard className="w-3.5 h-3.5" /> 1–8 · r · s
+            </span>
+            <DensityToggle variant="dropdown" />
             <button
-              key={action}
-              onClick={() => handleFinanceAction(action)}
-              disabled={!!financeRunning || !assetItems[0]?.id}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-emerald-900/20 text-sm hover:border-emerald-500/30 disabled:opacity-40 transition-colors"
+              onClick={() => setShowSnapshot(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-emerald-700/40 bg-emerald-900/20 text-emerald-200 text-xs hover:bg-emerald-900/40 transition-colors"
             >
-              {financeRunning === action ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Icon className={`w-4 h-4 ${color}`} />
-              )}
-              <span className="truncate text-xs">{label}</span>
+              <Plus className="w-3.5 h-3.5" /> Snapshot
             </button>
-          ))}
-        </div>
-
-        {financeActionResult && (
-          <div className="mt-3 rounded-lg bg-black/30 border border-emerald-900/20 p-4 relative">
             <button
-              onClick={() => setFinanceActionResult(null)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-white"
-            aria-label="Close">
-              <X className="w-4 h-4" />
+              onClick={() => loadDashboard(true)}
+              disabled={refreshing}
+              className="p-1.5 rounded border border-lattice-border text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors disabled:opacity-50"
+              aria-label="Refresh dashboard"
+            >
+              <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
             </button>
-
-            {/* portfolioAnalysis */}
-            {financeActionResult._action === 'portfolioAnalysis' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
-                  Portfolio Analysis
-                </p>
-                {(financeActionResult.message as string) ? (
-                  <p className="text-sm text-gray-400">{financeActionResult.message as string}</p>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[
-                        {
-                          label: 'Total Value',
-                          value: `$${((financeActionResult.totalValue as number) || 0).toLocaleString()}`,
-                          color: 'text-emerald-400',
-                        },
-                        {
-                          label: 'Gain/Loss',
-                          value: `$${((financeActionResult.totalGainLoss as number) || 0).toLocaleString()}`,
-                          color:
-                            (financeActionResult.totalGainLoss as number) >= 0
-                              ? 'text-neon-green'
-                              : 'text-red-400',
-                        },
-                        {
-                          label: 'Return',
-                          value: `${financeActionResult.returnPercent ?? 0}%`,
-                          color: 'text-neon-cyan',
-                        },
-                        {
-                          label: 'Diversification',
-                          value: String(financeActionResult.diversificationScore ?? '—'),
-                          color:
-                            financeActionResult.diversificationScore === 'well-diversified'
-                              ? 'text-neon-green'
-                              : 'text-yellow-400',
-                        },
-                      ].map(({ label, value, color }) => (
-                        <div key={label} className="bg-black/20 rounded-lg p-3 text-center">
-                          <p className={`text-sm font-bold font-mono ${color}`}>{value}</p>
-                          <p className="text-xs text-gray-400">{label}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {Array.isArray(financeActionResult.holdings) &&
-                      (
-                        financeActionResult.holdings as {
-                          symbol: string;
-                          value: number;
-                          allocation: number;
-                          gainLoss: number;
-                          type: string;
-                        }[]
-                      )
-                        .slice(0, 5)
-                        .map((h) => (
-                          <div
-                            key={h.symbol}
-                            className="flex items-center gap-3 text-xs px-2 py-1 rounded bg-white/5 font-mono"
-                          >
-                            <span className="text-white w-16">{h.symbol}</span>
-                            <span className="text-gray-400 w-12">{h.type}</span>
-                            <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-emerald-500/60 rounded-full"
-                                style={{ width: `${h.allocation}%` }}
-                              />
-                            </div>
-                            <span className="text-gray-300 w-14 text-right">{h.allocation}%</span>
-                            <span
-                              className={`w-20 text-right ${h.gainLoss >= 0 ? 'text-neon-green' : 'text-red-400'}`}
-                            >
-                              ${h.gainLoss.toLocaleString()}
-                            </span>
-                          </div>
-                        ))}
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* budgetTracker */}
-            {financeActionResult._action === 'budgetTracker' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
-                  Budget Tracker
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    {
-                      label: 'Income',
-                      value: `$${((financeActionResult.monthlyIncome as number) || 0).toLocaleString()}`,
-                      color: 'text-neon-green',
-                    },
-                    {
-                      label: 'Spent',
-                      value: `$${((financeActionResult.totalSpent as number) || 0).toLocaleString()}`,
-                      color: 'text-red-400',
-                    },
-                    {
-                      label: 'Remaining',
-                      value: `$${((financeActionResult.remaining as number) || 0).toLocaleString()}`,
-                      color: 'text-neon-cyan',
-                    },
-                    {
-                      label: 'Savings Rate',
-                      value: `${financeActionResult.savingsRate ?? 0}%`,
-                      color: 'text-emerald-400',
-                    },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="bg-black/20 rounded-lg p-3 text-center">
-                      <p className={`text-sm font-bold font-mono ${color}`}>{value}</p>
-                      <p className="text-xs text-gray-400">{label}</p>
-                    </div>
-                  ))}
-                </div>
-                {Array.isArray(financeActionResult.categories) &&
-                  (
-                    financeActionResult.categories as {
-                      category: string;
-                      spent: number;
-                      budget: number;
-                      percentUsed: number;
-                      status: string;
-                    }[]
-                  ).map((c) => (
-                    <div key={c.category} className="flex items-center gap-3 text-xs">
-                      <span className="text-gray-400 w-28 truncate">{c.category}</span>
-                      <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${c.status === 'over-budget' ? 'bg-red-500/60' : c.status === 'near-limit' ? 'bg-yellow-500/60' : 'bg-emerald-500/60'}`}
-                          style={{ width: `${Math.min(100, c.percentUsed)}%` }}
-                        />
-                      </div>
-                      <span className="text-white w-10 text-right font-mono">{c.percentUsed}%</span>
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] ${c.status === 'over-budget' ? 'bg-red-400/20 text-red-400' : c.status === 'near-limit' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-neon-green/20 text-neon-green'}`}
-                      >
-                        {c.status}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            )}
-
-            {/* compoundInterest */}
-            {financeActionResult._action === 'compoundInterest' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
-                  Compound Interest Projection
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    {
-                      label: 'Final Balance',
-                      value: `$${((financeActionResult.finalBalance as number) || 0).toLocaleString()}`,
-                      color: 'text-emerald-400',
-                    },
-                    {
-                      label: 'Contributed',
-                      value: `$${((financeActionResult.totalContributed as number) || 0).toLocaleString()}`,
-                      color: 'text-neon-cyan',
-                    },
-                    {
-                      label: 'Interest Earned',
-                      value: `$${((financeActionResult.totalInterest as number) || 0).toLocaleString()}`,
-                      color: 'text-neon-green',
-                    },
-                    {
-                      label: 'Rate',
-                      value: String(financeActionResult.annualRate ?? '—'),
-                      color: 'text-yellow-400',
-                    },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="bg-black/20 rounded-lg p-3 text-center">
-                      <p className={`text-sm font-bold font-mono ${color}`}>{value}</p>
-                      <p className="text-xs text-gray-400">{label}</p>
-                    </div>
-                  ))}
-                </div>
-                {Array.isArray(financeActionResult.timeline) && (
-                  <div className="grid grid-cols-5 gap-1">
-                    {(financeActionResult.timeline as { year: number; balance: number }[])
-                      .filter(
-                        (_, i, arr) =>
-                          i % Math.max(1, Math.floor(arr.length / 5)) === 0 || i === arr.length - 1
-                      )
-                      .slice(0, 5)
-                      .map((t) => (
-                        <div key={t.year} className="bg-black/20 rounded p-2 text-center">
-                          <p className="text-xs text-gray-400">Yr {t.year}</p>
-                          <p className="text-xs font-mono text-neon-green">
-                            ${(t.balance / 1000).toFixed(0)}k
-                          </p>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* debtPayoff */}
-            {financeActionResult._action === 'debtPayoff' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
-                  Debt Payoff Plan
-                </p>
-                {(financeActionResult.message as string) ? (
-                  <p className="text-sm text-gray-400">{financeActionResult.message as string}</p>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {[
-                        {
-                          label: 'Total Debt',
-                          value: `$${((financeActionResult.totalDebt as number) || 0).toLocaleString()}`,
-                          color: 'text-red-400',
-                        },
-                        {
-                          label: 'Total Interest',
-                          value: `$${((financeActionResult.totalInterest as number) || 0).toLocaleString()}`,
-                          color: 'text-orange-400',
-                        },
-                        {
-                          label: 'First Target',
-                          value: String(financeActionResult.firstTarget ?? '—'),
-                          color: 'text-neon-cyan',
-                        },
-                      ].map(({ label, value, color }) => (
-                        <div key={label} className="bg-black/20 rounded-lg p-3 text-center">
-                          <p className={`text-sm font-bold font-mono ${color}`}>{value}</p>
-                          <p className="text-xs text-gray-400">{label}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {financeActionResult.strategy && (
-                      <p className="text-xs text-gray-400 italic">
-                        {financeActionResult.strategy as string}
-                      </p>
-                    )}
-                    {Array.isArray(financeActionResult.debts) && (
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {(
-                          financeActionResult.debts as {
-                            name: string;
-                            balance: number;
-                            rate: string;
-                            monthsToPayoff: number;
-                          }[]
-                        ).map((d) => (
-                          <div
-                            key={d.name}
-                            className="flex items-center gap-3 text-xs px-2 py-1 rounded bg-white/5 font-mono"
-                          >
-                            <span className="flex-1 text-white">{d.name}</span>
-                            <span className="text-red-400">${d.balance.toLocaleString()}</span>
-                            <span className="text-orange-400">{d.rate}</span>
-                            <span className="text-gray-400">
-                              {d.monthsToPayoff < 999 ? `${d.monthsToPayoff}mo` : '∞'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
+            <DTUExportButton domain="finance" data={{ summary, history, trend }} compact />
           </div>
-        )}
-      </div>
+        </header>
 
-      {/* Navigation */}
-      <nav className="flex items-center gap-1 border-b border-emerald-900/20 pb-4 overflow-x-auto">
-        {(
-          [
-            { id: 'overview', label: 'Overview', icon: PieChart },
-            { id: 'trade', label: 'Trade', icon: Activity },
-            { id: 'orders', label: 'Orders', icon: Layers },
-            { id: 'alerts', label: 'Alerts', icon: Bell },
-            { id: 'news', label: 'News', icon: Newspaper },
-            { id: 'networth', label: 'Net worth', icon: TrendingUp },
-            { id: 'accounts', label: 'Accounts', icon: Building2 },
-            { id: 'banksync', label: 'Bank sync', icon: Landmark },
-            { id: 'transactions', label: 'Transactions', icon: Receipt },
-            { id: 'holdings', label: 'Holdings', icon: Briefcase },
-            { id: 'dividends', label: 'Dividends', icon: Coins },
-            { id: 'recurring', label: 'Recurring', icon: Repeat },
-            { id: 'budget', label: 'Budget', icon: Wallet },
-            { id: 'rollover', label: 'Rollover', icon: Recycle },
-            { id: 'household', label: 'Household', icon: Users },
-            { id: 'bills', label: 'Bills', icon: CalendarIcon },
-            { id: 'reminders', label: 'Reminders', icon: BellRing },
-            { id: 'goals', label: 'Goals', icon: Target },
-            { id: 'cashflow', label: 'Cash flow', icon: Workflow },
-            { id: 'insights', label: 'Insights', icon: InsightsIcon },
-            { id: 'credit', label: 'Credit', icon: Gauge },
-            { id: 'rules', label: 'Rules', icon: FilterIcon },
-            { id: 'taxloss', label: 'Tax-loss', icon: Scissors },
-            { id: 'taxes', label: 'Taxes', icon: Calculator },
-            { id: 'retirement', label: 'Retirement', icon: PiggyBank },
-            { id: 'checkup', label: 'Checkup', icon: Target },
-            { id: 'subscriptions', label: 'Subscriptions', icon: Repeat },
-            { id: 'assistant', label: 'Assistant', icon: Sparkles },
-          ] as const
-        ).map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setViewMode(item.id)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-mono text-sm',
-              viewMode === item.id
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                : 'text-gray-400 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent'
-            )}
-          >
-            <item.icon className="w-4 h-4" />
-            {item.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* Content */}
-      {viewMode === 'overview' && renderOverview()}
-      {viewMode === 'trade' && renderTrade()}
-      {viewMode === 'orders' && renderOrders()}
-      {viewMode === 'alerts' && renderAlerts()}
-      {viewMode === 'networth' && <div className="space-y-4"><NetWorthTracker /></div>}
-      {viewMode === 'budget' && <div className="space-y-4"><EnvelopeBudget /></div>}
-      {viewMode === 'checkup' && <div className="space-y-4"><InvestmentCheckup /></div>}
-      {viewMode === 'taxes' && <div className="space-y-4"><TaxEstimator /></div>}
-      {viewMode === 'retirement' && <div className="space-y-4"><RetirementSimulator /></div>}
-      {viewMode === 'subscriptions' && <div className="space-y-4"><SubscriptionDetector /></div>}
-      {viewMode === 'accounts' && <div className="space-y-4"><AccountsPanel /></div>}
-      {viewMode === 'holdings' && <div className="space-y-4"><div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><div className="lg:col-span-2"><HoldingsManager /></div><div><AllocationPie /></div></div></div>}
-      {viewMode === 'dividends' && <div className="space-y-4"><DividendTracker /></div>}
-      {viewMode === 'recurring' && <div className="space-y-4"><RecurringInvestments /></div>}
-      {viewMode === 'bills' && <div className="space-y-4"><BillsCalendar /></div>}
-      {viewMode === 'goals' && <div className="space-y-4"><GoalsTracker /></div>}
-      {viewMode === 'insights' && <div className="space-y-4"><SpendingInsights /></div>}
-      {viewMode === 'rules' && <div className="space-y-4"><CategorisationRules /></div>}
-      {viewMode === 'taxloss' && <div className="space-y-4"><TaxLossHarvester /></div>}
-      {viewMode === 'assistant' && <div className="space-y-4"><FinanceAssistant /></div>}
-      {viewMode === 'banksync' && <div className="space-y-4"><BankAggregation /></div>}
-      {viewMode === 'transactions' && <div className="space-y-4"><TransactionFeed /></div>}
-      {viewMode === 'household' && <div className="space-y-4"><HouseholdBudgets /></div>}
-      {viewMode === 'credit' && <div className="space-y-4"><CreditScoreMonitor /></div>}
-      {viewMode === 'cashflow' && <div className="space-y-4"><CashFlowSankey /></div>}
-      {viewMode === 'reminders' && <div className="space-y-4"><BillReminders /></div>}
-      {viewMode === 'rollover' && <div className="space-y-4"><RolloverRules /></div>}
-      {viewMode === 'news' && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold">Market News & Analysis</h2>
-          <div className="grid gap-4">
-            {news.map((newsItem) => (
-              <div
-                key={newsItem.id}
-                className="panel p-4 hover:bg-lattice-elevated/50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-start gap-4">
-                  <div
-                    className={cn(
-                      'w-1 h-full min-h-[60px] rounded-full',
-                      newsItem.sentiment === 'positive' && 'bg-green-400',
-                      newsItem.sentiment === 'negative' && 'bg-red-400',
-                      newsItem.sentiment === 'neutral' && 'bg-gray-400'
-                    )}
-                  />
-                  <div className="flex-1">
-                    <h3 className="font-semibold mb-1">{newsItem.title}</h3>
-                    <div className="flex items-center gap-3 text-sm text-gray-400 mb-2">
-                      <span>{newsItem.source}</span>
-                      <span>·</span>
-                      <span>{formatTime(newsItem.timestamp)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {newsItem.assets.map((asset) => (
-                        <span
-                          key={asset}
-                          className="px-2 py-1 bg-lattice-deep rounded text-xs font-medium"
-                        >
-                          {asset}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <ExternalLink className="w-4 h-4 text-gray-400" />
-                </div>
+        {/* KPI strip — real dashboard-summary */}
+        {loading ? (
+          <StatTileGrid columns={6}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-md border border-white/10 bg-black/40 p-3">
+                <Skeleton variant="line" lines={2} />
               </div>
             ))}
-          </div>
-        </div>
-      )}
+          </StatTileGrid>
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={() => loadDashboard(false)} retrying={refreshing} />
+        ) : summary ? (
+          <StatTileGrid columns={6}>
+            <StatTile
+              label="Net worth"
+              value={fmtUsd(summary.netWorth)}
+              deltaPct={summary.deltaPct || undefined}
+              deltaLabel={summary.delta ? `${summary.delta >= 0 ? '+' : ''}${fmtUsd(summary.delta)}` : 'no prior snapshot'}
+            />
+            <StatTile label="Cash" value={fmtUsd(summary.breakdown.cash)} caption="checking + savings" />
+            <StatTile label="Investments" value={fmtUsd(summary.breakdown.investments)} caption={`${summary.positionCount} positions`} />
+            <StatTile label="Buying power" value={fmtUsd(summary.buyingPower)} caption="available cash" />
+            <StatTile
+              label="Budget used"
+              value={summary.budgetUsedPct}
+              unit="%"
+              tone={summary.budgetUsedPct > 90 ? 'negative' : summary.budgetUsedPct > 70 ? 'neutral' : 'positive'}
+              caption="of monthly income"
+            />
+            <StatTile label="Accounts" value={summary.accountCount} caption={`${summary.activeGoalCount} goals`} />
+          </StatTileGrid>
+        ) : null}
 
-      {/* Asset Detail Modal */}
-      <AnimatePresence>
-        {selectedAsset && (
+        {/* Group tab bar — terminal function-key style */}
+        <nav className="flex items-center gap-1 overflow-x-auto border-b border-lattice-border pb-2" aria-label="Finance views">
+          {GROUPS.map((g) => {
+            const active = group === g.id;
+            return (
+              <button
+                key={g.id}
+                onClick={() => setGroup(g.id)}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded text-xs whitespace-nowrap border transition-colors',
+                  active
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                    : 'text-gray-400 hover:text-emerald-200 hover:bg-emerald-900/10 border-transparent'
+                )}
+              >
+                <span className="text-[10px] text-gray-600 tabular-nums">{g.hotkey}</span>
+                <g.icon className="w-3.5 h-3.5" />
+                {g.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Group content */}
+        <AnimatePresence mode="wait">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-            onClick={() => setSelectedAsset(null)}
+            key={group}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-lattice-surface border border-lattice-border rounded-xl p-6 max-w-lg w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-neon-cyan/20 flex items-center justify-center text-neon-cyan text-xl font-bold">
-                    {selectedAsset.symbol.slice(0, 2)}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold">{selectedAsset.name}</h2>
-                    <p className="text-gray-400">{selectedAsset.symbol}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedAsset(null)}
-                  className="p-2 rounded-lg hover:bg-lattice-elevated"
-                aria-label="Close">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="p-3 bg-lattice-deep rounded-lg">
-                  <p className="text-xs text-gray-400 mb-1">Current Price</p>
-                  <p className="text-xl font-bold">{formatCurrency(selectedAsset.price)}</p>
-                  <p
-                    className={cn(
-                      'text-sm',
-                      selectedAsset.changePercent24h >= 0 ? 'text-green-400' : 'text-red-400'
-                    )}
-                  >
-                    {formatPercent(selectedAsset.changePercent24h)} today
-                  </p>
-                </div>
-                <div className="p-3 bg-lattice-deep rounded-lg">
-                  <p className="text-xs text-gray-400 mb-1">Your Holdings</p>
-                  <p className="text-xl font-bold">
-                    {showBalances ? selectedAsset.holdings.toLocaleString() : '••••'}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    {showBalances ? formatCurrency(selectedAsset.value) : '••••'}
-                  </p>
-                </div>
-                <div className="p-3 bg-lattice-deep rounded-lg">
-                  <p className="text-xs text-gray-400 mb-1">Avg Buy Price</p>
-                  <p className="text-xl font-bold">{formatCurrency(selectedAsset.avgBuyPrice)}</p>
-                </div>
-                <div className="p-3 bg-lattice-deep rounded-lg">
-                  <p className="text-xs text-gray-400 mb-1">Total P&L</p>
-                  <p
-                    className={cn(
-                      'text-xl font-bold',
-                      selectedAsset.pnl >= 0 ? 'text-green-400' : 'text-red-400'
-                    )}
-                  >
-                    {showBalances ? formatCurrency(selectedAsset.pnl) : '••••'}
-                  </p>
-                  <p
-                    className={cn(
-                      'text-sm',
-                      selectedAsset.pnlPercent >= 0 ? 'text-green-400' : 'text-red-400'
-                    )}
-                  >
-                    {formatPercent(selectedAsset.pnlPercent)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setTradeAsset(selectedAsset.symbol);
-                    setTradeSide('buy');
-                    setViewMode('trade');
-                    setSelectedAsset(null);
-                  }}
-                  className="flex-1 py-3 rounded-lg bg-green-500 text-white font-semibold hover:bg-green-600"
-                >
-                  Buy
-                </button>
-                <button
-                  onClick={() => {
-                    setTradeAsset(selectedAsset.symbol);
-                    setTradeSide('sell');
-                    setViewMode('trade');
-                    setSelectedAsset(null);
-                  }}
-                  className="flex-1 py-3 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600"
-                >
-                  Sell
-                </button>
-              </div>
-            </motion.div>
+            {renderGroup()}
           </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <AnimatePresence>
+        {showSnapshot && (
+          <SnapshotModal onClose={() => setShowSnapshot(false)} onRecorded={() => loadDashboard(true)} />
         )}
       </AnimatePresence>
-
-      {/* Live Web Feed */}
-      <div className="px-4 mb-2">
-        <LensFeedPanel lensId="finance" />
-      </div>
-
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="finance" />
-          </div>
-        )}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <MarketsPulse />
-      </section>
-
-      {/* Money workbench: net-worth / envelopes / tax / retirement-MC + actions */}
-      <PipingProvider>
-        <section className="mt-6">
-          <FinanceActionPanel />
-        </section>
-      </PipingProvider>
-    </div>
-          <section className="mt-4"><LensFeedButton domain="finance" label="Live FX rate feed" /></section>
-          <RecentMineCard domain="finance" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="finance" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="finance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

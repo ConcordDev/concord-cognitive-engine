@@ -27,6 +27,9 @@ export interface LensAction {
   requiresAuth?: boolean;
   disabled?: boolean;
   badge?: string | number;
+  /** Tooltip text. Defaults to `label` when omitted — set explicitly to
+   * explain a disabled/limited state (e.g. why a quick action can't run). */
+  title?: string;
 }
 
 interface LensActionBarProps {
@@ -64,6 +67,7 @@ export function LensActionBar({ actions, className }: LensActionBarProps) {
           key={action.id}
           onClick={action.onClick}
           disabled={action.disabled}
+          title={action.title || action.label}
           className={cn(
             // Base styles — meets 44px min tap target
             'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl',

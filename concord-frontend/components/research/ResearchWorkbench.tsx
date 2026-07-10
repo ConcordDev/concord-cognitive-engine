@@ -259,6 +259,9 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
   const [draft, setDraft] = useState({ title: '', body: '' });
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [previewBody, setPreviewBody] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -302,6 +305,19 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
     } catch (e) { console.error(e); }
   };
 
+  const togglePreview = async (snapshotId: string) => {
+    if (previewId === snapshotId) { setPreviewId(null); setPreviewBody(null); return; }
+    setPreviewId(snapshotId);
+    setPreviewLoading(true);
+    setPreviewBody(null);
+    try {
+      const r = await lensRun<{ snapshot: { body: string } }>('research', 'note-snapshot-get', { noteId, snapshotId });
+      if (r.data?.ok && r.data.result) setPreviewBody(r.data.result.snapshot.body);
+      else setPreviewBody('(could not load this version)');
+    } catch (e) { console.error(e); setPreviewBody('(could not load this version)'); }
+    finally { setPreviewLoading(false); }
+  };
+
   if (!note) return <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
 
   return (
@@ -327,15 +343,32 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
           {snapshots.length === 0 ? (
             <p className="text-[11px] text-gray-400">No snapshots yet — saving an edit creates one.</p>
           ) : snapshots.map((sn) => (
-            <div key={sn.id} className="flex items-center justify-between text-[11px]">
-              <span className="text-gray-400 truncate">
-                {new Date(sn.createdAt).toLocaleString()}
-                {sn.label ? ` · ${sn.label}` : ''} · {sn.bodyLength} chars
-              </span>
-              <button type="button" onClick={() => restore(sn.id)}
-                className="inline-flex items-center gap-1 text-fuchsia-300 hover:text-fuchsia-200">
-                <RotateCcw className="w-3 h-3" /> Restore
-              </button>
+            <div key={sn.id}>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-gray-400 truncate">
+                  {new Date(sn.createdAt).toLocaleString()}
+                  {sn.label ? ` · ${sn.label}` : ''} · {sn.bodyLength} chars
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button type="button" onClick={() => togglePreview(sn.id)}
+                    className="text-gray-400 hover:text-gray-200">
+                    {previewId === sn.id ? 'Hide' : 'Preview'}
+                  </button>
+                  <button type="button" onClick={() => restore(sn.id)}
+                    className="inline-flex items-center gap-1 text-fuchsia-300 hover:text-fuchsia-200">
+                    <RotateCcw className="w-3 h-3" /> Restore
+                  </button>
+                </div>
+              </div>
+              {previewId === sn.id && (
+                <div className="mt-1 mb-1 rounded border border-fuchsia-500/20 bg-black/40 p-2">
+                  {previewLoading ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+                  ) : (
+                    <pre className="text-[10px] text-gray-300 whitespace-pre-wrap font-mono max-h-40 overflow-y-auto">{previewBody}</pre>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

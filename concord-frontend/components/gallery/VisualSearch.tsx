@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Palette, Loader2, AlertTriangle, Frame } from 'lucide-react';
+import { SaveToCollectionButton } from '@/components/gallery/SaveToCollectionButton';
 
 interface VisualWork {
   id: number;
@@ -132,19 +133,25 @@ export function VisualSearch() {
       {works.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-96 overflow-y-auto">
           {works.map((w) => (
-            <a
-              key={w.id} href={w.url || '#'} target="_blank" rel="noopener noreferrer"
-              className="rounded border border-zinc-800 bg-zinc-900/40 p-1.5 hover:border-violet-400/50 transition-colors"
-            >
-              {w.image ? (
-                // eslint-disable-next-line @next/next/no-img-element -- external arbitrary image host
-                <img src={w.image} alt={w.title} className="w-full h-28 object-cover rounded" />
-              ) : (
-                <div className="w-full h-28 bg-zinc-950 rounded flex items-center justify-center"><Frame className="w-6 h-6 text-zinc-700" /></div>
-              )}
-              <div className="text-[10px] text-zinc-200 mt-1 line-clamp-2">{w.title}</div>
-              <div className="text-[9px] text-zinc-400">{w.artist}{w.date ? ` · ${w.date}` : ''}</div>
-            </a>
+            <div key={w.id} className="relative rounded border border-zinc-800 bg-zinc-900/40 p-1.5 hover:border-violet-400/50 transition-colors">
+              <div className="absolute right-1 top-1 z-10">
+                <SaveToCollectionButton
+                  compact
+                  className="bg-black/50 backdrop-blur-sm"
+                  artwork={{ refId: `cma:${w.id}`, title: w.title, artist: w.artist, date: w.date, image: w.image, museum: 'Cleveland Museum of Art' }}
+                />
+              </div>
+              <a href={w.url || '#'} target="_blank" rel="noopener noreferrer" className="block">
+                {w.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- external arbitrary image host
+                  <img src={w.image} alt={w.title} className="w-full h-28 object-cover rounded" />
+                ) : (
+                  <div className="w-full h-28 bg-zinc-950 rounded flex items-center justify-center"><Frame className="w-6 h-6 text-zinc-700" /></div>
+                )}
+                <div className="text-[10px] text-zinc-200 mt-1 line-clamp-2">{w.title}</div>
+                <div className="text-[9px] text-zinc-400">{w.artist}{w.date ? ` · ${w.date}` : ''}</div>
+              </a>
+            </div>
           ))}
         </div>
       )}

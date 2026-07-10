@@ -10,11 +10,9 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useState, useMemo, useEffect } from 'react';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Eye, Plus, Play, CheckCircle2, Layers, Clock, BarChart3,
@@ -88,19 +86,75 @@ export default function AttentionLensPage() {
   const bridge = useLensBridge('attention', 'thread');
 
   // --- Backend Action Wiring ---
-  const runAction = useRunArtifact('attention');
-  const { items: attentionItems } = useLensData<Record<string, unknown>>('attention', 'thread', { seed: [] });
+  // These three macros (focusScore / priorityMatrix / attentionBudget) read
+  // `artifact.data.sessions` / `artifact.data.tasks` — real structured data,
+  // not a generic artifact id. We build that data from the two real
+  // substrates that already exist for this user: completed Pomodoro focus
+  // sessions (pomodoroStats.recentSessions) and today's timeboxed planner
+  // (plannerGet.day.tasks). A prior version ran these against a phantom
+  // generic-artifact store that nothing ever populated, so the buttons were
+  // permanently disabled — this wires them to the Focus Toolkit's real data.
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
+  const [hasSessions, setHasSessions] = useState(false);
+  const [hasPlannerTasks, setHasPlannerTasks] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [stats, plan] = await Promise.all([
+        lensRun('attention', 'pomodoroStats', {}),
+        lensRun('attention', 'plannerGet', {}),
+      ]);
+      if (cancelled) return;
+      setHasSessions(((stats.data?.result as { recentSessions?: unknown[] } | null)?.recentSessions?.length || 0) > 0);
+      setHasPlannerTasks((((plan.data?.result as { day?: { tasks?: unknown[] } } | null)?.day?.tasks?.length) || 0) > 0);
+    })();
+    return () => { cancelled = true; };
+  }, [actionResult]);
 
   const handleAttentionAction = async (action: string) => {
-    const targetId = attentionItems[0]?.id;
-    if (!targetId) return;
     setIsRunning(action);
     try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+      if (action === 'focusScore') {
+        const stats = await lensRun('attention', 'pomodoroStats', {});
+        const recent = (stats.data?.result as { recentSessions?: Array<Record<string, unknown>> } | null)?.recentSessions || [];
+        const sessions = recent.map((s) => ({
+          id: s.id, taskId: s.taskId, startTime: s.startedAt, endTime: s.endedAt,
+          interruptions: s.interruptions, deepWork: s.deepWork,
+        }));
+        const r = await lensRun('attention', 'focusScore', { sessions });
+        setActionResult((r.data?.result as Record<string, unknown>) || { message: r.data?.error || 'Action failed' });
+      } else {
+        // priorityMatrix / attentionBudget both read artifact.data.tasks —
+        // derive urgency/importance/effort/cognitiveLoad from real planner
+        // fields (priority, scheduled start time, duration), never invented.
+        const plan = await lensRun('attention', 'plannerGet', {});
+        const day = (plan.data?.result as { day?: { tasks?: Array<Record<string, unknown>> } } | null)?.day;
+        const nowMinute = new Date().getHours() * 60 + new Date().getMinutes();
+        const tasks = (day?.tasks || []).map((t) => {
+          const priority = Number(t.priority ?? 0.5);
+          const startMinute = Number(t.startMinute ?? nowMinute);
+          const durationMinutes = Number(t.durationMinutes ?? 60);
+          const minutesUntilStart = startMinute - nowMinute;
+          const urgency = Math.max(0, Math.min(10, minutesUntilStart <= 0 ? 9 : 10 - minutesUntilStart / 60));
+          return {
+            id: t.id, name: t.name,
+            importance: Math.round(priority * 10 * 10) / 10,
+            urgency: Math.round(urgency * 10) / 10,
+            effort: Math.max(0.25, Math.round((durationMinutes / 60) * 100) / 100),
+            cognitiveLoad: Math.max(1, Math.min(10, Math.round(1 + priority * 9))),
+            estimatedMinutes: durationMinutes,
+            priority: Math.max(1, Math.min(10, Math.round(1 + priority * 9))),
+          };
+        });
+        const r = await lensRun('attention', action, { tasks });
+        setActionResult((r.data?.result as Record<string, unknown>) || { message: r.data?.error || 'Action failed' });
+      }
+    } catch (e) {
+      console.error(`Action ${action} failed:`, e);
+      setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` });
+    }
     setIsRunning(null);
   };
 
@@ -287,7 +341,8 @@ export default function AttentionLensPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <button
             onClick={() => handleAttentionAction('focusScore')}
-            disabled={isRunning !== null || attentionItems.length === 0}
+            disabled={isRunning !== null || !hasSessions}
+            title={hasSessions ? undefined : 'Complete a focus session in the Focus Toolkit above first'}
             className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50"
           >
             {isRunning === 'focusScore' ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" /> : <Focus className="w-5 h-5 text-neon-cyan" />}
@@ -295,7 +350,8 @@ export default function AttentionLensPage() {
           </button>
           <button
             onClick={() => handleAttentionAction('priorityMatrix')}
-            disabled={isRunning !== null || attentionItems.length === 0}
+            disabled={isRunning !== null || !hasPlannerTasks}
+            title={hasPlannerTasks ? undefined : "Add a task to today's planner in the Focus Toolkit above first"}
             className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50"
           >
             {isRunning === 'priorityMatrix' ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" /> : <Target className="w-5 h-5 text-neon-purple" />}
@@ -303,15 +359,22 @@ export default function AttentionLensPage() {
           </button>
           <button
             onClick={() => handleAttentionAction('attentionBudget')}
-            disabled={isRunning !== null || attentionItems.length === 0}
+            disabled={isRunning !== null || !hasPlannerTasks}
+            title={hasPlannerTasks ? undefined : "Add a task to today's planner in the Focus Toolkit above first"}
             className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-green/50 transition-colors disabled:opacity-50"
           >
             {isRunning === 'attentionBudget' ? <Loader2 className="w-5 h-5 text-neon-green animate-spin" /> : <Gauge className="w-5 h-5 text-neon-green" />}
             <span className="text-xs text-gray-300">Attention Budget</span>
           </button>
         </div>
-        {attentionItems.length === 0 && (
-          <p className="text-xs text-gray-400 mt-3 text-center">Add cognitive threads above to enable computational actions.</p>
+        {(!hasSessions || !hasPlannerTasks) && (
+          <p className="text-xs text-gray-400 mt-3 text-center">
+            {!hasSessions && !hasPlannerTasks
+              ? 'Start a Pomodoro session and add a planner task in the Focus Toolkit above to unlock these.'
+              : !hasSessions
+                ? 'Complete a Pomodoro focus session above to unlock Focus Score.'
+                : "Add a task to today's planner above to unlock Priority Matrix and Attention Budget."}
+          </p>
         )}
       </div>
 

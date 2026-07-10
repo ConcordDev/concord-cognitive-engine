@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { TreeDeciduous, Loader2, MapPin, Calendar, X } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { useEffect, useMemo, useState } from 'react';
+import { TreeDeciduous, Loader2, MapPin, Calendar, X, BarChart3 } from 'lucide-react';
+import { api, lensRun } from '@/lib/api/client';
 
 export interface BioObservation {
   id: string;
@@ -15,10 +15,48 @@ export interface BioObservation {
   notes?: string;
 }
 
+// Real `eco.biodiversityIndex` macro (server/domains/eco.js:193) computes
+// Shannon/Simpson diversity from species counts. Deriving those counts from
+// the user's own life list turns a sophisticated but previously-unreachable
+// macro (it required a pre-populated generic artifact no UI ever created)
+// into a genuine "how diverse is my life list" stat.
+interface DiversityResult {
+  speciesRichness: number;
+  totalIndividuals: number;
+  diversityIndices: { shannonH: number; simpsonsDiversity: number; bergerParkerDominance: number };
+  diversityLabel: string;
+  evennessLabel: string;
+  message?: string;
+}
+
 export function BiodiversityLog() {
   const [observations, setObservations] = useState<BioObservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [diversity, setDiversity] = useState<DiversityResult | null>(null);
+  const [diversityLoading, setDiversityLoading] = useState(false);
+  const [diversityError, setDiversityError] = useState<string | null>(null);
+
+  const speciesCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const o of observations) {
+      const key = o.commonName || 'Unknown';
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return Array.from(counts.entries()).map(([species, count]) => ({ species, count }));
+  }, [observations]);
+
+  async function computeDiversity() {
+    setDiversityLoading(true);
+    setDiversityError(null);
+    const r = await lensRun<DiversityResult>('eco', 'biodiversityIndex', { observations: speciesCounts });
+    if (r.data?.ok && r.data.result) {
+      setDiversity(r.data.result);
+    } else {
+      setDiversityError(r.data?.error || 'Could not compute diversity index.');
+    }
+    setDiversityLoading(false);
+  }
 
   useEffect(() => { refresh(); }, []);
 
@@ -125,6 +163,45 @@ export function BiodiversityLog() {
           </ul>
         )}
       </div>
+
+      {observations.length >= 2 && (
+        <div className="border-t border-white/10 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <BarChart3 className="w-3 h-3" /> Diversity index
+            </span>
+            <button
+              onClick={computeDiversity}
+              disabled={diversityLoading}
+              className="text-[11px] text-cyan-400 hover:text-cyan-300 disabled:opacity-50 inline-flex items-center gap-1"
+            >
+              {diversityLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+              {diversity ? 'Recompute' : 'Compute from life list'}
+            </button>
+          </div>
+          {diversityError && <p className="text-[11px] text-red-400">{diversityError}</p>}
+          {diversity && !diversity.message && (
+            <div className="grid grid-cols-4 gap-2">
+              <div className="p-1.5 bg-white/[0.03] rounded text-center">
+                <p className="text-sm font-bold text-green-400">{diversity.speciesRichness}</p>
+                <p className="text-[9px] text-gray-400">species</p>
+              </div>
+              <div className="p-1.5 bg-white/[0.03] rounded text-center">
+                <p className="text-sm font-bold text-cyan-400">{diversity.diversityIndices.shannonH}</p>
+                <p className="text-[9px] text-gray-400">Shannon H&apos;</p>
+              </div>
+              <div className="p-1.5 bg-white/[0.03] rounded text-center">
+                <p className="text-sm font-bold text-purple-400">{diversity.diversityIndices.simpsonsDiversity}</p>
+                <p className="text-[9px] text-gray-400">Simpson D</p>
+              </div>
+              <div className="p-1.5 bg-white/[0.03] rounded text-center">
+                <p className="text-xs font-bold text-yellow-400 capitalize">{diversity.diversityLabel}</p>
+                <p className="text-[9px] text-gray-400">diversity</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

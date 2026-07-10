@@ -14,9 +14,8 @@ import { TreeDiagram, TreeNode } from '@/components/viz';
 import {
   Database, Plus, Trash2, GitBranch, Beaker, FileCode2, ShieldCheck,
   Network, Download, Loader2, X, Save, RefreshCw, AlertTriangle, Check,
+  GitCompareArrows, History,
 } from 'lucide-react';
-
-const DOMAIN = 'schema';
 
 export type FieldType = 'string' | 'integer' | 'number' | 'boolean' | 'array' | 'object';
 
@@ -126,13 +125,15 @@ function schemaToTree(name: string, schema: { fields?: Record<string, any> }): T
 
 /* ── tabs ────────────────────────────────────────────────────────── */
 
-type Tab = 'registry' | 'editor' | 'sample' | 'migration' | 'conformance' | 'er' | 'import';
+type Tab = 'registry' | 'editor' | 'sample' | 'migration' | 'diff' | 'evolution' | 'conformance' | 'er' | 'import';
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'registry', label: 'Registry', icon: Database },
   { id: 'editor', label: 'Visual Editor', icon: FileCode2 },
   { id: 'sample', label: 'Sample Data', icon: Beaker },
   { id: 'migration', label: 'Migration', icon: GitBranch },
+  { id: 'diff', label: 'Diff', icon: GitCompareArrows },
+  { id: 'evolution', label: 'Evolution', icon: History },
   { id: 'conformance', label: 'Conformance', icon: ShieldCheck },
   { id: 'er', label: 'ER Diagram', icon: Network },
   { id: 'import', label: 'Import', icon: Download },
@@ -153,7 +154,7 @@ export function SchemaWorkbench() {
   const refreshRegistry = useCallback(async () => {
     setLoading(true);
     setErr(null);
-    const r = await lensRun(DOMAIN, 'registryList', {});
+    const r = await lensRun('schema', 'registryList', {});
     if (r.data?.ok && r.data.result) {
       setRegistry((r.data.result as { schemas: RegistryEntry[] }).schemas || []);
     } else {
@@ -170,7 +171,7 @@ export function SchemaWorkbench() {
   // Load a registry schema into the visual editor.
   const loadIntoEditor = useCallback(async (id: string) => {
     setBusy(true);
-    const r = await lensRun(DOMAIN, 'registryGet', { id });
+    const r = await lensRun('schema', 'registryGet', { id });
     if (r.data?.ok && r.data.result) {
       const entry = r.data.result as FullEntry;
       const latest = entry.versions[entry.versions.length - 1];
@@ -245,6 +246,8 @@ export function SchemaWorkbench() {
       )}
       {tab === 'sample' && <SamplePanel registry={registry} editorFields={editorFields} editorName={editorName} />}
       {tab === 'migration' && <MigrationPanel registry={registry} />}
+      {tab === 'diff' && <DiffPanel registry={registry} />}
+      {tab === 'evolution' && <EvolutionPanel registry={registry} />}
       {tab === 'conformance' && <ConformancePanel registry={registry} />}
       {tab === 'er' && <ERPanel registry={registry} />}
       {tab === 'import' && (
@@ -279,13 +282,13 @@ function RegistryPanel({
 
   const handleDelete = async (id: string) => {
     setDeleting(id);
-    const r = await lensRun(DOMAIN, 'registryDelete', { id });
+    const r = await lensRun('schema', 'registryDelete', { id });
     if (r.data?.ok) onRefresh();
     setDeleting(null);
   };
 
   const viewHistory = async (id: string) => {
-    const r = await lensRun(DOMAIN, 'registryGet', { id });
+    const r = await lensRun('schema', 'registryGet', { id });
     if (r.data?.ok && r.data.result) setHistory(r.data.result as FullEntry);
   };
 
@@ -403,7 +406,7 @@ function VisualEditor({
     setResult(null);
     const schema = fieldsToSchema(fields);
     if (selectedId) {
-      const r = await lensRun(DOMAIN, 'registrySaveVersion', { id: selectedId, schema, note: note || 'editor save' });
+      const r = await lensRun('schema', 'registrySaveVersion', { id: selectedId, schema, note: note || 'editor save' });
       if (r.data?.ok && r.data.result) {
         const res = r.data.result as { version: string; bump: string };
         setResultOk(true);
@@ -414,7 +417,7 @@ function VisualEditor({
         setResult(r.data?.error || 'Save failed');
       }
     } else {
-      const r = await lensRun(DOMAIN, 'registryCreate', { name: name.trim(), description, schema, note: note || 'initial version' });
+      const r = await lensRun('schema', 'registryCreate', { name: name.trim(), description, schema, note: note || 'initial version' });
       if (r.data?.ok && r.data.result) {
         const res = r.data.result as { id: string; version: string };
         setResultOk(true);
@@ -575,7 +578,7 @@ function SamplePanel({
     if (useEditor) payload.schema = fieldsToSchema(editorFields);
     else if (id) payload.id = id;
     else { setErr('Pick a registry schema or use the editor draft'); setBusy(false); return; }
-    const r = await lensRun(DOMAIN, 'sampleGenerate', payload);
+    const r = await lensRun('schema', 'sampleGenerate', payload);
     if (r.data?.ok && r.data.result) setRecords((r.data.result as { records: any[] }).records);
     else setErr(r.data?.error || 'Generation failed');
     setBusy(false);
@@ -632,7 +635,7 @@ function MigrationPanel({ registry }: { registry: RegistryEntry[] }) {
 
   // Resolve a registry id to its latest schema fields object.
   const fetchSchema = async (id: string) => {
-    const r = await lensRun(DOMAIN, 'registryGet', { id });
+    const r = await lensRun('schema', 'registryGet', { id });
     if (r.data?.ok && r.data.result) {
       const entry = r.data.result as FullEntry;
       return entry.versions[entry.versions.length - 1].schema;
@@ -648,7 +651,7 @@ function MigrationPanel({ registry }: { registry: RegistryEntry[] }) {
     const a = await fetchSchema(fromId);
     const b = await fetchSchema(toId);
     if (!a || !b) { setErr('Failed to resolve schemas'); setBusy(false); return; }
-    const r = await lensRun(DOMAIN, 'migrationGenerate', { schemaA: a, schemaB: b, dialect, table });
+    const r = await lensRun('schema', 'migrationGenerate', { schemaA: a, schemaB: b, dialect, table });
     if (r.data?.ok && r.data.result) setResult(r.data.result);
     else setErr(r.data?.error || 'Migration generation failed');
     setBusy(false);
@@ -702,6 +705,193 @@ function MigrationPanel({ registry }: { registry: RegistryEntry[] }) {
   );
 }
 
+/* ── breaking-change diff (schemaDiff) ───────────────────────────── */
+
+function DiffPanel({ registry }: { registry: RegistryEntry[] }) {
+  const [fromId, setFromId] = useState('');
+  const [toId, setToId] = useState('');
+  const [result, setResult] = useState<any | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const fetchSchema = async (id: string) => {
+    const r = await lensRun('schema', 'registryGet', { id });
+    if (r.data?.ok && r.data.result) {
+      const entry = r.data.result as FullEntry;
+      return entry.versions[entry.versions.length - 1].schema;
+    }
+    return null;
+  };
+
+  const run = async () => {
+    setBusy(true);
+    setErr(null);
+    setResult(null);
+    if (!fromId || !toId) { setErr('Pick a source and target schema'); setBusy(false); return; }
+    const schemaA = await fetchSchema(fromId);
+    const schemaB = await fetchSchema(toId);
+    if (!schemaA || !schemaB) { setErr('Failed to resolve schemas'); setBusy(false); return; }
+    const r = await lensRun('schema', 'schemaDiff', { schemaA, schemaB });
+    if (r.data?.ok && r.data.result) setResult(r.data.result);
+    else setErr(r.data?.error || 'Diff failed');
+    setBusy(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <GitCompareArrows className="h-4 w-4 text-cyan-400" />
+        <h3 className="text-sm font-semibold text-white">Breaking-Change Diff</h3>
+      </div>
+      <p className="text-[11px] text-zinc-400">
+        Compare two registered schemas field-by-field: additions, removals, type/constraint
+        changes, a backward-compatibility verdict, and an estimated migration effort.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <SchemaPicker registry={registry} value={fromId} onChange={setFromId} label="From schema" />
+        <span className="text-zinc-600">→</span>
+        <SchemaPicker registry={registry} value={toId} onChange={setToId} label="To schema" />
+        <button onClick={run} disabled={busy} className="flex items-center gap-1 rounded bg-cyan-500/20 border border-cyan-500/40 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-50">
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <GitCompareArrows className="h-3 w-3" />}
+          Diff
+        </button>
+      </div>
+      {registry.length < 2 && <p className="text-xs text-zinc-400">Register at least two schemas (or two versions of one) to diff.</p>}
+      {err && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{err}</div>}
+      {result && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-3 text-xs">
+            <span className="text-zinc-400">Changes: <span className="font-mono text-cyan-300">{result.summary.totalChanges}</span></span>
+            <span className="text-zinc-400">Breaking: <span className="font-mono text-red-300">{result.summary.breakingChanges}</span></span>
+            <span className={result.summary.backwardCompatible ? 'text-emerald-300' : 'text-amber-300'}>
+              {result.summary.backwardCompatible ? '✓ backward compatible' : '⚠ breaking changes present'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MiniStat label="Complexity" value={result.migration.complexityLevel} tone={result.migration.complexityLevel === 'trivial' || result.migration.complexityLevel === 'low' ? 'good' : result.migration.complexityLevel === 'moderate' ? 'warn' : 'bad'} />
+            <MiniStat label="Est. effort" value={`${result.migration.estimatedEffortHours}h`} tone="default" />
+            <MiniStat label="Added" value={result.summary.added} tone="good" />
+            <MiniStat label="Removed" value={result.summary.removed} tone="bad" />
+          </div>
+          {Array.isArray(result.migration.requiredActions) && result.migration.requiredActions.length > 0 && (
+            <div className="rounded border border-amber-500/20 bg-amber-500/5 p-2.5">
+              <p className="mb-1 text-[11px] font-semibold text-amber-300">Required actions</p>
+              <ul className="space-y-0.5">
+                {(result.migration.requiredActions as string[]).map((a, i) => <li key={i} className="text-[11px] text-amber-200">• {a}</li>)}
+              </ul>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            {(result.changes as any[]).map((c, i) => (
+              <div key={i} className={`rounded border px-2.5 py-1.5 text-[11px] ${c.breaking ? 'border-red-500/30 bg-red-500/5' : 'border-zinc-800 bg-zinc-900/40'}`}>
+                <span className={`mr-2 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase ${c.changeType === 'added' ? 'bg-emerald-500/15 text-emerald-300' : c.changeType === 'removed' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>{c.changeType}</span>
+                <span className="font-mono text-zinc-200">{c.field}</span>
+                {c.breaking && <span className="ml-2 text-red-300">breaking</span>}
+                {c.reason && <p className="mt-0.5 text-zinc-400">{c.reason}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── evolution planning (schemaEvolution) ────────────────────────── */
+
+function EvolutionPanel({ registry }: { registry: RegistryEntry[] }) {
+  const [id, setId] = useState('');
+  const [result, setResult] = useState<any | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true);
+    setErr(null);
+    setResult(null);
+    if (!id) { setErr('Pick a schema'); setBusy(false); return; }
+    const g = await lensRun('schema', 'registryGet', { id });
+    if (!g.data?.ok || !g.data.result) { setErr('Failed to load schema'); setBusy(false); return; }
+    const entry = g.data.result as FullEntry;
+    if (entry.versions.length < 2) { setErr(`"${entry.name}" only has ${entry.versions.length} version — save at least one more version to plan its evolution.`); setBusy(false); return; }
+    const r = await lensRun('schema', 'schemaEvolution', { versions: entry.versions });
+    if (r.data?.ok && r.data.result) setResult(r.data.result);
+    else setErr(r.data?.error || 'Evolution planning failed');
+    setBusy(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <History className="h-4 w-4 text-cyan-400" />
+        <h3 className="text-sm font-semibold text-white">Evolution Plan</h3>
+      </div>
+      <p className="text-[11px] text-zinc-400">
+        Walks a schema&apos;s own version history: per-transition compatibility, a recommended
+        versioning strategy, a per-field introduction/removal timeline, and migration steps.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <SchemaPicker registry={registry} value={id} onChange={setId} label="Select schema" />
+        <button onClick={run} disabled={busy} className="flex items-center gap-1 rounded bg-cyan-500/20 border border-cyan-500/40 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-50">
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <History className="h-3 w-3" />}
+          Plan
+        </button>
+      </div>
+      {err && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{err}</div>}
+      {result && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-3 text-xs">
+            <span className="text-zinc-400">Versions: <span className="font-mono text-cyan-300">{result.summary.totalVersions}</span></span>
+            <span className="text-zinc-400">Breaking transitions: <span className="font-mono text-red-300">{result.summary.breakingTransitions}</span></span>
+            <span className={result.summary.allBackwardCompatible ? 'text-emerald-300' : 'text-amber-300'}>
+              {result.summary.allBackwardCompatible ? '✓ fully backward compatible' : `⚠ ${result.summary.totalBreakingChanges} breaking change(s)`}
+            </span>
+          </div>
+          <div className="rounded border border-cyan-500/20 bg-cyan-500/5 p-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-cyan-300">{result.versioningStrategy.type} versioning</p>
+            <p className="mt-0.5 text-[11px] text-zinc-300">{result.versioningStrategy.description}</p>
+            <ul className="mt-1 space-y-0.5">
+              {(result.versioningStrategy.recommendations as string[]).map((rec, i) => <li key={i} className="text-[11px] text-zinc-400">• {rec}</li>)}
+            </ul>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-zinc-300">Transitions</p>
+            {(result.transitions as any[]).map((t, i) => (
+              <div key={i} className={`rounded border px-2.5 py-1.5 text-[11px] ${t.backwardCompatible ? 'border-zinc-800 bg-zinc-900/40' : 'border-red-500/30 bg-red-500/5'}`}>
+                <span className="font-mono text-cyan-300">v{t.from} → v{t.to}</span>
+                <span className="ml-2 text-zinc-400">+{t.added.length} / −{t.removed.length} / ~{t.modified.length}</span>
+                {!t.backwardCompatible && <span className="ml-2 text-red-300">{t.breakingChanges.length} breaking</span>}
+              </div>
+            ))}
+          </div>
+          {Object.keys(result.fieldTimeline || {}).length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold text-zinc-300">Field timeline</p>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(result.fieldTimeline as Record<string, any>).map(([field, tl]) => (
+                  <span key={field} className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${tl.removed ? 'bg-red-500/15 text-red-300 line-through' : 'bg-zinc-800 text-zinc-300'}`}>
+                    {field} · since v{tl.introduced}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MiniStat({ label, value, tone }: { label: string; value: string | number; tone: 'good' | 'warn' | 'bad' | 'default' }) {
+  const cls = tone === 'good' ? 'text-emerald-300' : tone === 'warn' ? 'text-amber-300' : tone === 'bad' ? 'text-red-300' : 'text-cyan-300';
+  return (
+    <div className="rounded border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5 text-center">
+      <p className={`text-sm font-bold ${cls}`}>{value}</p>
+      <p className="text-[10px] text-zinc-400">{label}</p>
+    </div>
+  );
+}
+
 /* ── conformance against live data ───────────────────────────────── */
 
 function ConformancePanel({ registry }: { registry: RegistryEntry[] }) {
@@ -725,7 +915,7 @@ function ConformancePanel({ registry }: { registry: RegistryEntry[] }) {
       return;
     }
     if (!Array.isArray(records)) { setErr('Dataset must be a JSON array'); setBusy(false); return; }
-    const r = await lensRun(DOMAIN, 'conformanceCheck', { id, records });
+    const r = await lensRun('schema', 'conformanceCheck', { id, records });
     if (r.data?.ok && r.data.result) setResult(r.data.result);
     else setErr(r.data?.error || 'Conformance check failed');
     setBusy(false);
@@ -808,7 +998,7 @@ function ERPanel({ registry }: { registry: RegistryEntry[] }) {
     setErr(null);
     setResult(null);
     // erDiagram with no params reads the user's full registry.
-    const r = await lensRun(DOMAIN, 'erDiagram', {});
+    const r = await lensRun('schema', 'erDiagram', {});
     if (r.data?.ok && r.data.result) setResult(r.data.result);
     else setErr(r.data?.error || 'ER diagram build failed');
     setBusy(false);
@@ -903,7 +1093,7 @@ function ImportPanel({
     } else {
       payload.ddl = text;
     }
-    const r = await lensRun(DOMAIN, 'inferSchema', payload);
+    const r = await lensRun('schema', 'inferSchema', payload);
     if (r.data?.ok && r.data.result) setResult(r.data.result);
     else setErr(r.data?.error || 'Inference failed');
     setBusy(false);

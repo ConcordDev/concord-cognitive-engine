@@ -139,6 +139,7 @@ export function GdLevelPanel({ gameId, onChange }: { gameId: string; onChange: (
 function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: string; onExit: () => void }) {
   const [level, setLevel] = useState<Level | null>(null);
   const [tiles, setTiles] = useState<Tile[]>([]);
+  const [customTileIds, setCustomTileIds] = useState<Set<string>>(new Set());
   const [entities, setEntities] = useState<EntityLite[]>([]);
   const [autoRules, setAutoRules] = useState<AutoRule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,9 +166,11 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
     ]);
     const lvl = (lv.data?.result?.level as Level) || null;
     const ts = (tl.data?.result?.all as Tile[]) || [];
+    const custom = (tl.data?.result?.custom as Tile[]) || [];
     colorMap.current = Object.fromEntries(ts.map((t) => [t.id, t.color]));
     setLevel(lvl);
     setTiles(ts);
+    setCustomTileIds(new Set(custom.map((t) => t.id)));
     setEntities((gg.data?.result?.entities as EntityLite[]) || []);
     setAutoRules((ar.data?.result?.rules as AutoRule[]) || []);
     if (lvl) {
@@ -404,7 +407,20 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
     if (!newTile.name.trim()) return;
     const r = await lensRun('game-design', 'tile-create', { gameId, name: newTile.name.trim(), color: newTile.color });
     const t = r.data?.result?.tile as Tile | undefined;
-    if (t) { colorMap.current[t.id] = t.color; setTiles([...tiles, t]); setActiveTile(t.id); setNewTile({ name: '', color: '#94a3b8' }); }
+    if (t) {
+      colorMap.current[t.id] = t.color;
+      setTiles([...tiles, t]);
+      setCustomTileIds((prev) => new Set(prev).add(t.id));
+      setActiveTile(t.id);
+      setNewTile({ name: '', color: '#94a3b8' });
+    }
+  };
+
+  const removeTile = async (id: string) => {
+    await lensRun('game-design', 'tile-delete', { id });
+    setTiles((prev) => prev.filter((t) => t.id !== id));
+    setCustomTileIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    if (activeTile === id) setActiveTile(null);
   };
 
   const addRule = async (intValue: number, tile: string) => {
@@ -577,12 +593,20 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
               <Eraser className="w-3 h-3" /> Erase
             </button>
             {tiles.map((t) => (
-              <button key={t.id} type="button" onClick={() => setActiveTile(t.id)}
-                className={cn('flex items-center gap-1.5 px-2 py-1 text-[11px] rounded-lg border',
+              <span key={t.id}
+                className={cn('flex items-center gap-1.5 pl-2 pr-1 py-1 text-[11px] rounded-lg border',
                   activeTile === t.id ? 'border-lime-500 bg-lime-950/40 text-lime-100' : 'border-zinc-700 bg-zinc-800 text-zinc-300')}>
-                <span className="w-3.5 h-3.5 rounded border border-black/30" style={{ background: t.color }} />
-                {t.name}
-              </button>
+                <button type="button" onClick={() => setActiveTile(t.id)} className="flex items-center gap-1.5">
+                  <span className="w-3.5 h-3.5 rounded border border-black/30" style={{ background: t.color }} />
+                  {t.name}
+                </button>
+                {customTileIds.has(t.id) && (
+                  <button aria-label={`Delete ${t.name} tile`} type="button" onClick={() => removeTile(t.id)}
+                    className="text-zinc-500 hover:text-rose-400">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </span>
             ))}
           </div>
           <div className="flex items-center gap-2 pt-1 border-t border-zinc-800">

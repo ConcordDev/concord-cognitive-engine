@@ -1,204 +1,113 @@
 /**
- * /lenses/neuro — four-UX-state contract for the Neuro (EEG/MEG) lens.
+ * /lenses/neuro (NeuroTrainPanel) — wiring + UX-state contract.
  *
- * Pins that the lens renders genuine loading / error (with a WORKING Retry) /
- * empty (CTA) / populated states against its real backend channel: the artifact
- * list (useLensData('neuro', type) → GET /api/lens/neuro), and that the
- * compute-action runner is constructed on the 'neuro' domain (a regression to
- * any other id resolves to NO backend receiver).
+ * The Wave-2 rebuild retired the neuro lens's generic Networks/Neurons/
+ * Training/Datasets/Experiments/Metrics CRUD scaffold (a `useLensData`-backed
+ * store with zero connection to any neuro-domain macro — every field was
+ * free-typed by the user, never computed) and replaced the one macro it
+ * never reached — `neuro.train` — with NeuroTrainPanel, a real designed
+ * feature. This file pins NeuroTrainPanel's real dispatch + UX-state
+ * contract the same way geology/forestry pin their bespoke panels: mock the
+ * REAL macro channel (`lensRun`) and assert genuine loading / error /
+ * populated behavior — no fabricated rows.
  *
- * This closes the swallowed-fetch → silent-empty defect: a FAILED neuro feed
- * surfaces the ErrorState (title "Something went wrong" + a working "Try again"
- * that RE-FETCHES) — NOT a blank "No … items yet" page. We assert refetch fires
- * on Retry and that the empty CTA is NOT shown while errored.
- *
- * No fabricated data — every state is driven by a mocked useLensData standing in
- * for the real backend in the exact shape it returns. The heavy children
- * (NeuroActionPanel / EegWorkbench — their backend macros are covered by the
- * server-side neuro-lens-macros test) are inert here.
+ * DISPATCH: NeuroTrainPanel calls `lensRun('neuro', 'train', input)` directly
+ * (not through useLensData/useRunArtifact — those hooks belonged to the
+ * retired scaffold and are no longer imported anywhere in the neuro lens).
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, waitFor, act, fireEvent } from '@testing-library/react';
 import React from 'react';
 
-// ── main list channel: useLensData (controls loading/error/empty/populated) ──
-const lensDataState: {
-  items: unknown[];
-  isLoading: boolean;
-  isError: boolean;
-  error: Error | null;
-} = { items: [], isLoading: false, isError: false, error: null };
-const refetch = vi.fn();
-
-// ── compute-action channel: useRunArtifact mutate ───────────────────────────
-const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
-const useRunArtifactSpy = vi.fn();
-
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  useLensData: () => ({
-    items: lensDataState.items,
-    total: lensDataState.items.length,
-    isLoading: lensDataState.isLoading,
-    isError: lensDataState.isError,
-    error: lensDataState.error,
-    isSeeding: false,
-    refetch,
-    create: vi.fn(() => Promise.resolve({})),
-    update: vi.fn(() => Promise.resolve({})),
-    remove: vi.fn(() => Promise.resolve({})),
-    createMut: { isPending: false },
-    updateMut: { isPending: false },
-    deleteMut: { isPending: false },
-  }),
-}));
-
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: (domain: string) => {
-    useRunArtifactSpy(domain);
-    return { mutateAsync: (...a: unknown[]) => runMutate(...a), isPending: false };
-  },
-}));
-
+const lensRunMock = vi.fn();
 vi.mock('@/lib/api/client', () => ({
-  api: { get: vi.fn(() => Promise.resolve({ data: null })), post: vi.fn(() => Promise.resolve({ data: {} })), delete: vi.fn(() => Promise.resolve({ data: {} })) },
-  apiHelpers: { lens: { runDomain: vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } })) } },
-  lensRun: vi.fn(() => Promise.resolve({ data: { ok: true, result: null } })),
-  isForbidden: () => false,
+  lensRun: (...args: unknown[]) => lensRunMock(...args),
 }));
 
-// ── ErrorState: FAITHFUL stub of @/components/common/EmptyState's ErrorState ──
-// The neuro page returns <ErrorState error onRetry={refetch}/> on isError, so the
-// stub reproduces the real surface: a "Something went wrong" title, the error
-// text, and a working "Try again" button wired to onRetry. This is the exact
-// shape the real ErrorState renders (an EmptyState with action.label='Try again').
-vi.mock('@/components/common/EmptyState', () => ({
-  ErrorState: ({ error, onRetry }: { error?: string; onRetry?: () => void }) =>
-    React.createElement(
-      'div',
-      { role: 'alert' },
-      React.createElement('span', null, 'Something went wrong'),
-      React.createElement('span', null, error || 'An unexpected error occurred. Please try again.'),
-      onRetry ? React.createElement('button', { type: 'button', onClick: onRetry }, 'Try again') : null,
-    ),
-  EmptyState: () => null,
-  AdminRequiredState: () => null,
-}));
+import { NeuroTrainPanel } from '@/components/neuro/NeuroTrainPanel';
 
-// ── headless chrome: render-only / inert stubs ──────────────────────────────
-vi.mock('@/components/lens/LensShell', () => ({
-  LensShell: ({ children }: { children: React.ReactNode }) =>
-    React.createElement('div', { 'data-testid': 'lens-shell' }, children),
-}));
-vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
-vi.mock('@/hooks/useRealtimeLens', () => ({
-  useRealtimeLens: () => ({ latestData: null, isLive: false, lastUpdated: null, insights: [] }),
-}));
-vi.mock('@/components/lens/DraftedTextarea', () => ({ DraftedTextarea: () => null }));
-vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
-vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
-vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
-vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
-vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
-vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
-vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
-vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
-vi.mock('@/components/neuro/NeuroFeed', () => ({ NeuroFeed: () => null }));
-vi.mock('@/components/neuro/NeuroActionPanel', () => ({ NeuroActionPanel: () => null }));
-vi.mock('@/components/neuro/EegWorkbench', () => ({ EegWorkbench: () => null }));
-vi.mock('@/components/research/ArxivPanel', () => ({ ArxivPanel: () => null }));
-vi.mock('@/components/research/PubMedPanel', () => ({ PubMedPanel: () => null }));
-vi.mock('@/components/wiki/WikipediaSearchPanel', () => ({ WikipediaSearchPanel: () => null }));
-vi.mock('@/components/panel-polish', () => ({
-  PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
-}));
-// framer-motion: render plain elements so animated nodes mount synchronously.
-vi.mock('framer-motion', () => ({
-  motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
-}));
-vi.mock('lucide-react', async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
-  const make = (name: string) => {
-    const Icon = React.forwardRef<SVGSVGElement, Record<string, unknown>>((props, ref) =>
-      React.createElement('span', { 'data-testid': `icon-${name}`, ref, ...props }));
-    Icon.displayName = name;
-    return Icon;
-  };
-  return new Proxy(actual, {
-    get: (target, prop: string) => (prop in target ? make(prop) : (target as Record<string, unknown>)[prop]),
-  });
-});
+function ok(result: unknown) {
+  return Promise.resolve({ data: { ok: true, result } });
+}
+function transportErr(message: string) {
+  return Promise.resolve({ data: { ok: false, error: message } });
+}
 
-import NeuroLensPage from '@/app/lenses/neuro/page';
-
-const NETWORK = {
-  id: 'art_1',
-  title: 'Vision backbone',
-  data: { name: 'Vision backbone', type: 'Network', status: 'converged', description: 'ResNet-50', notes: '', architecture: 'ResNet', neurons: 23456, layers: 50, accuracy: 0.912 },
-  meta: { tags: [], status: 'converged', visibility: 'private' },
-  createdAt: '2026-06-27', updatedAt: '2026-06-27', version: 1,
+const TRAINED_RESULT = {
+  mode: 'trained', simulated: false, optimizer: 'adam', epochs: 40, samples: 60,
+  loss: 0.1234, accuracy: 0.95,
+  history: [{ epoch: 1, loss: 0.6, accuracy: 0.5 }, { epoch: 40, loss: 0.1234, accuracy: 0.95 }],
+  weights: [1.2, -0.8], bias: 0.05,
 };
 
-beforeEach(() => {
-  lensDataState.items = [];
-  lensDataState.isLoading = false;
-  lensDataState.isError = false;
-  lensDataState.error = null;
-  refetch.mockReset();
-  runMutate.mockClear();
-  useRunArtifactSpy.mockClear();
-  window.localStorage.clear();
+const PROJECTION_RESULT = {
+  mode: 'projection', simulated: true, basis: 'hyperparameter_projection',
+  note: 'No dataset attached — this is a deterministic learning-curve projection.',
+  optimizer: 'adam', epochs: 40, layers: 3, neurons: 64, samples: 1000,
+  loss: 0.2, accuracy: 0.82, projectedAccuracyCeiling: 0.9,
+  history: [{ epoch: 1, loss: 0.7, accuracy: 0.5 }, { epoch: 40, loss: 0.2, accuracy: 0.82 }],
+};
+
+beforeEach(() => { lensRunMock.mockReset(); });
+afterEach(() => { vi.clearAllMocks(); });
+
+describe('NeuroTrainPanel — wiring', () => {
+  it('dispatches neuro.train with a real synthetic dataset in toy mode', async () => {
+    lensRunMock.mockImplementation(() => ok(TRAINED_RESULT));
+    const { getByText } = render(<NeuroTrainPanel />);
+    await act(async () => { fireEvent.click(getByText('Train')); });
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalled());
+    const [domain, action, input] = lensRunMock.mock.calls[0];
+    expect(domain).toBe('neuro');
+    expect(action).toBe('train');
+    expect(Array.isArray((input as { dataset: unknown[] }).dataset)).toBe(true);
+    expect((input as { dataset: { features: number[]; label: number }[] }).dataset.length).toBeGreaterThan(0);
+  });
+
+  it('dispatches neuro.train with hyperparameters only (no dataset) in projection mode', async () => {
+    lensRunMock.mockImplementation(() => ok(PROJECTION_RESULT));
+    const { getByText } = render(<NeuroTrainPanel />);
+    await act(async () => { fireEvent.click(getByText('Hyperparameter projection')); });
+    await act(async () => { fireEvent.click(getByText('Project learning curve')); });
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalled());
+    const [, , input] = lensRunMock.mock.calls[0];
+    expect(input).not.toHaveProperty('dataset');
+    expect(input).toHaveProperty('layers');
+    expect(input).toHaveProperty('neurons');
+  });
 });
 
-describe('neuro lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the neuro domain', () => {
-    render(<NeuroLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('neuro');
+describe('NeuroTrainPanel — UX states', () => {
+  it('POPULATED (trained): renders the real mode label, loss, accuracy — never a fabricated number', async () => {
+    lensRunMock.mockImplementation(() => ok(TRAINED_RESULT));
+    const { getByText } = render(<NeuroTrainPanel />);
+    await act(async () => { fireEvent.click(getByText('Train')); });
+    await waitFor(() => expect(getByText('Trained (real)')).toBeInTheDocument());
+    expect(getByText('0.1234')).toBeInTheDocument();
+    expect(getByText('95.0%')).toBeInTheDocument();
   });
 
-  it('LOADING: an in-flight feed shows a spinner, not an empty CTA', async () => {
-    lensDataState.isLoading = true;
-    const { container, queryByText } = render(<NeuroLensPage />);
-    // the page's library view renders an animate-spin loader while loading
-    await waitFor(() => expect(container.querySelector('.animate-spin')).toBeTruthy());
-    // a loading feed must NOT show the empty CTA (silent-empty regression)
-    expect(queryByText(/No .* items yet/i)).toBeNull();
+  it('POPULATED (projection): the honest "simulated" note is never hidden from the user', async () => {
+    lensRunMock.mockImplementation(() => ok(PROJECTION_RESULT));
+    const { getByText } = render(<NeuroTrainPanel />);
+    await act(async () => { fireEvent.click(getByText('Hyperparameter projection')); });
+    await act(async () => { fireEvent.click(getByText('Project learning curve')); });
+    await waitFor(() => expect(getByText('Projection')).toBeInTheDocument());
+    expect(getByText(PROJECTION_RESULT.note)).toBeInTheDocument();
   });
 
-  it('EMPTY: an empty feed shows the honest "No … items yet" CTA', async () => {
-    lensDataState.items = [];
-    const { getByText } = render(<NeuroLensPage />);
-    await waitFor(() => expect(getByText(/No .* items yet/i)).toBeInTheDocument());
-    // the CTA is a real create affordance, not a dead label
-    expect(getByText(/Create First/i)).toBeInTheDocument();
+  it('ERROR: a failed dispatch surfaces the real error message, not a silent no-op', async () => {
+    lensRunMock.mockImplementation(() => transportErr('brain offline'));
+    const { getByText } = render(<NeuroTrainPanel />);
+    await act(async () => { fireEvent.click(getByText('Train')); });
+    await waitFor(() => expect(getByText(/brain offline/i)).toBeInTheDocument());
   });
 
-  it('ERROR: a failed feed shows the ErrorState + a working Retry that re-fetches (not a silent empty page)', async () => {
-    lensDataState.isError = true;
-    lensDataState.error = new Error('neuro store offline');
-    const { container, getByText, queryByText } = render(<NeuroLensPage />);
-
-    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
-    expect(getByText(/neuro store offline/i)).toBeInTheDocument();
-    // a silent-empty page would show the "No … items yet" CTA instead — it must NOT.
-    expect(queryByText(/No .* items yet/i)).toBeNull();
-
-    // Retry must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Try again')); });
-    await waitFor(() => expect(refetch).toHaveBeenCalled());
-  });
-
-  it('POPULATED: a real network artifact renders with its name + accuracy', async () => {
-    lensDataState.items = [NETWORK];
-    const { getByText, getAllByText } = render(<NeuroLensPage />);
-    await waitFor(() => expect(getByText('Vision backbone')).toBeInTheDocument());
-    // the real accuracy from the artifact renders (0.912 → 91.2%) — appears on
-    // both the item row and the dashboard avg-accuracy stat.
-    expect(getAllByText(/91\.2%/).length).toBeGreaterThan(0);
+  it('ERROR: a thrown/rejected lensRun surfaces its message', async () => {
+    lensRunMock.mockImplementation(() => Promise.reject(new Error('network down')));
+    const { getByText } = render(<NeuroTrainPanel />);
+    await act(async () => { fireEvent.click(getByText('Train')); });
+    await waitFor(() => expect(getByText(/network down/i)).toBeInTheDocument());
   });
 });

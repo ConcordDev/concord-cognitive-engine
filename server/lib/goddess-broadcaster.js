@@ -99,8 +99,29 @@ export async function composeAndRecord(db, STATE, worldId) {
     const rf = await import("./refusal-field.js");
     refusalStrength = rf.getFieldStrength(STATE, worldId);
   } catch { /* default */ }
+  try {
+    // The goddess is an omniscient voice over the whole substrate, not just
+    // one world — Layer 12's system-wide reasoning-drift monitor (goodhart/
+    // memetic_drift/capability_creep/self_reference/echo_chamber/metric_
+    // divergence) is real narrative material for her, not per-world game
+    // state. Previously this stayed hardcoded `null` forever, so the
+    // "I detect a drift: ..." line in composeDispatch was dead code — no
+    // dispatch composed via the real compose_now/heartbeat path could ever
+    // reach it (only composeDispatch's own unit tests, called directly with
+    // an explicit driftKind, exercised that branch). This closes the gap
+    // the file's own header comment already promised ("...and most-recent
+    // drift-alert...").
+    const dm = await import("../emergent/drift-monitor.js");
+    const { alerts } = dm.getDriftAlerts(STATE, { severity: ["alert", "critical"], limit: 1 });
+    driftKind = alerts?.[0]?.type || null;
+  } catch { /* default: drift monitor unavailable */ }
 
   const dispatch = composeDispatch({ ecosystemScore, refusalStrength, driftKind });
-  recordDispatch(db, worldId, dispatch, { ecosystemScore, refusalStrength, driftKind });
+  const written = recordDispatch(db, worldId, dispatch, { ecosystemScore, refusalStrength, driftKind });
+  // Honest by construction: a caller (the goddess-broadcast-cycle heartbeat)
+  // needs to know whether the dispatch actually persisted, not just that it
+  // was composed in memory — previously this always returned ok:true even
+  // when the INSERT failed (e.g. missing table), silently masking the loss.
+  if (!written.ok) return { ok: false, reason: "write_failed", error: written.error, dispatch };
   return { ok: true, dispatch };
 }

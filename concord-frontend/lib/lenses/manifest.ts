@@ -964,24 +964,38 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
+    // Wave 3 rebuild note (see docs/lens-specs/ethics-capability-map.md): this
+    // entry previously declared six fictional snake_case `actions`
+    // ('evaluate_case', 'apply_framework', ...) and a `macros` block pointing
+    // at 'lens.ethics.create' / 'lens.ethics.list' / etc — none of which are
+    // registered handlers. ManifestActionBar and ToolPalette both dispatch
+    // `actions[]` entries as literal `runMacro('ethics', <action>, {})`
+    // calls; since no `LENS_ACTIONS` key matched, every click silently fell
+    // through to the anonymous utility-brain AI catch-all
+    // (server.js `register("lens","run",...)`) — a fake feature masquerading
+    // as a designed one. `actions` below are the real `ethics` domain macros
+    // (server/domains/ethics.js) that are genuinely safe to fire with zero
+    // params (the list* readers + the static bias-checklist template); the
+    // rest of the 19 macros need real structured input and are surfaced
+    // through the actual Decision Toolkit forms, not a blind trigger bar.
     domain: 'ethics',
     label: 'Ethics',
-    artifacts: ['case_file', 'decision_tree', 'policy_check', 'review', 'framework'],
-    macros: { list: 'lens.ethics.list', get: 'lens.ethics.get', create: 'lens.ethics.create', update: 'lens.ethics.update', delete: 'lens.ethics.delete', run: 'lens.ethics.run', export: 'lens.ethics.export' },
+    artifacts: ['multi_framework_analysis', 'stakeholder_map', 'decision_matrix', 'bias_checklist', 'review', 'case'],
+    macros: { list: 'ethics.listMultiFramework', get: 'ethics.searchCases', create: 'ethics.multiFrameworkDilemma', delete: 'ethics.deleteCase', run: 'ethics.frameworkAnalysis' },
     exports: ['json', 'md', 'pdf'],
-    actions: ['evaluate_case', 'apply_framework', 'check_alignment', 'generate_report', 'stakeholder_analysis', 'risk_assessment'],
+    actions: ['listMultiFramework', 'listStakeholderMaps', 'listDecisionMatrices', 'listBiasChecklists', 'listReviews', 'biasChecklistTemplate'],
     category: 'social',
     dataTier: 'SIM_GRADE_A',
     emptyState: {
-      headline: "Reason through a case.",
-      caption: "Case-file + decision-tree + framework: apply ethical frameworks against real stakeholder analysis.",
-      firstActionLabel: "Open a case",
+      headline: "Run a dilemma through the Decision Toolkit.",
+      caption: "Multi-framework analysis, stakeholder mapping, decision matrices, bias checklists and audits, peer review, and a case library — nine tools, all backed by real computed results.",
+      firstActionLabel: "Open the Decision Toolkit",
     },
     firstRunGuide: {
       steps: [
-        { caption: "Pick a framework (deontology / consequentialism / virtue / care)." },
-        { caption: "stakeholder_analysis walks who's affected and how." },
-        { caption: "generate_report exports a defensible decision with framework citations." },
+        { caption: "Multi-Framework scores your options across utilitarian, deontological, and virtue ethics side by side." },
+        { caption: "Framework Analysis goes deeper on one action — adds care ethics and flags tensions between frameworks." },
+        { caption: "Stakeholder Impact and Bias Audit quantify equity and dataset fairness instead of leaving them to gut feel." },
       ],
     },
   },
@@ -1786,22 +1800,22 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'events',
     label: 'Events & Entertainment',
-    artifacts: ['Event', 'Venue', 'Performer', 'Tour', 'Production', 'Vendor', 'SettlementRecord'],
+    artifacts: ['Event', 'Venue', 'Vendor', 'Guest', 'RunOfShow', 'Budget', 'TicketTier'],
     macros: { list: 'lens.events.list', get: 'lens.events.get', create: 'lens.events.create', update: 'lens.events.update', delete: 'lens.events.delete', run: 'lens.events.run', export: 'lens.events.export' },
     exports: ['json', 'csv', 'pdf', 'ics'],
-    actions: ['budgetReconcile', 'advanceSheet', 'techRiderMatch', 'settlementCalc', 'ticketForecast', 'vendorCompare', 'runOfShow', 'postEventReport'],
+    actions: ['event-create', 'tier-create', 'register-attendee', 'check-in', 'blast-send', 'advanceSheet', 'techRiderMatch', 'settlementCalc'],
     category: 'creative',
     dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Produce events.",
-      caption: "Events, venues, performers, tours, vendors \u2014 advance, settle, forecast, report.",
+      caption: "Events, ticketing, seating, budget, run-of-show \u2014 advance, settle, check in, blast.",
       firstActionLabel: "Create your first event",
     },
     firstRunGuide: {
       steps: [
         { caption: "advanceSheet + techRiderMatch get every detail right before doors." },
         { caption: "settlementCalc closes the show with everyone paid right." },
-        { caption: "postEventReport assembles ticketing + bar + payroll in one DTU." },
+        { caption: "check-in + blast-send run the door and keep attendees in the loop." },
       ],
     },
   },
@@ -1930,22 +1944,27 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'fashion',
     label: 'Fashion',
-    artifacts: ['garment', 'outfit', 'wardrobe', 'wishlist'],
+    artifacts: ['garment', 'outfit'],
     macros: { list: 'lens.fashion.list', get: 'lens.fashion.get', create: 'lens.fashion.create', update: 'lens.fashion.update', delete: 'lens.fashion.delete', run: 'lens.fashion.run', export: 'lens.fashion.export' },
     exports: ['json', 'csv', 'pdf'],
-    actions: ['outfitSuggest', 'seasonalRotation', 'donateList', 'styleAnalysis', 'wardrobeValue', 'colorPalette'],
+    // 2026-07-09 rebuild: these now name real, currently-registered
+    // fashion.* macros (server/domains/fashion.js) instead of macro names
+    // that never existed (seasonalRotation/donateList/styleAnalysis/
+    // wardrobeValue/colorPalette) \u2014 those were stale placeholder copy from
+    // before the Stylebook/Whering-parity substrate was built.
+    actions: ['ai-outfit-generate', 'closet-stats', 'declutter-suggestions', 'style-quiz-submit'],
     category: 'lifestyle',
     dataTier: 'REAL_FREE',
     emptyState: {
-      headline: "Manage your wardrobe.",
-      caption: "Garments, outfits, wardrobe, wishlist \u2014 suggest, rotate, donate, palette.",
-      firstActionLabel: "Add your first garment",
+      headline: "Build your digital closet.",
+      caption: "Catalog real items, build outfits, get weather-aware AI looks, track cost-per-wear.",
+      firstActionLabel: "Add your first item",
     },
     firstRunGuide: {
       steps: [
-        { caption: "outfitSuggest composes against weather + your style profile." },
-        { caption: "seasonalRotation surfaces what to swap in / out per season." },
-        { caption: "colorPalette analyzes your wardrobe for tonal balance." },
+        { caption: "AI Stylist composes real outfits from your closet against live weather + occasion." },
+        { caption: "Closet tracks cost-per-wear and flags pieces worth decluttering or reselling." },
+        { caption: "Style Quiz turns 5 questions into real recommendations from your closet's actual gaps." },
       ],
     },
   },
@@ -2940,7 +2959,16 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['structure', 'component', 'material', 'simulation', 'specification'],
     macros: { list: 'lens.engineering.list', get: 'lens.engineering.get', create: 'lens.engineering.create', update: 'lens.engineering.update', delete: 'lens.engineering.delete', run: 'lens.engineering.run', export: 'lens.engineering.export' },
     exports: ['json', 'csv', 'pdf'],
-    actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
+    // Deliberately empty (Wave 3 audit, 2026-07): 'analyze'/'generate'/
+    // 'validate'/'export'/'summarize' matched nothing in LENS_ACTIONS or
+    // MACROS for this domain — every <ManifestActionBar> click 404'd as
+    // unknown_macro. The real engineering.* macros (materialLibrary,
+    // parametricSolid, structuralCheck, thermalAnalysis, electricalCheck,
+    // hydraulicAnalysis, listSimJobs, …) each now have a real, structured,
+    // designed home on the lens page (Geometry/Materials/Calcs/Results
+    // tabs) instead of a blind zero-parameter quick-trigger, so this bar
+    // is left empty rather than duplicating them with a worse surface.
+    actions: [],
     category: 'trades',
     dataTier: 'SIM_GRADE_A',
     emptyState: {
@@ -3729,22 +3757,22 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'philosophy',
     label: 'Philosophy',
-    artifacts: ['argument', 'concept', 'tradition', 'text', 'debate'],
+    artifacts: ['channel', 'block', 'debate', 'reference'],
     macros: { list: 'lens.philosophy.list', get: 'lens.philosophy.get', create: 'lens.philosophy.create', update: 'lens.philosophy.update', delete: 'lens.philosophy.delete', run: 'lens.philosophy.run', export: 'lens.philosophy.export' },
     exports: ['json', 'csv', 'pdf'],
-    actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
+    actions: ['argumentMap', 'thoughtExperiment', 'dialecticSynthesis', 'ethicalFramework', 'channel-create', 'debate-create'],
     category: 'knowledge',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Philosophy workspace.",
-      caption: "Arguments, concepts, traditions, texts, debates \u2014 SIM_GRADE_A engine.",
-      firstActionLabel: "Pick a tradition",
+      caption: "Are.na-shape channels of blocks, argument mapping, ethical frameworks and debate threads \u2014 real per-user state, real Wikipedia reference pages.",
+      firstActionLabel: "Open Curation Studio",
     },
     firstRunGuide: {
       steps: [
-        { caption: "Arguments ride the same substrate as Debate + Reasoning." },
-        { caption: "Concepts surface across traditions." },
-        { caption: "Export annotated texts + commentary bundles." },
+        { caption: "The Dilemma Workbench maps arguments (premises \u2192 conclusion, validity + soundness), runs thought experiments, Hegelian dialectic, and six ethical frameworks against your dilemma." },
+        { caption: "Curation Studio is an Are.na-shape idea library: channels of connected text/quote/link/image/embed blocks, with cross-channel connections, collaborators, and public discovery." },
+        { caption: "Debate threads let anyone critique an argument's premises with support / object / rebut / clarify posts \u2014 a real collaborative thread, not a comment box." },
       ],
     },
   },

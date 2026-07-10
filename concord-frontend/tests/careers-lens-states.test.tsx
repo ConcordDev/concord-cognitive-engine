@@ -173,4 +173,30 @@ describe('careers lens — five UX states', () => {
     const { getByText } = render(<CareersLens />);
     await waitFor(() => expect(getByText(/No active contracts/i)).toBeInTheDocument());
   });
+
+  it('NEGOTIATION: an offered contract exposes accept/counter/reject, and Accept calls the real macro', async () => {
+    const OFFERED = { ...CONTRACT, id: 'ctr_offer', status: 'offered' };
+    lensRun.mockImplementation((_d: string, name: string) => {
+      if (name === 'tracks') return reply({ ok: true, tracks: TRACKS });
+      if (name === 'contracts') return reply({ ok: true, contracts: [OFFERED] });
+      if (name === 'accept') return reply({ ok: true, contractId: 'ctr_offer', status: 'active' });
+      return reply({ ok: true });
+    });
+    const { getByLabelText } = render(<CareersLens />);
+    await waitFor(() => expect(getByLabelText('Accept contract ctr_offer')).toBeInTheDocument());
+    expect(getByLabelText('Send counter-offer for contract ctr_offer')).toBeInTheDocument();
+    expect(getByLabelText('Reject contract ctr_offer')).toBeInTheDocument();
+
+    await act(async () => { fireEvent.click(getByLabelText('Accept contract ctr_offer')); });
+    await waitFor(() => expect(lensRun.mock.calls.some((c) => c[1] === 'accept' && c[2]?.contractId === 'ctr_offer')).toBe(true));
+    expect(addToast.mock.calls.some((c) => c[0]?.type === 'success')).toBe(true);
+  });
+
+  it('NEGOTIATION: an active contract shows no negotiation controls', async () => {
+    lensRun.mockImplementation((_d: string, name: string) =>
+      name === 'tracks' ? reply({ ok: true, tracks: TRACKS }) : reply({ ok: true, contracts: [CONTRACT] }));
+    const { queryByLabelText, getByText } = render(<CareersLens />);
+    await waitFor(() => expect(getByText(/40 sparks · active/)).toBeInTheDocument());
+    expect(queryByLabelText(`Accept contract ${CONTRACT.id}`)).toBeNull();
+  });
 });

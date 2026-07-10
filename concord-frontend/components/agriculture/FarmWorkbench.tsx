@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  X, Loader2, Sprout, Cloud, Eye, Plus, Trash2, Save, MapPin, Droplets, ThermometerSun,
+  X, Loader2, Sprout, Cloud, Eye, Plus, Trash2, Save, MapPin, Droplets, ThermometerSun, Pencil,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -144,6 +144,8 @@ function FieldsTab({
   const [draft, setDraft] = useState({
     name: '', acreage: 40, lat: 40.0, lng: -100.0, soilType: 'loam', currentCrop: 'corn',
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: '', acreage: 0, soilType: '', currentCrop: '' });
 
   const save = async () => {
     try {
@@ -162,6 +164,23 @@ function FieldsTab({
       await lensRun({
         domain: 'agriculture', action: 'field-delete', input: { id },
       });
+      await onChange();
+    } catch (e) { console.error(e); }
+  };
+
+  const startEdit = (f: Field) => {
+    setCreating(false);
+    setEditingId(f.id);
+    setEditDraft({ name: f.name, acreage: f.acreage, soilType: f.soilType, currentCrop: f.currentCrop });
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    try {
+      await lensRun({
+        domain: 'agriculture', action: 'field-update', input: { id: editingId, ...editDraft },
+      });
+      setEditingId(null);
       await onChange();
     } catch (e) { console.error(e); }
   };
@@ -237,6 +256,50 @@ function FieldsTab({
         </div>
       ) : (
         fields.map((f) => (
+          editingId === f.id ? (
+            <div key={f.id} className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+              <input
+                type="text" value={editDraft.name}
+                onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
+                placeholder="Field name" maxLength={60}
+                className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100"
+              />
+              <div className="grid grid-cols-3 gap-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase text-gray-400">Acreage</span>
+                  <input type="number" min="0" step="0.1"
+                    value={editDraft.acreage}
+                    onChange={(e) => setEditDraft({ ...editDraft, acreage: Number(e.target.value) })}
+                    className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
+                </label>
+                <label className="flex flex-col gap-1 col-span-1">
+                  <span className="text-[10px] uppercase text-gray-400">Soil type</span>
+                  <input type="text" value={editDraft.soilType}
+                    onChange={(e) => setEditDraft({ ...editDraft, soilType: e.target.value })}
+                    maxLength={24}
+                    className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
+                </label>
+                <label className="flex flex-col gap-1 col-span-1">
+                  <span className="text-[10px] uppercase text-gray-400">Current crop</span>
+                  <input type="text" value={editDraft.currentCrop}
+                    onChange={(e) => setEditDraft({ ...editDraft, currentCrop: e.target.value })}
+                    maxLength={40}
+                    className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={saveEdit}
+                  disabled={!editDraft.name.trim() || editDraft.acreage <= 0}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 text-xs text-emerald-100 hover:brightness-110 disabled:opacity-40">
+                  <Save className="w-3 h-3" /> Save changes
+                </button>
+                <button type="button" onClick={() => setEditingId(null)}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-white/10 text-xs text-gray-400 hover:text-gray-200">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
           <div key={f.id}
             className={cn(
               'rounded-md border p-3 transition group cursor-pointer',
@@ -255,14 +318,23 @@ function FieldsTab({
                   {f.lat.toFixed(4)}, {f.lng.toFixed(4)}
                 </p>
               </div>
-              <button aria-label="Delete" type="button"
-                onClick={(e) => { e.stopPropagation(); remove(f.id); }}
-                className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+                <button aria-label="Edit" type="button"
+                  onClick={(e) => { e.stopPropagation(); startEdit(f); }}
+                  className="p-1 text-gray-600 hover:text-emerald-300"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+                <button aria-label="Delete" type="button"
+                  onClick={(e) => { e.stopPropagation(); remove(f.id); }}
+                  className="p-1 text-gray-600 hover:text-rose-300"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           </div>
+          )
         ))
       )}
     </div>

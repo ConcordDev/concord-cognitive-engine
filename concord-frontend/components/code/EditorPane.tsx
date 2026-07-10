@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Loader2, Save, Wand2 } from 'lucide-react';
+import { Sparkles, Loader2, Save, Wand2, MessageSquareText, FlaskConical, History, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { lensRun } from '@/lib/api/client';
 import { EditorTabs } from './CodeWorkbenchShell';
@@ -24,12 +24,17 @@ export function EditorPane({
   openLine,
   onOpenChange,
   onContentSaved,
+  renameSignal,
 }: {
   projectId: string | null;
   openPath: string | null;
   openLine?: number | null;
   onOpenChange: (path: string | null) => void;
   onContentSaved?: () => void;
+  /** Set by the caller after a successful files-rename so an already-open tab is
+   *  relabeled in place instead of being treated as a new file (which would leave
+   *  a stale tab pointed at the now-deleted old path). */
+  renameSignal?: { from: string; to: string; nonce: number } | null;
 }) {
   const [files, setFiles] = useState<OpenFile[]>([]);
   const [loadingFile, setLoadingFile] = useState(false);
@@ -38,6 +43,25 @@ export function EditorPane({
   const [inlineLoading, setInlineLoading] = useState(false);
   const [selection, setSelection] = useState<string>('');
   const editorRef = useRef<{ revealLineInCenter?: (n: number) => void; setPosition?: (p: { lineNumber: number; column: number }) => void; focus?: () => void } | null>(null);
+
+  // code.explain — a deterministic/brain-backed one-click explanation of the
+  // current selection (or whole file when nothing is selected), distinct from
+  // the free-form AI Pair chat: no prompt typing, a direct macro round-trip.
+  const [explainOpen, setExplainOpen] = useState(false);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [explainText, setExplainText] = useState<string | null>(null);
+
+  // code.test-generate — generates a real test file for the active file's
+  // content; offered as "save as <suggested path>" rather than silently
+  // overwriting anything.
+  const [testGenOpen, setTestGenOpen] = useState(false);
+  const [testGenLoading, setTestGenLoading] = useState(false);
+  const [testGenResult, setTestGenResult] = useState<{ tests: string; framework: string; suggestedPath: string } | null>(null);
+
+  // code.git-blame — per-line commit attribution for the active file.
+  const [blameOpen, setBlameOpen] = useState(false);
+  const [blameLoading, setBlameLoading] = useState(false);
+  const [blameRows, setBlameRows] = useState<Array<{ lineNo: number; text: string; commitId: string | null; message: string; author: string; committedAt: string | null }> | null>(null);
 
   // Reveal a requested line once the editor + the target file are ready.
   useEffect(() => {
@@ -68,6 +92,15 @@ export function EditorPane({
       .finally(() => setLoadingFile(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-fetches only on openPath/projectId change
   }, [openPath, projectId]);
+
+  // Relabel an open tab in place after a rename — avoids a redundant re-fetch
+  // and, more importantly, avoids leaving a stale tab pointed at the deleted
+  // old path (which would otherwise silently recreate it on next Save).
+  useEffect(() => {
+    if (!renameSignal) return;
+    setFiles(prev => prev.map(f => f.path === renameSignal.from ? { ...f, path: renameSignal.to } : f));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per nonce, not per renameSignal identity
+  }, [renameSignal?.nonce]);
 
   const active = files.find(f => f.path === openPath);
 
@@ -134,6 +167,72 @@ export function EditorPane({
     } catch (e) { console.error('[Editor] format', e); }
   }
 
+  async function explain() {
+    if (!active) return;
+    const code = selection.trim() || active.content;
+    if (!code.trim()) return;
+    setExplainOpen(true);
+    setExplainLoading(true);
+    setExplainText(null);
+    try {
+      const r = await lensRun({ domain: 'code', action: 'explain', input: { code, path: active.path } });
+      if (r.data?.ok === false) { setExplainText(`Could not explain: ${r.data?.error || 'unknown error'}`); return; }
+      setExplainText(String(r.data?.result?.explanation || 'No explanation generated.'));
+    } catch (e) {
+      setExplainText(`Could not explain: ${e instanceof Error ? e.message : 'request failed'}`);
+    } finally { setExplainLoading(false); }
+  }
+
+  function suggestedTestPath(path: string): string {
+    const dot = path.lastIndexOf('.');
+    if (dot < 0) return `${path}.test`;
+    const base = path.slice(0, dot);
+    const ext = path.slice(dot); // includes leading '.'
+    if (/\.test\.|\.spec\./.test(path)) return path; // already a test file — same-name overwrite is an explicit choice below
+    return `${base}.test${ext}`;
+  }
+
+  async function generateTests() {
+    if (!active) return;
+    setTestGenOpen(true);
+    setTestGenLoading(true);
+    setTestGenResult(null);
+    try {
+      const framework = /\.py$/.test(active.path) ? 'pytest' : /\.(ts|tsx|js|jsx)$/.test(active.path) ? 'node:test' : 'the project convention';
+      const r = await lensRun({ domain: 'code', action: 'test-generate', input: { code: active.content, framework } });
+      if (r.data?.ok === false) { alert(r.data?.error || 'Test generation failed.'); setTestGenOpen(false); return; }
+      const tests = String(r.data?.result?.tests || '');
+      if (!tests.trim()) { alert('No tests were generated.'); setTestGenOpen(false); return; }
+      setTestGenResult({ tests, framework: String(r.data?.result?.framework || framework), suggestedPath: suggestedTestPath(active.path) });
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Test generation failed.');
+      setTestGenOpen(false);
+    } finally { setTestGenLoading(false); }
+  }
+
+  async function saveGeneratedTests() {
+    if (!testGenResult || !projectId) return;
+    try {
+      await lensRun({ domain: 'code', action: 'files-write', input: { projectId, path: testGenResult.suggestedPath, content: testGenResult.tests } });
+      setTestGenOpen(false);
+      onOpenChange(testGenResult.suggestedPath);
+      onContentSaved?.();
+    } catch (e) { console.error('[Editor] save generated tests', e); }
+  }
+
+  async function showBlame() {
+    if (!active || !projectId) return;
+    setBlameOpen(true);
+    setBlameLoading(true);
+    setBlameRows(null);
+    try {
+      const r = await lensRun({ domain: 'code', action: 'git-blame', input: { projectId, path: active.path } });
+      if (r.data?.ok === false) { setBlameRows([]); return; }
+      setBlameRows((r.data?.result?.blame as typeof blameRows) || []);
+    } catch (e) { console.error('[Editor] blame', e); setBlameRows([]); }
+    finally { setBlameLoading(false); }
+  }
+
   // cmd-S to save
   //
   // Duplicate-handler-race fix (verification-audit campaign): Cmd/Ctrl+K is
@@ -178,6 +277,17 @@ export function EditorPane({
                 <Wand2 className="w-3 h-3" /> ⌘K
               </button>
             )}
+            <button onClick={explain} className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1" title={selection.trim() ? 'Explain selection' : 'Explain this file'}>
+              <MessageSquareText className="w-3 h-3" />Explain
+            </button>
+            <button onClick={generateTests} className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1" title="Generate a test file for this code">
+              <FlaskConical className="w-3 h-3" />Tests
+            </button>
+            {projectId && (
+              <button onClick={showBlame} className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1" title="Blame — per-line commit attribution">
+                <History className="w-3 h-3" />Blame
+              </button>
+            )}
             <button onClick={format} className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]" title="Format file">format</button>
             <button onClick={save} disabled={!active.modified} className="px-1.5 py-0.5 rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1" title="Save (⌘S)">
               <Save className="w-3 h-3" />Save
@@ -198,6 +308,67 @@ export function EditorPane({
                 {inlineLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}Edit
               </button>
               <button onClick={() => setShowInlineEdit(false)} className="text-gray-400 hover:text-white text-[10px]">esc</button>
+            </div>
+          )}
+          {explainOpen && (
+            <div className="px-3 py-2 border-b border-white/10 bg-violet-500/[0.06] text-xs">
+              <div className="flex items-center gap-2 mb-1">
+                <MessageSquareText className="w-3 h-3 text-violet-300 shrink-0" />
+                <span className="text-[10px] uppercase tracking-wider text-violet-300 font-semibold flex-1">
+                  {selection.trim() ? 'Explaining selection' : 'Explaining file'}
+                </span>
+                <button aria-label="Close" onClick={() => setExplainOpen(false)} className="text-gray-400 hover:text-white"><X className="w-3 h-3" /></button>
+              </div>
+              {explainLoading ? (
+                <div className="text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Thinking…</div>
+              ) : (
+                <p className="text-gray-200 whitespace-pre-wrap leading-relaxed">{explainText}</p>
+              )}
+            </div>
+          )}
+          {testGenOpen && (
+            <div className="px-3 py-2 border-b border-white/10 bg-emerald-500/[0.06] text-xs">
+              <div className="flex items-center gap-2 mb-1">
+                <FlaskConical className="w-3 h-3 text-emerald-300 shrink-0" />
+                <span className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold flex-1">Generated tests</span>
+                <button aria-label="Close" onClick={() => setTestGenOpen(false)} className="text-gray-400 hover:text-white"><X className="w-3 h-3" /></button>
+              </div>
+              {testGenLoading ? (
+                <div className="text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Writing tests…</div>
+              ) : testGenResult ? (
+                <>
+                  <pre className="max-h-48 overflow-auto p-2 rounded bg-black/40 font-mono text-[11px] text-emerald-200 whitespace-pre-wrap">{testGenResult.tests}</pre>
+                  <div className="mt-2 flex items-center gap-2">
+                    <button onClick={saveGeneratedTests} disabled={!projectId} className="px-2 py-1 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-500 disabled:opacity-40">
+                      Save as {testGenResult.suggestedPath}
+                    </button>
+                    <button onClick={() => navigator.clipboard?.writeText(testGenResult.tests)} className="px-2 py-1 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]">Copy</button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          )}
+          {blameOpen && (
+            <div className="border-b border-white/10 bg-[#0a0c10]">
+              <div className="flex items-center gap-2 px-3 py-1.5 border-b border-white/5">
+                <History className="w-3 h-3 text-blue-300 shrink-0" />
+                <span className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold flex-1">Blame — {active.path}</span>
+                <button aria-label="Close" onClick={() => setBlameOpen(false)} className="text-gray-400 hover:text-white"><X className="w-3 h-3" /></button>
+              </div>
+              <div className="max-h-64 overflow-auto font-mono text-[11px]">
+                {blameLoading ? (
+                  <div className="p-3 text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Loading blame…</div>
+                ) : !blameRows || blameRows.length === 0 ? (
+                  <div className="p-3 text-gray-400 italic">No blame data.</div>
+                ) : blameRows.map(row => (
+                  <div key={row.lineNo} className="flex items-start gap-2 px-3 py-0.5 hover:bg-white/[0.03]" title={row.committedAt ? `${row.message} · ${new Date(row.committedAt).toLocaleString()}` : row.message}>
+                    <span className="w-8 shrink-0 text-right text-gray-600">{row.lineNo}</span>
+                    <span className={`w-16 shrink-0 ${row.commitId ? 'text-blue-300' : 'text-amber-400 italic'}`}>{row.commitId ? row.commitId.slice(0, 7) : 'uncommit'}</span>
+                    <span className="w-24 shrink-0 truncate text-gray-400">{row.author?.slice(0, 12) || '—'}</span>
+                    <span className="flex-1 truncate text-gray-200 whitespace-pre">{row.text || ' '}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           {loadingFile ? (

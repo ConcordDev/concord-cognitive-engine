@@ -1049,6 +1049,7 @@ export default function registerAccountingActions(registerLensAction) {
           debit: l.debit,
           credit: l.credit,
           lineMemo: l.memo,
+          dimensions: Array.isArray(e.dimensions) ? e.dimensions : [],
         });
       }
     }

@@ -11,12 +11,12 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { ProductivityFeed } from '@/components/goals/ProductivityFeed';
 import { OKRWorkspace } from '@/components/goals/OKRWorkspace';
+import { GoalsAnalyticsTools } from '@/components/goals/GoalsAnalyticsTools';
+import { AgentAutonomyPanel } from '@/components/goals/AgentAutonomyPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { apiHelpers } from '@/lib/api/client';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
@@ -28,7 +28,6 @@ import {
   Flame,
   Trophy,
   Star,
-  Lock,
   Unlock,
   Zap,
   Flag,
@@ -39,9 +38,6 @@ import {
   Award,
   TrendingUp,
   Swords,
-  Loader2,
-  BarChart3,
-  GitBranch,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -61,7 +57,7 @@ interface Goal {
   id: string;
   title: string;
   description: string;
-  category: 'Production' | 'Mixing' | 'Release' | 'Learning' | 'Collaboration';
+  category: 'Career' | 'Health' | 'Learning' | 'Creative' | 'Financial' | 'Personal';
   progress: number;
   priority: 'low' | 'medium' | 'high';
   targetDate: string;
@@ -69,6 +65,10 @@ interface Goal {
   xp: number;
   milestones: number[];
   status: 'active' | 'completed';
+  /** Client-side convenience only — copied from the artifact's updatedAt so
+   * the derived Milestones timeline can order/date completions. Not part of
+   * the persisted `data` shape. */
+  completedAt?: string;
 }
 
 interface Challenge {
@@ -80,29 +80,8 @@ interface Challenge {
   xp: number;
   progress: number;
   target: number;
-  participants?: number;
-  endsIn: string;
+  deadline?: string;
   accepted: boolean;
-}
-
-interface Milestone {
-  id: string;
-  title: string;
-  description: string;
-  unlocked: boolean;
-  date?: string;
-  icon: string;
-  xpReward: number;
-}
-
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  category: 'Production' | 'Social' | 'Sales' | 'Learning';
-  unlocked: boolean;
-  icon: string;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
 }
 
 // --------------- Seed Data (empty — populated from backend) ---------------
@@ -111,26 +90,24 @@ const GOALS_FALLBACK: Goal[] = [];
 
 const CHALLENGES_FALLBACK: Challenge[] = [];
 
-const MILESTONES_FALLBACK: Milestone[] = [];
-
-const ACHIEVEMENTS_FALLBACK: Achievement[] = [];
-
 // --------------- Style Mappings ---------------
 
 const categoryColors: Record<string, string> = {
-  Production: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  Mixing: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  Release: 'bg-green-500/20 text-green-400 border-green-500/30',
+  Career: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  Health: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   Learning: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  Collaboration: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
+  Creative: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
+  Financial: 'bg-green-500/20 text-green-400 border-green-500/30',
+  Personal: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
 };
 
 const categoryDotColors: Record<string, string> = {
-  Production: 'bg-purple-400',
-  Mixing: 'bg-blue-400',
-  Release: 'bg-green-400',
+  Career: 'bg-purple-400',
+  Health: 'bg-blue-400',
   Learning: 'bg-yellow-400',
-  Collaboration: 'bg-pink-400',
+  Creative: 'bg-pink-400',
+  Financial: 'bg-green-400',
+  Personal: 'bg-cyan-400',
 };
 
 const difficultyColors: Record<string, string> = {
@@ -138,20 +115,6 @@ const difficultyColors: Record<string, string> = {
   Medium: 'bg-yellow-500/20 text-yellow-400',
   Hard: 'bg-orange-500/20 text-orange-400',
   Legendary: 'bg-red-500/20 text-red-400',
-};
-
-const rarityColors: Record<string, string> = {
-  common: 'text-gray-400',
-  rare: 'text-blue-400',
-  epic: 'text-purple-400',
-  legendary: 'text-yellow-400',
-};
-
-const rarityBgColors: Record<string, string> = {
-  common: 'bg-gray-500/10 border-gray-500/20',
-  rare: 'bg-blue-500/10 border-blue-500/20',
-  epic: 'bg-purple-500/10 border-purple-500/20',
-  legendary: 'bg-yellow-500/10 border-yellow-500/20',
 };
 
 const priorityFlame: Record<string, string> = {
@@ -259,8 +222,7 @@ export default function GoalsLensPage() {
   useLensNav('goals');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('goals');
 
-  const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'goals' | 'challenges' | 'milestones' | 'achievements'>('goals');
+  const [activeTab, setActiveTab] = useState<'goals' | 'challenges' | 'milestones'>('goals');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -268,7 +230,6 @@ export default function GoalsLensPage() {
       { id: 'tab-goals', keys: 'g', description: 'Goals', category: 'navigation', action: () => setActiveTab('goals') },
       { id: 'tab-challenges', keys: 'c', description: 'Challenges', category: 'navigation', action: () => setActiveTab('challenges') },
       { id: 'tab-milestones', keys: 'm', description: 'Milestones', category: 'navigation', action: () => setActiveTab('milestones') },
-      { id: 'tab-achievements', keys: 'a', description: 'Achievements', category: 'navigation', action: () => setActiveTab('achievements') },
     ],
     { lensId: 'goals' }
   );
@@ -279,64 +240,57 @@ export default function GoalsLensPage() {
   // Create goal form state
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [newCategory, setNewCategory] = useState<Goal['category']>('Production');
+  const [newCategory, setNewCategory] = useState<Goal['category']>('Career');
   const [newTargetDate, setNewTargetDate] = useState('');
   const [newSubtasks, setNewSubtasks] = useState('');
   const [newXp, setNewXp] = useState(200);
   const [newPriority, setNewPriority] = useState<Goal['priority']>('medium');
 
+  // Create challenge form state
+  const [showCreateChallenge, setShowCreateChallenge] = useState(false);
+  const [newChallengeTitle, setNewChallengeTitle] = useState('');
+  const [newChallengeDesc, setNewChallengeDesc] = useState('');
+  const [newChallengeType, setNewChallengeType] = useState<Challenge['type']>('daily');
+  const [newChallengeDifficulty, setNewChallengeDifficulty] = useState<Challenge['difficulty']>('Easy');
+  const [newChallengeTarget, setNewChallengeTarget] = useState(7);
+  const [newChallengeDeadline, setNewChallengeDeadline] = useState('');
+
   const { isLoading, isError: isError, error: error, refetch: refetch, items: goalItems, create: createGoalItem, update: updateGoalItem } = useLensData<Record<string, unknown>>('goals', 'goal', {
     seed: GOALS_FALLBACK.map(g => ({ title: g.title, data: g as unknown as Record<string, unknown> })),
   });
-  const { isError: isError2, error: error2, refetch: refetch2, items: challengeItems, update: updateChallengeItem } = useLensData<Record<string, unknown>>('goals', 'challenge', {
+  const { isError: isError2, error: error2, refetch: refetch2, items: challengeItems, create: createChallengeItem, update: updateChallengeItem } = useLensData<Record<string, unknown>>('goals', 'challenge', {
     seed: CHALLENGES_FALLBACK.map(c => ({ title: c.title, data: c as unknown as Record<string, unknown> })),
-  });
-  const { isError: isError3, error: error3, refetch: refetch3, items: milestoneItems } = useLensData<Record<string, unknown>>('goals', 'milestone', {
-    seed: MILESTONES_FALLBACK.map(m => ({ title: m.title, data: m as unknown as Record<string, unknown> })),
-  });
-  const { isError: isError4, error: error4, refetch: refetch4, items: achievementItems } = useLensData<Record<string, unknown>>('goals', 'achievement', {
-    seed: ACHIEVEMENTS_FALLBACK.map(a => ({ title: a.name, data: a as unknown as Record<string, unknown> })),
   });
 
   // Derive state from useLensData items (real backend data)
-  const goals = useMemo(() => goalItems.map(item => ({ id: item.id, ...item.data } as unknown as Goal)), [goalItems]);
+  const goals = useMemo(
+    () => goalItems.map(item => ({ id: item.id, ...item.data, completedAt: item.updatedAt } as unknown as Goal)),
+    [goalItems]
+  );
   const challenges = useMemo(() => challengeItems.map(item => ({ id: item.id, ...item.data } as unknown as Challenge)), [challengeItems]);
-  const milestones = useMemo(() => milestoneItems.map(item => ({ id: item.id, ...item.data } as unknown as Milestone)), [milestoneItems]);
-  const achievements = useMemo(() => achievementItems.map(item => ({ id: item.id, ...item.data } as unknown as Achievement)), [achievementItems]);
 
-  // API integration
+  // Real, honest goal creation: writes straight to the "goal" artifact type
+  // the Goals tab actually reads. (Previously this tried apiHelpers.goals
+  // .create() first — which silently succeeds by creating a row in
+  // Concord's *agent* self-directed goal system instead, so the try/catch
+  // fallback to createGoalItem below never ran and every "New Goal" the
+  // user made vanished from their own list. See AgentAutonomyPanel for the
+  // agent system's own, correctly-labeled propose flow.)
   const createGoalMutation = useMutation({
     mutationFn: async () => {
-      // Try backend first, fallback to lens data
-      try {
-        await apiHelpers.goals.create({ title: newTitle, description: newDescription, priority: newPriority });
-        queryClient.invalidateQueries({ queryKey: ['goals'] });
-      } catch (e) {
-        console.warn('Goals backend unavailable, using lens data fallback:', e);
-        await createGoalItem({
-          title: newTitle,
-          data: {
-            title: newTitle, description: newDescription, category: newCategory,
-            progress: 0, priority: newPriority, targetDate: newTargetDate,
-            subtasks: newSubtasks.split('\n').filter(Boolean).map((s, i) => ({ id: `st-${i}`, label: s, done: false })),
-            xp: newXp, milestones: [], status: 'active',
-          } as unknown as Record<string, unknown>,
-        });
-      }
+      await createGoalItem({
+        title: newTitle,
+        data: {
+          title: newTitle, description: newDescription, category: newCategory,
+          progress: 0, priority: newPriority, targetDate: newTargetDate,
+          subtasks: newSubtasks.split('\n').filter(Boolean).map((s, i) => ({ id: `st-${i}`, label: s, done: false })),
+          xp: newXp, milestones: [], status: 'active',
+        } as unknown as Record<string, unknown>,
+      });
     },
     onSuccess: () => { setShowCreate(false); setNewTitle(''); setNewDescription(''); setNewSubtasks(''); },
     onError: (err) => {
       console.error('Failed to create goal:', err instanceof Error ? err.message : err);
-    },
-  });
-
-  const autoPropose = useMutation({
-    mutationFn: async () => {
-      try { await apiHelpers.goals.autoPropose(); } catch (e) { console.warn('Goals auto-propose not available:', e); }
-      queryClient.invalidateQueries({ queryKey: ['goals'] });
-    },
-    onError: (err) => {
-      console.error('Auto-propose failed:', err instanceof Error ? err.message : err);
     },
   });
 
@@ -346,10 +300,20 @@ export default function GoalsLensPage() {
     [goals]
   );
   const level = getLevel(totalXp);
-  const completedThisMonth = goals.filter((g) => g.status === 'completed').length;
+  const completedGoals = useMemo(
+    () => goals.filter((g) => g.status === 'completed').sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || '')),
+    [goals]
+  );
+  const completedThisMonth = useMemo(() => {
+    const now = new Date();
+    return completedGoals.filter((g) => {
+      if (!g.completedAt) return false;
+      const d = new Date(g.completedAt);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+  }, [completedGoals]);
   const activeGoalCount = goals.filter((g) => g.status === 'active').length;
   const acceptedChallengeCount = challenges.filter((c) => c.accepted).length;
-  const unlockedAchievementCount = achievements.filter((a) => a.unlocked).length;
 
   const overallProgress = useMemo(() => {
     const active = goals.filter((g) => g.status === 'active');
@@ -357,21 +321,47 @@ export default function GoalsLensPage() {
     return active.reduce((s, g) => s + g.progress, 0) / active.length;
   }, [goals]);
 
-  const streakDays = 0;
+  // Real streak: consecutive calendar days (ending today) with at least one
+  // goal completion. Derived purely from completedAt timestamps — no
+  // fabricated number, and honestly 0 until a goal is actually completed.
+  const streakDays = useMemo(() => {
+    const days = new Set(completedGoals.filter((g) => g.completedAt).map((g) => g.completedAt!.slice(0, 10)));
+    let streak = 0;
+    const cursor = new Date();
+    for (;;) {
+      const key = cursor.toISOString().slice(0, 10);
+      if (!days.has(key)) break;
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }, [completedGoals]);
+
+  // Deterministic badges — a real function of real counts, never a fake
+  // unlock date or server-fabricated rarity. Honeycomb of thresholds over
+  // completedGoals/challenges/streak, all already-derived above.
+  const badges = useMemo(() => {
+    const categoriesCompleted = new Set(completedGoals.map((g) => g.category)).size;
+    return [
+      { id: 'first-steps', title: 'First Steps', description: 'Create your first goal.', icon: 'target', unlocked: goals.length >= 1 },
+      { id: 'momentum', title: 'Momentum', description: 'Complete a goal.', icon: 'flame', unlocked: completedGoals.length >= 1 },
+      { id: 'high-achiever', title: 'High Achiever', description: 'Complete 5 goals.', icon: 'trophy', unlocked: completedGoals.length >= 5 },
+      { id: 'well-rounded', title: 'Well Rounded', description: 'Complete goals in 3+ categories.', icon: 'sparkles', unlocked: categoriesCompleted >= 3 },
+      { id: 'on-a-roll', title: 'On a Roll', description: '3-day completion streak.', icon: 'zap', unlocked: streakDays >= 3 },
+      { id: 'challenger', title: 'Challenger', description: 'Accept a challenge.', icon: 'award', unlocked: acceptedChallengeCount >= 1 },
+    ];
+  }, [goals.length, completedGoals, streakDays, acceptedChallengeCount]);
 
   const filteredGoals = useMemo(() => {
     if (goalFilter === 'All') return goals;
     if (goalFilter === 'Active') return goals.filter((g) => g.status === 'active');
     if (goalFilter === 'Completed') return goals.filter((g) => g.status === 'completed');
-    if (goalFilter === 'Creative') return goals.filter((g) => g.category === 'Production' || g.category === 'Mixing');
-    if (goalFilter === 'Technical') return goals.filter((g) => g.category === 'Learning');
-    if (goalFilter === 'Release') return goals.filter((g) => g.category === 'Release');
-    return goals;
+    return goals.filter((g) => g.category === goalFilter);
   }, [goals, goalFilter]);
 
   // Category breakdown for summary
   const categoryBreakdown = useMemo(() => {
-    const cats = ['Production', 'Mixing', 'Release', 'Learning', 'Collaboration'] as const;
+    const cats = ['Career', 'Health', 'Learning', 'Creative', 'Financial', 'Personal'] as const;
     return cats.map((cat) => ({
       name: cat,
       count: goals.filter((g) => g.category === cat).length,
@@ -390,6 +380,12 @@ export default function GoalsLensPage() {
     updateGoalItem(goalId, { data: { ...goal, subtasks: updated, progress } as unknown as Record<string, unknown> }).catch((err) => console.error('Failed to update goal subtask:', err instanceof Error ? err.message : err));
   };
 
+  const completeGoalItem = (goalId: string) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    updateGoalItem(goalId, { data: { ...goal, status: 'completed', progress: 1 } as unknown as Record<string, unknown> }).catch((err) => console.error('Failed to complete goal:', err instanceof Error ? err.message : err));
+  };
+
   const acceptChallenge = (id: string) => {
     const challenge = challenges.find(c => c.id === id);
     if (challenge) {
@@ -397,36 +393,38 @@ export default function GoalsLensPage() {
     }
   };
 
+  const bumpChallengeProgress = (id: string) => {
+    const challenge = challenges.find(c => c.id === id);
+    if (challenge) {
+      updateChallengeItem(id, { data: { ...challenge, progress: Math.min(challenge.progress + 1, challenge.target) } as unknown as Record<string, unknown> }).catch((err) => console.error('Failed to update challenge progress:', err instanceof Error ? err.message : err));
+    }
+  };
+
   const handleCreateGoal = () => {
     createGoalMutation.mutate();
   };
 
-  // --- Action wiring ---
-  const runAction = useRunArtifact('goals');
-  const [goalsActionResult, setGoalsActionResult] = useState<{ action: string; data: unknown } | null>(null);
-  const handleGoalsAction = useCallback((action: string) => {
-    const artifactId = goalItems[0]?.id;
-    if (!artifactId) return;
-    runAction.mutate(
-      { id: artifactId, action, params: {} },
-      {
-        onSuccess: (res) => setGoalsActionResult({ action, data: res.result }),
-        onError: (e) => {
-          console.error(`Action failed:`, e);
-          setGoalsActionResult({ action, data: { error: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` } });
-        },
-      }
-    );
-  }, [goalItems, runAction]);
+  const handleCreateChallenge = () => {
+    if (!newChallengeTitle.trim()) return;
+    createChallengeItem({
+      title: newChallengeTitle,
+      data: {
+        title: newChallengeTitle, description: newChallengeDesc, type: newChallengeType,
+        difficulty: newChallengeDifficulty, xp: { Easy: 50, Medium: 150, Hard: 300, Legendary: 750 }[newChallengeDifficulty],
+        progress: 0, target: newChallengeTarget, deadline: newChallengeDeadline || undefined, accepted: false,
+      } as unknown as Record<string, unknown>,
+    }).then(() => {
+      setShowCreateChallenge(false); setNewChallengeTitle(''); setNewChallengeDesc(''); setNewChallengeDeadline('');
+    }).catch((err) => console.error('Failed to create challenge:', err instanceof Error ? err.message : err));
+  };
 
   const tabs = [
     { key: 'goals' as const, label: 'Goals', icon: Target, count: activeGoalCount },
     { key: 'challenges' as const, label: 'Challenges', icon: Swords, count: acceptedChallengeCount },
-    { key: 'milestones' as const, label: 'Milestones', icon: TrendingUp, count: milestones.filter((m) => m.unlocked).length },
-    { key: 'achievements' as const, label: 'Achievements', icon: Award, count: unlockedAchievementCount },
+    { key: 'milestones' as const, label: 'Milestones', icon: TrendingUp, count: completedGoals.length },
   ];
 
-  const filterPills = ['All', 'Active', 'Completed', 'Creative', 'Technical', 'Release'];
+  const filterPills = ['All', 'Active', 'Completed', 'Career', 'Health', 'Learning', 'Creative', 'Financial', 'Personal'];
 
 
   if (isLoading) {
@@ -440,10 +438,10 @@ export default function GoalsLensPage() {
     );
   }
 
-  if (isError || isError2 || isError3 || isError4) {
+  if (isError || isError2) {
     return (
       <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message || error2?.message || error3?.message || error4?.message} onRetry={() => { refetch(); refetch2(); refetch3(); refetch4(); }} />
+        <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); }} />
       </div>
     );
   }
@@ -460,8 +458,8 @@ export default function GoalsLensPage() {
             <Target className="w-5 h-5 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Creative Goals</h1>
-            <p className="text-sm text-gray-400">Track your creative journey and level up</p>
+            <h1 className="text-xl font-bold text-white">Goals &amp; OKRs</h1>
+            <p className="text-sm text-gray-400">Personal goals, team OKRs, and Concord&apos;s own agent goal system</p>
           </div>
 
       {/* Real-time Enhancement Toolbar */}
@@ -480,14 +478,6 @@ export default function GoalsLensPage() {
             <Flame className="w-4 h-4" />
             <span>{streakDays} day streak</span>
           </div>
-          <button
-            onClick={() => autoPropose.mutate()}
-            disabled={autoPropose.isPending}
-            className="btn-neon flex items-center gap-1 text-sm"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            {autoPropose.isPending ? 'Proposing...' : 'Auto-Propose'}
-          </button>
           <button
             onClick={() => setShowCreate(!showCreate)}
             className="btn-neon purple flex items-center gap-1 text-sm"
@@ -588,7 +578,7 @@ export default function GoalsLensPage() {
               <DraftedTextarea lensId="goals" draftKey="newDescription" initial="" onValueChange={setNewDescription} placeholder="Describe your goal and what success looks like..." className="input-lattice w-full h-16 resize-none" />
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <select value={newCategory} onChange={(e) => setNewCategory(e.target.value as Goal['category'])} className="input-lattice">
-                  {['Production', 'Mixing', 'Release', 'Learning', 'Collaboration'].map((c) => <option key={c} value={c}>{c}</option>)}
+                  {['Career', 'Health', 'Learning', 'Creative', 'Financial', 'Personal'].map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <select value={newPriority} onChange={(e) => setNewPriority(e.target.value as Goal['priority'])} className="input-lattice">
                   <option value="low">Low Priority</option>
@@ -759,6 +749,14 @@ export default function GoalsLensPage() {
                               </span>
                             </button>
                           ))}
+                          {goal.status === 'active' && (
+                            <button
+                              onClick={() => completeGoalItem(goal.id)}
+                              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 py-1.5 text-xs font-medium text-green-400 hover:bg-green-500/20"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Mark Complete (+{goal.xp} XP)
+                            </button>
+                          )}
                         </div>
                       </motion.div>
                     )}
@@ -783,17 +781,46 @@ export default function GoalsLensPage() {
       {activeTab === 'challenges' && (
         <div className="space-y-4">
           {/* Challenge type filter summary */}
-          <div className="flex gap-4 text-xs text-gray-400">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-yellow-400" /> Daily: {challenges.filter((c) => c.type === 'daily').length}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-blue-400" /> Weekly: {challenges.filter((c) => c.type === 'weekly').length}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-purple-400" /> Community: {challenges.filter((c) => c.type === 'community').length}
-            </span>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex gap-4 text-xs text-gray-400">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-yellow-400" /> Daily: {challenges.filter((c) => c.type === 'daily').length}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-blue-400" /> Weekly: {challenges.filter((c) => c.type === 'weekly').length}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-purple-400" /> Community: {challenges.filter((c) => c.type === 'community').length}
+              </span>
+            </div>
+            <button onClick={() => setShowCreateChallenge((v) => !v)} className="btn-neon purple flex items-center gap-1 text-xs">
+              <Plus className="w-3.5 h-3.5" /> New Challenge
+            </button>
           </div>
+
+          <AnimatePresence>
+            {showCreateChallenge && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                <div className="panel p-4 space-y-3">
+                  <input value={newChallengeTitle} onChange={(e) => setNewChallengeTitle(e.target.value)} placeholder="Challenge title (e.g. 'Meditate every morning')" className="input-lattice w-full" />
+                  <input value={newChallengeDesc} onChange={(e) => setNewChallengeDesc(e.target.value)} placeholder="What does success look like?" className="input-lattice w-full" />
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <select value={newChallengeType} onChange={(e) => setNewChallengeType(e.target.value as Challenge['type'])} className="input-lattice">
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="community">Community</option>
+                    </select>
+                    <select value={newChallengeDifficulty} onChange={(e) => setNewChallengeDifficulty(e.target.value as Challenge['difficulty'])} className="input-lattice">
+                      {(['Easy', 'Medium', 'Hard', 'Legendary'] as const).map((d) => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                    <input type="number" min={1} value={newChallengeTarget} onChange={(e) => setNewChallengeTarget(Number(e.target.value))} className="input-lattice" placeholder="Target reps" />
+                    <input type="date" value={newChallengeDeadline} onChange={(e) => setNewChallengeDeadline(e.target.value)} className="input-lattice" />
+                    <button onClick={handleCreateChallenge} disabled={!newChallengeTitle} className="btn-neon purple disabled:opacity-50">Create</button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {challenges.map((ch, i) => (
             <motion.div
@@ -814,12 +841,6 @@ export default function GoalsLensPage() {
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 capitalize">
                       {ch.type}
                     </span>
-                    {ch.participants && (
-                      <span className="text-[10px] flex items-center gap-1 text-gray-400">
-                        <Users className="w-3 h-3" />
-                        {ch.participants} joined
-                      </span>
-                    )}
                   </div>
                   <h3 className="font-semibold text-white">{ch.title}</h3>
                   <p className="text-xs text-gray-400 mt-0.5">{ch.description}</p>
@@ -829,10 +850,12 @@ export default function GoalsLensPage() {
                     <Zap className="w-4 h-4" />
                     {ch.xp} XP
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 justify-end">
-                    <Clock className="w-3 h-3" />
-                    {ch.endsIn}
-                  </p>
+                  {ch.deadline && (
+                    <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 justify-end">
+                      <Clock className="w-3 h-3" />
+                      {daysUntil(ch.deadline) === 0 ? 'Due today' : `${daysUntil(ch.deadline)}d left`}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -861,175 +884,124 @@ export default function GoalsLensPage() {
                 >
                   <Swords className="w-4 h-4" /> Accept Challenge
                 </button>
+              ) : ch.progress < ch.target ? (
+                <button
+                  onClick={() => bumpChallengeProgress(ch.id)}
+                  className="w-full flex items-center justify-center gap-2 text-sm rounded-lg border border-orange-500/30 bg-orange-500/10 py-1.5 text-orange-400 hover:bg-orange-500/20"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Log progress
+                </button>
               ) : (
                 <div className="text-xs text-center text-green-400 flex items-center justify-center gap-1 py-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Challenge Accepted
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Challenge Complete
                 </div>
               )}
             </motion.div>
           ))}
+
+          {challenges.length === 0 && (
+            <div className="panel p-12 text-center text-gray-400">
+              <Swords className="w-12 h-12 mx-auto mb-4 opacity-30" />
+              <p>No challenges yet. Create one to start a self-tracked streak.</p>
+            </div>
+          )}
         </div>
       )}
 
       {/* ================================================================ */}
-      {/* MILESTONES TAB                                                   */}
+      {/* MILESTONES TAB — real completed-goal timeline + deterministic     */}
+      {/* badges. Previously this tab (and a separate Achievements tab)    */}
+      {/* read from two generic-artifact types ("milestone"/"achievement") */}
+      {/* that no macro ever populated and that had no creation UI          */}
+      {/* anywhere — permanently empty, "0 of 0" forever. Both are replaced */}
+      {/* with content derived from real, already-persisted goal data.     */}
       {/* ================================================================ */}
       {activeTab === 'milestones' && (
-        <div className="space-y-4">
-          {/* Milestone summary */}
-          <div className="panel p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <Trophy className="w-4 h-4 text-yellow-400" />
-              <span>
-                {milestones.filter((m) => m.unlocked).length} of {milestones.length} milestones unlocked
-              </span>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-yellow-400">
-              <Zap className="w-3 h-3" />
-              {milestones.filter((m) => m.unlocked).reduce((s, m) => s + m.xpReward, 0)} XP earned
-            </div>
-          </div>
-
-          <div className="relative pl-8">
-            {/* Vertical timeline line */}
-            <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-gradient-to-b from-cyan-500/50 via-purple-500/50 to-transparent" />
-
-            <div className="space-y-6">
-              {milestones.map((ms, i) => {
-                const IconComp = resolveIcon(ms.icon);
-
+        <div className="space-y-6">
+          {/* Badges — deterministic function of real counts, no fabricated
+              unlock dates or server rarity. */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Badges</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {badges.map((b, i) => {
+                const IconComp = resolveIcon(b.icon);
                 return (
                   <motion.div
-                    key={ms.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.08 }}
-                    className="relative"
+                    key={b.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    className={`panel p-4 flex flex-col items-center text-center space-y-2 border ${
+                      b.unlocked ? 'bg-cyan-500/10 border-cyan-500/20' : 'opacity-40 grayscale border-transparent'
+                    }`}
                   >
-                    {/* Node on timeline */}
-                    <div
-                      className={`absolute -left-8 top-3 w-6 h-6 rounded-full flex items-center justify-center border-2 ${
-                        ms.unlocked
-                          ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400'
-                          : 'bg-gray-800 border-gray-600 text-gray-600'
-                      }`}
-                    >
-                      {ms.unlocked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${b.unlocked ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700/50 text-gray-600'}`}>
+                      <IconComp className="w-5 h-5" />
                     </div>
-
-                    <div className={`panel p-4 ${ms.unlocked ? 'border-white/10' : 'opacity-50'}`}>
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                            ms.unlocked ? 'bg-cyan-500/15' : 'bg-gray-700/30'
-                          }`}
-                        >
-                          <IconComp className={`w-5 h-5 ${ms.unlocked ? 'text-cyan-400' : 'text-gray-600'}`} />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className={`font-semibold ${ms.unlocked ? 'text-white' : 'text-gray-400'}`}>
-                            {ms.title}
-                          </h3>
-                          <p className="text-xs text-gray-400">{ms.description}</p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          {ms.date && (
-                            <span className="text-xs text-gray-400 flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {ms.date}
-                            </span>
-                          )}
-                          <span className="text-[10px] text-yellow-400 flex items-center gap-0.5">
-                            <Zap className="w-2.5 h-2.5" />
-                            +{ms.xpReward} XP
-                          </span>
-                          {!ms.unlocked && <Lock className="w-4 h-4 text-gray-600" />}
-                        </div>
-                      </div>
-                    </div>
+                    <h4 className={`text-sm font-semibold ${b.unlocked ? 'text-white' : 'text-gray-400'}`}>{b.title}</h4>
+                    <p className="text-[10px] text-gray-400 leading-tight">{b.description}</p>
+                    {b.unlocked && (
+                      <span className="text-[10px] text-green-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Unlocked
+                      </span>
+                    )}
                   </motion.div>
                 );
               })}
             </div>
           </div>
+
+          {/* Completed-goal timeline */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Completed goals</h3>
+              <div className="flex items-center gap-1 text-xs text-yellow-400">
+                <Zap className="w-3 h-3" /> {totalXp.toLocaleString()} XP earned
+              </div>
+            </div>
+            <div className="relative pl-8">
+              <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-gradient-to-b from-cyan-500/50 via-purple-500/50 to-transparent" />
+              <div className="space-y-4">
+                {completedGoals.map((g, i) => (
+                  <motion.div key={g.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} className="relative">
+                    <div className="absolute -left-8 top-3 w-6 h-6 rounded-full flex items-center justify-center border-2 bg-cyan-500/20 border-cyan-500 text-cyan-400">
+                      <Unlock className="w-3 h-3" />
+                    </div>
+                    <div className="panel p-4 border-white/10">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-cyan-500/15">
+                          <CheckCircle2 className="w-5 h-5 text-cyan-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-white">{g.title}</h3>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${categoryColors[g.category]}`}>{g.category}</span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {g.completedAt && (
+                            <span className="text-xs text-gray-400 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" /> {new Date(g.completedAt).toLocaleDateString()}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-yellow-400 flex items-center gap-0.5">
+                            <Zap className="w-2.5 h-2.5" /> +{g.xp} XP
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+                {completedGoals.length === 0 && (
+                  <p className="text-sm text-gray-400 pl-1">No goals completed yet — mark one complete from the Goals tab to start your timeline.</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ================================================================ */}
-      {/* ACHIEVEMENTS TAB                                                 */}
-      {/* ================================================================ */}
-      {activeTab === 'achievements' && (
-        <div className="space-y-6">
-          {/* Achievement summary */}
-          <div className="panel p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <Award className="w-4 h-4 text-purple-400" />
-              <span>
-                {achievements.filter((a) => a.unlocked).length} of {achievements.length} achievements unlocked
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-[10px]">
-              <span className={rarityColors.common}>Common</span>
-              <span className={rarityColors.rare}>Rare</span>
-              <span className={rarityColors.epic}>Epic</span>
-              <span className={rarityColors.legendary}>Legendary</span>
-            </div>
-          </div>
-
-          {(['Production', 'Social', 'Sales', 'Learning'] as const).map((cat) => {
-            const catAchievements = achievements.filter((a) => a.category === cat);
-
-            return (
-              <div key={cat}>
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                  {cat}
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {catAchievements.map((ach, i) => {
-                    const IconComp = resolveIcon(ach.icon);
-
-                    return (
-                      <motion.div
-                        key={ach.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.05 }}
-                        className={`panel p-4 flex flex-col items-center text-center space-y-2 border ${
-                          ach.unlocked ? rarityBgColors[ach.rarity] : 'opacity-40 grayscale border-transparent'
-                        }`}
-                      >
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            ach.unlocked ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700/50 text-gray-600'
-                          }`}
-                        >
-                          <IconComp className="w-5 h-5" />
-                        </div>
-                        <h4
-                          className={`text-sm font-semibold ${
-                            ach.unlocked ? 'text-white' : 'text-gray-400'
-                          }`}
-                        >
-                          {ach.name}
-                        </h4>
-                        <p className="text-[10px] text-gray-400 leading-tight">{ach.description}</p>
-                        <span className={`text-[9px] uppercase font-semibold tracking-wider ${rarityColors[ach.rarity]}`}>
-                          {ach.rarity}
-                        </span>
-                        {ach.unlocked && (
-                          <span className="text-[10px] text-green-400 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" /> Unlocked
-                          </span>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-      {/* Real-time Data Panel */}
+      {/* Real-time Data Panel — was previously nested inside the (removed)
+          Achievements tab conditional and so only ever rendered on that one
+          tab; now always visible regardless of active tab. */}
       {realtimeData && (
         <RealtimeDataPanel
           domain="goals"
@@ -1040,198 +1012,15 @@ export default function GoalsLensPage() {
           compact
         />
       )}
-        </div>
-      )}
 
-      {/* ---- Goals Domain Actions Panel ---- */}
-      <div className="panel p-4 space-y-4">
-        <h2 className="font-semibold flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-neon-cyan" /> Goals Analytics Actions
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {[
-            { action: 'okrScoring', label: 'OKR Scoring', icon: Target, color: 'neon-cyan', desc: 'Score objectives with confidence-adjusted key result completion' },
-            { action: 'goalDecomposition', label: 'Goal Decomposition', icon: GitBranch, color: 'neon-purple', desc: 'Critical path, dependency graph, and resource allocation' },
-            { action: 'progressForecast', label: 'Progress Forecast', icon: TrendingUp, color: 'neon-green', desc: 'Linear regression forecast with confidence bands' },
-          ].map(({ action, label, icon: Icon, color, desc }) => (
-            <button
-              key={action}
-              onClick={() => handleGoalsAction(action)}
-              disabled={runAction.isPending || !goalItems[0]?.id}
-              className={`p-4 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-lattice-surface border-lattice-border hover:border-${color}/40`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                {runAction.isPending && goalsActionResult === null ? (
-                  <Loader2 className={`w-4 h-4 text-${color} animate-spin`} />
-                ) : (
-                  <Icon className={`w-4 h-4 text-${color}`} />
-                )}
-                <span className="text-sm font-semibold text-white">{label}</span>
-              </div>
-              <p className="text-xs text-gray-400">{desc}</p>
-            </button>
-          ))}
-        </div>
-        {!goalItems[0]?.id && (
-          <p className="text-xs text-gray-400 text-center">Create a goal to run analytics actions.</p>
-        )}
+      <GoalsAnalyticsTools />
 
-        {runAction.isPending && (
-          <div className="flex items-center justify-center gap-3 py-4">
-            <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
-            <span className="text-sm text-gray-400">Running...</span>
-          </div>
-        )}
-
-        {goalsActionResult && !runAction.isPending && (() => {
-          const r = goalsActionResult.data as Record<string, unknown>;
-          if (goalsActionResult.action === 'okrScoring') {
-            const overallScore = r.overallScore as number;
-            const overallStatus = r.overallStatus as string;
-            const summary = r.summary as Record<string, number> | undefined;
-            const objectives = (r.objectives as { id: string; title: string; score: number; status: string; krCount: number; krOnTrack: number }[]) || [];
-            return (
-              <div className="space-y-3">
-                <div className="flex items-center gap-4">
-                  <div className={`px-3 py-1.5 rounded-full text-sm font-bold ${overallStatus === 'green' ? 'bg-neon-green/20 text-neon-green' : overallStatus === 'yellow' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-red-400/20 text-red-400'}`}>
-                    {overallScore}% Overall
-                  </div>
-                  <span className={`text-sm font-medium ${overallStatus === 'green' ? 'text-neon-green' : overallStatus === 'yellow' ? 'text-yellow-400' : 'text-red-400'}`}>{overallStatus?.toUpperCase()}</span>
-                </div>
-                {summary && (
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="lens-card text-center">
-                      <p className="text-xl font-bold text-neon-green">{summary.onTrack}</p>
-                      <p className="text-xs text-gray-400">On Track</p>
-                    </div>
-                    <div className="lens-card text-center">
-                      <p className="text-xl font-bold text-yellow-400">{summary.atRisk}</p>
-                      <p className="text-xs text-gray-400">At Risk</p>
-                    </div>
-                    <div className="lens-card text-center">
-                      <p className="text-xl font-bold text-red-400">{summary.offTrack}</p>
-                      <p className="text-xs text-gray-400">Off Track</p>
-                    </div>
-                  </div>
-                )}
-                {objectives.length > 0 && (
-                  <div className="space-y-2">
-                    {objectives.slice(0, 5).map((obj) => (
-                      <div key={obj.id} className="lens-card flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-white truncate max-w-xs">{obj.title}</p>
-                          <p className="text-xs text-gray-400">{obj.krCount} key results — {obj.krOnTrack} on track</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 h-2 bg-lattice-deep rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${obj.status === 'green' ? 'bg-neon-green' : obj.status === 'yellow' ? 'bg-yellow-400' : 'bg-red-400'}`} style={{ width: `${obj.score}%` }} />
-                          </div>
-                          <span className="text-xs font-mono text-gray-300 w-10">{obj.score}%</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          }
-          if (goalsActionResult.action === 'goalDecomposition') {
-            return (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Total Tasks', value: r.totalTasks as number },
-                    { label: 'Top-Level Goals', value: r.topLevelGoals as number },
-                    { label: 'Sub-Goals', value: r.subGoalCount as number },
-                    { label: 'Project Duration', value: `${r.projectDuration} units` },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="lens-card text-center">
-                      <p className="text-xl font-bold text-white">{value}</p>
-                      <p className="text-xs text-gray-400">{label}</p>
-                    </div>
-                  ))}
-                </div>
-                {(r.criticalPath as { tasks: string[] })?.tasks?.length > 0 && (
-                  <div className="lens-card">
-                    <p className="text-xs text-red-400 uppercase tracking-wider mb-2">Critical Path ({(r.criticalPath as { length: number }).length} tasks)</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(r.criticalPath as { tasks: string[] }).tasks.map((t) => (
-                        <span key={t} className="text-xs px-2 py-0.5 rounded bg-red-400/10 text-red-400">{t}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {(r.hasCycle as boolean) && (
-                  <div className="lens-card border-red-400/30">
-                    <p className="text-xs text-red-400">Dependency cycle detected in: {(r.cyclicTasks as string[]).join(', ')}</p>
-                  </div>
-                )}
-                {(r.resourceConflicts as unknown[])?.length > 0 && (
-                  <div className="lens-card">
-                    <p className="text-xs text-yellow-400 mb-1">{(r.resourceConflicts as unknown[]).length} resource conflict(s) detected</p>
-                  </div>
-                )}
-              </div>
-            );
-          }
-          if (goalsActionResult.action === 'progressForecast') {
-            const forecast = r.forecast as Record<string, unknown> | undefined;
-            const velocity = r.velocity as Record<string, unknown> | undefined;
-            const regression = r.regression as Record<string, unknown> | undefined;
-            const currentState = r.currentState as Record<string, unknown> | undefined;
-            return (
-              <div className="space-y-3">
-                {currentState && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    <div className="lens-card text-center">
-                      <p className="text-xl font-bold text-neon-cyan">{currentState.progress as number}%</p>
-                      <p className="text-xs text-gray-400">Current Progress</p>
-                    </div>
-                    <div className="lens-card text-center">
-                      <p className="text-xl font-bold text-gray-300">{currentState.remaining as number}%</p>
-                      <p className="text-xs text-gray-400">Remaining</p>
-                    </div>
-                    <div className="lens-card text-center">
-                      <p className="text-xl font-bold text-white">{currentState.daysElapsed as number}d</p>
-                      <p className="text-xs text-gray-400">Days Elapsed</p>
-                    </div>
-                  </div>
-                )}
-                {forecast && (
-                  <div className="lens-card">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-white">Forecast</p>
-                      <span className={`text-xs px-2 py-0.5 rounded ${forecast.onTrack ? 'bg-neon-green/10 text-neon-green' : 'bg-red-400/10 text-red-400'}`}>{forecast.onTrack ? 'On Track' : 'Behind'}</span>
-                    </div>
-                    {!!forecast.estimatedCompletionDate && (
-                      <p className="text-sm text-gray-300">Est. completion: <span className="text-neon-cyan font-mono">{forecast.estimatedCompletionDate as string}</span></p>
-                    )}
-                    {!!forecast.daysRemainingBest && (
-                      <p className="text-xs text-gray-400 mt-1">Best: {forecast.daysRemainingBest as number}d — Worst: {forecast.daysRemainingWorst as number}d</p>
-                    )}
-                  </div>
-                )}
-                {velocity && (
-                  <div className="lens-card flex items-center justify-between">
-                    <span className="text-sm text-gray-300">Velocity Trend</span>
-                    <span className={`text-sm font-medium ${velocity.trend === 'accelerating' ? 'text-neon-green' : velocity.trend === 'steady progress' ? 'text-neon-cyan' : 'text-red-400'}`}>{velocity.trend as string}</span>
-                  </div>
-                )}
-                {regression && (
-                  <div className="lens-card">
-                    <p className="text-xs text-gray-400 mb-1">Regression fit: <span className={`font-medium ${(regression.rSquared as number) > 0.8 ? 'text-neon-green' : 'text-yellow-400'}`}>{regression.fit as string}</span> (R²={regression.rSquared as number})</p>
-                    <p className="text-xs font-mono text-gray-400">{regression.equation as string}</p>
-                  </div>
-                )}
-              </div>
-            );
-          }
-          return null;
-        })()}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <OKRWorkspace />
       </section>
+
+      <AgentAutonomyPanel />
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ProductivityFeed />
       </section>

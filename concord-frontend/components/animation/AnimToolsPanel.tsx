@@ -387,6 +387,18 @@ function TweenPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
   const [easings, setEasings] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [curve, setCurve] = useState<{ t: number; value: number }[]>([]);
+
+  // Real easing-curve macro sample, so the curve shape (not just the name)
+  // informs which easing to pick before committing a tween.
+  useEffect(() => {
+    let active = true;
+    void lensRun('animation', 'easing-curve', { type: easing, steps: 24 }).then((r) => {
+      if (!active) return;
+      if (r.data?.ok) setCurve((r.data.result as { samples: { t: number; value: number }[] }).samples || []);
+    });
+    return () => { active = false; };
+  }, [easing]);
 
   const W = 240;
   const H = Math.round((anim.height / anim.width) * W) || 140;
@@ -494,6 +506,14 @@ function TweenPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
           {(easings.length ? easings : [easing]).map((e) => <option key={e} value={e}>{e}</option>)}
         </select>
+        {curve.length > 0 && (
+          <svg viewBox="0 0 100 32" className="w-20 h-8 shrink-0" aria-label={`${easing} curve preview`}>
+            <polyline
+              fill="none" stroke="#22d3ee" strokeWidth="2"
+              points={curve.map((s) => `${s.t * 100},${32 - s.value * 32}`).join(' ')}
+            />
+          </svg>
+        )}
         <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
           Steps {steps}
           <input type="range" min={1} max={48} value={steps}
@@ -727,6 +747,13 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
     await loadRig();
   };
 
+  const updateBone = async (bone: RigBone, patch: { name?: string; length?: number }) => {
+    setBones((prev) => prev.map((b) => (b.id === bone.id ? { ...b, ...patch } : b)));
+    await lensRun('animation', 'rig-bone-update', { animId: anim.id, boneId: bone.id, ...patch });
+    await loadRig();
+    onChange();
+  };
+
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-zinc-400">
@@ -758,10 +785,19 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
           {bones.map((b) => (
             <li key={b.id} className="flex items-center gap-2 bg-zinc-950/50 rounded px-2 py-1.5">
               <Bone className="w-3 h-3 text-cyan-400 shrink-0" />
-              <span className="text-[11px] text-zinc-200 w-24 truncate">{b.name}</span>
-              <span className="text-[10px] text-zinc-400 w-16">
+              <input value={b.name} aria-label="Bone name"
+                onChange={(e) => setBones((prev) => prev.map((x) => (x.id === b.id ? { ...x, name: e.target.value } : x)))}
+                onBlur={(e) => { if (e.target.value.trim() && e.target.value !== b.name) void updateBone(b, { name: e.target.value.trim() }); }}
+                className="w-20 bg-transparent border-b border-transparent hover:border-zinc-700 focus:border-cyan-600 text-[11px] text-zinc-200 truncate outline-none" />
+              <span className="text-[10px] text-zinc-400 w-12 shrink-0">
                 {b.parentId ? 'child' : 'root'}
               </span>
+              <label className="flex items-center gap-1 text-[10px] text-zinc-400 shrink-0">
+                len
+                <input type="number" min={4} max={2000} defaultValue={b.length} aria-label="Bone length"
+                  onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v !== b.length) void updateBone(b, { length: v }); }}
+                  className="w-12 bg-zinc-950 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-100" />
+              </label>
               <input type="range" min={-180} max={180} defaultValue={b.angle}
                 onChange={(e) => setBoneAngle(b, Number(e.target.value))}
                 className="flex-1 accent-cyan-500" />
@@ -920,7 +956,8 @@ function SharePanel({ anim }: { anim: Anim }) {
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-zinc-400">
-        Generate a shareable link to this animation. Anyone with the link can view it.
+        Generate a shareable link to this animation. Any signed-in Concord account with the link can view it
+        (fully public, logged-out viewing isn&apos;t wired up yet).
       </p>
       {!share ? (
         <div className="flex flex-wrap items-center gap-2">

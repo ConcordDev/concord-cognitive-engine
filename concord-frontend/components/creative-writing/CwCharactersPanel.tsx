@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, User } from 'lucide-react';
+import { Loader2, Plus, Trash2, User, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +27,8 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
   const [relationships, setRelationships] = useState<{ id: string; kind: string; fromName: string; toName: string }[]>([]);
   const [relForm, setRelForm] = useState({ fromId: '', toId: '', kind: 'friend' });
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', role: 'supporting', description: '', arc: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -68,6 +70,25 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
     await refresh();
   };
 
+  const startEdit = (c: Character) => {
+    setEditingId(c.id);
+    setEditForm({ name: c.name, role: c.role, description: c.description || '', arc: c.arc || '' });
+    setExpanded(c.id);
+  };
+  const cancelEdit = () => setEditingId(null);
+  const saveEdit = async () => {
+    if (!editingId) return;
+    if (!editForm.name.trim()) { setError('Character name is required.'); return; }
+    const r = await lensRun('creative-writing', 'character-update', {
+      characterId: editingId, name: editForm.name.trim(), role: editForm.role,
+      description: editForm.description.trim(), arc: editForm.arc.trim(),
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    setError(null);
+    setEditingId(null);
+    await refresh();
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
@@ -104,23 +125,56 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
         <ul className="space-y-2">
           {characters.map((c) => (
             <li key={c.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-              <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-amber-400 shrink-0" />
-                <button type="button" onClick={() => setExpanded(expanded === c.id ? null : c.id)}
-                  className="flex-1 text-left">
-                  <span className="text-sm font-semibold text-zinc-100">{c.name}</span>
-                  <span className={cn('ml-2 text-[10px] uppercase', ROLE_COLOR[c.role])}>{c.role}</span>
-                </button>
-                <button aria-label="Delete" type="button" onClick={() => delCharacter(c.id)} className="text-zinc-600 hover:text-rose-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              {c.description && <p className="text-[11px] text-zinc-400 mt-1">{c.description}</p>}
-              {expanded === c.id && c.arc && (
-                <div className="mt-2 pt-2 border-t border-zinc-800">
-                  <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-0.5">Arc</p>
-                  <p className="text-[11px] text-zinc-300">{c.arc}</p>
+              {editingId === c.id ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <input autoFocus value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      className="bg-zinc-950 border border-amber-600/50 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                    <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                      className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
+                      {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    <input placeholder="Short description" value={editForm.description}
+                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                  </div>
+                  <input placeholder="Character arc" value={editForm.arc} onChange={(e) => setEditForm({ ...editForm, arc: e.target.value })}
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={saveEdit}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+                      <Check className="w-3.5 h-3.5" /> Save
+                    </button>
+                    <button type="button" onClick={cancelEdit}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg">
+                      <X className="w-3.5 h-3.5" /> Cancel
+                    </button>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-amber-400 shrink-0" />
+                    <button type="button" onClick={() => setExpanded(expanded === c.id ? null : c.id)}
+                      className="flex-1 text-left">
+                      <span className="text-sm font-semibold text-zinc-100">{c.name}</span>
+                      <span className={cn('ml-2 text-[10px] uppercase', ROLE_COLOR[c.role])}>{c.role}</span>
+                    </button>
+                    <button aria-label="Edit character" type="button" onClick={() => startEdit(c)} className="text-zinc-600 hover:text-zinc-300">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button aria-label="Delete" type="button" onClick={() => delCharacter(c.id)} className="text-zinc-600 hover:text-rose-400">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {c.description && <p className="text-[11px] text-zinc-400 mt-1">{c.description}</p>}
+                  {expanded === c.id && c.arc && (
+                    <div className="mt-2 pt-2 border-t border-zinc-800">
+                      <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-0.5">Arc</p>
+                      <p className="text-[11px] text-zinc-300">{c.arc}</p>
+                    </div>
+                  )}
+                </>
               )}
             </li>
           ))}

@@ -10,12 +10,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ChefHat, Loader2, Plus, Trash2, X, CalendarDays, ShoppingCart, Package,
-  Sparkles, BookOpen, Check, Scaling,
+  Sparkles, BookOpen, Check, Scaling, FolderHeart, ChevronLeft,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-type Tab = 'recipes' | 'plan' | 'shopping' | 'pantry';
+type Tab = 'recipes' | 'plan' | 'shopping' | 'pantry' | 'collections';
 
 interface Ingredient { name: string; qty: number | null; unit: string }
 interface Recipe {
@@ -27,6 +27,7 @@ interface PlanEntry { date: string; slot: string; recipeId: string; servings: nu
 interface ShopItem { id: string; name: string; qty: number | null; unit: string; aisle: string; checked: boolean }
 interface PantryItem { id: string; name: string; qty: number | null; unit: string; aisle: string }
 interface CookSuggestion { recipeId: string; title: string; haveCount: number; totalCount: number; coveragePct: number; missing: string[] }
+interface Collection { id: string; number: string; name: string; recipeIds: string[]; recipeCount: number; recipes: Recipe[]; createdAt: string }
 
 const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
 const AISLE_ORDER = ['produce', 'meat', 'seafood', 'dairy', 'bakery', 'frozen', 'pantry', 'beverages', 'other'];
@@ -45,29 +46,35 @@ export function RecipeBoxSection() {
   const [shopping, setShopping] = useState<ShopItem[]>([]);
   const [pantry, setPantry] = useState<PantryItem[]>([]);
   const [suggestions, setSuggestions] = useState<CookSuggestion[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d; });
   const [editRecipe, setEditRecipe] = useState<Partial<Recipe> & { _new?: boolean } | null>(null);
   const [scaleFor, setScaleFor] = useState<{ recipe: Recipe; target: number; scaled: Ingredient[] } | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [newShopItem, setNewShopItem] = useState({ name: '', qty: '', unit: '' });
 
   const dates = useMemo(() => weekDates(weekStart), [weekStart]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [r, p, sh, pa, sg] = await Promise.all([
+      const [r, p, sh, pa, sg, co] = await Promise.all([
         lensRun({ domain: 'cooking', action: 'recipes-list', input: {} }),
         lensRun({ domain: 'cooking', action: 'meal-plan-get', input: { start: dates[0], end: dates[6] } }),
         lensRun({ domain: 'cooking', action: 'shopping-list-get', input: {} }),
         lensRun({ domain: 'cooking', action: 'pantry-list', input: {} }),
         lensRun({ domain: 'cooking', action: 'pantry-cook-suggestions', input: {} }),
+        lensRun({ domain: 'cooking', action: 'collections-list', input: {} }),
       ]);
       setRecipes((r.data?.result?.recipes || []) as Recipe[]);
       setPlanEntries((p.data?.result?.entries || []) as PlanEntry[]);
       setShopping((sh.data?.result?.items || []) as ShopItem[]);
       setPantry((pa.data?.result?.pantry || []) as PantryItem[]);
       setSuggestions((sg.data?.result?.suggestions || []) as CookSuggestion[]);
+      setCollections((co.data?.result?.collections || []) as Collection[]);
     } catch (e) { console.error('[RecipeBox] refresh', e); }
     finally { setLoading(false); }
   }, [dates]);
@@ -145,6 +152,17 @@ export function RecipeBoxSection() {
     try { await lensRun({ domain: 'cooking', action: 'shopping-list-clear', input: { checkedOnly: true } }); await refresh(); }
     catch (e) { console.error('[RecipeBox] clearChecked', e); }
   }
+  async function addShopItem() {
+    if (!newShopItem.name.trim()) return;
+    try {
+      await lensRun({
+        domain: 'cooking', action: 'shopping-list-add',
+        input: { name: newShopItem.name.trim(), qty: newShopItem.qty ? Number(newShopItem.qty) : undefined, unit: newShopItem.unit.trim() },
+      });
+      setNewShopItem({ name: '', qty: '', unit: '' });
+      await refresh();
+    } catch (e) { console.error('[RecipeBox] addShopItem', e); }
+  }
 
   // ── Pantry ──
   async function addPantry() {
@@ -155,6 +173,29 @@ export function RecipeBoxSection() {
   async function delPantry(id: string) {
     try { await lensRun({ domain: 'cooking', action: 'pantry-delete', input: { id } }); await refresh(); }
     catch (e) { console.error('[RecipeBox] delPantry', e); }
+  }
+
+  // ── Collections (recipe folders) ──
+  async function createCollection() {
+    if (!newCollectionName.trim()) return;
+    try {
+      const r = await lensRun({ domain: 'cooking', action: 'collections-create', input: { name: newCollectionName.trim() } });
+      setNewCollectionName('');
+      const created = r.data?.result?.collection as Collection | undefined;
+      await refresh();
+      if (created) setActiveCollectionId(created.id);
+    } catch (e) { console.error('[RecipeBox] createCollection', e); }
+  }
+  async function deleteCollection(id: string) {
+    try {
+      await lensRun({ domain: 'cooking', action: 'collections-delete', input: { id } });
+      if (activeCollectionId === id) setActiveCollectionId(null);
+      await refresh();
+    } catch (e) { console.error('[RecipeBox] deleteCollection', e); }
+  }
+  async function toggleRecipeInCollection(collectionId: string, recipeId: string) {
+    try { await lensRun({ domain: 'cooking', action: 'collections-toggle-recipe', input: { collectionId, recipeId } }); await refresh(); }
+    catch (e) { console.error('[RecipeBox] toggleRecipeInCollection', e); }
   }
 
   const planByKey = useMemo(() => {
@@ -176,7 +217,7 @@ export function RecipeBoxSection() {
         <span className="text-sm font-semibold text-gray-200">Recipe box</span>
         {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
         <nav className="ml-3 flex items-center gap-1">
-          {([['recipes','Recipes',BookOpen],['plan','Meal plan',CalendarDays],['shopping','Shopping',ShoppingCart],['pantry','Pantry',Package]] as const).map(([id,label,Icon]) => (
+          {([['recipes','Recipes',BookOpen],['plan','Meal plan',CalendarDays],['shopping','Shopping',ShoppingCart],['pantry','Pantry',Package],['collections','Collections',FolderHeart]] as const).map(([id,label,Icon]) => (
             <button key={id} onClick={() => setTab(id)} className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded', tab === id ? 'bg-orange-500/15 text-orange-300 border border-orange-500/30' : 'text-gray-400 hover:text-white border border-transparent')}>
               <Icon className="w-3 h-3" />{label}
             </button>
@@ -280,6 +321,14 @@ export function RecipeBoxSection() {
               <button onClick={generateShopping} className="ml-auto px-2 py-1 text-[11px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05]">Regenerate</button>
               <button onClick={clearChecked} className="px-2 py-1 text-[11px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05]">Clear checked</button>
             </div>
+            <div className="flex items-center gap-1.5 bg-black/20 border border-white/5 rounded-lg p-1.5">
+              <input value={newShopItem.name} onChange={e => setNewShopItem({ ...newShopItem, name: e.target.value })}
+                onKeyDown={e => { if (e.key === 'Enter') addShopItem(); }}
+                placeholder="Add item not tied to a recipe (e.g. paper towels)" className="flex-1 min-w-0 bg-lattice-deep border border-lattice-border rounded px-2 py-1 text-xs text-white" />
+              <input value={newShopItem.qty} onChange={e => setNewShopItem({ ...newShopItem, qty: e.target.value })} placeholder="qty" className="w-14 bg-lattice-deep border border-lattice-border rounded px-2 py-1 text-xs text-white font-mono" />
+              <input value={newShopItem.unit} onChange={e => setNewShopItem({ ...newShopItem, unit: e.target.value })} placeholder="unit" className="w-16 bg-lattice-deep border border-lattice-border rounded px-2 py-1 text-xs text-white" />
+              <button onClick={addShopItem} disabled={!newShopItem.name.trim()} className="px-2.5 py-1 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 disabled:opacity-40 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
+            </div>
             {shopping.length === 0 ? (
               <div className="py-10 text-center text-xs text-gray-400"><ShoppingCart className="w-6 h-6 mx-auto mb-2 opacity-30" />Empty. Plan meals then "Generate shopping list".</div>
             ) : (
@@ -351,6 +400,67 @@ export function RecipeBoxSection() {
             </div>
           </div>
         )}
+
+        {/* COLLECTIONS */}
+        {tab === 'collections' && (() => {
+          const active = collections.find(c => c.id === activeCollectionId) || null;
+          if (active) {
+            return (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setActiveCollectionId(null)} className="p-1 rounded border border-white/10 text-gray-300 hover:bg-white/[0.05]" aria-label="Back to collections"><ChevronLeft className="w-3.5 h-3.5" /></button>
+                  <FolderHeart className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-xs font-semibold text-white">{active.name}</span>
+                  <span className="text-[10px] text-gray-400">{active.recipeCount} recipe(s)</span>
+                  <button onClick={() => deleteCollection(active.id)} className="ml-auto px-2 py-0.5 text-[11px] rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10 inline-flex items-center gap-1"><Trash2 className="w-3 h-3" />Delete folder</button>
+                </div>
+                {recipes.length === 0 ? (
+                  <div className="py-10 text-center text-xs text-gray-400">No recipes yet — add some in the Recipes tab first.</div>
+                ) : (
+                  <ul className="divide-y divide-white/5">
+                    {recipes.map(r => {
+                      const inCollection = (active.recipeIds || []).includes(r.id);
+                      return (
+                        <li key={r.id} className="py-1.5 flex items-center gap-2 text-xs">
+                          <button onClick={() => toggleRecipeInCollection(active.id, r.id)} className={cn('w-4 h-4 rounded border flex items-center justify-center shrink-0', inCollection ? 'bg-orange-500 border-orange-500' : 'border-white/20')}>
+                            {inCollection && <Check className="w-3 h-3 text-black" />}
+                          </button>
+                          <span className="flex-1 text-white truncate">{r.title}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            );
+          }
+          return (
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5">
+                <input value={newCollectionName} onChange={e => setNewCollectionName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') createCollection(); }}
+                  placeholder="New folder name (e.g. Weeknight favorites)" className="flex-1 bg-lattice-deep border border-lattice-border rounded px-2 py-1.5 text-xs text-white" />
+                <button onClick={createCollection} disabled={!newCollectionName.trim()} className="px-2.5 py-1.5 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 disabled:opacity-40 inline-flex items-center gap-1"><Plus className="w-3 h-3" />New folder</button>
+              </div>
+              {collections.length === 0 ? (
+                <div className="py-10 text-center text-xs text-gray-400"><FolderHeart className="w-6 h-6 mx-auto mb-2 opacity-30" />No collections yet. Group recipes into folders like "Desserts" or "Meal-prep".</div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                  {collections.map(c => (
+                    <button key={c.id} onClick={() => setActiveCollectionId(c.id)} className="text-left rounded border border-white/10 bg-black/30 p-3 hover:border-orange-500/40 group">
+                      <div className="flex items-center gap-2">
+                        <FolderHeart className="w-4 h-4 text-orange-400" />
+                        <span className="text-sm text-white font-medium truncate flex-1">{c.name}</span>
+                        <span aria-label="Delete" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); deleteCollection(c.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); deleteCollection(c.id); } }} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></span>
+                      </div>
+                      <div className="text-[10px] text-gray-400 mt-1">{c.recipeCount} recipe(s)</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Recipe editor modal */}

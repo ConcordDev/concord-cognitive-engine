@@ -224,7 +224,7 @@ export function KnowledgeWorkbench({
             <LineageTreePanel root={lineageRoot} onSelectNode={handleNodeSelect} />
           )}
           {tab === 'bulk' && (
-            <BulkOpsPanel selectedIds={selected} onClear={() => setSelected([])} />
+            <BulkOpsPanel selectedIds={selected} corpus={corpus} onClear={() => setSelected([])} />
           )}
           {tab === 'compare' && (
             <CompareMergePanel

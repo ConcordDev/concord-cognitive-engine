@@ -2,15 +2,11 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { SpaceflightNewsPanel } from '@/components/space/SpaceflightNewsPanel';
 import { UpcomingLaunchesPanel } from '@/components/space/UpcomingLaunchesPanel';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -18,11 +14,9 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import {
   Rocket, Plus, Search, Trash2, BarChart3,
-  Layers, ChevronDown, MapPin, Users, Radio,
+  MapPin, Users, Radio,
   Orbit, Satellite, Globe, Flame, Timer,
   Eye, AlertTriangle, Zap, Signal, Database,
 } from 'lucide-react';
@@ -35,8 +29,9 @@ import { UpcomingLaunches } from '@/components/space/UpcomingLaunches';
 import { LaunchWatchlist } from '@/components/space/LaunchWatchlist';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { SpaceObservatory } from '@/components/space/SpaceObservatory';
+import { MissionPlanningPanel } from '@/components/space/MissionPlanningPanel';
 
-type ModeTab = 'Dashboard' | 'Missions' | 'Satellites' | 'LaunchOps' | 'Telemetry' | 'Crew' | 'Debris';
+type ModeTab = 'Dashboard' | 'Missions' | 'Satellites' | 'LaunchOps' | 'Telemetry' | 'Crew' | 'Debris' | 'Planning';
 
 interface MissionData {
   name: string;
@@ -88,12 +83,18 @@ const MODE_TABS: { key: ModeTab; label: string; icon: typeof Rocket }[] = [
   { key: 'Telemetry', label: 'Telemetry', icon: Radio },
   { key: 'Crew', label: 'Crew', icon: Users },
   { key: 'Debris', label: 'Debris Track', icon: Orbit },
+  { key: 'Planning', label: 'Mission Planning', icon: Orbit },
 ];
 
+// 'Planning' has no personal-tracker artifact type of its own — it renders
+// the real orbitCalc/deltaVBudget/launchWindow/reentryAnalysis calculators
+// (MissionPlanningPanel) instead of the generic item CRUD, so its "type"
+// is never actually queried against useLensData (see isPlanningTab below).
 function getTypeForTab(tab: ModeTab): string {
   const map: Record<ModeTab, string> = {
     Dashboard: 'Mission', Missions: 'Mission', Satellites: 'Satellite',
     LaunchOps: 'Launch', Telemetry: 'Telemetry', Crew: 'Crew', Debris: 'Debris',
+    Planning: 'Mission',
   };
   return map[tab];
 }
@@ -162,28 +163,22 @@ export default function SpaceLensPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
-
     [
-
       { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
-
       { id: 'tab-launchops', keys: 'l', description: 'LaunchOps', category: 'navigation', action: () => setActiveMode('LaunchOps') },
-
       { id: 'tab-telemetry', keys: 't', description: 'Telemetry', category: 'navigation', action: () => setActiveMode('Telemetry') },
-
       { id: 'tab-missions', keys: 'm', description: 'Missions', category: 'navigation', action: () => setActiveMode('Missions') },
-
-      { id: 'tab-satellites', keys: 's', description: 'Satellites', category: 'navigation', action: () => setActiveMode('Satellites') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
-
-
+      { id: 'tab-satellites', keys: 's', description: 'Satellites', category: 'navigation', action: () => setActiveMode('Satellites') },
+      { id: 'tab-crew', keys: 'c', description: 'Crew', category: 'navigation', action: () => setActiveMode('Crew') },
+      { id: 'tab-debris', keys: 'b', description: 'Debris Track', category: 'navigation', action: () => setActiveMode('Debris') },
+      { id: 'tab-planning', keys: 'p', description: 'Mission Planning', category: 'navigation', action: () => setActiveMode('Planning') },
+      { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
     ],
-
     { lensId: 'space' }
-
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
   const [tick, setTick] = useState(0);
+  const isPlanningTab = activeMode === 'Planning';
 
   // Drive countdown re-renders every second while on LaunchOps
   useEffect(() => {
@@ -275,8 +270,6 @@ export default function SpaceLensPage() {
   return (
     <LensShell lensId="space" asMain={false}>
       <FirstRunTour lensId="space" />
-      <ManifestActionBar />
-      <DepthBadge lensId="space" size="sm" className="ml-2" />
     <div data-lens-theme="space" className={cn(ds.pageContainer, 'space-y-4')}>
 
       {/* Phase 4 (fifth wave) — REAL Spaceflight News + upcoming launches side by side. */}
@@ -303,12 +296,18 @@ export default function SpaceLensPage() {
             </div>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Space Operations</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-white">Space Operations</h1>
+              <DepthBadge lensId="space" size="sm" />
+            </div>
             <p className="text-sm text-gray-400">Missions, satellites, telemetry &amp; orbital management</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {runAction.isPending && <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>}
+          <span className="hidden md:inline text-[10px] text-gray-600" title="d/m/s/l/t/c/b/p switch tab · / focus search">
+            d·m·s·l·t·c·b·p · /
+          </span>
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
           <DTUExportButton domain="space" data={realtimeData || {}} compact />
         </div>
@@ -325,7 +324,13 @@ export default function SpaceLensPage() {
         ))}
       </div>
 
+      {/* ── Mission Planning — real orbitCalc/deltaVBudget/launchWindow/reentryAnalysis
+          calculators (previously unsurfaced; see space-capability-map.md). Not an
+          item-CRUD tab, so it skips the search/create bar + generic item list below. ── */}
+      {isPlanningTab && <MissionPlanningPanel />}
+
       {/* ── Search / Create bar ── */}
+      {!isPlanningTab && (
       <div className="flex items-center gap-2">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -338,6 +343,7 @@ export default function SpaceLensPage() {
           <Plus className="w-4 h-4" /> New {currentType}
         </button>
       </div>
+      )}
 
       {/* ── Dashboard ── */}
       <AnimatePresence mode="wait">
@@ -526,6 +532,7 @@ export default function SpaceLensPage() {
       </AnimatePresence>
 
       {/* ── Item cards ── */}
+      {!isPlanningTab && (
       <div className="space-y-2">
         <AnimatePresence>
           {items.map((item, idx) => {
@@ -651,18 +658,12 @@ export default function SpaceLensPage() {
           </div>
         )}
       </div>
+      )}
 
-      <UniversalActions domain="space" artifactId={items[0]?.id} />
-      <RealtimeDataPanel data={insights} />
+      {insights && insights.length > 0 && (
+        <RealtimeDataPanel domain="space" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+      )}
 
-      <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
-          <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Lens Features</span>
-          <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
-        </button>
-        {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="space" /></div>}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <UpcomingLaunches />
       </section>
@@ -671,12 +672,6 @@ export default function SpaceLensPage() {
         <LaunchWatchlist />
       </section>
     </div>
-
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <a href="#space-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to space content</a>
-          <RecentMineCard domain="space" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="space" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="space" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity, Bluetooth, Calculator, CalendarClock, Camera, GitCompare,
-  Loader2, MapPin, Plus, Shield, Trash2, TrendingUp, Wrench, X,
+  Loader2, MapPin, Pencil, Plus, Shield, Trash2, TrendingUp, Wrench, X,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -67,6 +67,7 @@ const STATUS_COLOUR: Record<string, string> = {
 };
 const OBD_PIDS = ['rpm', 'speed', 'coolantTemp', 'engineLoad', 'intakeTemp', 'throttlePos', 'fuelLevel', 'batteryVoltage'] as const;
 const RENEWAL_KINDS = ['warranty', 'insurance', 'registration', 'inspection', 'lease', 'extended_warranty', 'roadside', 'other'] as const;
+const EMPTY_RENEWAL_FORM = { kind: 'insurance', title: '', provider: '', policyNumber: '', renewalDate: '', premium: '', coverageLimitMiles: '', reminderDays: '30' };
 const ATTACHMENT_KINDS = ['receipt', 'odometer', 'damage', 'document', 'other'] as const;
 
 const TABS: { id: ToolTab; label: string; icon: typeof Activity }[] = [
@@ -879,7 +880,20 @@ function RenewalsTab({ vehicleId, vehicle }: { vehicleId: string; vehicle: Vehic
     kind: 'insurance', title: '', provider: '', policyNumber: '',
     renewalDate: '', premium: '', coverageLimitMiles: '', reminderDays: '30',
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+
+  const startEdit = useCallback((r: Renewal) => {
+    setEditingId(r.id);
+    setForm({
+      kind: r.kind, title: r.title, provider: r.provider, policyNumber: r.policyNumber,
+      renewalDate: r.renewalDate, premium: r.premium != null ? String(r.premium) : '',
+      coverageLimitMiles: r.coverageLimitMiles != null ? String(r.coverageLimitMiles) : '',
+      reminderDays: String(r.reminderDays ?? 30),
+    });
+    setError('');
+  }, []);
+  const cancelEdit = useCallback(() => { setEditingId(null); setForm(EMPTY_RENEWAL_FORM); setError(''); }, []);
 
   const load = useCallback(async () => {
     if (!vehicleId) return;
@@ -897,24 +911,27 @@ function RenewalsTab({ vehicleId, vehicle }: { vehicleId: string; vehicle: Vehic
     if (!vehicleId) { setError('Select a vehicle first'); return; }
     if (!form.renewalDate) { setError('Renewal date required'); return; }
     setError('');
+    const payload = {
+      kind: form.kind,
+      title: form.title.trim() || form.kind,
+      provider: form.provider.trim(),
+      policyNumber: form.policyNumber.trim(),
+      renewalDate: form.renewalDate,
+      premium: form.premium ? Number(form.premium) : undefined,
+      coverageLimitMiles: form.coverageLimitMiles ? Number(form.coverageLimitMiles) : undefined,
+      reminderDays: form.reminderDays ? Number(form.reminderDays) : undefined,
+    };
     try {
-      const r = await lensRun('automotive', 'renewals-create', {
-        vehicleId,
-        kind: form.kind,
-        title: form.title.trim() || form.kind,
-        provider: form.provider.trim(),
-        policyNumber: form.policyNumber.trim(),
-        renewalDate: form.renewalDate,
-        premium: form.premium ? Number(form.premium) : undefined,
-        coverageLimitMiles: form.coverageLimitMiles ? Number(form.coverageLimitMiles) : undefined,
-        reminderDays: form.reminderDays ? Number(form.reminderDays) : undefined,
-      });
+      const r = editingId
+        ? await lensRun('automotive', 'renewals-update', { id: editingId, ...payload })
+        : await lensRun('automotive', 'renewals-create', { vehicleId, ...payload });
       if (r.data?.ok) {
-        setForm({ kind: 'insurance', title: '', provider: '', policyNumber: '', renewalDate: '', premium: '', coverageLimitMiles: '', reminderDays: '30' });
+        setForm(EMPTY_RENEWAL_FORM);
+        setEditingId(null);
         await load();
       } else setError(r.data?.error || 'Could not save renewal');
     } catch (e) { console.error('[Renewals] add', e); setError('Request failed'); }
-  }, [vehicleId, form, load]);
+  }, [vehicleId, form, load, editingId]);
 
   const remove = useCallback(async (id: string) => {
     try { await lensRun('automotive', 'renewals-delete', { id }); await load(); }
@@ -957,9 +974,17 @@ function RenewalsTab({ vehicleId, vehicle }: { vehicleId: string; vehicle: Vehic
           <Field label="Coverage limit (mi)" type="number" value={form.coverageLimitMiles} onChange={(v) => setForm((f) => ({ ...f, coverageLimitMiles: v }))} />
           <Field label="Reminder window (days)" type="number" value={form.reminderDays} onChange={(v) => setForm((f) => ({ ...f, reminderDays: v }))} />
         </div>
-        <button onClick={add} className="px-3 py-1 text-xs rounded bg-sky-500 text-white font-semibold hover:bg-sky-400 inline-flex items-center gap-1">
-          <Plus className="w-3 h-3" />Add renewal
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={add} className="px-3 py-1 text-xs rounded bg-sky-500 text-white font-semibold hover:bg-sky-400 inline-flex items-center gap-1">
+            {editingId ? <Pencil className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+            {editingId ? 'Save changes' : 'Add renewal'}
+          </button>
+          {editingId && (
+            <button onClick={cancelEdit} className="px-3 py-1 text-xs rounded border border-white/10 text-gray-400 hover:text-white">
+              Cancel
+            </button>
+          )}
+        </div>
         {error && <div className="text-[11px] text-rose-300">{error}</div>}
       </div>
       {renewals.length === 0 ? (
@@ -989,6 +1014,9 @@ function RenewalsTab({ vehicleId, vehicle }: { vehicleId: string; vehicle: Vehic
                   </div>
                 )}
               </div>
+              <button onClick={() => startEdit(r)} className="opacity-0 group-hover:opacity-100 text-sky-300" aria-label="Edit renewal">
+                <Pencil className="w-3 h-3" />
+              </button>
               <button onClick={() => remove(r.id)} className="opacity-0 group-hover:opacity-100 text-rose-300" aria-label="Delete renewal">
                 <Trash2 className="w-3 h-3" />
               </button>

@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Users, Loader2, UserPlus, Power, Trash2 } from 'lucide-react';
+import { Users, Loader2, UserPlus, Power, Trash2, ShieldCheck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+
+const PERMISSION_CATALOG = ['products', 'orders', 'customers', 'discounts', 'analytics', 'staff', 'fulfillment', 'campaigns'];
 
 interface StaffMember {
   id: string; name: string; email: string; role: string;
@@ -29,6 +31,9 @@ export function StaffPanel() {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', role: 'cashier' });
   const [notice, setNotice] = useState<string | null>(null);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
+  const [checkPermission, setCheckPermission] = useState<string>(PERMISSION_CATALOG[0]);
+  const [checkResult, setCheckResult] = useState<{ id: string; allowed: boolean } | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -82,6 +87,15 @@ export function StaffPanel() {
     finally { setBusy(false); }
   }
 
+  async function runPermissionCheck(id: string) {
+    setCheckResult(null);
+    try {
+      const r = await lensRun('retail', 'staff-check-permission', { id, permission: checkPermission });
+      if (r.data?.ok === false) { setNotice(r.data.error || 'Permission check failed'); return; }
+      setCheckResult({ id, allowed: Boolean(r.data?.result?.allowed) });
+    } catch (e) { console.error('[Staff] permission check failed', e); }
+  }
+
   return (
     <div className="bg-[#0d1117] border border-emerald-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
@@ -124,6 +138,9 @@ export function StaffPanel() {
                   <button onClick={() => toggleActive(m.id)} disabled={busy} className="p-1 text-gray-400 hover:text-emerald-300" title={m.status === 'active' ? 'Suspend' : 'Activate'}>
                     <Power className="w-3 h-3" />
                   </button>
+                  <button onClick={() => { setCheckingId(checkingId === m.id ? null : m.id); setCheckResult(null); }} disabled={busy} className="p-1 text-gray-400 hover:text-indigo-300" title="Check access">
+                    <ShieldCheck className="w-3 h-3" />
+                  </button>
                   <button aria-label="Delete" onClick={() => remove(m.id)} disabled={busy} className="p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
                 <div className="mt-1 flex flex-wrap gap-1">
@@ -131,6 +148,20 @@ export function StaffPanel() {
                     <span key={p} className="px-1.5 py-0.5 text-[9px] rounded bg-indigo-500/10 text-indigo-300">{p}</span>
                   ))}
                 </div>
+                {checkingId === m.id && (
+                  <div className="mt-1.5 flex items-center gap-1.5 rounded border border-indigo-500/20 bg-indigo-500/5 px-2 py-1.5">
+                    <span className="text-[10px] text-gray-400">Can this staff member access:</span>
+                    <select value={checkPermission} onChange={e => { setCheckPermission(e.target.value); setCheckResult(null); }} className="px-1.5 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
+                      {PERMISSION_CATALOG.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <button onClick={() => runPermissionCheck(m.id)} className="px-2 py-0.5 text-[10px] rounded bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30">Check</button>
+                    {checkResult && checkResult.id === m.id && (
+                      <span className={cn('text-[10px] font-semibold', checkResult.allowed ? 'text-emerald-300' : 'text-rose-300')}>
+                        {checkResult.allowed ? '✓ allowed' : '✗ denied'}
+                      </span>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

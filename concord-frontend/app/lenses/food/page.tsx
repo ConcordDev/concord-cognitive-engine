@@ -345,6 +345,10 @@ export default function FoodLensPage() {
   const [formHourlyRate, setFormHourlyRate] = useState('15');
   const [formPopularity, setFormPopularity] = useState('50');
   const [formSalesVolume, setFormSalesVolume] = useState('0');
+  const [formCalories, setFormCalories] = useState('');
+  const [formProtein, setFormProtein] = useState('');
+  const [formCarbs, setFormCarbs] = useState('');
+  const [formFat, setFormFat] = useState('');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
 
   // Labor tracking
@@ -405,6 +409,7 @@ export default function FoodLensPage() {
     setFormDateTime(''); setFormTableNumber(''); setFormEmployee(''); setFormRole('Line Cook');
     setFormShiftStart(''); setFormShiftEnd(''); setFormStation('Grill'); setFormHourlyRate('15');
     setFormPopularity('50'); setFormSalesVolume('0');
+    setFormCalories(''); setFormProtein(''); setFormCarbs(''); setFormFat('');
     setEditorOpen(true);
   };
 
@@ -426,6 +431,8 @@ export default function FoodLensPage() {
     setFormHourlyRate(String(d.hourlyRate || '15'));
     setFormPopularity(String(d.popularity || '50'));
     setFormSalesVolume(String(d.salesVolume || '0'));
+    setFormCalories(d.calories ? String(d.calories) : ''); setFormProtein(d.protein ? String(d.protein) : '');
+    setFormCarbs(d.carbs ? String(d.carbs) : ''); setFormFat(d.fat ? String(d.fat) : '');
     setEditorOpen(true);
   };
 
@@ -436,7 +443,10 @@ export default function FoodLensPage() {
       cost: parseFloat(formCost) || 0, price: parseFloat(formPrice) || 0, notes: formNotes,
     };
     if (activeArtifactType === 'Recipe') {
-      Object.assign(base, { servings: parseInt(formServings) || 1, prepTime: parseInt(formPrepTime) || 0, cookTime: parseInt(formCookTime) || 0, section: formSection, calories: parseFloat(formNotes.match(/cal:(\d+)/)?.[1] || '0') || 0 });
+      Object.assign(base, {
+        servings: parseInt(formServings) || 1, prepTime: parseInt(formPrepTime) || 0, cookTime: parseInt(formCookTime) || 0, section: formSection,
+        calories: parseFloat(formCalories) || 0, protein: parseFloat(formProtein) || 0, carbs: parseFloat(formCarbs) || 0, fat: parseFloat(formFat) || 0,
+      });
     } else if (activeArtifactType === 'MealPlan') {
       Object.assign(base, { day: formSection, mealType: formCategory, recipeRef: formNotes });
     } else if (activeArtifactType === 'ShoppingItem') {
@@ -784,6 +794,7 @@ export default function FoodLensPage() {
         <div className="flex items-center justify-between">
           <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
             <Trash2 className="w-5 h-5 text-red-400" /> Waste Log
+            <span className="text-[10px] font-normal text-gray-500 normal-case">— session only, not saved to your account</span>
           </h2>
           <button onClick={() => setShowWasteLog(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
         </div>
@@ -1004,6 +1015,7 @@ export default function FoodLensPage() {
         <div className="flex items-center justify-between">
           <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
             <ClipboardList className="w-5 h-5 text-green-400" /> Prep List
+            <span className="text-[10px] font-normal text-gray-500 normal-case">— session only, not saved to your account</span>
           </h2>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
@@ -1095,6 +1107,7 @@ export default function FoodLensPage() {
         <div className="flex items-center justify-between">
           <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
             <Armchair className="w-5 h-5 text-blue-400" /> Floor Plan & Tables
+            <span className="text-[10px] font-normal text-gray-500 normal-case">— session only, not saved to your account</span>
           </h2>
           <button onClick={() => setShowFloorPlan(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
         </div>
@@ -1834,7 +1847,7 @@ export default function FoodLensPage() {
     if (activeTab === 'planner') return <div className="p-4"><MealPlanner /></div>;
     if (activeTab === 'pantry2') return <div className="p-4"><PantryTracker /></div>;
     if (activeTab === 'platescan') return <div className="p-4"><PlateScan /></div>;
-    if (activeTab === 'import') return <div className="p-4"><RecipeImporter /></div>;
+    if (activeTab === 'import') return <div className="p-4"><RecipeImporter onSaved={() => refetchDTUs()} /></div>;
     if (activeTab === 'scaler') return <div className="p-4 max-w-xl"><RecipeScaler baseServings={4} ingredients={[{ qty: 2, unit: 'cup', item: 'flour' }, { qty: 1, unit: 'tsp', item: 'salt' }, { qty: 1, unit: 'cup', item: 'water' }]} /></div>;
     if (activeTab === 'cookmode') return (
       <div className="p-4">
@@ -2225,19 +2238,19 @@ export default function FoodLensPage() {
                     <div className={ds.grid4}>
                       <div>
                         <label className={ds.label}>Calories</label>
-                        <input type="number" className={ds.input} placeholder="0" />
+                        <input type="number" value={formCalories} onChange={e => setFormCalories(e.target.value)} className={ds.input} placeholder="0" />
                       </div>
                       <div>
                         <label className={ds.label}>Protein (g)</label>
-                        <input type="number" className={ds.input} placeholder="0" />
+                        <input type="number" value={formProtein} onChange={e => setFormProtein(e.target.value)} className={ds.input} placeholder="0" />
                       </div>
                       <div>
                         <label className={ds.label}>Carbs (g)</label>
-                        <input type="number" className={ds.input} placeholder="0" />
+                        <input type="number" value={formCarbs} onChange={e => setFormCarbs(e.target.value)} className={ds.input} placeholder="0" />
                       </div>
                       <div>
                         <label className={ds.label}>Fat (g)</label>
-                        <input type="number" className={ds.input} placeholder="0" />
+                        <input type="number" value={formFat} onChange={e => setFormFat(e.target.value)} className={ds.input} placeholder="0" />
                       </div>
                     </div>
                   </div>

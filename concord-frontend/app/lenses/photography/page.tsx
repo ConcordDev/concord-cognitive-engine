@@ -27,9 +27,8 @@ import {
   Camera, Search, Upload, Grid, Image as ImageIcon,
   Heart, Eye, X, Download,
   Aperture, Sliders, BarChart3,
-  Layers, ChevronLeft, ChevronRight, Focus, Play, Loader2,
+  Layers, ChevronLeft, ChevronRight, Focus,
 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -74,20 +73,6 @@ export default function PhotographyPage() {
 
   const { items: photoItems, isLoading, isError, error, refetch, create: createPhoto, update: updatePhoto } = useLensData<PhotoItem>('photography', 'photo', { seed: [] });
   const photos = useMemo(() => photoItems.map(i => ({ ...(i.data as unknown as PhotoItem), id: i.id, title: i.title })), [photoItems]);
-
-  const runAction = useRunArtifact('photography');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handlePhotoAction = async (action: string) => {
-    const targetId = photoItems[0]?.id;
-    if (!targetId) { setActionResult({ message: 'Upload a photo first to run analysis.' }); return; }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
 
   const [tab, setTab] = useState<PhotoTab>('gallery');
   const [searchQuery, setSearchQuery] = useState('');
@@ -425,71 +410,6 @@ export default function PhotographyPage() {
         {showFeatures && <LensFeaturePanel lensId="photography" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
       <UniversalActions domain="photography" artifactId={null} compact />
-
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Camera className="w-4 h-4 text-neon-cyan" />
-          Photo Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'exposureCalc', label: 'Exposure Calc' },
-            { action: 'compositionAnalysis', label: 'Composition' },
-            { action: 'gearRecommend', label: 'Gear Recommend' },
-            { action: 'printSize', label: 'Print Size' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handlePhotoAction(action)} disabled={!!isRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
-              {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'iso' in actionResult && 'aperture' in actionResult && (
-              <div className="flex flex-wrap gap-4 text-xs">
-                <span className="text-gray-400">ISO: <span className="text-neon-cyan font-bold">{String(actionResult.iso)}</span></span>
-                <span className="text-gray-400">Aperture: <span className="text-neon-cyan">{String(actionResult.aperture)}</span></span>
-                <span className="text-gray-400">Shutter: <span className="text-neon-cyan">{String(actionResult.shutterSpeed)}</span></span>
-                <span className="text-gray-400">EV: <span className="text-neon-green">{String(actionResult.ev)}</span></span>
-                <span className="text-gray-400">Handheld: <span className={actionResult.handheld ? 'text-neon-green' : 'text-red-400'}>{String(actionResult.handheld)}</span></span>
-              </div>
-            )}
-            {'rulesApplied' in actionResult && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <span className="text-neon-cyan font-bold text-lg">{String(actionResult.score)}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    actionResult.strength === 'strong-composition' ? 'bg-neon-green/20 text-neon-green' :
-                    actionResult.strength === 'basic-composition' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-gray-500/20 text-gray-400'
-                  }`}>{String(actionResult.strength)}</span>
-                </div>
-                {'suggestions' in actionResult && Array.isArray(actionResult.suggestions) && actionResult.suggestions.length > 0 && (
-                  <div className="space-y-1">
-                    {(actionResult.suggestions as string[]).map((s, i) => <p key={i} className="text-xs text-gray-300">• {s}</p>)}
-                  </div>
-                )}
-              </div>
-            )}
-            {'genre' in actionResult && 'recommendation' in actionResult && (
-              <div className="space-y-1 text-xs">
-                <span className="text-gray-400">Genre: <span className="text-neon-cyan">{String(actionResult.genre)}</span></span>
-                {'tip' in actionResult && <p className="text-gray-300 mt-1">{String(actionResult.tip)}</p>}
-              </div>
-            )}
-            {'megapixels' in actionResult && (
-              <div className="flex flex-wrap gap-4 text-xs">
-                <span className="text-gray-400">MP: <span className="text-neon-cyan">{String(actionResult.megapixels)}</span></span>
-                <span className="text-gray-400">Max Print: <span className="text-neon-green">{String(actionResult.maxPrintAt300DPI)}</span></span>
-                <span className="text-gray-400">Quality: <span className="text-yellow-400">{String(actionResult.quality)}</span></span>
-              </div>
-            )}
-            {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
-          </div>
-        )}
-      </div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/10">

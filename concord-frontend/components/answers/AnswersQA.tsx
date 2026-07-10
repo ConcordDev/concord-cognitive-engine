@@ -19,7 +19,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   MessageSquarePlus, ChevronUp, ChevronDown, Check, Award, Loader2,
   Search, ArrowLeft, Tag, Eye, Pencil, History, Copy, Bookmark, XCircle,
-  Lock, ShieldAlert,
+  Lock, ShieldAlert, Trash2, X,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -54,6 +54,9 @@ interface Dash {
   questions: number; unanswered: number; answered: number; totalAnswers: number;
   totalViews: number; openBounties: number; reputation: number;
 }
+interface ReputationBadge {
+  reputation: number; badge: string; questionsAsked: number; answersPosted: number; acceptedAnswers: number;
+}
 
 const SORTS = [
   { id: 'newest', label: 'Newest' },
@@ -76,9 +79,11 @@ export function AnswersQA() {
   const [questions, setQuestions] = useState<QSummary[]>([]);
   const [detail, setDetail] = useState<QDetail | null>(null);
   const [dash, setDash] = useState<Dash | null>(null);
+  const [repBadge, setRepBadge] = useState<ReputationBadge | null>(null);
   const [sort, setSort] = useState('newest');
   const [filter, setFilter] = useState('');
   const [query, setQuery] = useState('');
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidePanel, setSidePanel] = useState<SidePanel>('none');
   const [notifKey, setNotifKey] = useState(0);
@@ -102,14 +107,16 @@ export function AnswersQA() {
 
   const refreshList = useCallback(async () => {
     setLoading(true);
-    const [ql, d] = await Promise.all([
-      lensRun('answers', 'question-list', { sort, filter, query: query.trim() }),
+    const [ql, d, rep] = await Promise.all([
+      lensRun('answers', 'question-list', { sort, filter, query: query.trim(), tag: tagFilter || undefined }),
       lensRun('answers', 'dashboard', {}),
+      lensRun('answers', 'user-reputation', {}),
     ]);
     setQuestions((ql.data?.result?.questions as QSummary[]) || []);
     setDash((d.data?.result as Dash) || null);
+    setRepBadge((rep.data?.result as ReputationBadge) || null);
     setLoading(false);
-  }, [sort, filter, query]);
+  }, [sort, filter, query, tagFilter]);
 
   useEffect(() => { if (view === 'list') void refreshList(); }, [view, refreshList]);
 
@@ -212,6 +219,24 @@ export function AnswersQA() {
     if (!detail) return;
     const r = await lensRun('answers', 'reopen', { questionId: detail.id });
     if (!r.data?.ok) { setDetailMsg(r.data?.error || 'Could not reopen.'); return; }
+    await reloadDetail();
+  }
+
+  // ── delete (question / answer) ───────────────────────────────────
+  async function deleteQuestion() {
+    if (!detail) return;
+    if (!window.confirm('Delete this question and all its answers? This cannot be undone.')) return;
+    const r = await lensRun('answers', 'question-delete', { id: detail.id });
+    if (!r.data?.ok) { setDetailMsg(r.data?.error || 'Could not delete question.'); return; }
+    setDetail(null);
+    setView('list');
+    await refreshList();
+  }
+  async function deleteAnswer(answerId: string) {
+    if (!detail) return;
+    if (!window.confirm('Delete this answer?')) return;
+    const r = await lensRun('answers', 'answer-delete', { questionId: detail.id, answerId });
+    if (!r.data?.ok) { setDetailMsg(r.data?.error || 'Could not delete answer.'); return; }
     await reloadDetail();
   }
 
@@ -321,6 +346,11 @@ export function AnswersQA() {
                     {isAuthor && (
                       <button onClick={beginEditQuestion} className="text-[10px] text-zinc-400 hover:text-orange-300 inline-flex items-center gap-0.5">
                         <Pencil className="w-2.5 h-2.5" />Edit
+                      </button>
+                    )}
+                    {isAuthor && (
+                      <button onClick={deleteQuestion} className="text-[10px] text-zinc-400 hover:text-rose-300 inline-flex items-center gap-0.5">
+                        <Trash2 className="w-2.5 h-2.5" />Delete
                       </button>
                     )}
                     <button
@@ -439,6 +469,12 @@ export function AnswersQA() {
                         <Pencil className="w-2.5 h-2.5" />Edit
                       </button>
                       <button
+                        onClick={() => deleteAnswer(a.id)}
+                        className="text-[10px] text-zinc-400 hover:text-rose-300 inline-flex items-center gap-0.5"
+                      >
+                        <Trash2 className="w-2.5 h-2.5" />Delete
+                      </button>
+                      <button
                         onClick={() => setRevisionTarget(
                           revisionTarget?.answerId === a.id ? null : { answerId: a.id }
                         )}
@@ -514,7 +550,13 @@ export function AnswersQA() {
       {sidePanel !== 'none' && (
         <div className="border-b border-zinc-800 bg-zinc-900/30 px-4 py-3">
           {sidePanel === 'privileges' && <PrivilegePanel refreshKey={notifKey} />}
-          {sidePanel === 'tags' && <TagWatchPanel onChanged={() => setNotifKey((k) => k + 1)} />}
+          {sidePanel === 'tags' && (
+            <TagWatchPanel
+              onChanged={() => setNotifKey((k) => k + 1)}
+              onFilterTag={(t) => setTagFilter(t)}
+              activeTagFilter={tagFilter}
+            />
+          )}
           {sidePanel === 'moderation' && <ModerationQueue onResolved={() => setNotifKey((k) => k + 1)} />}
         </div>
       )}
@@ -524,7 +566,21 @@ export function AnswersQA() {
           {(([['Questions', dash.questions], ['Answered', dash.answered], ['Unanswered', dash.unanswered],
              ['Answers', dash.totalAnswers], ['Views', dash.totalViews], ['Reputation', dash.reputation]]) as const).map(([l, v]) => (
             <div key={l} className="text-center">
-              <p className="text-lg font-bold text-zinc-100">{v}</p>
+              <p className="text-lg font-bold text-zinc-100">
+                {v}
+                {l === 'Reputation' && repBadge && (
+                  <span
+                    title={`${repBadge.questionsAsked} asked · ${repBadge.answersPosted} answered · ${repBadge.acceptedAnswers} accepted`}
+                    className={cn('ml-1.5 align-middle text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide',
+                      repBadge.badge === 'trusted' ? 'bg-emerald-900/50 text-emerald-300' :
+                      repBadge.badge === 'established' ? 'bg-orange-900/50 text-orange-300' :
+                      repBadge.badge === 'contributor' ? 'bg-sky-900/50 text-sky-300' :
+                      'bg-zinc-800 text-zinc-400')}
+                  >
+                    {repBadge.badge}
+                  </span>
+                )}
+              </p>
               <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
@@ -555,6 +611,14 @@ export function AnswersQA() {
             </button>
           ))}
         </div>
+        {tagFilter && (
+          <button
+            onClick={() => setTagFilter(null)}
+            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded bg-orange-900/40 text-orange-300 hover:bg-orange-900/60"
+          >
+            <Tag className="w-2.5 h-2.5" />{tagFilter}<X className="w-2.5 h-2.5" />
+          </button>
+        )}
       </div>
 
       <div className="divide-y divide-zinc-800">

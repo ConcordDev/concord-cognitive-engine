@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DollarSign, Loader2, Search, Star } from 'lucide-react';
+import { DollarSign, Loader2, Search, Star, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -21,17 +21,33 @@ export function QuoteCompare() {
   const [coverage, setCoverage] = useState<'minimum' | 'standard' | 'premium'>('standard');
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function getQuotes() {
     setLoading(true);
+    setError(null);
     try {
       const res = await lensRun({
         domain: 'insurance', action: 'quotes-compare',
         input: { kind, zip, coverage },
       });
-      setQuotes((res.data?.result?.quotes || []) as Quote[]);
-    } catch (e) { console.error('[Quote] failed', e); }
-    finally { setLoading(false); }
+      // quotes-compare is an honest-failure macro by design — Concord does not
+      // fabricate carrier premiums. It always returns ok:false with a message
+      // that a live broker API key is required. Surface that message instead
+      // of silently rendering an empty "click Compare" state, which reads as
+      // "you forgot to search" rather than "this needs a key."
+      if (res.data?.ok === false) {
+        setError((res.data as { error?: string })?.error || 'Live quotes are not available.');
+        setQuotes([]);
+      } else {
+        setQuotes((res.data?.result?.quotes || []) as Quote[]);
+      }
+    } catch (e) {
+      console.error('[Quote] failed', e);
+      setError('Quote comparison request failed.');
+    }
+    finally { setLoading(false); setSearched(true); }
   }
 
   const sorted = [...quotes].sort((a, b) => a.annualPremium - b.annualPremium);
@@ -65,11 +81,17 @@ export function QuoteCompare() {
           Save up to ${savings.toFixed(0)}/yr by switching carriers.
         </div>
       )}
+      {error && (
+        <div className="mx-3 mt-3 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 flex items-start gap-2">
+          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-400" />
+          <span>{error}</span>
+        </div>
+      )}
       <ul className="divide-y divide-white/5 max-h-96 overflow-y-auto">
         {loading ? (
           <li className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Polling carriers…</li>
-        ) : sorted.length === 0 ? (
-          <li className="px-3 py-8 text-center text-xs text-gray-400">Click Compare to see quotes.</li>
+        ) : sorted.length === 0 && !error ? (
+          <li className="px-3 py-8 text-center text-xs text-gray-400">{searched ? 'No quotes returned.' : 'Click Compare to see quotes.'}</li>
         ) : (
           sorted.map((q, i) => (
             <li key={q.carrier} className={cn('px-3 py-2', i === 0 && 'bg-green-500/5')}>

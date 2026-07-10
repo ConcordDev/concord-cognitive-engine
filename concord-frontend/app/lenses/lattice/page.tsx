@@ -47,11 +47,12 @@ import { RefreshSchedule } from '@/components/lattice/RefreshSchedule';
 import { AuditAndDrift } from '@/components/lattice/AuditAndDrift';
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useState } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Network, Brain, ShieldCheck, History, Activity,
   Loader2, RefreshCw, Check, X, LineChart, CalendarClock, ScrollText,
-  AlertTriangle, type LucideIcon,
+  AlertTriangle, Info, type LucideIcon,
 } from 'lucide-react';
 
 type TabKey =
@@ -265,6 +266,22 @@ export default function LatticeLensPage() {
                   </div>
                 </>
               )}
+              <div className="mt-6 flex items-start gap-2 rounded border border-fuchsia-900/30 bg-fuchsia-950/10 px-3 py-2.5 text-xs text-fuchsia-600">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fuchsia-500" aria-hidden />
+                <p>
+                  This lens surfaces the <span className="text-fuchsia-400">brain self-training pipeline</span> only
+                  (consent corpus, per-brain refresh, MLOps run tracking) — the backend&apos;s <code className="rounded bg-fuchsia-950/40 px-1">lattice</code>{' '}
+                  macro domain (<code className="rounded bg-fuchsia-950/40 px-1">beacon</code> /{' '}
+                  <code className="rounded bg-fuchsia-950/40 px-1">birth_protocol</code> /{' '}
+                  <code className="rounded bg-fuchsia-950/40 px-1">resonance</code>) is an unrelated, coincidentally
+                  same-named subsystem — the Chicken2 reality-anchor / continuity-verification substrate. Its
+                  homeostasis, continuity and contradiction-load metrics are surfaced in the{' '}
+                  <Link href="/lenses/admin#admin-section-reality-guard" className="underline decoration-dotted underline-offset-2 hover:text-fuchsia-300">
+                    Admin lens&apos;s Reality Guard panel
+                  </Link>
+                  , not duplicated here.
+                </p>
+              </div>
             </Section>
           )}
 

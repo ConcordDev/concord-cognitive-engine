@@ -1,10 +1,78 @@
 'use client';
 
 import { useState } from 'react';
-import { Database, Search, Loader2, ExternalLink } from 'lucide-react';
+import { Database, Search, Loader2, ExternalLink, Stamp, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Dataset { id: string; name: string; title: string; organization: string; notes: string; resourceCount: number; firstResourceUrl: string | null; firstResourceFormat: string | null; lastModified: string | null }
+
+interface IngestDtu {
+  content: { name: string; ingestKind: string; source: { url: string | null; id: string | null }; record: Record<string, unknown> };
+  metadata?: { provenance?: { sourceUrl: string | null; sourceId: string | null; contentSha256: string; fetchedAt: string } };
+}
+interface IngestResult { dtu: IngestDtu; readyForDtuCreate: boolean; source: string }
+
+// Provenance-stamped ingest → real DTU. `government.open-data-ingest` fetches
+// ONE real data.gov record and wraps it in a C2PA-style provenance-stamped
+// envelope (sourceUrl + contentSha256 + fetchedAt) — a shared Wave-1 primitive
+// (docs/NEXT_ARC_PLAN.md). Previously this macro had zero callers anywhere:
+// the search results above rendered, but nothing could turn a result into a
+// citable Concord DTU. This wires that path end to end: ingest (server-side
+// fetch + stamp) → dtu.create (persist as a real, citable DTU carrying the
+// provenance block in its meta), using only the real fetched fields — no
+// invented content.
+function IngestButton({ dataset }: { dataset: Dataset }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function ingest() {
+    setState('busy'); setMessage(null);
+    try {
+      const ing = await lensRun<IngestResult>('government', 'open-data-ingest', { id: dataset.id });
+      if (ing.data?.ok === false || !ing.data?.result) {
+        setState('error'); setMessage(ing.data?.error || 'ingest failed'); return;
+      }
+      const { dtu } = ing.data.result;
+      const record = dtu.content.record as { title?: string; organization?: string; notes?: string; resourceCount?: number; firstResourceUrl?: string | null };
+      const provenance = dtu.metadata?.provenance;
+      const contentLines = [
+        record.title || dtu.content.name,
+        record.organization ? `Organization: ${record.organization}` : null,
+        record.notes || null,
+        record.firstResourceUrl ? `Primary resource: ${record.firstResourceUrl}` : null,
+        provenance ? `Source: ${provenance.sourceUrl} · fetched ${provenance.fetchedAt} · sha256 ${provenance.contentSha256.slice(0, 16)}…` : null,
+      ].filter(Boolean).join('\n');
+      const created = await lensRun('dtu', 'create', {
+        title: record.title || dtu.content.name,
+        content: contentLines,
+        tags: ['open-data', 'government', 'data.gov'],
+        source: 'data.gov',
+        meta: { provenance, ingestKind: dtu.content.ingestKind, sourceDatasetId: dataset.id },
+      });
+      if (created.data?.ok === false) { setState('error'); setMessage(created.data?.error || 'dtu.create failed'); return; }
+      setState('done'); setMessage('Saved as a provenance-stamped DTU.');
+    } catch (e) {
+      setState('error'); setMessage(e instanceof Error ? e.message : 'ingest failed');
+    }
+  }
+
+  if (state === 'done') {
+    return <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-emerald-300"><Check className="w-2.5 h-2.5" />{message}</span>;
+  }
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      <button
+        onClick={ingest} disabled={state === 'busy'}
+        className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-40"
+        title="Fetch this record from data.gov, stamp its provenance (source URL + content hash), and save it as a citable DTU"
+      >
+        {state === 'busy' ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Stamp className="w-2.5 h-2.5" />}
+        Ingest as DTU
+      </button>
+      {state === 'error' && <span className="text-[10px] text-rose-400">{message}</span>}
+    </div>
+  );
+}
 
 export function OpenDataExplorer() {
   const [query, setQuery] = useState('');
@@ -64,6 +132,7 @@ export function OpenDataExplorer() {
                         <ExternalLink className="w-2.5 h-2.5" /> {d.firstResourceFormat || 'open'} · {d.resourceCount} files
                       </a>
                     )}
+                    <IngestButton dataset={d} />
                   </div>
                 </div>
               </li>

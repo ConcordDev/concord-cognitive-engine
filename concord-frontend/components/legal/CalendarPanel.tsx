@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Loader2, Plus, AlertCircle, Gavel, Users, FileText } from 'lucide-react';
+import { Calendar, Loader2, Plus, AlertCircle, Gavel, Users, FileText, ScanText, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,10 @@ const KIND_ICON: Record<CalEvent['kind'], typeof Calendar> = {
 };
 
 const KINDS: CalEvent['kind'][] = ['deadline', 'hearing', 'meeting', 'filing', 'other'];
+
+interface CourtDocSuggestion {
+  kind: 'deadline' | 'hearing'; source: string; days?: number; context: string; suggestedDate: string;
+}
 
 const RULES = [
   { id: 'frcp-12-answer',          name: 'FRCP 12(a)(1)(A) — Answer (21 days)' },
@@ -40,6 +44,13 @@ export function CalendarPanel() {
   const [draft, setDraft] = useState<{ title: string; kind: CalEvent['kind']; date: string; time: string; location: string; matterId: string; description: string }>({ title: '', kind: 'deadline', date: '', time: '', location: '', matterId: '', description: '' });
   const [calc, setCalc] = useState({ rule: '', triggerDate: '', matterId: '' });
   const [calcResult, setCalcResult] = useState<{ rule: string; ruleName: string; adjustedDeadline: string; rawDeadline: string; rolledForward: boolean; days: number } | null>(null);
+  const [showParse, setShowParse] = useState(false);
+  const [docText, setDocText] = useState('');
+  const [parseMatterId, setParseMatterId] = useState('');
+  const [parseTriggerDate, setParseTriggerDate] = useState('');
+  const [suggestions, setSuggestions] = useState<CourtDocSuggestion[] | null>(null);
+  const [parseBusy, setParseBusy] = useState(false);
+  const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => { refresh(); }, []);
 
@@ -95,6 +106,40 @@ export function CalendarPanel() {
     } catch (e) { console.error('[Calendar] book calc failed', e); }
   }
 
+  async function parseCourtDoc() {
+    if (docText.trim().length < 40) return;
+    setParseBusy(true);
+    setSuggestions(null);
+    setAddedKeys(new Set());
+    try {
+      const r = await lensRun({
+        domain: 'legal', action: 'ai-court-doc-to-calendar',
+        input: { text: docText.trim(), triggerDate: parseTriggerDate || undefined },
+      });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      setSuggestions((r.data?.result?.suggestions || []) as CourtDocSuggestion[]);
+    } catch (e) { console.error('[Calendar] parse court doc failed', e); }
+    finally { setParseBusy(false); }
+  }
+
+  async function addSuggestion(s: CourtDocSuggestion, key: string) {
+    try {
+      await lensRun({
+        domain: 'legal', action: 'calendar-create',
+        input: {
+          title: s.kind === 'hearing' ? 'Hearing (from court document)' : `Deadline${s.days ? ` (${s.days} days)` : ''} (from court document)`,
+          kind: s.kind,
+          date: s.suggestedDate,
+          matterId: parseMatterId || undefined,
+          description: s.context,
+          sourceRule: s.source,
+        },
+      });
+      setAddedKeys((prev) => new Set(prev).add(key));
+      await refresh();
+    } catch (e) { console.error('[Calendar] add suggestion failed', e); }
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = list.filter(e => e.date >= today);
   const past = list.filter(e => e.date < today);
@@ -130,6 +175,58 @@ export function CalendarPanel() {
                 </div>
                 <button onClick={bookCalcResult} className="mt-2 px-2.5 py-1 text-[11px] rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Add to calendar</button>
               </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Court document deadline parser (Clio Manage AI parity) */}
+      <div className="bg-amber-500/[0.05] border border-amber-500/20 rounded-lg overflow-hidden">
+        <header className="px-4 py-2.5 border-b border-amber-500/20 flex items-center gap-2">
+          <ScanText className="w-4 h-4 text-amber-400" />
+          <span className="text-sm font-semibold text-amber-200">Parse court document for deadlines</span>
+          <button onClick={() => setShowParse(v => !v)} className="ml-auto text-[10px] text-amber-300 underline">{showParse ? 'Hide' : 'Paste a document'}</button>
+        </header>
+        {showParse && (
+          <div className="p-3 space-y-2">
+            <textarea value={docText} onChange={e => setDocText(e.target.value)} rows={5}
+              placeholder="Paste the body of a court order, notice, or scheduling document…"
+              className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <div className="grid grid-cols-12 gap-2">
+              <input type="date" value={parseTriggerDate} onChange={e => setParseTriggerDate(e.target.value)} title="Trigger date for 'within N days' clauses (defaults to today)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+              <select value={parseMatterId} onChange={e => setParseMatterId(e.target.value)} className="col-span-5 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                <option value="">No matter</option>
+                {matters.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+              <button onClick={parseCourtDoc} disabled={docText.trim().length < 40 || parseBusy} className="col-span-4 px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
+                {parseBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}Extract deadlines
+              </button>
+            </div>
+            {suggestions && (
+              suggestions.length === 0 ? (
+                <p className="text-xs text-gray-400 italic">No deadline or hearing language detected in that text.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {suggestions.map((s, i) => {
+                    const key = `${s.suggestedDate}-${s.kind}-${i}`;
+                    const added = addedKeys.has(key);
+                    return (
+                      <li key={key} className="rounded border border-white/10 bg-black/30 p-2 flex items-start gap-2">
+                        <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded shrink-0', s.kind === 'hearing' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-rose-500/15 text-rose-300')}>{s.kind}</span>
+                        <div className="flex-1 min-w-0 text-xs">
+                          <div className="text-white font-mono">{s.suggestedDate}{s.days ? ` · ${s.days} days` : ''}</div>
+                          <div className="text-[10px] text-gray-400 truncate">&hellip;{s.context}&hellip;</div>
+                        </div>
+                        <button onClick={() => addSuggestion(s, key)} disabled={added}
+                          className="shrink-0 px-2 py-1 text-[10px] rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 disabled:opacity-40 inline-flex items-center gap-1">
+                          {added ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                          {added ? 'Added' : 'Add to calendar'}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )
             )}
           </div>
         )}

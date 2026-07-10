@@ -173,6 +173,52 @@ export interface LensEntry {
   coreLens?: CoreLensId;
   /** Display label when shown as a sub-tab inside a core lens */
   tabLabel?: string;
+
+  // ── Capability contract (optional — added incrementally; most of the
+  // 260+ existing entries below don't populate these yet, which is fine,
+  // they're additive metadata, not an enforcement gate) ─────────────────
+
+  /**
+   * Data domains/capabilities this lens needs (e.g. `'dtu:read'`,
+   * `'wallet:read'`, `'world:write'`). Informational only for now — there
+   * is no runtime enforcement engine reading this field yet. Populate it
+   * as a lens's real data dependencies are known so a future gate can be
+   * built on real declarations instead of guesses.
+   */
+  permissions?: string[];
+
+  /**
+   * DTU `kind` values (e.g. `'note'`, `'recipe'`, `'spell_recipe'`,
+   * `'photo'`) this lens can meaningfully ingest — i.e. a DTU of this kind
+   * dropped/pasted/cited into this lens will do something lens-specific
+   * with it rather than being treated as generic text. Consumed by the DTU
+   * Clipboard / cross-lens drag-drop work to decide which lenses to offer
+   * as drop targets for a given DTU. `kind` is a free-form string across
+   * the backend (no fixed enum — see `server/domains/*.js` `kind:` writes),
+   * so this field is free-form too; keep values lowercase/snake_case to
+   * match what's actually written to `dtus.kind`.
+   */
+  supportedDtuSchemas?: string[];
+
+  /**
+   * The primary backend macro domain this lens calls via
+   * `POST /api/lens/run { domain, name, input }` (the string registered
+   * server-side via `register(domain, ...)` / `registerLensAction(domain,
+   * ...)` in `server/domains/*.js` or `server/server.js`). Many lenses call
+   * more than one domain (core lenses absorb several); this names only the
+   * dominant/primary one. Verified against the live macro registry by
+   * `scripts/validate-lens-contract.mjs` — don't hand-assert a value that
+   * script would flag as unregistered.
+   */
+  macroDomain?: string;
+
+  /**
+   * Contract shape version for this entry. Absent means version 1 — bump
+   * only when the *meaning* of the fields above changes for this entry in
+   * a way old consumers must not assume (e.g. permissions strings switch
+   * from domain names to scoped `domain:verb` form).
+   */
+  version?: number;
 }
 
 // ── Core Lens Consolidation ──────────────────────────────────────
@@ -350,6 +396,10 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/code',
     order: 4,
     keywords: ['editor', 'programming', 'dev', 'debug', 'database'],
+    permissions: ['dtu:read', 'dtu:write', 'code:execute'],
+    supportedDtuSchemas: ['snippet', 'repo_summary'],
+    macroDomain: 'code',
+    version: 1,
   },
   {
     id: 'studio',
@@ -374,6 +424,10 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/dtus',
     order: 6,
     keywords: ['dtu', 'browse', 'search', 'thoughts', 'knowledge', 'units'],
+    permissions: ['dtu:read', 'dtu:write'],
+    supportedDtuSchemas: ['*'],
+    macroDomain: 'dtu',
+    version: 1,
   },
   {
     id: 'literary',
@@ -386,6 +440,10 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/literary',
     order: 7,
     keywords: ['literature', 'book', 'poem', 'classic', 'shakespeare', 'semantic', 'resonance', 'provenance', 'gutenberg'],
+    permissions: ['dtu:read'],
+    supportedDtuSchemas: ['literary_work', 'literary_passage'],
+    macroDomain: 'literary',
+    version: 1,
   },
 
   // ── Absorbed into Chat ──────────────────────────────────────────
@@ -716,6 +774,10 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['audio', 'composition', 'sound'],
     coreLens: 'studio',
     tabLabel: 'Music',
+    permissions: ['dtu:read', 'dtu:write'],
+    supportedDtuSchemas: ['track', 'playlist', 'soundscape'],
+    macroDomain: 'music',
+    version: 1,
   },
   {
     id: 'art',
@@ -1601,6 +1663,10 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/accounting',
     order: 205,
     keywords: ['bookkeeping', 'invoicing', 'tax', 'payroll'],
+    permissions: ['dtu:read', 'dtu:write', 'wallet:read'],
+    supportedDtuSchemas: ['invoice', 'ledger_entry', 'financial_report'],
+    macroDomain: 'accounting',
+    version: 1,
   },
   {
     id: 'agriculture',
@@ -2480,6 +2546,10 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/atlas',
     order: 361,
     keywords: ['map', 'geography', 'location', 'terrain'],
+    permissions: ['dtu:read'],
+    supportedDtuSchemas: ['place', 'route'],
+    macroDomain: 'atlas',
+    version: 1,
   },
   {
     id: 'history',
@@ -2606,6 +2676,10 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/crafting',
     order: 10,
     keywords: ['crafting', 'recipes', 'fighting style', 'spell', 'blueprint'],
+    permissions: ['dtu:read', 'dtu:write', 'wallet:read'],
+    supportedDtuSchemas: ['fighting_style_recipe', 'spell_recipe', 'blueprint'],
+    macroDomain: 'crafting',
+    version: 1,
   },
   {
     id: 'understanding',
@@ -2987,7 +3061,7 @@ export const LENS_REGISTRY: LensEntry[] = [
   { id: 'deities', name: 'Deities', icon: Sparkles, description: 'The pantheon and divine lore', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/deities', order: 90, keywords: ['deity', 'god', 'pantheon', 'divine', 'lore'] },
   { id: 'dreams', name: 'Dreams', icon: Sparkles, description: 'Your composed dream DTUs', category: 'ai', showInSidebar: false, showInCommandPalette: true, path: '/lenses/dreams', order: 90, keywords: ['dream', 'sleep', 'compose', 'dtu'] },
   { id: 'dx-platform', name: 'DX Platform', icon: Wrench, description: 'Developer experience tools', category: 'system', showInSidebar: false, showInCommandPalette: true, path: '/lenses/dx-platform', order: 90, keywords: ['dx', 'developer', 'platform', 'tools'] },
-  { id: 'event-timeline', name: 'Event Timeline', icon: Clock, description: 'World event history', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/event-timeline', order: 90, keywords: ['event', 'timeline', 'history', 'world'] },
+  { id: 'event-timeline', name: 'Event Timeline', icon: Clock, description: 'Substrate event firehose — combat, quests, NPCs, cognition, searchable + exportable', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/event-timeline', order: 90, keywords: ['event', 'timeline', 'history', 'world', 'firehose', 'log', 'search', 'export'] },
   { id: 'expedition-journal', name: 'Expedition Journal', icon: BookOpen, description: 'Log your expeditions', category: 'world', showInSidebar: false, showInCommandPalette: true, path: '/lenses/expedition-journal', order: 90, keywords: ['expedition', 'journal', 'log', 'explore'] },
   { id: 'expert-mode', name: 'Expert Mode', icon: Lightbulb, description: 'Deep expert reasoning mode', category: 'ai', showInSidebar: false, showInCommandPalette: true, path: '/lenses/expert-mode', order: 90, keywords: ['expert', 'reasoning', 'deep', 'mode'] },
   { id: 'forecast', name: 'Forecast', icon: TrendingUp, description: 'Predictions and forward-sim', category: 'knowledge', showInSidebar: false, showInCommandPalette: true, path: '/lenses/forecast', order: 90, keywords: ['forecast', 'predict', 'forward', 'sim'] },

@@ -42,6 +42,10 @@ interface Bond {
   labor_source: string;
 }
 
+interface Pledge { id: string; entity_kind: string; entity_id: string; amount: number; status: string; pledged_at?: number }
+interface Milestone { idx: number; description?: string; release_pct: number; status: string; completed_at?: number | null }
+interface Ledger { pledges: Pledge[]; milestones: Milestone[] }
+
 function activeWorldId(): string {
   if (typeof window === 'undefined') return 'concordia-hub';
   return window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub';
@@ -61,6 +65,9 @@ export default function CivicBondsLens() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [amounts, setAmounts] = useState<Record<string, number>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [ledgers, setLedgers] = useState<Record<string, Ledger>>({});
+  const [ledgerLoading, setLedgerLoading] = useState<Record<string, boolean>>({});
   const addToast = useUIStore((s) => s.addToast);
 
   const refresh = useCallback(async () => {
@@ -93,6 +100,29 @@ export default function CivicBondsLens() {
       addToast({ type: 'error', message: `${action} request failed` });
     }
   }, [refresh, addToast]);
+
+  // The public ledger (every pledge + milestone) — lazy-loaded per bond so the
+  // list view stays cheap; toggled open with the "Ledger" disclosure below.
+  const toggleLedger = useCallback(async (bondId: string) => {
+    const willOpen = !expanded[bondId];
+    setExpanded((m) => ({ ...m, [bondId]: willOpen }));
+    if (willOpen && !ledgers[bondId]) {
+      setLedgerLoading((m) => ({ ...m, [bondId]: true }));
+      try {
+        const r = (await lensRun<{ ok: boolean; pledges?: Pledge[]; milestones?: Milestone[] }>('civic_bonds', 'ledger', { bondId })).data.result;
+        if (r?.ok) setLedgers((m) => ({ ...m, [bondId]: { pledges: r.pledges || [], milestones: r.milestones || [] } }));
+      } finally {
+        setLedgerLoading((m) => ({ ...m, [bondId]: false }));
+      }
+    }
+  }, [expanded, ledgers]);
+
+  const unpledge = useCallback(async (bondId: string) => {
+    await act('unpledge', { bondId });
+    // an unpledge changes the pledge ledger too — drop the cached copy so
+    // the next expand re-fetches instead of showing stale escrow rows.
+    setLedgers((m) => { const n = { ...m }; delete n[bondId]; return n; });
+  }, [act]);
 
   return (
     <LensShell lensId="civic-bonds">
@@ -181,6 +211,14 @@ export default function CivicBondsLens() {
                   className="px-3 py-1 rounded bg-amber-500/20 text-amber-200 text-sm hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label={`Pledge to ${b.title}`}
                 >Pledge</button>
+                {['voting', 'funding'].includes(b.status) && (
+                  <button
+                    onClick={() => void unpledge(b.id)}
+                    className="px-3 py-1 rounded bg-white/5 text-gray-300 text-sm hover:bg-white/10"
+                    aria-label={`Refund my pledge to ${b.title}`}
+                    title="Refund your unfilled escrow while the bond is still open"
+                  >Unpledge</button>
+                )}
                 {b.status === 'voting' && (
                   <>
                     <button onClick={() => void act('vote', { bondId: b.id, vote: 'for' })} className="px-3 py-1 rounded bg-emerald-500/20 text-emerald-200 text-sm" aria-label={`Vote for ${b.title}`}>Vote for</button>
@@ -190,8 +228,53 @@ export default function CivicBondsLens() {
                 {cleared && (b.status === 'voting' || b.status === 'funding') && (
                   <button onClick={() => void act('fund', { bondId: b.id })} className="px-3 py-1 rounded bg-emerald-500/30 text-emerald-100 text-sm font-medium" aria-label={`Fund ${b.title}`}>Fund (110% met)</button>
                 )}
+                <button
+                  onClick={() => void toggleLedger(b.id)}
+                  className="px-3 py-1 rounded bg-white/5 text-gray-300 text-sm hover:bg-white/10"
+                  aria-expanded={!!expanded[b.id]}
+                  aria-label={expanded[b.id] ? `Hide ledger for ${b.title}` : `Show public ledger for ${b.title}`}
+                >{expanded[b.id] ? 'Hide ledger' : 'Ledger'}</button>
                 <span className="text-xs text-gray-500 sm:ml-auto">▲{b.votes_for} ▼{b.votes_against} · {b.labor_source}</span>
               </div>
+
+              {expanded[b.id] && (
+                <div data-testid={`civic-bond-ledger-${b.id}`} className="mt-3 border-t border-white/10 pt-3 text-xs">
+                  {ledgerLoading[b.id] ? (
+                    <div role="status" aria-live="polite" className="text-gray-400">Loading ledger…</div>
+                  ) : (
+                    <>
+                      <div className="text-gray-400 font-medium mb-1">Public pledge ledger</div>
+                      {(ledgers[b.id]?.pledges?.length ?? 0) === 0 ? (
+                        <div className="text-gray-500">No pledges recorded yet.</div>
+                      ) : (
+                        <ul className="space-y-0.5">
+                          {ledgers[b.id]!.pledges.map((p) => (
+                            <li key={p.id} className="flex justify-between text-gray-300">
+                              <span>{p.entity_kind} · {p.entity_id}</span>
+                              <span className="text-amber-200">{p.amount.toLocaleString()} sparks · {p.status}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {(ledgers[b.id]?.milestones?.length ?? 0) > 0 && (
+                        <>
+                          <div className="text-gray-400 font-medium mt-2 mb-1">Milestones</div>
+                          <ul className="space-y-0.5">
+                            {ledgers[b.id]!.milestones.map((m) => (
+                              <li key={m.idx} className="flex justify-between text-gray-300">
+                                <span>{m.idx + 1}. {m.description || 'milestone'}</span>
+                                <span className={m.status === 'complete' ? 'text-emerald-300' : 'text-gray-500'}>
+                                  {m.status} · {Math.round(m.release_pct * 100)}% release
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </li>
           );
         })}

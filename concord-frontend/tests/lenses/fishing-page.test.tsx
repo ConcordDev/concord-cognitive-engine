@@ -15,50 +15,66 @@ vi.mock('@/components/world-lens/FishingMinigameOverlay', () => ({
     open ? React.createElement('div', { 'data-testid': 'minigame' }, 'minigame') : null,
 }));
 
+// The rebuild (Frontend Rebuild Program) moved catalog/species/catches off
+// raw `fetch` onto the real macro channel — `lensRun('fishing', 'catalog' |
+// 'species' | 'catches', input)` → POST /api/lens/run, answered by
+// server/domains/fishing.js. Mock that channel directly rather than raw
+// fetch (see tests/detective-lens-states.test.tsx for the same convention).
+const lensRunMock = vi.fn();
+vi.mock('@/lib/api/client', () => ({
+  lensRun: (...args: unknown[]) => lensRunMock(...args),
+}));
+
 import FishingLensPage from '@/app/lenses/fishing/page';
 
-const CATALOG = {
-  ok: true,
-  fish: [
-    { id: 'river-trout', name: 'River Trout', rarity: 'common', biome: 'water', subBiome: 'river' },
-    { id: 'mythril-koi', name: 'Mythril Koi', rarity: 'legendary', biome: 'water', subBiome: 'lake' },
-  ],
-};
-
-function mockFetch(impl: (url: string, init?: RequestInit) => unknown) {
-  global.fetch = vi.fn((url: string, init?: RequestInit) => {
-    const r = impl(String(url), init);
-    return Promise.resolve(r as Response);
-  }) as unknown as typeof fetch;
+function ok(result: unknown) {
+  return Promise.resolve({ data: { ok: true, result, error: null } });
+}
+function err(message: string) {
+  return Promise.resolve({ data: { ok: false, result: null, error: message } });
 }
 
-function jsonResponse(body: unknown, ok = true, status = 200): Partial<Response> {
-  return { ok, status, json: async () => body };
+const CATALOG_FISH = [
+  { id: 'river-trout', name: 'River Trout', rarity: 'common', biome: 'water', subBiome: 'river' },
+  { id: 'mythril-koi', name: 'Mythril Koi', rarity: 'legendary', biome: 'water', subBiome: 'lake' },
+];
+
+/** Wires catalog/species/catches with sensible defaults, overridable per test. */
+function wireLensRun(overrides: Partial<Record<'catalog' | 'species' | 'catches', () => Promise<unknown>>> = {}) {
+  lensRunMock.mockImplementation((domain: string, action: string) => {
+    if (domain !== 'fishing') return ok({ ok: true });
+    if (action === 'catalog') return (overrides.catalog ?? (() => ok({ ok: true, fish: CATALOG_FISH })))();
+    if (action === 'species') return (overrides.species ?? (() => ok({ ok: true, fish: CATALOG_FISH })))();
+    if (action === 'catches') return (overrides.catches ?? (() => ok({ ok: true, catches: [] })))();
+    return ok({ ok: true });
+  });
 }
 
 describe('FishingLensPage — four UX states', () => {
   beforeEach(() => {
-    // jsdom localStorage exists; ensure a known world.
+    lensRunMock.mockReset();
     window.localStorage.setItem('concordia:activeWorldId', 'concordia-hub');
   });
   afterEach(() => { vi.restoreAllMocks(); });
 
-  it('LOADING: shows a busy status before fetches resolve', async () => {
-    // Never-resolving fetch keeps the page in the loading state.
-    mockFetch(() => new Promise(() => {}) as unknown as Response);
+  it('LOADING: shows busy skeletons before macros resolve', async () => {
+    lensRunMock.mockImplementation(() => new Promise(() => {}));
     render(React.createElement(FishingLensPage));
-    expect(await screen.findByRole('status')).toHaveTextContent(/loading/i);
+    // The skeleton's status text is screen-reader-only (sr-only) — visually
+    // hidden by design, so the accessible-name query needs `hidden: true` to
+    // include it (RTL's default role query excludes visually-hidden nodes).
+    const statuses = await screen.findAllByRole('status', { hidden: true });
+    expect(statuses.length).toBeGreaterThan(0);
   });
 
   it('POPULATED: renders the real catalog and catch log', async () => {
-    mockFetch((url) => {
-      if (url.includes('/api/fishing/catalog')) return jsonResponse(CATALOG);
-      if (url.includes('/api/fishing/catches/mine')) {
-        return jsonResponse({ ok: true, catches: [
+    wireLensRun({
+      catches: () => ok({
+        ok: true,
+        catches: [
           { id: 'inv1', world_id: 'concordia-hub', item_id: 'raw_fish:river-trout', item_name: 'River Trout (90%)', acquired_at: 1_700_000_000 },
-        ] });
-      }
-      return jsonResponse({ ok: true });
+        ],
+      }),
     });
     render(React.createElement(FishingLensPage));
     expect(await screen.findByText('River Trout')).toBeInTheDocument();
@@ -69,42 +85,29 @@ describe('FishingLensPage — four UX states', () => {
   });
 
   it('EMPTY: honest empty states for no fish and no catches', async () => {
-    mockFetch((url) => {
-      if (url.includes('/api/fishing/catalog')) return jsonResponse({ ok: true, fish: [] });
-      if (url.includes('/api/fishing/catches/mine')) return jsonResponse({ ok: true, catches: [] });
-      return jsonResponse({ ok: true });
-    });
+    wireLensRun({ catalog: () => ok({ ok: true, fish: [] }) });
     render(React.createElement(FishingLensPage));
-    expect(await screen.findByText(/no fish defined for this world/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no fish authored for these waters yet/i)).toBeInTheDocument();
     expect(screen.getByText(/no catches yet/i)).toBeInTheDocument();
   });
 
   it('ERROR: surfaces an honest error with a working retry', async () => {
     let attempt = 0;
-    mockFetch((url) => {
-      if (url.includes('/api/fishing/catalog')) {
+    wireLensRun({
+      catalog: () => {
         attempt += 1;
-        if (attempt === 1) return jsonResponse({ ok: false }, false, 500);
-        return jsonResponse(CATALOG);
-      }
-      if (url.includes('/api/fishing/catches/mine')) return jsonResponse({ ok: true, catches: [] });
-      return jsonResponse({ ok: true });
+        return attempt === 1 ? err('HTTP 500') : ok({ ok: true, fish: CATALOG_FISH });
+      },
     });
     render(React.createElement(FishingLensPage));
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/couldn.t load fishing data/i);
+    await waitFor(() => expect(screen.getByText(/couldn.t load|http 500/i)).toBeInTheDocument());
     // Retry recovers into the populated state.
     fireEvent.click(screen.getByText(/retry/i));
     await waitFor(() => expect(screen.getByText('River Trout')).toBeInTheDocument());
   });
 
-  it('CAST dispatches concordia:open-fishing and opens the minigame', async () => {
-    mockFetch((url) => {
-      if (url.includes('/api/fishing/catalog')) return jsonResponse(CATALOG);
-      if (url.includes('/api/fishing/catches/mine')) return jsonResponse({ ok: true, catches: [] });
-      if (url.includes('/api/fishing/cast')) return jsonResponse({ ok: true, sessionId: 'fish_x', biteAtEpochMs: Date.now() + 4000 });
-      return jsonResponse({ ok: true });
-    });
+  it('CAST opens the minigame overlay', async () => {
+    wireLensRun();
     render(React.createElement(FishingLensPage));
     const btn = await screen.findByRole('button', { name: /cast line/i });
     fireEvent.click(btn);

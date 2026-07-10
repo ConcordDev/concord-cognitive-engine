@@ -3,18 +3,27 @@
 /**
  * /lenses/quests — quest log lens.
  *
- * Active / Completed / Available tabs. Each active quest shows
- * objectives + progress + share-with-party button (visible when the
- * user is in a party).
+ * Active / Completed / Available tabs. Each active quest shows objectives +
+ * progress + share-with-party button (visible when the user is in a party);
+ * each completed-but-unclaimed quest shows a Claim rewards button.
  *
  * Backend: the real quest state machine in server/lib/quests/quest-engine.js,
  * surfaced through the `quests` domain macros (server/domains/quests.js).
- * `quests.mine` returns the lens-shaped active quests with merged objective
- * progress. Party sharing rides the real /api/parties routes.
+ * `quests.mine` returns the lens-shaped ACTIVE quests with merged objective
+ * progress; `quests.completed` returns the completed/rewarded history (a
+ * separate macro because `quests.mine`'s underlying query deliberately
+ * excludes non-active rows — see quest-engine.js#getActiveQuests). Reward
+ * claims go through `quests.claimRewards`. Party sharing rides the real
+ * /api/parties routes.
+ *
+ * The Available tab is intentionally NOT a listing — this codebase's world
+ * quests are offered per-NPC through dialogue (routes/worlds.js), not a
+ * player-facing catalog, so there is no macro that lists "quests available
+ * to me" today. The tab's empty state is worded honestly around that.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollText, Check, Clock, Users2, RefreshCcw, AlertCircle } from 'lucide-react';
+import { ScrollText, Check, Clock, Users2, RefreshCcw, AlertCircle, Gift } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { lensRun } from '@/lib/api/client';
@@ -57,10 +66,15 @@ export default function QuestsLensPage() {
     setState('loading');
     setErrMsg(null);
     try {
-      // Real quest state machine via the quests domain macro. The party lookup
-      // is best-effort (no party is a valid state, not an error).
-      const [qRes, p] = await Promise.all([
+      // Real quest state machine via the quests domain macros. `quests.mine`
+      // only ever returns the ACTIVE set (its underlying query excludes
+      // completed/rewarded rows by design — see quest-engine.js), so the
+      // Completed tab needs the separate `quests.completed` macro; that call
+      // is best-effort (like the party lookup) so a hiccup there degrades to
+      // "no history shown" rather than blocking the primary active list.
+      const [qRes, completedRes, p] = await Promise.all([
         lensRun<{ ok: boolean; quests?: Quest[] }>('quests', 'mine', {}),
+        Promise.resolve(lensRun<{ ok: boolean; quests?: Quest[] }>('quests', 'completed', {})).catch(() => null),
         fetch('/api/parties/me', { credentials: 'include' })
           .then((r) => r.json())
           .catch(() => null),
@@ -70,7 +84,17 @@ export default function QuestsLensPage() {
       if (!node || node.ok === false || !node.result || node.result.ok === false) {
         throw new Error(node?.error || 'Could not load your quests.');
       }
-      setQuests(node.result.quests || []);
+      const activeQuests = node.result.quests || [];
+
+      const completedNode = completedRes?.data;
+      const completedQuests =
+        completedNode && completedNode.ok !== false && completedNode.result?.ok !== false
+          ? completedNode.result?.quests || []
+          : [];
+
+      const merged = new Map<string, Quest>();
+      for (const q of [...activeQuests, ...completedQuests]) merged.set(q.id, q);
+      setQuests(Array.from(merged.values()));
 
       if (p?.ok && p.party) setPartyId(p.party.party_id);
       else setPartyId(null);
@@ -81,6 +105,26 @@ export default function QuestsLensPage() {
       setState('error');
     }
   }, []);
+
+  const handleClaim = useCallback(async (questId: string) => {
+    setBusy(`claim-${questId}`);
+    try {
+      const r = await lensRun<{ ok: boolean; rewards?: unknown[]; error?: string }>(
+        'quests', 'claimRewards', { questId },
+      );
+      const node = r?.data;
+      if (!node || node.ok === false || !node.result || node.result.ok === false) {
+        showFlash('err', node?.result?.error || node?.error || 'Could not claim rewards.');
+      } else {
+        showFlash('ok', 'Rewards claimed.');
+        setQuests((prev) => prev.map((q) => (q.id === questId ? { ...q, status: 'rewarded' } : q)));
+      }
+    } catch {
+      showFlash('err', 'Could not claim rewards.');
+    } finally {
+      setBusy(null);
+    }
+  }, [showFlash]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -181,6 +225,18 @@ export default function QuestsLensPage() {
                         <Users2 className="h-3 w-3" />
                         Share
                       </button>
+                    )}
+                    {tab === 'completed' && q.status === 'completed' && (
+                      <button onClick={() => handleClaim(q.id)} disabled={busy === `claim-${q.id}`} aria-label={`Claim rewards for ${q.title || q.id}`} className="flex shrink-0 items-center gap-1 rounded bg-yellow-500/20 px-2 py-0.5 text-[10px] text-yellow-200 hover:bg-yellow-500/30 disabled:opacity-40">
+                        <Gift className="h-3 w-3" />
+                        Claim
+                      </button>
+                    )}
+                    {tab === 'completed' && q.status === 'rewarded' && (
+                      <span className="flex shrink-0 items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">
+                        <Check className="h-3 w-3" />
+                        Claimed
+                      </span>
                     )}
                   </div>
                   {q.objectives && q.objectives.length > 0 && (

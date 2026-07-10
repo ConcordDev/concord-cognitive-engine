@@ -2,12 +2,21 @@
 
 /**
  * EngineeringActionPanel — design engineer bench.
- * toleranceAnalysis (worst-case + RSS) / stressAnalysis (yield + SF) /
- * bom / unitConvert + mint/DM/publish/agent.
+ * toleranceAnalysis (worst-case + RSS + per-part tolerance class) /
+ * stressAnalysis (yield + SF) / unitConvert + mint/DM/publish/agent.
+ *
+ * `bom` (flat cost rollup) intentionally has NO quick-action here — it is
+ * strictly superseded by the `bomRollup` macro's dedicated BOM tab
+ * (`components/engineering/BomPanel.tsx`, same page), which adds
+ * build-quantity scaling, overhead rate, supplier links, and a per-supplier
+ * cost chart on top of everything `bom` computes. Duplicating it here as a
+ * second, worse ("paste raw JSON") entry point would be the generic-scaffold
+ * anti-pattern for zero added capability. `engineering.bom` stays registered
+ * and callable — see the engineering capability map for the disposition.
  */
 
 import { useState } from 'react';
-import { Cog, Ruler, Activity, Package, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { Cog, Ruler, Activity, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -23,27 +32,30 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'tol' | 'stress' | 'bom' | 'unit' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'tol' | 'stress' | 'unit' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
+interface TolPartInput { name: string; nominal: number; tolerance: number }
 interface TolPart { part: string; nominal: number; tolerance: number; min: number; max: number; toleranceClass: string }
 interface StackUp { nominal: number; worstCaseTolerance: number; rssTolerance: number; worstCaseMin: number; worstCaseMax: number }
 interface TolResult { parts: TolPart[]; stackUp: StackUp; method: string }
 interface StressResult { appliedForce: string; crossSection: string; appliedStress: string; yieldStrength: string; safetyFactor: number; status: string; recommendation: string }
-interface BomItem { partNumber: string; description: string; quantity: number; unitCost: number; extendedCost: number; leadTime: string; supplier: string }
-interface BomResult { bom: BomItem[]; totalLineItems: number; totalParts: number; totalCost: number; criticalPath: string; uniqueSuppliers: number }
 interface UnitResult { input: string; output: string; conversion: string }
 
 // UNIT_PAIRS is the supported conversion table, NOT seed data — it's
 // part of the macro contract (which units are valid).
 const UNIT_PAIRS = [['mm', 'in'], ['in', 'mm'], ['m', 'ft'], ['ft', 'm'], ['kg', 'lb'], ['lb', 'kg'], ['n', 'lbf'], ['lbf', 'n'], ['mpa', 'psi'], ['psi', 'mpa'], ['c', 'f'], ['f', 'c'], ['nm', 'ftlb'], ['ftlb', 'nm'], ['l', 'gal'], ['gal', 'l']];
 
+const TOL_PART_STARTER: TolPartInput[] = [
+  { name: 'Shaft dia', nominal: 12.0, tolerance: 0.02 },
+  { name: 'Bushing ID', nominal: 12.05, tolerance: 0.015 },
+];
+
 export function EngineeringActionPanel() {
-  const [partsText, setPartsText] = useState('');
+  const [tolParts, setTolParts] = useState<TolPartInput[]>(TOL_PART_STARTER);
   const [forceN, setForceN] = useState('');
   const [areaMm2, setAreaMm2] = useState('');
   const [yieldMpa, setYieldMpa] = useState('');
-  const [bomText, setBomText] = useState('');
   const [unitValue, setUnitValue] = useState('');
   const [unitFrom, setUnitFrom] = useState('mm');
   const [unitTo, setUnitTo] = useState('in');
@@ -53,7 +65,6 @@ export function EngineeringActionPanel() {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [tolResult, setTolResult] = useState<TolResult | null>(null);
   const [stressResult, setStressResult] = useState<StressResult | null>(null);
-  const [bomResult, setBomResult] = useState<BomResult | null>(null);
   const [unitResult, setUnitResult] = useState<UnitResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
@@ -62,18 +73,26 @@ export function EngineeringActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
-  function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
+  const addTolPart = () => setTolParts((p) => [...p, { name: `Part ${p.length + 1}`, nominal: 0, tolerance: 0.01 }]);
+  const removeTolPart = (idx: number) => setTolParts((p) => p.filter((_, i) => i !== idx));
+  const setTolField = (idx: number, f: keyof TolPartInput, v: string) => {
+    setTolParts((p) => {
+      const next = [...p];
+      next[idx] = { ...next[idx], [f]: f === 'name' ? v : (parseFloat(v) || 0) };
+      return next;
+    });
+  };
 
   const pipe = usePipe();
   const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
   const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
 
   async function actTol() {
-    if (!partsText.trim()) { err('Paste parts JSON first.'); return; }
-    const parsed = parseJSON<Record<string, unknown>>(partsText); if (!parsed) { err('Invalid parts JSON.'); return; }
+    const parts = tolParts.filter((p) => p.name.trim().length > 0);
+    if (parts.length === 0) { err('Add at least one part.'); return; }
     setBusy('tol'); setFeedback(null);
     try {
-      const r = await callMacro<TolResult>('toleranceAnalysis', { artifact: { data: parsed } });
+      const r = await callMacro<TolResult>('toleranceAnalysis', { artifact: { data: { parts } } });
       if (r.ok && r.result) { setTolResult(r.result); pipe.publish('engineering.tol', r.result, { label: `Stack ${r.result.stackUp.nominal}±${r.result.stackUp.worstCaseTolerance}` }); ok(`Stack ${r.result.stackUp.nominal} ±${r.result.stackUp.worstCaseTolerance}.`); } else err(r.error ?? 'tol failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -84,15 +103,6 @@ export function EngineeringActionPanel() {
     try {
       const r = await callMacro<StressResult>('stressAnalysis', { artifact: { data: { forceNewtons: F, crossSectionMm2: A, yieldStrengthMPa: Y } } });
       if (r.ok && r.result) { setStressResult(r.result); pipe.publish('engineering.stress', r.result, { label: `Stress SF ${r.result.safetyFactor}` }); ok(`SF ${r.result.safetyFactor} · ${r.result.status}.`); } else err(r.error ?? 'stress failed');
-    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
-  }
-  async function actBom() {
-    if (!bomText.trim()) { err('Paste BOM JSON first.'); return; }
-    const parsed = parseJSON<Record<string, unknown>>(bomText); if (!parsed) { err('Invalid BOM JSON.'); return; }
-    setBusy('bom'); setFeedback(null);
-    try {
-      const r = await callMacro<BomResult>('bom', { artifact: { data: parsed } });
-      if (r.ok && r.result) { setBomResult(r.result); pipe.publish('engineering.bom', r.result, { label: `BOM $${r.result.totalCost.toLocaleString()}` }); ok(`$${r.result.totalCost.toLocaleString()} · ${r.result.totalParts} parts.`); } else err(r.error ?? 'bom failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actUnit() {
@@ -107,7 +117,7 @@ export function EngineeringActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Engineering — ${stressResult?.status ?? 'design'}`, tags: ['engineering', 'design'], source: 'engineering:design:mint', meta: { visibility: 'private', consent: { allowCitations: false }, eng: { tol: tolResult, stress: stressResult, bom: bomResult, unit: unitResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Engineering — ${stressResult?.status ?? 'design'}`, tags: ['engineering', 'design'], source: 'engineering:design:mint', meta: { visibility: 'private', consent: { allowCitations: false }, eng: { tol: tolResult, stress: stressResult, unit: unitResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('engineering.mintedDtuId', id, { label: `Design DTU ${id.slice(0, 8)}…` }); ok(`Design DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -118,7 +128,6 @@ export function EngineeringActionPanel() {
     const body = [`⚙ Engineering review`, '',
       tolResult ? `Tolerance stack: ${tolResult.stackUp.nominal} ±${tolResult.stackUp.worstCaseTolerance} (RSS ±${tolResult.stackUp.rssTolerance})` : '',
       stressResult ? `Stress: ${stressResult.appliedStress} / yield ${stressResult.yieldStrength} → SF ${stressResult.safetyFactor} · ${stressResult.status}` : '',
-      bomResult ? `BOM: $${bomResult.totalCost.toLocaleString()} · ${bomResult.totalParts} parts · CP ${bomResult.criticalPath}` : '',
       unitResult ? `${unitResult.input} = ${unitResult.output}` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
@@ -149,7 +158,7 @@ export function EngineeringActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Mechanical engineering review. ${tolResult ? `Stack-up nominal ${tolResult.stackUp.nominal} ±${tolResult.stackUp.worstCaseTolerance} (RSS ±${tolResult.stackUp.rssTolerance}).` : ''} ${stressResult ? `Stress ${stressResult.appliedStress} vs yield ${stressResult.yieldStrength}, SF ${stressResult.safetyFactor} (${stressResult.status}).` : ''} ${bomResult ? `BOM: $${bomResult.totalCost.toLocaleString()}, critical lead: ${bomResult.criticalPath}.` : ''} Identify the single biggest design risk + one optimization opportunity. Plain text, 3 sentences max.`;
+      const task = `Mechanical engineering review. ${tolResult ? `Stack-up nominal ${tolResult.stackUp.nominal} ±${tolResult.stackUp.worstCaseTolerance} (RSS ±${tolResult.stackUp.rssTolerance}).` : ''} ${stressResult ? `Stress ${stressResult.appliedStress} vs yield ${stressResult.yieldStrength}, SF ${stressResult.safetyFactor} (${stressResult.status}).` : ''} Identify the single biggest design risk + one optimization opportunity. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Review ready.'); } else err('Agent returned empty.');
@@ -157,9 +166,8 @@ export function EngineeringActionPanel() {
   }
 
   const actions = [
-    { id: 'tol' as ActionId, label: 'Tolerance', desc: 'WC + RSS stack-up', icon: Ruler, accent: '#3b82f6', handler: actTol },
+    { id: 'tol' as ActionId, label: 'Tolerance', desc: 'WC + RSS + class', icon: Ruler, accent: '#3b82f6', handler: actTol },
     { id: 'stress' as ActionId, label: 'Stress', desc: 'yield × SF', icon: Activity, accent: '#ef4444', handler: actStress },
-    { id: 'bom' as ActionId, label: 'BOM', desc: 'cost + critical lead', icon: Package, accent: '#f59e0b', handler: actBom },
     { id: 'unit' as ActionId, label: 'Convert', desc: 'unitConvert', icon: Cog, accent: '#a855f7', handler: actUnit },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private design DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send eng review', icon: Send, accent: '#ec4899', handler: actDm },
@@ -174,17 +182,44 @@ export function EngineeringActionPanel() {
       <header className="flex items-center gap-2 border-b border-cyan-500/10 pb-2">
         <Cog className="h-4 w-4 text-cyan-400" />
         <h3 className="text-sm font-semibold text-white">Engineering bench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">tolerance · stress · BOM · units</span>
+        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">tolerance · stress · units</span>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Parts JSON</label>
-          <textarea value={partsText} onChange={(e) => setPartsText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">BOM JSON</label>
-          <textarea value={bomText} onChange={(e) => setBomText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Parts — tolerance class check</label>
+            <button type="button" onClick={addTolPart} className="text-blue-300 hover:text-blue-200" aria-label="Add part">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="mt-1 space-y-1 max-h-40 overflow-y-auto pr-0.5">
+            {tolParts.map((p, i) => (
+              <div key={i} className="flex items-center gap-1">
+                <input
+                  value={p.name}
+                  onChange={(e) => setTolField(i, 'name', e.target.value)}
+                  placeholder="Part"
+                  className="min-w-0 flex-1 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-white"
+                />
+                <input
+                  value={p.nominal}
+                  onChange={(e) => setTolField(i, 'nominal', e.target.value)}
+                  placeholder="Nom."
+                  className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-white font-mono text-right"
+                />
+                <input
+                  value={p.tolerance}
+                  onChange={(e) => setTolField(i, 'tolerance', e.target.value)}
+                  placeholder="±Tol"
+                  className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-white font-mono text-right"
+                />
+                <button type="button" onClick={() => removeTolPart(i)} className="text-zinc-600 hover:text-red-400 shrink-0" aria-label="Remove part">
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Stress</div>
@@ -223,7 +258,7 @@ export function EngineeringActionPanel() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {tolResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Tolerance stack-up</div>
@@ -239,15 +274,6 @@ export function EngineeringActionPanel() {
             <div className="text-[10px] text-zinc-400">/ yield {stressResult.yieldStrength}</div>
             <div className={cn('text-[11px] font-semibold', STATUS_COLOR[stressResult.status] ?? 'text-red-300')}>{stressResult.status}</div>
             <div className="text-[10px] text-zinc-400 italic mt-0.5">{stressResult.recommendation}</div>
-          </div>
-        )}
-        {bomResult && (
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-44 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">BOM</div>
-            <div className="text-2xl font-bold text-amber-300">${bomResult.totalCost.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-400">{bomResult.totalLineItems} SKUs · {bomResult.totalParts} parts · {bomResult.uniqueSuppliers} suppliers</div>
-            <div className="text-[10px] text-zinc-400">CP: <span className="text-amber-200 font-mono">{bomResult.criticalPath}</span></div>
-            {bomResult.bom.slice(0, 4).map((b, i) => <div key={i} className="text-[10px] text-zinc-400 mt-0.5"><span className="font-mono">{b.partNumber}</span> ×{b.quantity} = ${b.extendedCost}</div>)}
           </div>
         )}
         {unitResult && (

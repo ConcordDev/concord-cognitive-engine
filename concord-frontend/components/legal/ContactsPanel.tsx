@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, Loader2, Plus, Trash2, AlertTriangle, Search } from 'lucide-react';
+import { Users, Loader2, Plus, Trash2, AlertTriangle, Search, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
@@ -26,6 +26,8 @@ export function ContactsPanel() {
   const [draft, setDraft] = useState({ name: '', kind: 'client', email: '', phone: '', organization: '', address: '', notes: '' });
   const [conflictQ, setConflictQ] = useState('');
   const [conflicts, setConflicts] = useState<{ hits: number; matches: ConflictMatch[] } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: '', kind: 'client', email: '', phone: '', organization: '', address: '', notes: '' });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filterKind]);
@@ -55,6 +57,21 @@ export function ContactsPanel() {
       await lensRun({ domain: 'legal', action: 'contacts-delete', input: { id } });
       setList(prev => prev.filter(c => c.id !== id));
     } catch (e) { console.error('[Contacts] delete failed', e); }
+  }
+
+  function startEdit(c: Contact) {
+    setEditingId(c.id);
+    setEditDraft({ name: c.name, kind: c.kind, email: c.email, phone: c.phone, organization: c.organization, address: c.address, notes: c.notes });
+  }
+
+  async function saveEdit(id: string) {
+    if (!editDraft.name.trim()) return;
+    try {
+      const r = await lensRun({ domain: 'legal', action: 'contacts-update', input: { id, ...editDraft } });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      setEditingId(null);
+      await refresh();
+    } catch (e) { console.error('[Contacts] update failed', e); }
   }
 
   async function runConflict() {
@@ -150,7 +167,23 @@ export function ContactsPanel() {
               buttonLabel="Add a contact" onAction={() => setCreating(true)} className="py-8" />
           ) : (
             <ul className="divide-y divide-white/5">
-              {list.map(c => (
+              {list.map(c => editingId === c.id ? (
+                <li key={c.id} className="px-4 py-3 bg-white/[0.02] grid grid-cols-12 gap-2">
+                  <input value={editDraft.name} onChange={e => setEditDraft({ ...editDraft, name: e.target.value })} placeholder="Name *" className="col-span-5 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <select value={editDraft.kind} onChange={e => setEditDraft({ ...editDraft, kind: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                    {KINDS.map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
+                  </select>
+                  <input value={editDraft.email} onChange={e => setEditDraft({ ...editDraft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.phone} onChange={e => setEditDraft({ ...editDraft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.organization} onChange={e => setEditDraft({ ...editDraft, organization: e.target.value })} placeholder="Organization" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.address} onChange={e => setEditDraft({ ...editDraft, address: e.target.value })} placeholder="Address" className="col-span-5 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <textarea value={editDraft.notes} onChange={e => setEditDraft({ ...editDraft, notes: e.target.value })} placeholder="Notes" rows={2} className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <div className="col-span-12 flex gap-2">
+                    <button onClick={() => saveEdit(c.id)} className="flex-1 px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400 inline-flex items-center justify-center gap-1"><Check className="w-3 h-3" />Save</button>
+                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs rounded border border-white/10 text-gray-400 hover:text-white inline-flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
+                  </div>
+                </li>
+              ) : (
                 <li key={c.id} className="px-4 py-2.5 hover:bg-white/[0.02] group flex items-center gap-3">
                   <div className={cn(
                     'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
@@ -168,6 +201,9 @@ export function ContactsPanel() {
                       {c.phone && <span> · {c.phone}</span>}
                     </div>
                   </div>
+                  <button aria-label="Edit" onClick={() => startEdit(c)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-amber-500/20 text-amber-300">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

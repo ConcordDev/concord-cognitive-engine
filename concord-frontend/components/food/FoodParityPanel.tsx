@@ -16,6 +16,7 @@ import { MacroGoalRings } from './MacroGoalRings';
 import { RecipeLibrary } from './RecipeLibrary';
 import { MealPlanAuto } from './MealPlanAuto';
 import { RestaurantMap } from './RestaurantMap';
+import { IngredientSubstitute } from './IngredientSubstitute';
 
 type Tab = 'track' | 'recipes' | 'plan' | 'discover';
 
@@ -66,7 +67,10 @@ export function FoodParityPanel() {
           </>
         )}
         {tab === 'recipes' && (
-          <RecipeLibrary onChange={() => setRecipeVersion((v) => v + 1)} />
+          <>
+            <RecipeLibrary onChange={() => setRecipeVersion((v) => v + 1)} />
+            <IngredientSubstitute />
+          </>
         )}
         {tab === 'plan' && (
           <MealPlanAuto refreshKey={recipeVersion} />

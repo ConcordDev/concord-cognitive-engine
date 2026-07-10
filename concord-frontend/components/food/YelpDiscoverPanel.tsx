@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Loader2, Search, Plus, Star, Clock, Camera, MessageSquare,
-  CheckCircle2, CalendarPlus, Users,
+  CheckCircle2, CalendarPlus, Users, Trash2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -151,6 +151,14 @@ export function YelpDiscoverPanel() {
     setError(r.data?.ok === false ? (r.data?.error || null)
       : `Joined waitlist — about ${r.data?.result?.estimatedWaitMin} min wait.`);
   };
+  const deleteBusiness = async () => {
+    if (!selected) return;
+    if (!window.confirm(`Delete "${selected.name}" from the directory? This removes its reviews, photos, and tips too.`)) return;
+    const r = await lensRun('food', 'biz-delete', { id: selected.id });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not delete listing'); return; }
+    setSelected(null);
+    await search();
+  };
 
   if (loading && businesses.length === 0) {
     return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
@@ -185,6 +193,11 @@ export function YelpDiscoverPanel() {
             <ActionBtn icon={Camera} label={`Photo (${selected.photoCount})`} onClick={addPhoto} />
             <ActionBtn icon={CalendarPlus} label="Reserve" onClick={reserve} />
             <ActionBtn icon={Users} label="Join waitlist" onClick={joinWaitlist} />
+            <button type="button" onClick={deleteBusiness}
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-zinc-900 hover:bg-rose-950/60 text-zinc-500 hover:text-rose-300 rounded-lg ml-auto"
+              title="Only the business owner can delete a listing">
+              <Trash2 className="w-3.5 h-3.5" /> Delete listing
+            </button>
           </div>
         </div>
 
