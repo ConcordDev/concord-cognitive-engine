@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Loader2, ArrowLeft, StickyNote, CheckSquare, Heading, Link2, Image as ImageIcon, Spline, Trash2,
+  Pencil, Check,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,8 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
   const dragRef = useRef<{ id: string; dx: number; dy: number; moved: boolean } | null>(null);
 
   const refresh = useCallback(async () => {
@@ -120,6 +123,15 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
     await lensRun('creative', 'connection-delete', { id });
   };
 
+  const startRename = () => { setTitleDraft(title); setRenaming(true); };
+  const commitRename = async () => {
+    const next = titleDraft.trim();
+    setRenaming(false);
+    if (!next || next === title) return;
+    const r = await lensRun('creative', 'board-rename', { id: boardId, title: next });
+    if (r.data?.result?.board?.title) setTitle(r.data.result.board.title);
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
@@ -137,7 +149,26 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
           <ArrowLeft className="w-3.5 h-3.5" /> Boards
         </button>
-        <span className="text-sm font-semibold text-zinc-100 flex-1 truncate">{title}</span>
+        {renaming ? (
+          <input
+            autoFocus
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => { if (e.key === 'Enter') void commitRename(); if (e.key === 'Escape') setRenaming(false); }}
+            className="flex-1 bg-zinc-950 border border-amber-600/50 rounded-lg px-2 py-1 text-sm text-zinc-100 focus:outline-none"
+          />
+        ) : (
+          <button type="button" onClick={startRename} className="flex-1 flex items-center gap-1.5 min-w-0 text-left group" title="Rename board">
+            <span className="text-sm font-semibold text-zinc-100 truncate">{title}</span>
+            <Pencil className="w-3 h-3 text-zinc-600 group-hover:text-zinc-300 shrink-0" />
+          </button>
+        )}
+        {renaming && (
+          <button aria-label="Confirm rename" type="button" onClick={commitRename} className="text-emerald-400 hover:text-emerald-300">
+            <Check className="w-4 h-4" />
+          </button>
+        )}
         <button type="button" onClick={() => setConnectFrom(connectFrom ? null : (selected || cards[0]?.id || null))}
           className={cn('flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg',
             connectFrom ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
