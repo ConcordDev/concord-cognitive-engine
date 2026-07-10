@@ -12,6 +12,7 @@ interface Quote {
   status: 'draft' | 'sent' | 'accepted' | 'rejected';
   createdAt: string;
 }
+interface Customer { id: string; name: string }
 
 const STATUS_COLOUR: Record<Quote['status'], string> = {
   draft: 'bg-gray-500/15 text-gray-300',
@@ -22,6 +23,7 @@ const STATUS_COLOUR: Record<Quote['status'], string> = {
 
 export function QuotesPanel() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ customerId: '', title: '', taxRate: '8' });
@@ -32,10 +34,18 @@ export function QuotesPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await lensRun({ domain: 'trades', action: 'quotes-list', input: {} });
+      const [res, custRes] = await Promise.all([
+        lensRun({ domain: 'trades', action: 'quotes-list', input: {} }),
+        lensRun({ domain: 'trades', action: 'customer-list', input: {} }),
+      ]);
       setQuotes((res.data?.result?.quotes || []) as Quote[]);
+      setCustomers((custRes.data?.result?.customers || []) as Customer[]);
     } catch (e) { console.error('[Quotes] failed', e); }
     finally { setLoading(false); }
+  }
+
+  function customerName(id: string): string {
+    return customers.find(c => c.id === id)?.name || id.slice(0, 10);
   }
 
   function setLine(i: number, key: keyof LineItem, val: string | number) {
@@ -76,10 +86,14 @@ export function QuotesPanel() {
       {creating && (
         <div className="p-3 border-b border-white/10 space-y-2">
           <div className="grid grid-cols-4 gap-2">
-            <input value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} placeholder="Customer ID" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <select value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+              <option value="">— select customer —</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
             <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Title" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
             <input type="number" value={form.taxRate} onChange={e => setForm({ ...form, taxRate: e.target.value })} placeholder="Tax %" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           </div>
+          {customers.length === 0 && <p className="text-[10px] text-amber-300/80">Add a customer first (Trades Workbench → Customers) to create a quote.</p>}
           {lines.map((l, i) => (
             <div key={i} className="grid grid-cols-6 gap-2">
               <input value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="Description" className="col-span-3 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -116,7 +130,7 @@ export function QuotesPanel() {
                     </>
                   )}
                 </div>
-                <div className="text-[10px] text-gray-400 mt-0.5">{q.lineItems.length} line{q.lineItems.length === 1 ? '' : 's'} · subtotal ${q.subtotal.toFixed(2)} + ${q.tax.toFixed(2)} tax</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">{customerName(q.customerId)} · {q.lineItems.length} line{q.lineItems.length === 1 ? '' : 's'} · subtotal ${q.subtotal.toFixed(2)} + ${q.tax.toFixed(2)} tax</div>
               </li>
             ))}
           </ul>
