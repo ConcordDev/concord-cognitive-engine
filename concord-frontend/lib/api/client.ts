@@ -1483,6 +1483,10 @@ export const apiHelpers = {
       licenses: () => api.get('/api/artistry/marketplace/licenses'),
       purchase: (data: { buyerId: string; listingId: string; listingType?: string; licenseType?: string }) =>
         api.post('/api/artistry/marketplace/purchase', data),
+      // Buyer's own purchase history — real read of the purchase state
+      // machine (server/economy/purchases.js), auth-scoped to the caller.
+      purchases: (params?: { status?: string; limit?: number; offset?: number }) =>
+        api.get('/api/artistry/marketplace/purchases', { params }),
     },
 
     // Collaboration (Phase 9)
