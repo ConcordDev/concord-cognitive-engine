@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, act } from '@testing-library/react';
 import React from 'react';
+import { KeyboardProvider } from '@/lib/keyboard';
 
 // LensShell mounts the UI store + keyboard providers in production; for an
 // isolated page test stub it to a passthrough so we test the page's own four
@@ -32,6 +33,18 @@ vi.mock('@/lib/realtime/socket', () => {
 
 import AchievementsLensPage from '@/app/lenses/achievements/page';
 import * as socketMock from '@/lib/realtime/socket';
+
+// The rebuilt page registers real keyboard commands via useLensCommand,
+// which requires a KeyboardProvider ancestor — same requirement any
+// consumer of the shell's command palette has outside the full AppShell
+// tree (see tests/detective-lens-states.test.tsx for the same pattern).
+function renderPage() {
+  return render(
+    <KeyboardProvider>
+      <AchievementsLensPage />
+    </KeyboardProvider>,
+  );
+}
 
 const emitSocket = (event: string, data?: unknown) =>
   (socketMock as unknown as { __emit: (e: string, d?: unknown) => void }).__emit(event, data);
@@ -67,21 +80,25 @@ describe('AchievementsLensPage — four UX states', () => {
       return Promise.resolve({ ok: true, status: 200, json: async () => ({ ok: true, earned: [] }) } as Response);
     }) as unknown as typeof fetch;
 
-    render(<AchievementsLensPage />);
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    renderPage();
+    // The rebuilt page has independently-loading sections (main catalog +
+    // RecentActivityFeed + TitlesPanel), each with its own role="status" —
+    // assert at least one is present, then pin the specific catalog-loading
+    // text rather than requiring exactly one status region on the page.
+    expect(screen.getAllByRole('status').length).toBeGreaterThan(0);
     expect(screen.getByText(/loading catalog/i)).toBeInTheDocument();
 
     // Let it finish so we don't leak a pending promise.
     resolveCatalog({ ok: true, catalog: CATALOG });
-    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/loading catalog/i)).not.toBeInTheDocument());
   });
 
   it('ERROR: shows an honest alert + retry when the catalog fetch fails', async () => {
     mockFetch((url) => (url.includes('/catalog') ? null : { ok: true, earned: [] }));
-    render(<AchievementsLensPage />);
+    renderPage();
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
-    expect(screen.getByText(/couldn't load achievements/i)).toBeInTheDocument();
+    expect(screen.getByText(/couldn.t load/i)).toBeInTheDocument();
     const retry = screen.getByRole('button', { name: /retry/i });
     expect(retry).toBeInTheDocument();
 
@@ -94,7 +111,7 @@ describe('AchievementsLensPage — four UX states', () => {
 
   it('EMPTY: real catalog, zero earned → honest empty state, no fabricated rows', async () => {
     mockFetch((url) => (url.includes('/catalog') ? { ok: true, catalog: [] } : { ok: true, earned: [] }));
-    render(<AchievementsLensPage />);
+    renderPage();
 
     await waitFor(() => expect(screen.getByText(/no achievements unlocked yet/i)).toBeInTheDocument());
     // The hint must be honest guidance, never a fake achievement.
@@ -108,23 +125,27 @@ describe('AchievementsLensPage — four UX states', () => {
         ? { ok: true, catalog: CATALOG }
         : { ok: true, earned: [{ achievement_id: 'first_blood', earned_at: 1700000000 }] },
     );
-    render(<AchievementsLensPage />);
+    renderPage();
 
     // Earned + non-hidden locked are present.
     expect(await screen.findByText('First Blood')).toBeInTheDocument();
     expect(screen.getByText('Duel Champion')).toBeInTheDocument();
     // The hidden, unearned achievement must NOT show.
     expect(screen.queryByText('Legend')).not.toBeInTheDocument();
-    // Earned badge present for the unlocked one (exact "earned" text, distinct
-    // from the header's "1 / 2 earned …" summary).
-    expect(screen.getByText('earned')).toBeInTheDocument();
+    // Earned state is asserted via the card's aria-label (stable) rather
+    // than its visible badge text — the badge shows a relative-time string
+    // ("earned_at" formatted) when a timestamp exists, falling back to the
+    // literal word "earned" only when it doesn't, so the badge text itself
+    // is date-dependent and not a robust thing to pin in a test.
+    expect(screen.getByLabelText(/first blood.*earned/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/duel champion.*locked/i)).toBeInTheDocument();
     // Header reflects real counts (1 earned / 2 visible / 3 total).
     expect(screen.getByText(/1 \/ 2 earned · 3 total/i)).toBeInTheDocument();
   });
 
   it('a11y: category filter is a labelled nav with aria-pressed state', async () => {
     mockFetch((url) => (url.includes('/catalog') ? { ok: true, catalog: CATALOG } : { ok: true, earned: [] }));
-    render(<AchievementsLensPage />);
+    renderPage();
     await screen.findByText('First Blood');
 
     const nav = screen.getByRole('navigation', { name: /filter by category/i });
@@ -144,7 +165,7 @@ describe('AchievementsLensPage — four UX states', () => {
       return Promise.resolve({ ok: true, status: 200, json: async () => ({ ok: true, earned: [] }) } as Response);
     }) as unknown as typeof fetch;
 
-    render(<AchievementsLensPage />);
+    renderPage();
     await screen.findByText('First Blood');
     const countAfterMount = mineCallCount;
     expect(countAfterMount).toBeGreaterThan(0);

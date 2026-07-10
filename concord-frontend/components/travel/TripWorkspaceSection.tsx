@@ -35,7 +35,7 @@ const STATUS_COLOR: Record<string, string> = {
   draft: 'text-zinc-400', upcoming: 'text-sky-400', active: 'text-emerald-400', past: 'text-zinc-600',
 };
 
-export function TripWorkspaceSection() {
+export function TripWorkspaceSection({ onChange }: { onChange?: () => void } = {}) {
   const [trips, setTrips] = useState<DomainTrip[]>([]);
   const [shared, setShared] = useState<SharedTrip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +53,8 @@ export function TripWorkspaceSection() {
     setTrips((own.data?.result?.trips as DomainTrip[]) || []);
     setShared((shr.data?.result?.trips as SharedTrip[]) || []);
     setLoading(false);
-  }, []);
+    onChange?.();
+  }, [onChange]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 

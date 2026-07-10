@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Loader2, Plus, FileText, Folder, ChevronUp, ChevronDown, Trash2, Save,
-  Columns2, X, BookOpen,
+  Columns2, X, BookOpen, Pencil, Check, GitBranch, FolderInput,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -17,20 +17,26 @@ interface Chapter { id: string; title: string; order: number }
 interface Scene {
   id: string; projectId: string; chapterId: string | null; title: string;
   synopsis: string | null; status: string; content: string; wordCount: number;
-  povCharacterId: string | null; order: number;
+  povCharacterId: string | null; order: number; threadIds?: string[];
 }
 interface Character { id: string; name: string }
 interface RefNote { id: string; title: string; kind: string; body: string }
+interface Thread { id: string; name: string; color: string }
 
 const STATUS = ['outline', 'draft', 'revised', 'final'];
 const STATUS_COLOR: Record<string, string> = {
   outline: 'text-zinc-400', draft: 'text-amber-400', revised: 'text-sky-400', final: 'text-emerald-400',
+};
+const THREAD_COLOR_BG: Record<string, string> = {
+  indigo: 'bg-indigo-500', rose: 'bg-rose-500', emerald: 'bg-emerald-500',
+  amber: 'bg-amber-500', sky: 'bg-sky-500', violet: 'bg-violet-500',
 };
 
 export function CwBinderPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string>('');
   const [draft, setDraft] = useState<Scene | null>(null);
@@ -45,13 +51,20 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
   const [refSceneId, setRefSceneId] = useState('');
   const [refNotes, setRefNotes] = useState<RefNote[]>([]);
   const [refNoteId, setRefNoteId] = useState('');
+  // Chapter rename (chapter-update).
+  const [renamingChapter, setRenamingChapter] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('creative-writing', 'project-get', { id: projectId });
+    const [r, th] = await Promise.all([
+      lensRun('creative-writing', 'project-get', { id: projectId }),
+      lensRun('creative-writing', 'thread-list', { projectId }),
+    ]);
     setChapters((r.data?.result?.chapters as Chapter[]) || []);
     setScenes((r.data?.result?.scenes as Scene[]) || []);
     setCharacters((r.data?.result?.characters as Character[]) || []);
+    setThreads((th.data?.result?.threads as Thread[]) || []);
     setLoading(false);
     onChange();
   }, [projectId, onChange]);
@@ -126,6 +139,27 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
     await lensRun('creative-writing', 'scene-reorder', { sceneId: id, direction });
     await refresh();
   };
+  const startRenameChapter = (ch: Chapter) => { setRenamingChapter(ch.id); setRenameDraft(ch.title); };
+  const commitRenameChapter = async () => {
+    if (!renamingChapter) return;
+    const title = renameDraft.trim();
+    if (title) await lensRun('creative-writing', 'chapter-update', { chapterId: renamingChapter, title });
+    setRenamingChapter(null);
+    await refresh();
+  };
+  const moveSceneToChapter = async (sceneId: string, chapterId: string) => {
+    await lensRun('creative-writing', 'scene-move', { sceneId, chapterId: chapterId || undefined });
+    await refresh();
+  };
+  const toggleThreadTag = async (threadId: string, attached: boolean) => {
+    if (!draft) return;
+    await lensRun('creative-writing', 'scene-thread-tag', { sceneId: draft.id, threadId, attached });
+    await refresh();
+  };
+  const deleteSnapshot = async (id: string) => {
+    await lensRun('creative-writing', 'snapshot-delete', { id });
+    await loadSceneExtras();
+  };
 
   const saveScene = async () => {
     if (!draft) return;
@@ -157,7 +191,20 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
         <span className="text-[9px] text-zinc-400">{sc.wordCount}</span>
         <span className={cn('w-1.5 h-1.5 rounded-full', STATUS_COLOR[sc.status].replace('text-', 'bg-'))} />
       </button>
-      <div className="flex opacity-0 group-hover:opacity-100">
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+        <span className="relative flex items-center" title="Move to chapter">
+          <FolderInput className="w-3 h-3 text-zinc-600 pointer-events-none absolute -left-0.5" />
+          <select
+            aria-label="Move to chapter"
+            value={sc.chapterId || ''}
+            onChange={(e) => { e.stopPropagation(); void moveSceneToChapter(sc.id, e.target.value); }}
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-[64px] pl-3.5 bg-transparent text-zinc-500 hover:text-zinc-300 text-[9px] border-none focus:outline-none cursor-pointer"
+          >
+            <option value="" className="bg-zinc-900 text-zinc-100">Unfiled</option>
+            {chapters.map((c) => <option key={c.id} value={c.id} className="bg-zinc-900 text-zinc-100">{c.title}</option>)}
+          </select>
+        </span>
         <button aria-label="Collapse" type="button" onClick={() => moveScene(sc.id, 'up')} className="text-zinc-600 hover:text-zinc-300">
           <ChevronUp className="w-3 h-3" />
         </button>
@@ -193,8 +240,28 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
           <div key={ch.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-1.5">
             <div className="group flex items-center gap-1 px-1">
               <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="text-xs font-medium text-zinc-200 flex-1 truncate">{ch.title}</span>
+              {renamingChapter === ch.id ? (
+                <input
+                  autoFocus
+                  value={renameDraft}
+                  onChange={(e) => setRenameDraft(e.target.value)}
+                  onBlur={commitRenameChapter}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void commitRenameChapter(); if (e.key === 'Escape') setRenamingChapter(null); }}
+                  className="flex-1 bg-zinc-950 border border-amber-600/50 rounded px-1 py-0.5 text-xs text-zinc-100 focus:outline-none"
+                />
+              ) : (
+                <span className="text-xs font-medium text-zinc-200 flex-1 truncate">{ch.title}</span>
+              )}
               <div className="flex opacity-0 group-hover:opacity-100">
+                {renamingChapter === ch.id ? (
+                  <button aria-label="Confirm rename" type="button" onClick={commitRenameChapter} className="text-emerald-400 hover:text-emerald-300">
+                    <Check className="w-3 h-3" />
+                  </button>
+                ) : (
+                  <button aria-label="Rename chapter" type="button" onClick={() => startRenameChapter(ch)} className="text-zinc-600 hover:text-zinc-300">
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                )}
                 <button aria-label="Collapse" type="button" onClick={() => moveChapter(ch.id, 'up')} className="text-zinc-600 hover:text-zinc-300">
                   <ChevronUp className="w-3 h-3" />
                 </button>
@@ -274,6 +341,29 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               </button>
             </div>
 
+            {/* Plot threads carried by this scene */}
+            {threads.length > 0 && (
+              <div className="border-t border-zinc-800 pt-2">
+                <p className="flex items-center gap-1 text-[10px] font-semibold text-zinc-400 uppercase mb-1">
+                  <GitBranch className="w-3 h-3" /> Plot threads
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {threads.map((t) => {
+                    const attached = (draft.threadIds || []).includes(t.id);
+                    return (
+                      <button key={t.id} type="button" onClick={() => toggleThreadTag(t.id, !attached)}
+                        className={cn('flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] border transition-colors',
+                          attached ? 'border-zinc-600 bg-zinc-800 text-zinc-100' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300')}
+                      >
+                        <span className={cn('w-1.5 h-1.5 rounded-full', THREAD_COLOR_BG[t.color] || 'bg-zinc-500', !attached && 'opacity-40')} />
+                        {t.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Snapshots */}
             {snapshots.length > 0 && (
               <div className="border-t border-zinc-800 pt-2">
@@ -285,6 +375,8 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                       <span className="text-zinc-600">{sn.wordCount}w</span>
                       <button type="button" onClick={() => restoreSnapshot(sn.id)}
                         className="text-amber-400 hover:underline">restore</button>
+                      <button aria-label="Delete snapshot" type="button" onClick={() => deleteSnapshot(sn.id)}
+                        className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                     </li>
                   ))}
                 </ul>

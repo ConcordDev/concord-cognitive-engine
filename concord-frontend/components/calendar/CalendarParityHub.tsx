@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   RefreshCw, Users2, BellRing, MapPin, Video, MailCheck,
   Plus, Trash2, Loader2, Check, X, Link2, AlertCircle,
+  LayoutDashboard, CalendarSearch, Send,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -42,15 +43,17 @@ interface Invite {
   guest: string; rsvp: string;
 }
 
-type Tab = 'sync' | 'sharing' | 'reminders' | 'status' | 'conference' | 'invites';
+type Tab = 'dashboard' | 'sync' | 'sharing' | 'reminders' | 'status' | 'conference' | 'invites' | 'conflicts';
 
 const TABS: { id: Tab; label: string; icon: typeof RefreshCw }[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'sync', label: 'Account Sync', icon: RefreshCw },
   { id: 'sharing', label: 'Sharing', icon: Users2 },
   { id: 'reminders', label: 'Reminders', icon: BellRing },
   { id: 'status', label: 'Working / OOO', icon: MapPin },
   { id: 'conference', label: 'Video Links', icon: Video },
   { id: 'invites', label: 'Guest RSVP', icon: MailCheck },
+  { id: 'conflicts', label: 'Conflicts & Availability', icon: CalendarSearch },
 ];
 
 const RSVP_COLOR: Record<string, string> = {
@@ -68,7 +71,7 @@ function fmt(iso: string): string {
 }
 
 export function CalendarParityHub() {
-  const [tab, setTab] = useState<Tab>('sync');
+  const [tab, setTab] = useState<Tab>('dashboard');
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/40">
@@ -93,12 +96,14 @@ export function CalendarParityHub() {
         ))}
       </div>
       <div className="p-3">
+        {tab === 'dashboard' && <DashboardPanel />}
         {tab === 'sync' && <SyncPanel />}
         {tab === 'sharing' && <SharingPanel />}
         {tab === 'reminders' && <RemindersPanel />}
         {tab === 'status' && <StatusPanel />}
         {tab === 'conference' && <ConferencePanel />}
         {tab === 'invites' && <InvitesPanel />}
+        {tab === 'conflicts' && <ConflictsAvailabilityPanel />}
       </div>
     </div>
   );
@@ -111,6 +116,10 @@ function SyncPanel() {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState({ provider: 'ics', label: '', icsUrl: '', direction: 'two-way' });
+  const [pushOpenId, setPushOpenId] = useState<string | null>(null);
+  const [pushForm, setPushForm] = useState({ title: '', start: '', end: '' });
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushResult, setPushResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun<{ accounts: Account[] }>('calendar', 'accounts-list', {});
@@ -146,6 +155,29 @@ function SyncPanel() {
     await lensRun('calendar', 'accounts-disconnect', { id });
     setBusy(null);
     await refresh();
+  }
+
+  // Track C real two-way sync — push a one-off event straight to the connected
+  // Google account via calendar.accounts-push-event (SSRF-guarded connector).
+  async function pushEvent(accountId: string) {
+    if (!pushForm.title.trim() || !pushForm.start) { setPushResult({ id: accountId, ok: false, msg: 'Title and start time required.' }); return; }
+    setPushBusy(true);
+    setPushResult(null);
+    const r = await lensRun<{ pushed: boolean; providerEventId: string | null }>('calendar', 'accounts-push-event', {
+      accountId,
+      event: {
+        title: pushForm.title.trim(),
+        start: new Date(pushForm.start).toISOString(),
+        end: pushForm.end ? new Date(pushForm.end).toISOString() : new Date(new Date(pushForm.start).getTime() + 3600000).toISOString(),
+      },
+    });
+    setPushBusy(false);
+    if (r.data?.ok) {
+      setPushResult({ id: accountId, ok: true, msg: 'Pushed to Google Calendar.' });
+      setPushForm({ title: '', start: '', end: '' });
+    } else {
+      setPushResult({ id: accountId, ok: false, msg: r.data?.error || 'Push failed.' });
+    }
   }
 
   if (loading) return <Spin />;
@@ -185,23 +217,55 @@ function SyncPanel() {
       ) : (
         <ul className="space-y-1.5">
           {accounts.map(a => (
-            <li key={a.id} className="flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
-              <Link2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-zinc-100 truncate">{a.label}</p>
-                <p className="text-[10px] text-zinc-400">
-                  {a.provider} · {a.direction} ·{' '}
-                  {a.lastSyncAt ? `synced ${fmt(a.lastSyncAt)} (${a.lastSyncCount} events)` : 'never synced'}
-                </p>
+            <li key={a.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Link2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-zinc-100 truncate">{a.label}</p>
+                  <p className="text-[10px] text-zinc-400">
+                    {a.provider} · {a.direction} ·{' '}
+                    {a.lastSyncAt ? `synced ${fmt(a.lastSyncAt)} (${a.lastSyncCount} events)` : 'never synced'}
+                  </p>
+                </div>
+                {a.provider === 'google' && ['push', 'two-way'].includes(a.direction) && (
+                  <button onClick={() => { setPushOpenId(pushOpenId === a.id ? null : a.id); setPushResult(null); }}
+                    className="px-2 py-1 rounded text-[11px] bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 inline-flex items-center gap-1"
+                    aria-expanded={pushOpenId === a.id}>
+                    <Send className="w-3 h-3" /> Push event
+                  </button>
+                )}
+                <button onClick={() => sync(a.id)} disabled={busy === a.id}
+                  className="px-2 py-1 rounded text-[11px] bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 inline-flex items-center gap-1 disabled:opacity-50">
+                  {busy === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  Sync
+                </button>
+                <button onClick={() => disconnect(a.id)} className="p-1 text-rose-400 hover:text-rose-300" aria-label="Disconnect">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <button onClick={() => sync(a.id)} disabled={busy === a.id}
-                className="px-2 py-1 rounded text-[11px] bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 inline-flex items-center gap-1 disabled:opacity-50">
-                {busy === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                Sync
-              </button>
-              <button onClick={() => disconnect(a.id)} className="p-1 text-rose-400 hover:text-rose-300" aria-label="Disconnect">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {pushOpenId === a.id && (
+                <div className="mt-2 pt-2 border-t border-zinc-800 grid sm:grid-cols-3 gap-1.5">
+                  <input value={pushForm.title} onChange={e => setPushForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Event title" aria-label="Push event title"
+                    className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-100 sm:col-span-1" />
+                  <input type="datetime-local" value={pushForm.start} onChange={e => setPushForm(f => ({ ...f, start: e.target.value }))}
+                    aria-label="Push event start" className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-100" />
+                  <div className="flex gap-1.5">
+                    <input type="datetime-local" value={pushForm.end} onChange={e => setPushForm(f => ({ ...f, end: e.target.value }))}
+                      aria-label="Push event end" className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-100" />
+                    <button onClick={() => pushEvent(a.id)} disabled={pushBusy}
+                      className="px-2 py-1 rounded text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-50 inline-flex items-center gap-1">
+                      {pushBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                      Push
+                    </button>
+                  </div>
+                  {pushResult?.id === a.id && (
+                    pushResult.ok
+                      ? <p className="sm:col-span-3 text-[11px] text-emerald-400 inline-flex items-center gap-1"><Check className="w-3 h-3" />{pushResult.msg}</p>
+                      : <p className="sm:col-span-3"><ErrLine msg={pushResult.msg} /></p>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -698,6 +762,161 @@ function InvitesPanel() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// ── Dashboard — at-a-glance summary (calendar-dashboard-summary) ──────
+interface DashboardSummary {
+  calendarCount: number; eventsToday: number; eventsThisWeek: number;
+  openTasks: number; overdueTasks: number; unblockedTasks: number;
+}
+function DashboardPanel() {
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true); setErr(null);
+    const r = await lensRun<DashboardSummary>('calendar', 'calendar-dashboard-summary', {});
+    if (r.data?.ok) setSummary(r.data.result || null);
+    else setErr(r.data?.error || 'Could not load dashboard summary.');
+    setLoading(false);
+  }, []);
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  if (loading) return <Spin />;
+  if (err) return <ErrLine msg={err} />;
+  if (!summary) return <Empty msg="No dashboard data yet." />;
+
+  const tiles: { label: string; value: number; tone: string }[] = [
+    { label: 'Calendars', value: summary.calendarCount, tone: 'text-zinc-100' },
+    { label: 'Events today', value: summary.eventsToday, tone: 'text-blue-300' },
+    { label: 'Events this week', value: summary.eventsThisWeek, tone: 'text-blue-300' },
+    { label: 'Open tasks', value: summary.openTasks, tone: 'text-zinc-100' },
+    { label: 'Overdue tasks', value: summary.overdueTasks, tone: summary.overdueTasks > 0 ? 'text-rose-400' : 'text-zinc-100' },
+    { label: 'Unblocked tasks', value: summary.unblockedTasks, tone: 'text-emerald-400' },
+  ];
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-zinc-400">Real-time snapshot across every calendar and task you own.</p>
+        <button onClick={() => void refresh()} className="p-1 text-zinc-400 hover:text-zinc-200" aria-label="Refresh dashboard">
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {tiles.map(t => (
+          <div key={t.label} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
+            <p className={cn('text-xl font-bold', t.tone)}>{t.value}</p>
+            <p className="text-[10px] text-zinc-400">{t.label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Conflicts & availability — against the user's REAL saved calendar ─
+// (calendar.conflicts-check / calendar.availability-find — STATE-backed,
+// distinct from the scratch-pad detectConflicts/findAvailability calculators
+// in ScheduleAnalyzer, which operate on ad-hoc pasted events.)
+interface ConflictRow { eventId: string; title: string; start: string; end: string }
+interface FreeSlot { start: string; end: string }
+function ConflictsAvailabilityPanel() {
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [conflicts, setConflicts] = useState<ConflictRow[] | null>(null);
+  const [conflictErr, setConflictErr] = useState<string | null>(null);
+  const [conflictBusy, setConflictBusy] = useState(false);
+
+  const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
+  const [durationMin, setDurationMin] = useState(30);
+  const [slots, setSlots] = useState<FreeSlot[] | null>(null);
+  const [availErr, setAvailErr] = useState<string | null>(null);
+  const [availBusy, setAvailBusy] = useState(false);
+
+  async function checkConflicts() {
+    if (!start || !end) { setConflictErr('Start and end required.'); return; }
+    setConflictBusy(true); setConflictErr(null); setConflicts(null);
+    const r = await lensRun<{ hasConflict: boolean; conflicts: ConflictRow[] }>('calendar', 'conflicts-check', {
+      start: new Date(start).toISOString(), end: new Date(end).toISOString(),
+    });
+    setConflictBusy(false);
+    if (r.data?.ok) setConflicts(r.data.result?.conflicts || []);
+    else setConflictErr(r.data?.error || 'Could not check conflicts.');
+  }
+
+  async function findSlots() {
+    setAvailBusy(true); setAvailErr(null); setSlots(null);
+    const r = await lensRun<{ freeSlots: FreeSlot[] }>('calendar', 'availability-find', { day, durationMin });
+    setAvailBusy(false);
+    if (r.data?.ok) setSlots(r.data.result?.freeSlots || []);
+    else setAvailErr(r.data?.error || 'Could not find availability.');
+  }
+
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-zinc-200">Check a time window against my real calendar</p>
+        <div className="flex flex-col gap-1.5">
+          <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
+            aria-label="Conflict check start" className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100" />
+          <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)}
+            aria-label="Conflict check end" className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100" />
+          <button onClick={checkConflicts} disabled={conflictBusy}
+            className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-1">
+            {conflictBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CalendarSearch className="w-3.5 h-3.5" />}
+            Check conflicts
+          </button>
+        </div>
+        {conflictErr && <ErrLine msg={conflictErr} />}
+        {conflicts && (
+          conflicts.length === 0
+            ? <p className="text-xs text-emerald-400 inline-flex items-center gap-1"><Check className="w-3 h-3" />No conflicts in this window.</p>
+            : (
+              <ul className="space-y-1">
+                {conflicts.map(c => (
+                  <li key={`${c.eventId}-${c.start}`} className="text-[11px] text-rose-300 bg-rose-500/5 border border-rose-500/20 rounded px-2 py-1">
+                    {c.title} · {fmt(c.start)} – {fmt(c.end)}
+                  </li>
+                ))}
+              </ul>
+            )
+        )}
+      </div>
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-zinc-200">Find free slots on my real calendar</p>
+        <div className="flex flex-col gap-1.5">
+          <input type="date" value={day} onChange={e => setDay(e.target.value)}
+            aria-label="Availability day" className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100" />
+          <div className="flex items-center gap-2">
+            <input type="number" min={15} max={480} step={15} value={durationMin}
+              onChange={e => setDurationMin(Number(e.target.value) || 30)}
+              aria-label="Slot duration minutes" className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100" />
+            <span className="text-[11px] text-zinc-400">minutes, 9am–6pm work window</span>
+          </div>
+          <button onClick={findSlots} disabled={availBusy}
+            className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-1">
+            {availBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CalendarSearch className="w-3.5 h-3.5" />}
+            Find slots
+          </button>
+        </div>
+        {availErr && <ErrLine msg={availErr} />}
+        {slots && (
+          slots.length === 0
+            ? <Empty msg="No free slots of that length in the work window." />
+            : (
+              <ul className="space-y-1">
+                {slots.map(s => (
+                  <li key={s.start} className="text-[11px] text-emerald-300 bg-emerald-500/5 border border-emerald-500/20 rounded px-2 py-1">
+                    {fmt(s.start)} – {fmt(s.end)}
+                  </li>
+                ))}
+              </ul>
+            )
+        )}
+      </div>
     </div>
   );
 }

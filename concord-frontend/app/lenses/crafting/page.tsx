@@ -112,13 +112,16 @@ interface CharacterProgress {
   next_level_xp?: number;
 }
 
+// Mirrors the real `player_skill_levels` row shape returned by
+// GET /api/crafting/skills's `skillLevels` array (server/routes/crafting.js) —
+// `native_world_type`, not `worldType`; `xp`/`xp_to_next`, not `experience`.
 interface SkillRow {
   id?: string;
   skill_type?: string;
   level?: number;
-  worldType?: string;
-  experience?: number;
-  total_experience?: number;
+  native_world_type?: string;
+  xp?: number;
+  xp_to_next?: number;
 }
 
 interface CraftingRecipe {
@@ -1231,12 +1234,12 @@ function SkillsTab({ onChanged }: { onChanged: () => void }) {
             ) : (
               <ul className="space-y-2">
                 {skills.map((s, i) => (
-                  <li key={`${s.skill_type}-${s.worldType}-${i}`} className="bg-white/5 border border-white/10 rounded-lg p-3 flex items-center justify-between">
+                  <li key={`${s.skill_type}-${s.native_world_type}-${i}`} className="bg-white/5 border border-white/10 rounded-lg p-3 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold">{s.skill_type}</p>
                       <p className="text-[11px] text-white/50">
                         Lv {Number(s.level ?? 0).toFixed(1)}
-                        {s.worldType && <span className="text-white/30"> · {s.worldType}</span>}
+                        {s.native_world_type && <span className="text-white/30"> · {s.native_world_type}</span>}
                       </p>
                     </div>
                     <button

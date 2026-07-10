@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { Shield, AlertTriangle, TrendingDown, Calendar, Activity, Sparkles, Send, Globe, Wand2, Loader2, Check } from 'lucide-react';
+import { Shield, AlertTriangle, TrendingDown, Calendar, Activity, Sparkles, Send, Globe, Wand2, Loader2, Check, Receipt, ClipboardCheck, LineChart, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,7 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'gap' | 'loss' | 'renewal' | 'risk' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'gap' | 'loss' | 'renewal' | 'risk' | 'commission' | 'claimStatus' | 'premiumHistory' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
 interface GapResult { coveredTypes?: string[]; gaps?: string[]; gapCount?: number; expiringSoon?: unknown[]; totalPolicies?: number }
@@ -31,8 +31,13 @@ interface LossResult { lossRatio?: number; premiumsCollected?: number; claimsPai
 interface RenewalEntry { policyNumber?: string; holder?: string; type?: string; expiryDate?: string; daysUntilRenewal?: number; premium?: number }
 interface RenewalResult { totalUpcomingRenewals?: number; premiumAtRisk?: number; within30Days?: RenewalEntry[]; within60Days?: RenewalEntry[]; urgentCount?: number }
 interface RiskResult { risk?: string; probability?: number; impact?: number; rawScore?: number; normalizedScore?: number; level?: string; mitigatedScore?: number }
+interface CommissionTier { tier: string; policyCount: number; totalCommission: number; avgRate: number }
+interface CommissionResult { totalPolicies?: number; totalPremium?: number; totalCommission?: number; effectiveRate?: number; byTier?: CommissionTier[] }
+interface ClaimStatusResult { byStatus?: Record<string, number>; totalClaims?: number; totalAmount?: number; openClaims?: number }
+interface PremiumHistoryEntry { period?: string; previousPremium?: number; currentPremium?: number; changePercent?: number }
+interface PremiumHistoryResult { history?: PremiumHistoryEntry[]; averageChangePercent?: number; trend?: string }
 
-interface Policy { type: string; premium: number; expiryDate: string; policyNumber: string; holder?: string }
+interface Policy { type: string; premium: number; expiryDate: string; policyNumber: string; holder?: string; commissionRate?: number; tier?: string }
 
 function makePolicies(jsonText: string): { policies: Policy[]; claims: { status: string; amount: number }[] } | null {
   try {
@@ -56,6 +61,11 @@ export function InsuranceActionPanel() {
   const [lossResult, setLossResult] = useState<LossResult | null>(null);
   const [renewalResult, setRenewalResult] = useState<RenewalResult | null>(null);
   const [riskResult, setRiskResult] = useState<RiskResult | null>(null);
+  const [commissionResult, setCommissionResult] = useState<CommissionResult | null>(null);
+  const [claimStatusResult, setClaimStatusResult] = useState<ClaimStatusResult | null>(null);
+  const [premiumHistoryResult, setPremiumHistoryResult] = useState<PremiumHistoryResult | null>(null);
+  const [historyPolicyNumber, setHistoryPolicyNumber] = useState('');
+  const [historyRows, setHistoryRows] = useState<{ date: string; premium: string }[]>([{ date: '', premium: '' }]);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
@@ -98,6 +108,34 @@ export function InsuranceActionPanel() {
     try {
       const r = await callMacro<RiskResult>('riskScore', { artifact: { title: riskTitle, data: { risk: riskTitle, probability: p, impact: i } } });
       if (r.ok && r.result) { setRiskResult(r.result); pipe.publish('insurance.risk', r.result, { label: `Risk ${r.result.level} ${r.result.normalizedScore}%` }); ok(`${r.result.level?.toUpperCase()} (${r.result.normalizedScore}%).`); } else err(r.error ?? 'risk failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+  async function actCommission() {
+    const a = bookArtifact(); if (!a) { err('Invalid book JSON.'); return; }
+    setBusy('commission'); setFeedback(null);
+    try { const r = await callMacro<CommissionResult>('commissionSummary', { artifact: a }); if (r.ok && r.result) { setCommissionResult(r.result); pipe.publish('insurance.commission', r.result, { label: `Commission $${r.result.totalCommission}` }); ok(`Commission $${r.result.totalCommission?.toLocaleString()} at ${r.result.effectiveRate}% effective rate.`); } else err(r.error ?? 'commission summary failed'); }
+    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+  async function actClaimStatus() {
+    const a = bookArtifact(); if (!a) { err('Invalid book JSON.'); return; }
+    setBusy('claimStatus'); setFeedback(null);
+    try { const r = await callMacro<ClaimStatusResult>('claimStatus', { artifact: a }); if (r.ok && r.result) { setClaimStatusResult(r.result); pipe.publish('insurance.claimStatus', r.result, { label: `${r.result.openClaims} open claims` }); ok(`${r.result.totalClaims} claims, ${r.result.openClaims} open, $${r.result.totalAmount?.toLocaleString()} total.`); } else err(r.error ?? 'claim status failed'); }
+    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+  function addHistoryRow() { setHistoryRows(rows => [...rows, { date: '', premium: '' }]); }
+  function removeHistoryRow(i: number) { setHistoryRows(rows => rows.filter((_, idx) => idx !== i)); }
+  function updateHistoryRow(i: number, field: 'date' | 'premium', value: string) {
+    setHistoryRows(rows => rows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  }
+  async function actPremiumHistory() {
+    const renewalHistory = historyRows
+      .filter(r => r.date && r.premium)
+      .map(r => ({ date: r.date, premium: parseFloat(r.premium) || 0 }));
+    if (renewalHistory.length < 2) { err('Enter at least two dated premium points.'); return; }
+    setBusy('premiumHistory'); setFeedback(null);
+    try {
+      const r = await callMacro<PremiumHistoryResult>('premiumHistory', { artifact: { title: historyPolicyNumber, data: { policyNumber: historyPolicyNumber, renewalHistory } } });
+      if (r.ok && r.result) { setPremiumHistoryResult(r.result); pipe.publish('insurance.premiumHistory', r.result, { label: `Trend: ${r.result.trend}` }); ok(`Trend: ${r.result.trend} (avg ${r.result.averageChangePercent}% / renewal).`); } else err(r.error ?? 'premium history failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -157,6 +195,9 @@ export function InsuranceActionPanel() {
     { id: 'loss' as ActionId, label: 'Loss ratio', desc: 'lossRatioReport', icon: TrendingDown, accent: '#ef4444', handler: actLoss },
     { id: 'renewal' as ActionId, label: 'Renewals', desc: 'renewalAlert 30/60/90', icon: Calendar, accent: '#3b82f6', handler: actRenewal },
     { id: 'risk' as ActionId, label: 'Risk', desc: 'riskScore P×I', icon: Activity, accent: '#a855f7', handler: actRisk },
+    { id: 'commission' as ActionId, label: 'Commission', desc: 'commissionSummary by tier', icon: Receipt, accent: '#22c55e', handler: actCommission },
+    { id: 'claimStatus' as ActionId, label: 'Claim status', desc: 'claimStatus + aging', icon: ClipboardCheck, accent: '#f97316', handler: actClaimStatus },
+    { id: 'premiumHistory' as ActionId, label: 'Premium trend', desc: 'premiumHistory below', icon: LineChart, accent: '#0ea5e9', handler: actPremiumHistory },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private book DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief to underwriter', icon: Send, accent: '#ec4899', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon benchmark', icon: Globe, accent: '#15803d', handler: actPublish },
@@ -174,7 +215,8 @@ export function InsuranceActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="md:col-span-2">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Book (JSON · policies + claims)</label>
-          <textarea value={bookText} onChange={(e) => setBookText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1" />
+          <textarea value={bookText} onChange={(e) => setBookText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1"
+            placeholder={'{"policies":[{"type":"auto","premium":1200,"expiryDate":"2026-08-01","policyNumber":"POL-1","commissionRate":12,"tier":"standard"}],"claims":[{"status":"paid","amount":3200,"dateOfLoss":"2026-05-01"}]}'} />
         </div>
         <div className="space-y-2">
           <input type="text" value={riskTitle} onChange={(e) => setRiskTitle(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Risk title" />
@@ -188,6 +230,19 @@ export function InsuranceActionPanel() {
             <RecallSlot ctl={publishRecall} />
           </div>
         </div>
+      </div>
+
+      <div className="rounded-md border border-sky-500/20 bg-sky-500/[0.03] p-2.5 space-y-1.5">
+        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Premium trend (policyNumber + dated premium points)</label>
+        <input type="text" value={historyPolicyNumber} onChange={(e) => setHistoryPolicyNumber(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Policy number (POL-1)" />
+        {historyRows.map((row, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <input type="date" value={row.date} onChange={(e) => updateHistoryRow(i, 'date', e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" />
+            <input type="number" value={row.premium} onChange={(e) => updateHistoryRow(i, 'premium', e.target.value)} className="w-24 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Premium $" />
+            <button type="button" onClick={() => removeHistoryRow(i)} disabled={historyRows.length <= 1} className="p-1 text-zinc-500 hover:text-rose-400 disabled:opacity-30" aria-label="Remove row"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        ))}
+        <button type="button" onClick={addHistoryRow} className="text-[11px] inline-flex items-center gap-1 text-sky-300 hover:text-sky-200"><Plus className="w-3 h-3" /> Add renewal point</button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
@@ -237,6 +292,30 @@ export function InsuranceActionPanel() {
             <div className="text-2xl font-bold text-purple-300">{riskResult.normalizedScore}%</div>
             <div className="text-[10px] text-zinc-400 line-clamp-1">{riskResult.risk}</div>
             <div className="text-[10px] text-zinc-400">P{riskResult.probability} × I{riskResult.impact} = {riskResult.rawScore} → {riskResult.mitigatedScore} mitigated</div>
+          </div>
+        )}
+        {commissionResult && (
+          <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Commission</div>
+            <div className="text-2xl font-bold text-green-300">${commissionResult.totalCommission?.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">{commissionResult.effectiveRate}% effective on ${commissionResult.totalPremium?.toLocaleString()} premium</div>
+            {(commissionResult.byTier ?? []).slice(0, 3).map((t, i) => <div key={i} className="text-[10px] text-green-200 mt-0.5">{t.tier}: ${t.totalCommission} ({t.avgRate}%)</div>)}
+          </div>
+        )}
+        {claimStatusResult && (
+          <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Claim status</div>
+            <div className="text-2xl font-bold text-orange-300">{claimStatusResult.openClaims} <span className="text-xs text-zinc-400">open</span></div>
+            <div className="text-[10px] text-zinc-400">{claimStatusResult.totalClaims} total · ${claimStatusResult.totalAmount?.toLocaleString()}</div>
+            {claimStatusResult.byStatus && Object.entries(claimStatusResult.byStatus).slice(0, 3).map(([k, v]) => <div key={k} className="text-[10px] text-orange-200 mt-0.5 capitalize">{k}: {v}</div>)}
+          </div>
+        )}
+        {premiumHistoryResult && (
+          <div className="rounded-md border border-sky-500/30 bg-sky-500/5 p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-sky-300 font-semibold">Premium trend</div>
+            <div className="text-2xl font-bold text-sky-300 capitalize">{premiumHistoryResult.trend}</div>
+            <div className="text-[10px] text-zinc-400">avg {premiumHistoryResult.averageChangePercent}% per renewal</div>
+            {(premiumHistoryResult.history ?? []).slice(-3).map((h, i) => <div key={i} className="text-[10px] text-sky-200 mt-0.5">{h.period}: ${h.previousPremium} → ${h.currentPremium} ({h.changePercent}%)</div>)}
           </div>
         )}
       </div>

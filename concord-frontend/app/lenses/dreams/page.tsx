@@ -7,7 +7,16 @@
  * The list comes from `dreams.recent`; the reader/interpret/tag/publish flow
  * runs through `dreams.detail` / `dreams.interpret` / `dreams.tag` /
  * `dreams.publish` / `dreams.reprice` / `dreams.unpublish`; search + timeline
- * use `dreams.search` / `dreams.tags` / `dreams.timeline`. Currency: CC.
+ * use `dreams.search` / `dreams.tags` / `dreams.timeline`; the forward-looking
+ * counterpart uses `dreams.predictions` (Layer 10 forward-sim). Currency: CC.
+ *
+ * Scope boundary: this lens is the player's own Layer 9 embodied-dream
+ * substrate (`dreams` table, one composed record per offline pass). It does
+ * NOT surface the unrelated system-level 6-phase dream-cycle (home-dashboard
+ * `SubstrateDreams` widget) or the owner-only insight-capture/convergence
+ * tool (`command-center`'s dream panel) — those are different substrates
+ * with their own dedicated surfaces; mixing them in here would show a
+ * regular player counts from a system they can't act on.
  */
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors. Local fetch errors caught with try/catch where shown.
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
@@ -20,7 +29,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { DreamConvergences } from '@/components/dreams/DreamConvergences';
+import { DreamPredictions } from '@/components/dreams/DreamPredictions';
 import { DreamReader } from '@/components/dreams/DreamReader';
 import { DreamLibrary } from '@/components/dreams/DreamLibrary';
 import { lensRun } from '@/lib/api/client';
@@ -143,7 +152,7 @@ export default function DreamsPage() {
         )}
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <DreamConvergences />
+          <DreamPredictions />
         </section>
       </div>
 

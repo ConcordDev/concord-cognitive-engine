@@ -1,20 +1,22 @@
 /**
- * /lenses/atlas — four-UX-state contract for the Atlas lens.
+ * /lenses/atlas — mode toggle + four-UX-state contract for the Atlas lens.
  *
- * Pins that the lens renders genuine loading / error (with a WORKING Retry) /
- * empty (with a CTA) / populated states against its real backend channel:
- *   • the signal-tomography queries (coverage / taxonomy / anomalies / live)
- *     the page reads through @tanstack/react-query.
+ * The lens has two backends behind one page: a real places/trips/directions
+ * tool (`AtlasSection`, tested independently — mocked here as an inert
+ * marker) and a signal-tomography channel (coverage / taxonomy / anomalies /
+ * live queries read through @tanstack/react-query). Default mode is "Map &
+ * trips"; "Signal tomography" is a secondary mode reached via a tab toggle.
  *
- * a11y: loading is role=status, error is role=alert with a Retry that
- * RE-FETCHES the failed queries (we assert refetch fires — NOT a full
- * window.location.reload). The empty + populated states are driven by the real
- * query shapes the page consumes. No fabricated data — every state is mocked at
- * the useQuery boundary the page actually reads.
+ * This test pins:
+ *   • Map mode is the default (AtlasSection mounts, tomography does not).
+ *   • Switching to Signal tomography renders genuine loading / error (with a
+ *     WORKING Retry) / empty (with a CTA) / populated states against its
+ *     real backend channel — role=status / role=alert / honest empty copy /
+ *     real query-shape-driven counts. No fabricated data — every state is
+ *     mocked at the useQuery boundary the page actually reads.
  *
  * This lens is ALREADY-WIRED (PATH 3 — server/domains/atlas.js via
- * registerLensAction + the inline atlas-tomography REST routes). This test
- * asserts the four states render honestly.
+ * registerLensAction + the inline atlas-tomography REST routes).
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -68,42 +70,18 @@ vi.mock('@/components/lens/LensShell', () => ({
 }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
-vi.mock('@/hooks/useRealtimeLens', () => ({
-  useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
-}));
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
-}));
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  useLensData: () => ({ items: [], total: 0, isLoading: false, isError: false, error: null, refetch: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() }),
-}));
-
-// lens chrome + cross-lens panels → null
-vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
-vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
-vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
-vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
-vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
-vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
 vi.mock('@/components/panel-polish', () => ({ PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children) }));
 vi.mock('@/components/common/SafeCard', () => ({ SafeCard: ({ children }: { children: React.ReactNode }) => React.createElement('div', null, children) }));
 
-// atlas + chat child panels → inert (each owns its own backend channel)
-vi.mock('@/components/atlas/AtlasSection', () => ({ AtlasSection: () => null }));
-vi.mock('@/components/atlas/OsmGeocodePanel', () => ({ OsmGeocodePanel: () => null }));
-vi.mock('@/components/atlas/PlacesGraph', () => ({ PlacesGraph: () => null }));
-vi.mock('@/components/atlas/NavigationSuite', () => ({ NavigationSuite: () => null }));
-vi.mock('@/components/atlas/AtlasActionPanel', () => ({ AtlasActionPanel: () => null }));
-vi.mock('@/components/atlas/PlaceFinder', () => ({ PlaceFinder: () => null }));
-vi.mock('@/components/atlas/DistanceMatrixPanel', () => ({ DistanceMatrixPanel: () => null }));
-vi.mock('@/components/atlas/MapsDirections', () => ({ MapsDirections: () => null }));
-vi.mock('@/components/atlas/RouteStops', () => ({ RouteStops: () => null }));
-vi.mock('@/components/atlas/SavedPlaces', () => ({ SavedPlaces: () => null }));
+// The real places/trips/directions tool owns its own backend channel and is
+// tested independently — inert marker here so this file stays scoped to the
+// page's mode toggle + the tomography channel.
+vi.mock('@/components/atlas/AtlasSection', () => ({
+  AtlasSection: () => React.createElement('div', { 'data-testid': 'atlas-section' }, 'Map & trips content'),
+}));
+
 vi.mock('@/components/chat/AtlasPublicView', () => ({ default: () => null }));
 vi.mock('@/components/chat/AtlasResearchView', () => ({ default: () => null }));
 vi.mock('@/components/chat/AtlasSignalView', () => ({ default: () => null }));
@@ -128,6 +106,10 @@ function setQueries(over: Record<string, QueryState>) {
   Object.assign(queryStates, over);
 }
 
+function switchToTomography(getByText: (m: RegExp | string) => HTMLElement) {
+  fireEvent.click(getByText(/Signal tomography/i));
+}
+
 beforeEach(() => {
   for (const k of Object.keys(queryStates)) delete queryStates[k];
   refetchCoverage.mockReset();
@@ -135,13 +117,30 @@ beforeEach(() => {
   refetchTile.mockReset();
 });
 
-describe('atlas lens — four UX states', () => {
+describe('atlas lens — mode toggle', () => {
+  it('defaults to Map & trips mode, mounting the real places/trips tool', () => {
+    const { getByTestId, queryByText } = render(<AtlasLens />);
+    expect(getByTestId('atlas-section')).toBeInTheDocument();
+    // Tomography-only copy is not rendered until the mode is switched.
+    expect(queryByText(/Scanning signal tomography/i)).not.toBeInTheDocument();
+  });
+
+  it('switches to Signal tomography mode on toggle click', () => {
+    const { getByText, queryByTestId } = render(<AtlasLens />);
+    switchToTomography(getByText);
+    expect(getByText(/mesh-network signal deltas/i)).toBeInTheDocument();
+    expect(queryByTestId('atlas-section')).not.toBeInTheDocument();
+  });
+});
+
+describe('atlas lens — signal tomography four UX states', () => {
   it('LOADING: shows a role=status indicator while tomography is in flight', async () => {
     setQueries({
       'atlas-coverage': { isLoading: true },
       'atlas-anomalies': { isLoading: true },
     });
     const { container, getByText } = render(<AtlasLens />);
+    switchToTomography(getByText);
     await waitFor(() => expect(container.querySelector('[role="status"]')).toBeTruthy());
     expect(getByText(/Scanning signal tomography/i)).toBeInTheDocument();
   });
@@ -152,6 +151,7 @@ describe('atlas lens — four UX states', () => {
       'atlas-anomalies': { isError: true },
     });
     const { container, getByText } = render(<AtlasLens />);
+    switchToTomography(getByText);
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
     expect(getByText(/failed to load/i)).toBeInTheDocument();
 
@@ -163,7 +163,7 @@ describe('atlas lens — four UX states', () => {
     expect(refetchAnomalies.mock.calls.length).toBeGreaterThan(beforeAno);
   });
 
-  it('EMPTY: shows the honest empty message + CTA when every source resolved with no rows', async () => {
+  it('EMPTY: shows the honest empty message when every source resolved with no rows', async () => {
     setQueries({
       'atlas-coverage': { data: { coverage: 0 } },
       'atlas-taxonomy': { data: { signals: [], total: 0 } },
@@ -171,9 +171,10 @@ describe('atlas lens — four UX states', () => {
       'atlas-live': { data: { nodes: [] } },
     });
     const { getByText } = render(<AtlasLens />);
+    switchToTomography(getByText);
     await waitFor(() => expect(getByText(/No signal coverage yet/i)).toBeInTheDocument());
-    // CTA pointing the user at the real next action (query a tile / save a place).
-    expect(getByText(/Query a tile/i)).toBeInTheDocument();
+    // The disclosure banner explains WHY (no mesh ingestion wired), not just that it's empty.
+    expect(getByText(/no mesh signal-ingestion pipeline wired/i)).toBeInTheDocument();
   });
 
   it('POPULATED: renders real node markers + signal/anomaly counts from the query data', async () => {
@@ -184,6 +185,7 @@ describe('atlas lens — four UX states', () => {
       'atlas-live': { data: { nodes: [{ lat: 40.7, lng: -74, id: 'node-1', status: 'Active' }] } },
     });
     const { getByText, container } = render(<AtlasLens />);
+    switchToTomography(getByText);
     // 1 live node ⇒ 1 marker; the stat card + zoom indicator report it.
     await waitFor(() => expect(getByText(/1 markers loaded/i)).toBeInTheDocument());
     // Coverage stat renders the real percentage (0.42 → 42%).

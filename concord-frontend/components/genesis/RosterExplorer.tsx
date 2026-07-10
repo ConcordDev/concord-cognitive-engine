@@ -35,12 +35,27 @@ function rel(ts: number | null): string {
   return `${Math.floor(diff / 86_400_000)}d ago`;
 }
 
+export interface RosterFilters {
+  query: string;
+  role: string;
+  focus: string;
+  state: 'all' | 'active' | 'dormant';
+}
+
 export function RosterExplorer({
   selectedId,
   onSelect,
+  onFiltersChange,
+  applyFilters,
+  applyKey,
 }: {
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Fired whenever the live filter set changes — lets a parent (e.g. "save current search") read it. */
+  onFiltersChange?: (f: RosterFilters) => void;
+  /** External filter set to apply (e.g. re-running a saved search). Re-applies whenever `applyKey` changes. */
+  applyFilters?: Partial<RosterFilters> | null;
+  applyKey?: number;
 }) {
   const [query, setQuery] = useState('');
   const [role, setRole] = useState('');
@@ -48,6 +63,22 @@ export function RosterExplorer({
   const [state, setState] = useState<'all' | 'active' | 'dormant'>('all');
   const [data, setData] = useState<RosterResponse | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Re-run a saved search: apply its filters whenever the caller bumps `applyKey`.
+  useEffect(() => {
+    if (!applyKey || !applyFilters) return;
+    setQuery(applyFilters.query || '');
+    setRole(applyFilters.role || '');
+    setOrigin(applyFilters.focus || '');
+    setState((applyFilters.state as 'all' | 'active' | 'dormant') || 'all');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyKey]);
+
+  // Surface the live filter set upward so a parent can offer "save current search".
+  useEffect(() => {
+    onFiltersChange?.({ query, role, focus: origin, state });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, role, origin, state]);
 
   useEffect(() => {
     let alive = true;

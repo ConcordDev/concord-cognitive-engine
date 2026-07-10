@@ -25,12 +25,21 @@ import { LensShell } from '@/components/lens/LensShell';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Briefcase, RefreshCw, Hammer, AlertTriangle, Loader2 } from 'lucide-react';
+import { Briefcase, RefreshCw, Hammer, AlertTriangle, Loader2, Check, X, ArrowLeftRight } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 
 interface Track { id: string; category: string; activity: string; branch: string[] }
 interface WorkResult { ok: boolean; trackId?: string; tier?: number; performanceScore?: number; wage?: number; xp?: number; paid?: boolean; reason?: string }
-interface Contract { id: string; track_id: string; tier: number; role: string | null; base_wage_sparks: number; status: string; employer_id: string; worker_id: string }
+interface Contract {
+  id: string; track_id: string; tier: number; role: string | null; base_wage_sparks: number;
+  status: string; employer_id: string; worker_id: string; signing_bonus_sparks?: number;
+}
+// Contracts in 'offered' or 'countered' status are still being negotiated — the
+// other party (whoever did NOT make the standing offer) may accept, counter, or
+// reject. The client doesn't know the exact last_offer_by encoding, so every
+// negotiable contract gets the three actions; the backend is the source of
+// truth (career-contracts.js#acceptContract rejects "cannot_accept_own_offer").
+const NEGOTIABLE = new Set(['offered', 'countered']);
 
 type LoadState = 'loading' | 'error' | 'disabled' | 'ready';
 
@@ -44,6 +53,8 @@ export default function CareersLens() {
   const [last, setLast] = useState<WorkResult | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const [negBusy, setNegBusy] = useState<string | null>(null);
+  const [counterWage, setCounterWage] = useState<Record<string, string>>({});
   const addToast = useUIStore((s) => s.addToast);
 
   const refresh = useCallback(async () => {
@@ -91,6 +102,30 @@ export default function CareersLens() {
       setWorking(false);
     }
   }, [selected, skill, addToast]);
+
+  const refreshContracts = useCallback(async () => {
+    try {
+      const c = (await lensRun<{ ok: boolean; contracts?: Contract[] }>('careers', 'contracts', {})).data.result;
+      setContracts(c?.contracts || []);
+    } catch { /* non-fatal — the list just stays stale until next manual refresh */ }
+  }, []);
+
+  const negotiate = useCallback(async (action: 'accept' | 'counter' | 'reject', contractId: string, terms?: Record<string, unknown>) => {
+    setNegBusy(contractId);
+    try {
+      const r = (await lensRun<{ ok: boolean; reason?: string; status?: string }>('careers', action, { contractId, terms })).data.result;
+      if (r?.ok) {
+        addToast({ type: 'success', message: action === 'accept' ? 'Contract accepted — signing bonus paid.' : action === 'reject' ? 'Contract rejected.' : 'Counter-offer sent.', duration: 2500 });
+      } else {
+        addToast({ type: 'error', message: `Couldn't ${action} contract: ${r?.reason || 'failed'}.` });
+      }
+      await refreshContracts();
+    } catch {
+      addToast({ type: 'error', message: `${action} request failed — please try again.` });
+    } finally {
+      setNegBusy(null);
+    }
+  }, [addToast, refreshContracts]);
 
   const byCategory = useMemo(() => {
     const m: Record<string, Track[]> = {};
@@ -178,11 +213,47 @@ export default function CareersLens() {
             {contracts.length === 0 ? (
               <p className="text-gray-500 text-xs">No active contracts. Negotiate one to lock in a wage.</p>
             ) : (
-              <ul className="space-y-1 text-xs">
+              <ul className="space-y-1.5 text-xs">
                 {contracts.map((c) => (
-                  <li key={c.id} className="flex flex-col sm:flex-row sm:justify-between gap-1 bg-black/40 border border-white/10 rounded px-2 py-1">
-                    <span>{c.track_id} · tier {c.tier} · {c.role || '—'}</span>
-                    <span className="text-amber-200">{c.base_wage_sparks} sparks · {c.status}</span>
+                  <li key={c.id} className="bg-black/40 border border-white/10 rounded px-2 py-1.5">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                      <span>{c.track_id} · tier {c.tier} · {c.role || '—'}</span>
+                      <span className="text-amber-200">{c.base_wage_sparks} sparks · {c.status}</span>
+                    </div>
+                    {NEGOTIABLE.has(c.status) && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-1.5">
+                        <span className="text-gray-500">Awaiting response —</span>
+                        <button
+                          onClick={() => negotiate('accept', c.id)}
+                          disabled={negBusy === c.id}
+                          aria-label={`Accept contract ${c.id}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/70 hover:bg-emerald-600 text-emerald-50 disabled:opacity-50"
+                        ><Check className="w-3 h-3" aria-hidden="true" /> accept</button>
+                        <input
+                          type="number" min={0}
+                          aria-label={`Counter wage for contract ${c.id}`}
+                          placeholder={String(c.base_wage_sparks)}
+                          value={counterWage[c.id] ?? ''}
+                          onChange={(e) => setCounterWage((m) => ({ ...m, [c.id]: e.target.value }))}
+                          className="w-16 px-1.5 py-0.5 rounded bg-black/60 border border-white/10 text-gray-100"
+                        />
+                        <button
+                          onClick={() => {
+                            const wage = Number(counterWage[c.id]);
+                            void negotiate('counter', c.id, { baseWage: Number.isFinite(wage) && wage > 0 ? wage : undefined });
+                          }}
+                          disabled={negBusy === c.id}
+                          aria-label={`Send counter-offer for contract ${c.id}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-600/70 hover:bg-amber-600 text-amber-50 disabled:opacity-50"
+                        ><ArrowLeftRight className="w-3 h-3" aria-hidden="true" /> counter</button>
+                        <button
+                          onClick={() => negotiate('reject', c.id)}
+                          disabled={negBusy === c.id}
+                          aria-label={`Reject contract ${c.id}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-700/60 hover:bg-red-700 text-red-50 disabled:opacity-50"
+                        ><X className="w-3 h-3" aria-hidden="true" /> reject</button>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -35,6 +35,10 @@ interface PhotoMeta {
   stageId: string | null;
   caption: string | null;
   createdAt: string;
+  // `photo-list` (unlike `photo-add`'s response) returns the stored photo
+  // rows unstripped, so the real captured image is already on the wire —
+  // render it instead of a generic camera-icon placeholder.
+  dataUrl?: string;
 }
 
 export function StageCard({
@@ -216,9 +220,16 @@ export function StageCard({
             <label className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">Screenshots</label>
             <div className="flex flex-wrap gap-2">
               {photos.map((p) => (
-                <div key={p.id} className="group relative flex h-16 w-16 flex-col items-center justify-center rounded border border-white/10 bg-black/30 p-1 text-center">
-                  <Camera className="h-4 w-4 text-cyan-400" />
-                  <span className="mt-0.5 line-clamp-2 text-[8px] text-gray-400">{p.caption || 'photo'}</span>
+                <div key={p.id} className="group relative h-16 w-16 overflow-hidden rounded border border-white/10 bg-black/30" title={p.caption || 'photo'}>
+                  {p.dataUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- captured screenshot data: URL, not an optimizable remote asset
+                    <img src={p.dataUrl} alt={p.caption || 'expedition screenshot'} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center p-1 text-center">
+                      <Camera className="h-4 w-4 text-cyan-400" />
+                      <span className="mt-0.5 line-clamp-2 text-[8px] text-gray-400">{p.caption || 'photo'}</span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => deletePhoto(p.id)}

@@ -77,28 +77,50 @@ export default function registerDtusActions(registerLensAction) {
    * Trace the full lineage of a DTU — parent chain, child forks, depth,
    * and generation statistics.
    * artifact.data.parentId, artifact.data.children, artifact.data.lineage
+   *
+   * Dual calling convention (2026-07-09 fix): when invoked via the real
+   * `STATE.lensArtifacts` artifact system, `artifact.id`/`artifact.title`
+   * are real and `lineage` entries are rich `{generation, title}` objects.
+   * When invoked via `/api/lens/run`'s virtual-artifact synthesis (the
+   * `dtus` lens's actual calling path, since real DTUs live in the DTU
+   * substrate, not the generic artifact store), `artifact.id` is always
+   * null and there is no `lineage` array — only a DTU's flat `parents`/
+   * `children` id arrays are known. Both shapes are handled: `params`/
+   * `data` fields are read first (real values take precedence), and
+   * `children`/`lineage` entries may be either plain id strings or
+   * richer objects.
    */
-  registerLensAction("dtus", "lineageAnalysis", (ctx, artifact, _params) => {
+  registerLensAction("dtus", "lineageAnalysis", (ctx, artifact, params) => {
   try {
     const data = artifact.data || {};
-    const lineage = data.lineage || [];
-    const children = data.children || [];
-    const parentId = data.parentId || null;
+    const p = params || {};
+    const effectiveId = p.dtuId || p.id || artifact.id || null;
+    const effectiveTitle = p.title || artifact.title || null;
+    const lineage = p.lineage || data.lineage || [];
+    const children = p.children || data.children || [];
+    const parentId = p.parentId || data.parentId || (Array.isArray(p.parents) && p.parents[0]) || (Array.isArray(data.parents) && data.parents[0]) || null;
 
-    // Walk lineage chain
+    // Walk lineage chain (tolerates plain id strings, not just {generation} objects)
     const depth = lineage.length;
     const generations = new Map();
     for (const ancestor of lineage) {
-      const gen = ancestor.generation || 0;
+      const gen = (ancestor && typeof ancestor === "object" && ancestor.generation) || 0;
       generations.set(gen, (generations.get(gen) || 0) + 1);
     }
 
-    // Child analysis
-    const directChildren = children.filter(c => c.parentId === artifact.id || c.parent === artifact.id);
+    // Child analysis — a DTU's own `children` array already lists only its
+    // direct children (no per-entry parentId to filter on), so plain id
+    // strings all count as direct children; richer objects still filter
+    // by parentId/parent when present, for real-artifact callers.
+    const directChildren = children.filter(c =>
+      typeof c === "string" || typeof c === "number"
+        ? true
+        : (c.parentId === effectiveId || c.parent === effectiveId)
+    );
     const forkCount = directChildren.length;
     const childTiers = {};
     for (const child of directChildren) {
-      const tier = child.tier || "regular";
+      const tier = (child && typeof child === "object" && child.tier) || "regular";
       childTiers[tier] = (childTiers[tier] || 0) + 1;
     }
 
@@ -110,11 +132,12 @@ export default function registerDtusActions(registerLensAction) {
       : depth > 0 ? "leaf"
       : "root";
 
+    const oldest = lineage.length > 0 ? lineage[lineage.length - 1] : null;
     return {
       ok: true,
       result: {
-        dtuId: artifact.id,
-        title: artifact.title,
+        dtuId: effectiveId,
+        title: effectiveTitle,
         depth,
         parentId,
         forkCount,
@@ -124,7 +147,7 @@ export default function registerDtusActions(registerLensAction) {
         lineageHealth,
         isRoot: !parentId,
         isLeaf: forkCount === 0 && depth > 0,
-        oldestAncestor: lineage.length > 0 ? lineage[lineage.length - 1]?.title || lineage[lineage.length - 1]?.id : null,
+        oldestAncestor: oldest ? (typeof oldest === "object" ? (oldest.title || oldest.id) : oldest) : null,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -134,11 +157,18 @@ export default function registerDtusActions(registerLensAction) {
    * qualityScore
    * Compute a quality score for a DTU based on completeness, citation count,
    * content richness, metadata quality, and age.
+   *
+   * Dual calling convention: prefers `params`/`artifact.data` (the shape a
+   * real DTU arrives in via `/api/lens/run`'s virtual-artifact synthesis —
+   * `artifact.meta` is always `{}` on that path, `artifact.id`/`.title`/
+   * `.updatedAt`/`.createdAt` are always unset) and falls back to
+   * `artifact.meta`/`artifact.id` for real `STATE.lensArtifacts` callers.
    */
-  registerLensAction("dtus", "qualityScore", (ctx, artifact, _params) => {
+  registerLensAction("dtus", "qualityScore", (ctx, artifact, params) => {
   try {
     const data = artifact.data || {};
     const meta = artifact.meta || {};
+    const p = params || {};
 
     // Content richness (0-25): based on data field count and content length
     const dataFields = Object.keys(data).length;
@@ -149,10 +179,13 @@ export default function registerDtusActions(registerLensAction) {
     ));
 
     // Metadata quality (0-25): tags, status, visibility set
-    const hasTags = (meta.tags || []).length > 0;
-    const hasStatus = !!meta.status && meta.status !== "draft";
-    const hasVisibility = !!meta.visibility;
-    const tagCount = (meta.tags || []).length;
+    const tags = p.tags || data.tags || meta.tags || [];
+    const status = p.status || data.status || meta.status;
+    const visibility = p.visibility || data.visibility || meta.visibility;
+    const hasTags = tags.length > 0;
+    const hasStatus = !!status && status !== "draft";
+    const hasVisibility = !!visibility;
+    const tagCount = tags.length;
     const metaScore = Math.min(25, Math.round(
       (hasTags ? 8 : 0) +
       (hasStatus ? 8 : 0) +
@@ -161,11 +194,11 @@ export default function registerDtusActions(registerLensAction) {
     ));
 
     // Citation impact (0-25)
-    const citationCount = parseInt(data.citationCount) || parseInt(meta.citationCount) || 0;
+    const citationCount = parseInt(p.citationCount) || parseInt(data.citationCount) || parseInt(meta.citationCount) || 0;
     const citationScore = Math.min(25, Math.round(Math.min(citationCount / 10, 1) * 25));
 
     // Freshness (0-25): how recently updated
-    const updatedAt = new Date(artifact.updatedAt || artifact.createdAt || Date.now());
+    const updatedAt = new Date(p.updatedAt || p.timestamp || data.updatedAt || artifact.updatedAt || artifact.createdAt || Date.now());
     const daysSinceUpdate = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
     const freshnessScore = Math.min(25, Math.round(
       daysSinceUpdate < 1 ? 25 :
@@ -181,8 +214,8 @@ export default function registerDtusActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        dtuId: artifact.id,
-        title: artifact.title,
+        dtuId: p.dtuId || p.id || artifact.id,
+        title: p.title || artifact.title,
         totalScore,
         grade,
         breakdown: {
@@ -197,8 +230,8 @@ export default function registerDtusActions(registerLensAction) {
           tagCount,
           citationCount,
           daysSinceUpdate: Math.round(daysSinceUpdate),
-          status: meta.status || "unknown",
-          tier: data.tier || meta.tier || "regular",
+          status: status || "unknown",
+          tier: p.tier || data.tier || meta.tier || "regular",
         },
         recommendations: [
           contentScore < 15 ? "Add more structured data fields to improve content richness" : null,
@@ -214,13 +247,20 @@ export default function registerDtusActions(registerLensAction) {
   /**
    * citationNetwork
    * Analyze the citation network around a DTU — who cites it, what it cites,
-   * and compute influence metrics.
+   * and compute influence metrics. `citedBy`/`cites` are read from
+   * `params`/`artifact.data` (identical on the virtual-artifact path this
+   * lens actually uses) — the caller is expected to derive them from
+   * whatever corpus it has loaded (see `dtus`-lens page.tsx, which scans
+   * the currently-loaded page for DTUs whose `parents` include this id).
+   * An empty `citedBy` is an honest "no known citers in scope," not a
+   * fabricated zero.
    */
-  registerLensAction("dtus", "citationNetwork", (ctx, artifact, _params) => {
+  registerLensAction("dtus", "citationNetwork", (ctx, artifact, params) => {
   try {
     const data = artifact.data || {};
-    const citedBy = data.citedBy || [];
-    const cites = data.cites || data.references || [];
+    const p = params || {};
+    const citedBy = p.citedBy || data.citedBy || [];
+    const cites = p.cites || data.cites || data.references || [];
 
     const inDegree = citedBy.length;
     const outDegree = cites.length;
@@ -257,8 +297,8 @@ export default function registerDtusActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        dtuId: artifact.id,
-        title: artifact.title,
+        dtuId: p.dtuId || p.id || artifact.id,
+        title: p.title || artifact.title,
         inDegree,
         outDegree,
         hIndex,
@@ -277,13 +317,16 @@ export default function registerDtusActions(registerLensAction) {
   /**
    * tierRecommendation
    * Recommend whether a DTU should be promoted, demoted, or maintained
-   * at its current tier based on usage metrics.
+   * at its current tier based on usage metrics. `viewCount`/`forkCount`
+   * default to 0 (honest "not tracked"), not a fabricated figure — the DTU
+   * substrate has no materialized view/fork counter today.
    */
-  registerLensAction("dtus", "tierRecommendation", (ctx, artifact, _params) => {
+  registerLensAction("dtus", "tierRecommendation", (ctx, artifact, params) => {
   try {
     const data = artifact.data || {};
     const meta = artifact.meta || {};
-    const currentTier = data.tier || meta.tier || "regular";
+    const p = params || {};
+    const currentTier = p.tier || data.tier || meta.tier || "regular";
 
     const citationCount = parseInt(data.citationCount) || parseInt(meta.citationCount) || 0;
     const viewCount = parseInt(data.viewCount) || parseInt(meta.viewCount) || 0;
@@ -320,8 +363,8 @@ export default function registerDtusActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        dtuId: artifact.id,
-        title: artifact.title,
+        dtuId: p.dtuId || p.id || artifact.id,
+        title: p.title || artifact.title,
         currentTier,
         recommendedTier,
         action,
@@ -345,14 +388,19 @@ export default function registerDtusActions(registerLensAction) {
   /**
    * duplicateDetection
    * Detect potential duplicates by comparing title similarity, tag overlap,
-   * and content fingerprints against sibling DTUs.
+   * and content fingerprints against sibling DTUs. `siblings` is read from
+   * `params`/`artifact.data` — the caller supplies whatever corpus it has
+   * loaded (see `dtus`-lens page.tsx, which passes the currently-loaded
+   * page as siblings). Checking against a page, not the whole substrate,
+   * is a real, honest, scoped comparison — not a fabricated result.
    */
-  registerLensAction("dtus", "duplicateDetection", (ctx, artifact, _params) => {
+  registerLensAction("dtus", "duplicateDetection", (ctx, artifact, params) => {
   try {
     const data = artifact.data || {};
-    const siblings = data.siblings || data.relatedDTUs || [];
-    const title = (artifact.title || "").toLowerCase().trim();
-    const tags = new Set((artifact.meta?.tags || []).map(t => t.toLowerCase()));
+    const p = params || {};
+    const siblings = p.siblings || data.siblings || data.relatedDTUs || [];
+    const title = (p.title || artifact.title || "").toLowerCase().trim();
+    const tags = new Set((p.tags || artifact.meta?.tags || []).map(t => t.toLowerCase()));
 
     if (siblings.length === 0) {
       return { ok: true, result: { message: "No sibling DTUs provided for duplicate detection.", duplicates: [], totalChecked: 0 } };
@@ -407,8 +455,8 @@ export default function registerDtusActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        dtuId: artifact.id,
-        title: artifact.title,
+        dtuId: p.dtuId || p.id || artifact.id,
+        title: p.title || artifact.title,
         totalChecked: siblings.length,
         duplicatesFound: duplicates.length,
         possibleDuplicatesFound: possibleDuplicates.length,

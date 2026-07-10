@@ -1,21 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Plus, Trash2, Loader2, Search, Star } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Loader2, Search, Star, ChevronDown, ChevronRight, Play, FileText, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
+export interface Lesson {
+  id: string; title: string; videoUrl: string; durationMin: number;
+  kind: 'video' | 'reading' | 'quiz' | 'assignment' | 'discussion'; order: number;
+}
 export interface Course {
   id: string; title: string; description: string; category: string;
   level: 'beginner' | 'intermediate' | 'advanced';
   durationHours: number; instructor: string; institution: string;
   kind: 'course' | 'specialization' | 'certificate' | 'guided_project';
-  lessons: Array<{ id: string }>;
+  lessons: Lesson[];
   enrollmentCount: number; rating: number;
 }
 
 const CATEGORIES = ['general', 'math', 'science', 'data', 'humanities', 'business', 'arts', 'languages', 'coding'];
 const KINDS = ['course', 'specialization', 'certificate', 'guided_project'];
+const LESSON_KINDS = ['video', 'reading', 'quiz', 'assignment', 'discussion'] as const;
+const LESSON_KIND_ICON: Record<string, typeof Play> = { video: Play, reading: BookOpen, quiz: FileText, assignment: FileText, discussion: FileText };
+
+const emptyLessonForm = { title: '', videoUrl: '', durationMin: '', kind: 'video' as (typeof LESSON_KINDS)[number] };
 
 export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) => void; onEnroll?: (c: Course) => void }) {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -25,6 +33,14 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [form, setForm] = useState({ title: '', description: '', category: 'general', level: 'beginner', kind: 'course', durationHours: '', instructor: '', institution: '' });
+
+  // Course detail (courses-get) + lesson authoring (lessons-create)
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detailById, setDetailById] = useState<Record<string, Course>>({});
+  const [detailLoading, setDetailLoading] = useState<string | null>(null);
+  const [addingLesson, setAddingLesson] = useState(false);
+  const [lessonForm, setLessonForm] = useState(emptyLessonForm);
+  const [savingLesson, setSavingLesson] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filterCategory]);
@@ -62,6 +78,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
     try {
       await lensRun({ domain: 'education', action: 'courses-delete', input: { id } });
       setCourses(prev => prev.filter(c => c.id !== id));
+      if (expandedId === id) setExpandedId(null);
     } catch (e) { console.error('[Courses] delete failed', e); }
   }
 
@@ -71,6 +88,45 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
       setEnrolledIds(prev => new Set(prev).add(c.id));
       onEnroll?.(c);
     } catch (e) { console.error('[Courses] enroll failed', e); }
+  }
+
+  async function loadDetail(id: string) {
+    setDetailLoading(id);
+    try {
+      const r = await lensRun({ domain: 'education', action: 'courses-get', input: { id } });
+      const course = r.data?.result?.course as Course | undefined;
+      if (course) setDetailById(prev => ({ ...prev, [id]: course }));
+    } catch (e) { console.error('[Courses] detail failed', e); }
+    finally { setDetailLoading(null); }
+  }
+
+  async function toggleDetail(c: Course) {
+    onSelect?.(c);
+    if (expandedId === c.id) { setExpandedId(null); return; }
+    setExpandedId(c.id);
+    setAddingLesson(false);
+    if (!detailById[c.id]) await loadDetail(c.id);
+  }
+
+  async function addLesson(courseId: string) {
+    if (!lessonForm.title.trim()) return;
+    setSavingLesson(true);
+    try {
+      await lensRun({
+        domain: 'education', action: 'lessons-create',
+        input: { courseId, title: lessonForm.title.trim(), videoUrl: lessonForm.videoUrl.trim(), durationMin: Number(lessonForm.durationMin) || 0, kind: lessonForm.kind },
+      });
+      setLessonForm(emptyLessonForm);
+      setAddingLesson(false);
+      const r = await lensRun({ domain: 'education', action: 'courses-get', input: { id: courseId } });
+      const fresh = r.data?.result?.course as Course | undefined;
+      if (fresh) {
+        setDetailById(prev => ({ ...prev, [courseId]: fresh }));
+        // keep the collapsed row's lesson count in sync with the fresh detail
+        setCourses(prev => prev.map(c => (c.id === courseId ? { ...c, lessons: fresh.lessons } : c)));
+      }
+    } catch (e) { console.error('[Courses] add lesson failed', e); }
+    finally { setSavingLesson(false); }
   }
 
   return (
@@ -115,32 +171,87 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
           <ul className="divide-y divide-white/5">
             {courses.map(c => {
               const enrolled = enrolledIds.has(c.id);
+              const expanded = expandedId === c.id;
+              const detail = detailById[c.id];
               return (
-                <li key={c.id} className="px-3 py-3 hover:bg-white/[0.03] group flex items-start gap-3">
-                  <div className="w-16 h-12 bg-gradient-to-br from-cyan-900/40 to-violet-900/30 rounded flex items-center justify-center flex-shrink-0">
-                    <BookOpen className="w-5 h-5 text-cyan-500/60" />
-                  </div>
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(c)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-white truncate">{c.title}</span>
-                      <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{c.kind.replace('_', ' ')}</span>
-                      <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', c.level === 'advanced' ? 'bg-rose-500/15 text-rose-300' : c.level === 'intermediate' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300')}>{c.level}</span>
+                <li key={c.id} className="hover:bg-white/[0.03] group">
+                  <div className="px-3 py-3 flex items-start gap-3">
+                    <div className="w-16 h-12 bg-gradient-to-br from-cyan-900/40 to-violet-900/30 rounded flex items-center justify-center flex-shrink-0">
+                      <BookOpen className="w-5 h-5 text-cyan-500/60" />
                     </div>
-                    <div className="text-[11px] text-gray-400 line-clamp-1">{c.description}</div>
-                    <div className="mt-1 flex items-center gap-3 text-[10px] text-gray-400">
-                      {c.instructor && <span>{c.instructor}</span>}
-                      {c.institution && <span>· {c.institution}</span>}
-                      {c.durationHours > 0 && <span>· {c.durationHours}h</span>}
-                      <span>· {c.lessons?.length || 0} lessons</span>
-                      {c.rating > 0 && <span className="inline-flex items-center gap-0.5 text-amber-400"><Star className="w-2.5 h-2.5 fill-amber-400" />{c.rating.toFixed(1)}</span>}
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleDetail(c)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      <div className="flex items-center gap-2">
+                        {expanded ? <ChevronDown className="w-3 h-3 text-gray-400 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />}
+                        <span className="text-sm font-medium text-white truncate">{c.title}</span>
+                        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{c.kind.replace('_', ' ')}</span>
+                        <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', c.level === 'advanced' ? 'bg-rose-500/15 text-rose-300' : c.level === 'intermediate' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300')}>{c.level}</span>
+                      </div>
+                      <div className="text-[11px] text-gray-400 line-clamp-1 ml-5">{c.description}</div>
+                      <div className="mt-1 ml-5 flex items-center gap-3 text-[10px] text-gray-400">
+                        {c.instructor && <span>{c.instructor}</span>}
+                        {c.institution && <span>· {c.institution}</span>}
+                        {c.durationHours > 0 && <span>· {c.durationHours}h</span>}
+                        <span>· {c.lessons?.length || 0} lessons</span>
+                        {c.rating > 0 && <span className="inline-flex items-center gap-0.5 text-amber-400"><Star className="w-2.5 h-2.5 fill-amber-400" />{c.rating.toFixed(1)}</span>}
+                      </div>
                     </div>
+                    {enrolled ? (
+                      <span className="px-2 py-1 text-[10px] rounded bg-emerald-500/15 text-emerald-300 uppercase tracking-wider">Enrolled</span>
+                    ) : (
+                      <button onClick={() => enroll(c)} className="px-2.5 py-1 text-[11px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Enroll</button>
+                    )}
+                    <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </div>
-                  {enrolled ? (
-                    <span className="px-2 py-1 text-[10px] rounded bg-emerald-500/15 text-emerald-300 uppercase tracking-wider">Enrolled</span>
-                  ) : (
-                    <button onClick={() => enroll(c)} className="px-2.5 py-1 text-[11px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Enroll</button>
+
+                  {expanded && (
+                    <div className="mx-3 mb-3 ml-8 border-l border-white/10 pl-3">
+                      {detailLoading === c.id ? (
+                        <div className="flex items-center gap-2 text-[11px] text-gray-400 py-2"><Loader2 className="w-3 h-3 animate-spin" />Loading lessons…</div>
+                      ) : !detail ? (
+                        <div className="text-[11px] text-gray-400 py-2">Couldn&apos;t load course detail.</div>
+                      ) : (
+                        <>
+                          {detail.lessons.length === 0 ? (
+                            <div className="text-[11px] text-gray-400 py-1.5">No lessons yet.</div>
+                          ) : (
+                            <ul className="space-y-1 py-1">
+                              {detail.lessons.map(l => {
+                                const Icon = LESSON_KIND_ICON[l.kind] || FileText;
+                                return (
+                                  <li key={l.id} className="flex items-center gap-2 text-[11px] text-gray-300">
+                                    <Icon className="w-3 h-3 text-cyan-400/70 flex-shrink-0" />
+                                    <span className="truncate flex-1">{l.order}. {l.title}</span>
+                                    <span className="text-[10px] text-gray-500 inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{l.durationMin || '—'}m</span>
+                                    <span className="text-[9px] uppercase text-gray-500">{l.kind}</span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                          {addingLesson ? (
+                            <div className="mt-2 space-y-1.5 pb-2">
+                              <div className="grid grid-cols-4 gap-1.5">
+                                <input value={lessonForm.title} onChange={e => setLessonForm({ ...lessonForm, title: e.target.value })} placeholder="Lesson title" className="col-span-2 px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                                <select value={lessonForm.kind} onChange={e => setLessonForm({ ...lessonForm, kind: e.target.value as (typeof LESSON_KINDS)[number] })} className="px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white">
+                                  {LESSON_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                                </select>
+                                <input type="number" value={lessonForm.durationMin} onChange={e => setLessonForm({ ...lessonForm, durationMin: e.target.value })} placeholder="Min" className="px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                              </div>
+                              <input value={lessonForm.videoUrl} onChange={e => setLessonForm({ ...lessonForm, videoUrl: e.target.value })} placeholder="Video URL (optional)" className="w-full px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                              <div className="flex items-center gap-2">
+                                <button disabled={savingLesson} onClick={() => addLesson(c.id)} className="px-2.5 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center gap-1">
+                                  {savingLesson && <Loader2 className="w-2.5 h-2.5 animate-spin" />}Add lesson
+                                </button>
+                                <button onClick={() => { setAddingLesson(false); setLessonForm(emptyLessonForm); }} className="px-2 py-1 text-[10px] text-gray-400">Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button onClick={() => setAddingLesson(true)} className="mt-1.5 mb-2 text-[11px] text-cyan-300 hover:text-cyan-200">+ Add lesson</button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   )}
-                  <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               );
             })}

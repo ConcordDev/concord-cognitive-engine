@@ -18,33 +18,37 @@ import { StrategyExperimentPanel } from '@/components/metalearning/StrategyExper
 import { StudyJournalPanel } from '@/components/metalearning/StudyJournalPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   GraduationCap, Plus, TrendingUp, Award,
-  ArrowRight, BarChart3, Zap, BookOpen, Layers, ChevronDown,
+  ArrowRight, BarChart3, Zap, BookOpen,
   Brain, Target, Lightbulb, Puzzle, Sparkles, Waypoints,
-  Play, Loader2,
+  Play, Loader2, ThumbsUp, ThumbsDown, History, Wand2,
 } from 'lucide-react';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 
 interface Strategy {
   id: string;
   name: string;
-  type: string;
-  successRate?: number;
+  domain: string;
+  avgPerformance?: number;
   uses?: number;
+}
+
+interface Adaptation {
+  strategyId: string;
+  strategyName: string;
+  adaptations: string[];
+  triggerPerformance: number;
+  adaptedAt: string;
 }
 
 export default function MetalearningLensPage() {
@@ -53,12 +57,12 @@ export default function MetalearningLensPage() {
 
   const queryClient = useQueryClient();
   const [newName, setNewName] = useState('');
-  const [newType, setNewType] = useState('exploration');
+  const [newDomain, setNewDomain] = useState('general');
   const [curriculumTopic, setCurriculumTopic] = useState('');
   const [results, setResults] = useState<unknown>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [strategySearch, setStrategySearch] = useState('');
   const [strategyTypeFilter, setStrategyTypeFilter] = useState<string>('all');
+  const [outcomeBusyId, setOutcomeBusyId] = useState<string | null>(null);
   const newNameInputRef = useRef<HTMLInputElement>(null);
   const curriculumInputRef = useRef<HTMLInputElement>(null);
   const strategySearchInputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +87,7 @@ export default function MetalearningLensPage() {
   });
 
   const createStrategy = useMutation({
-    mutationFn: () => apiHelpers.metalearning.createStrategy({ name: newName, type: newType }),
+    mutationFn: () => apiHelpers.metalearning.createStrategy({ name: newName, domain: newDomain || 'general' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['metalearning-strategies'] });
       setNewName('');
@@ -100,17 +104,79 @@ export default function MetalearningLensPage() {
     onError: (err) => console.error('runCurriculum failed:', err instanceof Error ? err.message : err),
   });
 
-  const { items: mlStratItems } = useLensData('metalearning', 'strategy', { noSeed: true });
-  const runAction = useRunArtifact('metalearning');
+  // Record a real outcome for a strategy — feeds the backend's running
+  // avgPerformance + triggers auto-adaptation once `uses` crosses the
+  // server's minSamples threshold (server.js `recordStrategyOutcome`).
+  const recordOutcome = useMutation({
+    mutationFn: ({ strategyId, success }: { strategyId: string; success: boolean }) =>
+      apiHelpers.metalearning.recordOutcome(strategyId, { success, performance: success ? 0.85 : 0.25 }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['metalearning-strategies'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-adaptations'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-status'] });
+    },
+    onSettled: () => setOutcomeBusyId(null),
+  });
+
+  // Force an adaptation pass now (the server also auto-adapts once a
+  // strategy's uses crosses config.minSamples, but this lets a user pull
+  // the trigger manually to see the parameter changes immediately).
+  const adaptStrategyMut = useMutation({
+    mutationFn: (strategyId: string) => apiHelpers.metalearning.adaptStrategy(strategyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['metalearning-strategies'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-adaptations'] });
+    },
+    onSettled: () => setOutcomeBusyId(null),
+  });
+
+  const { data: adaptationsData } = useQuery({
+    queryKey: ['metalearning-adaptations'],
+    queryFn: () => apiHelpers.metalearning.adaptations().then((r) => r.data),
+    refetchInterval: 20000,
+  });
+  const adaptationLog: Adaptation[] = adaptationsData?.adaptations || [];
+
+  // Analysis-engine inputs. These three macros are real (server-side k-NN
+  // meta-learning, Jaccard domain-transfer scoring, difficulty-curve
+  // profiling) but need structured input the user's saved strategies don't
+  // carry — so they're driven by dedicated small forms and called directly
+  // via lensRun (which passes the input straight through as the macro's
+  // `artifact.data`), not against an unrelated generic artifact.
+  const [analysisTab, setAnalysisTab] = useState<'strategySelection' | 'transferAnalysis' | 'performanceProfile'>('strategySelection');
+  const [taskFeatures, setTaskFeatures] = useState({ complexity: 0.5, dimensionality: 0.5, noise: 0.3, sampleSize: 0.6, nonlinearity: 0.4 });
+  const [sourceDomain, setSourceDomain] = useState({ name: '', concepts: '', skills: '' });
+  const [targetDomain, setTargetDomain] = useState({ name: '', concepts: '', skills: '' });
+  const [assessments, setAssessments] = useState<{ skill: string; difficulty: number; score: number }[]>([]);
+  const [newAssessment, setNewAssessment] = useState({ skill: '', difficulty: 0.5, score: 0.7 });
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = mlStratItems[0]?.id;
-    if (!targetId) { setActionResult({ message: 'No metalearning strategies found. Create a strategy first.' }); return; }
+  const splitCsv = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
+
+  const handleAction = async (action: 'strategySelection' | 'transferAnalysis' | 'performanceProfile') => {
+    let input: Record<string, unknown> = {};
+    if (action === 'strategySelection') {
+      input = { taskFeatures };
+    } else if (action === 'transferAnalysis') {
+      if (!sourceDomain.name.trim() || !targetDomain.name.trim()) {
+        setActionResult({ message: 'Both source and target domain need a name.' });
+        return;
+      }
+      input = {
+        sourceDomain: { name: sourceDomain.name, concepts: splitCsv(sourceDomain.concepts), skills: splitCsv(sourceDomain.skills) },
+        targetDomain: { name: targetDomain.name, concepts: splitCsv(targetDomain.concepts), skills: splitCsv(targetDomain.skills) },
+      };
+    } else {
+      if (assessments.length === 0) {
+        setActionResult({ message: 'Add at least one assessment below first.' });
+        return;
+      }
+      input = { assessments };
+    }
     setIsRunning(action);
     try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+      const res = await lensRun('metalearning', action, input);
+      if (res.data.ok === false) { setActionResult({ message: `Action failed: ${res.data.error || 'Unknown error'}` }); } else { setActionResult(res.data.result as Record<string, unknown>); }
     } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
     finally { setIsRunning(null); }
   };
@@ -119,10 +185,10 @@ export default function MetalearningLensPage() {
   const statusInfo = status?.status || status || {};
   const bestStrategy = best?.strategy || best || null;
 
-  // Filtered strategies — search by name + type filter.
+  // Filtered strategies — search by name + domain filter.
   const visibleStrategies = useMemo(() => {
     let arr = strategyList;
-    if (strategyTypeFilter !== 'all') arr = arr.filter((s) => s.type === strategyTypeFilter);
+    if (strategyTypeFilter !== 'all') arr = arr.filter((s) => s.domain === strategyTypeFilter);
     const q = strategySearch.trim().toLowerCase();
     if (q) arr = arr.filter((s) => (s.name || '').toLowerCase().includes(q));
     return arr;
@@ -130,7 +196,7 @@ export default function MetalearningLensPage() {
 
   const strategyTypes = useMemo(() => {
     const set = new Set<string>();
-    strategyList.forEach((s) => set.add(s.type));
+    strategyList.forEach((s) => set.add(s.domain));
     return Array.from(set);
   }, [strategyList]);
 
@@ -148,7 +214,7 @@ export default function MetalearningLensPage() {
   useEffect(() => {
     bridge.syncList(strategyList, (s) => {
       const strat = s as Strategy;
-      return { title: strat.name, data: s as Record<string, unknown>, meta: { type: strat.type } };
+      return { title: strat.name, data: s as Record<string, unknown>, meta: { type: strat.domain } };
     });
   }, [strategyList, bridge]);
 
@@ -198,9 +264,6 @@ export default function MetalearningLensPage() {
       </div>
       </header>
 
-      {/* AI Actions */}
-      <UniversalActions domain="metalearning" artifactId={bridge.selectedId} compact />
-
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="lens-card">
@@ -210,13 +273,13 @@ export default function MetalearningLensPage() {
         </div>
         <div className="lens-card">
           <Waypoints className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className="text-2xl font-bold">{strategyList.length > 0 ? (strategyList.reduce((s, st) => s + (st.successRate || 0), 0) / strategyList.length * 100).toFixed(0) : 0}%</p>
-          <p className="text-sm text-gray-400">Transfer Score Avg</p>
+          <p className="text-2xl font-bold">{strategyList.length > 0 ? (strategyList.reduce((s, st) => s + (st.avgPerformance || 0), 0) / strategyList.length * 100).toFixed(0) : 0}%</p>
+          <p className="text-sm text-gray-400">Avg Performance</p>
         </div>
         <div className="lens-card">
           <Brain className="w-5 h-5 text-neon-green mb-2" />
           <p className="text-2xl font-bold">{strategyList.reduce((s, st) => s + (st.uses || 0), 0)}</p>
-          <p className="text-sm text-gray-400">Skill Count</p>
+          <p className="text-sm text-gray-400">Recorded Outcomes</p>
         </div>
         <div className="lens-card">
           <TrendingUp className="w-5 h-5 text-yellow-400 mb-2" />
@@ -227,26 +290,26 @@ export default function MetalearningLensPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="lens-card">
-          <GraduationCap className="w-5 h-5 text-neon-purple mb-2" />
-          <p className="text-2xl font-bold">{strategyList.length}</p>
-          <p className="text-sm text-gray-400">Strategies</p>
-        </div>
-        <div className="lens-card">
           <Award className="w-5 h-5 text-neon-yellow mb-2" />
-          <p className="text-2xl font-bold">
-            {bestStrategy ? bestStrategy.name?.slice(0, 8) || '—' : '—'}
+          <p className="text-lg font-bold truncate">
+            {bestStrategy ? bestStrategy.name || '—' : '—'}
           </p>
-          <p className="text-sm text-gray-400">Best Strategy</p>
-        </div>
-        <div className="lens-card">
-          <TrendingUp className="w-5 h-5 text-neon-green mb-2" />
-          <p className="text-2xl font-bold">{statusInfo.adaptations || 0}</p>
-          <p className="text-sm text-gray-400">Adaptations</p>
+          <p className="text-sm text-gray-400">Best Strategy{bestStrategy?.domain ? ` · ${bestStrategy.domain}` : ''}</p>
         </div>
         <div className="lens-card">
           <BookOpen className="w-5 h-5 text-neon-cyan mb-2" />
           <p className="text-2xl font-bold">{statusInfo.curricula || 0}</p>
-          <p className="text-sm text-gray-400">Curricula</p>
+          <p className="text-sm text-gray-400">Curricula Generated</p>
+        </div>
+        <div className="lens-card">
+          <Puzzle className="w-5 h-5 text-neon-purple mb-2" />
+          <p className="text-2xl font-bold">{statusInfo.performance || 0}</p>
+          <p className="text-sm text-gray-400">Outcomes Logged</p>
+        </div>
+        <div className="lens-card">
+          <History className="w-5 h-5 text-neon-green mb-2" />
+          <p className="text-2xl font-bold">{adaptationLog.length}</p>
+          <p className="text-sm text-gray-400">Adaptation Events</p>
         </div>
       </div>
 
@@ -264,12 +327,16 @@ export default function MetalearningLensPage() {
             placeholder="Strategy name…  ⌘⏎ creates"
             className="input-lattice w-full"
           />
-          <select value={newType} onChange={(e) => setNewType(e.target.value)} className="input-lattice w-full">
-            <option value="exploration">Exploration</option>
-            <option value="exploitation">Exploitation</option>
-            <option value="hybrid">Hybrid</option>
-            <option value="curriculum">Curriculum</option>
-          </select>
+          <input
+            type="text" value={newDomain}
+            onChange={(e) => setNewDomain(e.target.value)}
+            placeholder="Subject domain…  e.g. math, language, general"
+            className="input-lattice w-full text-sm"
+          />
+          <p className="text-[11px] text-gray-400 -mt-1">
+            Domain groups strategies for best-strategy lookup — the server tunes
+            learning rate / exploration / batch size per strategy as outcomes come in.
+          </p>
           <button
             onClick={() => createStrategy.mutate()}
             disabled={!newName || createStrategy.isPending}
@@ -354,16 +421,42 @@ export default function MetalearningLensPage() {
               <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="lens-card">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{s.name}</span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-lattice-surface text-gray-400">{s.type}</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-lattice-surface text-gray-400">{s.domain}</span>
                 </div>
-                {s.successRate != null && (
+                {s.avgPerformance != null && (
                   <div className="mt-2">
                     <div className="h-1.5 bg-lattice-deep rounded-full overflow-hidden">
-                      <div className="h-full bg-neon-green" style={{ width: `${s.successRate * 100}%` }} />
+                      <div className="h-full bg-neon-green" style={{ width: `${Math.round(s.avgPerformance * 100)}%` }} />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">{(s.successRate * 100).toFixed(0)}% success</p>
+                    <p className="text-xs text-gray-400 mt-1">{(s.avgPerformance * 100).toFixed(0)}% avg performance · {s.uses || 0} outcomes</p>
                   </div>
                 )}
+                <div className="mt-2 flex items-center gap-1.5">
+                  <button
+                    onClick={() => { setOutcomeBusyId(s.id); recordOutcome.mutate({ strategyId: s.id, success: true }); }}
+                    disabled={outcomeBusyId === s.id}
+                    title="Record a successful outcome for this strategy"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-neon-green/10 text-neon-green border border-neon-green/20 hover:bg-neon-green/20 disabled:opacity-40"
+                  >
+                    <ThumbsUp className="w-3 h-3" /> Success
+                  </button>
+                  <button
+                    onClick={() => { setOutcomeBusyId(s.id); recordOutcome.mutate({ strategyId: s.id, success: false }); }}
+                    disabled={outcomeBusyId === s.id}
+                    title="Record a failed outcome for this strategy"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-red-400/10 text-red-400 border border-red-400/20 hover:bg-red-400/20 disabled:opacity-40"
+                  >
+                    <ThumbsDown className="w-3 h-3" /> Failure
+                  </button>
+                  <button
+                    onClick={() => { setOutcomeBusyId(s.id); adaptStrategyMut.mutate(s.id); }}
+                    disabled={outcomeBusyId === s.id}
+                    title="Force an adaptation pass now based on recent outcomes"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-neon-purple/10 text-neon-purple border border-neon-purple/20 hover:bg-neon-purple/20 disabled:opacity-40 ml-auto"
+                  >
+                    {outcomeBusyId === s.id && adaptStrategyMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Adapt
+                  </button>
+                </div>
               </motion.div>
             ))}
             {strategyList.length === 0 && (
@@ -402,6 +495,40 @@ export default function MetalearningLensPage() {
           compact
         />
       )}
+      </div>
+
+      {/* Adaptation log — real record of parameter changes the server made
+          in response to recorded outcomes (server.js `adaptStrategy`). */}
+      <div className="panel p-4">
+        <h2 className="font-semibold mb-3 flex items-center gap-2">
+          <History className="w-4 h-4 text-neon-purple" /> Adaptation Log
+        </h2>
+        {adaptationLog.length === 0 ? (
+          <p className="text-center py-6 text-gray-400 text-sm">
+            No adaptations yet — record a few outcomes on a strategy (5+ triggers auto-adaptation), or click Adapt.
+          </p>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {adaptationLog.slice().reverse().map((a, i) => (
+              <div key={`${a.strategyId}-${a.adaptedAt}-${i}`} className="bg-lattice-deep rounded-lg p-3 border border-white/5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-neon-cyan">{a.strategyName}</span>
+                  <span className="text-gray-400">{new Date(a.adaptedAt).toLocaleString()}</span>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  Trigger performance: {(a.triggerPerformance * 100).toFixed(0)}%
+                </p>
+                <ul className="mt-1.5 space-y-0.5">
+                  {a.adaptations.map((change, j) => (
+                    <li key={j} className="text-xs text-gray-300 flex items-start gap-1.5">
+                      <span className="text-neon-purple">·</span> {change}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Learning Strategy Dashboard */}
@@ -478,25 +605,125 @@ export default function MetalearningLensPage() {
       </div>
       <div className="panel p-4"><TechniqueLibraryPanel /></div>
 
-      {/* Backend Action Panel */}
+      {/* Backend Action Panel — real k-NN / Jaccard / difficulty-curve engines,
+          each driven by a small purpose-built form (not a generic button wall). */}
       <div className="panel p-4 space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
           <GraduationCap className="w-4 h-4 text-neon-cyan" />
           Metalearning Analysis
         </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'strategySelection', label: 'Strategy Selection' },
-            { action: 'transferAnalysis', label: 'Transfer Analysis' },
-            { action: 'performanceProfile', label: 'Performance Profile' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleAction(action)} disabled={!!isRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
-              {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+        <div className="flex gap-1 text-xs border-b border-white/10 pb-2">
+          {([
+            ['strategySelection', 'Strategy Selection'],
+            ['transferAnalysis', 'Transfer Analysis'],
+            ['performanceProfile', 'Performance Profile'],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setAnalysisTab(id)}
+              className={`px-3 py-1.5 rounded-t transition-colors ${analysisTab === id ? 'bg-neon-cyan/10 text-neon-cyan border-b-2 border-neon-cyan' : 'text-gray-400 hover:text-white'}`}
+            >
               {label}
             </button>
           ))}
         </div>
+
+        {analysisTab === 'strategySelection' && (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-400">
+              Feature-based k-NN meta-learning: describe the task, get the recommended model family.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {(Object.keys(taskFeatures) as Array<keyof typeof taskFeatures>).map((k) => (
+                <label key={k} className="text-[11px] text-gray-400 space-y-1">
+                  <span className="capitalize">{k}</span>
+                  <input
+                    type="number" min={0} max={1} step={0.05}
+                    value={taskFeatures[k]}
+                    onChange={(e) => setTaskFeatures((prev) => ({ ...prev, [k]: Math.max(0, Math.min(1, Number(e.target.value) || 0)) }))}
+                    className="input-lattice w-full text-xs"
+                  />
+                </label>
+              ))}
+            </div>
+            <button onClick={() => handleAction('strategySelection')} disabled={!!isRunning}
+              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
+              {isRunning === 'strategySelection' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+              Select Strategy
+            </button>
+          </div>
+        )}
+
+        {analysisTab === 'transferAnalysis' && (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-400">
+              Jaccard concept/skill/vocabulary overlap — how much of what you know transfers.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <p className="text-[11px] uppercase tracking-wide text-neon-cyan">Source domain</p>
+                <input value={sourceDomain.name} onChange={(e) => setSourceDomain((p) => ({ ...p, name: e.target.value }))} placeholder="name (e.g. Python)" className="input-lattice w-full text-xs" />
+                <input value={sourceDomain.concepts} onChange={(e) => setSourceDomain((p) => ({ ...p, concepts: e.target.value }))} placeholder="concepts, comma-separated" className="input-lattice w-full text-xs" />
+                <input value={sourceDomain.skills} onChange={(e) => setSourceDomain((p) => ({ ...p, skills: e.target.value }))} placeholder="skills, comma-separated" className="input-lattice w-full text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[11px] uppercase tracking-wide text-neon-purple">Target domain</p>
+                <input value={targetDomain.name} onChange={(e) => setTargetDomain((p) => ({ ...p, name: e.target.value }))} placeholder="name (e.g. Rust)" className="input-lattice w-full text-xs" />
+                <input value={targetDomain.concepts} onChange={(e) => setTargetDomain((p) => ({ ...p, concepts: e.target.value }))} placeholder="concepts, comma-separated" className="input-lattice w-full text-xs" />
+                <input value={targetDomain.skills} onChange={(e) => setTargetDomain((p) => ({ ...p, skills: e.target.value }))} placeholder="skills, comma-separated" className="input-lattice w-full text-xs" />
+              </div>
+            </div>
+            <button onClick={() => handleAction('transferAnalysis')} disabled={!!isRunning}
+              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
+              {isRunning === 'transferAnalysis' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+              Analyze Transfer
+            </button>
+          </div>
+        )}
+
+        {analysisTab === 'performanceProfile' && (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-400">
+              Add a few (skill, difficulty, score) assessments to build a strengths/weaknesses radar
+              and find your zone-of-proximal-development difficulty target.
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-[11px] text-gray-400 space-y-1">
+                <span>Skill</span>
+                <input value={newAssessment.skill} onChange={(e) => setNewAssessment((p) => ({ ...p, skill: e.target.value }))} placeholder="e.g. recursion" className="input-lattice text-xs w-32" />
+              </label>
+              <label className="text-[11px] text-gray-400 space-y-1">
+                <span>Difficulty (0-1)</span>
+                <input type="number" min={0} max={1} step={0.1} value={newAssessment.difficulty} onChange={(e) => setNewAssessment((p) => ({ ...p, difficulty: Math.max(0, Math.min(1, Number(e.target.value) || 0)) }))} className="input-lattice text-xs w-20" />
+              </label>
+              <label className="text-[11px] text-gray-400 space-y-1">
+                <span>Score (0-1)</span>
+                <input type="number" min={0} max={1} step={0.1} value={newAssessment.score} onChange={(e) => setNewAssessment((p) => ({ ...p, score: Math.max(0, Math.min(1, Number(e.target.value) || 0)) }))} className="input-lattice text-xs w-20" />
+              </label>
+              <button
+                onClick={() => { if (newAssessment.skill.trim()) { setAssessments((p) => [...p, { ...newAssessment, skill: newAssessment.skill.trim() }]); setNewAssessment((p) => ({ ...p, skill: '' })); } }}
+                className="btn-secondary text-xs flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> Add
+              </button>
+            </div>
+            {assessments.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {assessments.map((a, i) => (
+                  <span key={i} className="text-[11px] bg-lattice-surface rounded px-2 py-1 flex items-center gap-1.5">
+                    {a.skill} · diff {a.difficulty} · score {a.score}
+                    <button onClick={() => setAssessments((p) => p.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-400">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <button onClick={() => handleAction('performanceProfile')} disabled={!!isRunning}
+              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
+              {isRunning === 'performanceProfile' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+              Build Profile
+            </button>
+          </div>
+        )}
         {actionResult && (
           <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
             {'recommended' in actionResult && 'method' in actionResult && (
@@ -569,24 +796,6 @@ export default function MetalearningLensPage() {
 
       <ConnectiveTissueBar lensId="metalearning" />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="metalearning" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MetalearningFeed />
       </section>

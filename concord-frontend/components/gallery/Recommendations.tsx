@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Sparkles, Loader2, AlertTriangle, Frame, History, RefreshCw } from 'lucide-react';
+import { SaveToCollectionButton } from '@/components/gallery/SaveToCollectionButton';
 
 interface TasteEntry { name: string; weight: number }
 interface TasteProfile {
@@ -122,10 +123,21 @@ export function Recommendations() {
       {!loading && recs && recs.recommendations.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {recs.recommendations.map((w) => (
-            <button
-              key={w.refId} type="button" onClick={() => recordView(w)}
-              className="rounded border border-zinc-800 bg-zinc-900/40 p-1.5 text-left hover:border-fuchsia-400/50 transition-colors"
+            <div
+              key={w.refId}
+              role="button"
+              tabIndex={0}
+              onClick={() => recordView(w)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); recordView(w); } }}
+              className="relative rounded border border-zinc-800 bg-zinc-900/40 p-1.5 text-left hover:border-fuchsia-400/50 transition-colors cursor-pointer"
             >
+              <div className="absolute right-1 top-1 z-10">
+                <SaveToCollectionButton
+                  compact
+                  className="bg-black/50 backdrop-blur-sm"
+                  artwork={{ refId: w.refId, title: w.title, artist: w.artist, date: w.date, image: w.image, museum: w.museum }}
+                />
+              </div>
               {w.image ? (
                 // eslint-disable-next-line @next/next/no-img-element -- external arbitrary image host
                 <img src={w.image} alt={w.title} className="w-full h-28 object-cover rounded" />
@@ -135,7 +147,7 @@ export function Recommendations() {
               <div className="text-[10px] text-zinc-200 mt-1 line-clamp-2">{w.title}</div>
               <div className="text-[9px] text-zinc-400">{w.artist}</div>
               <div className="text-[9px] text-fuchsia-400/80 italic mt-0.5 line-clamp-1">{w.reason}</div>
-            </button>
+            </div>
           ))}
         </div>
       )}

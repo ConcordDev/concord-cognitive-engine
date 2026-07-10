@@ -1,15 +1,23 @@
 'use client';
 
 /**
- * TripWorkspace — Google Travel / TripIt feature-parity workbench for a
- * single trip. Wires the buildable backlog: itinerary map (Nominatim
- * geocode + Leaflet route), day-by-day agenda timeline, destination
- * weather forecast (Open-Meteo), live flight/hotel search (OpenSky +
- * OSM Overpass), email-forwarding booking import, flight-status
- * tracking, collaborative trip sharing, and a per-category budget
- * breakdown with live currency conversion.
+ * TripWorkspace — TripIt / Google Travel feature-parity workbench for a
+ * single trip. This is the ONE trip-detail surface in the travel lens (the
+ * 2026-07-09 rebuild consolidated three separate, partially-overlapping
+ * trip-detail UIs — the page's own generic-artifact "trip" CRUD,
+ * `TravelTripsPanel`'s itinerary/booking/checklist forms, and this
+ * component's map/agenda/weather/search/import/status/share/budget tabs —
+ * into this single component so there is exactly one place a trip's
+ * itinerary, bookings, packing list, budget and collaborators live).
  *
- * All data is real: user input or live free public APIs. No mock data.
+ * Tabs: itinerary add/list, map (geocode + pins + route), day-by-day
+ * agenda, destination weather forecast (Open-Meteo), live flight/hotel
+ * search (OpenSky + OSM Overpass) + booking add/import, flight-status
+ * tracking, collaborative trip sharing, packing checklist, and a
+ * per-category budget breakdown with live currency conversion.
+ *
+ * All data is real: user input or live free public APIs, all via the
+ * `travel` domain's registered macros. No mock data.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -17,6 +25,7 @@ import dynamic from 'next/dynamic';
 import {
   Loader2, MapPin, CalendarDays, CloudSun, Plane, Hotel, Mail,
   Radar, Users, PieChart, ChevronLeft, RefreshCw, Plus, Trash2, X,
+  ListPlus, Luggage, Check,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -42,6 +51,7 @@ interface ItineraryItem {
   time: string | null;
   category: string;
   location: string | null;
+  note?: string | null;
   lat?: number;
   lng?: number;
   resolvedAddress?: string | null;
@@ -120,18 +130,40 @@ interface BudgetBreakdown {
   converted?: { totalPlanned: number; totalBooked: number; totalRemaining: number };
 }
 
-type WsTab = 'map' | 'agenda' | 'weather' | 'flights' | 'import' | 'status' | 'share' | 'budget';
+interface Booking {
+  id: string;
+  type: string;
+  provider: string | null;
+  confirmationCode: string | null;
+  cost: number;
+  date: string | null;
+  note: string | null;
+}
+
+interface ChecklistItem {
+  id: string;
+  item: string;
+  category: string;
+  done: boolean;
+}
+
+type WsTab = 'itinerary' | 'map' | 'agenda' | 'weather' | 'flights' | 'bookings' | 'status' | 'share' | 'budget' | 'packing';
 
 const TABS: { id: WsTab; label: string; icon: typeof MapPin }[] = [
+  { id: 'itinerary', label: 'Itinerary', icon: ListPlus },
   { id: 'map', label: 'Map', icon: MapPin },
   { id: 'agenda', label: 'Agenda', icon: CalendarDays },
   { id: 'weather', label: 'Weather', icon: CloudSun },
   { id: 'flights', label: 'Search', icon: Plane },
-  { id: 'import', label: 'Import', icon: Mail },
+  { id: 'bookings', label: 'Bookings', icon: Mail },
   { id: 'status', label: 'Flight status', icon: Radar },
+  { id: 'packing', label: 'Packing', icon: Luggage },
   { id: 'share', label: 'Collaborate', icon: Users },
   { id: 'budget', label: 'Budget', icon: PieChart },
 ];
+
+const ITIN_CATEGORIES = ['sightseeing', 'food', 'transport', 'lodging', 'activity', 'meeting', 'rest'];
+const BOOKING_TYPES = ['flight', 'hotel', 'car', 'rail', 'activity', 'cruise'];
 
 const CATEGORY_COLOR: Record<string, string> = {
   sightseeing: 'text-sky-400', food: 'text-amber-400', transport: 'text-cyan-400',
@@ -143,12 +175,13 @@ const CATEGORY_COLOR: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: () => void }) {
-  const [tab, setTab] = useState<WsTab>('map');
+  const [tab, setTab] = useState<WsTab>('itinerary');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Itinerary + map
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
+  const [itinForm, setItinForm] = useState({ title: '', day: '', time: '', category: 'sightseeing', location: '', note: '' });
   const [mapPoints, setMapPoints] = useState<MapPoint[]>([]);
   const [routeKm, setRouteKm] = useState(0);
   const [ungeocoded, setUngeocoded] = useState(0);
@@ -168,7 +201,10 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
   const [hotelCoords, setHotelCoords] = useState({ lat: '', lng: '' });
   const [lodging, setLodging] = useState<Lodging[]>([]);
 
-  // Booking import
+  // Bookings (manual add + list) + email import
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookingTotal, setBookingTotal] = useState(0);
+  const [bookForm, setBookForm] = useState({ type: 'flight', provider: '', cost: '', date: '' });
   const [emailText, setEmailText] = useState('');
   const [importResult, setImportResult] = useState<{
     type: string; confirmationCode: string | null; provider: string | null; cost: number; date: string | null; confidence: number;
@@ -178,6 +214,11 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
   const [callsign, setCallsign] = useState('');
   const [flightStatus, setFlightStatus] = useState<Record<string, unknown> | null>(null);
 
+  // Packing checklist
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [ckItem, setCkItem] = useState('');
+  const [ckCategory, setCkCategory] = useState('general');
+
   // Collaboration
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [shareForm, setShareForm] = useState({ collaborator: '', role: 'editor' });
@@ -185,6 +226,9 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
   // Budget
   const [displayCurrency, setDisplayCurrency] = useState('USD');
   const [breakdown, setBreakdown] = useState<BudgetBreakdown | null>(null);
+  const [budgetForm, setBudgetForm] = useState<Record<string, string>>({
+    flights: '', accommodation: '', food: '', activities: '', transport: '',
+  });
 
   // ── Loaders ───────────────────────────────────────────────────────────
 
@@ -212,9 +256,44 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
     }
   }, [trip.id]);
 
-  useEffect(() => { void loadItinerary(); void loadMap(); void loadAgenda(); }, [loadItinerary, loadMap, loadAgenda]);
+  const loadBookings = useCallback(async () => {
+    const r = await lensRun('travel', 'booking-list', { tripId: trip.id });
+    if (r.data?.ok) {
+      const res = r.data.result as { bookings: Booking[]; totalCost: number };
+      setBookings(res.bookings || []);
+      setBookingTotal(res.totalCost || 0);
+    }
+  }, [trip.id]);
 
-  // ── Actions ───────────────────────────────────────────────────────────
+  const loadChecklist = useCallback(async () => {
+    const r = await lensRun('travel', 'checklist-list', { tripId: trip.id });
+    if (r.data?.ok) setChecklist((r.data.result?.items as ChecklistItem[]) || []);
+  }, [trip.id]);
+
+  useEffect(() => {
+    void loadItinerary(); void loadMap(); void loadAgenda(); void loadBookings(); void loadChecklist();
+  }, [loadItinerary, loadMap, loadAgenda, loadBookings, loadChecklist]);
+
+  // ── Itinerary actions ────────────────────────────────────────────────
+
+  const addItinItem = useCallback(async () => {
+    if (!itinForm.title.trim()) { setError('Itinerary item title is required.'); return; }
+    setBusy(true); setError(null);
+    try {
+      const r = await lensRun('travel', 'itinerary-add', {
+        tripId: trip.id, title: itinForm.title.trim(), day: itinForm.day, time: itinForm.time,
+        category: itinForm.category, location: itinForm.location.trim(), note: itinForm.note.trim(),
+      });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not add item.'); return; }
+      setItinForm({ title: '', day: '', time: '', category: 'sightseeing', location: '', note: '' });
+      await Promise.all([loadItinerary(), loadAgenda(), loadMap()]);
+    } finally { setBusy(false); }
+  }, [itinForm, trip.id, loadItinerary, loadAgenda, loadMap]);
+
+  const delItinItem = useCallback(async (id: string) => {
+    await lensRun('travel', 'itinerary-delete', { tripId: trip.id, id });
+    await Promise.all([loadItinerary(), loadAgenda(), loadMap()]);
+  }, [trip.id, loadItinerary, loadAgenda, loadMap]);
 
   const geocodeItem = useCallback(async (item: ItineraryItem) => {
     setGeocoding(item.id);
@@ -231,6 +310,8 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
       setGeocoding(null);
     }
   }, [trip.id, loadItinerary, loadMap]);
+
+  // ── Weather / search ─────────────────────────────────────────────────
 
   const fetchWeather = useCallback(async () => {
     const lat = Number(weatherCoords.lat);
@@ -265,6 +346,26 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
     } finally { setBusy(false); }
   }, [hotelCoords]);
 
+  // ── Bookings ─────────────────────────────────────────────────────────
+
+  const addBooking = useCallback(async () => {
+    setBusy(true); setError(null);
+    try {
+      const r = await lensRun('travel', 'booking-add', {
+        tripId: trip.id, type: bookForm.type, provider: bookForm.provider.trim(),
+        cost: Number(bookForm.cost) || 0, date: bookForm.date,
+      });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not add booking.'); return; }
+      setBookForm({ type: 'flight', provider: '', cost: '', date: '' });
+      await loadBookings();
+    } finally { setBusy(false); }
+  }, [bookForm, trip.id, loadBookings]);
+
+  const delBooking = useCallback(async (id: string) => {
+    await lensRun('travel', 'booking-delete', { tripId: trip.id, id });
+    await loadBookings();
+  }, [trip.id, loadBookings]);
+
   const importBooking = useCallback(async () => {
     if (!emailText.trim()) { setError('Paste a confirmation email first.'); return; }
     setBusy(true); setError(null); setImportResult(null);
@@ -273,13 +374,12 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
       if (r.data?.ok) {
         setImportResult(r.data.result?.parsed as typeof importResult);
         setEmailText('');
-        await loadItinerary();
-        await loadAgenda();
+        await Promise.all([loadItinerary(), loadAgenda(), loadBookings()]);
       } else {
         setError(r.data?.error || 'Could not parse this email.');
       }
     } finally { setBusy(false); }
-  }, [emailText, trip.id, loadItinerary, loadAgenda]);
+  }, [emailText, trip.id, loadItinerary, loadAgenda, loadBookings]);
 
   const trackFlight = useCallback(async () => {
     if (!callsign.trim()) { setError('Enter a flight callsign.'); return; }
@@ -290,6 +390,31 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
       else setError(r.data?.error || 'Flight status unavailable.');
     } finally { setBusy(false); }
   }, [callsign]);
+
+  // ── Packing checklist ────────────────────────────────────────────────
+
+  const addChecklistItem = useCallback(async () => {
+    if (!ckItem.trim()) return;
+    setBusy(true); setError(null);
+    try {
+      const r = await lensRun('travel', 'checklist-add', { tripId: trip.id, item: ckItem.trim(), category: ckCategory.trim() || 'general' });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not add item.'); return; }
+      setCkItem('');
+      await loadChecklist();
+    } finally { setBusy(false); }
+  }, [ckItem, ckCategory, trip.id, loadChecklist]);
+
+  const toggleChecklistItem = useCallback(async (id: string) => {
+    await lensRun('travel', 'checklist-toggle', { tripId: trip.id, id });
+    await loadChecklist();
+  }, [trip.id, loadChecklist]);
+
+  const removeChecklistItem = useCallback(async (id: string) => {
+    await lensRun('travel', 'checklist-toggle', { tripId: trip.id, id, remove: true });
+    await loadChecklist();
+  }, [trip.id, loadChecklist]);
+
+  // ── Collaboration ────────────────────────────────────────────────────
 
   const shareTrip = useCallback(async () => {
     if (!shareForm.collaborator.trim()) { setError('Enter a collaborator user id.'); return; }
@@ -316,6 +441,8 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
     } finally { setBusy(false); }
   }, [trip.id]);
 
+  // ── Budget ───────────────────────────────────────────────────────────
+
   const loadBreakdown = useCallback(async () => {
     setBusy(true); setError(null);
     try {
@@ -329,6 +456,20 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
     if (tab === 'budget') void loadBreakdown();
   }, [tab, loadBreakdown]);
 
+  const saveBudget = useCallback(async () => {
+    setBusy(true); setError(null);
+    try {
+      const categories: Record<string, number> = {};
+      for (const [k, v] of Object.entries(budgetForm)) {
+        const n = Number(v);
+        if (v.trim() && Number.isFinite(n) && n >= 0) categories[k] = n;
+      }
+      const r = await lensRun('travel', 'budget-set', { tripId: trip.id, categories });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not save budget.'); return; }
+      await loadBreakdown();
+    } finally { setBusy(false); }
+  }, [budgetForm, trip.id, loadBreakdown]);
+
   const markers = useMemo(
     () => mapPoints.map((p) => ({
       lat: p.lat, lng: p.lng, label: p.title,
@@ -336,6 +477,8 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
     })),
     [mapPoints],
   );
+
+  const checklistDone = checklist.filter((c) => c.done).length;
 
   // ── Render ────────────────────────────────────────────────────────────
 
@@ -370,6 +513,53 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
         </div>
       )}
 
+      {/* ── Itinerary tab ── */}
+      {tab === 'itinerary' && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+            <input placeholder="Activity" value={itinForm.title} onChange={(e) => setItinForm({ ...itinForm, title: e.target.value })}
+              className="md:col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <input type="date" value={itinForm.day} onChange={(e) => setItinForm({ ...itinForm, day: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <input placeholder="HH:MM" value={itinForm.time} onChange={(e) => setItinForm({ ...itinForm, time: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <select value={itinForm.category} onChange={(e) => setItinForm({ ...itinForm, category: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+              {ITIN_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <button type="button" onClick={addItinItem} disabled={busy}
+              className="flex items-center justify-center gap-1 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-xs font-medium rounded-lg">
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Add
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input placeholder="Location" value={itinForm.location} onChange={(e) => setItinForm({ ...itinForm, location: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <input placeholder="Note" value={itinForm.note} onChange={(e) => setItinForm({ ...itinForm, note: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          </div>
+          {itinerary.length === 0 ? (
+            <p className="text-[11px] text-zinc-400 italic">No itinerary items yet. Add the first one above.</p>
+          ) : (
+            <ul className="space-y-1">
+              {itinerary.map((it) => (
+                <li key={it.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-zinc-200 truncate">{it.title}</p>
+                    <p className="text-[10px] text-zinc-400 capitalize truncate">
+                      {[it.day, it.time, it.category, it.location].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <button aria-label="Delete itinerary item" type="button" onClick={() => delItinItem(it.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {/* ── Map tab ── */}
       {tab === 'map' && (
         <div className="space-y-3">
@@ -393,7 +583,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
           <div>
             <h4 className="text-xs font-semibold text-zinc-300 mb-2">Itinerary items</h4>
             {itinerary.length === 0 ? (
-              <p className="text-[11px] text-zinc-400 italic">No itinerary items on this trip yet.</p>
+              <p className="text-[11px] text-zinc-400 italic">No itinerary items on this trip yet — add one in the Itinerary tab.</p>
             ) : (
               <ul className="space-y-1">
                 {itinerary.map((it) => {
@@ -431,7 +621,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
         <div className="space-y-3">
           {agenda.length === 0 && unscheduled.length === 0 ? (
             <div className="text-center text-zinc-400 text-xs italic py-8 border border-zinc-800 rounded-xl">
-              No itinerary items yet. Add items to build a day-by-day agenda.
+              No itinerary items yet. Add items in the Itinerary tab to build a day-by-day agenda.
             </div>
           ) : (
             <>
@@ -586,34 +776,81 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
         </div>
       )}
 
-      {/* ── Booking import tab ── */}
-      {tab === 'import' && (
-        <div className="space-y-3">
-          <p className="text-xs text-zinc-400">
-            Paste a forwarded confirmation email — Concord parses the booking type, confirmation
-            code, provider, cost and date into a real booking + itinerary item.
-          </p>
-          <textarea value={emailText} onChange={(e) => setEmailText(e.target.value)} rows={7}
-            placeholder="Paste the full confirmation email text here…"
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 font-mono" />
-          <button type="button" onClick={importBooking} disabled={busy || !emailText.trim()}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-lg">
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />} Import booking
-          </button>
-          {importResult && (
-            <div className="bg-zinc-900/70 border border-emerald-900/50 rounded-xl p-3 space-y-1">
-              <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">
-                Parsed booking · confidence {importResult.confidence}/4
-              </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-zinc-300">
-                <span>Type: <span className="text-zinc-100 capitalize">{importResult.type}</span></span>
-                <span>Code: <span className="text-zinc-100">{importResult.confirmationCode || '—'}</span></span>
-                <span>Provider: <span className="text-zinc-100">{importResult.provider || '—'}</span></span>
-                <span>Cost: <span className="text-zinc-100">${importResult.cost}</span></span>
-                <span>Date: <span className="text-zinc-100">{importResult.date || '—'}</span></span>
-              </div>
+      {/* ── Bookings tab (manual add + list + email import) ── */}
+      {tab === 'bookings' && (
+        <div className="space-y-4">
+          <div>
+            <h4 className="text-xs font-semibold text-zinc-300 mb-2">Add a booking</h4>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <select value={bookForm.type} onChange={(e) => setBookForm({ ...bookForm, type: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                {BOOKING_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <input placeholder="Provider" value={bookForm.provider} onChange={(e) => setBookForm({ ...bookForm, provider: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="Cost ($)" inputMode="decimal" value={bookForm.cost} onChange={(e) => setBookForm({ ...bookForm, cost: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input type="date" value={bookForm.date} onChange={(e) => setBookForm({ ...bookForm, date: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <button type="button" onClick={addBooking} disabled={busy}
+                className="flex items-center justify-center gap-1 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-xs font-medium rounded-lg">
+                <Plus className="w-3.5 h-3.5" /> Book
+              </button>
             </div>
+          </div>
+
+          {bookings.length === 0 ? (
+            <p className="text-[11px] text-zinc-400 italic">No bookings yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              <li className="text-[10px] text-zinc-400 px-1">Total booked: <span className="text-zinc-200 font-mono">${bookingTotal}</span></li>
+              {bookings.map((b) => (
+                <li key={b.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
+                  <span className="text-xs text-zinc-200 capitalize">
+                    {b.type}{b.provider ? ` · ${b.provider}` : ''}{b.date ? ` · ${b.date}` : ''}
+                    {b.confirmationCode ? ` · #${b.confirmationCode}` : ''}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-[11px] text-zinc-400 font-mono">${b.cost}</span>
+                    <button aria-label="Delete booking" type="button" onClick={() => delBooking(b.id)} className="text-zinc-600 hover:text-rose-400">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
+
+          <div className="border-t border-zinc-800 pt-3">
+            <h4 className="text-xs font-semibold text-zinc-300 mb-2 flex items-center gap-1">
+              <Mail className="w-3.5 h-3.5 text-sky-400" /> Import from a forwarded confirmation email
+            </h4>
+            <p className="text-[11px] text-zinc-400 mb-2">
+              Paste a forwarded confirmation email — Concord parses the booking type, confirmation
+              code, provider, cost and date into a real booking + itinerary item.
+            </p>
+            <textarea value={emailText} onChange={(e) => setEmailText(e.target.value)} rows={6}
+              placeholder="Paste the full confirmation email text here…"
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 font-mono" />
+            <button type="button" onClick={importBooking} disabled={busy || !emailText.trim()}
+              className="mt-2 flex items-center gap-1.5 px-3 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-lg">
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />} Import booking
+            </button>
+            {importResult && (
+              <div className="mt-2 bg-zinc-900/70 border border-emerald-900/50 rounded-xl p-3 space-y-1">
+                <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">
+                  Parsed booking · confidence {importResult.confidence}/4
+                </p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-zinc-300">
+                  <span>Type: <span className="text-zinc-100 capitalize">{importResult.type}</span></span>
+                  <span>Code: <span className="text-zinc-100">{importResult.confirmationCode || '—'}</span></span>
+                  <span>Provider: <span className="text-zinc-100">{importResult.provider || '—'}</span></span>
+                  <span>Cost: <span className="text-zinc-100">${importResult.cost}</span></span>
+                  <span>Date: <span className="text-zinc-100">{importResult.date || '—'}</span></span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -662,6 +899,53 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
         </div>
       )}
 
+      {/* ── Packing checklist tab ── */}
+      {tab === 'packing' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-[11px] text-zinc-400">
+            <span>{checklistDone}/{checklist.length} packed</span>
+            {checklist.length > 0 && (
+              <div className="w-24 bg-white/5 rounded-full h-1.5">
+                <div className="h-full rounded-full bg-sky-500 transition-all" style={{ width: `${(checklistDone / checklist.length) * 100}%` }} />
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <input placeholder="Item to pack" value={ckItem} onChange={(e) => setCkItem(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void addChecklistItem(); }}
+              className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <div className="flex gap-1">
+              <input placeholder="Category" value={ckCategory} onChange={(e) => setCkCategory(e.target.value)}
+                className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <button type="button" onClick={addChecklistItem} disabled={busy || !ckItem.trim()}
+                className="px-2.5 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white rounded-lg">
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+          {checklist.length === 0 ? (
+            <p className="text-[11px] text-zinc-400 italic">Packing list is empty. Add the first item above — it's saved to this trip, not just this browser tab.</p>
+          ) : (
+            <ul className="space-y-1">
+              {checklist.map((c) => (
+                <li key={c.id} className="flex items-center gap-2 text-xs bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
+                  <button type="button" onClick={() => toggleChecklistItem(c.id)}
+                    className={cn('w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                      c.done ? 'bg-sky-600 border-sky-600' : 'border-zinc-600')}>
+                    {c.done && <Check className="w-3 h-3 text-white" />}
+                  </button>
+                  <span className={cn('flex-1', c.done ? 'text-zinc-400 line-through' : 'text-zinc-200')}>{c.item}</span>
+                  <span className="text-[10px] text-zinc-500 capitalize">{c.category}</span>
+                  <button aria-label="Remove packing item" type="button" onClick={() => removeChecklistItem(c.id)} className="text-zinc-600 hover:text-rose-400">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {/* ── Collaboration tab ── */}
       {tab === 'share' && (
         <div className="space-y-3">
@@ -705,6 +989,20 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
       {/* ── Budget breakdown tab ── */}
       {tab === 'budget' && (
         <div className="space-y-3">
+          <div>
+            <h4 className="text-xs font-semibold text-zinc-300 mb-2">Planned budget by category</h4>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+              {Object.keys(budgetForm).map((cat) => (
+                <input key={cat} placeholder={cat} inputMode="decimal" value={budgetForm[cat]}
+                  onChange={(e) => setBudgetForm((p) => ({ ...p, [cat]: e.target.value.replace(/[^\d.]/g, '') }))}
+                  className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize placeholder:capitalize" />
+              ))}
+              <button type="button" onClick={saveBudget} disabled={busy}
+                className="flex items-center justify-center gap-1 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-xs font-medium rounded-lg px-2 py-1.5">
+                Save budget
+              </button>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-zinc-400">Display currency</span>
             <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)}

@@ -12,6 +12,7 @@ import {
   Loader2, Undo2, Redo2, Plus, Eye, EyeOff, Trash2, ChevronUp, ChevronDown, ArrowLeft,
   Eraser, Brush, PaintBucket, Square, Circle, Minus, Type, Pipette, BoxSelect,
   Copy, Layers as LayersIcon, Lock, Unlock, Download, FlipHorizontal2, Upload,
+  Lasso, Pencil, Sparkles, X,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -21,7 +22,7 @@ import { PublishAsTextureDialog } from './PublishAsTextureDialog';
 interface El {
   id?: string; kind?: string; tool: string; color: string; size?: number; opacity: number;
   points?: number[][]; x?: number; y?: number; w?: number; h?: number;
-  filled?: boolean; content?: string; fontSize?: number;
+  filled?: boolean; content?: string; fontSize?: number; pressure?: boolean;
 }
 interface Layer { id: string; name: string; visible: boolean; opacity: number; blendMode: string; locked?: boolean; clipped?: boolean; strokes: El[] }
 interface Artwork { id: string; title: string; width: number; height: number; background: string; layers: Layer[] }
@@ -64,6 +65,19 @@ function drawElement(c: CanvasRenderingContext2D, el: El, w: number, h: number) 
         c.beginPath();
         c.arc(pts[0][0], pts[0][1], Math.max(0.5, (el.size || 6) / 2), 0, Math.PI * 2);
         c.fill();
+      } else if (el.pressure) {
+        // Stylus pressure ribbon — per-point pressure (points[i][2]) varies
+        // segment width so the stroke tapers like a real pressure-sensitive
+        // brush instead of one flat lineWidth.
+        for (let i = 1; i < pts.length; i++) {
+          const p0 = pts[i - 1], p1 = pts[i];
+          const pr = ((p0[2] ?? 1) + (p1[2] ?? 1)) / 2;
+          c.lineWidth = Math.max(0.5, (el.size || 6) * pr);
+          c.beginPath();
+          c.moveTo(p0[0], p0[1]);
+          c.lineTo(p1[0], p1[1]);
+          c.stroke();
+        }
       } else {
         c.beginPath();
         c.moveTo(pts[0][0], pts[0][1]);
@@ -119,6 +133,11 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const lastRef = useRef<number[] | null>(null);
   const startRef = useRef<number[] | null>(null);
   const marqueeRef = useRef<number[] | null>(null);
+  const isPenRef = useRef(false);
+  const [renaming, setRenaming] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [critiquing, setCritiquing] = useState(false);
+  const [critique, setCritique] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -205,9 +224,14 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const toPoint = (e: React.PointerEvent): number[] => {
     const cv = canvasRef.current!;
     const r = cv.getBoundingClientRect();
+    // Real stylus devices report a variable 0..1 pressure; mice/touch report
+    // a constant 0 or 0.5. Keep it on every point — harmless for the plain
+    // stroke-commit path (sanitizeStroke reads only [0]/[1]) and load-bearing
+    // for stroke-commit-pressure's variable-width ribbon.
     return [
       Math.round(((e.clientX - r.left) / r.width) * cv.width),
       Math.round(((e.clientY - r.top) / r.height) * cv.height),
+      typeof e.pressure === 'number' ? e.pressure : 0.5,
     ];
   };
 
@@ -218,7 +242,11 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       ...prev,
       layers: prev.layers.map((l) => (l.id === activeLayer ? { ...l, strokes: [...l.strokes, withId] } : l)),
     }));
-    const r = await lensRun('art', 'stroke-commit', { artworkId: artwork.id, layerId: activeLayer, stroke: el });
+    // Real stylus strokes (pointerType 'pen' with genuine per-point pressure)
+    // go through the pressure-ribbon macro so the committed stroke actually
+    // tapers; everything else (mouse/touch, constant 0.5) uses plain commit.
+    const macro = el.pressure ? 'stroke-commit-pressure' : 'stroke-commit';
+    const r = await lensRun('art', macro, { artworkId: artwork.id, layerId: activeLayer, stroke: el });
     if (r.data?.ok === false) {
       // roll back on rejection (e.g. locked layer)
       setArtwork((prev) => prev && ({
@@ -253,6 +281,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const onPointerDown = async (e: React.PointerEvent) => {
     if (!artwork || !activeLayer) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    isPenRef.current = e.pointerType === 'pen';
     const p = toPoint(e);
     if (tool === 'fill') {
       await commit({ kind: 'fill', tool: 'fill', color, opacity });
@@ -293,12 +322,29 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     }
     const last = lastRef.current;
     if (last && Math.hypot(p[0] - last[0], p[1] - last[1]) < 1.4) return;
+    if (tool === 'lasso') {
+      // freeform selection outline — dashed violet preview only, never paint
+      if (last) {
+        const ctx = canvasRef.current?.getContext('2d');
+        if (ctx) {
+          ctx.save();
+          ctx.setLineDash([5, 4]);
+          ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+          ctx.lineWidth = 1.5; ctx.strokeStyle = '#a78bfa'; ctx.globalAlpha = 0.9;
+          ctx.beginPath(); ctx.moveTo(last[0], last[1]); ctx.lineTo(p[0], p[1]); ctx.stroke();
+          ctx.restore();
+        }
+      }
+      pointsRef.current.push(p);
+      lastRef.current = p;
+      return;
+    }
     if (last) {
       const ctx = canvasRef.current?.getContext('2d');
       if (ctx) {
         ctx.save();
         ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-        ctx.lineWidth = size; ctx.strokeStyle = color; ctx.globalAlpha = opacity;
+        ctx.lineWidth = size * (isPenRef.current ? (p[2] ?? 0.5) + 0.3 : 1); ctx.strokeStyle = color; ctx.globalAlpha = opacity;
         ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
         if (tool === 'airbrush') { ctx.shadowBlur = size * 0.6; ctx.shadowColor = color; }
         ctx.beginPath(); ctx.moveTo(last[0], last[1]); ctx.lineTo(p[0], p[1]); ctx.stroke();
@@ -343,10 +389,25 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       if (start) await commit({ tool: 'ink', color, size, opacity, points: [start, end] });
       return;
     }
+    if (tool === 'lasso') {
+      const polygon = pointsRef.current;
+      pointsRef.current = [];
+      lastRef.current = null;
+      render(); // wipe the transient dashed preview
+      if (polygon.length >= 3) {
+        const r = await lensRun('art', 'selection-lasso', { artworkId: artwork.id, layerId: activeLayer, polygon });
+        if (r.data?.ok) setSelectedIds(new Set((r.data.result?.selection?.ids as string[]) || []));
+      }
+      return;
+    }
     const points = pointsRef.current;
     pointsRef.current = [];
     lastRef.current = null;
-    if (points.length) await commit({ tool, color, size, opacity, points });
+    // A stylus stroke where pressure genuinely varied across the path (not a
+    // flat mouse/touch 0.5 default) commits through the pressure-ribbon
+    // macro so it persists and replays as a real tapered stroke.
+    const hasRealPressure = isPenRef.current && points.some((pt) => Math.abs((pt[2] ?? 0.5) - 0.5) > 0.03);
+    if (points.length) await commit({ tool, color, size, opacity, points, pressure: hasRealPressure || undefined });
   };
 
   // ── history ──
@@ -429,6 +490,51 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     await reload();
   };
 
+  // ── rename ──
+  const startRename = () => { setTitleDraft(artwork?.title || ''); setRenaming(true); };
+  const saveRename = async () => {
+    const title = titleDraft.trim();
+    setRenaming(false);
+    if (!artwork || !title || title === artwork.title) return;
+    setArtwork((prev) => prev && ({ ...prev, title }));
+    await lensRun('art', 'artwork-rename', { id: artwork.id, title });
+  };
+
+  // ── clear layer (remove all strokes, keep the layer itself) ──
+  const clearLayer = async (layerId: string) => {
+    if (!artwork) return;
+    if (!window.confirm('Clear all strokes on this layer? This cannot be undone.')) return;
+    setArtwork((prev) => prev && ({
+      ...prev, layers: prev.layers.map((l) => (l.id === layerId ? { ...l, strokes: [] } : l)),
+    }));
+    await lensRun('art', 'layer-clear', { artworkId: artwork.id, layerId });
+  };
+
+  // ── AI vision critique — snapshots the live canvas and asks the vision
+  // brain for real feedback (composition, color, technique). Honest failure
+  // when the vision brain is unreachable, never a fabricated critique.
+  const runCritique = async () => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    setCritiquing(true);
+    setCritique(null);
+    try {
+      // The `vision` handler returns its own {ok, content, error} envelope
+      // (not the {ok, result} shape most macros use), so unwrap one level
+      // deeper — the transport's outer `ok` only means "the call dispatched".
+      const r = await lensRun('art', 'vision', { imageB64: cv.toDataURL('image/jpeg', 0.85) });
+      const inner = r.data?.result as { ok?: boolean; content?: string; error?: string } | undefined;
+      if (inner?.ok && inner.content) {
+        setCritique(inner.content);
+      } else {
+        setCritique(`Vision brain unavailable (${inner?.error || r.data?.error || 'unreachable'}).`);
+      }
+    } catch (e) {
+      setCritique(`Vision brain unavailable (${e instanceof Error ? e.message : 'request failed'}).`);
+    }
+    setCritiquing(false);
+  };
+
   const exportPNG = () => {
     const cv = canvasRef.current;
     if (!cv) return;
@@ -460,6 +566,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
 
   const TOOLS: { id: string; icon: typeof Brush; label: string }[] = [
     { id: 'select', icon: BoxSelect, label: 'Select' },
+    { id: 'lasso', icon: Lasso, label: 'Lasso' },
     { id: 'fill', icon: PaintBucket, label: 'Fill' },
     { id: 'rect', icon: Square, label: 'Rectangle' },
     { id: 'ellipse', icon: Circle, label: 'Ellipse' },
@@ -474,10 +581,40 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       {/* Top bar */}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={exit} className={topBtn}><ArrowLeft className="w-3.5 h-3.5" /> Gallery</button>
-        <span className="text-sm font-semibold text-zinc-100 flex-1 truncate">{artwork.title}</span>
+        {renaming ? (
+          <span className="flex-1 flex items-center gap-1 min-w-[120px]">
+            <input
+              autoFocus
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void saveRename(); if (e.key === 'Escape') setRenaming(false); }}
+              onBlur={saveRename}
+              className="flex-1 bg-zinc-900 border border-violet-600 rounded px-2 py-1 text-sm text-zinc-100 min-w-0"
+            />
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={startRename}
+            title="Rename artwork"
+            className="flex-1 flex items-center gap-1.5 min-w-0 text-left text-sm font-semibold text-zinc-100 hover:text-violet-300 group"
+          >
+            <span className="truncate">{artwork.title}</span>
+            <Pencil className="w-3 h-3 text-zinc-500 group-hover:text-violet-300 shrink-0" />
+          </button>
+        )}
         <button type="button" onClick={undo} className={topBtn}><Undo2 className="w-3.5 h-3.5" /> Undo</button>
         <button type="button" onClick={redo} className={topBtn}><Redo2 className="w-3.5 h-3.5" /> Redo</button>
         <button type="button" onClick={exportPNG} className={topBtn}><Download className="w-3.5 h-3.5" /> PNG</button>
+        <button
+          type="button"
+          onClick={runCritique}
+          disabled={critiquing}
+          className={topBtn}
+          title="Snapshot the canvas and ask the vision brain for a real critique"
+        >
+          {critiquing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} AI Critique
+        </button>
         <button
           type="button"
           onClick={() => setPublishOpen(true)}
@@ -487,6 +624,14 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
           <Upload className="w-3.5 h-3.5" /> Publish material
         </button>
       </div>
+
+      {critique && (
+        <div className="rounded-lg border border-violet-900/50 bg-violet-950/20 p-3 flex items-start gap-2">
+          <Sparkles className="w-4 h-4 text-violet-300 shrink-0 mt-0.5" />
+          <p className="text-xs text-zinc-200 leading-relaxed flex-1">{critique}</p>
+          <button type="button" onClick={() => setCritique(null)} aria-label="Dismiss critique" className="text-zinc-500 hover:text-zinc-300 shrink-0"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
 
       {/* Tool palette */}
       <div className="flex flex-wrap gap-1.5">
@@ -510,7 +655,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
         {TOOLS.map((t) => {
           const Icon = t.icon;
           return (
-            <button key={t.id} type="button" onClick={() => { setTool(t.id); if (t.id !== 'select') setSelectedIds(new Set()); }}
+            <button key={t.id} type="button" onClick={() => { setTool(t.id); if (t.id !== 'select' && t.id !== 'lasso') setSelectedIds(new Set()); }}
               className={cn(toolBtn, tool === t.id ? on : off)}>
               <Icon className="w-3 h-3" />{t.label}
             </button>
@@ -580,6 +725,10 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
                       <button type="button" onClick={() => mergeDown(l.id)} className={miniBtn}><LayersIcon className="w-3 h-3" /> Merge</button>
                       <button type="button" onClick={() => updateLayer(l.id, { clipped: !l.clipped })}
                         className={cn(miniBtn, l.clipped && 'bg-violet-700 text-white')}>Clip</button>
+                      <button type="button" onClick={() => clearLayer(l.id)} disabled={!l.strokes.length}
+                        className={cn(miniBtn, 'disabled:opacity-40')} title="Erase every stroke on this layer">
+                        <Eraser className="w-3 h-3" /> Clear
+                      </button>
                     </div>
                   </div>
                 )}
@@ -677,6 +826,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
           layerId={activeLayer}
           selectedIds={[...selectedIds]}
           onApplied={reload}
+          canvas={canvasRef.current}
         />
       )}
       {publishOpen && (

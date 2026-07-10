@@ -14,6 +14,7 @@ import { ChartKit, TimelineView } from '@/components/viz';
 import {
   Ticket, Users, Armchair, DollarSign, ListChecks, ScanLine, Mail,
   Plus, Trash2, X, Globe, CheckCircle2, RefreshCw, Share2, Send,
+  FileText, Music2, Scale, Calculator, Pencil, Save,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -53,8 +54,32 @@ interface Blast {
 interface PublicPage {
   slug: string | null; published: boolean; headline: string; blurb: string; views: number;
 }
+// Shapes returned by the legacy touring-ops macros (concert/festival production —
+// distinct generation from the STATE-backed ticketing/budget-ledger macros above;
+// see server/domains/events.js lines 1-57).
+interface AdvanceSheetResult {
+  event?: string; date: string;
+  venue: { name: string; address: string; capacity: number; contact: string };
+  schedule: { loadIn: string; soundcheck: string; doors: string; showTime: string; curfew: string };
+  production: { stage: string; sound: string; lighting: string; backline: string };
+  hospitality: { catering: string; greenRoom: string; parking: string };
+  generatedAt: string;
+}
+interface RiderMatchResult {
+  performer?: string;
+  matches: { requirement: string; quantity: number; available: boolean; notes: string }[];
+  fulfilled: number; total: number; fulfillmentRate: number;
+}
+interface SettlementResult {
+  performer?: string; guarantee: number; doorSplit: string; grossDoor: number;
+  artistDoorShare: number; settlement: number; method: string; ticketsSold: number;
+}
+interface ReconcileResult {
+  event?: string; projectedBudget: number; totalExpenses: number; totalRevenue: number;
+  netProfit: number; variance: number; overBudget: boolean; byCategory: Record<string, number>;
+}
 
-type OpsTab = 'tickets' | 'attendees' | 'seating' | 'budget' | 'agenda' | 'checkin' | 'blasts' | 'public';
+type OpsTab = 'tickets' | 'attendees' | 'seating' | 'budget' | 'agenda' | 'checkin' | 'blasts' | 'public' | 'production';
 
 const OPS_TABS: { id: OpsTab; label: string; icon: typeof Ticket }[] = [
   { id: 'tickets', label: 'Ticketing', icon: Ticket },
@@ -65,6 +90,7 @@ const OPS_TABS: { id: OpsTab; label: string; icon: typeof Ticket }[] = [
   { id: 'checkin', label: 'Check-in', icon: ScanLine },
   { id: 'blasts', label: 'Blasts', icon: Mail },
   { id: 'public', label: 'Public Page', icon: Globe },
+  { id: 'production', label: 'Production', icon: FileText },
 ];
 
 const fmt = (n: number) =>
@@ -113,6 +139,41 @@ export function EventOps() {
   const [pageForm, setPageForm] = useState({ headline: '', blurb: '' });
   const [scanCode, setScanCode] = useState('');
   const [scanMsg, setScanMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Ticket tier inline edit (tier-update)
+  const [editingTierId, setEditingTierId] = useState<string | null>(null);
+  const [editTierForm, setEditTierForm] = useState({ price: '', quantity: '', perks: '' });
+
+  // Production advance — the four legacy touring-ops macros (budgetReconcile,
+  // advanceSheet, techRiderMatch, settlementCalc) predate the STATE-backed
+  // ticketing/budget-ledger substrate above and target concert/festival
+  // production workflows specifically (loadIn/soundcheck/curfew, rider
+  // fulfillment, door-split settlement). Each is a one-shot calculator: input
+  // goes straight into `/api/lens/run`'s virtual artifact, no STATE event
+  // required, so these work even before an event has any tiers/budget lines.
+  const [advanceForm, setAdvanceForm] = useState({
+    venueName: '', venueAddress: '', venueCapacity: '', venueContact: '',
+    stageSize: '', soundSystem: '', lighting: '', backline: '',
+    date: '', loadIn: '', soundcheck: '', doors: '', showTime: '', curfew: '',
+    catering: '', greenRoom: '', parking: '',
+  });
+  const [advanceSheetResult, setAdvanceSheetResult] = useState<AdvanceSheetResult | null>(null);
+
+  const [riderReqs, setRiderReqs] = useState<{ name: string; quantity: string }[]>([]);
+  const [riderReqForm, setRiderReqForm] = useState({ name: '', quantity: '1' });
+  const [venueGear, setVenueGear] = useState<string[]>([]);
+  const [venueGearInput, setVenueGearInput] = useState('');
+  const [riderMatchResult, setRiderMatchResult] = useState<RiderMatchResult | null>(null);
+
+  const [settleForm, setSettleForm] = useState({ guarantee: '', doorSplit: '80', ticketsSold: '', ticketPrice: '' });
+  const [settlementResult, setSettlementResult] = useState<SettlementResult | null>(null);
+
+  const [reconcileBudget, setReconcileBudget] = useState('');
+  const [reconcileExpenses, setReconcileExpenses] = useState<{ category: string; amount: string }[]>([]);
+  const [reconcileRevenue, setReconcileRevenue] = useState<{ category: string; amount: string }[]>([]);
+  const [expenseForm, setExpenseForm] = useState({ category: 'venue', amount: '' });
+  const [revenueForm, setRevenueForm] = useState({ category: 'tickets', amount: '' });
+  const [reconcileResult, setReconcileResult] = useState<ReconcileResult | null>(null);
 
   // -------------------------------------------------------------------------
   // Macro helpers
@@ -259,6 +320,22 @@ export function EventOps() {
     await run('tier-delete', { eventId: activeEvent, tierId });
     await reloadTab(activeEvent, 'tickets');
   });
+  const startEditTier = (t: Tier) => {
+    setEditingTierId(t.id);
+    setEditTierForm({ price: String(t.price), quantity: String(t.quantity), perks: t.perks });
+  };
+  const cancelEditTier = () => setEditingTierId(null);
+  const saveEditTier = () => guard(async () => {
+    if (!activeEvent || !editingTierId) return;
+    await run('tier-update', {
+      eventId: activeEvent, tierId: editingTierId,
+      price: Number(editTierForm.price) || 0,
+      quantity: Number(editTierForm.quantity) || 0,
+      perks: editTierForm.perks,
+    });
+    setEditingTierId(null);
+    await reloadTab(activeEvent, 'tickets');
+  });
 
   const addReg = () => guard(async () => {
     if (!activeEvent || !regForm.name.trim() || !regForm.email.trim() || !regForm.tierId) return;
@@ -399,6 +476,90 @@ export function EventOps() {
     if (!publicPage?.slug) return;
     const r = await run('public-page', { slug: publicPage.slug });
     setPublicPage((r?.publicPage as PublicPage) || publicPage);
+  });
+
+  // ---------------------------------------------------------------------
+  // Production advance (budgetReconcile / advanceSheet / techRiderMatch /
+  // settlementCalc) — see the state comment above for why these are separate.
+  // ---------------------------------------------------------------------
+  const genAdvanceSheet = () => guard(async () => {
+    const r = await run('advanceSheet', {
+      date: advanceForm.date || activeEvtObj?.date || undefined,
+      venue: {
+        name: advanceForm.venueName || activeEvtObj?.venue || undefined,
+        address: advanceForm.venueAddress || undefined,
+        capacity: advanceForm.venueCapacity ? Number(advanceForm.venueCapacity) : undefined,
+        contact: advanceForm.venueContact || undefined,
+        stageSize: advanceForm.stageSize || undefined,
+        soundSystem: advanceForm.soundSystem || undefined,
+        lighting: advanceForm.lighting || undefined,
+        backline: advanceForm.backline || undefined,
+      },
+      loadIn: advanceForm.loadIn || undefined,
+      soundcheck: advanceForm.soundcheck || undefined,
+      doors: advanceForm.doors || undefined,
+      showTime: advanceForm.showTime || undefined,
+      curfew: advanceForm.curfew || undefined,
+      hospitality: {
+        catering: advanceForm.catering || undefined,
+        greenRoom: advanceForm.greenRoom || undefined,
+        parking: advanceForm.parking || undefined,
+      },
+    });
+    setAdvanceSheetResult((r?.advanceSheet as AdvanceSheetResult) || null);
+  });
+
+  const addRiderReq = () => {
+    if (!riderReqForm.name.trim()) return;
+    setRiderReqs((prev) => [...prev, { name: riderReqForm.name.trim(), quantity: riderReqForm.quantity || '1' }]);
+    setRiderReqForm({ name: '', quantity: '1' });
+  };
+  const delRiderReq = (i: number) => setRiderReqs((prev) => prev.filter((_, idx) => idx !== i));
+  const addVenueGear = () => {
+    if (!venueGearInput.trim()) return;
+    setVenueGear((prev) => [...prev, venueGearInput.trim()]);
+    setVenueGearInput('');
+  };
+  const delVenueGear = (i: number) => setVenueGear((prev) => prev.filter((_, idx) => idx !== i));
+  const matchRider = () => guard(async () => {
+    if (riderReqs.length === 0) return;
+    const r = await run('techRiderMatch', {
+      riderRequirements: riderReqs.map((x) => ({ name: x.name, quantity: Number(x.quantity) || 1 })),
+      venueEquipment: venueGear,
+    });
+    setRiderMatchResult(r as RiderMatchResult);
+  });
+
+  const calcSettlement = () => guard(async () => {
+    const fallbackPrice = tierTotals.totalSold > 0 ? tierTotals.totalRevenue / tierTotals.totalSold : 0;
+    const r = await run('settlementCalc', {
+      guarantee: Number(settleForm.guarantee) || 0,
+      doorSplit: Number(settleForm.doorSplit) || 80,
+      ticketsSold: settleForm.ticketsSold ? Number(settleForm.ticketsSold) : tierTotals.totalSold,
+      ticketPrice: settleForm.ticketPrice ? Number(settleForm.ticketPrice) : fallbackPrice,
+    });
+    setSettlementResult(r as SettlementResult);
+  });
+
+  const addExpenseLine = () => {
+    if (!expenseForm.amount) return;
+    setReconcileExpenses((prev) => [...prev, { ...expenseForm }]);
+    setExpenseForm({ category: expenseForm.category, amount: '' });
+  };
+  const delExpenseLine = (i: number) => setReconcileExpenses((prev) => prev.filter((_, idx) => idx !== i));
+  const addRevenueLine = () => {
+    if (!revenueForm.amount) return;
+    setReconcileRevenue((prev) => [...prev, { ...revenueForm }]);
+    setRevenueForm({ category: revenueForm.category, amount: '' });
+  };
+  const delRevenueLine = (i: number) => setReconcileRevenue((prev) => prev.filter((_, idx) => idx !== i));
+  const runReconcile = () => guard(async () => {
+    const r = await run('budgetReconcile', {
+      budget: Number(reconcileBudget) || 0,
+      expenses: reconcileExpenses.map((e) => ({ category: e.category, amount: Number(e.amount) || 0 })),
+      revenue: reconcileRevenue.map((e) => ({ category: e.category, amount: Number(e.amount) || 0 })),
+    });
+    setReconcileResult(r as ReconcileResult);
   });
 
   // -------------------------------------------------------------------------
@@ -545,18 +706,48 @@ export function EventOps() {
                               <span className={cn(ds.badge('red-400'), 'absolute top-2 right-2')}>SOLD OUT</span>
                             )}
                             <h4 className="font-semibold text-sm">{t.name}</h4>
-                            <p className="text-xl font-bold text-neon-cyan">{fmt(t.price)}</p>
-                            <div className="w-full h-2 bg-lattice-elevated rounded-full overflow-hidden my-2">
-                              <div className="h-full bg-neon-cyan rounded-full"
-                                style={{ width: `${t.quantity > 0 ? Math.min(100, (t.sold / t.quantity) * 100) : 0}%` }} />
-                            </div>
-                            <p className="text-xs text-gray-400">{t.sold} sold · {t.remaining} left</p>
-                            <p className="text-xs text-green-400">{fmt(t.revenue)} revenue</p>
-                            {t.perks && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{t.perks}</p>}
-                            <button onClick={() => delTier(t.id)}
-                              className={cn(ds.btnGhost, 'hover:text-red-400 mt-2 text-xs')}>
-                              <Trash2 className="w-3.5 h-3.5" /> Delete
-                            </button>
+                            {editingTierId === t.id ? (
+                              <div className="space-y-1.5 mt-1.5">
+                                <div className="flex gap-1.5">
+                                  <input className={cn(ds.input, 'text-xs')} type="number" placeholder="Price"
+                                    value={editTierForm.price}
+                                    onChange={(e) => setEditTierForm({ ...editTierForm, price: e.target.value })} />
+                                  <input className={cn(ds.input, 'text-xs')} type="number" placeholder="Quantity"
+                                    value={editTierForm.quantity}
+                                    onChange={(e) => setEditTierForm({ ...editTierForm, quantity: e.target.value })} />
+                                </div>
+                                <input className={cn(ds.input, 'text-xs')} placeholder="Perks"
+                                  value={editTierForm.perks}
+                                  onChange={(e) => setEditTierForm({ ...editTierForm, perks: e.target.value })} />
+                                <div className="flex gap-1.5">
+                                  <button onClick={saveEditTier} className={cn(ds.btnPrimary, 'text-xs flex-1')}>
+                                    <Save className="w-3.5 h-3.5" /> Save
+                                  </button>
+                                  <button onClick={cancelEditTier} className={cn(ds.btnSecondary, 'text-xs')}>Cancel</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="text-xl font-bold text-neon-cyan">{fmt(t.price)}</p>
+                                <div className="w-full h-2 bg-lattice-elevated rounded-full overflow-hidden my-2">
+                                  <div className="h-full bg-neon-cyan rounded-full"
+                                    style={{ width: `${t.quantity > 0 ? Math.min(100, (t.sold / t.quantity) * 100) : 0}%` }} />
+                                </div>
+                                <p className="text-xs text-gray-400">{t.sold} sold · {t.remaining} left</p>
+                                <p className="text-xs text-green-400">{fmt(t.revenue)} revenue</p>
+                                {t.perks && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{t.perks}</p>}
+                                <div className="flex gap-1 mt-2">
+                                  <button onClick={() => startEditTier(t)}
+                                    className={cn(ds.btnGhost, 'text-xs')}>
+                                    <Pencil className="w-3.5 h-3.5" /> Edit
+                                  </button>
+                                  <button onClick={() => delTier(t.id)}
+                                    className={cn(ds.btnGhost, 'hover:text-red-400 text-xs')}>
+                                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1007,6 +1198,232 @@ export function EventOps() {
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* --- PRODUCTION ADVANCE (budgetReconcile / advanceSheet / techRiderMatch / settlementCalc) --- */}
+              {tab === 'production' && (
+                <div className="space-y-4">
+                  <p className={cn(ds.textMuted, 'flex items-center gap-2')}>
+                    <Music2 className="w-4 h-4" /> Tour/production tools for concert &amp; festival dates — advance the show, match the rider, and settle at the door.
+                  </p>
+
+                  {/* Advance sheet */}
+                  <div className={ds.panel}>
+                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-neon-cyan" /> Advance Sheet
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+                      <input className={ds.input} placeholder="Venue name" value={advanceForm.venueName}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, venueName: e.target.value })} />
+                      <input className={ds.input} placeholder="Address" value={advanceForm.venueAddress}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, venueAddress: e.target.value })} />
+                      <input className={ds.input} type="number" placeholder="Capacity" value={advanceForm.venueCapacity}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, venueCapacity: e.target.value })} />
+                      <input className={ds.input} placeholder="Venue contact" value={advanceForm.venueContact}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, venueContact: e.target.value })} />
+                      <input className={ds.input} placeholder="Stage size" value={advanceForm.stageSize}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, stageSize: e.target.value })} />
+                      <input className={ds.input} placeholder="Sound system" value={advanceForm.soundSystem}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, soundSystem: e.target.value })} />
+                      <input className={ds.input} placeholder="Lighting" value={advanceForm.lighting}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, lighting: e.target.value })} />
+                      <input className={ds.input} placeholder="Backline" value={advanceForm.backline}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, backline: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-2">
+                      <input className={ds.input} type="date" value={advanceForm.date}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, date: e.target.value })} />
+                      <input className={ds.input} type="time" placeholder="Load-in" value={advanceForm.loadIn}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, loadIn: e.target.value })} />
+                      <input className={ds.input} type="time" placeholder="Soundcheck" value={advanceForm.soundcheck}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, soundcheck: e.target.value })} />
+                      <input className={ds.input} type="time" placeholder="Doors" value={advanceForm.doors}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, doors: e.target.value })} />
+                      <input className={ds.input} type="time" placeholder="Show time" value={advanceForm.showTime}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, showTime: e.target.value })} />
+                      <input className={ds.input} type="time" placeholder="Curfew" value={advanceForm.curfew}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, curfew: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      <input className={ds.input} placeholder="Catering" value={advanceForm.catering}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, catering: e.target.value })} />
+                      <input className={ds.input} placeholder="Green room" value={advanceForm.greenRoom}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, greenRoom: e.target.value })} />
+                      <input className={ds.input} placeholder="Parking" value={advanceForm.parking}
+                        onChange={(e) => setAdvanceForm({ ...advanceForm, parking: e.target.value })} />
+                    </div>
+                    <button onClick={genAdvanceSheet} className={ds.btnPrimary}>
+                      <FileText className="w-4 h-4" /> Generate Advance Sheet
+                    </button>
+                    {advanceSheetResult && (
+                      <div className="mt-3 pt-3 border-t border-lattice-border grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div><p className="text-gray-400">Load-in / Soundcheck</p><p className="text-gray-200">{advanceSheetResult.schedule.loadIn} / {advanceSheetResult.schedule.soundcheck}</p></div>
+                        <div><p className="text-gray-400">Doors / Show / Curfew</p><p className="text-gray-200">{advanceSheetResult.schedule.doors} / {advanceSheetResult.schedule.showTime} / {advanceSheetResult.schedule.curfew}</p></div>
+                        <div><p className="text-gray-400">Production</p><p className="text-gray-200">{advanceSheetResult.production.stage} · {advanceSheetResult.production.sound} · {advanceSheetResult.production.lighting}</p></div>
+                        <div><p className="text-gray-400">Hospitality</p><p className="text-gray-200">{advanceSheetResult.hospitality.catering} · {advanceSheetResult.hospitality.greenRoom} · {advanceSheetResult.hospitality.parking}</p></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tech rider match */}
+                  <div className={ds.panel}>
+                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <Music2 className="w-4 h-4 text-neon-cyan" /> Tech Rider Match
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className={cn(ds.textMuted, 'mb-1')}>Rider requirements</p>
+                        <div className="flex gap-1.5 mb-1.5">
+                          <input className={cn(ds.input, 'text-xs')} placeholder="e.g. 2x wireless DI"
+                            value={riderReqForm.name}
+                            onChange={(e) => setRiderReqForm({ ...riderReqForm, name: e.target.value })} />
+                          <input className={cn(ds.input, 'text-xs w-16')} type="number" min="1"
+                            value={riderReqForm.quantity}
+                            onChange={(e) => setRiderReqForm({ ...riderReqForm, quantity: e.target.value })} />
+                          <button onClick={addRiderReq} className={cn(ds.btnSecondary, 'text-xs')} aria-label="Add requirement"><Plus className="w-3.5 h-3.5" /></button>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {riderReqs.map((r, i) => (
+                            <span key={i} className="text-xs px-2 py-1 rounded-full bg-lattice-elevated text-gray-300 flex items-center gap-1">
+                              {r.quantity}x {r.name}
+                              <button onClick={() => delRiderReq(i)} aria-label="Remove"><X className="w-3 h-3" /></button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className={cn(ds.textMuted, 'mb-1')}>Venue equipment on hand</p>
+                        <div className="flex gap-1.5 mb-1.5">
+                          <input className={cn(ds.input, 'text-xs')} placeholder="e.g. wireless DI"
+                            value={venueGearInput} onChange={(e) => setVenueGearInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') addVenueGear(); }} />
+                          <button onClick={addVenueGear} className={cn(ds.btnSecondary, 'text-xs')} aria-label="Add equipment"><Plus className="w-3.5 h-3.5" /></button>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {venueGear.map((g, i) => (
+                            <span key={i} className="text-xs px-2 py-1 rounded-full bg-lattice-elevated text-gray-300 flex items-center gap-1">
+                              {g}
+                              <button onClick={() => delVenueGear(i)} aria-label="Remove"><X className="w-3 h-3" /></button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={matchRider} className={cn(ds.btnPrimary, 'mt-2')} disabled={riderReqs.length === 0}>
+                      <Music2 className="w-4 h-4" /> Match Rider
+                    </button>
+                    {riderMatchResult && (
+                      <div className="mt-3 pt-3 border-t border-lattice-border">
+                        <div className="grid grid-cols-3 gap-3 mb-2">
+                          <Stat label="Fulfilled" value={`${riderMatchResult.fulfilled}/${riderMatchResult.total}`} accent="green-400" />
+                          <Stat label="Fulfillment" value={`${riderMatchResult.fulfillmentRate}%`} />
+                          <div />
+                        </div>
+                        <table className="w-full text-xs">
+                          <tbody className="divide-y divide-lattice-border">
+                            {riderMatchResult.matches.map((m, i) => (
+                              <tr key={i}>
+                                <td className="py-1 pr-2">{m.quantity}x {m.requirement}</td>
+                                <td className="py-1 text-right">
+                                  <span className={ds.badge(m.available ? 'green-400' : 'amber-400')}>{m.notes}</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Settlement calculator */}
+                  <div className={ds.panel}>
+                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <Scale className="w-4 h-4 text-neon-cyan" /> Settlement Calculator
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <input className={ds.input} type="number" placeholder="Guarantee ($)" value={settleForm.guarantee}
+                        onChange={(e) => setSettleForm({ ...settleForm, guarantee: e.target.value })} />
+                      <input className={ds.input} type="number" placeholder="Door split %" value={settleForm.doorSplit}
+                        onChange={(e) => setSettleForm({ ...settleForm, doorSplit: e.target.value })} />
+                      <input className={ds.input} type="number" placeholder={`Tickets sold (default ${tierTotals.totalSold})`} value={settleForm.ticketsSold}
+                        onChange={(e) => setSettleForm({ ...settleForm, ticketsSold: e.target.value })} />
+                      <input className={ds.input} type="number" placeholder="Avg ticket price ($)" value={settleForm.ticketPrice}
+                        onChange={(e) => setSettleForm({ ...settleForm, ticketPrice: e.target.value })} />
+                    </div>
+                    <button onClick={calcSettlement} className={cn(ds.btnPrimary, 'mt-2')}>
+                      <Scale className="w-4 h-4" /> Calculate Settlement
+                    </button>
+                    {settlementResult && (
+                      <div className="mt-3 pt-3 border-t border-lattice-border grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <Stat label="Gross door" value={fmt(settlementResult.grossDoor)} />
+                        <Stat label="Artist door share" value={fmt(settlementResult.artistDoorShare)} />
+                        <Stat label="Settlement" value={fmt(settlementResult.settlement)} accent="green-400" />
+                        <Stat label="Method" value={settlementResult.method === 'door_split' ? 'Door split' : 'Guarantee'} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick budget reconcile */}
+                  <div className={ds.panel}>
+                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <Calculator className="w-4 h-4 text-neon-cyan" /> Quick Budget Reconcile
+                    </h4>
+                    <p className={cn(ds.textMuted, 'mb-2')}>
+                      A fast projected-vs-actual estimate — for the persistent line-item ledger use the Budget tab.
+                    </p>
+                    <input className={cn(ds.input, 'mb-2 max-w-[200px]')} type="number" placeholder="Projected budget ($)"
+                      value={reconcileBudget} onChange={(e) => setReconcileBudget(e.target.value)} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className={cn(ds.textMuted, 'mb-1')}>Expenses</p>
+                        <div className="flex gap-1.5 mb-1.5">
+                          <input className={cn(ds.input, 'text-xs')} placeholder="Category" value={expenseForm.category}
+                            onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })} />
+                          <input className={cn(ds.input, 'text-xs w-20')} type="number" placeholder="$" value={expenseForm.amount}
+                            onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
+                          <button onClick={addExpenseLine} className={cn(ds.btnSecondary, 'text-xs')} aria-label="Add expense"><Plus className="w-3.5 h-3.5" /></button>
+                        </div>
+                        {reconcileExpenses.map((e2, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs text-gray-300 py-0.5">
+                            <span className="capitalize">{e2.category}</span>
+                            <span className="flex items-center gap-1">{fmt(Number(e2.amount) || 0)}
+                              <button onClick={() => delExpenseLine(i)} aria-label="Remove"><X className="w-3 h-3" /></button>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <p className={cn(ds.textMuted, 'mb-1')}>Revenue</p>
+                        <div className="flex gap-1.5 mb-1.5">
+                          <input className={cn(ds.input, 'text-xs')} placeholder="Category" value={revenueForm.category}
+                            onChange={(e) => setRevenueForm({ ...revenueForm, category: e.target.value })} />
+                          <input className={cn(ds.input, 'text-xs w-20')} type="number" placeholder="$" value={revenueForm.amount}
+                            onChange={(e) => setRevenueForm({ ...revenueForm, amount: e.target.value })} />
+                          <button onClick={addRevenueLine} className={cn(ds.btnSecondary, 'text-xs')} aria-label="Add revenue"><Plus className="w-3.5 h-3.5" /></button>
+                        </div>
+                        {reconcileRevenue.map((r2, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs text-gray-300 py-0.5">
+                            <span className="capitalize">{r2.category}</span>
+                            <span className="flex items-center gap-1">{fmt(Number(r2.amount) || 0)}
+                              <button onClick={() => delRevenueLine(i)} aria-label="Remove"><X className="w-3 h-3" /></button>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <button onClick={runReconcile} className={cn(ds.btnPrimary, 'mt-2')}>
+                      <Calculator className="w-4 h-4" /> Reconcile
+                    </button>
+                    {reconcileResult && (
+                      <div className="mt-3 pt-3 border-t border-lattice-border grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <Stat label="Total expenses" value={fmt(reconcileResult.totalExpenses)} />
+                        <Stat label="Total revenue" value={fmt(reconcileResult.totalRevenue)} accent="green-400" />
+                        <Stat label="Net profit" value={fmt(reconcileResult.netProfit)} accent={reconcileResult.netProfit >= 0 ? 'green-400' : 'red-400'} />
+                        <Stat label="Variance" value={fmt(reconcileResult.variance)} accent={reconcileResult.overBudget ? 'red-400' : 'white'} />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </>

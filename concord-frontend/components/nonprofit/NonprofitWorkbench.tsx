@@ -12,7 +12,8 @@
  *  - Email / communications (comm-send/compose/log, thankyou-run)
  *  - Tax receipts (receipt-generate, receipt-annual)
  *  - Online donation pages (donation-page-create/list/update/delete/give)
- *  - Volunteer management (volunteer-signup/list/delete, shift-schedule, shift-log-hours)
+ *  - Volunteer management (volunteer-signup/list/delete, shift-schedule,
+ *    shift-log-hours, volunteerMatch)
  *  - Event / peer-to-peer fundraising (event-create/list/delete, p2p-team-create, p2p-donate, p2p-leaderboard)
  *
  * Every value rendered comes from a real macro call — no mock data.
@@ -22,7 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Users, Repeat, Mail, Receipt, Globe, HeartHandshake, Trophy,
   Plus, Trash2, Loader2, X, ChevronDown, ChevronRight,
-  CheckCircle2, FileText, Send, CreditCard, PauseCircle, PlayCircle,
+  CheckCircle2, FileText, Send, CreditCard, PauseCircle, PlayCircle, Pencil, Target,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
@@ -53,7 +54,7 @@ interface Volunteer { id: string; name: string; email: string; phone: string; sk
 interface P2PTeam { id: string; teamName: string; captain: string; personalGoal: number; raised: number; donations: { id: string; amount: number; donor: string }[] }
 interface NPEvent { id: string; name: string; description: string; date: string | null; goal: number; ticketPrice: number; type: string; teams: P2PTeam[]; status: string; raised: number; donorCount: number; teamCount: number; progressPct: number }
 
-const TABS: { id: WBTab; label: string; icon: typeof Users }[] = [
+export const WB_TABS: { id: WBTab; label: string; icon: typeof Users }[] = [
   { id: 'crm', label: 'Donor CRM', icon: Users },
   { id: 'recurring', label: 'Recurring Giving', icon: Repeat },
   { id: 'comms', label: 'Communications', icon: Mail },
@@ -62,6 +63,7 @@ const TABS: { id: WBTab; label: string; icon: typeof Users }[] = [
   { id: 'volunteers', label: 'Volunteers', icon: HeartHandshake },
   { id: 'events', label: 'Events & P2P', icon: Trophy },
 ];
+const TABS = WB_TABS;
 
 function money(n: number): string { return `$${(n || 0).toLocaleString()}`; }
 function shortDate(d: string | null | undefined): string {
@@ -78,8 +80,15 @@ const card = 'bg-zinc-900/60 border border-zinc-800 rounded-lg';
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export function NonprofitWorkbench() {
-  const [tab, setTab] = useState<WBTab>('crm');
+export function NonprofitWorkbench({ tab: controlledTab, onTabChange }: {
+  /** Optional controlled active sub-tab — lets the host page drive discoverable
+   * keyboard shortcuts. Falls back to internal state when omitted. */
+  tab?: WBTab;
+  onTabChange?: (tab: WBTab) => void;
+} = {}) {
+  const [internalTab, setInternalTab] = useState<WBTab>('crm');
+  const tab = controlledTab ?? internalTab;
+  const setTab = onTabChange ?? setInternalTab;
 
   // shared donor pool (used by CRM, recurring, comms, receipts)
   const [donors, setDonors] = useState<Donor[]>([]);
@@ -137,9 +146,12 @@ export function NonprofitWorkbench() {
 function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: boolean; loading: boolean; reload: () => Promise<void> }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', type: 'Individual', notes: '' });
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', address: '', type: 'Individual', notes: '' });
   const [gift, setGift] = useState({ amount: '', fund: 'General', method: 'check' });
   const [segments, setSegments] = useState<Segments | null>(null);
   const [segSummary, setSegSummary] = useState<Record<string, number> | null>(null);
+  const [givingHistory, setGivingHistory] = useState<Record<string, { totalGiven: number; averageGift: number; firstGift: string | null; lastGift: string | null; giftCount: number }>>({});
   const [busy, setBusy] = useState(false);
 
   const addDonor = async () => {
@@ -162,6 +174,26 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
     const r = await lensRun('nonprofit', 'donor-segment', {});
     if (r.data?.ok) { setSegments(r.data.result?.segments as Segments); setSegSummary(r.data.result?.summary as Record<string, number>); }
     setBusy(false);
+  };
+  const startEdit = (d: Donor) => {
+    setEditingId(d.id);
+    setEditForm({ name: d.name, email: d.email, phone: d.phone, address: d.address, type: d.type, notes: d.notes });
+  };
+  const saveEdit = async (id: string) => {
+    setBusy(true);
+    await lensRun('nonprofit', 'donor-update', { id, ...editForm });
+    setEditingId(null);
+    await reload(); setBusy(false);
+  };
+  const loadGivingHistory = async (d: Donor) => {
+    // view-giving-history's gift shape uses `date` (its own generic contract,
+    // pinned by tests/depth/nonprofit-donor-grant-behavior.test.js) — the CRM's
+    // Gift interface uses `at`, so map it rather than sending the raw shape.
+    const gifts = d.gifts.map((g) => ({ amount: g.amount, date: g.at }));
+    const r = await lensRun<{ totalGiven: number; averageGift: number; firstGift: string | null; lastGift: string | null; gifts: unknown[] }>('nonprofit', 'view-giving-history', { name: d.name, gifts });
+    if (r.data.ok && r.data.result) {
+      setGivingHistory((h) => ({ ...h, [d.id]: { totalGiven: r.data.result!.totalGiven, averageGift: r.data.result!.averageGift, firstGift: r.data.result!.firstGift, lastGift: r.data.result!.lastGift, giftCount: d.gifts.length } }));
+    }
   };
 
   const totalRaised = useMemo(() => donors.reduce((s, d) => s + d.totalGiven, 0), [donors]);
@@ -224,8 +256,22 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
                   {money(d.totalGiven)} lifetime · {d.giftCount} gift(s) · avg {money(d.avgGift)} · last {shortDate(d.lastGiftAt)}
                 </p>
               </button>
+              <button onClick={() => startEdit(d)} className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200" aria-label="Edit donor"><Pencil className="w-3 h-3" /></button>
               <button onClick={() => delDonor(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete donor"><Trash2 className="w-3 h-3" /></button>
             </div>
+            {editingId === d.id && (
+              <div className="mt-2 pt-2 border-t border-zinc-800 flex flex-wrap gap-1.5 items-center">
+                <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} placeholder="name" className={`${inp} flex-1 min-w-[110px]`} />
+                <input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="email" className={`${inp} w-36`} />
+                <input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} placeholder="phone" className={`${inp} w-28`} />
+                <select value={editForm.type} onChange={e => setEditForm({ ...editForm, type: e.target.value })} className={inp}>
+                  {['Individual', 'Foundation', 'Corporation', 'Government'].map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} placeholder="address" className={`${inp} flex-1 min-w-[110px]`} />
+                <button onClick={() => saveEdit(d.id)} disabled={busy} className={btnP}>Save</button>
+                <button onClick={() => setEditingId(null)} className={btnS}>Cancel</button>
+              </div>
+            )}
             {expanded === d.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 space-y-2">
                 <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-zinc-400">
@@ -237,7 +283,13 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
                 {/* Giving history */}
                 {d.gifts.length > 0 && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-0.5">Giving history</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-0.5">Giving history</p>
+                      <button onClick={() => loadGivingHistory(d)} className="text-[9px] text-rose-300 hover:text-rose-200">Summarize</button>
+                    </div>
+                    {givingHistory[d.id] && (
+                      <p className="text-[10px] text-rose-200 mb-1">avg {money(givingHistory[d.id].averageGift)} · first {shortDate(givingHistory[d.id].firstGift)} · last {shortDate(givingHistory[d.id].lastGift)}</p>
+                    )}
                     {d.gifts.map(g => (
                       <p key={g.id} className="text-[11px] text-zinc-400">
                         <span className="text-emerald-400">{money(g.amount)}</span> · {shortDate(g.at)} · {g.fund} · {g.method}
@@ -373,6 +425,16 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
   const [busy, setBusy] = useState(false);
   const [autoResult, setAutoResult] = useState<{ sent: number; queued: { donor: string; gifts: number }[] } | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [fullLog, setFullLog] = useState<{ donor: string; comms: Comm[] } | null>(null);
+  const [logBusy, setLogBusy] = useState(false);
+
+  const viewFullLog = async () => {
+    if (!donorId) { setFeedback('Pick a donor to view their log.'); return; }
+    setLogBusy(true);
+    const r = await lensRun<{ comms: Comm[]; count: number; donor: string }>('nonprofit', 'comm-log', { donorId });
+    if (r.data.ok && r.data.result) setFullLog({ donor: r.data.result.donor, comms: r.data.result.comms });
+    setLogBusy(false);
+  };
 
   const compose = async () => {
     setBusy(true); setFeedback(null);
@@ -433,11 +495,21 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
         <div className="flex gap-1.5">
           <button onClick={compose} disabled={busy} className={btnS}><FileText className="w-3 h-3 inline" /> Preview</button>
           <button onClick={send} disabled={busy || !donorId} className={btnP}><Send className="w-3 h-3 inline" /> Send</button>
+          <button onClick={viewFullLog} disabled={logBusy || !donorId} className={btnS}>{logBusy ? <Loader2 className="w-3 h-3 animate-spin inline" /> : <CheckCircle2 className="w-3 h-3 inline" />} View full log</button>
         </div>
         {preview && (
           <div className="bg-zinc-950 border border-zinc-800 rounded p-2 mt-1">
             <p className="text-[11px] font-semibold text-zinc-200">{preview.subject}</p>
             <pre className="whitespace-pre-wrap font-sans text-[10px] text-zinc-400 mt-1">{preview.body}</pre>
+          </div>
+        )}
+        {fullLog && (
+          <div className="bg-zinc-950 border border-zinc-800 rounded p-2 mt-1 space-y-0.5">
+            <p className="text-[11px] font-semibold text-zinc-200">{fullLog.donor} — {fullLog.comms.length} communication(s)</p>
+            {fullLog.comms.length === 0 && <p className="text-[10px] text-zinc-400 italic">No communications logged yet.</p>}
+            {fullLog.comms.map((c) => (
+              <p key={c.id} className="text-[10px] text-zinc-400">{c.kind.replace(/_/g, ' ')} · {c.channel} · {c.subject} · {shortDate(c.sentAt)}</p>
+            ))}
           </div>
         )}
         {feedback && <p className="text-[11px] text-emerald-400">{feedback}</p>}
@@ -696,6 +768,7 @@ function VolunteersTab() {
                     {v.skills.map(s => <span key={s} className="text-[9px] bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-400">{s}</span>)}
                   </div>
                 )}
+                <VolunteerMatchTool volunteer={v} />
                 {v.shifts.map(sh => (
                   <div key={sh.id} className="flex items-center gap-2 text-[11px]">
                     <span className="text-zinc-400 flex-1">{sh.role} · {shortDate(sh.date)} · scheduled {sh.scheduledHours}h · logged {sh.loggedHours}h · {sh.status}</span>
@@ -718,6 +791,53 @@ function VolunteersTab() {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// Matches a volunteer's real skills/availability against ad-hoc program
+// needs via the real `volunteerMatch` macro. `availability` is wrapped as a
+// single-element array — the macro's contract does exact-match `.some()`
+// against it (pinned by tests/depth/nonprofit-behavior.test.js), while the
+// real volunteer record stores availability as free text, not an enum.
+function VolunteerMatchTool({ volunteer }: { volunteer: Volunteer }) {
+  const [needs, setNeeds] = useState([{ program: '', skill: '', schedule: '' }]);
+  const [result, setResult] = useState<{ matches: { program: string; requiredSkill: string; matched: boolean; availabilityMatch: boolean }[]; matchScore: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const runMatch = async () => {
+    const programNeeds = needs.filter((n) => n.program.trim() && n.skill.trim());
+    if (!programNeeds.length) return;
+    setBusy(true);
+    const r = await lensRun<{ matches: { program: string; requiredSkill: string; matched: boolean; availabilityMatch: boolean }[]; matchScore: number }>('nonprofit', 'volunteerMatch', {
+      skills: volunteer.skills, availability: volunteer.availability ? [volunteer.availability] : [], programNeeds,
+    });
+    if (r.data.ok && r.data.result) setResult(r.data.result);
+    setBusy(false);
+  };
+
+  return (
+    <div className="bg-zinc-950 border border-zinc-800 rounded p-2">
+      <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1"><Target className="w-3 h-3 inline" /> Match to program needs</p>
+      {needs.map((n, i) => (
+        <div key={i} className="flex gap-1 mb-1">
+          <input value={n.program} onChange={(e) => setNeeds((arr) => arr.map((x, j) => j === i ? { ...x, program: e.target.value } : x))} placeholder="program" className={`${inp} flex-1`} />
+          <input value={n.skill} onChange={(e) => setNeeds((arr) => arr.map((x, j) => j === i ? { ...x, skill: e.target.value } : x))} placeholder="required skill" className={`${inp} flex-1`} />
+          <input value={n.schedule} onChange={(e) => setNeeds((arr) => arr.map((x, j) => j === i ? { ...x, schedule: e.target.value } : x))} placeholder="schedule (optional)" className={`${inp} w-28`} />
+        </div>
+      ))}
+      <div className="flex gap-1.5">
+        <button onClick={() => setNeeds((n) => [...n, { program: '', skill: '', schedule: '' }])} className={btnS}><Plus className="w-3 h-3 inline" /> Add need</button>
+        <button onClick={runMatch} disabled={busy} className={btnP}>{busy ? <Loader2 className="w-3 h-3 animate-spin inline" /> : 'Run match'}</button>
+      </div>
+      {result && (
+        <div className="mt-1.5 text-[11px] text-zinc-300">
+          <span className="text-rose-300 font-bold">{result.matchScore}%</span> match
+          {result.matches.map((m, i) => (
+            <p key={i} className={m.matched ? 'text-emerald-400' : 'text-zinc-500'}>{m.program}: {m.requiredSkill} {m.matched ? '✓' : '✗'}{m.matched && !m.availabilityMatch ? ' (schedule conflict)' : ''}</p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

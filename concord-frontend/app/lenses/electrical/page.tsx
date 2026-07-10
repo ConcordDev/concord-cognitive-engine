@@ -46,12 +46,8 @@ import { LensPageShell } from '@/components/lens/LensPageShell';
 
 type ModeTab =
   | 'jobs'
-  | 'estimates'
   | 'codes'
-  | 'materials'
   | 'clients'
-  | 'invoices'
-  | 'inspections'
   | 'certs'
   | 'panels'
   | 'calculators'
@@ -61,12 +57,8 @@ type ModeTab =
   | 'pricelist';
 type ArtifactType =
   | 'Job'
-  | 'Estimate'
   | 'CodeRef'
-  | 'Material'
   | 'Client'
-  | 'Invoice'
-  | 'Inspection'
   | 'Certification';
 type Status =
   | 'scheduled'
@@ -97,35 +89,29 @@ interface TradeArtifact {
   codeReference?: string;
   codeSection?: string;
   jurisdiction?: string;
-  material?: string;
-  quantity?: number;
-  unit?: string;
-  unitPrice?: number;
-  supplier?: string;
-  invoiceNumber?: string;
-  dueDate?: string;
-  paidDate?: string;
-  amount?: number;
-  inspector?: string;
-  result?: string;
-  deficiencies?: string;
   certType?: string;
   certNumber?: string;
   expiryDate?: string;
   issuedBy?: string;
-  amperage?: number;
-  voltage?: number;
-  circuitType?: string;
 }
 
+// Note: estimating/materials/invoicing/inspections used to also have generic
+// artifact-CRUD tabs here (Estimate / Material / Invoice / Inspection types).
+// They were removed (2026-07) because they were a disconnected duplicate of
+// the real NEC-aware Trade Tools below — a user filling in the generic
+// "Estimate" form got a flat labor/material total with no line items, no
+// price-list integration, and no path to a real invoice, while the actual
+// "Estimate→Invoice" tool a few tabs over does all of that against the real
+// electrical.estimate*/electrical.invoice* macros. Two same-named, non-
+// interoperating systems is a worse defect than fewer tabs. The four
+// remaining tabs below (Job / CodeRef / Client / Certification) have no
+// Trade Tool equivalent, so they stay as lightweight, honestly-scoped
+// tracking (real persisted records, not fabricated — just simpler than a
+// full dispatch/CRM/license-renewal engine, which is out of scope here).
 const MODE_TABS: { id: ModeTab; label: string; icon: typeof Zap; artifactType: ArtifactType }[] = [
   { id: 'jobs', label: 'Jobs', icon: Wrench, artifactType: 'Job' },
-  { id: 'estimates', label: 'Estimates', icon: Calculator, artifactType: 'Estimate' },
-  { id: 'codes', label: 'NEC Codes', icon: FileText, artifactType: 'CodeRef' },
-  { id: 'materials', label: 'Materials', icon: Zap, artifactType: 'Material' },
+  { id: 'codes', label: 'NEC Code Notes', icon: FileText, artifactType: 'CodeRef' },
   { id: 'clients', label: 'CRM', icon: Users, artifactType: 'Client' },
-  { id: 'invoices', label: 'Invoices', icon: Receipt, artifactType: 'Invoice' },
-  { id: 'inspections', label: 'Inspections', icon: ClipboardList, artifactType: 'Inspection' },
   { id: 'certs', label: 'Certs', icon: Award, artifactType: 'Certification' },
 ];
 
@@ -151,24 +137,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   active: { label: 'Active', color: 'green-400' },
 };
 
-const ELECTRICAL_MATERIALS = [
-  'Romex 14/2',
-  'Romex 12/2',
-  'Romex 10/3',
-  'THHN Wire',
-  'MC Cable',
-  'Conduit EMT',
-  'Conduit PVC',
-  'Panel Box',
-  'Breakers',
-  'Outlets/Receptacles',
-  'Switches',
-  'LED Fixtures',
-  'Junction Boxes',
-  'Wire Nuts',
-  'GFCIs',
-  'AFCI Breakers',
-];
 const ELECTRICAL_CERTS = [
   'Master Electrician',
   'Journeyman Electrician',
@@ -201,14 +169,18 @@ export default function ElectricalLensPage() {
   const [formClient, setFormClient] = useState('');
   const [formAddress, setFormAddress] = useState('');
   const [formPhone, setFormPhone] = useState('');
+  const [formEmail, setFormEmail] = useState('');
   const [formScheduledDate, setFormScheduledDate] = useState('');
   const [formLaborHours, setFormLaborHours] = useState('');
   const [formLaborRate, setFormLaborRate] = useState('');
   const [formMaterialCost, setFormMaterialCost] = useState('');
-  const [formMaterial, setFormMaterial] = useState('Romex 14/2');
-  const [formQuantity, setFormQuantity] = useState('');
   const [formCertType, setFormCertType] = useState('Master Electrician');
-  const [formAmount, setFormAmount] = useState('');
+  const [formCertNumber, setFormCertNumber] = useState('');
+  const [formExpiryDate, setFormExpiryDate] = useState('');
+  const [formIssuedBy, setFormIssuedBy] = useState('');
+  const [formCodeReference, setFormCodeReference] = useState('');
+  const [formCodeSection, setFormCodeSection] = useState('');
+  const [formJurisdiction, setFormJurisdiction] = useState('');
 
   const activeArtifactType = MODE_TABS.find((t) => t.id === activeTab)?.artifactType || 'Job';
   const { items, isLoading, isError, error, refetch, create, update, remove } =
@@ -252,14 +224,18 @@ export default function ElectricalLensPage() {
     setFormClient('');
     setFormAddress('');
     setFormPhone('');
+    setFormEmail('');
     setFormScheduledDate('');
     setFormLaborHours('');
     setFormLaborRate('');
     setFormMaterialCost('');
-    setFormMaterial('Romex 14/2');
-    setFormQuantity('');
     setFormCertType('Master Electrician');
-    setFormAmount('');
+    setFormCertNumber('');
+    setFormExpiryDate('');
+    setFormIssuedBy('');
+    setFormCodeReference('');
+    setFormCodeSection('');
+    setFormJurisdiction('');
     setEditorOpen(true);
   };
   const openEdit = (item: LensItem<TradeArtifact>) => {
@@ -272,14 +248,18 @@ export default function ElectricalLensPage() {
     setFormClient(d.client || '');
     setFormAddress(d.address || '');
     setFormPhone(d.phone || '');
+    setFormEmail(d.email || '');
     setFormScheduledDate(d.scheduledDate || '');
     setFormLaborHours(d.laborHours?.toString() || '');
     setFormLaborRate(d.laborRate?.toString() || '');
     setFormMaterialCost(d.materialCost?.toString() || '');
-    setFormMaterial(d.material || 'Romex 14/2');
-    setFormQuantity(d.quantity?.toString() || '');
     setFormCertType(d.certType || 'Master Electrician');
-    setFormAmount(d.amount?.toString() || '');
+    setFormCertNumber(d.certNumber || '');
+    setFormExpiryDate(d.expiryDate || '');
+    setFormIssuedBy(d.issuedBy || '');
+    setFormCodeReference(d.codeReference || '');
+    setFormCodeSection(d.codeSection || '');
+    setFormJurisdiction(d.jurisdiction || '');
     setEditorOpen(true);
   };
 
@@ -296,15 +276,19 @@ export default function ElectricalLensPage() {
       client: formClient,
       address: formAddress,
       phone: formPhone,
+      email: formEmail,
       scheduledDate: formScheduledDate,
       laborHours: laborH,
       laborRate: laborR,
       materialCost: matC,
       totalCost: (laborH && laborR ? laborH * laborR : 0) + (matC || 0) || undefined,
-      material: formMaterial,
-      quantity: formQuantity ? parseFloat(formQuantity) : undefined,
       certType: formCertType,
-      amount: formAmount ? parseFloat(formAmount) : undefined,
+      certNumber: formCertNumber,
+      expiryDate: formExpiryDate,
+      issuedBy: formIssuedBy,
+      codeReference: formCodeReference,
+      codeSection: formCodeSection,
+      jurisdiction: formJurisdiction,
     };
     if (editingItem)
       await update(editingItem.id, {
@@ -323,7 +307,7 @@ export default function ElectricalLensPage() {
 
   const renderDashboard = () => {
     const all = items.map((i) => i.data as unknown as TradeArtifact);
-    const totalRevenue = all.reduce((s, j) => s + (j.totalCost || j.amount || 0), 0);
+    const totalRevenue = all.reduce((s, j) => s + (j.totalCost || 0), 0);
     return (
       <div data-lens-theme="electrical" className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className={ds.panel}>
@@ -405,9 +389,7 @@ export default function ElectricalLensPage() {
                 ))}
               </select>
             </div>
-            {(activeArtifactType === 'Job' ||
-              activeArtifactType === 'Estimate' ||
-              activeArtifactType === 'Client') && (
+            {(activeArtifactType === 'Job' || activeArtifactType === 'Client') && (
               <>
                 <div>
                   <label className={ds.label}>Client</label>
@@ -425,17 +407,28 @@ export default function ElectricalLensPage() {
                     onChange={(e) => setFormAddress(e.target.value)}
                   />
                 </div>
-                <div>
-                  <label className={ds.label}>Phone</label>
-                  <input
-                    className={ds.input}
-                    value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={ds.label}>Phone</label>
+                    <input
+                      className={ds.input}
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className={ds.label}>Email</label>
+                    <input
+                      type="email"
+                      className={ds.input}
+                      value={formEmail}
+                      onChange={(e) => setFormEmail(e.target.value)}
+                    />
+                  </div>
                 </div>
               </>
             )}
-            {(activeArtifactType === 'Job' || activeArtifactType === 'Estimate') && (
+            {activeArtifactType === 'Job' && (
               <>
                 <div>
                   <label className={ds.label}>Scheduled Date</label>
@@ -475,61 +468,88 @@ export default function ElectricalLensPage() {
                     />
                   </div>
                 </div>
+                <p className={cn(ds.textMuted, 'text-[10px]')}>
+                  For a real line-itemized bid with materials pulled from your price list, use the
+                  Estimate&rarr;Invoice trade tool below instead of a flat labor/material total here.
+                </p>
               </>
             )}
-            {activeArtifactType === 'Material' && (
+            {activeArtifactType === 'CodeRef' && (
               <>
                 <div>
-                  <label className={ds.label}>Material</label>
-                  <select
-                    className={ds.select}
-                    value={formMaterial}
-                    onChange={(e) => setFormMaterial(e.target.value)}
-                  >
-                    {ELECTRICAL_MATERIALS.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
+                  <label className={ds.label}>NEC Code Section</label>
+                  <input
+                    className={ds.input}
+                    placeholder="e.g. 210.8(A)"
+                    value={formCodeReference}
+                    onChange={(e) => setFormCodeReference(e.target.value)}
+                  />
                 </div>
                 <div>
-                  <label className={ds.label}>Quantity</label>
+                  <label className={ds.label}>Article / Chapter</label>
                   <input
-                    type="number"
                     className={ds.input}
-                    value={formQuantity}
-                    onChange={(e) => setFormQuantity(e.target.value)}
+                    placeholder="e.g. Article 210 — Branch Circuits"
+                    value={formCodeSection}
+                    onChange={(e) => setFormCodeSection(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={ds.label}>Jurisdiction (AHJ)</label>
+                  <input
+                    className={ds.input}
+                    placeholder="e.g. City of Austin — 2023 NEC w/ local amendments"
+                    value={formJurisdiction}
+                    onChange={(e) => setFormJurisdiction(e.target.value)}
                   />
                 </div>
               </>
             )}
-            {activeArtifactType === 'Invoice' && (
-              <div>
-                <label className={ds.label}>Amount</label>
-                <input
-                  type="number"
-                  className={ds.input}
-                  value={formAmount}
-                  onChange={(e) => setFormAmount(e.target.value)}
-                />
-              </div>
-            )}
             {activeArtifactType === 'Certification' && (
-              <div>
-                <label className={ds.label}>Certification</label>
-                <select
-                  className={ds.select}
-                  value={formCertType}
-                  onChange={(e) => setFormCertType(e.target.value)}
-                >
-                  {ELECTRICAL_CERTS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <>
+                <div>
+                  <label className={ds.label}>Certification</label>
+                  <select
+                    className={ds.select}
+                    value={formCertType}
+                    onChange={(e) => setFormCertType(e.target.value)}
+                  >
+                    {ELECTRICAL_CERTS.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={ds.label}>License / Cert Number</label>
+                    <input
+                      className={ds.input}
+                      value={formCertNumber}
+                      onChange={(e) => setFormCertNumber(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className={ds.label}>Expiry Date</label>
+                    <input
+                      type="date"
+                      className={ds.input}
+                      value={formExpiryDate}
+                      onChange={(e) => setFormExpiryDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={ds.label}>Issued By</label>
+                  <input
+                    className={ds.input}
+                    placeholder="e.g. State Board of Electrical Examiners"
+                    value={formIssuedBy}
+                    onChange={(e) => setFormIssuedBy(e.target.value)}
+                  />
+                </div>
+              </>
             )}
             <div>
               <label className={ds.label}>Notes</label>
@@ -618,9 +638,9 @@ export default function ElectricalLensPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {(d.totalCost || d.amount) && (
+                  {!!d.totalCost && (
                     <span className="text-xs text-green-400">
-                      ${(d.totalCost || d.amount || 0).toLocaleString()}
+                      ${d.totalCost.toLocaleString()}
                     </span>
                   )}
                   <span
@@ -663,7 +683,7 @@ export default function ElectricalLensPage() {
     <LensPageShell
       domain="electrical"
       title="Electrical"
-      description="Jobs, estimates, NEC codes, materials, CRM, invoicing, inspections, and certifications"
+      description="Jobs, code reference notes, client CRM, and certifications — plus the NEC-code trade tools below (panel schedules, load/conduit/box/wire calculators, estimate→invoice, one-line diagrams, inspection checklists, price list)"
       headerIcon={<Zap className="w-6 h-6" />}
       isLoading={isLoading}
       isError={isError}

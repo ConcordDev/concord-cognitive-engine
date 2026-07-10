@@ -840,8 +840,38 @@ export default function registerDomainRoutes(app, {
   }));
 
   // ---- Hypothesis Engine ----
+  //
+  // NOTE (Wave 3 fix): `hypothesis.propose` / `.get` / `.list` are
+  // INTENTIONALLY double-registered — server.js's Ghost Fleet loader
+  // (search "ghost_fleet_shadow_ok") shadows an older stub with the real
+  // lifecycle engine in emergent/hypothesis-engine.js, and register()'s
+  // last-write-wins semantics mean the real engine always answers those
+  // three. But `status` / `design_experiment` / `record_evidence` /
+  // `evaluate` were NEVER shadowed — they still read/write the OLD stub's
+  // `ctx.state.hypothesisEngine` store, which nothing has populated since
+  // `propose` was shadowed (its only writer). Concretely: `status` always
+  // reported 0 hypotheses, and `experiment`/`evidence`/`evaluate` always
+  // failed `not_found` for every real hypothesis id, because the ids the
+  // frontend has are keyed into the real engine's store, not the dead one.
+  // Repointed to the real engine's macros below (same fix class as the
+  // frontend field-shape fix in HypothesisLab.tsx).
   app.get("/api/hypothesis/status", asyncHandler(async (req, res) => {
-    const out = await runMacro("hypothesis", "status", {}, makeCtx(req));
+    const out = await runMacro("hypothesis", "metrics", {}, makeCtx(req));
+    if (out?.ok) {
+      return res.json({
+        ...out,
+        // Back-compat shim: NerveCenter.tsx still reads the legacy
+        // `.stats.{proposed,supported,refuted,inconclusive}` shape from
+        // the retired stub engine. Derive it from the real byStatus
+        // counts instead of a permanently-zero dead store.
+        stats: {
+          proposed: out.byStatus?.proposed || 0,
+          supported: out.byStatus?.confirmed || 0,
+          refuted: out.byStatus?.rejected || 0,
+          inconclusive: out.byStatus?.testing || 0,
+        },
+      });
+    }
     return res.json(out);
   }));
   app.post("/api/hypothesis", asyncHandler(async (req, res) => {
@@ -853,19 +883,36 @@ export default function registerDomainRoutes(app, {
     return res.json(out);
   }));
   app.get("/api/hypothesis/:hypothesisId", asyncHandler(async (req, res) => {
-    const out = await runMacro("hypothesis", "get", { hypothesisId: req.params.hypothesisId }, makeCtx(req));
+    const out = await runMacro("hypothesis", "get", { id: req.params.hypothesisId }, makeCtx(req));
     return res.json(out);
   }));
   app.post("/api/hypothesis/:hypothesisId/experiment", asyncHandler(async (req, res) => {
-    const out = await runMacro("hypothesis", "design_experiment", { ...req.body, hypothesisId: req.params.hypothesisId }, makeCtx(req));
+    // "Experiment" in the real engine is a named test on the hypothesis
+    // (add_test), not the retired stub's design_experiment.
+    const out = await runMacro("hypothesis", "add_test", {
+      hypothesisId: req.params.hypothesisId,
+      description: req.body?.design || req.body?.description || "Experiment",
+    }, makeCtx(req));
     return res.json(out);
   }));
   app.post("/api/hypothesis/:hypothesisId/evidence", asyncHandler(async (req, res) => {
-    const out = await runMacro("hypothesis", "record_evidence", { ...req.body, hypothesisId: req.params.hypothesisId }, makeCtx(req));
+    const out = await runMacro("hypothesis", "add_evidence", {
+      hypothesisId: req.params.hypothesisId,
+      side: req.body?.supports === false ? "against" : "for",
+      dtuId: req.body?.dtuId,
+      weight: req.body?.weight,
+      summary: req.body?.evidence || req.body?.summary,
+    }, makeCtx(req));
     return res.json(out);
   }));
   app.post("/api/hypothesis/:hypothesisId/evaluate", asyncHandler(async (req, res) => {
-    const out = await runMacro("hypothesis", "evaluate", { hypothesisId: req.params.hypothesisId }, makeCtx(req));
+    // The real engine recalculates confidence automatically on every
+    // evidence/test/prediction change (see recalculateConfidence +
+    // checkAutoTransitions in emergent/hypothesis-engine.js) — there is
+    // no separate manual "evaluate" step to trigger. This endpoint now
+    // honestly returns the hypothesis's current (already up to date)
+    // state instead of calling the retired stub's dead evaluator.
+    const out = await runMacro("hypothesis", "get", { id: req.params.hypothesisId }, makeCtx(req));
     return res.json(out);
   }));
 

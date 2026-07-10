@@ -19,6 +19,11 @@ export interface ClientConfig {
     themeParkMs: number; driftAlertMs: number; courtshipMs: number; footprintMs: number;
     forwardPredMs: number; worldHealthMs: number; partyCombatTickMs: number; partyCombatDiscMs: number;
     rogueliteMs: number; brawlInviteMs: number; factionMovesMs: number; dreamReaderMs: number;
+    // Shell-diet (2026-07) — these two run on EVERY page for EVERY user
+    // (SystemStatus/ConnectionStatus are mounted globally in AppShell, not
+    // gated to a lens), so they're the highest-leverage dials to make
+    // server-tunable without a rebuild.
+    systemStatusMs: number; connectionStatusMs: number;
   };
   throttle: {
     courtshipFrameMs: number; footprintFrameMs: number;
@@ -43,6 +48,12 @@ export const CLIENT_CONFIG_DEFAULTS: ClientConfig = {
     themeParkMs: 3000, driftAlertMs: 15000, courtshipMs: 30000, footprintMs: 30000,
     forwardPredMs: 300000, worldHealthMs: 60000, partyCombatTickMs: 200, partyCombatDiscMs: 1000,
     rogueliteMs: 5000, brawlInviteMs: 5000, factionMovesMs: 30000, dreamReaderMs: 60000,
+    // Kept at their pre-existing values — SystemStatus was already 30s,
+    // ConnectionStatus modestly widened from 15s to 20s (still well inside a
+    // "feels live" outage-detection window; a few extra seconds of banner
+    // latency on a rare event is a fair trade for 25% fewer background
+    // requests on 100% of page loads).
+    systemStatusMs: 30000, connectionStatusMs: 20000,
   },
   throttle: {
     courtshipFrameMs: 100, footprintFrameMs: 200,

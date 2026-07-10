@@ -100,7 +100,7 @@ export default function QuestGuidanceHUD() {
         <div className="fixed top-4 left-4 z-30 select-none" data-testid="quest-guidance-card">
           <button
             onClick={() => setCardExpanded(v => !v)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/85 backdrop-blur ring-1 ring-zinc-700/60 shadow-lg text-xs font-medium text-zinc-100 hover:bg-zinc-800/95 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-sm ring-1 ring-white/10 shadow-lg text-xs font-medium text-zinc-100 hover:bg-black/70 transition-colors"
           >
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${objKindColor}`}>
               {objKindLabel}
@@ -113,7 +113,7 @@ export default function QuestGuidanceHUD() {
             )}
           </button>
           {cardExpanded && (
-            <div className="mt-2 w-72 px-4 py-3 rounded-xl bg-zinc-900/95 backdrop-blur ring-1 ring-zinc-700/60 shadow-2xl text-xs text-zinc-100">
+            <div className="mt-2 w-72 px-4 py-3 rounded-lg bg-black/80 backdrop-blur-sm ring-1 ring-white/10 shadow-2xl text-xs text-zinc-100">
               <div className="font-medium mb-1.5">{objective.questTitle || 'Active Objective'}</div>
               {objective.description && (
                 <p className="text-zinc-300 leading-snug mb-2">{objective.description}</p>
@@ -132,13 +132,13 @@ export default function QuestGuidanceHUD() {
       {/* Recovery "?" button (bottom-right, always on) */}
       <div className="fixed bottom-6 right-6 z-30 select-none flex flex-col items-end gap-2">
         {showHint && hint && (
-          <div className="max-w-sm px-4 py-2.5 rounded-xl bg-zinc-900/95 backdrop-blur ring-1 ring-zinc-700/60 shadow-2xl text-xs text-zinc-100 leading-relaxed">
+          <div className="max-w-sm px-4 py-2.5 rounded-lg bg-black/80 backdrop-blur-sm ring-1 ring-white/10 shadow-2xl text-xs text-zinc-100 leading-relaxed">
             {hint}
           </div>
         )}
         <button
           onClick={onRecover}
-          className="w-12 h-12 rounded-full bg-zinc-900/85 backdrop-blur ring-2 ring-amber-500/40 shadow-lg text-xl font-semibold text-amber-300 hover:bg-zinc-800/95 hover:ring-amber-500/70 transition-all"
+          className="w-12 h-12 rounded-full bg-black/80 backdrop-blur-sm ring-2 ring-amber-500/40 shadow-lg text-xl font-semibold text-amber-300 hover:bg-black/70 hover:ring-amber-500/70 transition-all"
           title="Where am I supposed to go? Concordia will tell you."
           data-testid="quest-guidance-recover"
         >

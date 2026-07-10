@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { Loader2, Plus, Scale, Footprints, Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Loader2, Plus, Scale, Footprints, Activity, TrendingUp, TrendingDown, Minus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -68,6 +68,7 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
     setError(null);
     await refresh();
   };
+  const delActivity = async (id: string) => { await lensRun('pets', 'activity-delete', { petId, id }); await refresh(); };
   const logSymptom = async () => {
     if (!symInput.symptom.trim()) { setError('Describe the symptom.'); return; }
     const r = await lensRun('pets', 'symptom-log', {
@@ -150,7 +151,12 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
             {activities.slice(0, 8).map((a) => (
               <li key={a.id} className="flex items-center justify-between text-[11px] bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-zinc-300 capitalize">{a.kind.replace(/_/g, ' ')}{a.note ? ` — ${a.note}` : ''}</span>
-                <span className="text-zinc-400">{a.durationMin > 0 ? `${a.durationMin}m · ` : ''}{a.date}</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-zinc-400">{a.durationMin > 0 ? `${a.durationMin}m · ` : ''}{a.date}</span>
+                  <button aria-label="Delete activity" type="button" onClick={() => delActivity(a.id)} className="text-zinc-600 hover:text-rose-400">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </span>
               </li>
             ))}
           </ul>

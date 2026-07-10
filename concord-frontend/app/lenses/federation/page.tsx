@@ -24,6 +24,8 @@ import { RelayPanel } from '@/components/federation/RelayPanel';
 import { TrustHistoryPanel } from '@/components/federation/TrustHistoryPanel';
 import { MetricsDashboardPanel } from '@/components/federation/MetricsDashboardPanel';
 import { ActorKeysPanel } from '@/components/federation/ActorKeysPanel';
+import { FediverseIdentityPanel } from '@/components/federation/FediverseIdentityPanel';
+import { CommunesPanel } from '@/components/federation/CommunesPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import {
@@ -34,7 +36,7 @@ import dynamic from 'next/dynamic';
 import {
   Network, Search, Users, RefreshCw, Loader2, ShieldCheck,
   Globe, Trash2, AlertCircle, Zap, Activity, Plus, X,
-  ShieldX, Inbox, Radio, BarChart3, KeyRound,
+  ShieldX, Inbox, Radio, BarChart3, KeyRound, Share2,
 } from 'lucide-react';
 
 const TrustGraphView = dynamic(
@@ -79,7 +81,7 @@ interface FederationStatus {
 
 type Tab =
   | 'network' | 'search' | 'peers' | 'sync'
-  | 'moderation' | 'policy' | 'relays' | 'metrics' | 'keys';
+  | 'moderation' | 'policy' | 'relays' | 'metrics' | 'keys' | 'fediverse';
 
 export default function FederationPage() {
   const [tab, setTab] = useState<Tab>('network');
@@ -95,6 +97,7 @@ export default function FederationPage() {
       { id: 'tab-relays',     keys: 'r', description: 'Relays',     category: 'navigation', action: () => setTab('relays') },
       { id: 'tab-metrics',    keys: 'd', description: 'Metrics',    category: 'navigation', action: () => setTab('metrics') },
       { id: 'tab-keys',       keys: 'k', description: 'Actor keys', category: 'navigation', action: () => setTab('keys') },
+      { id: 'tab-fediverse',  keys: 'f', description: 'Fediverse identity + communes', category: 'navigation', action: () => setTab('fediverse') },
     ],
     { lensId: 'federation' }
   );
@@ -218,6 +221,7 @@ export default function FederationPage() {
           <TabButton current={tab} value="relays"     label="Relays"       onClick={() => setTab('relays')}     icon={<Radio         className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="metrics"    label="Metrics"      onClick={() => setTab('metrics')}    icon={<BarChart3     className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="keys"       label="Actor keys"   onClick={() => setTab('keys')}       icon={<KeyRound      className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="fediverse"  label="Fediverse"    onClick={() => setTab('fediverse')}  icon={<Share2        className="w-3.5 h-3.5" />} />
         </nav>
 
         {tab === 'network'    && <NetworkTab />}
@@ -239,6 +243,12 @@ export default function FederationPage() {
           </div>
         )}
         {tab === 'keys'       && <ActorKeysPanel />}
+        {tab === 'fediverse'  && (
+          <div className="space-y-4">
+            <FediverseIdentityPanel />
+            <CommunesPanel />
+          </div>
+        )}
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <FediverseFeed />
         </section>

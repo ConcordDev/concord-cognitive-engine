@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Car, Loader2, Plus, Trash2, Fuel, Wrench, Receipt, Route, FileText,
-  AlertTriangle, Gauge, Bell,
+  AlertTriangle, Gauge, Bell, Pencil,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { lensRun } from '@/lib/api/client';
@@ -110,6 +110,26 @@ export function GarageSection() {
     if (!confirm('Delete this vehicle and all its records?')) return;
     try { await lensRun({ domain: 'automotive', action: 'vehicles-delete', input: { id } }); setActiveId(null); await refreshVehicles(); }
     catch (e) { console.error('[Garage] delVehicle', e); }
+  }
+  async function editVehicle(v: Vehicle) {
+    const name = prompt('Vehicle name?', v.name); if (name === null) return;
+    const make = prompt('Make?', v.make) ?? v.make;
+    const model = prompt('Model?', v.model) ?? v.model;
+    const year = prompt('Year?', v.year != null ? String(v.year) : '') ?? '';
+    const odometer = prompt('Current odometer?', String(v.odometer)) ?? String(v.odometer);
+    try {
+      const r = await lensRun({ domain: 'automotive', action: 'vehicles-update', input: {
+        id: v.id, name: name.trim() || v.name, make, model,
+        year: Number(year) || undefined, odometer: Number(odometer),
+      } });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      await reloadAll();
+    } catch (e) { console.error('[Garage] editVehicle', e); }
+  }
+  async function delSchedule(scheduleId: string) {
+    if (!confirm('Remove this scheduled service? You will stop getting reminders for it.')) return;
+    try { await lensRun({ domain: 'automotive', action: 'schedule-delete', input: { id: scheduleId } }); await reloadAll(); }
+    catch (e) { console.error('[Garage] delSchedule', e); }
   }
 
   async function logFuel() {
@@ -251,6 +271,14 @@ export function GarageSection() {
             <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
               <span className="text-sm font-semibold text-gray-200">{activeVehicle.name}</span>
               <span className="text-[10px] text-gray-400">{activeVehicle.odometer.toLocaleString()} {activeVehicle.odometerUnit}</span>
+              <button
+                onClick={() => editVehicle(activeVehicle)}
+                aria-label={`Edit ${activeVehicle.name}`}
+                title="Edit vehicle details"
+                className="p-0.5 text-gray-500 hover:text-sky-300"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
               <nav className="ml-3 flex items-center gap-1">
                 {([['overview','Overview',Gauge],['fuel','Fuel',Fuel],['service','Service',Wrench],['expenses','Expenses',Receipt],['trips','Trips',Route],['documents','Docs',FileText]] as const).map(([id,label,Icon]) => (
                   <button key={id} onClick={() => setTab(id)} className={cn('inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded', tab === id ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30' : 'text-gray-400 hover:text-white border border-transparent')}>
@@ -284,13 +312,21 @@ export function GarageSection() {
                     ) : (
                       <ul className="space-y-1">
                         {reminders.map(r => (
-                          <li key={r.scheduleId} className="flex items-center gap-2 text-xs">
+                          <li key={r.scheduleId} className="group flex items-center gap-2 text-xs">
                             {r.status === 'overdue' ? <AlertTriangle className="w-3.5 h-3.5 text-rose-400" /> : r.status === 'due_soon' ? <Bell className="w-3.5 h-3.5 text-amber-400" /> : <Wrench className="w-3.5 h-3.5 text-emerald-400" />}
                             <span className="text-white flex-1">{r.serviceType}</span>
                             <span className={cn('text-[10px] font-mono', r.status === 'overdue' ? 'text-rose-300' : r.status === 'due_soon' ? 'text-amber-300' : 'text-gray-400')}>
                               {r.milesStatus ? (r.milesStatus.milesRemaining < 0 ? `${Math.abs(r.milesStatus.milesRemaining).toLocaleString()} mi overdue` : `${r.milesStatus.milesRemaining.toLocaleString()} mi left`) :
                                r.dateStatus ? (r.dateStatus.daysRemaining < 0 ? `${Math.abs(r.dateStatus.daysRemaining)} days overdue` : `${r.dateStatus.daysRemaining} days left`) : '—'}
                             </span>
+                            <button
+                              onClick={() => delSchedule(r.scheduleId)}
+                              aria-label={`Remove ${r.serviceType} schedule`}
+                              title="Remove this scheduled service"
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
                           </li>
                         ))}
                       </ul>

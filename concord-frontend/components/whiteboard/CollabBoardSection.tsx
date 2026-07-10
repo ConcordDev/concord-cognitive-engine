@@ -49,6 +49,13 @@ export function CollabBoardSection() {
   const [generating, setGenerating] = useState(false);
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [showAI, setShowAI] = useState(true);
+  // True when `activeId` refers to a shared board (a separate identity space
+  // — server/domains/whiteboard.js `sharedBoards`, not the private per-user
+  // `boards` map). Shared boards persist via the continuous broadcast-scene
+  // push (see onCanvasChange below), never via board-save/-duplicate/-delete,
+  // which operate on the private map and would silently no-op or create a
+  // stray private board with the same id if called on a shared id.
+  const [isSharedBoard, setIsSharedBoard] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Realtime collaboration (Batch G E1/E3/E4): join the board's room, mirror remote
@@ -107,10 +114,27 @@ export function CollabBoardSection() {
       setActiveTitle(b.title || 'Untitled');
       setActiveShapes(Array.isArray(b.scene?.elements) ? b.scene.elements as Shape[] : []);
       setDirty(false);
+      setIsSharedBoard(false);
       setClusters(null);
       setSummary(null);
       await refreshComments(id);
     } catch (e) { console.error('[Board] load', e); }
+  }
+
+  // Open a shared board (a different identity space — see the isSharedBoard
+  // comment above). `useWhiteboardCollab`'s join-on-mount effect (keyed off
+  // `activeId`) fires as soon as activeId changes and populates the scene
+  // via `collab.remoteScene`, so we seed shapes empty here and let that
+  // effect (already wired below) fill them in moments later.
+  function openSharedBoard(id: string, title: string) {
+    setActiveId(id);
+    setActiveTitle(title);
+    setActiveShapes([]);
+    setDirty(false);
+    setIsSharedBoard(true);
+    setClusters(null);
+    setSummary(null);
+    setComments({});
   }
 
   async function createBoard() {
@@ -145,6 +169,11 @@ export function CollabBoardSection() {
 
   async function save() {
     if (!activeId) return;
+    // Shared boards persist through the continuous debounced broadcast-scene
+    // push (`onCanvasChange` below → `collab.broadcastScene`, which the
+    // server writes to disk on every call) — calling board-save here would
+    // write into the PRIVATE board map under the shared board's id instead.
+    if (isSharedBoard) { setDirty(false); return; }
     setSaving(true);
     try {
       await lensRun({ domain: 'whiteboard', action: 'board-save', input: {
@@ -286,20 +315,31 @@ export function CollabBoardSection() {
         {activeId ? (
           <>
             <header className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
-              <input
-                value={activeTitle}
-                onChange={e => renameBoard(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-white outline-none border-b border-transparent focus:border-pink-500/40 flex-1 max-w-[400px]"
-              />
+              {isSharedBoard ? (
+                <span className="text-sm font-semibold text-white flex-1 max-w-[400px] truncate">{activeTitle}</span>
+              ) : (
+                <input
+                  value={activeTitle}
+                  onChange={e => renameBoard(e.target.value)}
+                  className="bg-transparent text-sm font-semibold text-white outline-none border-b border-transparent focus:border-pink-500/40 flex-1 max-w-[400px]"
+                />
+              )}
+              {isSharedBoard && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-200 border border-sky-500/30 uppercase tracking-wide">Shared · live</span>
+              )}
               <span className="text-[10px] text-gray-400">{activeShapes.length} elements</span>
-              {dirty && <span className="text-[10px] text-amber-300">● unsaved</span>}
+              {!isSharedBoard && dirty && <span className="text-[10px] text-amber-300">● unsaved</span>}
               <BoardTimer boardId={activeId} />
-              <button onClick={save} disabled={saving || !dirty} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] disabled:opacity-40 inline-flex items-center gap-1">
-                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}Save
-              </button>
-              <button onClick={duplicateBoard} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1" title="Duplicate board">
-                <Copy className="w-3 h-3" />Duplicate
-              </button>
+              {!isSharedBoard && (
+                <button onClick={save} disabled={saving || !dirty} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] disabled:opacity-40 inline-flex items-center gap-1">
+                  {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}Save
+                </button>
+              )}
+              {!isSharedBoard && (
+                <button onClick={duplicateBoard} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1" title="Duplicate board">
+                  <Copy className="w-3 h-3" />Duplicate
+                </button>
+              )}
               <button onClick={() => setShowAI(v => !v)} className={cn('px-2 py-1 text-[11px] rounded inline-flex items-center gap-1', showAI ? 'bg-pink-500/15 text-pink-200 border border-pink-500/30' : 'border border-white/15 text-gray-300 hover:bg-white/[0.05]')}>
                 <Sparkles className="w-3 h-3" />AI {showAI ? '▾' : '▸'}
               </button>
@@ -353,6 +393,7 @@ export function CollabBoardSection() {
                 shapes={activeShapes}
                 livePresence={collab.livePresence}
                 lastPeerReaction={collab.lastPeerReaction}
+                onOpenShared={openSharedBoard}
               />
             </div>
           ) : (

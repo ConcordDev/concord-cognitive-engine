@@ -10,8 +10,9 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Sequence { id: string; name: string; fps: string; clipCount: number }
-interface CutClip { id: string; name: string; transition: string; durationFrames: number; startTimecode: string; endTimecode: string }
+interface CutClip { id: string; name: string; transition: string; durationFrames: number; startTimecode: string; endTimecode: string; mediaId: string | null }
 interface CutList { sequence: string; fps: string; tracks: Record<string, CutClip[]>; totalRuntime: string }
+interface Media { id: string; name: string; kind: string }
 
 const FPS = ['23.976', '24', '25', '29.97', '30', '48', '60'];
 const TRACKS = ['V1', 'V2', 'V3', 'A1', 'A2', 'A3'];
@@ -31,6 +32,13 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
   const [markers, setMarkers] = useState<{ id: string; label: string; frame: number }[]>([]);
   const [markerForm, setMarkerForm] = useState({ label: '', frame: '' });
   const [editingClip, setEditingClip] = useState<string | null>(null);
+  const [media, setMedia] = useState<Media[]>([]);
+
+  const loadMedia = useCallback(async () => {
+    const r = await lensRun('film-studios', 'media-list', { projectId });
+    setMedia(r.data?.result?.media || []);
+  }, [projectId]);
+  useEffect(() => { void loadMedia(); }, [loadMedia]);
 
   const loadSequences = useCallback(async () => {
     const r = await lensRun('film-studios', 'sequence-list', { projectId });
@@ -105,6 +113,13 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
     [ids[index], ids[target]] = [ids[target], ids[index]];
     await lensRun('film-studios', 'clip-reorder', { sequenceId: activeSeq, track, clipIds: ids });
     await Promise.all([loadCut(), loadSequences()]);
+  };
+
+  // Link (or unlink) a timeline clip to a registered source media item —
+  // real macro (clip-set-media), no UI existed for it before this pass.
+  const setClipMedia = async (clipId: string, mediaId: string) => {
+    await lensRun('film-studios', 'clip-set-media', { clipId, mediaId: mediaId || undefined });
+    await loadCut();
   };
 
   if (loading) {
@@ -226,6 +241,15 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
                                     onChange={(e) => updateClip(c.id, { track: e.target.value })}
                                     className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
                                     {TRACKS.map((t) => <option key={t} value={t}>{t}</option>)}
+                                  </select>
+                                </label>
+                                <label className="flex flex-col gap-0.5 col-span-2">
+                                  <span className="text-[9px] text-zinc-400 uppercase">Source media</span>
+                                  <select defaultValue={c.mediaId || ''}
+                                    onChange={(e) => setClipMedia(c.id, e.target.value)}
+                                    className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                                    <option value="">Unlinked (freeform name only)</option>
+                                    {media.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.kind})</option>)}
                                   </select>
                                 </label>
                               </div>

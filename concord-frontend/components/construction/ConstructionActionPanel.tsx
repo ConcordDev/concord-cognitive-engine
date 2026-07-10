@@ -4,6 +4,11 @@
  * ConstructionActionPanel — GC bench.
  * takeoffEstimate / criticalPath (CPM) / safetyCompliance (OSHA TRIR) /
  * progressReport + mint/DM/publish/agent.
+ *
+ * Structured row editors (StructuredArrayEditor) replace raw JSON-paste
+ * textareas for every macro input — the same convention used by the
+ * cooking/collab/atlas action-panel benches. Every value rendered comes
+ * from a real macro round-trip — no mock data.
  */
 
 import { useState } from 'react';
@@ -11,7 +16,13 @@ import { Hammer, GitBranch, ShieldCheck, TrendingUp, Sparkles, Send, Globe, Wand
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import {
+  StructuredArrayEditor,
+  type ColumnSpec,
+  usePipe,
+  useRecallableAction,
+  RecallSlot,
+} from '@/components/panel-polish';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -34,12 +45,52 @@ interface SafetyResult { complianceRate: number; checklistResults: { passed: num
 interface ProgPhase { phase?: string; plannedPercent: number; actualPercent: number; variance: number; status: string }
 interface ProgResult { phases: ProgPhase[]; overallPlannedPercent: number; overallActualPercent: number; overallVariance: number; projectStatus: string; behindPhases: string[] }
 
-// No seeded examples — paste real takeoff/CPM/safety/phase JSON.
+interface LineItemRow { description: string; quantity: string; unit: string; unitCost: string; wastePercent: string }
+const LINE_ITEM_COLS: ColumnSpec<LineItemRow>[] = [
+  { key: 'description', label: 'Description', type: 'text', flex: 2, placeholder: '2x4 stud 8ft' },
+  { key: 'quantity', label: 'Qty', type: 'number', width: '4.5rem', min: 0, defaultValue: 1 },
+  { key: 'unit', label: 'Unit', type: 'select', width: '5rem', options: [{ value: 'each' }, { value: 'lf' }, { value: 'sf' }, { value: 'cy' }, { value: 'lb' }, { value: 'bag' }], defaultValue: 'each' },
+  { key: 'unitCost', label: 'Unit $', type: 'number', width: '5.5rem', step: 0.01, min: 0 },
+  { key: 'wastePercent', label: 'Waste %', type: 'number', width: '5rem', min: 0, defaultValue: 10 },
+];
+
+interface TaskRow { name: string; duration: string; dependencies: string }
+const TASK_COLS: ColumnSpec<TaskRow>[] = [
+  { key: 'name', label: 'Task', type: 'text', flex: 2, placeholder: 'Foundation' },
+  { key: 'duration', label: 'Days', type: 'number', width: '5rem', min: 1, defaultValue: 1 },
+  { key: 'dependencies', label: 'Depends on (comma)', type: 'text', flex: 2, placeholder: 'Excavation, Permits' },
+];
+
+interface ChecklistRow { item: string; passed: string; critical: string }
+const CHECKLIST_COLS: ColumnSpec<ChecklistRow>[] = [
+  { key: 'item', label: 'Checklist item', type: 'text', flex: 2, placeholder: 'Fall protection on Level 3' },
+  { key: 'passed', label: 'Passed', type: 'select', width: '5rem', options: [{ value: 'yes' }, { value: 'no' }], defaultValue: 'yes' },
+  { key: 'critical', label: 'Critical', type: 'select', width: '5.5rem', options: [{ value: 'no' }, { value: 'yes' }], defaultValue: 'no' },
+];
+
+interface PhaseRow { phase: string; plannedPercent: string; actualPercent: string }
+const PHASE_COLS: ColumnSpec<PhaseRow>[] = [
+  { key: 'phase', label: 'Phase', type: 'text', flex: 2, placeholder: 'Foundation' },
+  { key: 'plannedPercent', label: 'Planned %', type: 'number', width: '5.5rem', min: 0, max: 100 },
+  { key: 'actualPercent', label: 'Actual %', type: 'number', width: '5.5rem', min: 0, max: 100 },
+];
+
 export function ConstructionActionPanel() {
-  const [takeoffText, setTakeoffText] = useState('');
-  const [tasksText, setTasksText] = useState('');
-  const [safetyText, setSafetyText] = useState('');
-  const [phasesText, setPhasesText] = useState('');
+  const pipe = usePipe();
+
+  const [lineItems, setLineItems] = useState<LineItemRow[]>([]);
+  const [laborPercent, setLaborPercent] = useState('40');
+  const [squareFootage, setSquareFootage] = useState('');
+
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+
+  const [checklist, setChecklist] = useState<ChecklistRow[]>([]);
+  const [incidentsCount, setIncidentsCount] = useState('0');
+  const [workers, setWorkers] = useState('');
+  const [hoursWorked, setHoursWorked] = useState('');
+
+  const [phases, setPhases] = useState<PhaseRow[]>([]);
+
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -55,45 +106,67 @@ export function ConstructionActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
-  function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
-
-  const pipe = usePipe();
   const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
   const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
 
   async function actTakeoff() {
-    if (!takeoffText.trim()) { err('Paste takeoff JSON first.'); return; }
-    const parsed = parseJSON<Record<string, unknown>>(takeoffText); if (!parsed) { err('Invalid takeoff JSON.'); return; }
+    const items = lineItems.filter((i) => i.description.trim());
+    if (items.length === 0) { err('Add at least one line item.'); return; }
     setBusy('takeoff'); setFeedback(null);
     try {
-      const r = await callMacro<TakeoffResult>('takeoffEstimate', { artifact: { data: parsed } });
+      const data: Record<string, unknown> = {
+        lineItems: items.map((i) => ({
+          description: i.description, quantity: Number(i.quantity) || 0, unit: i.unit || 'each',
+          unitCost: Number(i.unitCost) || 0, wastePercent: i.wastePercent === '' ? 10 : Number(i.wastePercent),
+        })),
+      };
+      if (laborPercent.trim()) data.laborPercent = Number(laborPercent);
+      if (squareFootage.trim()) data.squareFootage = Number(squareFootage);
+      const r = await callMacro<TakeoffResult>('takeoffEstimate', { artifact: { data } });
       if (r.ok && r.result) { setTakeoffResult(r.result); pipe.publish('construction.takeoff', r.result, { label: `Takeoff $${r.result.grandTotal.toLocaleString()}` }); ok(`$${r.result.grandTotal.toLocaleString()} grand total.`); } else err(r.error ?? 'takeoff failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCpm() {
-    if (!tasksText.trim()) { err('Paste CPM tasks JSON first.'); return; }
-    const parsed = parseJSON<Record<string, unknown>>(tasksText); if (!parsed) { err('Invalid tasks JSON.'); return; }
+    const cleanTasks = tasks.filter((t) => t.name.trim());
+    if (cleanTasks.length === 0) { err('Add at least one task.'); return; }
     setBusy('cpm'); setFeedback(null);
     try {
-      const r = await callMacro<CpmResult>('criticalPath', { artifact: { data: parsed } });
+      const data = {
+        tasks: cleanTasks.map((t) => ({
+          name: t.name.trim(), duration: Number(t.duration) || 1,
+          dependencies: t.dependencies.split(',').map((d) => d.trim()).filter(Boolean),
+        })),
+      };
+      const r = await callMacro<CpmResult>('criticalPath', { artifact: { data } });
       if (r.ok && r.result) { setCpmResult(r.result); pipe.publish('construction.cpm', r.result, { label: `CPM ${r.result.projectDuration}d` }); ok(`${r.result.projectDuration}d · CP: ${r.result.criticalPath.join(' → ')}.`); } else err(r.error ?? 'cpm failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSafety() {
-    if (!safetyText.trim()) { err('Paste safety JSON first.'); return; }
-    const parsed = parseJSON<Record<string, unknown>>(safetyText); if (!parsed) { err('Invalid safety JSON.'); return; }
+    const items = checklist.filter((c) => c.item.trim());
+    if (items.length === 0) { err('Add at least one checklist item.'); return; }
     setBusy('safety'); setFeedback(null);
     try {
-      const r = await callMacro<SafetyResult>('safetyCompliance', { artifact: { data: parsed } });
+      const data = {
+        safetyChecklist: items.map((c) => ({ item: c.item.trim(), passed: c.passed === 'yes', critical: c.critical === 'yes' })),
+        incidents: Array.from({ length: Math.max(0, parseInt(incidentsCount, 10) || 0) }, (_, n) => ({ id: n + 1 })),
+        workerCount: Number(workers) || 0,
+        totalHoursWorked: Number(hoursWorked) || 0,
+      };
+      const r = await callMacro<SafetyResult>('safetyCompliance', { artifact: { data } });
       if (r.ok && r.result) { setSafetyResult(r.result); pipe.publish('construction.safety', r.result, { label: `Safety ${r.result.complianceRate}%` }); ok(`${r.result.complianceRate}% · TRIR ${r.result.incidentRate} · ${r.result.rating}.`); } else err(r.error ?? 'safety failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actProgress() {
-    if (!phasesText.trim()) { err('Paste phases JSON first.'); return; }
-    const parsed = parseJSON<Record<string, unknown>>(phasesText); if (!parsed) { err('Invalid phases JSON.'); return; }
+    const cleanPhases = phases.filter((p) => p.phase.trim());
+    if (cleanPhases.length === 0) { err('Add at least one phase.'); return; }
     setBusy('progress'); setFeedback(null);
     try {
-      const r = await callMacro<ProgResult>('progressReport', { artifact: { data: parsed } });
+      const data = {
+        phases: cleanPhases.map((p) => ({
+          name: p.phase.trim(), plannedPercent: Number(p.plannedPercent) || 0, actualPercent: Number(p.actualPercent) || 0,
+        })),
+      };
+      const r = await callMacro<ProgResult>('progressReport', { artifact: { data } });
       if (r.ok && r.result) { setProgResult(r.result); pipe.publish('construction.progress', r.result, { label: `${r.result.overallActualPercent}% (${r.result.projectStatus})` }); ok(`${r.result.overallActualPercent}% vs ${r.result.overallPlannedPercent}% (${r.result.projectStatus}).`); } else err(r.error ?? 'progress failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -168,22 +241,45 @@ export function ConstructionActionPanel() {
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">takeoff · CPM · OSHA · progress</span>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Takeoff JSON</label>
-          <textarea value={takeoffText} onChange={(e) => setTakeoffText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <div className="flex items-end justify-between gap-2">
+            <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Takeoff line items ({lineItems.length})</label>
+            <div className="flex items-center gap-2 text-[10px] text-zinc-400">
+              <label className="flex items-center gap-1">Labor %
+                <input type="number" min={0} value={laborPercent} onChange={(e) => setLaborPercent(e.target.value)} className="w-12 bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-white font-mono" />
+              </label>
+              <label className="flex items-center gap-1">Sq ft
+                <input type="number" min={0} value={squareFootage} onChange={(e) => setSquareFootage(e.target.value)} className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-white font-mono" />
+              </label>
+            </div>
+          </div>
+          <StructuredArrayEditor<LineItemRow> value={lineItems} onChange={setLineItems} template={{ description: '', quantity: '1', unit: 'each', unitCost: '', wastePercent: '10' }} columns={LINE_ITEM_COLS} accent="amber" maxRows={60} />
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">CPM tasks JSON</label>
-          <textarea value={tasksText} onChange={(e) => setTasksText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">CPM tasks ({tasks.length})</label>
+          <StructuredArrayEditor<TaskRow> value={tasks} onChange={setTasks} template={{ name: '', duration: '1', dependencies: '' }} columns={TASK_COLS} accent="purple" maxRows={60} />
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Safety JSON</label>
-          <textarea value={safetyText} onChange={(e) => setSafetyText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+        <div className="space-y-1">
+          <div className="flex items-end justify-between gap-2">
+            <label className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Safety checklist ({checklist.length})</label>
+            <div className="flex items-center gap-2 text-[10px] text-zinc-400">
+              <label className="flex items-center gap-1">Incidents
+                <input type="number" min={0} value={incidentsCount} onChange={(e) => setIncidentsCount(e.target.value)} className="w-10 bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-white font-mono" />
+              </label>
+              <label className="flex items-center gap-1">Workers
+                <input type="number" min={0} value={workers} onChange={(e) => setWorkers(e.target.value)} className="w-12 bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-white font-mono" />
+              </label>
+              <label className="flex items-center gap-1">Hours
+                <input type="number" min={0} value={hoursWorked} onChange={(e) => setHoursWorked(e.target.value)} className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-white font-mono" />
+              </label>
+            </div>
+          </div>
+          <StructuredArrayEditor<ChecklistRow> value={checklist} onChange={setChecklist} template={{ item: '', passed: 'yes', critical: 'no' }} columns={CHECKLIST_COLS} accent="red" maxRows={60} />
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Phases JSON</label>
-          <textarea value={phasesText} onChange={(e) => setPhasesText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Phases ({phases.length})</label>
+          <StructuredArrayEditor<PhaseRow> value={phases} onChange={setPhases} template={{ phase: '', plannedPercent: '', actualPercent: '' }} columns={PHASE_COLS} accent="green" maxRows={60} />
         </div>
         <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />

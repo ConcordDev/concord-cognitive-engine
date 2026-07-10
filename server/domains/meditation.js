@@ -36,33 +36,53 @@ export default function registerMeditationActions(registerLensAction) {
 
   /**
    * sessionLog — append a completed meditation session to the user's
-   * meditation_sessions artifact.
-   *   params.trackId, params.minutes, params.completedAt, params.rating?
+   * practice ledger.
+   *   params.trackId, params.title?, params.category?, params.minutes,
+   *   params.completedAt, params.rating?
+   *
+   * NOTE (fixed 2026-07): this used to read/write `artifact.data.sessions`
+   * on the artifact passed in by the caller. `/api/lens/run` builds a
+   * fresh, throwaway virtual artifact (`{ id: null, data: <input> }`) on
+   * EVERY call (server.js `_lensHandler` dispatch) — nothing persists it
+   * between requests, so the old implementation silently discarded every
+   * logged session while reporting a fabricated `total: 1` success. It now
+   * persists into the same STATE-backed practice ledger `play`/`history`/
+   * `streak`/`milestones`/`meditation-dashboard` already read and write,
+   * so a session completed via the main session player counts everywhere
+   * else in the lens instead of vanishing.
    */
-  registerLensAction("meditation", "sessionLog", (_ctx, artifact, params = {}) => {
-    const sessions = artifact.data?.sessions || [];
+  registerLensAction("meditation", "sessionLog", (ctx, _artifact, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const minutes = Math.max(0, parseInt(params.minutes, 10) || 0);
+    const rating = params.rating ? Math.min(5, Math.max(1, parseInt(params.rating, 10))) : null;
     const entry = {
-      id: `sess-${Date.now()}`,
-      trackId: params.trackId || "unknown",
-      minutes: parseInt(params.minutes, 10) || 0,
-      completedAt: params.completedAt || new Date().toISOString(),
-      rating: params.rating ? Math.min(5, Math.max(1, parseInt(params.rating, 10))) : null,
+      id: medId("ms"),
+      sessionId: params.trackId || "unknown",
+      title: params.title || String(params.trackId || "Freeform session"),
+      category: params.category || "guided",
+      durationMin: minutes,
+      moodAfter: rating,
+      completedAt: params.completedAt || medNow(),
     };
-    sessions.push(entry);
-    artifact.data = { ...artifact.data, sessions };
-    return { ok: true, result: { entry, total: sessions.length } };
+    const list = medList(s.sessions, medActor(ctx));
+    list.push(entry);
+    saveMed();
+    return { ok: true, result: { entry, total: list.length } };
   });
 
   /**
    * streakSummary — compute the current and longest streak across the
-   * user's meditation_sessions log.
+   * user's practice ledger (same STATE-backed store `sessionLog`/`play`
+   * write to; see the note on `sessionLog` above for why this was
+   * rewired off the old dead artifact-based store).
    */
-  registerLensAction("meditation", "streakSummary", (_ctx, artifact, _params) => {
-    const sessions = artifact.data?.sessions || [];
+  registerLensAction("meditation", "streakSummary", (ctx, _artifact, _params) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sessions = medList(s.sessions, medActor(ctx));
     if (sessions.length === 0) {
-      return { ok: true, result: { currentStreak: 0, longestStreak: 0, totalSessions: 0, totalMinutes: 0 } };
+      return { ok: true, result: { currentStreak: 0, longestStreak: 0, totalSessions: 0, totalMinutes: 0, lastSessionAt: null } };
     }
-    const days = new Set(sessions.map((s) => (s.completedAt || "").slice(0, 10)).filter(Boolean));
+    const days = new Set(sessions.map((x) => (x.completedAt || "").slice(0, 10)).filter(Boolean));
     const sortedDays = [...days].sort();
     const today = new Date().toISOString().slice(0, 10);
     let current = 0;
@@ -81,8 +101,8 @@ export default function registerMeditationActions(registerLensAction) {
       if (prev.toISOString().slice(0, 10) === sortedDays[i]) run++;
       else { longest = Math.max(longest, run); run = 1; }
     }
-    longest = Math.max(longest, run);
-    const totalMinutes = sessions.reduce((s, x) => s + (parseInt(x.minutes, 10) || 0), 0);
+    longest = Math.max(longest, run, current);
+    const totalMinutes = sessions.reduce((n, x) => n + (parseInt(x.durationMin, 10) || 0), 0);
     return {
       ok: true,
       result: {

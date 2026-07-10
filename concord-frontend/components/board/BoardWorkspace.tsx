@@ -9,7 +9,7 @@
  * No seed/mock data — every card and column is real user input.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Kanban,
   Plus,
@@ -21,6 +21,9 @@ import {
   X,
   Tag,
   Filter,
+  AlertTriangle,
+  CheckSquare,
+  Layers,
 } from 'lucide-react';
 import {
   boardMacro,
@@ -32,6 +35,7 @@ import {
 } from './workspace-types';
 import { CardDetailModal } from './CardDetailModal';
 import { BoardSettingsPanel } from './BoardSettingsPanel';
+import { cn } from '@/lib/utils';
 
 function isOverdue(due: string | null): boolean {
   if (!due) return false;
@@ -64,6 +68,18 @@ export function BoardWorkspace() {
   if (!activeId && boards.length > 0 && !listLoading) {
     setActiveId(boards[0].id);
   }
+
+  // Cross-board summary (board.board-dashboard) — real aggregate over every
+  // board this user owns, not derived from the currently-open board alone.
+  const [dashboard, setDashboard] = useState<{ boards: number; totalCards: number; overdue: number; withChecklists: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    boardMacro<{ boards: number; totalCards: number; overdue: number; withChecklists: number }>('board-dashboard').then((r) => {
+      if (!cancelled && r.ok && r.result) setDashboard(r.result);
+    });
+    return () => { cancelled = true; };
+    // Re-pull whenever the board list changes shape (create/delete) so the summary stays live.
+  }, [boards.length]);
 
   const [calendar, setCalendar] = useState<WsCalendar | null>(null);
   const loadCalendar = useCallback(async () => {
@@ -238,6 +254,40 @@ export function BoardWorkspace() {
           )}
         </div>
       </div>
+
+      {/* Cross-board summary — board.board-dashboard, real aggregate over all boards */}
+      {dashboard && dashboard.boards > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10">
+            <Layers className="w-3.5 h-3.5 text-purple-300 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-white leading-none">{dashboard.boards}</p>
+              <p className="text-[10px] text-gray-500">Boards</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10">
+            <Kanban className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-white leading-none">{dashboard.totalCards}</p>
+              <p className="text-[10px] text-gray-500">Total cards</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10">
+            <AlertTriangle className={cn('w-3.5 h-3.5 shrink-0', dashboard.overdue > 0 ? 'text-red-400' : 'text-gray-500')} />
+            <div>
+              <p className={cn('text-sm font-bold leading-none', dashboard.overdue > 0 ? 'text-red-400' : 'text-white')}>{dashboard.overdue}</p>
+              <p className="text-[10px] text-gray-500">Overdue</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10">
+            <CheckSquare className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-white leading-none">{dashboard.withChecklists}</p>
+              <p className="text-[10px] text-gray-500">With checklists</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create board row */}
       <div className="flex gap-1.5 mb-4">

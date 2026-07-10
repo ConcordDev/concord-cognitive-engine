@@ -92,6 +92,17 @@ describe('photos lens — four UX states', () => {
     expect(list.className).toMatch(/motion-reduce:animate-none/);
   });
 
+  it('READY: each card renders the actual photo bytes via /api/photos/:id/image (verify-pass fix)', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(() => jsonResponse({ ok: true, photos: [PHOTO] }));
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<PhotosLensPage />); });
+    await waitFor(() => expect(view!.getByTestId('photos-list')).toBeInTheDocument());
+    const img = view!.getByAltText('Sunset over the spire') as HTMLImageElement;
+    expect(img).toBeInTheDocument();
+    expect(img.getAttribute('src')).toBe(`/api/photos/${PHOTO.id}/image`);
+    expect(img.getAttribute('loading')).toBe('lazy');
+  });
+
   it('TOAST (success): sharing a photo fires a success toast', async () => {
     vi.spyOn(global, 'fetch').mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);

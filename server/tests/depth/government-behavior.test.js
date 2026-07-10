@@ -38,6 +38,20 @@ describe("government — calc contracts (exact computed values, artifact.data)",
     assert.equal(r.result.onTime, false);        // 31 > 14
   });
 
+  it("permitTimeline: reads the real editor's submittedDate + Title-Case type (Wave 3 field-alias fix)", async () => {
+    // The real Permits editor (app/lenses/government/page.tsx) captures
+    // `submittedDate` (no `applicationDate`) and stores a Title-Case
+    // `type` like "Building" — permitTimeline must alias both, or every
+    // permit created through the actual UI degraded to a null result.
+    const r = await lensRun("government", "permitTimeline", {
+      data: { type: "Building", submittedDate: "2026-01-01", approvalDate: "2026-01-20" },
+    });
+    assert.equal(r.result.permitType, "building");
+    assert.equal(r.result.processingDays, 19);
+    assert.equal(r.result.benchmark, 30);
+    assert.equal(r.result.onTime, true);
+  });
+
   it("retentionCheck: a record older than its retention period is disposition-eligible", async () => {
     const eightYearsAgo = new Date(Date.now() - 8 * 365 * 86400000).toISOString().slice(0, 10);
     const r = await lensRun("government", "retentionCheck", {
@@ -58,6 +72,17 @@ describe("government — calc contracts (exact computed values, artifact.data)",
     assert.equal(r.result.pastRetention, false);
     assert.equal(r.result.recommendation, "retain");
     assert.equal(r.result.yearsRemaining, 6);    // 7 − ~1
+  });
+
+  it("retentionCheck: reads the real Records editor's retentionYears + filedDate (Wave 3 field-alias fix)", async () => {
+    const eightYearsAgo = new Date(Date.now() - 8 * 365 * 86400000).toISOString().slice(0, 10);
+    const r = await lensRun("government", "retentionCheck", {
+      data: { retentionYears: 7, filedDate: eightYearsAgo, classification: "exempt" },
+    });
+    assert.equal(r.result.retentionPeriod, 7);
+    assert.equal(r.result.pastRetention, true);
+    assert.equal(r.result.classification, "exempt");
+    assert.equal(r.result.recommendation, "eligible_for_disposition");
   });
 
   it("fine_calculation: base × violations + late fee is summed exactly", async () => {
@@ -81,6 +106,24 @@ describe("government — calc contracts (exact computed values, artifact.data)",
     assert.equal(r.result.valuationFee, 500);
     assert.equal(r.result.planReviewFee, 162.5);
     assert.equal(r.result.totalEstimate, 912.5);
+  });
+
+  it("permit_fee_estimate: Title-Case type from the real editor still matches the fee table (Wave 3 fix)", async () => {
+    const r = await lensRun("government", "permit_fee_estimate", {
+      data: { permitType: "Electrical", valuation: 0 },
+    });
+    assert.equal(r.result.baseFee, 120); // was silently falling to the $100 generic default pre-fix
+  });
+
+  it("compliance_check: an unchecked item (no requirements array) reports 'unchecked', not a false compliant (Wave 3 honesty fix)", async () => {
+    // The real Code Enforcement editor has no checklist-building UI, so
+    // every violation artifact has requirements.length === 0. Previously
+    // this silently reported compliant:true/verdict:"compliant".
+    const r = await lensRun("government", "compliance_check", { data: {} });
+    assert.equal(r.result.requirementCount, 0);
+    assert.equal(r.result.compliant, null);
+    assert.equal(r.result.compliancePct, null);
+    assert.equal(r.result.verdict, "unchecked");
   });
 
   it("compliance_check: scores met/total and lists violations exactly", async () => {
@@ -111,6 +154,16 @@ describe("government — calc contracts (exact computed values, artifact.data)",
     assert.equal(r.result.spent, 1000);          // 400 + 600
     assert.equal(r.result.remaining, 1000);      // 2000 − 1000
     assert.equal(r.result.utilizationPct, 50);   // 1000/2000 → 50.0
+  });
+
+  it("budget_report: falls back to the real Public Works editor's flat budget/spent fields when there are no line items (Wave 3 fix)", async () => {
+    const r = await lensRun("government", "budget_report", {
+      data: { budget: 50000, spent: 12500 },
+    });
+    assert.equal(r.result.totalBudget, 50000);
+    assert.equal(r.result.spent, 12500);        // was hardcoded 0 pre-fix
+    assert.equal(r.result.remaining, 37500);
+    assert.equal(r.result.utilizationPct, 25);
   });
 });
 
@@ -309,6 +362,32 @@ describe("government — calc/report contracts (wave 8 top-up)", () => {
     assert.ok(!uptown.resources.some((x) => x.name === "Pump Truck"));
   });
 
+  it("resourceStaging: falls back to the real EmergencyPlan editor's single `zone` string (Wave 3 fix)", async () => {
+    // The real Emergency Mgmt editor has one `zone` text field + one
+    // `activationLevel` select, never a structured zones[] array.
+    const r = await lensRun("government", "resourceStaging", {
+      data: { type: "wildfire", activationLevel: "Level 2", zone: "Foothills", resources: ["Engine 3", "Water Tender"] },
+    });
+    assert.equal(r.result.totalZones, 1);
+    assert.equal(r.result.totalResources, 2);
+    const zone = r.result.staging[0];
+    assert.equal(zone.zone, "Foothills");
+    assert.ok(zone.resources.some((x) => x.name === "Engine 3"));
+    assert.ok(zone.resources.some((x) => x.name === "Water Tender"));
+  });
+
+  it("citizen_impact_report: no numeric impact data reports 'unspecified', not a false ~0-residents claim (Wave 3 honesty fix)", async () => {
+    // The real Public Works editor only captures a free-text
+    // citizenImpact assessment, never a numeric population/area field.
+    const r = await lensRun("government", "citizen_impact_report", {
+      data: { citizenImpact: "Detour adds 5 minutes for Elm St residents." },
+    });
+    assert.equal(r.result.affectedPopulation, null);
+    assert.equal(r.result.severity, "unspecified");
+    assert.equal(r.result.narrativeImpact, "Detour adds 5 minutes for Elm St residents.");
+    assert.ok(r.result.summary.includes("Detour adds 5 minutes"));
+  });
+
   it("citizen_impact_report: derives severity from population + counts areas", async () => {
     const r = await lensRun("government", "citizen_impact_report", {
       data: {
@@ -374,6 +453,22 @@ describe("government — calc/report contracts (wave 8 top-up)", () => {
     assert.equal(r.result.status, "paid_in_full");
   });
 
+  it("fee_collection_status: falls back to the real Court Admin editor's flat feesCollected/feesOwed (Wave 3 fix)", async () => {
+    const r = await lensRun("government", "fee_collection_status", {
+      data: { feesCollected: 150, feesOwed: 50 },
+    });
+    assert.equal(r.result.totalDue, 200);
+    assert.equal(r.result.collected, 150);
+    assert.equal(r.result.outstanding, 50);
+    assert.equal(r.result.status, "partial");
+  });
+
+  it("fee_collection_status: zero fee records is 'no_fees_on_record', not a false paid-in-full (Wave 3 honesty fix)", async () => {
+    const r = await lensRun("government", "fee_collection_status", { data: {} });
+    assert.equal(r.result.status, "no_fees_on_record");
+    assert.equal(r.result.collectionRatePct, null);
+  });
+
   it("milestone_update: advances to next milestone and computes percent complete", async () => {
     const r = await lensRun("government", "milestone_update", {
       data: {
@@ -432,6 +527,17 @@ describe("government — calc/report contracts (wave 8 top-up)", () => {
     assert.ok(r.result.recommendation.includes("Cleared"));
   });
 
+  it("redaction_review: scans the real Public Records editor's `description` field, not just content/body (Wave 3 fix)", async () => {
+    // The real Public Records editor has no `content`/`body` field — its
+    // free text is `description`. Previously every real FOIA record
+    // scanned an empty string and always reported "clean".
+    const r = await lensRun("government", "redaction_review", {
+      data: { description: "Contact requestor at jane@example.com regarding SSN 123-45-6789." },
+    });
+    assert.equal(r.result.inlinePiiMatches, 2);
+    assert.equal(r.result.status, "needs_redaction");
+  });
+
   it("schedule_hearing: lead time + proposed date derive from case type", async () => {
     const r = await lensRun("government", "schedule_hearing", {
       data: { caseType: "zoning", courtroom: "Room 4B", parties: [{ name: "Petitioner" }] },
@@ -442,6 +548,14 @@ describe("government — calc/report contracts (wave 8 top-up)", () => {
     assert.deepEqual(r.result.parties, ["Petitioner"]);
     const expected = new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10);
     assert.equal(r.result.proposedDate, expected);
+  });
+
+  it("schedule_hearing: Title-Case + multi-word case types from the real Court Admin editor still match (Wave 3 fix)", async () => {
+    const r = await lensRun("government", "schedule_hearing", {
+      data: { caseType: "Zoning Violation", plaintiff: "City", defendant: "Landowner LLC" },
+    });
+    assert.equal(r.result.leadTimeDays, 45); // matched via the "zoning" first-word fallback
+    assert.deepEqual(r.result.parties, ["City", "Landowner LLC"]); // plaintiff/defendant fallback
   });
 
   it("export_record: serializes scalar data fields into an official-record body", async () => {

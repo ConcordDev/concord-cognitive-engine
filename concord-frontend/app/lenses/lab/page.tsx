@@ -18,15 +18,13 @@ import { useUIStore } from '@/store/ui';
 import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
 import { useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { FlaskConical, Play, Square, History, Zap, Search, Plus, Trash2, CheckCircle, AlertTriangle, Lightbulb, Layers, ChevronDown, Microscope, Activity, Loader2 } from 'lucide-react';
+import { FlaskConical, Play, Square, History, Zap, Search, Plus, Trash2, CheckCircle, AlertTriangle, Lightbulb, Microscope, Activity, Loader2 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 export default function LabLensPage() {
   useLensNav('lab');
@@ -157,8 +155,6 @@ export default function LabLensPage() {
         </motion.div>
       </div>
 
-      {/* AI Actions */}
-      <UniversalActions domain="lab" artifactId={organItems[0]?.id} compact />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Experiment Editor */}
         <div className="lg:col-span-2 panel p-4 space-y-4">
@@ -330,7 +326,6 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
   const [constraints, setConstraints] = useState<ExploreConstraint[]>([{ key: '', min: '', max: '' }]);
   const [results, setResults] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   const addConstraint = () => setConstraints([...constraints, { key: '', min: '', max: '' }]);
   const removeConstraint = (idx: number) => setConstraints(constraints.filter((_, i) => i !== idx));
@@ -504,25 +499,6 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
               </>
             )}
             {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
-          </div>
-        )}
-      </div>
-
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="lab" />
           </div>
         )}
       </div>

@@ -120,6 +120,46 @@ describe('civic-bonds lens — four UX states', () => {
     expect(after).toBeGreaterThan(before); // re-listed after the action
   });
 
+  it('LEDGER: expanding shows the real per-pledge + milestone ledger via the ledger macro', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'list') return Promise.resolve({ data: { result: { ok: true, bonds: [BOND] } } });
+      if (action === 'ledger') return Promise.resolve({
+        data: {
+          result: {
+            ok: true,
+            pledges: [{ id: 'pl_1', entity_kind: 'player', entity_id: 'u_42', amount: 500, status: 'escrowed' }],
+            milestones: [{ idx: 0, description: 'Lay foundation', release_pct: 0.5, status: 'complete' }],
+          },
+        },
+      });
+      return Promise.resolve({ data: { result: { ok: true } } });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<CivicBondsLens />); });
+    await waitFor(() => expect(view!.getByTestId('civic-bonds-list')).toBeInTheDocument());
+
+    await act(async () => { fireEvent.click(view!.getByLabelText('Show public ledger for New Aqueduct')); });
+    await waitFor(() => expect(lensRunMock.mock.calls.some((c) => c[1] === 'ledger' && c[2]?.bondId === 'b_1')).toBe(true));
+    await waitFor(() => expect(view!.getByTestId('civic-bond-ledger-b_1')).toBeInTheDocument());
+    expect(view!.getByText(/u_42/)).toBeInTheDocument();
+    expect(view!.getByText(/500 sparks · escrowed/)).toBeInTheDocument();
+    expect(view!.getByText(/Lay foundation/)).toBeInTheDocument();
+  });
+
+  it('UNPLEDGE: calls the real unpledge macro and re-lists', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'list') return Promise.resolve({ data: { result: { ok: true, bonds: [BOND] } } });
+      return Promise.resolve({ data: { result: { ok: true } } });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<CivicBondsLens />); });
+    await waitFor(() => expect(view!.getByTestId('civic-bonds-list')).toBeInTheDocument());
+
+    await act(async () => { fireEvent.click(view!.getByLabelText('Refund my pledge to New Aqueduct')); });
+    await waitFor(() => expect(lensRunMock.mock.calls.some((c) => c[1] === 'unpledge' && c[2]?.bondId === 'b_1')).toBe(true));
+    await waitFor(() => expect(addToastMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' })));
+  });
+
   it('ERROR: shows role=alert + a Retry that re-issues the list call', async () => {
     let calls = 0;
     lensRunMock.mockImplementation(() => {

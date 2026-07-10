@@ -1,170 +1,166 @@
 'use client';
 
 /**
- * PetActionDrawer — PetDesk-style slide-in right drawer that turns a
- * pet profile from a static record into an action surface. Triggered
- * by a "Quick actions" button on each PetProfile card.
+ * PetActionDrawer — PetDesk-style slide-in right drawer that turns the
+ * selected pet into a quick-action surface. Triggered by a "Quick
+ * actions" button next to the pet picker in PetCareSection.
  *
- * Six paid-app-tier actions, all wired to real Concord backends:
+ * Rebuilt (Frontend Rebuild Program, Wave 2) on the REAL `pets.js` Pet
+ * shape and REAL macros. The previous version operated on a fabricated
+ * `PetProfile` artifact (from the now-retired generic `useLensData`
+ * CRUD system) with fields like `vetUserId`/`medications`-as-a-string
+ * that never matched the real STATE-backed pet record — see
+ * docs/lens-specs/pets-capability-map.md for the audit that found this.
  *
- *   1. Book vet visit    → DM vet (when vetUserId present) +
- *                          schedule a Vet Visit ActivityLog artifact
- *   2. DM vet a record   → pick a recent HealthRecord, DM vet with
- *                          DTU id embedded
- *   3. Request refill    → DM vet with the profile's medications list
- *   4. Emergency search  → chat_agent.do "find nearest 24h emergency
+ * Six actions, all wired to real Concord backends:
+ *
+ *   1. Book vet visit    → pets.appointment-book (real scheduling +
+ *                          auto-created reminder)
+ *   2. DM a health record → pick a real vaccine/vet-visit record, DM it
+ *   3. Request refill     → DM the vet with the pet's real active
+ *                          medications (pets.medication-list)
+ *   4. Emergency search    → chat_agent.do "find nearest 24h emergency
  *                          vet for {species} in {location}"
- *   5. Publish lost/found → mint public DTU with pet identity +
- *                          POST /api/dtus/:id/publish
- *   6. Quick log walk    → mint an ActivityLog artifact (30 min, today)
- *
- * Vet identity:
- *   - If `vetUserId` is set on the profile, DMs go straight to that
- *     Concord user.
- *   - Otherwise the drawer surfaces a recipient input so the owner can
- *     pick one. This avoids guessing.
+ *   5. Report lost/found  → pets.lost-card-create (real public ID card
+ *                          with a shareable token)
+ *   6. Quick log walk     → pets.activity-log (kind: 'walk')
  */
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   X, Stethoscope, FileText, Pill, Phone, Globe, Activity,
-  Loader2, Check, AlertTriangle, Send, Wand2,
+  Loader2, Check, AlertTriangle, Send, Wand2, CalendarPlus,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
-import { useCreateArtifact, useArtifactsByType } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 
-interface PetProfileLite {
+export interface DrawerPet {
   id: string;
-  title: string;
-  data: {
-    name?: string;
-    species?: string;
-    breed?: string;
-    age?: number;
-    weight?: number;
-    color?: string;
-    microchip?: string;
-    medications?: string;
-    allergies?: string;
-    conditions?: string;
-    vetName?: string;
-    vetPhone?: string;
-    vetUserId?: string;
-    nextVetVisit?: string;
-    location?: string;
-  };
+  name: string;
+  species: string;
+  breed: string | null;
+  weightKg: number;
+  microchipId: string | null;
+  age?: { years: number; months: number } | null;
 }
 
-interface HealthRecordLite {
-  id: string;
-  title: string;
-  data: { petName?: string; description?: string; date?: string };
-}
+interface VaccineLite { id: string; name: string; date: string; nextDueDate: string | null }
+interface MedicationLite { id: string; name: string; dosage: string | null; frequency: string | null; active: boolean }
+interface VisitLite { id: string; date: string; reason: string; diagnosis: string | null }
 
 interface PetActionDrawerProps {
-  profile: PetProfileLite;
+  pet: DrawerPet;
   onClose: () => void;
+  /** Called after any action mutates pet-scoped state, so the caller can refresh. */
+  onChange?: () => void;
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'book' | 'record' | 'refill' | 'emergency' | 'publish' | 'walk';
+type ActionId = 'book' | 'record' | 'refill' | 'emergency' | 'lost' | 'walk';
 
 function pickMessage(e: unknown): string {
   const ax = e as { response?: { data?: { error?: string } }; message?: string };
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
+const APPT_REASONS = ['checkup', 'vaccination', 'illness', 'follow_up', 'other'];
+
+export function PetActionDrawer({ pet, onClose, onChange }: PetActionDrawerProps) {
   const [activeAction, setActiveAction] = useState<ActionId | null>(null);
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const [recipientOverride, setRecipientOverride] = useState('');
+  const [recipient, setRecipient] = useState('');
   const [agentReply, setAgentReply] = useState<string | null>(null);
-  const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
-  const [selectedRecordId, setSelectedRecordId] = useState<string>('');
+  const [publishedToken, setPublishedToken] = useState<string | null>(null);
 
-  const d = profile.data;
-  const createActivity = useCreateArtifact('pets');
+  const [loadingRecords, setLoadingRecords] = useState(true);
+  const [vaccines, setVaccines] = useState<VaccineLite[]>([]);
+  const [medications, setMedications] = useState<MedicationLite[]>([]);
+  const [visits, setVisits] = useState<VisitLite[]>([]);
+  const [selectedRecordKey, setSelectedRecordKey] = useState('');
 
-  // Pull real health records for the DM-record action (filter by petName when possible)
-  const { data: recordsResp } = useArtifactsByType<HealthRecordLite['data']>('pets', 'HealthRecord', { limit: 25 });
-  const recordsForThisPet = useMemo(() => {
-    const all = (recordsResp?.artifacts ?? []) as unknown as HealthRecordLite[];
-    const petName = d.name?.toLowerCase();
-    if (!petName) return all;
-    return all.filter(r => (r.data?.petName ?? '').toLowerCase() === petName || (r.data?.petName ?? '').toLowerCase() === '');
-  }, [recordsResp, d.name]);
+  const [bookForm, setBookForm] = useState({ date: '', reason: 'checkup' });
+  const [lostForm, setLostForm] = useState({ contactName: '', contactPhone: '' });
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingRecords(true);
+    (async () => {
+      const [v, m, vis] = await Promise.all([
+        lensRun('pets', 'vaccine-list', { petId: pet.id }),
+        lensRun('pets', 'medication-list', { petId: pet.id }),
+        lensRun('pets', 'vet-visit-list', { petId: pet.id }),
+      ]);
+      if (cancelled) return;
+      setVaccines(v.data?.result?.vaccines || []);
+      setMedications(m.data?.result?.medications || []);
+      setVisits(vis.data?.result?.visits || []);
+      setLoadingRecords(false);
+    })();
+    return () => { cancelled = true; };
+  }, [pet.id]);
+
+  const activeMeds = useMemo(() => medications.filter((m) => m.active), [medications]);
+  const recordOptions = useMemo(() => [
+    ...vaccines.map((v) => ({
+      key: `vac:${v.id}`,
+      label: `Vaccine — ${v.name} (${v.date})`,
+      text: `Vaccine: ${v.name}, given ${v.date}${v.nextDueDate ? `, next due ${v.nextDueDate}` : ''}`,
+    })),
+    ...visits.map((vi) => ({
+      key: `vis:${vi.id}`,
+      label: `Vet visit — ${vi.reason} (${vi.date})`,
+      text: `Vet visit: ${vi.reason} on ${vi.date}${vi.diagnosis ? ` — ${vi.diagnosis}` : ''}`,
+    })),
+  ], [vaccines, visits]);
 
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
 
-  function vetRecipient(): string | null {
-    const v = (d.vetUserId ?? recipientOverride ?? '').trim();
-    return v || null;
-  }
-
   async function dm(content: string): Promise<{ sent: boolean; reason?: string }> {
-    const recipient = vetRecipient();
-    if (!recipient) return { sent: false, reason: 'No vet recipient (set vetUserId on profile or enter one).' };
+    const to = recipient.trim();
+    if (!to) return { sent: false, reason: 'Enter a vet recipient (Concord user id) above.' };
     try {
-      const r = await api.post('/api/social/dm', { toUserId: recipient, content });
+      const r = await api.post('/api/social/dm', { toUserId: to, content });
       return { sent: r.data?.ok !== false, reason: r.data?.error };
     } catch (e) { return { sent: false, reason: pickMessage(e) }; }
   }
 
-  /* ---- handlers ---- */
+  /* ---- handlers — every one calls a real pets.js macro ---- */
 
   async function actBookVet() {
+    if (!bookForm.date) { err('Pick a date.'); return; }
     setBusy('book'); setFeedback(null);
     try {
-      // Schedule as an ActivityLog 'Vet Visit' artifact for follow-through
-      const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-      await createActivity.mutateAsync({
-        type: 'ActivityLog',
-        title: `Vet visit — ${d.name ?? 'pet'}`,
-        data: {
-          name: `Vet visit — ${d.name ?? 'pet'}`,
-          petName: d.name,
-          activityType: 'Vet Visit',
-          date: nextWeek,
-          duration: 60,
-          intensity: 'low',
-          description: `Booked via PetActionDrawer; vet: ${d.vetName ?? 'TBD'}`,
-        },
-        meta: { tags: ['vet', 'appointment'], status: 'scheduled', visibility: 'private' },
+      const r = await lensRun('pets', 'appointment-book', {
+        petId: pet.id, date: bookForm.date, reason: bookForm.reason,
       });
-      const { sent, reason } = await dm(
-        `Hi${d.vetName ? ` ${d.vetName}` : ''} — I'd like to book a vet visit for ${d.name ?? 'my pet'}` +
-        `${d.species ? ` (${d.species}${d.breed ? `, ${d.breed}` : ''})` : ''}.` +
-        ` Targeting ${nextWeek}. What slot works for you?`,
-      );
-      ok(`Vet visit scheduled for ${nextWeek}.${sent ? ' Vet DMed.' : reason ? ` (${reason})` : ''}`);
+      if (r.data?.ok === false) { err(r.data?.error || 'Could not book appointment.'); return; }
+      ok(`Vet visit booked for ${bookForm.date} — a reminder was created.`);
+      setBookForm({ date: '', reason: 'checkup' });
+      onChange?.();
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
 
   async function actDmRecord() {
-    if (!selectedRecordId) { err('Pick a record to send.'); return; }
+    if (!selectedRecordKey) { err('Pick a record to send.'); return; }
     setBusy('record'); setFeedback(null);
-    const rec = recordsForThisPet.find(r => r.id === selectedRecordId);
-    const summary = rec ? `${rec.title}${rec.data?.date ? ` (${rec.data.date})` : ''}${rec.data?.description ? ` — ${rec.data.description}` : ''}` : '(record not found)';
-    const { sent, reason } = await dm(
-      `Health record for ${d.name ?? 'my pet'}:\n\n${summary}\n\n[DTU ${selectedRecordId}]`,
-    );
+    const rec = recordOptions.find((r) => r.key === selectedRecordKey);
+    const { sent, reason } = await dm(`Health record for ${pet.name}:\n\n${rec?.text ?? '(record not found)'}`);
     if (sent) ok('Record DMed to vet.');
     else err(reason ?? 'DM failed.');
     setBusy(null);
   }
 
   async function actRefill() {
-    if (!d.medications) { err('No medications on this profile.'); return; }
+    if (activeMeds.length === 0) { err('No active medications on file.'); return; }
     setBusy('refill'); setFeedback(null);
+    const list = activeMeds.map((m) => `${m.name}${m.dosage ? ` ${m.dosage}` : ''}${m.frequency ? ` — ${m.frequency}` : ''}`).join('\n');
     const { sent, reason } = await dm(
-      `Prescription refill request for ${d.name ?? 'my pet'}` +
-      `${d.species ? ` (${d.species})` : ''}:\n\n${d.medications}` +
-      `${d.weight ? `\n\nCurrent weight: ${d.weight} lbs.` : ''}`,
+      `Prescription refill request for ${pet.name} (${pet.species}${pet.breed ? `, ${pet.breed}` : ''}):\n\n${list}` +
+      `${pet.weightKg ? `\n\nCurrent weight: ${pet.weightKg} kg.` : ''}`,
     );
     if (sent) ok('Refill request DMed to vet.');
     else err(reason ?? 'DM failed.');
@@ -175,21 +171,13 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
     setBusy('emergency'); setFeedback(null); setAgentReply(null);
     try {
       const task = [
-        `Find the nearest 24-hour emergency veterinary clinic.`,
-        d.species ? `Species: ${d.species}.` : '',
-        d.breed ? `Breed: ${d.breed}.` : '',
-        d.conditions ? `Known conditions: ${d.conditions}.` : '',
-        d.location ? `Location: ${d.location}.` : 'Location not set on profile.',
+        'Find the nearest 24-hour emergency veterinary clinic.',
+        `Species: ${pet.species}.`,
+        pet.breed ? `Breed: ${pet.breed}.` : '',
         'Return the clinic name, address, phone number, and a one-line note on why it fits.',
       ].filter(Boolean).join(' ');
-      const r = await lensRun({
-        domain: 'chat_agent',
-        name: 'do',
-        input: { task, maxTurns: 5 },
-      });
-      const reply = r.data?.result?.reply
-        ?? r.data?.result?.summary
-        ?? r.data?.result?.output;
+      const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 5 } });
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
         setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Agent returned emergency-vet candidates.');
@@ -198,38 +186,20 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
     finally { setBusy(null); }
   }
 
-  async function actPublishLost() {
-    setBusy('publish'); setFeedback(null);
+  async function actReportLost() {
+    if (!lostForm.contactName.trim() || !lostForm.contactPhone.trim()) {
+      err('Contact name and phone are required for the public ID card.'); return;
+    }
+    setBusy('lost'); setFeedback(null);
     try {
-      const r = await lensRun({
-        domain: 'dtu',
-        name: 'create',
-        input: {
-          title: `Lost/found: ${d.name ?? 'pet'}${d.species ? ` (${d.species})` : ''}`,
-          tags: ['pets', 'lost-found', d.species, d.breed].filter(Boolean) as string[],
-          source: 'pets:lostFound',
-          meta: {
-            visibility: 'public',
-            consent: { allowCitations: true },
-            pet: {
-              name: d.name, species: d.species, breed: d.breed,
-              color: d.color, weight: d.weight, age: d.age,
-              microchip: d.microchip,
-              allergies: d.allergies,
-              conditions: d.conditions,
-              location: d.location,
-            },
-          },
-        },
+      const r = await lensRun('pets', 'lost-card-create', {
+        petId: pet.id, contactName: lostForm.contactName.trim(), contactPhone: lostForm.contactPhone.trim(),
       });
-      const dtu = r.data?.result?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
-      const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) {
-        setPublishedDtuId(id);
-        ok(`Posted publicly as DTU ${id.slice(0, 8)}…`);
-      } else err(pub.data?.error ?? 'publish flag failed');
+      if (r.data?.ok === false) { err(r.data?.error || 'Could not publish ID card.'); return; }
+      const card = r.data?.result?.card as { publicToken?: string } | undefined;
+      if (card?.publicToken) setPublishedToken(card.publicToken);
+      ok(`${pet.name} marked lost — public ID card published. Full details editable in Records.`);
+      onChange?.();
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -237,21 +207,10 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
   async function actLogWalk() {
     setBusy('walk'); setFeedback(null);
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      await createActivity.mutateAsync({
-        type: 'ActivityLog',
-        title: `Walk — ${d.name ?? 'pet'} (${today})`,
-        data: {
-          name: `Walk — ${d.name ?? 'pet'}`,
-          petName: d.name,
-          activityType: 'Walk',
-          date: today,
-          duration: 30,
-          intensity: 'moderate',
-        },
-        meta: { tags: ['walk'], status: 'completed', visibility: 'private' },
-      });
+      const r = await lensRun('pets', 'activity-log', { petId: pet.id, kind: 'walk', durationMin: 30 });
+      if (r.data?.ok === false) { err(r.data?.error || 'Could not log walk.'); return; }
       ok('30-min walk logged.');
+      onChange?.();
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -259,16 +218,15 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
   /* ---- render ---- */
 
   const actions: Array<{
-    id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean;
+    id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string;
+    onOpen: () => void; disabled?: boolean;
   }> = [
-    { id: 'book',      label: 'Book vet visit',      icon: Stethoscope, accent: '#06b6d4', desc: 'Schedule + DM your vet',                  handler: actBookVet },
-    { id: 'record',    label: 'DM health record',    icon: FileText,    accent: '#3b82f6', desc: 'Pick a record + send to vet',             handler: () => setActiveAction('record'),
-                                                                                                                                          disabled: recordsForThisPet.length === 0 },
-    { id: 'refill',    label: 'Request refill',      icon: Pill,        accent: '#8b5cf6', desc: d.medications ? 'DM vet the meds list' : 'Add medications first',
-                                                                                                                                          handler: actRefill,    disabled: !d.medications },
-    { id: 'emergency', label: 'Emergency 24h vet',   icon: Phone,       accent: '#ef4444', desc: 'Agent finds nearest 24h clinic',          handler: actEmergency },
-    { id: 'publish',   label: 'Post lost / found',   icon: Globe,       accent: '#22c55e', desc: 'Mint + publish public pet DTU',           handler: actPublishLost },
-    { id: 'walk',      label: 'Quick log walk',      icon: Activity,    accent: '#f97316', desc: 'One-tap 30-min walk log',                handler: actLogWalk },
+    { id: 'book', label: 'Book vet visit', icon: Stethoscope, accent: '#06b6d4', desc: 'Real appointment + auto reminder', onOpen: () => setActiveAction('book') },
+    { id: 'record', label: 'DM health record', icon: FileText, accent: '#3b82f6', desc: 'Pick a real record + send to vet', onOpen: () => setActiveAction('record'), disabled: recordOptions.length === 0 },
+    { id: 'refill', label: 'Request refill', icon: Pill, accent: '#8b5cf6', desc: activeMeds.length ? 'DM vet the active meds list' : 'No active medications', onOpen: actRefill, disabled: activeMeds.length === 0 },
+    { id: 'emergency', label: 'Emergency 24h vet', icon: Phone, accent: '#ef4444', desc: 'Agent finds nearest 24h clinic', onOpen: actEmergency },
+    { id: 'lost', label: 'Report lost/found', icon: Globe, accent: '#22c55e', desc: 'Publish a real public ID card', onOpen: () => setActiveAction('lost') },
+    { id: 'walk', label: 'Quick log walk', icon: Activity, accent: '#f97316', desc: 'One-tap 30-min walk log', onOpen: actLogWalk },
   ];
 
   return (
@@ -283,16 +241,15 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
         className="w-full max-w-md h-full bg-lattice-surface border-l border-lattice-border overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="p-5 border-b border-lattice-border flex items-start gap-3 sticky top-0 bg-lattice-surface z-10">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">{(d.name ?? '?')[0]?.toUpperCase()}</span>
+            <span className="text-white font-bold text-lg">{(pet.name ?? '?')[0]?.toUpperCase()}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Pet actions</div>
-            <h3 className="text-sm font-semibold text-white truncate">{d.name ?? profile.title}</h3>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Quick actions</div>
+            <h3 className="text-sm font-semibold text-white truncate">{pet.name}</h3>
             <div className="text-[11px] text-gray-400 mt-0.5">
-              {[d.species, d.breed, d.age ? `${d.age}y` : null, d.weight ? `${d.weight}lbs` : null].filter(Boolean).join(' · ')}
+              {[pet.species, pet.breed, pet.age ? `${pet.age.years}y ${pet.age.months}m` : null, pet.weightKg ? `${pet.weightKg}kg` : null].filter(Boolean).join(' · ')}
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded hover:bg-lattice-elevated text-gray-400" aria-label="Close">
@@ -301,29 +258,27 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
         </div>
 
         <div className="p-5 space-y-3">
-          {/* Vet recipient hint */}
-          {!d.vetUserId && (
-            <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
-              <p className="font-semibold mb-1.5">Vet recipient (Concord user id)</p>
-              <input
-                type="text"
-                value={recipientOverride}
-                onChange={(e) => setRecipientOverride(e.target.value)}
-                className="w-full bg-lattice-elevated border border-amber-500/30 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-                placeholder={d.vetName ? `For ${d.vetName} (no user id on profile)` : 'username or user id'}
-              />
-            </div>
-          )}
+          <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
+            <label htmlFor="pet-drawer-recipient" className="font-semibold mb-1.5 block">Vet recipient (Concord user id)</label>
+            <input
+              id="pet-drawer-recipient"
+              type="text"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              className="w-full bg-lattice-elevated border border-amber-500/30 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+              placeholder="username or user id — needed for DM actions"
+            />
+          </div>
 
-          {actions.map(a => {
+          {actions.map((a) => {
             const Icon = a.icon;
             const isBusy = busy === a.id;
             return (
               <button
                 key={a.id}
                 type="button"
-                disabled={a.disabled || !!busy}
-                onClick={a.handler}
+                disabled={a.disabled || !!busy || loadingRecords}
+                onClick={a.onOpen}
                 className={cn(
                   'w-full flex items-start gap-3 px-3 py-3 rounded-lg text-left transition-all border',
                   'bg-lattice-elevated/40 border-lattice-border/40',
@@ -332,10 +287,7 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
                   'focus:outline-none focus:ring-2 focus:ring-amber-400/40',
                 )}
               >
-                <div
-                  className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: a.accent + '20', color: a.accent }}
-                >
+                <div className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: a.accent + '20', color: a.accent }}>
                   {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -346,59 +298,80 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
             );
           })}
 
-          {/* Record-picker inline sub-panel */}
-          {activeAction === 'record' && (
-            <div className="px-3 py-3 rounded-lg bg-blue-500/5 border border-blue-500/30 space-y-2">
-              <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Pick a health record</div>
-              {recordsForThisPet.length === 0 ? (
-                <p className="text-xs text-gray-400">No health records on file for this pet.</p>
-              ) : (
-                <select
-                  value={selectedRecordId}
-                  onChange={(e) => setSelectedRecordId(e.target.value)}
-                  className="w-full bg-lattice-elevated border border-blue-500/30 rounded px-2 py-1.5 text-xs text-white"
-                >
-                  <option value="">— select a record —</option>
-                  {recordsForThisPet.map(r => (
-                    <option key={r.id} value={r.id}>{r.title}{r.data?.date ? ` (${r.data.date})` : ''}</option>
-                  ))}
+          {activeAction === 'book' && (
+            <div className="px-3 py-3 rounded-lg bg-cyan-500/5 border border-cyan-500/30 space-y-2">
+              <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Book vet visit</div>
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" value={bookForm.date} onChange={(e) => setBookForm({ ...bookForm, date: e.target.value })}
+                  className="bg-lattice-elevated border border-cyan-500/30 rounded px-2 py-1.5 text-xs text-white" />
+                <select value={bookForm.reason} onChange={(e) => setBookForm({ ...bookForm, reason: e.target.value })}
+                  className="bg-lattice-elevated border border-cyan-500/30 rounded px-2 py-1.5 text-xs text-white">
+                  {APPT_REASONS.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
                 </select>
-              )}
+              </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={actDmRecord}
-                  disabled={!selectedRecordId || !!busy}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {busy === 'record' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                  DM record to vet
+                <button type="button" onClick={actBookVet} disabled={!bookForm.date || busy === 'book'}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-500 text-white text-xs font-semibold hover:bg-cyan-600 disabled:opacity-40 disabled:cursor-not-allowed">
+                  {busy === 'book' ? <Loader2 className="w-3 h-3 animate-spin" /> : <CalendarPlus className="w-3 h-3" />} Book
                 </button>
-                <button
-                  type="button"
-                  onClick={() => { setActiveAction(null); setSelectedRecordId(''); }}
-                  className="text-xs text-gray-400 hover:text-gray-200"
-                >Cancel</button>
+                <button type="button" onClick={() => setActiveAction(null)} className="text-xs text-gray-400 hover:text-gray-200">Cancel</button>
               </div>
             </div>
           )}
 
-          {/* Emergency agent reply */}
+          {activeAction === 'record' && (
+            <div className="px-3 py-3 rounded-lg bg-blue-500/5 border border-blue-500/30 space-y-2">
+              <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Pick a health record</div>
+              {recordOptions.length === 0 ? (
+                <p className="text-xs text-gray-400">No vaccine or vet-visit records on file for this pet.</p>
+              ) : (
+                <select value={selectedRecordKey} onChange={(e) => setSelectedRecordKey(e.target.value)}
+                  className="w-full bg-lattice-elevated border border-blue-500/30 rounded px-2 py-1.5 text-xs text-white">
+                  <option value="">— select a record —</option>
+                  {recordOptions.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+                </select>
+              )}
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={actDmRecord} disabled={!selectedRecordKey || !!busy}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed">
+                  {busy === 'record' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} DM record to vet
+                </button>
+                <button type="button" onClick={() => { setActiveAction(null); setSelectedRecordKey(''); }} className="text-xs text-gray-400 hover:text-gray-200">Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {activeAction === 'lost' && (
+            <div className="px-3 py-3 rounded-lg bg-emerald-500/5 border border-emerald-500/30 space-y-2">
+              <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Report lost — public ID card</div>
+              <input placeholder="Contact name" value={lostForm.contactName} onChange={(e) => setLostForm({ ...lostForm, contactName: e.target.value })}
+                className="w-full bg-lattice-elevated border border-emerald-500/30 rounded px-2 py-1.5 text-xs text-white" />
+              <input placeholder="Contact phone" value={lostForm.contactPhone} onChange={(e) => setLostForm({ ...lostForm, contactPhone: e.target.value })}
+                className="w-full bg-lattice-elevated border border-emerald-500/30 rounded px-2 py-1.5 text-xs text-white" />
+              <p className="text-[10px] text-gray-400">Add color, last-seen location and a reward from the Records tab.</p>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={actReportLost} disabled={busy === 'lost'}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed">
+                  {busy === 'lost' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Globe className="w-3 h-3" />} Publish
+                </button>
+                <button type="button" onClick={() => setActiveAction(null)} className="text-xs text-gray-400 hover:text-gray-200">Cancel</button>
+              </div>
+            </div>
+          )}
+
           {agentReply && (
             <div className="px-3 py-3 rounded-lg bg-red-500/5 border border-red-500/30 max-h-64 overflow-y-auto">
               <div className="flex items-center gap-1.5 text-red-400 font-semibold mb-2 uppercase tracking-wider text-[10px]">
-                <Wand2 className="w-3 h-3" />
-                Emergency-vet finder
+                <Wand2 className="w-3 h-3" /> Emergency-vet finder
               </div>
               <pre className="whitespace-pre-wrap font-sans text-xs text-gray-200 leading-relaxed">{agentReply}</pre>
             </div>
           )}
 
-          {/* Published-DTU footer */}
-          {publishedDtuId && (
+          {publishedToken && (
             <div className="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2">
               <Globe className="w-3.5 h-3.5" />
-              <span>Lost/found posted as DTU <span className="font-mono">{publishedDtuId.slice(0, 12)}…</span></span>
+              <span>Public ID card live — token <span className="font-mono">{publishedToken.slice(0, 12)}…</span></span>
             </div>
           )}
 
@@ -409,9 +382,7 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
                 initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                 className={cn(
                   'px-3 py-2 rounded-lg text-xs flex items-start gap-2 border',
-                  feedback.kind === 'ok'
-                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                    : 'bg-red-500/10 text-red-300 border-red-500/30',
+                  feedback.kind === 'ok' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-red-500/10 text-red-300 border-red-500/30',
                 )}
               >
                 {feedback.kind === 'ok' ? <Check className="w-3.5 h-3.5 mt-0.5" /> : <AlertTriangle className="w-3.5 h-3.5 mt-0.5" />}

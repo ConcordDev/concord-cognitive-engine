@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -8,103 +7,21 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
-import { LegacyChatter } from '@/components/legacy/LegacyChatter';
 import { CodebaseScanner } from '@/components/legacy/CodebaseScanner';
+import { PortfolioAssessment } from '@/components/legacy/PortfolioAssessment';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useLensCommand } from '@/hooks/useLensCommand';
-import { Clock, Target, TrendingUp, Calendar, Milestone, Rocket, Loader2, Layers, ChevronDown, Archive, Play, FolderSearch } from 'lucide-react';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { ErrorState } from '@/components/common/EmptyState';
-import { UniversalActions } from '@/components/lens/UniversalActions';
+import { FolderSearch } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
-
-interface MilestoneData {
-  year: number;
-  description: string;
-  status: 'completed' | 'current' | 'future';
-  confidence: number;
-}
-
-const MILESTONES_FALLBACK: { title: string; data: Record<string, unknown> }[] = [];
 
 export default function LegacyLensPage() {
   useLensNav('legacy');
-  const [showFeatures, setShowFeatures] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'current' | 'future'>('all');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('legacy');
 
-  const { items: milestoneItems, isLoading, isError, error, refetch } = useLensData<MilestoneData>('legacy', 'milestone', {
-    seed: MILESTONES_FALLBACK,
-  });
-
-  const milestones = milestoneItems.map((item) => ({
-    year: item.data.year,
-    title: item.title,
-    description: item.data.description,
-    status: item.data.status,
-    confidence: item.data.confidence,
-  })).sort((a, b) => a.year - b.year);
-
-  const visibleMilestones = useMemo(() =>
-    statusFilter === 'all' ? milestones : milestones.filter((m) => m.status === statusFilter),
-    [milestones, statusFilter]
-  );
-
-  useLensCommand(
-    [
-      { id: 'filter-all',       keys: '0', description: 'All',       category: 'view', action: () => setStatusFilter('all') },
-      { id: 'filter-completed', keys: '1', description: 'Completed', category: 'view', action: () => setStatusFilter('completed') },
-      { id: 'filter-current',   keys: '2', description: 'Current',   category: 'view', action: () => setStatusFilter('current') },
-      { id: 'filter-future',    keys: '3', description: 'Future',    category: 'view', action: () => setStatusFilter('future') },
-      { id: 'toggle-features',  keys: 'f', description: 'Toggle features panel', category: 'view', action: () => setShowFeatures((v) => !v) },
-    ],
-    { lensId: 'legacy' }
-  );
-
-  const runAction = useRunArtifact('legacy');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = milestoneItems[0]?.id;
-    if (!targetId) { setActionResult({ message: 'Add a legacy milestone first to run analysis.' }); return; }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
-
-  const currentYear = new Date().getFullYear();
-  const bioAge = milestones.length > 0
-    ? Math.max(...milestones.map((m) => m.year)) - currentYear
-    : 340;
-
-  if (isLoading) {
-    return (
-      <div className="p-6 flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-neon-purple" />
-        <span className="ml-3 text-gray-400">Loading legacy timeline...</span>
-      </div>
-    );
-  }
-
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message} onRetry={refetch} />
-      </div>
-    );
-  }
   return (
     <LensShell lensId="legacy" asMain={false}>
       <FirstRunTour lensId="legacy" />
@@ -112,30 +29,27 @@ export default function LegacyLensPage() {
       <DepthBadge lensId="legacy" size="sm" className="ml-2" />
       <LensVerticalHero lensId="legacy" className="mx-6 mt-4" />
     <div data-lens-theme="legacy" className="p-6 space-y-6">
-      <header className="flex items-center gap-3">
+      <header className="flex items-center gap-3 flex-wrap">
         <span className="text-2xl">🏛️</span>
         <div>
           <h1 className="text-xl font-bold">Legacy Lens</h1>
           <p className="text-sm text-gray-400">
-            400-year vision planner based on bioAge projections
+            Legacy code modernization — technical debt, dependency graphs, migration roadmaps and
+            cloud-readiness for real, aging systems (SonarQube / CAST Highlight parity).
           </p>
         </div>
 
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="legacy" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+        {/* Real-time Enhancement Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap ml-auto">
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+          <DTUExportButton domain="legacy" data={realtimeData || {}} compact />
+          {realtimeAlerts.length > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+              {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </header>
-
-
-      {/* AI Actions */}
-      <UniversalActions domain="legacy" artifactId={milestoneItems[0]?.id} compact />
 
       {/* Code Modernization Workbench — real scan-driven analysis */}
       <div className="panel p-4">
@@ -151,257 +65,26 @@ export default function LegacyLensPage() {
         <CodebaseScanner />
       </div>
 
-      {/* Founder-vision stats — derived from milestone artifacts */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="lens-card">
-          <Clock className="w-5 h-5 text-neon-purple mb-2" />
-          <p className="text-2xl font-bold">{bioAge}</p>
-          <p className="text-sm text-gray-400">Projected Years</p>
-        </div>
-        <div className="lens-card">
-          <Target className="w-5 h-5 text-neon-blue mb-2" />
-          <p className="text-2xl font-bold">400</p>
-          <p className="text-sm text-gray-400">Vision Horizon</p>
-        </div>
-        <div className="lens-card">
-          <Milestone className="w-5 h-5 text-neon-green mb-2" />
-          <p className="text-2xl font-bold">{milestones.length}</p>
-          <p className="text-sm text-gray-400">Milestones</p>
-        </div>
-        <div className="lens-card">
-          <TrendingUp className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className="text-2xl font-bold">{milestones.length > 0 ? (milestones.reduce((s, m) => s + m.confidence, 0) / milestones.length * 100).toFixed(0) : 0}%</p>
-          <p className="text-sm text-gray-400">Avg Confidence</p>
-        </div>
-      </div>
-
-      {/* Vision Timeline */}
+      {/* Portfolio Risk Assessment — the technicalDebt/migrationReadiness/riskMap
+          formulas, for systems reviewed without full source access. */}
       <div className="panel p-4">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-neon-purple" />
-            400-Year Timeline
-            {statusFilter !== 'all' && (
-              <span className="text-xs text-gray-400 font-normal">
-                ({visibleMilestones.length} of {milestones.length})
-              </span>
-            )}
-          </h2>
-          <div className="flex items-center gap-1 text-[10px]">
-            {(['all', 'completed', 'current', 'future'] as const).map((s, i) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-2 py-0.5 rounded border transition-colors ${
-                  statusFilter === s
-                    ? s === 'completed' ? 'border-neon-green/40 bg-neon-green/15 text-neon-green'
-                    : s === 'current'   ? 'border-neon-purple/40 bg-neon-purple/15 text-neon-purple'
-                    : s === 'future'    ? 'border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan'
-                    : 'border-white/20 bg-white/10 text-white'
-                    : 'border-white/10 bg-white/5 text-gray-400 hover:text-white'
-                }`}
-              >
-                {s}<kbd className="text-[8px] opacity-60 ml-0.5">{i}</kbd>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="relative">
-          <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-lattice-border" />
-          <div className="space-y-6">
-            {visibleMilestones.length === 0 && milestones.length > 0 && (
-              <p className="text-sm text-gray-400 text-center py-4">
-                No <span className="text-neon-purple">{statusFilter}</span> milestones in this timeline.
-              </p>
-            )}
-            {visibleMilestones.map((milestone, index) => (
-              <motion.div key={milestone.year} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="relative flex gap-4 pl-10">
-                <div
-                  className={`absolute left-2.5 w-3 h-3 rounded-full border-2 ${
-                    milestone.status === 'completed'
-                      ? 'bg-neon-green border-neon-green'
-                      : milestone.status === 'current'
-                      ? 'bg-neon-blue border-neon-blue animate-pulse'
-                      : 'bg-lattice-surface border-lattice-border'
-                  }`}
-                />
-                <div className="flex-1 lens-card">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-neon-cyan">{milestone.year}</span>
-                      <span className="font-semibold">{milestone.title}</span>
-                    </div>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded ${
-                        milestone.status === 'current'
-                          ? 'bg-neon-blue/20 text-neon-blue'
-                          : milestone.status === 'completed'
-                          ? 'bg-neon-green/20 text-neon-green'
-                          : 'bg-gray-500/20 text-gray-400'
-                      }`}
-                    >
-                      {milestone.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-400 mb-2">{milestone.description}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">Confidence:</span>
-                    <div className="flex-1 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-neon-green to-neon-blue"
-                        style={{ width: `${milestone.confidence * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {(milestone.confidence * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+        <PortfolioAssessment />
       </div>
 
-      {/* Founder Intent */}
-      <div className="panel p-4 border-l-4 border-neon-purple">
-        <h3 className="font-semibold text-neon-purple mb-2 flex items-center gap-2">
-          <Rocket className="w-4 h-4" />
-          Founder Intent Structural
-        </h3>
-        <p className="text-sm text-gray-400">
-          This lens embodies the 400-year vision: a self-sustaining cognitive system
-          that preserves founder values through structural constraints, not runtime rules.
-          The bioAge projection ({bioAge} years) indicates organism health and expected
-          continuity based on current organ states and homeostasis levels.
-        </p>
-
-      {/* Real-time Data Panel */}
       {realtimeData && (
-        <RealtimeDataPanel
-          domain="legacy"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
-      </div>
-
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Archive className="w-4 h-4 text-neon-purple" />
-          Legacy Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'technicalDebt', label: 'Technical Debt' },
-            { action: 'migrationReadiness', label: 'Migration Readiness' },
-            { action: 'riskMap', label: 'Risk Map' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleAction(action)} disabled={!!isRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
-              {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {label}
-            </button>
-          ))}
+        <div className="panel p-4">
+          <RealtimeDataPanel
+            domain="legacy"
+            data={realtimeData}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            insights={realtimeInsights}
+            compact
+          />
         </div>
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'modules' in actionResult && Array.isArray(actionResult.modules) && (
-              <div className="space-y-2">
-                {'summary' in actionResult && actionResult.summary !== null && typeof actionResult.summary === 'object' && (
-                  <div className="flex flex-wrap gap-4 text-xs">
-                    {Object.entries(actionResult.summary as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-cyan font-bold">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-                {'topDebtSources' in actionResult && Array.isArray(actionResult.topDebtSources) && actionResult.topDebtSources.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider">Top Debt Sources</p>
-                    {(actionResult.topDebtSources as Array<Record<string, unknown>>).map((m, i) => (
-                      <div key={i} className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1">
-                        <span className="text-gray-300">{String(m.name || m.module)}</span>
-                        <span className="text-red-400">{String(m.debtScore || m.score || 0)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'moduleReadiness' in actionResult && Array.isArray(actionResult.moduleReadiness) && (
-              <div className="space-y-2">
-                {'summary' in actionResult && actionResult.summary !== null && typeof actionResult.summary === 'object' && (
-                  <div className="flex flex-wrap gap-4 text-xs">
-                    {Object.entries(actionResult.summary as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-cyan">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-                {'migrationOrder' in actionResult && Array.isArray(actionResult.migrationOrder) && (
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Migration Order</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(actionResult.migrationOrder as Array<{phase: number; module: string; readiness: number}>).map((m, i) => (
-                        <span key={i} className="text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded px-2 py-0.5 text-neon-cyan">{m.phase}. {m.module}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {'components' in actionResult && Array.isArray(actionResult.components) && (
-              <div className="space-y-2">
-                {'summary' in actionResult && actionResult.summary !== null && typeof actionResult.summary === 'object' && (
-                  <div className="flex flex-wrap gap-4 text-xs">
-                    {Object.entries(actionResult.summary as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-yellow-400">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-                {'keyPersonRisks' in actionResult && Array.isArray(actionResult.keyPersonRisks) && actionResult.keyPersonRisks.length > 0 && (
-                  <div>
-                    <p className="text-xs text-red-400 font-semibold mb-1">Key Person Risks</p>
-                    {(actionResult.keyPersonRisks as Array<{person: string; componentCount: number; components: string[]}>).map((r, i) => (
-                      <div key={i} className="text-xs bg-red-400/10 border border-red-400/20 rounded px-2 py-1 mb-1 text-red-400">
-                        {String(r.person)} — {String(r.componentCount)} components
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
-          </div>
-        )}
-      </div>
+      )}
 
       <ConnectiveTissueBar lensId="legacy" />
-
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="legacy" />
-          </div>
-        )}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <LegacyChatter />
-      </section>
     </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

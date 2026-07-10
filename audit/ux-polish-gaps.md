@@ -1,6 +1,8 @@
 # UX Polish Audit
 
-Generated: 2026-07-02T13:04:32.990Z
+Generated: 2026-07-09T11:45:28.422Z
+
+Mode: **default**
 
 Lenses scanned: 260
 

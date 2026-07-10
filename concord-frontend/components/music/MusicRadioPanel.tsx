@@ -258,14 +258,17 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
               onChange={(e) => updateSetting({ crossfadeSec: Number(e.target.value) })}
               className="w-full accent-emerald-500" />
           </label>
-          <label className="flex items-center justify-between text-[11px] text-zinc-300 mb-2">
-            <span>Audio quality</span>
+          {/* Honest label: `quality` is a stored preference only — there is no
+              real bitrate/format enforcement or lossless/spatial decode behind it. */}
+          <label className="flex items-center justify-between text-[11px] text-zinc-300 mb-1">
+            <span>Preferred quality</span>
             <select value={settings.quality}
               onChange={(e) => updateSetting({ quality: e.target.value })}
               className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200">
               {['low', 'normal', 'high', 'lossless'].map((q) => <option key={q} value={q}>{q}</option>)}
             </select>
           </label>
+          <p className="text-[10px] text-zinc-500 mb-2">Stored preference — applied when your source supports it; Concord itself doesn&rsquo;t decode or stream at a fixed fidelity.</p>
           {([
             ['gapless', 'Gapless playback'],
             ['normalize', 'Normalize volume'],

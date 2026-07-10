@@ -17,6 +17,7 @@ import { useUIStore } from '@/store/ui';
 import { cn } from '@/lib/utils';
 import { useCookieConsentVisible } from '@/lib/first-run';
 import { Z_INDEX } from '@/lib/ui/z-index';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { Wifi, WifiOff, Shield, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface StatusResponse {
@@ -46,6 +47,11 @@ function SystemStatus() {
   const cookieBannerVisible = useCookieConsentVisible();
   const bottomOffsetClass = cookieBannerVisible ? 'bottom-36' : 'bottom-4';
 
+  // Shell-diet: this mounts on every page for every user, so the cadence is
+  // server-tunable without a rebuild via /api/config/client (see
+  // hooks/useClientConfig.ts) instead of a hardcoded constant.
+  const { poll } = useClientConfig();
+
   const {
     data: status,
     isError: isBackendDown,
@@ -56,7 +62,7 @@ function SystemStatus() {
       const res = await api.get('/api/status');
       return res.data;
     },
-    refetchInterval: 30_000,
+    refetchInterval: poll.systemStatusMs,
     retry: 1,
   });
 

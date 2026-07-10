@@ -95,6 +95,12 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
     await refresh();
   };
 
+  const setWipLimit = async (status: string, raw: string) => {
+    const limit = raw.trim() === '' ? 0 : Math.max(0, parseInt(raw, 10) || 0);
+    await lensRun('projects', 'wip-set', { projectId, status, limit });
+    await refresh();
+  };
+
   const labelColor = (name: string) => meta?.labels.find((l) => l.name === name)?.color || 'zinc';
 
   const renderCard = (t: Task) => (
@@ -159,9 +165,20 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
             const over = limit > 0 && tasks.length > limit;
             return (
               <div key={col.id} className={cn('bg-zinc-900/50 border-t-2 rounded-lg p-2', over ? 'border-rose-600' : 'border-indigo-700')}>
-                <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1.5">
-                  {col.label} <span className={over ? 'text-rose-400' : 'text-zinc-600'}>{tasks.length}{limit > 0 ? `/${limit}` : ''}</span>
-                </p>
+                <div className="flex items-center justify-between gap-1 mb-1.5">
+                  <p className="text-[10px] font-semibold text-zinc-400 uppercase">
+                    {col.label} <span className={over ? 'text-rose-400' : 'text-zinc-600'}>{tasks.length}{limit > 0 ? `/${limit}` : ''}</span>
+                  </p>
+                  <input
+                    type="number"
+                    min={0}
+                    defaultValue={limit > 0 ? limit : ''}
+                    placeholder="WIP"
+                    title={`WIP limit for ${col.label} (0 = none)`}
+                    onBlur={(e) => { if (Number(e.target.value || 0) !== (limit || 0)) setWipLimit(col.id, e.target.value); }}
+                    className="w-12 bg-zinc-950 border border-zinc-700 rounded px-1 py-0.5 text-[9px] text-zinc-300"
+                  />
+                </div>
                 <ul className="space-y-1.5">
                   {tasks.map(renderCard)}
                   {tasks.length === 0 && <li className="text-[10px] text-zinc-400 italic px-1">Empty</li>}

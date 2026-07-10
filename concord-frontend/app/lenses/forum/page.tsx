@@ -12,6 +12,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ForumSection } from '@/components/forum/ForumSection';
 import { ForumChatter } from '@/components/forum/ForumChatter';
 import { ForumActionPanel } from '@/components/forum/ForumActionPanel';
+import { PostInsightsPanel } from '@/components/forum/PostInsightsPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -51,7 +52,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { ReportButton } from '@/components/common/ReportButton';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -107,6 +107,11 @@ interface Post {
   saved: boolean;
   comments: Comment[];
   views: number;
+  // Written by the backend forum.moderate lens-action (server.js) — optional
+  // because most posts never go through a moderation action.
+  moderationStatus?: string;
+  moderatedAt?: string;
+  moderatedBy?: string;
 }
 
 interface Community {
@@ -489,6 +494,7 @@ export default function ForumLensPage() {
   }, [showAwardModal, updateForumPost]);
 
   const handleModAction = useCallback((postId: string, action: 'pin' | 'lock' | 'remove') => {
+    const wasPinned = posts.find(p => p.id === postId)?.pinned ?? false;
     setPosts(prev => prev.map(p => {
       if (p.id !== postId) return p;
       if (action === 'pin') return { ...p, pinned: !p.pinned };
@@ -497,15 +503,23 @@ export default function ForumLensPage() {
     }));
     if (action === 'remove') {
       removeForumPost(postId);
+    } else if (action === 'pin') {
+      // Server-authoritative: goes through the real forum.pin lens-action
+      // (not a generic CRUD field write) so the pin timestamp + provenance
+      // are stamped by the backend. Rolls back the optimistic toggle on failure.
+      runForumAction.mutateAsync({ id: postId, action: 'pin', params: { pinned: !wasPinned } }).catch(() => {
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, pinned: wasPinned } : p));
+      });
     } else {
-      // Persist pin/lock state changes to backend
+      // No backend macro tracks post-level lock — persist directly, same as
+      // vote/save (a real, working equivalent path; see forum-capability-map.md).
       const post = posts.find(p => p.id === postId);
       if (post) {
-        const updated = action === 'pin' ? { ...post, pinned: !post.pinned } : { ...post, locked: !post.locked };
+        const updated = { ...post, locked: !post.locked };
         updateForumPost(postId, { data: updated as unknown as Record<string, unknown> });
       }
     }
-  }, [posts, removeForumPost, updateForumPost]);
+  }, [posts, removeForumPost, updateForumPost, runForumAction]);
 
   const handleToggleJoin = useCallback((commId: string) => {
     setCommunities(prev => prev.map(c => c.id === commId ? { ...c, joined: !c.joined, memberCount: c.memberCount + (c.joined ? -1 : 1) } : c));
@@ -678,6 +692,7 @@ export default function ForumLensPage() {
                 <PullToSubstrate domain="forum" artifactId={selectedPost.id} compact />
                 <span className="text-xs flex items-center gap-1 text-gray-400"><Eye className="w-3.5 h-3.5" />{selectedPost.views.toLocaleString()} views</span>
               </div>
+              <PostInsightsPanel postId={selectedPost.id} />
             </div>
           </div>
         </article>
@@ -1033,12 +1048,21 @@ export default function ForumLensPage() {
                   <MessageSquare className="w-5 h-5 text-gray-400" />
                   <div><p className="text-sm text-white font-medium">Crosspost</p><p className="text-xs text-gray-400">Share to another community</p></div>
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Real-time Data Panel */}
-      <UniversalActions domain="forum" artifactId={null} compact />
-
-      {/* Forum Analytics Actions */}
-      <div className="panel p-4 space-y-3 mx-4 mb-4">
+      {/* ========== COMMUNITY ANALYTICS ==========
+          Was previously nested inside the Share Post modal (only reachable by
+          opening Share on some post) — a real layout bug, not intentional
+          gating. These 4 buttons call genuine forum.threadAnalysis /
+          .moderationQueue / .communityHealth / .topicClustering macros,
+          fed real derived state (see deriveForumParams above); they belong
+          at page level like the rest of the lens, not buried in a modal. */}
+      <div className="max-w-6xl mx-auto px-4">
+      <div className="panel p-4 space-y-3 mb-4">
         <h2 className="font-semibold text-sm flex items-center gap-2">
           <Shield className="w-4 h-4 text-orange-400" />
           Community Analytics
@@ -1211,11 +1235,7 @@ export default function ForumLensPage() {
           compact
         />
       )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ForumChatter />
       </section>

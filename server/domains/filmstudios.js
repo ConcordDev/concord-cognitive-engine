@@ -634,6 +634,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
           id: c.id, name: c.name, transition: c.transition,
           durationFrames: c.durationFrames,
           startTimecode: startTc, endTimecode: fmTimecode(frame, fps),
+          mediaId: c.mediaId || null, mcamAngle: c.mcamAngle || null,
         };
       });
       longest = Math.max(longest, frame);

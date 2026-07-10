@@ -1029,20 +1029,25 @@ export const apiHelpers = {
     health: () => api.get('/api/affect/health'),
   },
 
-  // Goals system
+  // Agent self-directed goal governance (server.js "GOAL SYSTEM MACROS" —
+  // distinct from the personal-OKR `goals` domain macros in domains/goals.js;
+  // this is Concord's own propose->evaluate->founder-approve->activate loop
+  // for its autonomous knowledge-work goals). Surfaced by AgentAutonomyPanel.
   goals: {
-    list: () => api.get('/api/goals'),
+    list: (params?: { state?: string; type?: string; limit?: number }) => api.get('/api/goals', { params }),
     get: (goalId: string) => api.get(`/api/goals/${goalId}`),
-    create: (data: { title: string; description?: string; targetDate?: string; priority?: string }) =>
+    create: (data: { title: string; description?: string; type?: string; priority?: number; tags?: string[] }) =>
       api.post('/api/goals', data),
+    evaluate: (goalId: string) => api.post(`/api/goals/${goalId}/evaluate`, {}),
+    approve: (goalId: string) => api.post(`/api/goals/${goalId}/approve`, {}),
     progress: (goalId: string, data: { progress: number; note?: string }) =>
       api.post(`/api/goals/${goalId}/progress`, data),
     complete: (goalId: string) => api.post(`/api/goals/${goalId}/complete`, {}),
     activate: (goalId: string) => api.post(`/api/goals/${goalId}/activate`, {}),
-    abandon: (goalId: string) => api.post(`/api/goals/${goalId}/abandon`, {}),
+    abandon: (goalId: string, reason?: string) => api.post(`/api/goals/${goalId}/abandon`, { reason }),
     status: () => api.get('/api/goals/status'),
     autoPropose: () => api.post('/api/goals/auto-propose', {}),
-    config: () => api.get('/api/goals/config'),
+    config: (data?: Record<string, unknown>) => (data ? api.post('/api/goals/config', data) : api.get('/api/goals/config')),
   },
 
   // Metacognition
@@ -1064,18 +1069,26 @@ export const apiHelpers = {
   },
 
   // Meta-learning
+  // NOTE: `define_strategy` (backend macro behind POST .../strategies) reads
+  // `input.domain` — there is no `type` concept on the backend model. A
+  // strategy's identity is its subject `domain` (used to group/rank via
+  // `best_strategy(domain)`); its tunable knobs are the `parameters` block
+  // the server derives (learningRate/explorationRate/batchSize/etc), not a
+  // client-chosen "type" label.
   metalearning: {
     status: () => api.get('/api/metalearning/status'),
     strategies: () => api.get('/api/metalearning/strategies'),
-    bestStrategy: () => api.get('/api/metalearning/strategies/best'),
-    createStrategy: (data: { name: string; type: string; params?: Record<string, unknown> }) =>
+    bestStrategy: (domain?: string) =>
+      api.get('/api/metalearning/strategies/best', { params: domain ? { domain } : undefined }),
+    createStrategy: (data: { name: string; domain?: string; params?: Record<string, unknown> }) =>
       api.post('/api/metalearning/strategies', data),
     adaptStrategy: (strategyId: string) =>
       api.post(`/api/metalearning/strategies/${strategyId}/adapt`, {}),
-    recordOutcome: (strategyId: string, data: { success: boolean; metrics?: Record<string, unknown> }) =>
+    recordOutcome: (strategyId: string, data: { success: boolean; performance?: number }) =>
       api.post(`/api/metalearning/strategies/${strategyId}/outcome`, data),
     curriculum: (data: { topic: string }) =>
       api.post('/api/metalearning/curriculum', data),
+    adaptations: () => api.get('/api/metalearning/adaptations'),
   },
 
   // Reasoning chains
@@ -1108,18 +1121,25 @@ export const apiHelpers = {
     status: () => api.get('/api/hypothesis/status'),
   },
 
-  // Inference engine
+  // Inference engine. Field names below match the real macro handlers
+  // exactly (server.js `addInferenceFact`/`queryWithInference`/
+  // `syllogisticReason` — search those names) — they read flat
+  // subject/predicate/object (facts+query) or majorPremise/minorPremise
+  // (syllogism) directly off the POST body. Earlier shapes here
+  // ({facts:[...]}, {query:"..."}, {major,minor}) didn't match any of
+  // those, so every call silently no-opped against blank/wildcard
+  // fields — see docs/lens-specs/inference-capability-map.md.
   inference: {
     status: () => api.get('/api/inference/status'),
-    facts: (data: { facts: string[] }) =>
+    facts: (data: { subject: string; predicate: string; object: string; confidence?: number; negated?: boolean; universal?: boolean }) =>
       api.post('/api/inference/facts', data),
-    rules: (data: { rules: unknown[] }) =>
+    rules: (data: { name?: string; type?: string; antecedent: { subject?: string; predicate: string; object?: string }; consequent: { subject?: string; predicate: string; object?: string }; confidence?: number }) =>
       api.post('/api/inference/rules', data),
-    query: (data: { query: string }) =>
+    query: (data: { subject?: string; predicate?: string; object?: string }) =>
       api.post('/api/inference/query', data),
-    syllogism: (data: { major: string; minor: string }) =>
+    syllogism: (data: { majorPremise: string; minorPremise: string }) =>
       api.post('/api/inference/syllogism', data),
-    forwardChain: (data: { facts?: string[] }) =>
+    forwardChain: (data: { maxIterations?: number }) =>
       api.post('/api/inference/forward-chain', data),
   },
 
@@ -1216,16 +1236,26 @@ export const apiHelpers = {
       api.post('/api/temporal/sim', data),
   },
 
-  // Grounding (embodied cognition)
+  // Grounding — embodied reality-anchoring substrate (distinct from the
+  // `lens.runDomain('grounding', ...)` fact-checking macros below; see
+  // docs/lens-specs/grounding-capability-map.md for the two-systems split).
   grounding: {
     sensors: () => api.get('/api/grounding/sensors'),
+    registerSensor: (data: { name: string; type?: string; unit?: string; endpoint?: string; pollInterval?: number }) =>
+      api.post('/api/grounding/sensors', data),
     readings: () => api.get('/api/grounding/readings'),
     addReading: (data: { sensorId: string; value: number; unit: string }) =>
       api.post('/api/grounding/readings', data),
     context: () => api.get('/api/grounding/context'),
     status: () => api.get('/api/grounding/status'),
-    ground: (dtuId: string) =>
-      api.post(`/api/grounding/ground/${dtuId}`, {}),
+    ground: (dtuId: string, data?: { location?: string; context?: string; confidence?: number }) =>
+      api.post(`/api/grounding/ground/${dtuId}`, data || {}),
+    linkCalendar: (dtuId: string, data: { title?: string; startTime?: string; endTime?: string; location?: string }) =>
+      api.post(`/api/grounding/calendar/${dtuId}`, data),
+    proposeAction: (data: { type?: string; description: string; payload?: Record<string, unknown>; goalId?: string }) =>
+      api.post('/api/grounding/actions', data),
+    approveAction: (actionId: string) =>
+      api.post(`/api/grounding/actions/${actionId}/approve`, {}),
     actions: { pending: () => api.get('/api/grounding/actions/pending') },
   },
 

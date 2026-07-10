@@ -1,11 +1,12 @@
 'use client';
 
 // Allowlist / blocklist / defederation controls — federation domain.
-// Macros: federation.setPeerPolicy, listPeerPolicies, removePeerPolicy.
+// Macros: federation.setPeerPolicy, listPeerPolicies, removePeerPolicy,
+// checkPeerAllowed.
 
 import { useState, useCallback, useEffect } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { ShieldCheck, ShieldX, Clock, Trash2, Loader2, Plus, Filter } from 'lucide-react';
+import { ShieldCheck, ShieldX, Clock, Trash2, Loader2, Plus, Filter, Search } from 'lucide-react';
 
 type Policy = 'allow' | 'block' | 'pending';
 
@@ -38,6 +39,9 @@ export function PeerPolicyPanel() {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [checkDomain, setCheckDomain] = useState('');
+  const [checkResult, setCheckResult] = useState<{ domain: string; allowed: boolean; policy: string } | null>(null);
+  const [checking, setChecking] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,6 +75,20 @@ export function PeerPolicyPanel() {
     await load();
   }, [load]);
 
+  const check = useCallback(async () => {
+    if (!checkDomain.trim()) return;
+    setChecking(true);
+    setCheckResult(null);
+    try {
+      const r = await lensRun<{ domain: string; allowed: boolean; policy: string }>('federation', 'checkPeerAllowed', {
+        domain: checkDomain.trim(),
+      });
+      if (r.data.ok && r.data.result) setCheckResult(r.data.result);
+    } finally {
+      setChecking(false);
+    }
+  }, [checkDomain]);
+
   return (
     <section className="rounded-lg border border-white/10 bg-black/60 p-4">
       <h2 className="text-amber-300 font-semibold mb-3 inline-flex items-center gap-1.5">
@@ -80,6 +98,34 @@ export function PeerPolicyPanel() {
         Defederation controls. Blocked domains never exchange DTUs or trust.
         Peers with no explicit policy default to allowed.
       </p>
+
+      {/* Quick check — test a domain against the effective policy (incl. default-allow) */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <input
+          value={checkDomain}
+          onChange={(e) => setCheckDomain(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') check(); }}
+          placeholder="Check a domain's effective policy…"
+          className="flex-1 min-w-[220px] bg-black/40 border border-white/10 rounded px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-amber-400"
+        />
+        <button
+          type="button"
+          onClick={check}
+          disabled={checking || !checkDomain.trim()}
+          className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-40 rounded text-white text-xs inline-flex items-center gap-1"
+        >
+          {checking ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+          Check
+        </button>
+        {checkResult && (
+          <span className={`px-2 py-1 rounded text-[11px] inline-flex items-center gap-1 border ${
+            checkResult.allowed ? 'text-emerald-300 bg-emerald-900/40 border-emerald-500/30' : 'text-rose-300 bg-rose-900/40 border-rose-500/30'
+          }`}>
+            {checkResult.allowed ? <ShieldCheck className="w-3 h-3" /> : <ShieldX className="w-3 h-3" />}
+            {checkResult.domain}: {checkResult.allowed ? 'allowed' : 'blocked'} ({checkResult.policy})
+          </span>
+        )}
+      </div>
 
       {/* Add policy */}
       <div className="flex flex-wrap gap-2 mb-3">

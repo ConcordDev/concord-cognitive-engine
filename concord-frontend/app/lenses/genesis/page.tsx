@@ -11,7 +11,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OriginExplorer } from '@/components/genesis/OriginExplorer';
-import { RosterExplorer } from '@/components/genesis/RosterExplorer';
+import { RosterExplorer, type RosterFilters } from '@/components/genesis/RosterExplorer';
 import { IdentityTimeline } from '@/components/genesis/IdentityTimeline';
 import { LineageView } from '@/components/genesis/LineageView';
 import { RelationshipGraph } from '@/components/genesis/RelationshipGraph';
@@ -187,6 +187,17 @@ export default function GenesisLens() {
   const [isLive, setIsLive] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('timeline');
+
+  // Roster filters, lifted so SavedSearchesPanel can (a) save the roster's
+  // live filter set and (b) re-apply a saved search back onto the roster.
+  const [rosterFilters, setRosterFilters] = useState<RosterFilters>({ query: '', role: '', focus: '', state: 'all' });
+  const [appliedFilters, setAppliedFilters] = useState<RosterFilters | null>(null);
+  const [appliedKey, setAppliedKey] = useState(0);
+  const runSavedSearch = (f: RosterFilters) => {
+    setAppliedFilters(f);
+    setAppliedKey((k) => k + 1);
+    document.getElementById('roster')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const { on, off, isConnected } = useSocket({ autoConnect: true });
 
@@ -389,12 +400,18 @@ export default function GenesisLens() {
           </div>
 
           {/* Roster explorer with search/filter */}
-          <div>
+          <div id="roster" className="scroll-mt-6">
             <div className="flex items-center gap-2 mb-4">
               <MessageSquare className="w-4 h-4 text-neon-purple" />
               <h2 className="text-lg font-semibold">Roster</h2>
             </div>
-            <RosterExplorer selectedId={selectedId} onSelect={setSelectedId} />
+            <RosterExplorer
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onFiltersChange={setRosterFilters}
+              applyFilters={appliedFilters}
+              applyKey={appliedKey}
+            />
           </div>
         </div>
 
@@ -435,7 +452,7 @@ export default function GenesisLens() {
         )}
 
         {/* Relationship graph */}
-        <SavedSearchesPanel className="mt-6" />
+        <SavedSearchesPanel className="mt-6" currentFilters={rosterFilters} onRun={runSavedSearch} />
         <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <RelationshipGraph onSelect={setSelectedId} />
         </section>

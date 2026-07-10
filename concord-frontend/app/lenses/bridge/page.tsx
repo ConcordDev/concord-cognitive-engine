@@ -3,11 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { api } from '@/lib/api/client';
@@ -168,7 +166,6 @@ export default function BridgeLens() {
   return (
     <LensShell lensId="bridge" asMain={false}>
       <FirstRunTour lensId="bridge" />
-      <ManifestActionBar />
       <DepthBadge lensId="bridge" size="sm" className="ml-2" />
     <div data-lens-theme="bridge" className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       {/* Header */}
@@ -582,11 +579,11 @@ export default function BridgeLens() {
       </section>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
-          <RecentMineCard domain="bridge" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="bridge" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="bridge" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      {/* Cross-lens continuity: recent bridge artifacts + recents from adjacent lenses.
+          FederationConsole (above) is the real designed surface for every bridge
+          macro — no generic action-button wall is mounted here on purpose. */}
+      <RecentMineCard domain="bridge" limit={10} hideWhenEmpty className="mt-4" />
+      <CrossLensRecentsPanel lensId="bridge" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

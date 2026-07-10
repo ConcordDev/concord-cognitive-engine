@@ -28,7 +28,6 @@ import {
   Play, Timer, Loader2, XCircle, Zap, BarChart3, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -2072,24 +2071,27 @@ export default function CalendarLensPage() {
                     Book Session
                   </button>
                 </div>
-
-      {/* Real-time Data Panel */}
-      <UniversalActions domain="calendar" artifactId={null} compact />
-      {realtimeData && (
-        <RealtimeDataPanel
-          domain="calendar"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Real-time data panel — moved out of the booking modal (it used to only
+          render while that unrelated modal was open, which meant live insights
+          were invisible the rest of the time). */}
+      {realtimeData && (
+        <div className="mt-6">
+          <RealtimeDataPanel
+            domain="calendar"
+            data={realtimeData}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            insights={realtimeInsights}
+            compact
+          />
+        </div>
+      )}
 
       {/* Bespoke timezone + iCal tools with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

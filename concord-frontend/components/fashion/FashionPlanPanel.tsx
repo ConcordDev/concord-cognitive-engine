@@ -5,12 +5,12 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Luggage, BookImage, TrendingUp, ChevronRight } from 'lucide-react';
+import { Loader2, Plus, Luggage, BookImage, TrendingUp, ChevronRight, Layers } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Item { id: string; name: string }
-interface Outfit { id: string; name: string }
+interface Outfit { id: string; name: string; itemIds: string[] }
 interface PackingList { id: string; name: string; destination: string | null; itemCount: number }
 interface Lookbook { id: string; name: string; outfitCount: number }
 interface Insights {
@@ -31,6 +31,8 @@ export function FashionPlanPanel() {
   const [lbName, setLbName] = useState('');
   const [openPk, setOpenPk] = useState<string | null>(null);
   const [pkItems, setPkItems] = useState<Item[]>([]);
+  const [addOutfitId, setAddOutfitId] = useState('');
+  const [bulkAdding, setBulkAdding] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -68,6 +70,7 @@ export function FashionPlanPanel() {
   const openPacking = async (id: string) => {
     if (openPk === id) { setOpenPk(null); return; }
     setOpenPk(id);
+    setAddOutfitId('');
     const r = await lensRun('fashion', 'packing-detail', { id });
     setPkItems(r.data?.ok === false ? [] : (r.data?.result?.items || []));
   };
@@ -75,6 +78,23 @@ export function FashionPlanPanel() {
     await lensRun('fashion', 'packing-add-item', { packingId, itemId, remove: inList });
     const r = await lensRun('fashion', 'packing-detail', { id: packingId });
     setPkItems(r.data?.result?.items || []);
+    await refresh();
+  };
+  // Stylebook-parity shortcut: add every item from a saved outfit to a
+  // packing list in one action, instead of toggling each item by hand.
+  // Client-side composition over the real per-item macro — no backend
+  // "outfitId" param exists on packing-add-item, so this loops it.
+  const addOutfitToPacking = async (packingId: string) => {
+    const outfit = outfits.find((o) => o.id === addOutfitId);
+    if (!outfit) return;
+    setBulkAdding(true);
+    for (const itemId of outfit.itemIds) {
+      await lensRun('fashion', 'packing-add-item', { packingId, itemId });
+    }
+    const r = await lensRun('fashion', 'packing-detail', { id: packingId });
+    setPkItems(r.data?.result?.items || []);
+    setBulkAdding(false);
+    setAddOutfitId('');
     await refresh();
   };
   const addLookbookOutfit = async (lookbookId: string, outfitId: string) => {
@@ -141,18 +161,34 @@ export function FashionPlanPanel() {
                   <span className="text-[11px] text-zinc-400">{p.itemCount} items</span>
                 </button>
                 {openPk === p.id && (
-                  <div className="border-t border-zinc-800 p-3 bg-zinc-950/50 flex flex-wrap gap-1">
-                    {items.length === 0 ? <p className="text-[11px] text-zinc-400 italic">Add closet items first.</p> :
-                      items.map((i) => {
-                        const inList = pkItems.some((x) => x.id === i.id);
-                        return (
-                          <button key={i.id} type="button" onClick={() => togglePackItem(p.id, i.id, inList)}
-                            className={cn('text-[11px] px-2 py-0.5 rounded-full border',
-                              inList ? 'border-fuchsia-700/50 bg-fuchsia-950/40 text-fuchsia-300' : 'border-zinc-700 text-zinc-400')}>
-                            {i.name}
-                          </button>
-                        );
-                      })}
+                  <div className="border-t border-zinc-800 p-3 bg-zinc-950/50 space-y-2">
+                    {outfits.length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-fuchsia-400 shrink-0" />
+                        <select value={addOutfitId} onChange={(e) => setAddOutfitId(e.target.value)}
+                          className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
+                          <option value="">— add a whole outfit's items —</option>
+                          {outfits.map((o) => <option key={o.id} value={o.id}>{o.name} ({o.itemIds.length} items)</option>)}
+                        </select>
+                        <button type="button" onClick={() => addOutfitToPacking(p.id)} disabled={!addOutfitId || bulkAdding}
+                          className="flex items-center gap-1 px-2 py-1 text-[11px] bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 text-white rounded-lg">
+                          {bulkAdding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Add
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {items.length === 0 ? <p className="text-[11px] text-zinc-400 italic">Add closet items first.</p> :
+                        items.map((i) => {
+                          const inList = pkItems.some((x) => x.id === i.id);
+                          return (
+                            <button key={i.id} type="button" onClick={() => togglePackItem(p.id, i.id, inList)}
+                              className={cn('text-[11px] px-2 py-0.5 rounded-full border',
+                                inList ? 'border-fuchsia-700/50 bg-fuchsia-950/40 text-fuchsia-300' : 'border-zinc-700 text-zinc-400')}>
+                              {i.name}
+                            </button>
+                          );
+                        })}
+                    </div>
                   </div>
                 )}
               </li>

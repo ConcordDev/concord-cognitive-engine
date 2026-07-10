@@ -82,7 +82,7 @@ export function DiseaseStatusHUD() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Sick: ${diseases.length} active infection${diseases.length === 1 ? '' : 's'}`}
-        className={`fixed top-2 right-32 z-30 flex items-center gap-1 rounded-full border border-slate-700 bg-slate-950/80 px-2 py-1 text-[11px] font-medium backdrop-blur ${severityColor}`}
+        className={`fixed top-2 right-32 z-30 flex items-center gap-1 rounded-full border border-white/10 bg-black/80 px-2 py-1 text-[11px] font-medium backdrop-blur-sm ${severityColor}`}
       >
         <Skull className="h-3 w-3" />
         <span>{diseases.length}</span>

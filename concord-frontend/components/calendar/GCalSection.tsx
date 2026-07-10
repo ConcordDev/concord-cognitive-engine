@@ -140,6 +140,16 @@ export function GCalSection() {
     catch (err) { console.error('[GCal] addCal', err); }
   }
 
+  async function deleteCalendar(cal: CalendarMeta) {
+    if (cal.isDefault) return; // server refuses anyway; the UI never offers it (see hasDelete below)
+    if (!confirm(`Delete "${cal.name}"? Its events are removed too.`)) return;
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'calendars-delete', input: { id: cal.id } });
+      if (!r.data?.ok) { console.error('[GCal] deleteCal', r.data?.error); return; }
+      await refresh();
+    } catch (err) { console.error('[GCal] deleteCal', err); }
+  }
+
   async function addTask() {
     const title = prompt('New task?');
     if (!title?.trim()) return;
@@ -290,11 +300,18 @@ export function GCalSection() {
           </div>
           <ul className="space-y-0.5">
             {calendars.map(c => (
-              <li key={c.id}>
-                <button onClick={() => toggleCalendar(c)} className="w-full flex items-center gap-2 px-1 py-1 text-xs hover:bg-white/[0.04] rounded">
+              <li key={c.id} className="group flex items-center">
+                <button onClick={() => toggleCalendar(c)} className="flex-1 min-w-0 flex items-center gap-2 px-1 py-1 text-xs hover:bg-white/[0.04] rounded">
                   <span className={cn('w-3 h-3 rounded-sm border', c.visible ? '' : 'opacity-30')} style={{ background: c.visible ? c.color : 'transparent', borderColor: c.color }} />
                   <span className={cn('truncate flex-1 text-left', c.visible ? 'text-gray-200' : 'text-gray-400')}>{c.name}</span>
                 </button>
+                {!c.isDefault && (
+                  <button
+                    onClick={() => deleteCalendar(c)}
+                    aria-label={`Delete calendar ${c.name}`}
+                    className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-rose-400 px-1"
+                  ><Trash2 className="w-3 h-3" /></button>
+                )}
               </li>
             ))}
           </ul>

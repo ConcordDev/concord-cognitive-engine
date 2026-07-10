@@ -2,13 +2,22 @@
 
 /**
  * ConnectionStatus — Shows banner when backend is offline or serving stale data.
- * Checks /api/brain/health every 15s and shows a top banner if offline.
+ * Checks /api/brain/health every `poll.connectionStatusMs` (default 20s,
+ * server-tunable via /api/config/client — see hooks/useClientConfig.ts) and
+ * shows a top banner if offline.
  */
 
 import { useState, useEffect } from 'react';
 import { Z_INDEX } from '@/lib/ui/z-index';
+import { useClientConfig } from '@/hooks/useClientConfig';
 
 export function ConnectionStatus() {
+  // Shell-diet: this mounts on every page for every user, so the cadence is
+  // server-tunable without a rebuild via /api/config/client (see
+  // hooks/useClientConfig.ts) instead of a hardcoded constant. Default
+  // widened from the prior hardcoded 15000 to 20000 — still well inside a
+  // "feels live" outage-detection window; see the default's own comment.
+  const { poll } = useClientConfig();
   const [online, setOnline] = useState(true);
   const [stale, setStale] = useState(false);
   // OfflineFallback (components/pwa/OfflineFallback.tsx) renders its own
@@ -48,9 +57,9 @@ export function ConnectionStatus() {
     };
 
     check();
-    const interval = setInterval(check, 15000);
+    const interval = setInterval(check, poll.connectionStatusMs);
     return () => clearInterval(interval);
-  }, []);
+  }, [poll.connectionStatusMs]);
 
   if (online && !stale) return null;
 

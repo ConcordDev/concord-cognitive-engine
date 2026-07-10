@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Folder, Plus, Loader2 } from 'lucide-react';
+import { Folder, Plus, Loader2, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Project { id: string; number: string; name: string; description: string; language: string; createdAt: string }
 
-export function ProjectSwitcher({ value, onChange, onCreated }: { value: string | null; onChange: (id: string) => void; onCreated?: (p: Project) => void }) {
+export function ProjectSwitcher({ value, onChange, onCreated, onDeleted }: { value: string | null; onChange: (id: string) => void; onCreated?: (p: Project) => void; onDeleted?: () => void }) {
   const [list, setList] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [draft, setDraft] = useState({ name: '', description: '', scaffold: 'node-ts' as 'node-ts' | '' });
 
   useEffect(() => { refresh(); }, []);
@@ -21,6 +22,20 @@ export function ProjectSwitcher({ value, onChange, onCreated }: { value: string 
       setList((r.data?.result?.projects || []) as Project[]);
     } catch (e) { console.error('[Projects] list', e); }
     finally { setLoading(false); }
+  }
+
+  async function remove() {
+    if (!value) return;
+    const proj = list.find(p => p.id === value);
+    if (!confirm(`Delete project "${proj?.name || value}"? This removes all its files and git history — it cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      const r = await lensRun({ domain: 'code', action: 'projects-delete', input: { id: value } });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      await refresh();
+      onDeleted?.();
+    } catch (e) { console.error('[Projects] delete', e); }
+    finally { setDeleting(false); }
   }
 
   async function create() {
@@ -61,10 +76,21 @@ export function ProjectSwitcher({ value, onChange, onCreated }: { value: string 
       ) : list.length === 0 ? (
         <div className="text-xs text-gray-400 italic">No projects.</div>
       ) : (
-        <select value={value || ''} onChange={e => onChange(e.target.value)} className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
-          <option value="">— Select project —</option>
-          {list.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+        <div className="flex items-center gap-1">
+          <select value={value || ''} onChange={e => onChange(e.target.value)} className="flex-1 min-w-0 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+            <option value="">— Select project —</option>
+            {list.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <button
+            onClick={remove}
+            disabled={!value || deleting}
+            title="Delete this project"
+            aria-label="Delete this project"
+            className="p-1 text-gray-400 hover:text-rose-300 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+          </button>
+        </div>
       )}
     </div>
   );

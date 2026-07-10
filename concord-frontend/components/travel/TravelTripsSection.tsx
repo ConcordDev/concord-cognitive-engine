@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plane, Map, Compass, TrendingDown, FileText, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { TravelTripsPanel } from './TravelTripsPanel';
+import { TripWorkspaceSection } from './TripWorkspaceSection';
 import { TravelExplorePanel } from './TravelExplorePanel';
 import { TravelWatchesPanel } from './TravelWatchesPanel';
 import { TravelDocsPanel } from './TravelDocsPanel';
@@ -81,7 +81,7 @@ export function TravelTripsSection() {
       </nav>
 
       <div className="p-4">
-        {tab === 'trips' && <TravelTripsPanel onChange={refreshDash} />}
+        {tab === 'trips' && <TripWorkspaceSection onChange={refreshDash} />}
         {tab === 'explore' && <TravelExplorePanel />}
         {tab === 'watches' && <TravelWatchesPanel onChange={refreshDash} />}
         {tab === 'docs' && <TravelDocsPanel />}

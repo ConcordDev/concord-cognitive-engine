@@ -2,25 +2,29 @@
 
 /**
  * MaterialsToolkit — professional materials-selection workflow surface.
- * Wires six materials-domain macros that the Granta MI feature-parity
+ * Wires nine materials-domain macros that the Granta MI feature-parity
  * backlog called for: ashby-plot, multi-criteria-rank, datasheet,
- * import-test-csv, standards-crossref, sustainability.
+ * import-test-csv, standards-crossref, sustainability, compareProperties,
+ * selectMaterial, compositeAnalysis.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import {
   Loader2, ScatterChart, ListChecks, FileText, Upload,
-  BookMarked, Leaf, Trophy, Download,
+  BookMarked, Leaf, Trophy, Download, GitCompare, Target, Beaker, Plus, Trash2,
 } from 'lucide-react';
 import { ChartKit } from '@/components/viz';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-type ToolTab = 'ashby' | 'rank' | 'datasheet' | 'import' | 'standards' | 'carbon';
+type ToolTab = 'ashby' | 'rank' | 'compare' | 'select' | 'composite' | 'datasheet' | 'import' | 'standards' | 'carbon';
 
 const TABS: { id: ToolTab; label: string; icon: typeof ScatterChart }[] = [
   { id: 'ashby', label: 'Ashby Chart', icon: ScatterChart },
   { id: 'rank', label: 'Multi-Criteria', icon: ListChecks },
+  { id: 'compare', label: 'Compare', icon: GitCompare },
+  { id: 'select', label: 'Select by Spec', icon: Target },
+  { id: 'composite', label: 'Composite', icon: Beaker },
   { id: 'datasheet', label: 'Datasheet', icon: FileText },
   { id: 'import', label: 'Test Import', icon: Upload },
   { id: 'standards', label: 'Standards', icon: BookMarked },
@@ -36,6 +40,10 @@ const AXIS_OPTIONS = [
 ];
 
 interface ShortlistMaterial { id: string; name: string }
+interface ShortlistFullMaterial {
+  id: string; name: string; category: string;
+  properties: { density: number | null; tensileStrengthMPa: number | null; meltingPointC: number | null; youngsModulusGPa: number | null; costPerKg: number | null };
+}
 
 // ── Ashby chart ──────────────────────────────────────────────────────
 interface AshbyPoint { id: string; name: string; category: string; x: number; y: number; materialIndex: number }
@@ -225,6 +233,307 @@ function RankTab() {
                 </div>
               </li>
             ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Compare properties (materials.compareProperties) ──────────────────
+interface CompareValueRow { material: string; value: number; rank: number; percentOfMax: number }
+interface ComparePropRow { unit: string; values: CompareValueRow[]; highest: string; lowest: string; range: number }
+interface CompareResult {
+  materialsCompared: number; propertiesAnalyzed: number;
+  comparison: Record<string, ComparePropRow>;
+  overallRanking: { name: string; overallScore: number }[];
+  bestOverall: string; message?: string;
+}
+
+function CompareTab() {
+  const [shortlist, setShortlist] = useState<ShortlistFullMaterial[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [result, setResult] = useState<CompareResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadShortlist = useCallback(async () => {
+    const r = await lensRun<{ materials: ShortlistFullMaterial[] }>('materials', 'shortlist-list', {});
+    if (r.data.ok && r.data.result) setShortlist(r.data.result.materials || []);
+  }, []);
+  useEffect(() => { void loadShortlist(); }, [loadShortlist]);
+
+  function toggle(id: string) {
+    setSelected((s) => { const next = new Set(s); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  }
+
+  const compare = useCallback(async () => {
+    const materials = shortlist
+      .filter((m) => selected.has(m.id))
+      .map((m) => ({
+        name: m.name,
+        density: m.properties.density ?? undefined,
+        tensileStrength: m.properties.tensileStrengthMPa ?? undefined,
+        meltingPoint: m.properties.meltingPointC ?? undefined,
+        youngsModulus: m.properties.youngsModulusGPa ?? undefined,
+      }));
+    if (materials.length < 2) { setError('Select at least 2 materials.'); return; }
+    setLoading(true); setError(null);
+    const r = await lensRun<CompareResult>('materials', 'compareProperties', { materials });
+    setLoading(false);
+    if (r.data.ok && r.data.result) setResult(r.data.result);
+    else { setResult(null); setError(r.data.error || 'compare failed'); }
+  }, [shortlist, selected]);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-zinc-400">
+        Side-by-side property comparison across your shortlist — per-property ranking plus an overall weighted suitability score.
+      </p>
+      {shortlist.length === 0 ? (
+        <p className="text-xs italic text-zinc-400">No shortlisted materials — add candidates in the shortlist panel below.</p>
+      ) : (
+        <ul className="space-y-1">
+          {shortlist.map((m) => (
+            <li key={m.id}>
+              <label className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/50 px-2 py-1 text-xs text-zinc-200">
+                <input type="checkbox" checked={selected.has(m.id)} onChange={() => toggle(m.id)} />
+                {m.name} <span className="text-[10px] text-zinc-400">{m.category}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button onClick={() => void compare()} disabled={loading || selected.size < 2}
+        className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <GitCompare className="h-3.5 w-3.5" />}
+        Compare properties
+      </button>
+      {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {result && result.message && <p className="text-xs italic text-zinc-400">{result.message}</p>}
+      {result && !result.message && (
+        <div className="space-y-2">
+          <p className="text-xs text-emerald-300"><Trophy className="mr-1 inline h-3 w-3" />Best overall: <strong>{result.bestOverall}</strong></p>
+          {Object.entries(result.comparison).map(([key, row]) => (
+            <div key={key} className="rounded border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5">
+              <div className="flex items-center gap-2 text-[11px] text-zinc-400">
+                <span className="font-semibold text-zinc-200">{key}</span>
+                <span>({row.unit})</span>
+                <span className="ml-auto text-emerald-300">highest: {row.highest}</span>
+              </div>
+              <ul className="mt-1 space-y-0.5">
+                {row.values.map((v) => (
+                  <li key={v.material} className="flex items-center gap-2 text-[11px] text-zinc-300">
+                    <span className="w-28 truncate">{v.material}</span>
+                    <span className="w-16 text-cyan-300">{v.value}</span>
+                    <div className="h-1 flex-1 overflow-hidden rounded bg-zinc-800">
+                      <div className="h-full bg-cyan-500" style={{ width: `${v.percentOfMax}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <ul className="space-y-1">
+            {result.overallRanking.map((r, i) => (
+              <li key={r.name} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/50 px-2 py-1 text-[11px]">
+                <span className="w-5 text-zinc-400">#{i + 1}</span>
+                <span className="font-semibold text-zinc-100">{r.name}</span>
+                <span className="ml-auto text-cyan-300">{r.overallScore}%</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Select by spec (materials.selectMaterial) ──────────────────────────
+interface SelectRanking { name: string; category: string; grade?: string; passes: number; fails: number; passDetails: string[]; failDetails: string[]; meetsAll: boolean; score: number }
+interface SelectResult { requirements: Record<string, unknown>; totalCandidates: number; qualifying: number; recommended: string; rankings: SelectRanking[]; application: string; message?: string }
+
+function SelectTab() {
+  const [minTensile, setMinTensile] = useState('');
+  const [maxDensity, setMaxDensity] = useState('');
+  const [minMelting, setMinMelting] = useState('');
+  const [maxCost, setMaxCost] = useState('');
+  const [application, setApplication] = useState('');
+  const [result, setResult] = useState<SelectResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const select = useCallback(async () => {
+    setLoading(true); setError(null);
+    const listRes = await lensRun<{ materials: ShortlistFullMaterial[] }>('materials', 'shortlist-list', {});
+    const shortlist = listRes.data.ok ? (listRes.data.result?.materials || []) : [];
+    if (shortlist.length === 0) { setLoading(false); setError('Shortlist candidate materials first.'); return; }
+    const candidates = shortlist.map((m) => ({
+      name: m.name,
+      tensileStrength: m.properties.tensileStrengthMPa ?? undefined,
+      density: m.properties.density ?? undefined,
+      meltingPoint: m.properties.meltingPointC ?? undefined,
+      cost: m.properties.costPerKg ?? undefined,
+    }));
+    const requirements: Record<string, number | string> = {};
+    if (minTensile) requirements.minTensile = Number(minTensile);
+    if (maxDensity) requirements.maxDensity = Number(maxDensity);
+    if (minMelting) requirements.minMelting = Number(minMelting);
+    if (maxCost) requirements.maxCost = Number(maxCost);
+    if (application.trim()) requirements.application = application.trim();
+    const r = await lensRun<SelectResult>('materials', 'selectMaterial', { requirements, candidates });
+    setLoading(false);
+    if (r.data.ok && r.data.result) setResult(r.data.result);
+    else { setResult(null); setError(r.data.error || 'selection failed'); }
+  }, [minTensile, maxDensity, minMelting, maxCost, application]);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-zinc-400">
+        Select-by-spec against your shortlist — enter design requirements and get a ranked recommendation (Granta MI &quot;select&quot; workflow).
+      </p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <label className="text-[11px] text-zinc-400">Min tensile (MPa)
+          <input type="number" value={minTensile} onChange={(e) => setMinTensile(e.target.value)}
+            className="mt-0.5 block w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200" /></label>
+        <label className="text-[11px] text-zinc-400">Max density (g/cm³)
+          <input type="number" value={maxDensity} onChange={(e) => setMaxDensity(e.target.value)}
+            className="mt-0.5 block w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200" /></label>
+        <label className="text-[11px] text-zinc-400">Min melting (°C)
+          <input type="number" value={minMelting} onChange={(e) => setMinMelting(e.target.value)}
+            className="mt-0.5 block w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200" /></label>
+        <label className="text-[11px] text-zinc-400">Max cost ($/kg)
+          <input type="number" value={maxCost} onChange={(e) => setMaxCost(e.target.value)}
+            className="mt-0.5 block w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200" /></label>
+      </div>
+      <label className="block text-[11px] text-zinc-400">Application (optional)
+        <input value={application} onChange={(e) => setApplication(e.target.value)} placeholder="e.g. aerospace bracket"
+          className="mt-0.5 block w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-200" /></label>
+      <button onClick={() => void select()} disabled={loading}
+        className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Target className="h-3.5 w-3.5" />}
+        Find best match
+      </button>
+      {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {result && result.message && <p className="text-xs italic text-zinc-400">{result.message}</p>}
+      {result && !result.message && (
+        <div className="space-y-2">
+          <p className="text-xs text-emerald-300">
+            <Trophy className="mr-1 inline h-3 w-3" />Recommended: <strong>{result.recommended}</strong>
+            <span className="ml-2 text-zinc-400">({result.qualifying}/{result.totalCandidates} meet all requirements)</span>
+          </p>
+          <ul className="space-y-1">
+            {result.rankings.map((row) => (
+              <li key={row.name} className="rounded border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className={cn('font-semibold', row.meetsAll ? 'text-emerald-300' : 'text-zinc-100')}>{row.name}</span>
+                  <span className="text-[10px] text-zinc-400">{row.category}</span>
+                  <span className="ml-auto text-cyan-300">{row.score}%</span>
+                </div>
+                {row.failDetails.length > 0 && (
+                  <p className="mt-1 text-[10px] text-amber-400">{row.failDetails.join(' · ')}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Composite (rule of mixtures — materials.compositeAnalysis) ─────────
+interface CompositeComponent { name: string; volumeFraction: string; density: string; tensileStrength: string; youngsModulus: string }
+interface CompositeResult {
+  components: { name: string; volumeFraction: number }[];
+  compositeProperties: { density: number; tensileStrength: { voigt: number; reuss: number }; youngsModulus: { voigt: number; reuss: number } };
+  specificProperties: { specificStrength: number; specificStiffness: number };
+  notes: string[];
+  message?: string;
+}
+
+function CompositeTab() {
+  const [rows, setRows] = useState<CompositeComponent[]>([
+    { name: 'Carbon fiber', volumeFraction: '60', density: '1.8', tensileStrength: '3500', youngsModulus: '230' },
+    { name: 'Epoxy resin', volumeFraction: '40', density: '1.2', tensileStrength: '80', youngsModulus: '3' },
+  ]);
+  const [result, setResult] = useState<CompositeResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function update(i: number, patch: Partial<CompositeComponent>) {
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function addRow() { setRows((rs) => [...rs, { name: '', volumeFraction: '', density: '', tensileStrength: '', youngsModulus: '' }]); }
+  function removeRow(i: number) { setRows((rs) => rs.filter((_, idx) => idx !== i)); }
+
+  const analyze = useCallback(async () => {
+    const components = rows
+      .filter((r) => r.name.trim())
+      .map((r) => ({
+        name: r.name.trim(),
+        volumeFraction: Number(r.volumeFraction) || 0,
+        density: Number(r.density) || 0,
+        tensileStrength: Number(r.tensileStrength) || 0,
+        youngsModulus: Number(r.youngsModulus) || 0,
+      }));
+    if (components.length < 2) { setError('Add at least 2 components.'); return; }
+    setLoading(true); setError(null);
+    const r = await lensRun<CompositeResult>('materials', 'compositeAnalysis', { components });
+    setLoading(false);
+    if (r.data.ok && r.data.result) setResult(r.data.result);
+    else { setResult(null); setError(r.data.error || 'analysis failed'); }
+  }, [rows]);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-zinc-400">
+        Rule-of-mixtures composite property prediction — Voigt (upper bound) and Reuss (lower bound) estimates from component volume fractions.
+      </p>
+      <div className="space-y-1.5">
+        {rows.map((r, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-1.5 rounded border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
+            <input value={r.name} onChange={(e) => update(i, { name: e.target.value })} placeholder="Component"
+              className="w-32 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200" />
+            <input value={r.volumeFraction} onChange={(e) => update(i, { volumeFraction: e.target.value })} placeholder="vol %" type="number"
+              className="w-16 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200" />
+            <input value={r.density} onChange={(e) => update(i, { density: e.target.value })} placeholder="density" type="number"
+              className="w-20 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200" />
+            <input value={r.tensileStrength} onChange={(e) => update(i, { tensileStrength: e.target.value })} placeholder="tensile MPa" type="number"
+              className="w-24 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200" />
+            <input value={r.youngsModulus} onChange={(e) => update(i, { youngsModulus: e.target.value })} placeholder="modulus GPa" type="number"
+              className="w-24 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200" />
+            {rows.length > 1 && (
+              <button onClick={() => removeRow(i)} className="ml-auto text-zinc-400 hover:text-rose-400" aria-label="Remove component"><Trash2 className="h-3.5 w-3.5" /></button>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <button onClick={addRow} className="rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800 inline-flex items-center gap-1">
+          <Plus className="h-3 w-3" />component
+        </button>
+        <button onClick={() => void analyze()} disabled={loading}
+          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Beaker className="h-3.5 w-3.5" />}
+          Analyze composite
+        </button>
+      </div>
+      {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {result && result.message && <p className="text-xs italic text-zinc-400">{result.message}</p>}
+      {result && !result.message && (
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 space-y-2 text-xs">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2"><p className="text-[10px] text-zinc-400">Density</p><p className="font-bold text-zinc-100">{result.compositeProperties.density} g/cm³</p></div>
+            <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2"><p className="text-[10px] text-zinc-400">Tensile (Voigt / Reuss)</p><p className="font-bold text-zinc-100">{result.compositeProperties.tensileStrength.voigt} / {result.compositeProperties.tensileStrength.reuss} MPa</p></div>
+            <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2"><p className="text-[10px] text-zinc-400">Modulus (Voigt / Reuss)</p><p className="font-bold text-zinc-100">{result.compositeProperties.youngsModulus.voigt} / {result.compositeProperties.youngsModulus.reuss} GPa</p></div>
+          </div>
+          <div className="flex gap-4 text-[11px] text-cyan-300">
+            <span>Specific strength: {result.specificProperties.specificStrength}</span>
+            <span>Specific stiffness: {result.specificProperties.specificStiffness}</span>
+          </div>
+          <ul className="list-disc space-y-0.5 pl-4 text-zinc-400">
+            {result.notes.map((n, i) => <li key={i}>{n}</li>)}
           </ul>
         </div>
       )}
@@ -644,6 +953,9 @@ export function MaterialsToolkit() {
       </nav>
       {tab === 'ashby' && <AshbyTab />}
       {tab === 'rank' && <RankTab />}
+      {tab === 'compare' && <CompareTab />}
+      {tab === 'select' && <SelectTab />}
+      {tab === 'composite' && <CompositeTab />}
       {tab === 'datasheet' && <DatasheetTab />}
       {tab === 'import' && <ImportTab />}
       {tab === 'standards' && <StandardsTab />}

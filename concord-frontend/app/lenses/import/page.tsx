@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -14,9 +14,8 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { Upload, FileJson, Database, Check, AlertTriangle, Loader2, FileText, Archive, RefreshCw, Layers, ChevronDown, Clock, CheckCircle2, Download, BarChart3, Map, Search, GitMerge } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -26,15 +25,21 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { UniversalImport } from '@/components/import/UniversalImport';
 import { ImportParityWorkbench } from '@/components/import/ImportParityWorkbench';
+import { RestoreDtuExport } from '@/components/import/RestoreDtuExport';
 
+// Mirrors server/domains/importdomain.js `validateImport`'s actual return
+// shape exactly (status is "pass"|"warning"|"fail"; errors are grouped per
+// row, each with its own field-level error list — not a flat {row,field,
+// message} triple).
 interface ValidateImportResult {
   totalRows: number;
   validRows: number;
   invalidRows: number;
   validationRate: number;
-  status: string;
-  fieldSummary: { field: string; valid: number; invalid: number; type: string }[];
-  errors: { row: number; field: string; message: string }[];
+  status: 'pass' | 'warning' | 'fail';
+  fieldSummary: { field: string; errorCount: number; errorRate: number }[];
+  errors: { rowIndex: number; errors: { field: string; error: string; value: unknown }[] }[];
+  errorsTruncated: boolean;
   totalErrorCount: number;
 }
 
@@ -43,28 +48,34 @@ interface MapFieldsResult {
   mappings: { source: string; target: string; confidence: number; confidenceLabel: string }[];
   unmappedSources: string[];
   unmappedTargets: string[];
-  coverage: number;
+  // Already percentages (0-100), not 0-1 fractions — matches
+  // server/domains/importdomain.js's `mapFields` return shape exactly.
+  coverage: { sourcesCovered: number; targetsCovered: number };
   averageConfidence: number;
 }
 
+// Mirrors server/domains/importdomain.js `detectDuplicates` exactly.
+// `deduplicationSavings` is already a percentage (0-100).
 interface DetectDuplicatesResult {
   totalRows: number;
   duplicateGroupCount: number;
   duplicateRowCount: number;
   deduplicationSavings: number;
   keyFields: string[];
-  duplicateGroups: { key: string; count: number; rows: number[] }[];
-  fieldRepetition: { field: string; repetitionRate: number }[];
+  duplicateGroups: { keyValues: Record<string, unknown>; count: number; rowIndices: number[]; firstOccurrence: number; duplicateIndices: number[] }[];
+  fieldRepetition: { field: string; uniqueValues: number; uniquenessRatio: number; mostRepeatedCount: number }[];
 }
 
+// Mirrors server/domains/importdomain.js `transformPreview` exactly.
+// `changeRate` is already a percentage (0-100).
 interface TransformPreviewResult {
   totalRows: number;
   previewCount: number;
   preview: Record<string, unknown>[];
   transformsApplied: number;
   totalValueChanges: number;
-  changeLog: { row: number; field: string; before: unknown; after: unknown }[];
-  fieldImpact: { field: string; changes: number; changeRate: number }[];
+  changeLog: { rowIndex: number; field: string; operation: string; before: unknown; after: unknown }[];
+  fieldImpact: { field: string; changedRows: number; changeRate: number }[];
 }
 
 interface ImportJob {
@@ -90,6 +101,59 @@ interface ValidationResult {
   errors: string[];
   schema_version: string;
   compatible: boolean;
+}
+
+// Mirrors server/domains/importdomain.js `inferSchema`'s actual field
+// shape — the column name key is `source` (not `name`), and `required`
+// is already computed server-side (not just the inverse of `nullable`).
+interface InferredField { source: string; inferredType: string; confidence: number; nullable: boolean; required: boolean; }
+interface InferSchemaResult { fields: InferredField[]; rowCount: number; }
+
+/**
+ * Minimal CSV parser (header row + comma-separated values, double-quote
+ * escaping for embedded commas/quotes). Not a full RFC-4180 implementation
+ * — good enough for the common case, and honestly limited rather than
+ * silently mis-parsing exotic CSVs.
+ */
+function parseCsv(text: string): Record<string, string>[] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (c === '"') { inQuotes = false; }
+      else field += c;
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ',') {
+      row.push(field); field = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      if (row.length > 1 || row[0] !== '') rows.push(row);
+      row = [];
+    } else {
+      field += c;
+    }
+  }
+  if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+  if (rows.length === 0) return [];
+  const header = rows[0];
+  return rows.slice(1).map((r) => Object.fromEntries(header.map((h, i) => [h.trim(), (r[i] ?? '').trim()])));
+}
+
+function parseImportFile(filename: string, text: string): Record<string, unknown>[] {
+  if (filename.toLowerCase().endsWith('.json')) {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) return parsed;
+    if (Array.isArray(parsed?.rows)) return parsed.rows;
+    if (Array.isArray(parsed?.dtus)) return parsed.dtus;
+    throw new Error('JSON must be an array of records, or { rows: [...] }.');
+  }
+  return parseCsv(text);
 }
 
 export default function ImportLens() {
@@ -118,23 +182,49 @@ export default function ImportLens() {
     completed_at: item.data.completed_at,
   } as ImportJob));
 
-  const runAction = useRunArtifact('import');
   const [importActionResult, setImportActionResult] = useState<{ action: string; data: unknown } | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
 
-  const handleImportAction = useCallback((action: string) => {
-    const artifactId = importJobItems[0]?.id;
-    if (!artifactId) return;
-    runAction.mutate(
-      { id: artifactId, action, params: {} },
-      {
-        onSuccess: (res) => setImportActionResult({ action, data: res.result }),
-        onError: (e) => {
-          console.error(`Action failed:`, e);
-          setImportActionResult({ action, data: { error: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` } });
-        },
+  // Real rows parsed from the uploaded CSV/JSON — the analysis macros
+  // (validateImport/mapFields/detectDuplicates/transformPreview) operate
+  // on THESE, never on an empty import-job artifact (see capability map:
+  // the previous wiring called them against a job-history record with no
+  // `rows`/`schema` field, so every click returned the handler's own
+  // "no rows provided" instructional fallback).
+  const [analysisRows, setAnalysisRows] = useState<Record<string, unknown>[]>([]);
+  const [analysisSchema, setAnalysisSchema] = useState<Record<string, { type: string; required?: boolean }>>({});
+  const [targetFieldsInput, setTargetFieldsInput] = useState('');
+  const [keyFieldsInput, setKeyFieldsInput] = useState('');
+  const [transformField, setTransformField] = useState('');
+  const [transformOp, setTransformOp] = useState('trim');
+
+  const analysisColumns = useMemo(() => (analysisRows.length > 0 ? Object.keys(analysisRows[0]) : []), [analysisRows]);
+
+  const handleImportAction = useCallback(async (action: string) => {
+    if (analysisRows.length === 0) return;
+    setActionBusy(true);
+    try {
+      let input: Record<string, unknown> = { rows: analysisRows };
+      if (action === 'validateImport') {
+        input = { rows: analysisRows, schema: analysisSchema };
+      } else if (action === 'mapFields') {
+        const targetFields = targetFieldsInput.split(',').map((s) => s.trim()).filter(Boolean);
+        input = { sourceFields: analysisColumns, targetFields };
+      } else if (action === 'detectDuplicates') {
+        const keyFields = keyFieldsInput.split(',').map((s) => s.trim()).filter(Boolean);
+        input = { rows: analysisRows, keyFields, fuzzy: true };
+      } else if (action === 'transformPreview') {
+        input = { rows: analysisRows, transforms: transformField ? [{ field: transformField, operation: transformOp }] : [], previewCount: 5 };
       }
-    );
-  }, [importJobItems, runAction]);
+      const r = await lensRun('import', action, input);
+      if (r.data.ok) setImportActionResult({ action, data: r.data.result });
+      else setImportActionResult({ action, data: { error: r.data.error || 'Action failed' } });
+    } catch (e) {
+      setImportActionResult({ action, data: { error: e instanceof Error ? e.message : 'Action failed' } });
+    } finally {
+      setActionBusy(false);
+    }
+  }, [analysisRows, analysisSchema, analysisColumns, targetFieldsInput, keyFieldsInput, transformField, transformOp]);
 
   const [showFeatures, setShowFeatures] = useState(true);
   const [dragActive, setDragActive] = useState(false);
@@ -157,37 +247,52 @@ export default function ImportLens() {
   const validateFile = useCallback(async (file: File) => {
     setValidating(true);
     setValidationResult(null);
+    setAnalysisRows([]);
+    setAnalysisSchema({});
+    setImportActionResult(null);
     try {
-      // Read file text to send for validation via the ingest API
       const text = await file.text();
-      const response = await apiHelpers.ingest.manual({
-        text: `validate:${text.slice(0, 2000)}`,
-        title: file.name,
-        tags: ['import-validation'],
-        declaredSourceType: 'import-validate',
-      });
-      const respData = response.data;
+      let rows: Record<string, unknown>[] = [];
+      try { rows = parseImportFile(file.name, text); } catch { rows = []; }
 
-      // Try to parse a validation result from the API response
-      if (respData && typeof respData === 'object') {
+      if (rows.length > 0) {
+        // Real path: CSV or a row-shaped JSON array. Infer a schema, then
+        // validate every row against it — both real macros
+        // (server/domains/importdomain.js), not a guess dressed up as one.
+        const schemaR = await lensRun<InferSchemaResult>('import', 'inferSchema', { rows });
+        const fields = schemaR.data.ok ? (schemaR.data.result?.fields || []) : [];
+        const schema: Record<string, { type: string; required?: boolean }> = {};
+        for (const f of fields) schema[f.source] = { type: f.inferredType, required: f.required };
+
+        const validateR = await lensRun<ValidateImportResult>('import', 'validateImport', { rows, schema });
+        if (!validateR.data.ok || !validateR.data.result) throw new Error(validateR.data.error || 'Validation failed.');
+        const v = validateR.data.result;
+
+        setAnalysisRows(rows);
+        setAnalysisSchema(schema);
         setValidationResult({
-          valid: respData.valid !== false,
-          type: respData.type || respData.declaredSourceType || 'dtus',
-          record_count: respData.record_count || respData.count || 0,
-          warnings: respData.warnings || [],
-          errors: respData.errors || [],
-          schema_version: respData.schema_version || '1.0.0',
-          compatible: respData.compatible !== false,
+          valid: v.status !== 'fail',
+          type: 'tabular',
+          record_count: v.totalRows,
+          warnings: v.status === 'warning' ? [`${v.invalidRows} of ${v.totalRows} rows have issues (${v.validationRate}% valid).`] : [],
+          errors: (v.errors || []).slice(0, 5).map((e) =>
+            `Row ${e.rowIndex}: ${(e.errors || []).map((sub) => `${sub.field} — ${sub.error}`).join('; ')}`
+          ),
+          schema_version: `${fields.length} inferred fields`,
+          compatible: v.status !== 'fail',
         });
       } else {
-        // Fallback: ingest succeeded so the file content is valid
+        // Not row-shaped (e.g. a .zip backup or freeform JSON) — the
+        // validateImport/mapFields/etc. tools don't apply to this file;
+        // fall back to a generic ingest-queue restore honestly, without
+        // fabricating a row count or schema for content that has neither.
         setValidationResult({
           valid: true,
-          type: 'dtus',
+          type: 'freeform',
           record_count: 0,
-          warnings: [],
+          warnings: ['Not a row-shaped CSV/JSON file — the schema/dedup/mapping tools below need one. This file will be queued as a single freeform ingest item.'],
           errors: [],
-          schema_version: '1.0.0',
+          schema_version: 'n/a',
           compatible: true,
         });
       }
@@ -832,15 +937,41 @@ export default function ImportLens() {
       )}
       </div>
 
-      {/* AI Import Actions Panel */}
+      {/* AI Import Actions Panel — operates on the rows parsed from the
+          "Structured Data Import" upload above, not a fake artifact. */}
       <div className="panel p-4 space-y-4">
         <h2 className="font-semibold flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-neon-blue" />
-          AI Import Analysis Actions
+          Row Analysis Actions
         </h2>
-        {!importJobItems[0]?.id && (
-          <p className="text-xs text-gray-400">Create an import job to run AI actions.</p>
+        {analysisRows.length === 0 ? (
+          <p className="text-xs text-gray-400">Upload a CSV or row-shaped JSON file above to unlock schema validation, field mapping, duplicate detection, and transform preview on the real parsed rows.</p>
+        ) : (
+          <p className="text-xs text-gray-400">{analysisRows.length} rows parsed from {selectedFile?.name} · columns: {analysisColumns.join(', ')}</p>
         )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <label className="flex items-center gap-2">
+            <span className="text-gray-400 w-24 shrink-0">Map to fields</span>
+            <input value={targetFieldsInput} onChange={(e) => setTargetFieldsInput(e.target.value)} placeholder="title, tags, summary…" className="input-lattice flex-1 text-xs" disabled={analysisRows.length === 0} />
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="text-gray-400 w-24 shrink-0">Dedup keys</span>
+            <input value={keyFieldsInput} onChange={(e) => setKeyFieldsInput(e.target.value)} placeholder="empty = all columns" className="input-lattice flex-1 text-xs" disabled={analysisRows.length === 0} />
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="text-gray-400 w-24 shrink-0">Transform field</span>
+            <select value={transformField} onChange={(e) => setTransformField(e.target.value)} className="input-lattice flex-1 text-xs" disabled={analysisRows.length === 0}>
+              <option value="">select column…</option>
+              {analysisColumns.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="text-gray-400 w-24 shrink-0">Operation</span>
+            <select value={transformOp} onChange={(e) => setTransformOp(e.target.value)} className="input-lattice flex-1 text-xs" disabled={analysisRows.length === 0}>
+              {['trim', 'lowercase', 'uppercase', 'toNumber', 'toDate', 'truncate'].map((op) => <option key={op} value={op}>{op}</option>)}
+            </select>
+          </label>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             { action: 'validateImport', label: 'Validate Import', icon: CheckCircle2, color: 'text-neon-green' },
@@ -851,10 +982,10 @@ export default function ImportLens() {
             <button
               key={action}
               onClick={() => handleImportAction(action)}
-              disabled={runAction.isPending || !importJobItems[0]?.id}
+              disabled={actionBusy || analysisRows.length === 0}
               className="flex items-center gap-2 px-4 py-3 bg-lattice-surface border border-lattice-border rounded-lg text-sm font-medium text-white hover:border-neon-blue/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {runAction.isPending ? (
+              {actionBusy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Icon className={`w-4 h-4 ${color}`} />
@@ -864,14 +995,14 @@ export default function ImportLens() {
           ))}
         </div>
 
-        {importActionResult && !runAction.isPending && (() => {
+        {importActionResult && !actionBusy && (() => {
           if (importActionResult.action === 'validateImport') {
             const d = importActionResult.data as ValidateImportResult;
             return (
               <div className="space-y-3 pt-2 border-t border-lattice-border">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-neon-green">Validation Results</h3>
-                  <span className={`text-xs px-2 py-1 rounded font-medium ${d.status === 'valid' ? 'bg-neon-green/20 text-neon-green' : 'bg-red-400/20 text-red-400'}`}>
+                  <span className={`text-xs px-2 py-1 rounded font-medium ${d.status === 'pass' ? 'bg-neon-green/20 text-neon-green' : d.status === 'warning' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-red-400/20 text-red-400'}`}>
                     {d.status}
                   </span>
                 </div>
@@ -880,7 +1011,7 @@ export default function ImportLens() {
                     { label: 'Total Rows', value: (d.totalRows || 0).toLocaleString(), color: 'text-gray-300' },
                     { label: 'Valid', value: (d.validRows || 0).toLocaleString(), color: 'text-neon-green' },
                     { label: 'Invalid', value: (d.invalidRows || 0).toLocaleString(), color: 'text-red-400' },
-                    { label: 'Rate', value: `${((d.validationRate || 0) * 100).toFixed(1)}%`, color: 'text-neon-cyan' },
+                    { label: 'Rate', value: `${(d.validationRate || 0).toFixed(1)}%`, color: 'text-neon-cyan' },
                   ].map(s => (
                     <div key={s.label} className="lens-card text-center">
                       <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
@@ -889,10 +1020,12 @@ export default function ImportLens() {
                   ))}
                 </div>
                 <div className="h-2 bg-lattice-deep rounded-full overflow-hidden">
-                  <div className="h-full bg-neon-green rounded-full" style={{ width: `${(d.validationRate || 0) * 100}%` }} />
+                  <div className="h-full bg-neon-green rounded-full" style={{ width: `${d.validationRate || 0}%` }} />
                 </div>
-                {(d.errors || []).slice(0, 3).map((err, i) => (
-                  <p key={i} className="text-xs text-red-400">Row {err.row}: {err.field} — {err.message}</p>
+                {(d.errors || []).slice(0, 3).map((rowErr, i) => (
+                  <p key={i} className="text-xs text-red-400">
+                    Row {rowErr.rowIndex}: {rowErr.errors.map((e) => `${e.field} — ${e.error}`).join('; ')}
+                  </p>
                 ))}
                 {d.totalErrorCount > 3 && <p className="text-xs text-gray-400">+{d.totalErrorCount - 3} more errors</p>}
               </div>
@@ -905,7 +1038,7 @@ export default function ImportLens() {
                 <h3 className="text-sm font-semibold text-neon-cyan">Field Mappings — {d.mappingCount} mapped</h3>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="lens-card text-center">
-                    <p className="text-lg font-bold text-neon-cyan">{((d.coverage || 0) * 100).toFixed(1)}%</p>
+                    <p className="text-lg font-bold text-neon-cyan">{(d.coverage?.sourcesCovered ?? 0).toFixed(1)}%</p>
                     <p className="text-xs text-gray-400">Coverage</p>
                   </div>
                   <div className="lens-card text-center">
@@ -942,7 +1075,7 @@ export default function ImportLens() {
                     { label: 'Total Rows', value: (d.totalRows || 0).toLocaleString(), color: 'text-gray-300' },
                     { label: 'Dup Groups', value: (d.duplicateGroupCount || 0).toString(), color: 'text-yellow-400' },
                     { label: 'Dup Rows', value: (d.duplicateRowCount || 0).toLocaleString(), color: 'text-red-400' },
-                    { label: 'Savings', value: `${((d.deduplicationSavings || 0) * 100).toFixed(1)}%`, color: 'text-neon-green' },
+                    { label: 'Savings', value: `${(d.deduplicationSavings || 0).toFixed(1)}%`, color: 'text-neon-green' },
                   ].map(s => (
                     <div key={s.label} className="lens-card text-center">
                       <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
@@ -959,12 +1092,12 @@ export default function ImportLens() {
                   </div>
                 )}
                 {(d.fieldRepetition || []).slice(0, 3).map((fr, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
+                  <div key={i} className="flex items-center gap-2 text-xs" title={`${fr.uniqueValues} unique values, most-repeated value seen ${fr.mostRepeatedCount}x`}>
                     <span className="text-gray-400 w-24 truncate">{fr.field}</span>
                     <div className="flex-1 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
-                      <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${fr.repetitionRate * 100}%` }} />
+                      <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${fr.uniquenessRatio}%` }} />
                     </div>
-                    <span className="text-gray-400">{(fr.repetitionRate * 100).toFixed(1)}%</span>
+                    <span className="text-gray-400">{fr.uniquenessRatio.toFixed(1)}% unique</span>
                   </div>
                 ))}
               </div>
@@ -993,9 +1126,9 @@ export default function ImportLens() {
                   <div key={i} className="flex items-center gap-2 text-xs">
                     <span className="text-gray-400 w-28 truncate">{fi.field}</span>
                     <div className="flex-1 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
-                      <div className="h-full bg-neon-purple rounded-full" style={{ width: `${fi.changeRate * 100}%` }} />
+                      <div className="h-full bg-neon-purple rounded-full" style={{ width: `${fi.changeRate}%` }} />
                     </div>
-                    <span className="text-gray-400">{fi.changes} changes</span>
+                    <span className="text-gray-400">{fi.changedRows} changes</span>
                   </div>
                 ))}
               </div>
@@ -1023,6 +1156,10 @@ export default function ImportLens() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <RestoreDtuExport />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ImportParityWorkbench />
       </section>

@@ -13,23 +13,21 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import BioWorkbench from '@/components/bio/BioWorkbench';
 import { MolecularWorkbench } from '@/components/bio/MolecularWorkbench';
 import { SequenceAnalyzer } from '@/components/bio/SequenceAnalyzer';
 import { BioActionPanel } from '@/components/bio/BioActionPanel';
+import { BioResearchPanel } from '@/components/bio/BioResearchPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dna, Activity, Heart, Brain, Microscope, Layers, ChevronDown, AlertTriangle, Bug, Zap, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Dna, Activity, Heart, Brain, Microscope, AlertTriangle, Bug } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 
 interface BioMetric {
@@ -47,7 +45,6 @@ export default function BioLensPage() {
   useLensNav('bio');
 
   const [selectedSystem, setSelectedSystem] = useState('homeostasis');
-  const [showFeatures, setShowFeatures] = useState(true);
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'organisms' | 'experiments' | 'sequences'>('organisms');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('bio');
@@ -61,7 +58,7 @@ export default function BioLensPage() {
     { lensId: 'bio' }
   );
 
-  const { items: bioItems, isLoading, isError: isError, error: error, refetch: refetch, create, update, remove } = useLensData<Record<string, unknown>>('bio', 'system', { seed: [] });
+  const { items: bioItems, isLoading, isError: isError, error: error, refetch: refetch } = useLensData<Record<string, unknown>>('bio', 'system', { seed: [] });
   const bioData = useMemo(() => {
     if (!bioItems.length) return undefined;
     // Reconstruct the shape that templates expect from the raw API response
@@ -72,34 +69,6 @@ export default function BioLensPage() {
     }
     return result as Record<string, unknown>;
   }, [bioItems]);
-  const runAction = useRunArtifact('bio');
-
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  const handleAction = useCallback((artifactId: string) => {
-    setActionError(null);
-    runAction.mutate(
-      { id: artifactId, action: 'analyze' },
-      {
-        onError: (e) => {
-          console.error('Action failed:', e);
-          setActionError(`Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
-        },
-      }
-    );
-  }, [runAction]);
-
-  const handleSave = useCallback((id: string, data: Record<string, unknown>) => {
-    update(id, { data });
-  }, [update]);
-
-  const handleCreate = useCallback(() => {
-    create({ title: 'New Organism', data: { type: 'organism' } });
-  }, [create]);
-
-  const handleRemove = useCallback((id: string) => {
-    remove(id);
-  }, [remove]);
 
   const { data: growthData, isError: isError2, error: error2, refetch: refetch2,} = useQuery({
     queryKey: ['growth-status'],
@@ -154,7 +123,6 @@ export default function BioLensPage() {
           <span className="text-2xl">🧬</span>
           <div>
             <h1 className="text-xl font-bold">Bio Lens</h1>
-            {runAction.isPending && <Loader2 className="w-4 h-4 animate-spin text-neon-pink" />}
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
             <p className="text-sm text-gray-400">
               Biological system simulation and Growth OS metrics
@@ -162,13 +130,6 @@ export default function BioLensPage() {
           </div>
         </div>
       </header>
-
-      {actionError && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2 text-sm text-red-400 flex items-center justify-between">
-          <span>{actionError}</span>
-          <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-300 ml-2">&times;</button>
-        </div>
-      )}
 
       {/* Live arXiv papers — q-bio / bio.* categories */}
       <LiveFeed
@@ -179,31 +140,7 @@ export default function BioLensPage() {
         limit={8}
       />
       <RealtimeDataPanel domain="bio" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <UniversalActions domain="bio" artifactId={null} compact />
       <DTUExportButton domain="bio" data={{}} compact />
-
-      {/* CRUD Actions */}
-      <div className="flex items-center gap-2">
-        <button onClick={handleCreate} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-green/20 text-neon-green rounded-lg text-sm hover:bg-neon-green/30 focus:outline-none focus:ring-2 focus:ring-amber-500">
-          <Plus className="w-4 h-4" /> Add Organism
-        </button>
-      </div>
-
-      {/* Bio Items */}
-      {bioItems.length > 0 && (
-        <div className="space-y-2">
-          {bioItems.map(item => (
-            <div key={item.id} className="panel p-3 flex items-center justify-between">
-              <span className="text-sm font-medium">{item.title}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => handleAction(item.id)} className="text-gray-400 hover:text-neon-cyan" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
-                <button onClick={() => handleSave(item.id, { ...(item.data || {}), lastReviewed: new Date().toISOString() })} className="text-gray-400 hover:text-neon-blue" title="Update"><Activity className="w-4 h-4" /></button>
-                <button onClick={() => handleRemove(item.id)} className="text-gray-400 hover:text-red-400" title="Delete"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -252,30 +189,6 @@ export default function BioLensPage() {
         </p>
       </motion.div>
 
-      {/* Organism Taxonomy Tree */}
-      <div className="panel p-4 mt-4">
-        <h3 className="font-semibold mb-3 flex items-center gap-2"><Bug className="w-4 h-4 text-neon-green" /> Taxonomy Classification</h3>
-        <div className="space-y-1">
-          {[
-            { level: 'Domain', name: 'Eukarya', indent: 0 },
-            { level: 'Kingdom', name: 'Animalia', indent: 1 },
-            { level: 'Phylum', name: 'Chordata', indent: 2 },
-            { level: 'Class', name: 'Mammalia', indent: 3 },
-            { level: 'Order', name: 'Primates', indent: 4 },
-            { level: 'Family', name: 'Hominidae', indent: 5 },
-            { level: 'Genus', name: 'Homo', indent: 6 },
-            { level: 'Species', name: 'H. sapiens', indent: 7 },
-          ].map((tax, i) => (
-            <motion.div key={tax.level} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-              className="flex items-center gap-2 py-1" style={{ paddingLeft: `${tax.indent * 16 + 8}px` }}>
-              <div className="w-1.5 h-1.5 rounded-full bg-neon-green/50" />
-              <span className="text-xs text-gray-400 w-16">{tax.level}</span>
-              <span className="text-sm text-gray-300 font-mono">{tax.name}</span>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
       {/* System Selector */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
         {systems.map((system, i) => {
@@ -301,22 +214,13 @@ export default function BioLensPage() {
       )}
 
       {activeTab === 'experiments' && (
-        <motion.div key="experiments" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="panel p-4">
-          <h3 className="font-semibold mb-3 flex items-center gap-2"><Microscope className="w-4 h-4 text-neon-cyan" /> Active Experiments</h3>
-          <div className="space-y-2">
-            {['Gene Expression Analysis', 'Protein Folding Simulation', 'Cell Growth Assay', 'Metabolic Pathway Mapping'].map((exp, i) => (
-              <motion.div key={exp} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-                className="flex items-center justify-between p-3 bg-black/20 rounded-lg border border-white/5">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-neon-green" />
-                  <span className="text-sm text-gray-300">{exp}</span>
-                </div>
-                <span className={`text-xs px-2 py-0.5 rounded ${i === 0 ? 'bg-neon-green/20 text-neon-green' : i === 3 ? 'bg-gray-500/20 text-gray-400' : 'bg-neon-blue/20 text-neon-blue'}`}>
-                  {i === 0 ? 'Running' : i === 3 ? 'Queued' : 'In Progress'}
-                </span>
-              </motion.div>
-            ))}
-          </div>
+        <motion.div key="experiments" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          {/* NCBI/UniProt-style analysis bench — sequence alignment, gene
+              expression, phylogenetics, motif scanning, organism profiling,
+              pathway mapping, protocol review, gene→function, evolution
+              tracing, FASTA parsing. Every tool is a real bio.* macro call,
+              never a fabricated status list. */}
+          <BioResearchPanel />
         </motion.div>
       )}
 
@@ -422,24 +326,6 @@ export default function BioLensPage() {
         </div>
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="bio" />
-          </div>
-        )}
-      </div>
     </div>
     {/* 2026 parity workbench — sequence analysis, primers, alignment, restriction, library */}
     <button

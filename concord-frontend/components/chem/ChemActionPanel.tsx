@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { FlaskConical, Beaker, Droplets, Scale, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { FlaskConical, Beaker, Droplets, Scale, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Microscope, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,7 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'mw' | 'molarity' | 'ph' | 'dilution' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'mw' | 'molarity' | 'ph' | 'dilution' | 'analyze' | 'balance' | 'solution' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
 interface MWComponent { element: string; name?: string; count: number; atomicMass: number; contribution: number; percentMass: number }
@@ -31,6 +31,9 @@ interface MWResult { formula: string; molecularWeight: number; units: string; co
 interface MolarityResult { moles?: number; liters?: number; molarity?: number; formula?: string }
 interface PhResult { pH: number; pOH: number; hPlus: number; ohMinus: number; classification: string }
 interface DilutionResult { m1: number; v1: number; m2: number; v2: number; formula?: string }
+interface AnalyzeResult { formula: string; molecularWeight: number; empiricalFormula: string; degreeOfUnsaturation: number | null; totalAtoms: number; elements: { element: string; count: number; massPercent: number }[] }
+interface BalanceResult { balanced: boolean; equation: string; reactants: { formula: string; coefficient: number }[]; products: { formula: string; coefficient: number }[] }
+interface SolutionResult { pH?: number; pOH?: number; nature?: string; type?: string; concentration?: number; message?: string }
 
 export function ChemActionPanel() {
   const [formula, setFormula] = useState('');
@@ -44,6 +47,10 @@ export function ChemActionPanel() {
   const [dilM2, setDilM2] = useState('');
   const [dilV2, setDilV2] = useState('');
   const [recipient, setRecipient] = useState('');
+  const [analyzeFormula, setAnalyzeFormula] = useState('');
+  const [balanceEquation, setBalanceEquation] = useState('H2 + O2 -> H2O');
+  const [solConcentration, setSolConcentration] = useState('');
+  const [solType, setSolType] = useState<'strong-acid' | 'strong-base'>('strong-acid');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -51,6 +58,9 @@ export function ChemActionPanel() {
   const [molarityResult, setMolarityResult] = useState<MolarityResult | null>(null);
   const [phResult, setPhResult] = useState<PhResult | null>(null);
   const [dilutionResult, setDilutionResult] = useState<DilutionResult | null>(null);
+  const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>(null);
+  const [balanceResult, setBalanceResult] = useState<BalanceResult | null>(null);
+  const [solutionResult, setSolutionResult] = useState<SolutionResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
@@ -104,10 +114,38 @@ export function ChemActionPanel() {
       if (r.ok && r.result) { setDilutionResult(r.result); pipe.publish('chem.dilution', r.result, { label: `M₁V₁=M₂V₂` }); ok(`Resolved.`); } else err(r.error ?? 'dilution failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+  async function actAnalyze() {
+    if (!analyzeFormula.trim()) { err('Formula required (e.g. C6H12O6).'); return; }
+    setBusy('analyze'); setFeedback(null);
+    try {
+      const r = await callMacro<AnalyzeResult>('molecularAnalysis', { formula: analyzeFormula.trim() });
+      if (r.ok && r.result) { setAnalyzeResult(r.result); pipe.publish('chem.analyze', r.result, { label: `${r.result.formula} · ${r.result.molecularWeight} g/mol` }); ok(`${r.result.totalAtoms} atoms, MW ${r.result.molecularWeight}.`); }
+      else err(r.error ?? 'analysis failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+  async function actBalance() {
+    if (!balanceEquation.includes('->') && !balanceEquation.includes('→') && !balanceEquation.includes('=')) { err('Equation needs an arrow, e.g. H2 + O2 -> H2O.'); return; }
+    setBusy('balance'); setFeedback(null);
+    try {
+      const r = await callMacro<BalanceResult>('balanceReaction', { equation: balanceEquation.trim() });
+      if (r.ok && r.result) { setBalanceResult(r.result); pipe.publish('chem.balance', r.result, { label: r.result.equation }); ok(r.result.balanced ? 'Balanced.' : 'Could not fully balance — check the equation.'); }
+      else err(r.error ?? 'balance failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+  async function actSolution() {
+    const conc = parseFloat(solConcentration);
+    if (!Number.isFinite(conc) || conc <= 0) { err('Concentration required (mol/L, > 0).'); return; }
+    setBusy('solution'); setFeedback(null);
+    try {
+      const r = await callMacro<SolutionResult>('solutionChemistry', { operation: 'pH', solution: { type: solType, concentration: conc } });
+      if (r.ok && r.result) { setSolutionResult(r.result); pipe.publish('chem.solution', r.result, { label: `pH ${r.result.pH}` }); ok(`pH = ${r.result.pH} (${r.result.nature}).`); }
+      else err(r.error ?? 'solution calc failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Chem — ${formula || 'lab'}`, tags: ['chem', 'lab', phResult?.classification].filter((t): t is string => !!t), source: 'chem:lab:mint', meta: { visibility: 'private', consent: { allowCitations: false }, chem: { formula, mw: mwResult, molarity: molarityResult, ph: phResult, dilution: dilutionResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Chem — ${formula || 'lab'}`, tags: ['chem', 'lab', phResult?.classification].filter((t): t is string => !!t), source: 'chem:lab:mint', meta: { visibility: 'private', consent: { allowCitations: false }, chem: { formula, mw: mwResult, molarity: molarityResult, ph: phResult, dilution: dilutionResult, analysis: analyzeResult, reaction: balanceResult, solution: solutionResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('chem.mintedDtuId', id, { label: `Lab DTU ${id.slice(0, 8)}…` }); ok(`Lab DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -120,6 +158,7 @@ export function ChemActionPanel() {
       molarityResult ? `M = ${molarityResult.molarity} mol/L` : '',
       phResult ? `pH = ${phResult.pH} (${phResult.classification})` : '',
       dilutionResult ? `Dilution: M1V1=M2V2 → ${dilutionResult.m1}×${dilutionResult.v1} = ${dilutionResult.m2}×${dilutionResult.v2}` : '',
+      balanceResult ? `Reaction: ${balanceResult.equation}` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -172,8 +211,42 @@ export function ChemActionPanel() {
       <header className="flex items-center gap-2 border-b border-emerald-500/10 pb-2">
         <FlaskConical className="h-4 w-4 text-emerald-400" />
         <h3 className="text-sm font-semibold text-white">Chem bench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">periodic · molarity · pH · dilution</span>
+        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">analyze · balance · solution · molarity · pH · dilution</span>
       </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div className="space-y-1.5">
+          <div className="text-[10px] uppercase tracking-wider text-lime-400 font-semibold">Analyze (molecularAnalysis)</div>
+          <div className="flex gap-1">
+            <input type="text" value={analyzeFormula} onChange={(e) => setAnalyzeFormula(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" placeholder="C6H12O6" />
+            <button type="button" disabled={!!busy} onClick={actAnalyze} className="px-2 rounded bg-lime-500/20 text-lime-300 hover:bg-lime-500/30 text-[11px] disabled:opacity-40">
+              {busy === 'analyze' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Microscope className="w-3 h-3" />}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <div className="text-[10px] uppercase tracking-wider text-fuchsia-400 font-semibold">Balance (balanceReaction)</div>
+          <div className="flex gap-1">
+            <input type="text" value={balanceEquation} onChange={(e) => setBalanceEquation(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" placeholder="H2 + O2 -> H2O" />
+            <button type="button" disabled={!!busy} onClick={actBalance} className="px-2 rounded bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/30 text-[11px] disabled:opacity-40">
+              {busy === 'balance' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <div className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold">Solution pH (solutionChemistry)</div>
+          <div className="flex gap-1">
+            <input type="text" value={solConcentration} onChange={(e) => setSolConcentration(e.target.value)} className="w-16 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" placeholder="mol/L" />
+            <select value={solType} onChange={(e) => setSolType(e.target.value as typeof solType)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-1 py-1.5 text-[11px] text-white">
+              <option value="strong-acid">strong acid</option>
+              <option value="strong-base">strong base</option>
+            </select>
+            <button type="button" disabled={!!busy} onClick={actSolution} className="px-2 rounded bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 text-[11px] disabled:opacity-40">
+              {busy === 'solution' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Beaker className="w-3 h-3" />}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <div className="space-y-1.5">
@@ -261,6 +334,26 @@ export function ChemActionPanel() {
             <div className="text-sm text-cyan-200 font-mono">V1={dilutionResult.v1}</div>
             <div className="text-sm text-cyan-200 font-mono">M2={dilutionResult.m2}</div>
             <div className="text-sm text-cyan-200 font-mono">V2={dilutionResult.v2}</div>
+          </div>
+        )}
+        {analyzeResult && (
+          <div className="rounded-md border border-lime-500/30 bg-lime-500/5 p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-lime-300 font-semibold">{analyzeResult.formula} · {analyzeResult.totalAtoms} atoms</div>
+            <div className="text-xl font-bold text-lime-300">{analyzeResult.molecularWeight} <span className="text-xs text-zinc-400">g/mol</span></div>
+            <div className="text-[10px] text-zinc-400">Empirical: {analyzeResult.empiricalFormula}{analyzeResult.degreeOfUnsaturation != null && ` · DoU ${analyzeResult.degreeOfUnsaturation}`}</div>
+          </div>
+        )}
+        {balanceResult && (
+          <div className={cn('rounded-md border p-2.5', balanceResult.balanced ? 'border-fuchsia-500/30 bg-fuchsia-500/5' : 'border-red-500/30 bg-red-500/5')}>
+            <div className="text-[10px] uppercase tracking-wider text-fuchsia-300 font-semibold">{balanceResult.balanced ? 'Balanced' : 'Unbalanced'}</div>
+            <div className="text-sm text-fuchsia-200 font-mono">{balanceResult.equation}</div>
+          </div>
+        )}
+        {solutionResult?.pH !== undefined && (
+          <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">pH · {solutionResult.nature}</div>
+            <div className="text-xl font-bold text-orange-300">{solutionResult.pH}</div>
+            <div className="text-[10px] text-zinc-400">pOH {solutionResult.pOH} · {solutionResult.type} @ {solutionResult.concentration} mol/L</div>
           </div>
         )}
       </div>
