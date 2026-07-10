@@ -14,7 +14,7 @@
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors.
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -40,6 +40,7 @@ interface Listing {
 interface Beneficiary {
   id: string; name: string; relationship: string; sharePct: number;
   contingent: boolean; contingentOn: string | null; acceptanceStatus?: string;
+  heirUserId?: string | null;
 }
 interface WillVersion {
   version: number; title: string; kind: string; status: string;
@@ -87,12 +88,22 @@ async function run(name: string, params: Record<string, unknown> = {}) {
 }
 
 export default function InheritancePage() {
-  useLensCommand([
-    { id: 'inheritance-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* tooltip */ } },
-  ], { lensId: 'inheritance' });
-
   const [tab, setTab] = useState<Tab>('overview');
   const [status, setStatus] = useState<string | null>(null);
+
+  // Discoverable keyboard navigation (fluidity invariant): 1–8 jump tabs,
+  // R reloads the estate. The kbd chip row below the tabs advertises them.
+  useLensCommand([
+    { id: 'inheritance-overview', keys: '1', description: 'Overview tab', category: 'navigation', action: () => setTab('overview') },
+    { id: 'inheritance-beneficiaries', keys: '2', description: 'Beneficiaries tab', category: 'navigation', action: () => setTab('beneficiaries') },
+    { id: 'inheritance-wills', keys: '3', description: 'Will & Directives tab', category: 'navigation', action: () => setTab('wills') },
+    { id: 'inheritance-assets', keys: '4', description: 'Asset Inventory tab', category: 'navigation', action: () => setTab('assets') },
+    { id: 'inheritance-executors', keys: '5', description: 'Executors tab', category: 'navigation', action: () => setTab('executors') },
+    { id: 'inheritance-probate', keys: '6', description: 'Probate Timeline tab', category: 'navigation', action: () => setTab('probate') },
+    { id: 'inheritance-notices', keys: '7', description: 'My Notices tab', category: 'navigation', action: () => setTab('notices') },
+    { id: 'inheritance-market', keys: '8', description: 'Heir-Slot Market tab', category: 'navigation', action: () => setTab('market') },
+    { id: 'inheritance-reload', keys: 'r', description: 'Reload estate', category: 'action', action: () => { void loadAllRef.current?.(); } },
+  ], { lensId: 'inheritance' });
 
   const [overview, setOverview] = useState<Overview | null>(null);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
@@ -110,6 +121,7 @@ export default function InheritancePage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const loadAllRef = useRef<(() => Promise<void>) | null>(null);
 
   const flash = (m: string) => { setStatus(m); window.setTimeout(() => setStatus(null), 5000); };
 
@@ -146,21 +158,26 @@ export default function InheritancePage() {
     }
   }, []);
 
-  useEffect(() => { void loadAll(); }, [loadAll]);
+  useEffect(() => { loadAllRef.current = loadAll; void loadAll(); }, [loadAll]);
 
   // ── Beneficiary form ───────────────────────────────────────────────
   const [bName, setBName] = useState('');
   const [bRel, setBRel] = useState('');
   const [bShare, setBShare] = useState('');
   const [bContingentOn, setBContingentOn] = useState('');
+  const [bHeir, setBHeir] = useState('');
+  // Per-beneficiary "notify heir" inline editor: beneficiaryId → typed heir user id.
+  const [notifyDraft, setNotifyDraft] = useState<Record<string, string>>({});
+  const [notifyBusy, setNotifyBusy] = useState<string | null>(null);
 
   const addBeneficiary = async () => {
     if (!bName.trim()) return flash('Beneficiary needs a name.');
     const r = await run('add_beneficiary', {
       name: bName, relationship: bRel, sharePct: Number(bShare) || 0,
       contingent: !!bContingentOn.trim(), contingentOn: bContingentOn.trim() || null,
+      heirUserId: bHeir.trim() || null,
     });
-    if (r?.ok) { setBName(''); setBRel(''); setBShare(''); setBContingentOn(''); flash('Beneficiary added.'); void loadAll(); }
+    if (r?.ok) { setBName(''); setBRel(''); setBShare(''); setBContingentOn(''); setBHeir(''); flash('Beneficiary added.'); void loadAll(); }
     else flash(`Failed: ${r?.error || 'unknown'}`);
   };
   const removeBeneficiary = async (id: string) => {
@@ -170,6 +187,20 @@ export default function InheritancePage() {
   const reShare = async (id: string, pct: number) => {
     const r = await run('update_beneficiary', { beneficiaryId: id, sharePct: pct });
     if (r?.ok) void loadAll();
+  };
+  // Send a designation notice to an heir user so they can accept/decline
+  // (the receiving half — My Notices — was already wired; this closes the loop).
+  const notifyHeir = async (b: Beneficiary, heirUserId: string) => {
+    const heir = heirUserId.trim();
+    if (!heir) return flash('Enter the heir’s user ID first.');
+    setNotifyBusy(b.id);
+    flash(`Notifying ${b.name}…`);
+    const r = await run('notify_heir', { heirUserId: heir, beneficiaryId: b.id });
+    setNotifyBusy(null);
+    if (r?.ok) {
+      setNotifyDraft((d) => { const n = { ...d }; delete n[b.id]; return n; });
+      flash(`✓ Designation notice sent to ${heir.slice(0, 12)}.`);
+    } else flash(`Failed: ${r?.error || 'unknown'}`);
   };
 
   // ── Will form ──────────────────────────────────────────────────────
@@ -252,6 +283,21 @@ export default function InheritancePage() {
   };
 
   // ── Heir-slot market ───────────────────────────────────────────────
+  // Mentor side: list a dying NPC's heir slot for another player to lock.
+  const [olNpc, setOlNpc] = useState('');
+  const [olPrice, setOlPrice] = useState('10');
+  const [olBusy, setOlBusy] = useState(false);
+  const openListing = async () => {
+    if (!olNpc.trim()) return flash('Enter the dying NPC id to list.');
+    setOlBusy(true);
+    const r = (await run('open_listing', {
+      dyingNpcId: olNpc.trim(), heirSlotPriceCc: Number(olPrice) || 10,
+    })) as any;
+    setOlBusy(false);
+    if (r?.ok) { setOlNpc(''); setOlPrice('10'); flash(`✓ Heir slot listed (#${r.result?.listingId ?? ''}).`); void loadAll(); }
+    else flash(`Failed: ${r?.error || r?.reason || 'unknown'}`);
+  };
+
   const claimSlot = async (listing: Listing) => {
     flash(`Locking heir slot for ${listing.npc_name || listing.dying_npc_id}…`);
     const r = (await run('claim_slot', { listingId: listing.id })) as any;
@@ -295,6 +341,16 @@ export default function InheritancePage() {
             >{t.label}{t.id === 'notices' && notices.some((n) => n.status === 'unread') ? ` (${notices.filter((n) => n.status === 'unread').length})` : ''}</button>
           ))}
         </nav>
+
+        <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[10px] text-zinc-500">
+          <span className="uppercase tracking-wider">Shortcuts</span>
+          <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 font-mono text-zinc-300">1</kbd>
+          <span>–</span>
+          <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 font-mono text-zinc-300">8</kbd>
+          <span>jump tabs ·</span>
+          <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 font-mono text-zinc-300">R</kbd>
+          <span>reload</span>
+        </div>
 
         {loading ? (
           <div role="status" aria-live="polite" className="flex items-center gap-2 py-10 text-zinc-400">
@@ -377,28 +433,66 @@ export default function InheritancePage() {
                     <input className={inp} placeholder="Relationship" value={bRel} onChange={(e) => setBRel(e.target.value)} />
                     <input className={`${inp} w-24`} type="number" placeholder="Share %" value={bShare} onChange={(e) => setBShare(e.target.value)} />
                     <input className={inp} placeholder="Contingent on… (optional)" value={bContingentOn} onChange={(e) => setBContingentOn(e.target.value)} />
+                    <input className={inp} placeholder="Heir user ID (optional)" value={bHeir} onChange={(e) => setBHeir(e.target.value)} />
                     <button type="button" className={btn} onClick={addBeneficiary}>Add</button>
                   </div>
+                  <p className="mt-1.5 text-[10px] text-zinc-500">Link an heir user ID to send them a designation notice they can accept or decline.</p>
                 </div>
                 {beneficiaries.length === 0 ? (
                   <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-400">No beneficiaries designated yet.</div>
                 ) : (
                   <ul className="space-y-2">
-                    {beneficiaries.map((b) => (
-                      <li key={b.id} className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/80 p-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-zinc-100">{b.name} <span className="text-xs font-normal text-zinc-400">· {b.relationship}</span></div>
-                          {b.contingent && <div className="text-[10px] text-amber-400">contingent on: {b.contingentOn}</div>}
-                          {b.acceptanceStatus && <div className={`text-[10px] ${tone(b.acceptanceStatus)}`}>designation {b.acceptanceStatus}</div>}
+                    {beneficiaries.map((b) => {
+                      const draftOpen = b.id in notifyDraft;
+                      return (
+                      <li key={b.id} className="rounded-lg border border-zinc-800 bg-zinc-900/80 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-semibold text-zinc-100">{b.name} <span className="text-xs font-normal text-zinc-400">· {b.relationship}</span></div>
+                            {b.contingent && <div className="text-[10px] text-amber-400">contingent on: {b.contingentOn}</div>}
+                            {b.heirUserId && <div className="text-[10px] text-zinc-500">heir: {b.heirUserId.slice(0, 16)}</div>}
+                            {b.acceptanceStatus
+                              ? <div className={`text-[10px] ${tone(b.acceptanceStatus)}`}>designation {b.acceptanceStatus}</div>
+                              : <div className="text-[10px] text-zinc-500">designation not yet sent</div>}
+                          </div>
+                          <input
+                            className={`${inp} w-20`} type="number" defaultValue={b.sharePct}
+                            onBlur={(e) => { const v = Number(e.target.value); if (v !== b.sharePct) void reShare(b.id, v); }}
+                          />
+                          <span className="text-xs text-zinc-400">%</span>
+                          {b.heirUserId ? (
+                            <button
+                              type="button" disabled={notifyBusy === b.id}
+                              className="text-xs text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
+                              onClick={() => notifyHeir(b, b.heirUserId as string)}
+                            >{notifyBusy === b.id ? 'Notifying…' : 'Notify heir'}</button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="text-xs text-cyan-400 hover:text-cyan-300"
+                              onClick={() => setNotifyDraft((d) => (b.id in d ? (() => { const n = { ...d }; delete n[b.id]; return n; })() : { ...d, [b.id]: '' }))}
+                            >{draftOpen ? 'Cancel' : 'Notify heir'}</button>
+                          )}
+                          <button type="button" className="text-xs text-rose-400 hover:text-rose-300" onClick={() => removeBeneficiary(b.id)}>Remove</button>
                         </div>
-                        <input
-                          className={`${inp} w-20`} type="number" defaultValue={b.sharePct}
-                          onBlur={(e) => { const v = Number(e.target.value); if (v !== b.sharePct) void reShare(b.id, v); }}
-                        />
-                        <span className="text-xs text-zinc-400">%</span>
-                        <button type="button" className="text-xs text-rose-400 hover:text-rose-300" onClick={() => removeBeneficiary(b.id)}>Remove</button>
+                        {draftOpen && !b.heirUserId && (
+                          <div className="mt-2 flex items-center gap-2 border-t border-zinc-800 pt-2">
+                            <input
+                              className={`${inp} flex-1`} placeholder="Heir user ID to notify"
+                              value={notifyDraft[b.id]} autoFocus
+                              onChange={(e) => setNotifyDraft((d) => ({ ...d, [b.id]: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === 'Enter') void notifyHeir(b, notifyDraft[b.id] || ''); }}
+                            />
+                            <button
+                              type="button" disabled={notifyBusy === b.id}
+                              className={`${btn} disabled:opacity-50`}
+                              onClick={() => notifyHeir(b, notifyDraft[b.id] || '')}
+                            >{notifyBusy === b.id ? 'Sending…' : 'Send notice'}</button>
+                          </div>
+                        )}
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 )}
                 <div className="text-xs text-zinc-400">Unallocated remainder: <span className="font-mono text-amber-300">{remainderPct}%</span></div>
@@ -613,6 +707,20 @@ export default function InheritancePage() {
                   Lock heir slots for dying NPCs. On death you inherit their recipes / desires / grudges.
                   Escrow is held until resolution; revoke any time from the Probate tab.
                 </p>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+                  <h3 className="mb-2 text-xs font-semibold text-zinc-300">List a dying NPC (mentor)</h3>
+                  <p className="mb-2 text-[10px] text-zinc-500">
+                    As a mentor, pre-arrange an heir for one of your dying NPCs. Buyers lock the slot; it resolves on the NPC’s death.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input className={`${inp} flex-1 min-w-[180px]`} placeholder="Dying NPC id" value={olNpc} onChange={(e) => setOlNpc(e.target.value)} />
+                    <div className="flex items-center gap-1">
+                      <input className={`${inp} w-24`} type="number" min={0} placeholder="Slot price" value={olPrice} onChange={(e) => setOlPrice(e.target.value)} />
+                      <span className="text-xs text-zinc-400">CC</span>
+                    </div>
+                    <button type="button" disabled={olBusy} className={`${btn} disabled:opacity-50`} onClick={openListing}>{olBusy ? 'Listing…' : 'Open listing'}</button>
+                  </div>
+                </div>
                 {listings.length === 0 ? (
                   <div className="rounded-xl border border-zinc-800 py-12 text-center italic text-zinc-400">
                     No open inheritance listings. Mentors list dying NPCs here to pre-arrange an heir.
