@@ -1579,6 +1579,7 @@ import {
   createPurchase,
   transitionPurchase,
   recordSettlement,
+  getUserPurchases,
 } from "./economy/index.js";
 
 // ---- Atlas + Platform Upgrade Imports (v2) ----
@@ -73229,6 +73230,50 @@ app.post('/api/artistry/marketplace/purchase', (req, res) => {
     res.json(_artistryPurchaseResult);
   } catch (err) {
     console.error('[Artistry] Purchase error:', err.message);
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+  }
+});
+
+// Buyer-side purchase history — real read of the purchase state machine
+// (server/economy/purchases.js#getUserPurchases), so the marketplace lens's
+// "Purchases" tab survives a page reload instead of resetting to an empty
+// React-state array on every mount.
+app.get('/api/artistry/marketplace/purchases', requireAuth(), (req, res) => {
+  try {
+    if (!db) return res.json({ ok: true, purchases: [], total: 0 });
+    const userId = req.user?.id;
+    const { status, limit, offset } = req.query;
+    const page = getUserPurchases(db, userId, {
+      role: 'buyer',
+      status: status || undefined,
+      limit: Math.min(Math.max(Number(limit) || 50, 1), 200),
+      offset: Math.max(Number(offset) || 0, 0),
+    });
+    const art = ensureArtistryState();
+    const stores = { beat: art.beatStore, stems: art.stemStore, 'sample-pack': art.sampleStore, artwork: art.artStore };
+    const purchases = page.items.map(row => {
+      const store = stores[row.listing_type];
+      const listing = store?.get(row.listing_id);
+      return {
+        id: row.purchase_id,
+        status: row.status,
+        listingId: row.listing_id,
+        listingType: row.listing_type,
+        licenseType: row.license_type,
+        price: row.amount,
+        purchasedAt: row.created_at,
+        listing: listing ? {
+          id: listing.id,
+          title: listing.title || 'Untitled',
+          ownerId: listing.ownerId,
+          genre: listing.genre,
+          artType: listing.artType,
+        } : null,
+      };
+    });
+    res.json({ ok: true, purchases, total: page.total });
+  } catch (err) {
+    console.error('[Artistry] Purchase history fetch failed:', err.message);
     res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
 });
