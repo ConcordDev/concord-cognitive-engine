@@ -13,9 +13,8 @@ import { GraphParityPanel } from '@/components/graph/GraphParityPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ZoomIn, ZoomOut, RotateCcw, Search, Eye, EyeOff,
@@ -256,17 +255,8 @@ export default function GraphLensPage() {
   );
 
   // --- Graph action wiring ---
-  const { items: graphArtifacts } = useLensData('graph', 'graph-data', { seed: [] });
-  const runGraphAction = useRunArtifact('graph');
   const [graphActionResult, setGraphActionResult] = useState<{ action: string; data: unknown } | null>(null);
-  const handleGraphAction = useCallback((action: string) => {
-    const artifactId = graphArtifacts[0]?.id;
-    if (!artifactId) return;
-    runGraphAction.mutate(
-      { id: artifactId, action, params: {} },
-      { onSuccess: (res) => setGraphActionResult({ action, data: res.result }) }
-    );
-  }, [graphArtifacts, runGraphAction]);
+  const [graphActionPending, setGraphActionPending] = useState(false);
   const [addNodeLabel, setAddNodeLabel] = useState('');
   const [localEdges, setLocalEdges] = useState<GraphEdge[]>([]);
   const [filterRelated, setFilterRelated] = useState<string | null>(null);
@@ -312,6 +302,30 @@ export default function GraphLensPage() {
     retry: 1,
     staleTime: 30000,
   });
+
+  // graph.nodeAnalysis / clusterDetect / graphMetrics (server/domains/graph.js)
+  // are real algorithms (Brandes' betweenness centrality, BFS closeness,
+  // connected-components fragmentation, density/diameter/clustering
+  // coefficient) written against `artifact.data.{nodes,edges}`. The
+  // previous wiring ran them via useRunArtifact against a "graph-data"
+  // artifact that NOTHING in this lens ever creates (no creation form
+  // anywhere) — graphArtifacts[0]?.id was permanently undefined, so these
+  // three buttons were permanently disabled in any real deployment. Fixed:
+  // run them directly against the real, currently-loaded DTU graph
+  // (POST /api/lens/run builds a virtual artifact whose .data IS the input
+  // body — server.js:39566 — so no persisted artifact is needed at all).
+  const handleGraphAction = useCallback(async (action: string) => {
+    const nodes = (graphVisualData?.nodes || graphForceData?.nodes || []).map((n: { id: string }) => ({ id: n.id }));
+    const edges = (graphVisualData?.edges || graphForceData?.links || graphForceData?.edges || []).map((e: { source: string; target: string }) => ({ source: e.source, target: e.target }));
+    if (nodes.length === 0) return;
+    setGraphActionPending(true);
+    try {
+      const res = await lensRun('graph', action, { nodes, edges });
+      if (res.data?.ok && res.data.result) setGraphActionResult({ action, data: res.data.result });
+    } finally {
+      setGraphActionPending(false);
+    }
+  }, [graphVisualData, graphForceData]);
 
   // Subscribe to live DTU creation events for real-time graph updates
   useEffect(() => {
@@ -1868,39 +1882,39 @@ export default function GraphLensPage() {
         <h2 className="font-semibold flex items-center gap-2">
           <Network className="w-4 h-4 text-neon-cyan" /> Graph Analytics Actions
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <p className="text-xs text-gray-500 -mt-2">
+          Runs against the {(graphVisualData?.nodes?.length || graphForceData?.nodes?.length || 0).toLocaleString()} nodes / {(graphVisualData?.edges?.length || graphForceData?.links?.length || 0).toLocaleString()} edges currently loaded above.
+          Shortest-path lookups already live in the Pathfinder panel (P) with visual highlighting.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
             { action: 'nodeAnalysis', label: 'Node Analysis', icon: Cpu, color: 'neon-cyan', desc: 'Degree, betweenness & closeness centrality' },
-            { action: 'pathFind', label: 'Path Find', icon: GitBranch, color: 'neon-purple', desc: 'BFS shortest path between nodes' },
             { action: 'clusterDetect', label: 'Cluster Detect', icon: Users, color: 'neon-green', desc: 'Connected components & fragmentation' },
             { action: 'graphMetrics', label: 'Graph Metrics', icon: BarChart3, color: 'amber-400', desc: 'Density, diameter, clustering coefficient' },
           ].map(({ action, label, icon: Icon, color, desc }) => (
             <button
               key={action}
               onClick={() => handleGraphAction(action)}
-              disabled={runGraphAction.isPending || !graphArtifacts[0]?.id}
+              disabled={graphActionPending || (!graphVisualData?.nodes?.length && !graphForceData?.nodes?.length)}
               className="p-3 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-lattice-surface border-lattice-border hover:border-white/20"
             >
               <div className="flex items-center gap-2 mb-1">
-                {runGraphAction.isPending ? <Loader2 className={`w-4 h-4 text-${color} animate-spin`} /> : <Icon className={`w-4 h-4 text-${color}`} />}
+                {graphActionPending ? <Loader2 className={`w-4 h-4 text-${color} animate-spin`} /> : <Icon className={`w-4 h-4 text-${color}`} />}
                 <span className="text-xs font-semibold text-white">{label}</span>
               </div>
               <p className="text-xs text-gray-400">{desc}</p>
             </button>
           ))}
         </div>
-        {!graphArtifacts[0]?.id && (
-          <p className="text-xs text-gray-400 text-center">Create a graph-data artifact to run graph analytics.</p>
-        )}
 
-        {runGraphAction.isPending && (
+        {graphActionPending && (
           <div className="flex items-center justify-center gap-3 py-4">
             <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
             <span className="text-sm text-gray-400">Analyzing graph...</span>
           </div>
         )}
 
-        {graphActionResult && !runGraphAction.isPending && (() => {
+        {graphActionResult && !graphActionPending && (() => {
           const r = graphActionResult.data as Record<string, unknown>;
           if (graphActionResult.action === 'nodeAnalysis') {
             const summary = r.summary as Record<string, unknown> | undefined;
@@ -1928,29 +1942,6 @@ export default function GraphLensPage() {
                     ))}
                   </div>
                 )}
-              </div>
-            );
-          }
-          if (graphActionResult.action === 'pathFind') {
-            const found = r.found as boolean;
-            const path = r.path as string[] | null;
-            return (
-              <div className="space-y-3">
-                <div className={`lens-card flex items-center gap-3 border ${found ? 'border-neon-green/30' : 'border-red-400/30'}`}>
-                  <span className={found ? 'text-neon-green' : 'text-red-400'}>{found ? 'Path found' : 'No path'}</span>
-                  {found && <span className="text-xs text-gray-400">{r.hopCount as number} hops, weight: {r.weightedDistance as number}</span>}
-                </div>
-                {path && path.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1">
-                    {path.map((node, i) => (
-                      <span key={i} className="flex items-center gap-1">
-                        <span className="text-xs px-2 py-1 rounded bg-neon-cyan/10 text-neon-cyan font-mono">{node}</span>
-                        {i < path.length - 1 && <span className="text-gray-400 text-xs">→</span>}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {!!r.message && <p className="text-xs text-gray-400">{r.message as string}</p>}
               </div>
             );
           }
