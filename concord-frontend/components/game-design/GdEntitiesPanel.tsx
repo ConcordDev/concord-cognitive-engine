@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Heart, Swords, Wind, ChevronDown, ChevronRight, BarChart3, Tag } from 'lucide-react';
+import { Loader2, Plus, Trash2, Heart, Swords, Wind, ChevronDown, ChevronRight, BarChart3, Tag, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +42,8 @@ export function GdEntitiesPanel({ gameId, onChange }: { gameId: string; onChange
   const [showEnums, setShowEnums] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [fieldDraft, setFieldDraft] = useState<Record<string, { key: string; type: string; value: string }>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', kind: 'enemy', health: '', damage: '', speed: '', description: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -77,6 +79,27 @@ export function GdEntitiesPanel({ gameId, onChange }: { gameId: string; onChange
 
   const delEntity = async (id: string) => {
     await lensRun('game-design', 'entity-delete', { id });
+    await refresh();
+  };
+
+  const startEdit = (e: Entity) => {
+    setEditingId(e.id);
+    setEditForm({
+      name: e.name, kind: e.kind, health: String(e.health), damage: String(e.damage),
+      speed: String(e.speed), description: e.description || '',
+    });
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!editForm.name.trim()) return;
+    const r = await lensRun('game-design', 'entity-update', {
+      id, name: editForm.name.trim(), kind: editForm.kind,
+      health: Number(editForm.health) || 0, damage: Number(editForm.damage) || 0, speed: Number(editForm.speed) || 0,
+      description: editForm.description.trim(),
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    setEditingId(null);
+    setError(null);
     await refresh();
   };
 
@@ -209,6 +232,36 @@ export function GdEntitiesPanel({ gameId, onChange }: { gameId: string; onChange
             const d = fieldDraft[e.id] || { key: '', type: 'string', value: '' };
             return (
               <li key={e.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+                {editingId === e.id ? (
+                  <div className="space-y-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                      <input value={editForm.name} onChange={(ev) => setEditForm({ ...editForm, name: ev.target.value })}
+                        className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                      <select value={editForm.kind} onChange={(ev) => setEditForm({ ...editForm, kind: ev.target.value })}
+                        className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100 capitalize">
+                        {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+                      </select>
+                      <input inputMode="numeric" value={editForm.health} onChange={(ev) => setEditForm({ ...editForm, health: ev.target.value })}
+                        placeholder="HP" className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                      <input inputMode="numeric" value={editForm.damage} onChange={(ev) => setEditForm({ ...editForm, damage: ev.target.value })}
+                        placeholder="DMG" className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                      <input inputMode="numeric" value={editForm.speed} onChange={(ev) => setEditForm({ ...editForm, speed: ev.target.value })}
+                        placeholder="SPD" className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                    </div>
+                    <input value={editForm.description} onChange={(ev) => setEditForm({ ...editForm, description: ev.target.value })}
+                      placeholder="Description" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" onClick={() => saveEdit(e.id)} disabled={!editForm.name.trim()}
+                        className="flex items-center gap-1 px-2 py-1 text-[11px] bg-lime-600 hover:bg-lime-500 disabled:opacity-50 text-white rounded-lg">
+                        <Check className="w-3 h-3" /> Save
+                      </button>
+                      <button type="button" onClick={() => setEditingId(null)}
+                        className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
+                        <X className="w-3 h-3" /> Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => setExpanded(isOpen ? null : e.id)} className="text-zinc-400 hover:text-zinc-300">
                     {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -222,13 +275,17 @@ export function GdEntitiesPanel({ gameId, onChange }: { gameId: string; onChange
                   <span className="flex items-center gap-1 text-[11px] text-zinc-400"><Heart className="w-3 h-3 text-rose-400" />{e.health}</span>
                   <span className="flex items-center gap-1 text-[11px] text-zinc-400"><Swords className="w-3 h-3 text-amber-400" />{e.damage}</span>
                   <span className="flex items-center gap-1 text-[11px] text-zinc-400"><Wind className="w-3 h-3 text-sky-400" />{e.speed}</span>
+                  <button aria-label="Edit" type="button" onClick={() => startEdit(e)} className="text-zinc-600 hover:text-lime-400">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <button aria-label="Delete" type="button" onClick={() => delEntity(e.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                {e.description && <p className="text-[11px] text-zinc-400 mt-1">{e.description}</p>}
+                )}
+                {editingId !== e.id && e.description && <p className="text-[11px] text-zinc-400 mt-1">{e.description}</p>}
 
-                {isOpen && (
+                {editingId !== e.id && isOpen && (
                   <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1.5">
                     <p className="text-[10px] font-semibold text-zinc-400 uppercase">Custom fields</p>
                     {(e.fields || []).map((f) => (
