@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ClipboardList, Loader2, Plus, Sparkles, CheckCircle, Save, FileText, X } from 'lucide-react';
+import { ClipboardList, Loader2, Plus, Sparkles, CheckCircle, Save, FileText, X, Download } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +33,11 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
   const [saving, setSaving] = useState(false);
   const [signing, setSigning] = useState(false);
   const [avsText, setAvsText] = useState<string | null>(null);
+  // healthcare.exportEncounter — a real macro (structured export: patient +
+  // encounter + vitals + diagnosis + plan) with no caller anywhere; the
+  // panel could sign a note but never produce a structured export of it.
+  const [exportJson, setExportJson] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only patientId should retrigger
   useEffect(() => { refresh(); }, [patientId]);
@@ -113,6 +118,41 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
     } catch (e) { console.error('[Encounters] avs', e); }
   }
 
+  async function exportEncounter() {
+    if (!active) return;
+    setExporting(true);
+    try {
+      const r = await lensRun({
+        domain: 'healthcare', action: 'exportEncounter',
+        input: {
+          patientId: active.patientId,
+          patientName: patient ? `${patient.lastName}, ${patient.firstName}` : active.patientName,
+          encounter: {
+            date: active.encounteredAt, type: active.encounterType,
+            provider: active.provider,
+            chiefComplaints: active.chiefComplaint ? [active.chiefComplaint] : [],
+            diagnosis: active.diagnosisCodes,
+            plan: active.plan ? [active.plan] : [],
+            notes: [active.subjective, active.objective, active.assessment].filter(Boolean).join('\n\n'),
+          },
+        },
+      });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      setExportJson(JSON.stringify(r.data?.result, null, 2));
+    } catch (e) { console.error('[Encounters] export', e); }
+    finally { setExporting(false); }
+  }
+
+  function downloadExport() {
+    if (!exportJson || !active) return;
+    const blob = new Blob([exportJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `encounter-${active.number || active.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const isSigned = active?.status === 'signed';
 
   return (
@@ -169,6 +209,9 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
                   <span className="text-[10px] text-emerald-300 inline-flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> signed {active.signedAt?.slice(0, 10)}</span>
                   <button onClick={generateAvs} className="px-2.5 py-1 text-xs rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1">
                     <FileText className="w-3 h-3" />After-visit summary
+                  </button>
+                  <button onClick={exportEncounter} disabled={exporting} className="px-2.5 py-1 text-xs rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] disabled:opacity-40 inline-flex items-center gap-1">
+                    {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}Export
                   </button>
                 </div>
               ) : (
@@ -237,6 +280,21 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
               <button aria-label="Close" type="button" onClick={() => setAvsText(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
             </div>
             <pre className="overflow-auto p-4 text-[11px] text-gray-200 whitespace-pre-wrap font-mono">{avsText}</pre>
+          </div>
+        </div>
+      )}
+
+      {exportJson !== null && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setExportJson(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg w-full max-w-xl max-h-[80%] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="text-xs font-semibold text-gray-200 flex-1">Structured encounter export</span>
+              <button onClick={downloadExport} className="text-[10px] px-2 py-1 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1"><Download className="w-3 h-3" />.json</button>
+              <button aria-label="Close" type="button" onClick={() => setExportJson(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+            <pre className="overflow-auto p-4 text-[11px] text-gray-200 whitespace-pre-wrap font-mono">{exportJson}</pre>
           </div>
         </div>
       )}
