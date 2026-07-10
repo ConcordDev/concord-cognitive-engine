@@ -281,24 +281,84 @@ function downloadCsv(filename: string, csv: string) {
 }
 
 // ─── Chart view (interactive charting + transforms + export + save) ──────────
+//
+// perCapita / inflationAdjust flip through `wb-transform-series`, a
+// pure-compute macro (server/domains/society.js) purpose-built so toggling
+// a metric doesn't re-hit the World Bank upstream API. Previously this view
+// called `wb-chart-series` with the flags baked in on every toggle — a full
+// network re-fetch (plus a *second* upstream call for the population series
+// on every per-capita flip) that duplicated `wb-chart-series`'s own inline
+// transform logic and left `wb-transform-series` completely unreachable
+// from any frontend. Fixed: `run()` now always fetches the RAW series once;
+// toggling recomputes instantly client-side via `wb-transform-series`
+// against the cached raw series (+ a population series fetched once and
+// cached per-country for per-capita).
 function ChartView({ aliases }: { aliases: Record<string, string> }) {
   const [country, setCountry] = useState('USA');
   const [indicator, setIndicator] = useState('gdpPerCapita');
   const [kind, setKind] = useState<'line' | 'bar' | 'area'>('line');
   const [perCapita, setPerCapita] = useState(false);
   const [inflationAdjust, setInflationAdjust] = useState(false);
+  const [rawData, setRawData] = useState<ChartSeriesResult | null>(null);
   const [data, setData] = useState<ChartSeriesResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [savedLink, setSavedLink] = useState<string | null>(null);
+  const populationCache = useRef<Map<string, SeriesPoint[]>>(new Map());
 
   const run = useCallback(async () => {
     setLoading(true); setError(null); setSavedLink(null);
-    const env = await macro<ChartSeriesResult>('wb-chart-series', { country, indicator, perCapita, inflationAdjust });
+    const env = await macro<ChartSeriesResult>('wb-chart-series', { country, indicator, perCapita: false, inflationAdjust: false });
     setLoading(false);
-    if (env.ok && env.result) setData(env.result);
-    else { setData(null); setError(env.error || 'chart lookup failed'); }
-  }, [country, indicator, perCapita, inflationAdjust]);
+    if (env.ok && env.result) setRawData(env.result);
+    else { setRawData(null); setData(null); setError(env.error || 'chart lookup failed'); }
+  }, [country, indicator]);
+
+  // Recompute the displayed series whenever the base series or either
+  // toggle changes — via wb-transform-series, not a re-fetch.
+  useEffect(() => {
+    if (!rawData) { setData(null); return; }
+    if (!perCapita && !inflationAdjust) { setData(rawData); return; }
+    let cancelled = false;
+    (async () => {
+      let population = populationCache.current.get(country);
+      if (perCapita && !population) {
+        const popEnv = await macro<ChartSeriesResult>('wb-chart-series', { country, indicator: 'population', perCapita: false, inflationAdjust: false });
+        if (popEnv.ok && popEnv.result) {
+          population = popEnv.result.series;
+          populationCache.current.set(country, population);
+        }
+      }
+      if (cancelled) return;
+      if (perCapita && !population) {
+        setError('per-capita requires population data, which failed to load');
+        setData(rawData);
+        return;
+      }
+      const env = await macro<{ series: SeriesPoint[]; transforms: string[]; min: number | null; max: number | null }>(
+        'wb-transform-series',
+        { series: rawData.series, population, perCapita, inflationAdjust },
+      );
+      if (cancelled) return;
+      if (env.ok && env.result) {
+        const s = env.result.series;
+        setData({
+          ...rawData,
+          series: s,
+          points: s.length,
+          transforms: env.result.transforms,
+          min: env.result.min,
+          max: env.result.max,
+          first: s[0] || null,
+          last: s[s.length - 1] || null,
+        });
+      } else {
+        setError(env.error || 'transform failed');
+        setData(rawData);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [rawData, perCapita, inflationAdjust, country]);
 
   const exportCsv = useCallback(async () => {
     if (!data) return;
