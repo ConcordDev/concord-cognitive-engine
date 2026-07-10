@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Network, Loader2, ExternalLink, Search } from 'lucide-react';
+import { Network, Loader2, ExternalLink, Search, GitMerge, Check } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { lensRun } from '@/lib/api/client';
 
 interface Match {
   id: string;
@@ -18,6 +19,33 @@ interface Match {
 export function WikidataSearch() {
   const [draft, setDraft] = useState('Tesla');
   const [query, setQuery] = useState('Tesla');
+  // Per-result "add to the knowledge graph" state — a match can be saved as a
+  // DTU (below) AND/OR imported as a graph node (entity.import-wikidata, the
+  // same macro the Knowledge-Graph Workbench's own Import tab uses); these
+  // are complementary, not duplicate, actions: one drops a citable note into
+  // the DTU substrate, the other adds a live, editable node to this graph.
+  const [importing, setImporting] = useState<string | null>(null);
+  const [imported, setImported] = useState<Set<string>>(new Set());
+
+  const importToGraph = async (m: Match) => {
+    setImporting(m.id);
+    try {
+      const r = await lensRun('entity', 'import-wikidata', {
+        wikidataId: m.id,
+        label: m.label || m.id,
+        description: m.description || '',
+      });
+      if (r.data?.ok) {
+        setImported((prev) => new Set(prev).add(m.id));
+        // Tell the (sibling, non-react-query) KnowledgeGraphWorkbench to
+        // refetch — it owns its own graph-get poll and has no other way to
+        // learn a node was added from outside its own Import tab.
+        window.dispatchEvent(new CustomEvent('entity:graph-changed'));
+      }
+    } finally {
+      setImporting(null);
+    }
+  };
 
   const results = useQuery({
     queryKey: ['wikidata', query],
@@ -88,9 +116,9 @@ export function WikidataSearch() {
       </div>
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {list.map((m) => (
-          <a key={m.id} href={`https://www.wikidata.org/wiki/${m.id}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2.5 hover:border-cyan-500/40">
+          <div key={m.id} className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2.5 hover:border-cyan-500/40">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
+              <a href={`https://www.wikidata.org/wiki/${m.id}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs text-cyan-300">{m.id}</span>
                   <span className="text-[12px] text-zinc-100">{m.label || '(unlabeled)'}</span>
@@ -101,10 +129,24 @@ export function WikidataSearch() {
                     {m.aliases.slice(0, 5).map((a) => <span key={a} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">{a}</span>)}
                   </div>
                 )}
+              </a>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  disabled={importing === m.id || imported.has(m.id)}
+                  onClick={() => importToGraph(m)}
+                  title="Import as a node in the Knowledge-Graph Workbench below"
+                  className="flex items-center gap-1 rounded border border-purple-500/30 bg-purple-500/10 px-1.5 py-0.5 text-[10px] text-purple-200 hover:bg-purple-500/20 disabled:opacity-60"
+                >
+                  {importing === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : imported.has(m.id) ? <Check className="h-3 w-3" /> : <GitMerge className="h-3 w-3" />}
+                  {imported.has(m.id) ? 'In graph' : 'Add to graph'}
+                </button>
+                <a href={`https://www.wikidata.org/wiki/${m.id}`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
+                </a>
               </div>
-              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
             </div>
-          </a>
+          </div>
         ))}
         {list.length === 0 && !results.isPending && !results.isError && query.length >= 2 && (
           <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No matches for &quot;{query}&quot;.</div>
