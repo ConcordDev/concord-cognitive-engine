@@ -25,6 +25,7 @@ interface Workout { id: string; number: string; kind: string; durationMin: numbe
 interface Goal { id: string; number: string; name: string; target: number; current: number; unit: string; status: string }
 interface Trend { type: string; series: { date: string; value: number }[]; average: number; latest: number | null; trend: string }
 interface Summary { habitCount: number; habitsDoneToday: number; workoutsThisWeek: number; workoutMinThisWeek: number; avgMoodThisWeek: number | null; activeGoals: number; metricEntryCount: number }
+interface MetricEntry { id: string; type: string; value: number; date: string; at: string; note: string; source?: string }
 
 const MOODS = [
   { id: 'awful', emoji: '😣', label: 'Awful' },
@@ -41,6 +42,14 @@ const TREND_METRICS = [
   { type: 'resting_hr', label: 'Resting HR' },
   { type: 'hrv_ms', label: 'HRV (ms)' },
 ];
+// Mirrors the backend METRIC_TYPES catalog (server/domains/wellness.js) — the
+// full Apple-Health-style set, not just the 6 offered in the trend picker.
+const METRIC_TYPE_LABELS: Record<string, string> = {
+  steps: 'Steps', weight_kg: 'Weight (kg)', sleep_hours: 'Sleep (h)',
+  water_ml: 'Water (ml)', resting_hr: 'Resting HR', calories: 'Calories',
+  hrv_ms: 'HRV (ms)', body_fat_pct: 'Body fat %', systolic: 'Systolic',
+  diastolic: 'Diastolic',
+};
 const WORKOUT_KINDS = ['run', 'walk', 'cycle', 'swim', 'strength', 'yoga', 'hiit', 'sport', 'other'];
 
 export function WellnessSection() {
@@ -55,6 +64,9 @@ export function WellnessSection() {
   const [trend, setTrend] = useState<Trend | null>(null);
   const [trendType, setTrendType] = useState('steps');
   const [loading, setLoading] = useState(true);
+  const [metricsLog, setMetricsLog] = useState<MetricEntry[]>([]);
+  const [metricsLogFilter, setMetricsLogFilter] = useState<'all' | string>('all');
+  const [metricsLogLoading, setMetricsLogLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -89,6 +101,22 @@ export function WellnessSection() {
   }, []);
   useEffect(() => { loadTrend(trendType); }, [trendType, loadTrend, summary]);
 
+  // Full Apple-Health-style raw entry log — every metric.type, not just the
+  // one selected for the trend chart. Wired to wellness.metrics-list (the
+  // one macro of the 35 that had no frontend caller before this fix).
+  const loadMetricsLog = useCallback(async (type: 'all' | string) => {
+    setMetricsLogLoading(true);
+    try {
+      const r = await lensRun({
+        domain: 'wellness', action: 'metrics-list',
+        input: type === 'all' ? { days: 90 } : { type, days: 90 },
+      });
+      setMetricsLog((r.data?.result?.metrics || []) as MetricEntry[]);
+    } catch (e) { console.error('[Wellness] metricsLog', e); }
+    finally { setMetricsLogLoading(false); }
+  }, []);
+  useEffect(() => { loadMetricsLog(metricsLogFilter); }, [metricsLogFilter, loadMetricsLog, summary]);
+
   async function logMetric() {
     const type = prompt(`Metric type (${TREND_METRICS.map(m => m.type).join(' / ')})?`);
     if (!type) return;
@@ -98,6 +126,7 @@ export function WellnessSection() {
       const r = await lensRun({ domain: 'wellness', action: 'metrics-log', input: { type: type.trim(), value: Number(value) } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       await refresh();
+      await loadMetricsLog(metricsLogFilter);
     } catch (e) { console.error('[Wellness] logMetric', e); }
   }
 
@@ -266,6 +295,36 @@ export function WellnessSection() {
                 </div>
               ) : (
                 <div className="py-10 text-center text-xs text-gray-400">No data for this metric yet.</div>
+              )}
+            </div>
+
+            {/* Raw entry log — Apple-Health-style "all data points" browser, every metric.type. wellness.metrics-list */}
+            <div className="rounded border border-white/10 bg-black/30 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">All entries (90d)</span>
+                <select value={metricsLogFilter} onChange={e => setMetricsLogFilter(e.target.value)}
+                  className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+                  <option value="all">All types</option>
+                  {Object.entries(METRIC_TYPE_LABELS).map(([type, label]) => <option key={type} value={type}>{label}</option>)}
+                </select>
+                {metricsLogLoading && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
+                <span className="ml-auto text-[10px] text-gray-400">{metricsLog.length} entr{metricsLog.length === 1 ? 'y' : 'ies'}</span>
+              </div>
+              {metricsLog.length === 0 ? (
+                <div className="py-6 text-center text-xs text-gray-400">No entries logged yet.</div>
+              ) : (
+                <ul className="max-h-56 overflow-y-auto divide-y divide-white/5">
+                  {metricsLog.slice().reverse().map(m => (
+                    <li key={m.id} className="py-1.5 flex items-center gap-2 text-xs">
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 font-mono flex-shrink-0">
+                        {METRIC_TYPE_LABELS[m.type] || m.type}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-mono w-20 flex-shrink-0">{m.date}</span>
+                      <span className="flex-1 text-white font-mono">{m.value}</span>
+                      {m.source && <span className="text-[9px] text-gray-500 font-mono flex-shrink-0">{m.source.replace(/_/g, ' ')}</span>}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           </div>
