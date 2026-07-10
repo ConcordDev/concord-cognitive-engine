@@ -128,6 +128,21 @@ export default function LinguisticsLensPage() {
   const [formDescription, setFormDescription] = useState('');
   const [formSourceText, setFormSourceText] = useState('');
   const [formTargetText, setFormTargetText] = useState('');
+  // Type-specific structured fields (Lexicon: ipa/examples; Grammar: morphemes/syntaxTree/glosses) —
+  // these map onto LinguisticsArtifact fields the detail panel already renders, but which the
+  // create form never captured, so a Lexicon/Grammar entry could never actually carry an IPA
+  // transcription, a syntax tree, or morpheme/gloss breakdowns (permanently-dead detail sections).
+  const [formIpa, setFormIpa] = useState('');
+  const [formExamples, setFormExamples] = useState('');
+  const [formMorphemes, setFormMorphemes] = useState('');
+  const [formSyntaxTree, setFormSyntaxTree] = useState('');
+  const [formGlosses, setFormGlosses] = useState('');
+
+  // Result of running the real `linguistics.analyze` macro against a saved artifact
+  // (the "Zap" button in the detail panel). Keyed so switching the selected item doesn't
+  // show a stale result under the wrong title.
+  const [actionResult, setActionResult] = useState<{ forId: string; content: string } | null>(null);
+  const [actionError, setActionError] = useState<{ forId: string; message: string } | null>(null);
 
   const currentType = MODE_TABS.find(t => t.id === activeTab)?.type || 'Analysis';
 
@@ -144,9 +159,40 @@ export default function LinguisticsLensPage() {
 
   const runArtifact = useRunArtifact('linguistics');
 
+  // Run the real linguistics.analyze macro against a saved artifact. The macro reads
+  // `params.text` (falling back to `artifact.data.text`/`.content`, neither of which a
+  // CRUD artifact here ever has) — so the fix is sending the artifact's own sourceText
+  // (Translation) or description (everything else) as `params.text` explicitly, and then
+  // actually rendering the macro's response instead of discarding it silently.
   const handleAction = useCallback((artifactId: string) => {
-    runArtifact.mutate({ id: artifactId, action: 'analyze' });
-  }, [runArtifact]);
+    const target = items.find(i => i.id === artifactId);
+    const text = (target?.data.sourceText || target?.data.description || '').trim();
+    setActionResult(null);
+    setActionError(null);
+    if (!text) {
+      setActionError({ forId: artifactId, message: 'Add a description or source text before running analysis.' });
+      return;
+    }
+    runArtifact.mutate(
+      { id: artifactId, action: 'analyze', params: { text } },
+      {
+        onSuccess: (data) => {
+          const result = (data as { result?: unknown })?.result;
+          if (result && typeof result === 'object' && (result as { ok?: boolean }).ok === false) {
+            setActionError({ forId: artifactId, message: (result as { error?: string }).error || 'Analysis failed.' });
+            return;
+          }
+          const content = typeof result === 'string'
+            ? result
+            : typeof (result as { content?: unknown })?.content === 'string'
+              ? (result as { content: string }).content
+              : JSON.stringify(result, null, 2);
+          setActionResult({ forId: artifactId, content });
+        },
+        onError: (e) => setActionError({ forId: artifactId, message: (e as Error)?.message || 'Analysis failed.' }),
+      },
+    );
+  }, [runArtifact, items]);
 
   // Analyze text through the lens/run endpoint
   const handleAnalyze = useCallback(async () => {
@@ -196,6 +242,10 @@ export default function LinguisticsLensPage() {
 
   const handleCreate = () => {
     if (!formTitle.trim()) return;
+    const splitList = (s: string): string[] | undefined => {
+      const parts = s.split(/[,\n]+/).map(x => x.trim()).filter(Boolean);
+      return parts.length ? parts : undefined;
+    };
     create({
       title: formTitle,
       data: {
@@ -205,6 +255,11 @@ export default function LinguisticsLensPage() {
         description: formDescription,
         sourceText: formSourceText || undefined,
         targetText: formTargetText || undefined,
+        ipa: currentType === 'LexiconEntry' ? (formIpa.trim() || undefined) : undefined,
+        examples: currentType === 'LexiconEntry' ? splitList(formExamples) : undefined,
+        morphemes: currentType === 'Grammar' ? splitList(formMorphemes) : undefined,
+        syntaxTree: currentType === 'Grammar' ? (formSyntaxTree.trim() || undefined) : undefined,
+        glosses: currentType === 'Grammar' ? splitList(formGlosses) : undefined,
       },
     });
     setFormTitle('');
@@ -212,6 +267,11 @@ export default function LinguisticsLensPage() {
     setFormLanguage('');
     setFormSourceText('');
     setFormTargetText('');
+    setFormIpa('');
+    setFormExamples('');
+    setFormMorphemes('');
+    setFormSyntaxTree('');
+    setFormGlosses('');
     setShowCreate(false);
   };
 
@@ -514,6 +574,46 @@ export default function LinguisticsLensPage() {
                   />
                 </div>
               )}
+              {currentType === 'LexiconEntry' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    value={formIpa}
+                    onChange={e => setFormIpa(e.target.value)}
+                    placeholder="IPA transcription (e.g. /səˈɹɛndɪpɪti/)..."
+                    className="input-lattice font-mono"
+                  />
+                  <input
+                    value={formExamples}
+                    onChange={e => setFormExamples(e.target.value)}
+                    placeholder="Example sentences, comma-separated..."
+                    className="input-lattice"
+                  />
+                </div>
+              )}
+              {currentType === 'Grammar' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      value={formMorphemes}
+                      onChange={e => setFormMorphemes(e.target.value)}
+                      placeholder="Morphemes, comma-separated (un-, break, -able)..."
+                      className="input-lattice font-mono"
+                    />
+                    <input
+                      value={formGlosses}
+                      onChange={e => setFormGlosses(e.target.value)}
+                      placeholder="Glosses, comma-separated (NEG-break-ABIL)..."
+                      className="input-lattice font-mono"
+                    />
+                  </div>
+                  <textarea
+                    value={formSyntaxTree}
+                    onChange={e => setFormSyntaxTree(e.target.value)}
+                    placeholder="Syntax tree (bracket notation, e.g. [S [NP the cat] [VP sat]])..."
+                    className="input-lattice w-full h-16 resize-none font-mono text-xs"
+                  />
+                </div>
+              )}
               <div className="flex gap-2">
                 <button onClick={handleCreate} disabled={!formTitle.trim()} className="px-3 py-1.5 bg-pink-400/20 text-pink-400 rounded-lg text-sm font-medium hover:bg-pink-400/30 disabled:opacity-50">Create</button>
                 <button onClick={() => setShowCreate(false)} className="text-sm text-gray-400 hover:text-white">Cancel</button>
@@ -575,13 +675,35 @@ export default function LinguisticsLensPage() {
                   <div className="flex items-center justify-between">
                     <h2 className="font-semibold text-white">{selected.title}</h2>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => handleAction(selected.id)} className="text-gray-400 hover:text-pink-400" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
+                      <button
+                        onClick={() => handleAction(selected.id)}
+                        disabled={runArtifact.isPending}
+                        className="text-gray-400 hover:text-pink-400 disabled:opacity-40"
+                        title="Run morphosyntactic analysis on this entry's text"
+                      >
+                        {runArtifact.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                      </button>
                       <button onClick={() => update(selected.id, { data: { ...selected.data, lastReviewed: new Date().toISOString() } as unknown as Partial<LinguisticsArtifact> })} className="text-gray-400 hover:text-blue-400" title="Update"><Eye className="w-4 h-4" /></button>
                       <button onClick={() => remove(selected.id)} className="text-red-400 hover:text-red-300" aria-label="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
+
+                  {actionResult?.forId === selected.id && (
+                    <div className="p-3 rounded-lg bg-pink-400/5 border border-pink-400/20">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] uppercase tracking-wide text-pink-300 font-semibold">Analysis</span>
+                        <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-white"><X className="w-3 h-3" /></button>
+                      </div>
+                      <p className="text-xs text-gray-300 whitespace-pre-wrap max-h-40 overflow-auto">{actionResult.content}</p>
+                    </div>
+                  )}
+                  {actionError?.forId === selected.id && (
+                    <div className="p-3 rounded-lg bg-red-400/5 border border-red-400/20">
+                      <p className="text-xs text-red-300">{actionError.message}</p>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <span className={cn('text-xs font-medium', SUBFIELD_COLORS[selected.data.subfield] || 'text-gray-400')}>
                       {selected.data.subfield}
