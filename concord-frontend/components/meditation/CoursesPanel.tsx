@@ -22,7 +22,7 @@ interface CourseDetail {
   completedCount: number; dayCount: number; nextDay: number | null; finished: boolean;
 }
 
-export function CoursesPanel() {
+export function CoursesPanel({ onPractice }: { onPractice?: () => void }) {
   const [courses, setCourses] = useState<CourseSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -64,7 +64,8 @@ export function CoursesPanel() {
     setDetail((r.data?.result as CourseDetail) || null);
     await loadCourses();
     setBusy(false);
-  }, [loadCourses]);
+    onPractice?.();
+  }, [loadCourses, onPractice]);
 
   if (loading) {
     return <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;

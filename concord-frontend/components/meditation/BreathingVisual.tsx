@@ -24,7 +24,7 @@ const PATTERNS: { id: 'box' | '478' | 'coherent'; label: string }[] = [
 const PHASE_SCALE: Record<string, number> = { inhale: 1, hold: 1, exhale: 0.45 };
 const PHASE_COLOR: Record<string, string> = { inhale: '#34d399', hold: '#a78bfa', exhale: '#60a5fa' };
 
-export function BreathingVisual() {
+export function BreathingVisual({ onPractice }: { onPractice?: () => void }) {
   const [pattern, setPattern] = useState<'box' | '478' | 'coherent'>('box');
   const [cycles, setCycles] = useState(6);
   const [spec, setSpec] = useState<BreathSpec | null>(null);
@@ -89,8 +89,8 @@ export function BreathingVisual() {
   const logSession = useCallback(async () => {
     const sid = pattern === '478' ? 'b-478-4' : pattern === 'coherent' ? 'b-coh-6' : 'b-box-5';
     const r = await lensRun('meditation', 'play', { sessionId: sid });
-    if (r.data?.ok) setLogged(true);
-  }, [pattern]);
+    if (r.data?.ok) { setLogged(true); onPractice?.(); }
+  }, [pattern, onPractice]);
 
   if (loading || !spec) {
     return <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
