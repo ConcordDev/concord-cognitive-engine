@@ -13,6 +13,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SectorHeatmapPanel } from '@/components/market/SectorHeatmap';
 import { CompetitorTracker } from '@/components/market/CompetitorTracker';
 import { CompetitiveIntelligence } from '@/components/market/CompetitiveIntelligence';
+import { MarketAnalysisWorkbench } from '@/components/market/MarketAnalysisWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useState, useMemo, useRef} from 'react';
@@ -22,10 +23,8 @@ import { MarketEmpireListing } from '@/components/market/MarketEmpireListing';
 import {
   Store, TrendingUp, Package, Coins, Search, Filter, X,
   ShoppingCart, Tag, ArrowUpRight, ArrowDownRight,
-  RefreshCw, Layers, ChevronDown, DollarSign, BarChart3, Play, Loader2,
+  RefreshCw, Layers, ChevronDown, DollarSign, BarChart3,
 } from 'lucide-react';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -75,21 +74,6 @@ export default function MarketLensPage() {
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [showPurchaseConfirm, setShowPurchaseConfirm] = useState<MarketListingItem | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
-
-  const { items: marketItems } = useLensData('market', 'data', { noSeed: true });
-  const runAction = useRunArtifact('market');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = marketItems[0]?.id;
-    if (!targetId) { setActionResult({ message: 'No market data artifact found. Add price data to analyze.' }); return; }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
 
   // Backend: GET /api/marketplace/listings
   const { data: listings, isLoading, isError, error, refetch } = useQuery({
@@ -483,83 +467,11 @@ export default function MarketLensPage() {
         </div>
       </div>
 
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-neon-green" />
-          Market Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'trendAnalysis', label: 'Trend Analysis' },
-            { action: 'competitorMatrix', label: 'Competitor Matrix' },
-            { action: 'priceElasticity', label: 'Price Elasticity' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleAction(action)} disabled={!!isRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
-              {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'overallTrend' in actionResult && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <span className={`text-lg font-bold uppercase ${
-                    actionResult.overallTrend === 'bullish' ? 'text-neon-green' :
-                    actionResult.overallTrend === 'bearish' ? 'text-red-400' : 'text-yellow-400'
-                  }`}>{String(actionResult.overallTrend)}</span>
-                  {'latestClose' in actionResult && <span className="text-gray-400 text-xs">Close: <span className="text-white">{String(actionResult.latestClose)}</span></span>}
-                  {'rsi' in actionResult && actionResult.rsi !== null && <span className="text-gray-400 text-xs">RSI: <span className="text-neon-cyan">{String(actionResult.rsi)}</span></span>}
-                </div>
-                {'signals' in actionResult && Array.isArray(actionResult.signals) && actionResult.signals.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider">Signals</p>
-                    {(actionResult.signals as Array<Record<string, unknown>>).map((s, i) => (
-                      <div key={i} className={`text-xs px-2 py-1 rounded ${s.sentiment === 'bullish' ? 'bg-neon-green/10 text-neon-green' : 'bg-red-400/10 text-red-400'}`}>
-                        {String(s.type)}: {String(s.detail || s.value || '')}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'matrix' in actionResult && Array.isArray(actionResult.matrix) && (
-              <div className="space-y-2">
-                <p className="text-xs text-gray-400 uppercase tracking-wider">Competitors ({String((actionResult.matrix as unknown[]).length)})</p>
-                {(actionResult.matrix as Array<Record<string, unknown>>).map((c, i) => (
-                  <div key={i} className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1">
-                    <span className="text-gray-300">{String(c.name)}</span>
-                    <span className="text-neon-cyan">{String(c.compositeScore)}</span>
-                  </div>
-                ))}
-                {'competitiveGaps' in actionResult && Array.isArray(actionResult.competitiveGaps) && (
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Competitive Gaps</p>
-                    {(actionResult.competitiveGaps as Array<Record<string, unknown>>).filter(g => (g.gaps as unknown[]).length > 0).map((g, i) => (
-                      <div key={i} className="text-xs text-yellow-400">
-                        {String(g.name)}: {((g.gaps as Array<Record<string, unknown>>).map(gap => String(gap.feature))).join(', ')}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'classification' in actionResult && (
-              <div className="space-y-1">
-                <span className="text-gray-400">Elasticity: <span className="text-neon-cyan font-bold">{String(actionResult.primaryElasticity)}</span></span>
-                <span className="ml-3 text-xs text-gray-400">({String(actionResult.classification)})</span>
-                {'loglogRegression' in actionResult && actionResult.loglogRegression !== null && typeof actionResult.loglogRegression === 'object' && (
-                  <div className="text-xs text-gray-400 mt-1">R²: {String((actionResult.loglogRegression as Record<string, unknown>).rSquared)}</div>
-                )}
-              </div>
-            )}
-            {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
-          </div>
-        )}
-      </div>
+      {/* Market Analysis workbench — real bespoke forms for trendAnalysis /
+          competitorMatrix / priceElasticity, called directly via lensRun
+          (virtual-artifact path) instead of the dead persisted-artifact
+          action strip that used to sit here. */}
+      <MarketAnalysisWorkbench />
 
       {/* Lens Features */}
       <div className="border-t border-white/10">
