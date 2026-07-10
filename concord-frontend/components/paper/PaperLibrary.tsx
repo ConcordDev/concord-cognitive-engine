@@ -75,6 +75,13 @@ export function PaperLibrary() {
     setNewCollection('');
     await refresh();
   }
+  async function toggleCollection(paperId: string, collectionId: string, remove: boolean) {
+    const r = await lensRun('paper', 'collection-assign', { paperId, collectionId, remove });
+    if (r.data?.ok && active?.id === paperId) {
+      setActive(prev => prev ? { ...prev, collectionIds: (r.data.result?.collectionIds as string[]) || prev.collectionIds } : prev);
+    }
+    await refresh();
+  }
 
   if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
@@ -147,11 +154,26 @@ export function PaperLibrary() {
               <button aria-label="Delete" onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
             {active?.id === p.id && (
-              <div className="mt-2 pt-2 border-t border-zinc-800">
+              <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1.5">
                 {p.abstract && <p className="text-[11px] text-zinc-400 mb-1">{p.abstract}</p>}
                 <textarea defaultValue={p.notes} rows={2} placeholder="Your notes…"
                   onBlur={e => { if (e.target.value !== p.notes) void update(p.id, { notes: e.target.value }); }}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
+                {collections.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="text-[9px] text-zinc-400 uppercase tracking-wide mr-1">Collections</span>
+                    {collections.map(c => {
+                      const inColl = (p.collectionIds || []).includes(c.id);
+                      return (
+                        <button key={c.id} onClick={() => toggleCollection(p.id, c.id, inColl)}
+                          className={cn('text-[10px] px-2 py-0.5 rounded-full border transition-colors',
+                            inColl ? 'bg-cyan-600/20 border-cyan-600/50 text-cyan-300' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200')}>
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </li>

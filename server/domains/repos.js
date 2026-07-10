@@ -836,6 +836,7 @@ export default function registerReposActions(registerLensAction) {
         sha: c.sha, message: c.message, author: c.author, branch: c.branch,
         lane: branchLanes[c.branch] ?? 0, parents: c.parents || [], date: c.date,
         additions: c.additions || 0, deletions: c.deletions || 0, index: i,
+        files: c.files || [],
       }));
       return {
         ok: true,

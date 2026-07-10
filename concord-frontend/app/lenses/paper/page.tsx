@@ -269,6 +269,28 @@ export default function PaperLensPage() {
   // ---- Synthesis state ----
   const [synthesisResult, setSynthesisResult] = useState<string | null>(null);
 
+  // ---- Readability (paper.readabilityScore) — computed on demand while
+  // drafting; separate from synthesisResult so it survives a tab switch. ----
+  const [readability, setReadability] = useState<{
+    fleschKincaidGrade: number; fleschReadingEase: number; gunningFog: number; readingLevel: string;
+    stats: { words: number; sentences: number; avgWordsPerSentence: number; avgSyllablesPerWord: number; complexWordRate: number };
+    message?: string;
+  } | null>(null);
+  const [checkingReadability, setCheckingReadability] = useState(false);
+  const checkReadability = useCallback(async () => {
+    if (editorContent.trim().length < 50) { showToast('info', 'Write at least 50 characters to score readability.'); return; }
+    setCheckingReadability(true);
+    try {
+      const res = await apiHelpers.lens.runDomain('paper', 'readabilityScore', { input: { text: editorContent } });
+      const result = (res as { data?: { ok: boolean; result?: typeof readability } }).data?.result;
+      setReadability(result || null);
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Readability check failed');
+    } finally {
+      setCheckingReadability(false);
+    }
+  }, [editorContent]);
+
   // ---- Artifact type mapping for each tab ----
   const typeForTab: Record<ModeTab, string> = useMemo(() => ({
     papers: 'project',
@@ -373,6 +395,7 @@ export default function PaperLensPage() {
     setEditorContent(d.content || d.excerpt || '');
     setSelectedItemId(item.id);
     setEditorOpen(true);
+    setReadability(null);
   }, []);
 
   const saveEditor = useCallback(async () => {
@@ -434,16 +457,79 @@ export default function PaperLensPage() {
     setNewJournal('');
   };
 
+  // Extract the item's own real text into a flat claims list so the
+  // 'validate' macro (paper.js empirical-gate bridge, which only ever reads
+  // artifact.data.claims) has something real to check — the create forms
+  // above never populate .claims, so without this every Validate click
+  // silently reported "0 claims" no matter how much real content the item
+  // held. Every string here is the user's own text; nothing is invented.
+  const claimsFromItem = useCallback((item: LensItem, tab: ModeTab): string[] => {
+    const d = item.data as Record<string, unknown>;
+    const pick = (...vals: unknown[]) => vals.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+    switch (tab) {
+      case 'papers': return pick(d.excerpt, d.content);
+      case 'hypotheses': return pick(d.statement, d.rationale);
+      case 'evidence': return pick(d.summary, d.source);
+      case 'experiments': return pick(d.methodology, d.results, d.conclusions);
+      default: return [];
+    }
+  }, []);
+
   const handleDomainAction = useCallback(async (action: string) => {
-    if (!selectedItemId) return;
+    if (!selectedItemId || !selectedItem) return;
     try {
-      const result = await runArtifact.mutateAsync({ id: selectedItemId, action });
-      if (result.ok === false) {
-        setSynthesisResult(`Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}`);
-      } else if (action === 'generate_abstract' || action === 'synthesize') {
-        setSynthesisResult(typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2));
+      // Give the empirical validator real content to check (see claimsFromItem
+      // above) before running it — a no-op "validated 0 claims" click is a
+      // dead feature, not an honest result.
+      if (action === 'validate') {
+        const existing = ((selectedItem.data as Record<string, unknown>)?.claims as unknown[]) || [];
+        if (existing.length === 0) {
+          const texts = claimsFromItem(selectedItem, activeTab);
+          if (texts.length > 0) {
+            await updateArtifact(selectedItemId, { data: { ...selectedItem.data, claims: texts.map((text, i) => ({ id: `c${i}`, text })) } });
+          }
+        }
+      }
+      // register("lens","run") on the server always answers with an outer
+      // { ok:true, result }, even when the domain handler itself reported
+      // failure — the handler's own ok/error lives inside `result`. Check
+      // both layers so a real failure never silently reads as success.
+      const response = await runArtifact.mutateAsync({ id: selectedItemId, action });
+      const inner = (response?.result ?? null) as Record<string, unknown> | null;
+      const failed = response?.ok === false || (inner && typeof inner === 'object' && inner.ok === false);
+      if (failed) {
+        const msg = String((response as Record<string, unknown>)?.error || inner?.error || inner?.message || 'Unknown error');
+        setSynthesisResult(`Action failed: ${msg}`);
+        showToast('error', `${action} failed: ${msg}`);
+        return;
+      }
+      if (action === 'validate') {
+        const emp = inner?.empirical as { passRate?: number; issueCount?: number; claimsChecked?: number } | null | undefined;
+        const validated = Number(inner?.validated ?? 0);
+        if (emp) {
+          setValidationResults(prev => ({ ...prev, [selectedItemId]: { passRate: emp.passRate ?? 1, issueCount: emp.issueCount ?? 0, claimsChecked: emp.claimsChecked ?? 0 } }));
+          showToast(emp.issueCount ? 'warning' : 'success', `Validated ${validated} claim${validated === 1 ? '' : 's'} — ${Math.round((emp.passRate ?? 1) * 100)}% pass, ${emp.issueCount ?? 0} issue${(emp.issueCount ?? 0) === 1 ? '' : 's'}.`);
+        } else {
+          showToast('info', validated > 0 ? `Validated ${validated} claim(s); empirical gate unavailable.` : 'No claims to validate on this item.');
+        }
+      } else if (action === 'detect-contradictions') {
+        const count = Number(inner?.count ?? 0);
+        setSynthesisResult(count > 0 ? JSON.stringify(inner?.contradictions, null, 2) : 'No contradictions detected among this item’s claims.');
+        showToast(count > 0 ? 'warning' : 'success', count > 0 ? `Found ${count} contradiction${count === 1 ? '' : 's'}.` : 'No contradictions detected.');
+      } else if (action === 'abstractSummarize' || action === 'generate_abstract') {
+        const summary = inner?.summary as string | undefined;
+        if (summary) {
+          const keywords = (inner?.keywords as string[] | undefined) || [];
+          setSynthesisResult(`${summary}\n\nKeywords: ${keywords.length ? keywords.join(', ') : '—'}`);
+          showToast('success', 'Abstract generated — see the Synthesis tab.');
+        } else {
+          showToast('info', String(inner?.message || 'Add more text to this item before generating an abstract.'));
+        }
+      } else if (action === 'synthesize') {
+        const synthesis = inner?.synthesis as { narrative?: string } | undefined;
+        setSynthesisResult(synthesis?.narrative ? synthesis.narrative : (typeof inner === 'string' ? inner : JSON.stringify(inner, null, 2)));
       } else if (action === 'export_pdf') {
-        const exp = result.result as { filename?: string; content?: string } | undefined;
+        const exp = inner as { filename?: string; content?: string } | undefined;
         if (exp?.content) {
           const blob = new Blob([exp.content], { type: 'text/plain;charset=utf-8' });
           const url = URL.createObjectURL(blob);
@@ -451,10 +537,14 @@ export default function PaperLensPage() {
           a.href = url; a.download = exp.filename || 'paper.txt'; a.click();
           URL.revokeObjectURL(url);
           setSynthesisResult(`Exported ${exp.filename || 'paper.txt'} (${exp.content.length} chars).`);
+          showToast('success', `Exported ${exp.filename || 'paper.txt'}.`);
         }
       }
-    } catch (e) { console.error(`Paper action ${action} failed:`, e); }
-  }, [selectedItemId, runArtifact]);
+    } catch (e) {
+      console.error(`Paper action ${action} failed:`, e);
+      showToast('error', e instanceof Error ? e.message : `Action ${action} failed`);
+    }
+  }, [selectedItemId, selectedItem, activeTab, runArtifact, updateArtifact, claimsFromItem]);
 
   const handleExportCSV = useCallback(() => {
     const headers = ['Title', 'Type', 'Tags', 'Status', 'Updated'];
@@ -775,10 +865,46 @@ export default function PaperLensPage() {
                   allEvidence={allEvidence}
                   allExperiments={allExperiments}
                 />
+                {readability && (
+                  <div className={cn(ds.panel, 'flex flex-wrap items-center gap-4 py-2')}>
+                    {readability.message ? (
+                      <span className={ds.textMuted}>{readability.message}</span>
+                    ) : (
+                      <>
+                        <div>
+                          <span className={ds.textMuted}>Reading level</span>
+                          <p className="text-sm font-semibold text-white">{readability.readingLevel}</p>
+                        </div>
+                        <div>
+                          <span className={ds.textMuted}>Flesch-Kincaid grade</span>
+                          <p className="text-sm font-semibold text-white">{readability.fleschKincaidGrade}</p>
+                        </div>
+                        <div>
+                          <span className={ds.textMuted}>Reading ease</span>
+                          <p className="text-sm font-semibold text-white">{readability.fleschReadingEase}</p>
+                        </div>
+                        <div>
+                          <span className={ds.textMuted}>Gunning Fog</span>
+                          <p className="text-sm font-semibold text-white">{readability.gunningFog}</p>
+                        </div>
+                        <div>
+                          <span className={ds.textMuted}>Complex words</span>
+                          <p className="text-sm font-semibold text-white">{readability.stats.complexWordRate}%</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
-                  <button onClick={() => setEditorOpen(false)} className={cn(ds.btnGhost, ds.btnSmall)}>
-                    <X className="w-4 h-4" /> Cancel
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setEditorOpen(false)} className={cn(ds.btnGhost, ds.btnSmall)}>
+                      <X className="w-4 h-4" /> Cancel
+                    </button>
+                    <button onClick={checkReadability} disabled={checkingReadability} className={cn(ds.btnSecondary, ds.btnSmall)}>
+                      {checkingReadability ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
+                      Check Readability
+                    </button>
+                  </div>
                   <button onClick={saveEditor} className={cn(ds.btnPrimary, ds.btnSmall)}>
                     <Save className="w-4 h-4" /> Save Paper
                   </button>
@@ -1785,31 +1911,119 @@ function SynthesisEngine({ items, allHypotheses, allEvidence, allExperiments, sy
 }
 
 // ---- Bibliography Manager ----
+interface CitationAnalysis {
+  totalCitations: number;
+  byType: Record<string, number>;
+  byYear: Record<string, number>;
+  selfCitations: number;
+  selfCitationRate: number;
+  medianYear: number;
+  recencyIndex: number;
+  recentCount: number;
+  oldestYear: number | null;
+  newestYear: number | null;
+  avgAge: number | null;
+  message?: string;
+}
+
 function BibliographyManager({ items, onSelect, citationStyle, onStyleChange }: {
   items: LensItem[];
   onSelect: (item: LensItem) => void;
   citationStyle: CitationData['style'];
   onStyleChange: (s: CitationData['style']) => void;
 }) {
+  const [analysis, setAnalysis] = useState<CitationAnalysis | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  const runAnalysis = useCallback(async () => {
+    setAnalyzing(true);
+    try {
+      // paper.citationAnalyze reads artifact.data.citations — build that
+      // list from the real saved bibliography entries (each a separate
+      // 'citation' artifact) rather than requiring one artifact to hold
+      // them all. /api/lens/run builds a virtual artifact from the input
+      // body directly, so no persisted wrapper artifact is needed.
+      const citations = items.map(it => {
+        const d = getData<CitationData>(it);
+        return { authors: d.authors || '', year: d.year, journal: d.journal, url: d.url, type: d.journal ? 'journal' : d.url ? 'web' : 'other' };
+      });
+      const res = await apiHelpers.lens.runDomain('paper', 'citationAnalyze', { input: { citations } });
+      const result = (res as { data?: { ok: boolean; result?: CitationAnalysis } }).data?.result;
+      if (result) setAnalysis(result);
+      else showToast('error', 'Citation analysis failed');
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Citation analysis failed');
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [items]);
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <label className={ds.label}>Citation Style:</label>
-        {CITATION_STYLES.map(s => (
-          <button
-            key={s}
-            onClick={() => onStyleChange(s)}
-            className={cn(
-              'text-xs px-3 py-1 rounded-full font-medium uppercase transition-colors',
-              citationStyle === s
-                ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
-                : 'bg-lattice-surface text-gray-400 hover:text-white border border-lattice-border'
-            )}
-          >
-            {s}
-          </button>
-        ))}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <label className={ds.label}>Citation Style:</label>
+          {CITATION_STYLES.map(s => (
+            <button
+              key={s}
+              onClick={() => onStyleChange(s)}
+              className={cn(
+                'text-xs px-3 py-1 rounded-full font-medium uppercase transition-colors',
+                citationStyle === s
+                  ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
+                  : 'bg-lattice-surface text-gray-400 hover:text-white border border-lattice-border'
+              )}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={runAnalysis}
+          disabled={analyzing || items.length === 0}
+          className={cn(ds.btnSecondary, ds.btnSmall)}
+        >
+          {analyzing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <BarChart3 className="w-3.5 h-3.5" />}
+          Analyze Bibliography
+        </button>
       </div>
+
+      {analysis && (
+        <div className={cn(ds.panel, 'space-y-2')}>
+          {analysis.message ? (
+            <p className={ds.textMuted}>{analysis.message}</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <p className={ds.textMuted}>Self-citation rate</p>
+                  <p className="text-lg font-bold text-white">{analysis.selfCitationRate}%</p>
+                </div>
+                <div>
+                  <p className={ds.textMuted}>Recency index (5yr)</p>
+                  <p className="text-lg font-bold text-white flex items-center gap-1">
+                    {analysis.recencyIndex}%
+                    {analysis.recencyIndex >= 50 ? <TrendingUp className="w-3.5 h-3.5 text-neon-green" /> : <TrendingDown className="w-3.5 h-3.5 text-yellow-400" />}
+                  </p>
+                </div>
+                <div>
+                  <p className={ds.textMuted}>Median year</p>
+                  <p className="text-lg font-bold text-white">{analysis.medianYear}</p>
+                </div>
+                <div>
+                  <p className={ds.textMuted}>Avg age</p>
+                  <p className="text-lg font-bold text-white">{analysis.avgAge != null ? `${analysis.avgAge}y` : '—'}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {Object.entries(analysis.byType).map(([type, count]) => (
+                  <span key={type} className="text-[10px] px-2 py-0.5 rounded-full bg-lattice-surface text-gray-300 capitalize">{type}: {count}</span>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         {items.map(item => {

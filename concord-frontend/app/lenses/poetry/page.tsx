@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef} from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -11,7 +11,6 @@ import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
 import { PoetryDbPanel } from '@/components/poetry/PoetryDbPanel';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
 import { PoetryActionPanel } from '@/components/poetry/PoetryActionPanel';
-import { PoemWorkspace } from '@/components/poetry/PoemWorkspace';
 import { PoetryDiscovery } from '@/components/poetry/PoetryDiscovery';
 import { PoetryWorkshop } from '@/components/poetry/PoetryWorkshop';
 import { PoetryStudio } from '@/components/poetry/PoetryStudio';
@@ -20,16 +19,14 @@ import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Feather, Plus, Search, Edit2, Trash2, BookOpen, X, Save, Sparkles,
-  AlignLeft, Globe,
+  AlignLeft, Globe, Download,
   Hash, Music, Layers, Moon, Zap, Compass, Wand2,
 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -39,23 +36,36 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
 import { FeedBanner } from '@/components/lens/FeedBanner';
 
 type PoetryTab = 'collection' | 'compose' | 'discover' | 'studio' | 'forms' | 'workshop';
 type PoemForm = 'free-verse' | 'sonnet' | 'haiku' | 'limerick' | 'villanelle' | 'ballad' | 'ode' | 'elegy' | 'acrostic' | 'other';
 
-interface Poem {
+// Backed by the real poetry.poem-* macros (server/domains/poetry.js) —
+// STATE.poetryLens.poems, the same per-user notebook substrate the
+// PoetryWorkshop / PoetryStudio / PoetryDiscovery panels read from.
+// poem-list intentionally omits body text (list vs. detail separation);
+// poem-detail carries the full `body`.
+interface PoemMeta {
   id: string;
   title: string;
-  content: string;
   form: PoemForm;
+  status: 'draft' | 'revising' | 'finished';
   lineCount: number;
-  wordCount: number;
-  status: 'draft' | 'polished' | 'published';
+  updatedAt: string;
+}
+interface PoemDetail {
+  id: string;
+  title: string;
+  body: string;
+  form: PoemForm;
+  status: 'draft' | 'revising' | 'finished';
   tags: string[];
   createdAt: string;
+  updatedAt: string;
 }
+
+const POEM_STATUSES: PoemDetail['status'][] = ['draft', 'revising', 'finished'];
 
 const POEM_FORMS: { id: PoemForm; label: string; description: string }[] = [
   { id: 'free-verse', label: 'Free Verse', description: 'No fixed structure, pure expression' },
@@ -269,26 +279,37 @@ export default function PoetryPage() {
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('poetry');
   const { contextDTUs } = useLensDTUs({ lens: 'poetry' });
 
-  const { items: poemItems, isLoading, isError, error, refetch, create: createPoem, update: updatePoem, remove: removePoem } = useLensData<Poem>('poetry', 'poem', { seed: [] });
-  const poems = useMemo(() => poemItems.map(i => ({ ...(i.data as unknown as Poem), id: i.id, title: i.title })), [poemItems]);
+  // Real backend substrate — poetry.poem-list / poem-detail / poem-create /
+  // poem-update / poem-delete (server/domains/poetry.js). This is the same
+  // store PoetryWorkshop / PoetryStudio read from — a poem composed here
+  // shows up there too, and vice versa.
+  const [poems, setPoems] = useState<PoemMeta[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [loadErrorMsg, setLoadErrorMsg] = useState<string | null>(null);
 
-  const runAction = useRunArtifact('poetry');
+  const refetch = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const r = await lensRun('poetry', 'poem-list', {});
+      if (r.data?.ok) {
+        setPoems((r.data.result?.poems as PoemMeta[]) || []);
+        setIsError(false);
+        setLoadErrorMsg(null);
+      } else {
+        setIsError(true);
+        setLoadErrorMsg(r.data?.error || 'Failed to load poems');
+      }
+    } catch (err) {
+      setIsError(true);
+      setLoadErrorMsg(err instanceof Error ? err.message : 'Failed to load poems');
+    }
+    setIsLoading(false);
+  }, []);
+  useEffect(() => { void refetch(); }, [refetch]);
+
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [activeAction, setActiveAction] = useState<string | null>(null);
-
-  const handleAction = useCallback(async (action: string) => {
-    const targetId = poemItems[0]?.id;
-    if (!targetId) return;
-    setActiveAction(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult({ action, ...(res.result as Record<string, unknown>) }); }
-    } catch (err) {
-      console.error('Poetry action failed:', err);
-    } finally {
-      setActiveAction(null);
-    }
-  }, [poemItems, runAction]);
 
   const [tab, setTab] = useState<PoetryTab>('collection');
 
@@ -325,18 +346,42 @@ export default function PoetryPage() {
   const [showAnalysis, setShowAnalysis] = useState(true);
 
   // Composer state
-  const [composingPoem, setComposingPoem] = useState<Poem | null>(null);
+  const [composingPoem, setComposingPoem] = useState<PoemDetail | null>(null);
   const [compTitle, setCompTitle] = useState('');
   const [compContent, setCompContent] = useState('');
   const [compForm, setCompForm] = useState<PoemForm>('free-verse');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Quick-action zap: analyzes whatever is currently in the Compose editor
+  // (not an arbitrary "first poem in the list") via the real pure-compute
+  // macros — meterAnalysis/rhymeScheme/wordFrequency expect `{ text }`,
+  // formGuide expects `{ form }`.
+  const handleAction = useCallback(async (action: string) => {
+    if (action !== 'formGuide' && !compContent.trim()) return;
+    setActiveAction(action);
+    try {
+      const input = action === 'formGuide' ? { form: compForm } : { text: compContent };
+      const r = await lensRun('poetry', action, input);
+      if (r.data?.ok && r.data.result) {
+        setActionResult({ action, ...(r.data.result as Record<string, unknown>) });
+      } else {
+        setActionResult({ action, message: `Action failed: ${r.data?.error || 'Unknown error'}` });
+      }
+    } catch (err) {
+      console.error('Poetry action failed:', err);
+    } finally {
+      setActiveAction(null);
+    }
+  }, [compContent, compForm]);
+
+  // poem-list omits body text (list vs. detail separation) — search is
+  // over titles only. Open a poem (poem-detail) to search/read its body.
   const filteredPoems = useMemo(() => {
     let result = poems;
     if (formFilter) result = result.filter(p => p.form === formFilter);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(p => p.title?.toLowerCase().includes(q) || p.content?.toLowerCase().includes(q));
+      result = result.filter(p => p.title?.toLowerCase().includes(q));
     }
     return result;
   }, [poems, formFilter, searchQuery]);
@@ -349,39 +394,86 @@ export default function PoetryPage() {
     setTab('compose');
   }, []);
 
-  const openPoem = useCallback((poem: Poem) => {
-    setComposingPoem(poem);
-    setCompTitle(poem.title);
-    setCompContent(poem.content || '');
-    setCompForm(poem.form || 'free-verse');
-    setTab('compose');
+  const openPoem = useCallback(async (id: string) => {
+    const r = await lensRun('poetry', 'poem-detail', { id });
+    if (r.data?.ok && r.data.result?.poem) {
+      const p = r.data.result.poem as PoemDetail;
+      setComposingPoem(p);
+      setCompTitle(p.title);
+      setCompContent(p.body || '');
+      setCompForm(p.form || 'free-verse');
+      setTab('compose');
+    } else {
+      useUIStore.getState().addToast({ type: 'error', message: 'Could not load poem' });
+    }
   }, []);
+
+  const deletePoem = useCallback(async (id: string) => {
+    try {
+      await lensRun('poetry', 'poem-delete', { id });
+      if (composingPoem?.id === id) startNew();
+      await refetch();
+    } catch (err) {
+      console.error('[Poetry] Failed to delete poem:', err);
+      useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete poem' });
+    }
+  }, [composingPoem, startNew, refetch]);
+
+  const mintPoem = useCallback(async (id: string) => {
+    const detail = await lensRun('poetry', 'poem-detail', { id });
+    if (!detail.data?.ok || !detail.data.result?.poem) {
+      useUIStore.getState().addToast({ type: 'error', message: 'Could not load poem' });
+      return;
+    }
+    const p = detail.data.result.poem as PoemDetail;
+    try {
+      const res = await api.post('/api/lens/run', {
+        domain: 'dtu', name: 'create',
+        input: {
+          title: `Poem — ${p.title}`,
+          creti: `${p.title}\n\n${p.body}`,
+          tags: ['poetry', p.form].filter(Boolean),
+          source: 'poetry:poem:mint',
+          meta: { visibility: 'private' },
+        },
+      });
+      const dtuId = res.data?.result?.dtu?.id ?? res.data?.dtu?.id;
+      if (dtuId) useUIStore.getState().addToast({ type: 'success', message: 'Poem minted to your substrate' });
+      else useUIStore.getState().addToast({ type: 'error', message: 'Mint failed' });
+    } catch (err) {
+      console.error('[Poetry] Mint failed:', err);
+      useUIStore.getState().addToast({ type: 'error', message: 'Mint failed' });
+    }
+  }, []);
+
+  const setPoemStatus = useCallback(async (status: string) => {
+    if (!composingPoem) return;
+    await lensRun('poetry', 'poem-update', { id: composingPoem.id, status });
+    setComposingPoem({ ...composingPoem, status: status as PoemDetail['status'] });
+    await refetch();
+  }, [composingPoem, refetch]);
 
   const savePoem = useCallback(async () => {
     setIsSaving(true);
-    const lines = compContent.split('\n').filter(l => l.trim());
-    const words = compContent.trim().split(/\s+/).filter(Boolean).length;
-    const data: Partial<Poem> = {
-      title: compTitle || 'Untitled',
-      content: compContent,
-      form: compForm,
-      lineCount: lines.length,
-      wordCount: words,
-      status: 'draft',
-      tags: [compForm],
-    };
     try {
       if (composingPoem) {
-        await updatePoem(composingPoem.id, { title: data.title, data: data as unknown as Partial<Poem> });
+        await lensRun('poetry', 'poem-update', {
+          id: composingPoem.id, title: compTitle || 'Untitled', body: compContent, form: compForm,
+        });
       } else {
-        await createPoem({ title: data.title!, data: { ...data, createdAt: new Date().toISOString() } as unknown as Record<string, unknown> });
+        const r = await lensRun('poetry', 'poem-create', {
+          title: compTitle || 'Untitled', body: compContent, form: compForm,
+        });
+        if (r.data?.ok && r.data.result?.poem) {
+          setComposingPoem(r.data.result.poem as PoemDetail);
+        }
       }
-      refetch();
+      await refetch();
     } catch (err) {
       console.error('Save failed:', err instanceof Error ? err.message : err);
     }
     setIsSaving(false);
-  }, [compTitle, compContent, compForm, composingPoem, createPoem, updatePoem, refetch]);
+  }, [compTitle, compContent, compForm, composingPoem, refetch]);
 
   // Use creative generation for AI-assisted poetry
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -456,9 +548,10 @@ export default function PoetryPage() {
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
       <UniversalActions domain="poetry" artifactId={null} compact />
 
-        {/* Poetry Actions Panel */}
+        {/* Poetry Actions Panel — analyzes whatever's currently in the Compose editor */}
         <div className="bg-white/3 border border-white/10 rounded-xl p-4 space-y-3">
           <h3 className="text-sm font-semibold text-rose-300 flex items-center gap-2"><Zap className="w-4 h-4" /> Poetry Analysis</h3>
+          <p className="text-[11px] text-gray-400 -mt-1">Analyzes the poem open in the Compose tab.</p>
           <div className="flex flex-wrap gap-2">
             {[
               { action: 'meterAnalysis', label: 'Meter Analysis' },
@@ -466,7 +559,7 @@ export default function PoetryPage() {
               { action: 'formGuide', label: 'Form Guide' },
               { action: 'wordFrequency', label: 'Word Frequency' },
             ].map(({ action, label }) => (
-              <button key={action} onClick={() => handleAction(action)} disabled={activeAction === action || !poemItems[0]?.id}
+              <button key={action} onClick={() => handleAction(action)} disabled={activeAction === action || (action !== 'formGuide' && !compContent.trim())}
                 className="px-3 py-1.5 text-xs bg-rose-500/10 border border-rose-500/20 rounded-lg hover:bg-rose-500/20 disabled:opacity-50 flex items-center gap-1.5">
                 {activeAction === action ? <div className="w-3 h-3 border border-rose-400 border-t-transparent rounded-full animate-spin" /> : <Zap className="w-3 h-3 text-rose-400" />}
                 {label}
@@ -539,7 +632,7 @@ export default function PoetryPage() {
           ))}
         </div>
 
-        {isError && <ErrorState error={error?.message} onRetry={refetch} />}
+        {isError && <ErrorState error={loadErrorMsg || undefined} onRetry={refetch} />}
 
         {/* Collection */}
         {tab === 'collection' && (
@@ -564,25 +657,22 @@ export default function PoetryPage() {
             ) : (
               <div className="space-y-2">
                 {filteredPoems.map(poem => (
-                  <motion.div key={poem.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-rose-500/30 transition-colors cursor-pointer" onClick={() => openPoem(poem)}>
+                  <motion.div key={poem.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-rose-500/30 transition-colors cursor-pointer" onClick={() => openPoem(poem.id)}>
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-medium text-sm italic">{poem.title}</h3>
                         <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                           <span>{poem.form || 'free-verse'}</span>
                           <span>{poem.lineCount || 0} lines</span>
-                          <span>{poem.wordCount || 0} words</span>
+                          <span className="capitalize">{poem.status}</span>
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <PullToSubstrate domain="poetry" artifactId={poem.id} compact />
-                        <button onClick={e => { e.stopPropagation(); openPoem(poem); }} className="p-1 hover:bg-white/10 rounded" aria-label="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                        <button onClick={e => { e.stopPropagation(); removePoem(poem.id).then(() => refetch()).catch((err) => { console.error('[Poetry] Failed to delete poem:', err); useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete poem' }); }); }} className="p-1 hover:bg-white/10 rounded text-red-400" aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={e => { e.stopPropagation(); mintPoem(poem.id); }} className="p-1 hover:bg-white/10 rounded" aria-label="Mint as DTU"><Download className="w-3.5 h-3.5" /></button>
+                        <button onClick={e => { e.stopPropagation(); openPoem(poem.id); }} className="p-1 hover:bg-white/10 rounded" aria-label="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={e => { e.stopPropagation(); deletePoem(poem.id); }} className="p-1 hover:bg-white/10 rounded text-red-400" aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </div>
-                    {poem.content && (
-                      <pre className="text-xs text-gray-400 mt-2 font-serif whitespace-pre-wrap line-clamp-4">{poem.content.slice(0, 300)}</pre>
-                    )}
                   </motion.div>
                 ))}
               </div>
@@ -606,6 +696,12 @@ export default function PoetryPage() {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-gray-400">{lineCount} lines / {wordCount} words</span>
+                {composingPoem && (
+                  <select value={composingPoem.status} onChange={e => setPoemStatus(e.target.value)}
+                    className="px-2 py-1 bg-white/5 border border-white/10 rounded text-xs capitalize">
+                    {POEM_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                )}
                 <button onClick={() => setShowAnalysis(a => !a)}
                   className={cn('px-2 py-1.5 text-xs rounded-lg flex items-center gap-1', showAnalysis ? 'bg-rose-500/15 text-rose-400 border border-rose-500/25' : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10')}>
                   <Hash className="w-3 h-3" /> Analysis
@@ -699,7 +795,6 @@ export default function PoetryPage() {
 
       <section className="mt-6">
         <LensFeedButton domain="poetry" />
-        <PoemWorkspace />
       </section>
 
       {/* Poetry Foundation + Poets.org-shape workbench: meter / rhyme / form / frequency + actions */}
