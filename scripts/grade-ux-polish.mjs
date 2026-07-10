@@ -90,6 +90,62 @@ const ANIMATION_RE = /framer-motion|<motion\.|AnimatePresence|\btransition-\w|\b
 // Toast notifications — broadened to match the actual codebase APIs.
 const TOAST_RE = /toast\s*\(|<Toast\b|useToast\b|addToast\s*\(|notify\s*\(|showToast\s*\(|useUIStore[^)]*addToast/;
 
+// ---- 1b. Honest-mode scaffold detection (--honest, opt-in, additive) ----
+//
+// The default grader is a STRUCTURAL audit and, by design, saturates: the
+// codemod that generated the "generic scaffold" (164 lenses that all import +
+// render the ManifestActionBar + AutoActionStrip + RecentMineCard template)
+// also inserts the very structural pillars the default grader rewards, so
+// every lens scores "polished" (verified: `node scripts/grade-ux-polish.mjs`
+// → polished 260/260). That makes the gauge blind — it cannot tell a bespoke,
+// deliberately-designed lens from a raw template dump.
+//
+// `--honest` adds a SECOND, opt-in pass that detects a lens which is still
+// the bare generated template — the generic trio footer PLUS a generic
+// auto-action body (`<UniversalActions>` / `<LensFeaturePanel>`, i.e. the
+// "wall of auto-discovered macro buttons") on a THIN page with no substantial
+// bespoke component — and caps it at 'functional'. A lens that BROKE from the
+// template is NOT capped even if it still mounts the trio footer incidentally:
+//   • bespoke page          → page.tsx >= BESPOKE_PAGE_LOC hand-written lines
+//   • flagship-scale panel   → a components/<lens>/*.tsx >= FLAGSHIP_COMPONENT_LOC
+//   • custom body            → it dropped the generic `<UniversalActions>` /
+//                              `<LensFeaturePanel>` wrappers for bespoke UI.
+//
+// Thresholds tuned empirically 2026-07-09 against verified anchors so the cap
+// is BIDIRECTIONAL (docs/FRONTEND_REBUILD_PROGRAM.md §Phase 0.1): every
+// verified-bespoke lens is exempt (agents — 1200-line page; wallet — 1764-line
+// page + WalletParityHub; all/tools — custom bodies that dropped the generic
+// wrappers), while the bare template shells (alliance-class: <120-line page
+// delegating to `<UniversalActions>`/`<AllianceWorkspace>`) are capped.
+//
+// This flag NEVER changes default-mode output (still 260 polished): the
+// scaffold signals are recorded on every lens for transparency, but the tier
+// is only demoted when --honest is passed. Pinned bidirectionally by
+// server/tests/grade-ux-polish-idiom.test.js.
+const HONEST = process.argv.includes('--honest');
+
+// The generated-scaffold "generic trio" — the template footer present on the
+// 164 codemod-generated lenses.
+const GENERIC_TRIO = ['ManifestActionBar', 'AutoActionStrip', 'RecentMineCard'];
+// Generic template BODY surface: the auto-discovered-macro button wall
+// (<UniversalActions>) or the generic capabilities list (<LensFeaturePanel>).
+// Their presence in the PAGE marks reliance on the template body rather than a
+// bespoke, hand-designed layout.
+const GENERIC_BODY_RE = /<UniversalActions\b|<LensFeaturePanel\b/;
+// The literal auto-action button wall (recorded signal; the doc's "walls of
+// auto-generated buttons"). AutoActionStrip auto-discovers every backend macro
+// for a domain and renders one button each.
+const MACRO_BUTTON_WALL_RE = /<AutoActionStrip\b|<UniversalActions\b/;
+// Inline generated action-array → button idiom (recorded signal):
+// `{ action: 'foo.bar', label: '…' }` objects fed to a generic runner.
+const INLINE_ACTION_WALL_RE = /\b(?:action|macro)\s*:\s*['"][\w.\-]+['"]\s*,\s*label\s*:/;
+
+// A lens has "broken from the template" (earns a bespoke exemption) when its
+// own hand-written page is large, or it ships a flagship-scale bespoke
+// component. Below these it is only the generated shell.
+const BESPOKE_PAGE_LOC = 700;
+const FLAGSHIP_COMPONENT_LOC = 1000;
+
 // ---- 2. File scanning ----
 
 function readUtf8(p) { try { return fs.readFileSync(p, 'utf8'); } catch { return ''; } }
@@ -236,9 +292,32 @@ function scanLens(lens) {
   const allFiles = [files.pageFile, ...files.componentFiles];
   const blob = allFiles.map(readUtf8).join('\n');
 
+  // Page vs bespoke-component split — the honest-mode scaffold signals need
+  // the page's own hand-written LOC and the largest bespoke component in
+  // components/<lens>/ (a flagship-scale panel = the lens broke from the
+  // template). The default signals still read the joined blob.
+  const pageSrc = readUtf8(files.pageFile);
+  const pageLoc = pageSrc.split('\n').length;
+  const componentLocs = files.componentFiles.map(f => readUtf8(f).split('\n').length);
+  const bespokeComponentLoc = componentLocs.reduce((a, b) => a + b, 0);
+  const maxBespokeComponentLoc = componentLocs.length ? Math.max(...componentLocs) : 0;
+
   const signals = {
     fileCount: allFiles.length,
     totalLoc: blob.split('\n').length,
+    pageLoc,
+    bespokeComponentLoc,
+    maxBespokeComponentLoc,
+    // bespoke ratio: fraction of the lens's authored LOC that lives in its own
+    // components/<lens>/ dir (bespoke design) vs the generated page shell.
+    bespokeRatio: (bespokeComponentLoc + pageLoc) > 0
+      ? Math.round((bespokeComponentLoc / (bespokeComponentLoc + pageLoc)) * 1000) / 1000
+      : 0,
+    // Scaffold signals (recorded in BOTH modes; only acted on under --honest).
+    importsGenericTrio: GENERIC_TRIO.every(n => blob.includes(n)),
+    usesGenericBody: GENERIC_BODY_RE.test(pageSrc),
+    hasMacroButtonWall: MACRO_BUTTON_WALL_RE.test(pageSrc),
+    hasInlineActionWall: INLINE_ACTION_WALL_RE.test(blob),
     hasLoading: LOADING_RE.test(blob),
     hasEmptyState: EMPTY_STATE_RE.test(blob),
     hasErrorUI: ERROR_UI_RE.test(blob),
@@ -274,6 +353,25 @@ function scanLens(lens) {
   else if (signals.pillarsPresent <= 3 || signals.antiPatterns > 0) tier = 'functional';
   else if (signals.pillarsPresent >= 4 && (signals.hasAnimation || signals.hasToasts)) tier = 'polished';
   else tier = 'functional';
+
+  // Generic-scaffold detection. A lens is still the bare generated template
+  // when it imports the trio AND leans on the generic template body
+  // (<UniversalActions>/<LensFeaturePanel>) AND has neither a bespoke page nor
+  // a flagship-scale bespoke component. Recorded in both modes.
+  signals.isGenericScaffold =
+    signals.importsGenericTrio &&
+    signals.usesGenericBody &&
+    signals.pageLoc < BESPOKE_PAGE_LOC &&
+    signals.maxBespokeComponentLoc < FLAGSHIP_COMPONENT_LOC;
+
+  // --honest cap: a still-templated lens cannot score 'polished'. Strictly
+  // additive — in default mode HONEST is false so tier is never touched here,
+  // and the default distribution is byte-for-byte the pre-honest result.
+  signals.honestCapped = false;
+  if (HONEST && signals.isGenericScaffold && tier === 'polished') {
+    tier = 'functional';
+    signals.honestCapped = true;
+  }
 
   return { lens, tier, ...signals };
 }
@@ -320,8 +418,13 @@ const antiPatterns = {
 
 const out = {
   generatedAt: new Date().toISOString(),
+  mode: HONEST ? 'honest' : 'default',
   totals,
   weightedScore: Math.round(weighted * 1000) / 1000,
+  // Scaffold telemetry — recorded in both modes; `scaffoldsCapped` is 0 in
+  // default mode (the cap only fires under --honest).
+  genericScaffolds: rows.filter(r => r.isGenericScaffold).length,
+  scaffoldsCapped: rows.filter(r => r.honestCapped).length,
   signalCoverage,
   antiPatterns,
   lenses: rows.sort((a, b) => {
@@ -331,14 +434,30 @@ const out = {
   }),
 };
 
+// --honest writes parallel files so the default audit output is never
+// overwritten by an honest run (and vice-versa).
+const OUT_JSON = HONEST ? 'ux-polish-honest.json' : 'ux-polish.json';
+const OUT_MD = HONEST ? 'ux-polish-honest-gaps.md' : 'ux-polish-gaps.md';
+
 fs.mkdirSync(path.join(ROOT, 'audit'), { recursive: true });
-fs.writeFileSync(path.join(ROOT, 'audit', 'ux-polish.json'), JSON.stringify(out, null, 2));
+fs.writeFileSync(path.join(ROOT, 'audit', OUT_JSON), JSON.stringify(out, null, 2));
 
 // Human-scannable markdown.
 const md = [];
-md.push('# UX Polish Audit\n');
+md.push(`# UX Polish Audit${HONEST ? ' — HONEST mode' : ''}\n`);
 md.push(`Generated: ${out.generatedAt}\n`);
+md.push(`Mode: **${out.mode}**\n`);
 md.push(`Lenses scanned: ${rows.length}\n`);
+if (HONEST) {
+  md.push('');
+  md.push('> Honest mode demotes lenses that are still the generated scaffold');
+  md.push('> (generic ManifestActionBar + AutoActionStrip + RecentMineCard trio');
+  md.push('> + a generic `<UniversalActions>`/`<LensFeaturePanel>` body on a thin');
+  md.push('> page with no substantial bespoke component) from `polished` →');
+  md.push('> `functional`. Lenses with a bespoke page, a flagship-scale component,');
+  md.push('> or a custom body that dropped the generic wrappers are NOT capped.');
+  md.push(`> **${out.scaffoldsCapped} lenses capped** (of ${out.genericScaffolds} detected as generic scaffolds).`);
+}
 md.push('');
 md.push('## Tier distribution');
 md.push('');
@@ -365,6 +484,23 @@ md.push('');
 md.push(`- Lenses with at least one \`<div onClick>\` (missing keyboard handler / role / tabIndex): **${antiPatterns.lensesWithDivAsButton}** (total instances: ${antiPatterns.totalDivAsButton})`);
 md.push(`- Lenses with inline hex colours (bypassing design tokens): **${antiPatterns.lensesWithInlineHex}** (total instances: ${antiPatterns.totalInlineHex})`);
 md.push('');
+if (HONEST) {
+  md.push('## Generic-scaffold lenses capped this run (polished → functional)');
+  md.push('');
+  const cappedRows = rows.filter(r => r.honestCapped)
+    .sort((a, b) => a.lens.localeCompare(b.lens));
+  if (cappedRows.length === 0) md.push('_None._');
+  else {
+    md.push('These import the generic trio, lean on the `<UniversalActions>`/`<LensFeaturePanel>` template body, and have neither a bespoke page (≥' + BESPOKE_PAGE_LOC + ' LOC) nor a flagship-scale component (≥' + FLAGSHIP_COMPONENT_LOC + ' LOC). Rebuild target: real designed product UI.');
+    md.push('');
+    md.push('| Lens | Page LOC | Max component LOC | Bespoke ratio |');
+    md.push('|---|---:|---:|---:|');
+    for (const r of cappedRows) {
+      md.push(`| \`${r.lens}\` | ${r.pageLoc} | ${r.maxBespokeComponentLoc} | ${r.bespokeRatio} |`);
+    }
+  }
+  md.push('');
+}
 md.push('## Raw-tier lenses (need work)');
 md.push('');
 const rawRows = rows.filter(r => r.tier === 'raw');
@@ -421,11 +557,16 @@ md.push('manual screen-reader walk-through), or (b) actual user testing.');
 md.push('This static audit is the **floor** — every lens with all 5 pillars + animation + toasts');
 md.push('is at least structurally complete. Real UX polish work goes on top.');
 
-fs.writeFileSync(path.join(ROOT, 'audit', 'ux-polish-gaps.md'), md.join('\n'));
+fs.writeFileSync(path.join(ROOT, 'audit', OUT_MD), md.join('\n'));
 
-console.error(`\nWrote audit/ux-polish.json + audit/ux-polish-gaps.md`);
+console.error(`\nWrote audit/${OUT_JSON} + audit/${OUT_MD}`);
+console.error(`Mode: ${out.mode}`);
 console.error(`Lenses: ${rows.length}`);
 console.error(`Raw:        ${totals.raw} (${((totals.raw / rows.length) * 100).toFixed(1)}%)`);
 console.error(`Functional: ${totals.functional} (${((totals.functional / rows.length) * 100).toFixed(1)}%)`);
 console.error(`Polished:   ${totals.polished} (${((totals.polished / rows.length) * 100).toFixed(1)}%)`);
 console.error(`Weighted UX polish score: ${out.weightedScore}`);
+if (HONEST) {
+  console.error(`Generic scaffolds detected: ${out.genericScaffolds}`);
+  console.error(`Capped (polished→functional): ${out.scaffoldsCapped}`);
+}

@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Image as ImageIcon, Loader2, Search } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { SaveToCollectionButton } from '@/components/gallery/SaveToCollectionButton';
 
 interface Work {
   id: number; accessionNumber?: string;
@@ -71,17 +72,30 @@ export function CmaBrowser() {
               <div className="p-2 text-[11px]">
                 <div className="line-clamp-2 text-white">{w.title}</div>
                 {w.creators?.[0] && <div className="line-clamp-1 text-[10px] text-zinc-400">{w.creators[0]}</div>}
-                <div className="mt-1 flex items-center justify-between">
+                <div className="mt-1 flex items-center justify-between gap-1">
                   <span className="text-[9px] font-mono text-zinc-400">{w.creationDate || w.type}</span>
-                  <SaveAsDtuButton
-                    compact
-                    apiSource="cleveland-museum-of-art"
-                    apiUrl={w.url}
-                    title={`${w.title}${w.creators?.[0] ? ` — ${w.creators[0]}` : ''}`}
-                    content={`Title: ${w.title}\nArtist: ${w.creators?.join(', ') || '—'}\nDate: ${w.creationDate || '—'}\nMedium: ${w.medium || '—'}\nDept: ${w.department || '—'}\nCMA: ${w.url}\nLicense: CC0`}
-                    extraTags={['gallery', 'cma', 'cc0', (w.type || 'artwork').toLowerCase()]}
-                    rawData={w}
-                  />
+                  <div className="flex items-center gap-0.5">
+                    <SaveToCollectionButton
+                      compact
+                      artwork={{
+                        refId: `cma:${w.id}`,
+                        title: w.title || 'Untitled',
+                        artist: w.creators?.[0],
+                        date: w.creationDate,
+                        image: w.image || w.imageThumb,
+                        museum: 'Cleveland Museum of Art',
+                      }}
+                    />
+                    <SaveAsDtuButton
+                      compact
+                      apiSource="cleveland-museum-of-art"
+                      apiUrl={w.url}
+                      title={`${w.title}${w.creators?.[0] ? ` — ${w.creators[0]}` : ''}`}
+                      content={`Title: ${w.title}\nArtist: ${w.creators?.join(', ') || '—'}\nDate: ${w.creationDate || '—'}\nMedium: ${w.medium || '—'}\nDept: ${w.department || '—'}\nCMA: ${w.url}\nLicense: CC0`}
+                      extraTags={['gallery', 'cma', 'cc0', (w.type || 'artwork').toLowerCase()]}
+                      rawData={w}
+                    />
+                  </div>
                 </div>
               </div>
             </motion.div>

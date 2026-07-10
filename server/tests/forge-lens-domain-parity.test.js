@@ -116,6 +116,17 @@ describe("forge.versions + forge.diff + forge.restoreVersion", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.currentVersion, "1");
   });
+
+  it("restoreVersion returns the version's code (the ForgeStudio reopen path depends on this)", () => {
+    // The "Resume a project" UI holds only listProjects metadata (no code),
+    // so it rehydrates by calling restoreVersion on the current version and
+    // reading result.code. Pin that contract.
+    const p = newProject();
+    const r = call("restoreVersion", ctxA, { projectId: p.projectId, versionId: p.versionId });
+    assert.equal(r.ok, true);
+    assert.equal(typeof r.result.code, "string");
+    assert.ok(r.result.code.length > 0);
+  });
 });
 
 describe("forge.files (multi-file project output)", () => {
@@ -207,6 +218,21 @@ describe("forge.listProjects", () => {
     assert.equal(a.result.projects.length, 2);
     const b = call("listProjects", ctxB, {});
     assert.equal(b.result.projects.length, 1);
+  });
+
+  it("returns the metadata fields the resume UI renders", () => {
+    // The "Resume a project" list shows appName, template, versions count,
+    // currentVersion, and createdAt (relative time). Pin those fields exist.
+    newProject(ctxA, { appName: "resume-me" });
+    const r = call("listProjects", ctxA, {});
+    assert.equal(r.ok, true);
+    const proj = r.result.projects[0];
+    assert.equal(proj.appName, "resume-me");
+    assert.equal(typeof proj.projectId, "string");
+    assert.equal(typeof proj.template, "string");
+    assert.equal(typeof proj.versions, "number");
+    assert.equal(typeof proj.currentVersion, "string");
+    assert.equal(typeof proj.createdAt, "number");
   });
 });
 

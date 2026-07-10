@@ -2,17 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useDiegetic } from '@/hooks/useDiegetic';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
-import { CommandPalette } from '@/components/common/CommandPalette';
 import { useUIStore } from '@/store/ui';
 import { Toasts } from '@/components/common/Toasts';
 import { OperatorErrorBanner } from '@/components/common/OperatorErrorBanner';
 import { SystemStatus } from '@/components/common/SystemStatus';
-import { SystemGuidePanel } from '@/components/guidance/SystemGuidePanel';
-import { FirstWinWizard } from '@/components/guidance/FirstWinWizard';
-import { HelpButton } from '@/components/help/HelpButton';
 import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { CookieConsent } from '@/components/common/CookieConsent';
@@ -20,17 +17,86 @@ import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { OfflineFallback } from '@/components/pwa/OfflineFallback';
 import SyncIndicator from '@/components/pwa/SyncIndicator';
 import { ConnectionStatus } from '@/components/common/ConnectionStatus';
-import { QuickCapture, useQuickCapture } from '@/components/capture/QuickCapture';
-import { NowPlayingBar } from '@/components/music/NowPlayingBar';
 import { MobileNav } from '@/components/shell/MobileNav';
-import { SessionSidebar } from '@/components/chat/SessionSidebar';
-import { OnboardingWizard, useOnboarding } from '@/components/onboarding/OnboardingWizard';
+// State-only hooks are kept as static imports (they gate whether the heavy
+// UI below is ever needed at all — QuickCapture/OnboardingWizard's hooks
+// also own global keyboard shortcuts that must always be live). Each hook
+// now lives in its own small module, split out of the same file as its
+// heavy component (shell-diet pass) — importing the hook here no longer
+// drags the component's render tree into the initial bundle.
+import { useQuickCapture } from '@/components/capture/useQuickCapture';
+import { useOnboarding } from '@/components/onboarding/useOnboarding';
+import { useEverTrue } from '@/hooks/useEverTrue';
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/store/sessions';
+import { useMusicStore } from '@/lib/music/store';
 import { useEventRouter } from '@/lib/event-router';
 import { useSocialNotificationToast } from '@/hooks/useSocialNotificationToast';
-import { LegalFooter } from '@/components/legal/LegalFooter';
 import { api } from '@/lib/api/client';
+
+/**
+ * Shell-diet lazy imports (see docs/NEXT_ARC_PLAN.md perf backlog).
+ *
+ * These components were previously static imports, meaning all of their
+ * code (and transitive deps — framer-motion trees, icon sets, the full
+ * lens/panel registries for CommandPalette) parsed and evaluated on every
+ * single page load for every user, regardless of whether the surface was
+ * ever opened. `next/dynamic(..., { ssr: false })` code-splits each into
+ * its own chunk that only loads on the client, off the critical initial-
+ * render path.
+ *
+ * CommandPalette, SystemGuidePanel, FirstWinWizard, HelpButton and
+ * LegalFooter are still mounted unconditionally (same as before) — they're
+ * genuinely global chrome — but their CODE no longer ships in the main
+ * bundle; it streams in as a separate chunk right after first paint. An
+ * idle-time prefetch below warms the CommandPalette chunk specifically, so
+ * Cmd/Ctrl+K still feels instant for the overwhelming majority of sessions
+ * (that don't press it in the first second of a page load).
+ */
+const CommandPalette = dynamic(
+  () => import('@/components/common/CommandPalette').then((m) => ({ default: m.CommandPalette })),
+  { ssr: false }
+);
+const SystemGuidePanel = dynamic(
+  () => import('@/components/guidance/SystemGuidePanel').then((m) => ({ default: m.SystemGuidePanel })),
+  { ssr: false }
+);
+const FirstWinWizard = dynamic(
+  () => import('@/components/guidance/FirstWinWizard').then((m) => ({ default: m.FirstWinWizard })),
+  { ssr: false }
+);
+const HelpButton = dynamic(
+  () => import('@/components/help/HelpButton').then((m) => ({ default: m.HelpButton })),
+  { ssr: false }
+);
+const LegalFooter = dynamic(
+  () => import('@/components/legal/LegalFooter').then((m) => ({ default: m.LegalFooter })),
+  { ssr: false }
+);
+
+// These four are additionally GATED — not just code-split but never even
+// mounted — until the state that governs their visibility first goes true
+// (a session-sidebar toggle, a quick-capture shortcut, the onboarding tour,
+// or the user actually starting music playback). Each stays mounted for the
+// rest of the session once first needed (see `useEverTrue` below) so their
+// own internal state (search query, draft text, exit animations) behaves
+// exactly as it did when they were always-mounted.
+const SessionSidebar = dynamic(
+  () => import('@/components/chat/SessionSidebar').then((m) => ({ default: m.SessionSidebar })),
+  { ssr: false }
+);
+const QuickCapture = dynamic(
+  () => import('@/components/capture/QuickCapture').then((m) => ({ default: m.QuickCapture })),
+  { ssr: false }
+);
+const OnboardingWizard = dynamic(
+  () => import('@/components/onboarding/OnboardingWizard').then((m) => ({ default: m.OnboardingWizard })),
+  { ssr: false }
+);
+const NowPlayingBar = dynamic(
+  () => import('@/components/music/NowPlayingBar').then((m) => ({ default: m.NowPlayingBar })),
+  { ssr: false }
+);
 
 /** Routes that render their own chrome and should skip the AppShell layout. */
 const STANDALONE_PREFIXES = ['/legal/'];
@@ -73,6 +139,17 @@ export function AppShell({ children }: AppShellProps) {
     return active?.title || null;
   });
 
+  // Gate the four lazily-mounted overlays (see useEverTrue above) on the
+  // same conditions that already governed whether they rendered anything.
+  const sessionSidebarEverOpened = useEverTrue(sessionSidebarOpen);
+  const quickCaptureEverOpened = useEverTrue(quickCapture.isOpen);
+  const onboardingEverNeeded = useEverTrue(onboardingOpen && pathname !== '/lenses/world');
+  // NowPlayingBar renders null until a track is loaded — gate its mount the
+  // same way so non-music sessions never pay for lucide icons + the
+  // waveform/canvas visualizer code.
+  const hasNowPlayingTrack = useMusicStore((s) => !!s.nowPlaying.track);
+  const nowPlayingEverActive = useEverTrue(hasNowPlayingTrack);
+
   useEffect(() => {
     setMounted(true);
 
@@ -92,6 +169,24 @@ export function AppShell({ children }: AppShellProps) {
 
     // Initialize session store from IndexedDB
     useSessionStore.getState().init();
+  }, []);
+
+  // Warm the CommandPalette chunk once the browser is idle so Cmd/Ctrl+K
+  // still feels instant even though it's now code-split out of the initial
+  // bundle. requestIdleCallback runs after first paint/interaction settle;
+  // the setTimeout fallback covers Safari (no rIC support as of writing).
+  useEffect(() => {
+    const warm = () => { import('@/components/common/CommandPalette'); };
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(warm);
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(warm, 2000);
+    return () => window.clearTimeout(id);
   }, []);
 
   // Post-OAuth age gate (18+). OAuth sign-ups land with no date of birth and
@@ -174,7 +269,9 @@ export function AppShell({ children }: AppShellProps) {
       </a>
 
       <Sidebar />
-      <SessionSidebar isOpen={sessionSidebarOpen} onClose={() => setSessionSidebarOpen(false)} />
+      {sessionSidebarEverOpened && (
+        <SessionSidebar isOpen={sessionSidebarOpen} onClose={() => setSessionSidebarOpen(false)} />
+      )}
 
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex items-center">
@@ -218,32 +315,36 @@ export function AppShell({ children }: AppShellProps) {
       <SystemGuidePanel />
       <FirstWinWizard />
       <HelpButton />
-      <OnboardingWizard
-        // Don't hijack the world lens with the abstract platform tour — a new
-        // player who just built their character landed here to PLAY. The
-        // game's own FirstWinWizard (Cook → Eat → Fight → Commune) is the right
-        // first-run surface in-world; the platform tour still appears the moment
-        // they visit the dashboard or a workspace lens.
-        isOpen={onboardingOpen && pathname !== '/lenses/world'}
-        onClose={dismissOnboarding}
-        onComplete={completeOnboarding}
-        onAction={(action) => {
-          const routes: Record<string, string> = {
-            openChat: '/lenses/chat',
-            openBoard: '/lenses/board',
-            openGraph: '/lenses/graph',
-            openCode: '/lenses/code',
-            openStudio: '/lenses/studio',
-          };
-          if (routes[action]) router.push(routes[action]);
-        }}
-      />
+      {onboardingEverNeeded && (
+        <OnboardingWizard
+          // Don't hijack the world lens with the abstract platform tour — a new
+          // player who just built their character landed here to PLAY. The
+          // game's own FirstWinWizard (Cook → Eat → Fight → Commune) is the right
+          // first-run surface in-world; the platform tour still appears the moment
+          // they visit the dashboard or a workspace lens.
+          isOpen={onboardingOpen && pathname !== '/lenses/world'}
+          onClose={dismissOnboarding}
+          onComplete={completeOnboarding}
+          onAction={(action) => {
+            const routes: Record<string, string> = {
+              openChat: '/lenses/chat',
+              openBoard: '/lenses/board',
+              openGraph: '/lenses/graph',
+              openCode: '/lenses/code',
+              openStudio: '/lenses/studio',
+            };
+            if (routes[action]) router.push(routes[action]);
+          }}
+        />
+      )}
       <OfflineFallback />
       <InstallPrompt />
       <SyncIndicator />
       <CookieConsent />
-      <QuickCapture isOpen={quickCapture.isOpen} onClose={quickCapture.close} />
-      <NowPlayingBar />
+      {quickCaptureEverOpened && (
+        <QuickCapture isOpen={quickCapture.isOpen} onClose={quickCapture.close} />
+      )}
+      {nowPlayingEverActive && <NowPlayingBar />}
       <MobileNav />
     </div>
   );

@@ -1,24 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { File, FilePlus, Loader2, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { File, FilePlus, Loader2, Trash2, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface FileNode { path: string; language: string; size: number; modifiedAt: string }
 
 export function FileExplorer({
-  projectId, activePath, onOpen, onChanged,
+  projectId, activePath, onOpen, onChanged, onRenamed,
 }: {
   projectId: string | null;
   activePath: string | null;
   onOpen: (path: string) => void;
   onChanged?: () => void;
+  /** Called with (oldPath, newPath) after a successful rename, so the caller can retarget an open editor tab. */
+  onRenamed?: (from: string, to: string) => void;
 }) {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [draftPath, setDraftPath] = useState('');
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const renameInputRef = useRef<HTMLInputElement | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only projectId should retrigger
   useEffect(() => { if (projectId) refresh(); else setTree([]); }, [projectId]);
@@ -56,6 +61,34 @@ export function FileExplorer({
     } catch (e) { console.error('[FileTree] delete', e); }
   }
 
+  function startRename(path: string) {
+    setRenamingPath(path);
+    setRenameDraft(path);
+    // Focus + select the basename (not the directory prefix) on next paint, VS-Code-style.
+    requestAnimationFrame(() => {
+      const el = renameInputRef.current;
+      if (!el) return;
+      el.focus();
+      const base = path.lastIndexOf('/') + 1;
+      el.setSelectionRange(base, path.length);
+    });
+  }
+
+  async function commitRename() {
+    if (!projectId || !renamingPath) return;
+    const to = renameDraft.trim();
+    const from = renamingPath;
+    setRenamingPath(null);
+    if (!to || to === from) return;
+    try {
+      const r = await lensRun({ domain: 'code', action: 'files-rename', input: { projectId, from, to } });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      await refresh();
+      onChanged?.();
+      if (activePath === from) onRenamed?.(from, to);
+    } catch (e) { console.error('[FileTree] rename', e); }
+  }
+
   if (!projectId) {
     return <div className="p-3 text-xs text-gray-400 italic">Open a project to see files.</div>;
   }
@@ -89,17 +122,39 @@ export function FileExplorer({
         ) : tree.map(f => (
           <li
             key={f.path}
-            onClick={() => onOpen(f.path)}
+            onClick={() => renamingPath !== f.path && onOpen(f.path)}
             className={cn(
               'group px-3 py-1 cursor-pointer flex items-center gap-1.5 hover:bg-white/[0.04] text-xs',
               activePath === f.path && 'bg-blue-500/15 text-white',
             )}
           >
             <File className="w-3 h-3 text-gray-400 flex-shrink-0" />
-            <span className="flex-1 truncate font-mono">{f.path}</span>
-            <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); remove(f.path); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-rose-300">
-              <Trash2 className="w-3 h-3" />
-            </button>
+            {renamingPath === f.path ? (
+              <input
+                ref={renameInputRef}
+                value={renameDraft}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setRenameDraft(e.target.value)}
+                onBlur={commitRename}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitRename();
+                  else if (e.key === 'Escape') setRenamingPath(null);
+                }}
+                className="flex-1 min-w-0 px-1 py-0 text-xs bg-lattice-deep border border-blue-500/40 rounded text-white font-mono"
+              />
+            ) : (
+              <span className="flex-1 truncate font-mono">{f.path}</span>
+            )}
+            {renamingPath !== f.path && (
+              <>
+                <button aria-label="Rename" onClick={(e) => { e.stopPropagation(); startRename(f.path); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-blue-300">
+                  <Pencil className="w-3 h-3" />
+                </button>
+                <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); remove(f.path); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-rose-300">
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </>
+            )}
           </li>
         ))}
       </ul>

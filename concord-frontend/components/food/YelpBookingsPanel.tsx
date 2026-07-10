@@ -1,30 +1,36 @@
 'use client';
 
 /**
- * YelpBookingsPanel — reservations and active waitlist entries.
+ * YelpBookingsPanel — reservations, active waitlist entries, and check-in
+ * history (food.checkin-history).
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, CalendarClock, Users, X, CheckCircle2 } from 'lucide-react';
+import { Loader2, CalendarClock, Users, X, CheckCircle2, History } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Reservation { id: string; bizName: string; partySize: number; dateTime: string; status: string }
 interface WaitEntry { id: string; bizId: string; bizName: string; partySize: number; position: number; estimatedWaitMin: number }
+interface CheckinRecord { id: string; bizId: string; bizName: string; note: string; at: string }
 
 export function YelpBookingsPanel() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [waitlist, setWaitlist] = useState<WaitEntry[]>([]);
+  const [checkins, setCheckins] = useState<CheckinRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAllCheckins, setShowAllCheckins] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [r, w] = await Promise.all([
+    const [r, w, c] = await Promise.all([
       lensRun('food', 'reservation-list', {}),
       lensRun('food', 'waitlist-status', {}),
+      lensRun('food', 'checkin-history', {}),
     ]);
     setReservations(r.data?.result?.reservations || []);
     setWaitlist(w.data?.result?.entries || []);
+    setCheckins(c.data?.result?.checkins || []);
     setLoading(false);
   }, []);
 
@@ -104,6 +110,32 @@ export function YelpBookingsPanel() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section>
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+          <History className="w-3.5 h-3.5 text-red-400" /> Check-in history
+        </h3>
+        {checkins.length === 0 ? (
+          <p className="text-[11px] text-zinc-400 italic">No check-ins yet. Check in from a restaurant&apos;s page.</p>
+        ) : (
+          <>
+            <ul className="space-y-1.5">
+              {(showAllCheckins ? checkins : checkins.slice(0, 5)).map((c) => (
+                <li key={c.id} className="flex items-center justify-between text-xs bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
+                  <span className="text-zinc-200">{c.bizName}</span>
+                  <span className="text-[10px] text-zinc-500">{new Date(c.at).toLocaleDateString()}</span>
+                </li>
+              ))}
+            </ul>
+            {checkins.length > 5 && (
+              <button type="button" onClick={() => setShowAllCheckins((v) => !v)}
+                className="text-[11px] text-zinc-400 hover:text-zinc-200 mt-1.5">
+                {showAllCheckins ? 'Show less' : `Show all ${checkins.length} check-ins`}
+              </button>
+            )}
+          </>
         )}
       </section>
     </div>

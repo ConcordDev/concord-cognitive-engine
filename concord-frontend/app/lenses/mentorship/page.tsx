@@ -1,695 +1,232 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+/**
+ * Mentorship Lens — ADPList-shape mentor marketplace + MentorcliQ-shape
+ * program admin, rebuilt as a real app (Frontend Rebuild Program, Wave 2).
+ *
+ * Capability map: docs/lens-specs/mentorship-capability-map.md. Every panel
+ * below calls a real `mentorship` domain macro (server/domains/mentorship.js)
+ * — no seeded/mock data, no client-computed "match score" heuristics. The
+ * previous page kept a legacy DTU-artifact CRUD tab that faked a "Match: X%"
+ * badge from an arbitrary local point score (status/sessions/rating/goals
+ * weights invented in the frontend); that surface is retired here because
+ * the platform has a REAL `mentorship.matchScore` macro (Jaccard-style skill
+ * overlap + availability + experience) surfaced honestly in the Coaching
+ * Tools tab instead of faked in a list card.
+ *
+ * Generic scaffold retired: `ManifestActionBar`, `AutoActionStrip`,
+ * `RecentMineCard`, `CrossLensRecentsPanel`, `UniversalActions`,
+ * `LensFeaturePanel` — replaced with a designed, keyboard-navigable
+ * workspace (mirrors the Finance/News flagship pattern).
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  BadgeCheck, Users, Inbox, Calendar, Target, MessageSquare, Wrench,
+  BarChart3, MessagesSquare, RefreshCw, Keyboard,
+} from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { SessionRail } from '@/components/lens/SessionRail';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { MentorshipFeed } from '@/components/mentorship/MentorshipFeed';
-import { MentorshipActionPanel } from '@/components/mentorship/MentorshipActionPanel';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { MentorDirectoryPanel } from '@/components/mentorship/MentorDirectoryPanel';
 import { MentorshipRequestsPanel } from '@/components/mentorship/MentorshipRequestsPanel';
 import { MentorshipSessionsPanel } from '@/components/mentorship/MentorshipSessionsPanel';
 import { MentorshipGoalsPanel } from '@/components/mentorship/MentorshipGoalsPanel';
-import { MentorshipProgramPanel } from '@/components/mentorship/MentorshipProgramPanel';
 import { MentorshipMessagesPanel } from '@/components/mentorship/MentorshipMessagesPanel';
+import { MentorshipProgramPanel } from '@/components/mentorship/MentorshipProgramPanel';
+import { MentorshipActionPanel } from '@/components/mentorship/MentorshipActionPanel';
+import { MentorshipFeed } from '@/components/mentorship/MentorshipFeed';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { motion, AnimatePresence } from 'framer-motion';
+import { StatTile, StatTileGrid, Skeleton, ErrorState, DensityToggle } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import {
-  BadgeCheck, Plus, Search, Users, MessageSquare,
-  Star, Calendar, Target, Clock, Layers, ChevronDown, Send, Trash2, Loader2, Play,
-  Inbox, BarChart3, NotebookPen,
-} from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { cn } from '@/lib/utils';
-import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
+import { cn } from '@/lib/utils';
 
-interface MentorshipData {
-  mentorName: string;
-  menteeName: string;
-  topic: string;
-  status: 'seeking' | 'matched' | 'active' | 'completed' | 'paused';
-  goals: string[];
-  meetingFrequency: string;
-  nextMeeting: string;
-  sessionsCompleted: number;
-  notes: string;
-  skills: string[];
-  rating: number;
+interface ProgramReport {
+  mentors: number;
+  activeMatches: number;
+  matchAcceptanceRate: number;
+  sessions: { total: number; completed: number };
+  sessionCompletionRate: number;
+  goals: { total: number; done: number };
+  goalCompletionRate: number;
+  avgSessionRating: number;
+  avgMentorRating: number;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  seeking: 'text-yellow-400 bg-yellow-400/10',
-  matched: 'text-neon-cyan bg-neon-cyan/10',
-  active: 'text-neon-green bg-neon-green/10',
-  completed: 'text-neon-purple bg-neon-purple/10',
-  paused: 'text-gray-400 bg-gray-400/10',
-};
+type TabId = 'directory' | 'requests' | 'sessions' | 'goals' | 'messages' | 'tools' | 'program' | 'community';
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.05, duration: 0.35, ease: 'easeOut' } }),
-  exit: { opacity: 0, y: -10, transition: { duration: 0.2 } },
-};
+const TABS: { id: TabId; label: string; icon: typeof Users; hotkey: string }[] = [
+  { id: 'directory', label: 'Directory', icon: Users, hotkey: '1' },
+  { id: 'requests', label: 'Requests', icon: Inbox, hotkey: '2' },
+  { id: 'sessions', label: 'Sessions', icon: Calendar, hotkey: '3' },
+  { id: 'goals', label: 'Goals', icon: Target, hotkey: '4' },
+  { id: 'messages', label: 'Messages', icon: MessageSquare, hotkey: '5' },
+  { id: 'tools', label: 'Coaching Tools', icon: Wrench, hotkey: '6' },
+  { id: 'program', label: 'Program', icon: BarChart3, hotkey: '7' },
+  { id: 'community', label: 'Community', icon: MessagesSquare, hotkey: '8' },
+];
 
 export default function MentorshipLensPage() {
   useLensNav('mentorship');
-  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('mentorship');
-  const [search, setSearch] = useState('');
-  const [selectedRelation, setSelectedRelation] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
-  const [activeTab, setActiveTab] = useState<'mentors' | 'sessions' | 'goals'>('mentors');
-  const [platformView, setPlatformView] = useState<
-    'directory' | 'requests' | 'sessions' | 'goals' | 'program' | 'messages'
-  >('directory');
+  const { isLive, lastUpdated, latestData, insights } = useRealtimeLens('mentorship');
+  const [tab, setTab] = useState<TabId>('directory');
 
-  // Lens-scoped keyboard commands (auto-wired by codemod).
+  const stats = useMacroDispatchFeedback<ProgramReport>();
+  const loadStats = useCallback(() => { void stats.dispatch('mentorship', 'program-report', {}); }, [stats]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadStats(); }, []);
+
   useLensCommand(
     [
-      { id: 'tab-mentors', keys: 'm', description: 'Mentors', category: 'navigation', action: () => setActiveTab('mentors') },
-      { id: 'tab-sessions', keys: 's', description: 'Sessions', category: 'navigation', action: () => setActiveTab('sessions') },
-      { id: 'tab-goals', keys: 'g', description: 'Goals', category: 'navigation', action: () => setActiveTab('goals') },
+      ...TABS.map((t) => ({
+        id: `tab-${t.id}`, keys: t.hotkey, description: t.label, category: 'navigation' as const,
+        action: () => setTab(t.id),
+      })),
+      { id: 'refresh-stats', keys: 'r', description: 'Refresh program stats', category: 'actions', action: loadStats },
     ],
     { lensId: 'mentorship' }
   );
-  const [newMentorship, setNewMentorship] = useState({ mentorName: '', menteeName: '', topic: '', meetingFrequency: 'weekly' });
-  const [newNote, setNewNote] = useState('');
 
-  const runAction = useRunArtifact('mentorship');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = items[0]?.id;
-    if (!targetId) { setActionResult({ message: 'Add a mentorship relation first to run analysis.' }); return; }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
-
-  // Wire to social profiles for matching
-  const { data: profiles } = useQuery({
-    queryKey: ['social-profiles-mentorship'],
-    queryFn: async () => {
-      const { data } = await api.get('/api/social/profiles?limit=50');
-      return data;
-    },
-    staleTime: 60000,
-    retry: 1,
-  });
-
-  const {
-    items, isLoading, isError, error, refetch,
-    create, createMut, update, remove, deleteMut,
-  } = useLensData<MentorshipData>('mentorship', 'relation', { seed: [] });
-
-  const relations = useMemo(() =>
-    items.map(item => ({ id: item.id, ...item.data, topic: item.title || item.data?.topic || 'Untitled' }))
-      .filter(r => !search || r.topic?.toLowerCase().includes(search.toLowerCase()) || r.mentorName?.toLowerCase().includes(search.toLowerCase()) || r.menteeName?.toLowerCase().includes(search.toLowerCase())),
-    [items, search]
-  );
-
-  const selectedData = useMemo(() => relations.find(r => r.id === selectedRelation), [relations, selectedRelation]);
-
-  const stats = useMemo(() => ({
-    total: relations.length,
-    active: relations.filter(r => r.status === 'active').length,
-    totalSessions: relations.reduce((s, r) => s + (r.sessionsCompleted || 0), 0),
-    seeking: relations.filter(r => r.status === 'seeking').length,
-    avgRating: relations.length > 0 ? (relations.reduce((s, r) => s + (r.rating || 0), 0) / relations.length) : 0,
-  }), [relations]);
-
-  const handleCreate = useCallback(async () => {
-    if (!newMentorship.topic.trim()) return;
-    await create({
-      title: newMentorship.topic,
-      data: {
-        mentorName: newMentorship.mentorName, menteeName: newMentorship.menteeName,
-        topic: newMentorship.topic, status: newMentorship.mentorName && newMentorship.menteeName ? 'matched' : 'seeking',
-        goals: [], meetingFrequency: newMentorship.meetingFrequency,
-        nextMeeting: '', sessionsCompleted: 0, notes: '', skills: [], rating: 0,
-      },
-    });
-    setNewMentorship({ mentorName: '', menteeName: '', topic: '', meetingFrequency: 'weekly' });
-    setShowCreate(false);
-  }, [newMentorship, create]);
-
-  const handleAddNote = useCallback(async () => {
-    if (!newNote.trim() || !selectedRelation) return;
-    const item = items.find(i => i.id === selectedRelation);
-    if (!item) return;
-    const existing = item.data?.notes || '';
-    const timestamp = new Date().toLocaleString();
-    const updated = existing ? `${existing}\n\n[${timestamp}] ${newNote}` : `[${timestamp}] ${newNote}`;
-    await update(selectedRelation, { data: { ...item.data, notes: updated } as Partial<MentorshipData> });
-    setNewNote('');
-  }, [newNote, selectedRelation, items, update]);
-
-  // Compute mentor match scores (simple heuristic)
-  const matchScores = useMemo(() => {
-    return relations.map(r => {
-      let score = 50;
-      if (r.status === 'active') score += 20;
-      if (r.sessionsCompleted > 5) score += 15;
-      if (r.rating > 3) score += 10;
-      if (r.goals && r.goals.length > 0) score += 5;
-      return { id: r.id, score: Math.min(score, 100) };
-    });
-  }, [relations]);
-
-  const getMatchScore = (id: string) => matchScores.find(m => m.id === id)?.score || 0;
-
-  // Session history timeline
-  const sessionTimeline = useMemo(() => {
-    return relations
-      .filter(r => r.sessionsCompleted > 0)
-      .sort((a, b) => (b.sessionsCompleted || 0) - (a.sessionsCompleted || 0))
-      .slice(0, 8);
-  }, [relations]);
-
-  // Goal progress
-  const goalProgress = useMemo(() => {
-    return relations
-      .filter(r => r.goals && r.goals.length > 0)
-      .flatMap(r => r.goals.map((g, i) => ({
-        goal: g,
-        topic: r.topic,
-        progress: Math.min(100, ((r.sessionsCompleted || 0) * 15) + (i * 10)),
-      })))
-      .slice(0, 6);
-  }, [relations]);
-
-  if (isError) return <div className="flex items-center justify-center h-full p-8"><ErrorState error={error?.message} onRetry={refetch} /></div>;
-
-  const tabs = [
-    { key: 'mentors' as const, label: 'Mentors', icon: Users },
-    { key: 'sessions' as const, label: 'Sessions', icon: Calendar },
-    { key: 'goals' as const, label: 'Goals', icon: Target },
-  ];
+  const report = stats.status === 'done' ? stats.result : null;
+  const statsLoading = stats.status === 'dispatched' || stats.status === 'running';
 
   return (
     <LensShell lensId="mentorship" asMain={false}>
       <FirstRunTour lensId="mentorship" />
-      <ManifestActionBar />
-      <DepthBadge lensId="mentorship" size="sm" className="ml-2" />
-    <div data-lens-theme="mentorship" className="p-6 space-y-6">
-      <motion.header
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <BadgeCheck className="w-6 h-6 text-neon-blue" />
-          <div>
-            <h1 className="text-xl font-bold">Mentorship Lens</h1>
-            <p className="text-sm text-gray-400">Mentor matching, tracking & guidance</p>
-          </div>
-          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-          <DTUExportButton domain="mentorship" data={realtimeData || {}} compact />
-        </div>
-        <button onClick={() => setShowCreate(!showCreate)} className="btn-neon">
-          <Plus className="w-4 h-4 mr-2 inline" /> New Mentorship
-        </button>
-      </motion.header>
-
-      <UniversalActions domain="mentorship" artifactId={items[0]?.id} compact />
-
-      <AnimatePresence>
-        {showCreate && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="panel p-4 space-y-3 overflow-hidden"
-          >
-            <h3 className="font-semibold">Create Mentorship</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input value={newMentorship.topic} onChange={e => setNewMentorship(p => ({ ...p, topic: e.target.value }))} placeholder="Topic / skill area..." className="input-lattice" />
-              <select value={newMentorship.meetingFrequency} onChange={e => setNewMentorship(p => ({ ...p, meetingFrequency: e.target.value }))} className="input-lattice">
-                <option value="weekly">Weekly</option><option value="biweekly">Biweekly</option>
-                <option value="monthly">Monthly</option><option value="as-needed">As Needed</option>
-              </select>
-              <input value={newMentorship.mentorName} onChange={e => setNewMentorship(p => ({ ...p, mentorName: e.target.value }))} placeholder="Mentor name (optional)..." className="input-lattice" />
-              <input value={newMentorship.menteeName} onChange={e => setNewMentorship(p => ({ ...p, menteeName: e.target.value }))} placeholder="Mentee name (optional)..." className="input-lattice" />
+      <div data-lens-theme="mentorship" className="p-6 space-y-5">
+        {/* Command bar */}
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-neon-blue/15 border border-neon-blue/30 flex items-center justify-center">
+              <BadgeCheck className="w-5 h-5 text-neon-blue" />
             </div>
-            <button onClick={handleCreate} disabled={createMut.isPending || !newMentorship.topic.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
-              {createMut.isPending ? 'Creating...' : 'Create Mentorship'}
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Available Mentors from Profiles */}
-      {Array.isArray(profiles) && profiles.length > 0 && (
-        <div className="panel p-4">
-          <h3 className="font-semibold text-sm mb-3 flex items-center gap-2"><Users className="w-4 h-4 text-neon-cyan" /> Available Profiles ({profiles.length})</h3>
-          <div className="flex gap-2 flex-wrap">
-            {profiles.slice(0, 6).map((p: { id?: string; name?: string; displayName?: string }, i: number) => (
-              <span key={p.id || i} className="px-3 py-1 text-xs rounded-full bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
-                {p.displayName || p.name || String(p)}
-              </span>
-            ))}
-            {profiles.length > 6 && <span className="px-3 py-1 text-xs text-gray-400">+{profiles.length - 6} more</span>}
+            <div>
+              <h1 className="text-lg font-bold text-white">Mentorship</h1>
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <span>Mentor marketplace, matching &amp; program tracking</span>
+                <DepthBadge lensId="mentorship" size="sm" />
+              </div>
+            </div>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
           </div>
-        </div>
-      )}
-
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { icon: BadgeCheck, color: 'text-neon-blue', value: stats.total, label: 'Mentorships' },
-          { icon: Users, color: 'text-neon-green', value: stats.active, label: 'Active' },
-          { icon: Target, color: 'text-neon-cyan', value: stats.totalSessions, label: 'Sessions' },
-          { icon: Star, color: 'text-yellow-400', value: stats.avgRating > 0 ? `${stats.avgRating.toFixed(1)}/5` : '--', label: 'Avg Rating' },
-        ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.08, duration: 0.3 }}
-            className="lens-card"
-          >
-            <stat.icon className={`w-5 h-5 ${stat.color} mb-2`} />
-            <p className="text-2xl font-bold">{stat.value}</p>
-            <p className="text-sm text-gray-400">{stat.label}</p>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* ── Mentoring platform surface (real backend macros) ───────────── */}
-      <section className="panel p-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <BadgeCheck className="w-4 h-4 text-neon-cyan" />
-          <h2 className="font-semibold">Mentoring Platform</h2>
-        </div>
-        <div className="flex gap-1 flex-wrap bg-lattice-void border border-lattice-border rounded-lg p-1">
-          {([
-            { key: 'directory', label: 'Directory', icon: Users },
-            { key: 'requests', label: 'Requests', icon: Inbox },
-            { key: 'sessions', label: 'Sessions', icon: Calendar },
-            { key: 'goals', label: 'Goals', icon: Target },
-            { key: 'messages', label: 'Messages', icon: MessageSquare },
-            { key: 'program', label: 'Program', icon: BarChart3 },
-          ] as const).map(v => (
+          <div className="flex items-center gap-2">
+            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-500" title="1-8 switch tab · r refresh stats">
+              <Keyboard className="w-3.5 h-3.5" /> 1-8 · r
+            </span>
+            <DensityToggle variant="dropdown" />
             <button
-              key={v.key}
-              onClick={() => setPlatformView(v.key)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-                platformView === v.key
-                  ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30'
-                  : 'text-gray-400 hover:text-white hover:bg-lattice-surface'
-              )}
+              type="button"
+              onClick={loadStats}
+              disabled={statsLoading}
+              className="p-1.5 rounded border border-lattice-border text-gray-400 hover:text-white hover:bg-lattice-elevated transition-colors disabled:opacity-50"
+              aria-label="Refresh program stats"
             >
-              <v.icon className="w-3.5 h-3.5" />
-              {v.label}
+              <RefreshCw className={cn('w-4 h-4', statsLoading && 'animate-spin')} />
             </button>
-          ))}
-        </div>
-        <div>
-          {platformView === 'directory' && <MentorDirectoryPanel />}
-          {platformView === 'requests' && <MentorshipRequestsPanel />}
-          {platformView === 'sessions' && <MentorshipSessionsPanel />}
-          {platformView === 'goals' && <MentorshipGoalsPanel />}
-          {platformView === 'messages' && <MentorshipMessagesPanel />}
-          {platformView === 'program' && <MentorshipProgramPanel />}
-        </div>
-      </section>
-
-      {/* Legacy artifact-store relations + analysis */}
-      <div className="flex items-center gap-2 text-sm text-gray-400 pt-2">
-        <NotebookPen className="w-4 h-4" />
-        <span>Personal mentorship records & analysis</span>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1">
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all flex-1 justify-center',
-              activeTab === tab.key
-                ? 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30'
-                : 'text-gray-400 hover:text-white hover:bg-lattice-surface'
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search mentorships..." className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm" />
-      </div>
-
-      <AnimatePresence mode="wait">
-        {activeTab === 'mentors' && (
-          <motion.div
-            key="mentors"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-          >
-            {/* Relations list */}
-            <div className="panel p-4">
-              <h2 className="font-semibold mb-4 flex items-center gap-2"><BadgeCheck className="w-4 h-4 text-neon-blue" />Mentorships</h2>
-              <div className="space-y-3">
-                {isLoading ? (
-                  <p className="text-gray-400 text-center py-4">Loading...</p>
-                ) : relations.length === 0 ? (
-                  <p className="text-gray-400 text-center py-4">No mentorships yet.</p>
-                ) : relations.map((r, i) => (
-                  <motion.button
-                    key={r.id}
-                    custom={i}
-                    variants={cardVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    onClick={() => setSelectedRelation(r.id)}
-                    className={cn('w-full text-left lens-card transition-all', selectedRelation === r.id && 'border-neon-blue ring-1 ring-neon-blue')}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-sm truncate">{r.topic}</h3>
-                      <span className={cn('text-xs px-2 py-0.5 rounded', STATUS_COLORS[r.status || 'seeking'])}>{r.status}</span>
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      {r.mentorName && <span>Mentor: {r.mentorName}</span>}
-                      {r.mentorName && r.menteeName && <span> | </span>}
-                      {r.menteeName && <span>Mentee: {r.menteeName}</span>}
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
-                      <span>{r.sessionsCompleted || 0} sessions | {r.meetingFrequency}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="flex items-center gap-1 text-neon-cyan">
-                          <Star className="w-3 h-3" /> {getMatchScore(r.id)}%
-                        </span>
-                        <button onClick={(e) => { e.stopPropagation(); remove(r.id); }} disabled={deleteMut.isPending} className="text-gray-400 hover:text-red-400">
-                          {deleteMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                        </button>
-                      </div>
-                    </div>
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-
-            {/* Detail */}
-            <div className="lg:col-span-2 space-y-4">
-              {selectedData ? (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="panel p-4"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h2 className="font-semibold text-lg">{selectedData.topic}</h2>
-                      <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-neon-cyan/10 border border-neon-cyan/20">
-                        <Star className="w-4 h-4 text-neon-cyan" />
-                        <span className="text-sm font-bold text-neon-cyan">Match: {getMatchScore(selectedData.id)}%</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="lens-card">
-                        <p className="text-xs text-gray-400">Mentor</p>
-                        <p className="font-semibold">{selectedData.mentorName || 'Unassigned'}</p>
-                      </div>
-                      <div className="lens-card">
-                        <p className="text-xs text-gray-400">Mentee</p>
-                        <p className="font-semibold">{selectedData.menteeName || 'Unassigned'}</p>
-                      </div>
-                      <div className="lens-card">
-                        <p className="text-xs text-gray-400">Sessions Completed</p>
-                        <p className="text-xl font-bold text-neon-cyan">{selectedData.sessionsCompleted || 0}</p>
-                      </div>
-                      <div className="lens-card">
-                        <p className="text-xs text-gray-400">Frequency</p>
-                        <p className="capitalize">{selectedData.meetingFrequency}</p>
-                      </div>
-                    </div>
-                    {selectedData.goals?.length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-xs text-gray-400 mb-2">Goals</p>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedData.goals.map((g, i) => (
-                            <span key={i} className="px-2 py-1 bg-lattice-elevated rounded text-sm">{g}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {selectedData.notes && (
-                      <div>
-                        <p className="text-xs text-gray-400 mb-2">Session Notes</p>
-                        <pre className="text-sm text-gray-300 whitespace-pre-wrap bg-lattice-deep p-3 rounded-lg max-h-48 overflow-auto">{selectedData.notes}</pre>
-                      </div>
-                    )}
-                  </motion.div>
-
-                  {/* Add note */}
-                  <div className="panel p-4">
-                    <h3 className="font-semibold mb-3 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-neon-blue" />Add Session Note</h3>
-                    <div className="flex gap-2">
-                      <input value={newNote} onChange={e => setNewNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }} placeholder="Session notes..." className="input-lattice flex-1" />
-                      <button onClick={handleAddNote} disabled={!newNote.trim()} className="btn-neon" aria-label="Send"><Send className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="panel p-4 h-full flex items-center justify-center">
-                  <div className="text-center text-gray-400">
-                    <BadgeCheck className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Select a mentorship to view details</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-
-        {activeTab === 'sessions' && (
-          <motion.div
-            key="sessions"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-            className="panel p-6"
-          >
-            <h2 className="font-semibold mb-4 flex items-center gap-2"><Clock className="w-4 h-4 text-neon-cyan" />Session History Timeline</h2>
-            {sessionTimeline.length === 0 ? (
-              <p className="text-gray-400 text-center py-8">No sessions recorded yet. Complete some mentorship sessions to see the timeline.</p>
-            ) : (
-              <div className="relative">
-                <div className="absolute left-4 top-0 bottom-0 w-px bg-lattice-border" />
-                <div className="space-y-4">
-                  {sessionTimeline.map((r, i) => (
-                    <motion.div
-                      key={r.id}
-                      custom={i}
-                      variants={cardVariants}
-                      initial="hidden"
-                      animate="visible"
-                      className="relative pl-10"
-                    >
-                      <div className="absolute left-2.5 top-3 w-3 h-3 rounded-full bg-neon-cyan border-2 border-lattice-void" />
-                      <div className="lens-card">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold text-sm">{r.topic}</h3>
-                          <span className="text-xs text-neon-cyan font-mono">{r.sessionsCompleted} sessions</span>
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {r.mentorName && <span>{r.mentorName}</span>}
-                          {r.mentorName && r.menteeName && <span> with </span>}
-                          {r.menteeName && <span>{r.menteeName}</span>}
-                          <span className="ml-2">{r.meetingFrequency}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {activeTab === 'goals' && (
-          <motion.div
-            key="goals"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-            className="panel p-6"
-          >
-            <h2 className="font-semibold mb-4 flex items-center gap-2"><Target className="w-4 h-4 text-neon-green" />Goal Progress</h2>
-            {goalProgress.length === 0 ? (
-              <p className="text-gray-400 text-center py-8">No goals set yet. Add goals to your mentorship relationships to track progress.</p>
-            ) : (
-              <div className="space-y-4">
-                {goalProgress.map((g, i) => (
-                  <motion.div
-                    key={i}
-                    custom={i}
-                    variants={cardVariants}
-                    initial="hidden"
-                    animate="visible"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-white">{g.goal}</span>
-                      <span className="text-xs text-gray-400">{g.topic}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-3 bg-lattice-deep rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${g.progress}%` }}
-                          transition={{ duration: 0.8, delay: i * 0.1 }}
-                          className={cn(
-                            'h-full rounded-full',
-                            g.progress >= 80 ? 'bg-neon-green' : g.progress >= 40 ? 'bg-neon-cyan' : 'bg-yellow-400'
-                          )}
-                        />
-                      </div>
-                      <span className="text-xs font-mono text-gray-300 w-10 text-right">{g.progress}%</span>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <RealtimeDataPanel domain="mentorship" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Users className="w-4 h-4 text-neon-cyan" />
-          Mentorship Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'matchScore', label: 'Match Score' },
-            { action: 'progressTrack', label: 'Progress Track' },
-            { action: 'feedbackSummary', label: 'Feedback Summary' },
-            { action: 'developmentPlan', label: 'Development Plan' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleAction(action)} disabled={!!isRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
-              {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'matchScore' in actionResult && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <span className="text-neon-cyan font-bold text-xl">{String(actionResult.matchScore)}%</span>
-                  <span className="text-gray-400 text-xs">{String(actionResult.mentor)} ↔ {String(actionResult.mentee)}</span>
-                </div>
-                <div className="flex gap-4 text-xs">
-                  <span className="text-gray-400">Overlap: <span className="text-neon-green">{String(actionResult.skillOverlap)}</span></span>
-                  <span className="text-gray-400">Compat: <span className="text-neon-cyan">{String(actionResult.compatibility)}</span></span>
-                </div>
-              </div>
-            )}
-            {'totalGoals' in actionResult && (
-              <div className="flex flex-wrap gap-4 text-xs">
-                <span className="text-gray-400">Goals: <span className="text-neon-cyan font-bold">{String(actionResult.totalGoals)}</span></span>
-                <span className="text-gray-400">Done: <span className="text-neon-green font-bold">{String(actionResult.completed)}</span></span>
-                <span className="text-gray-400">Rate: <span className="text-yellow-400">{String(actionResult.completionRate)}%</span></span>
-                <span className="text-gray-400">Hours: <span className="text-neon-cyan">{String(actionResult.totalHours)}</span></span>
-                <span className="text-gray-400">Momentum: <span className="text-neon-green">{String(actionResult.momentum)}</span></span>
-              </div>
-            )}
-            {'sessions' in actionResult && 'avgRating' in actionResult && (
-              <div className="space-y-2">
-                <div className="flex gap-4 text-xs">
-                  <span className="text-gray-400">Sessions: <span className="text-neon-cyan">{String(actionResult.sessions)}</span></span>
-                  <span className="text-gray-400">Rating: <span className="text-yellow-400">{String(actionResult.avgRating)}/5</span></span>
-                  <span className="text-gray-400">Satisfaction: <span className="text-neon-green">{String(actionResult.satisfaction)}</span></span>
-                </div>
-                {'topThemes' in actionResult && Array.isArray(actionResult.topThemes) && actionResult.topThemes.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {(actionResult.topThemes as Array<{theme: string; count: number}>).map((t, i) => (
-                      <span key={i} className="text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded px-2 py-0.5 text-neon-cyan">{t.theme}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'gaps' in actionResult && Array.isArray(actionResult.gaps) && (
-              <div className="space-y-2">
-                <div className="flex gap-4 text-xs text-gray-400">
-                  <span>Target: <span className="text-neon-cyan">{String(actionResult.targetRole)}</span></span>
-                  <span>Timeline: <span className="text-yellow-400">{String(actionResult.timelineWeeks)} weeks</span></span>
-                </div>
-                {actionResult.gaps.length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Skill Gaps</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(actionResult.gaps as string[]).map((g, i) => (
-                        <span key={i} className="text-xs bg-red-400/10 border border-red-400/20 rounded px-2 py-0.5 text-red-400">{g}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
+            <DTUExportButton domain="mentorship" data={report || {}} compact />
           </div>
+        </header>
+
+        {/* KPI strip — real program-report macro, via honest macro-dispatch feedback */}
+        {statsLoading && !report ? (
+          <StatTileGrid columns={5}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="rounded-md border border-white/10 bg-black/40 p-3">
+                <Skeleton variant="line" lines={2} />
+              </div>
+            ))}
+          </StatTileGrid>
+        ) : stats.status === 'error' ? (
+          <ErrorState message={stats.error || 'Failed to load program stats.'} onRetry={loadStats} retrying={statsLoading} variant="inline" />
+        ) : report ? (
+          <StatTileGrid columns={5}>
+            <StatTile label="Mentors listed" value={report.mentors} icon={<Users className="w-3.5 h-3.5" />} />
+            <StatTile label="Active matches" value={report.activeMatches} caption={`${report.matchAcceptanceRate}% acceptance`} />
+            <StatTile label="Sessions completed" value={report.sessions.completed} caption={`of ${report.sessions.total} · ${report.sessionCompletionRate}%`} />
+            <StatTile label="Goals achieved" value={report.goals.done} caption={`of ${report.goals.total} · ${report.goalCompletionRate}%`} />
+            <StatTile
+              label="Avg mentor rating"
+              value={report.avgMentorRating > 0 ? report.avgMentorRating : '--'}
+              unit={report.avgMentorRating > 0 ? '★' : undefined}
+              caption={report.avgSessionRating > 0 ? `${report.avgSessionRating}/5 session avg` : 'no ratings yet'}
+            />
+          </StatTileGrid>
+        ) : null}
+
+        {/* Tab bar */}
+        <nav className="flex items-center gap-1 overflow-x-auto border-b border-lattice-border pb-2" aria-label="Mentorship views">
+          {TABS.map((t) => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded text-xs whitespace-nowrap border transition-colors',
+                  active
+                    ? 'bg-neon-blue/15 text-neon-blue border-neon-blue/30'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent'
+                )}
+              >
+                <span className="text-[10px] text-gray-600 tabular-nums">{t.hotkey}</span>
+                <t.icon className="w-3.5 h-3.5" />
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Tab content */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+          >
+            {tab === 'directory' && <MentorDirectoryPanel />}
+            {tab === 'requests' && <MentorshipRequestsPanel />}
+            {tab === 'sessions' && <MentorshipSessionsPanel />}
+            {tab === 'goals' && <MentorshipGoalsPanel />}
+            {tab === 'messages' && <MentorshipMessagesPanel />}
+            {tab === 'tools' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-400">
+                  Structured, JSON-input calculators wired directly to the mentorship engine — match scoring,
+                  progress tracking, feedback synthesis, and a career development plan. Useful for one-off pair
+                  analysis outside a tracked request/session; every result below is a real macro call
+                  (<code className="text-gray-300">mentorship.matchScore</code>,{' '}
+                  <code className="text-gray-300">progressTrack</code>, <code className="text-gray-300">feedbackSummary</code>,{' '}
+                  <code className="text-gray-300">developmentPlan</code>), never a client-side estimate.
+                </p>
+                <PipingProvider>
+                  <MentorshipActionPanel />
+                </PipingProvider>
+              </div>
+            )}
+            {tab === 'program' && <MentorshipProgramPanel />}
+            {tab === 'community' && (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <MentorshipFeed />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {latestData && (
+          <RealtimeDataPanel domain="mentorship" data={latestData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
         )}
       </div>
-
-      <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
-          <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
-          <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
-        </button>
-        {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="mentorship" /></div>}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <MentorshipFeed />
-      </section>
-
-      <PipingProvider>
-        <section className="mt-6">
-          <MentorshipActionPanel />
-        </section>
-      </PipingProvider>
-    </div>
-          <SessionRail lensId="mentorship" hideWhenEmpty className="mt-4" />
-          <RecentMineCard domain="mentorship" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="mentorship" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="mentorship" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

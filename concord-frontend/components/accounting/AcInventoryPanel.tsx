@@ -3,7 +3,7 @@
 /** AcInventoryPanel — products & services with inventory tracking. */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Loader2, Plus, Trash2, AlertTriangle, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Item {
@@ -17,6 +17,8 @@ export function AcInventoryPanel() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', type: 'inventory', sku: '', price: '', cost: '', qtyOnHand: '', reorderPoint: '' });
   const [adj, setAdj] = useState<Record<string, string>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: '', sku: '', price: '', cost: '', reorderPoint: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -46,6 +48,20 @@ export function AcInventoryPanel() {
     if (!delta) return;
     await lensRun({ domain: 'accounting', action: 'item-adjust-stock', input: { id, delta } });
     setAdj((p) => ({ ...p, [id]: '' }));
+    await refresh();
+  };
+  const startEdit = (it: Item) => {
+    setEditingId(it.id);
+    setEditDraft({ name: it.name, sku: it.sku || '', price: String(it.price), cost: String(it.cost), reorderPoint: it.reorderPoint != null ? String(it.reorderPoint) : '' });
+  };
+  const saveEdit = async (id: string) => {
+    if (!editDraft.name.trim()) return;
+    await lensRun({ domain: 'accounting', action: 'item-update', input: {
+      id, name: editDraft.name.trim(), sku: editDraft.sku.trim(),
+      price: Number(editDraft.price) || 0, cost: Number(editDraft.cost) || 0,
+      reorderPoint: Number(editDraft.reorderPoint) || 0,
+    } });
+    setEditingId(null);
     await refresh();
   };
 
@@ -80,6 +96,21 @@ export function AcInventoryPanel() {
         <ul className="space-y-1">
           {items.map((it) => {
             const low = it.type === 'inventory' && (it.qtyOnHand || 0) <= (it.reorderPoint || 0);
+            if (editingId === it.id) {
+              return (
+                <li key={it.id} className="flex flex-wrap items-center gap-1.5 text-xs bg-emerald-500/5 border border-emerald-500/20 rounded px-2 py-1.5">
+                  <input value={editDraft.name} onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })} placeholder="Name" className="flex-1 min-w-[6rem] bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-gray-100" />
+                  <input value={editDraft.sku} onChange={(e) => setEditDraft({ ...editDraft, sku: e.target.value })} placeholder="SKU" className="w-20 bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-gray-100" />
+                  <input value={editDraft.price} onChange={(e) => setEditDraft({ ...editDraft, price: e.target.value })} inputMode="decimal" placeholder="Price" className="w-16 bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-gray-100" />
+                  <input value={editDraft.cost} onChange={(e) => setEditDraft({ ...editDraft, cost: e.target.value })} inputMode="decimal" placeholder="Cost" className="w-16 bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-gray-100" />
+                  {it.type === 'inventory' && (
+                    <input value={editDraft.reorderPoint} onChange={(e) => setEditDraft({ ...editDraft, reorderPoint: e.target.value })} inputMode="numeric" placeholder="Reorder pt" className="w-20 bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-gray-100" />
+                  )}
+                  <button type="button" onClick={() => saveEdit(it.id)} className="p-1 text-emerald-300 hover:text-emerald-200" aria-label="Save item"><Check className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:text-gray-200" aria-label="Cancel edit"><X className="w-3.5 h-3.5" /></button>
+                </li>
+              );
+            }
             return (
               <li key={it.id} className="flex items-center gap-2 text-xs bg-black/20 border border-white/10 rounded px-2 py-1.5">
                 {low && <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}
@@ -94,6 +125,8 @@ export function AcInventoryPanel() {
                     <button type="button" onClick={() => adjust(it.id)} className="text-[10px] px-1.5 py-0.5 bg-white/10 rounded">adjust</button>
                   </>
                 )}
+                <button aria-label="Edit" type="button" onClick={() => startEdit(it)}
+                  className="text-gray-500 hover:text-gray-200"><Pencil className="w-3.5 h-3.5" /></button>
                 <button aria-label="Delete" type="button" onClick={() => lensRun({ domain: 'accounting', action: 'item-delete', input: { id: it.id } }).then(refresh)}
                   className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>

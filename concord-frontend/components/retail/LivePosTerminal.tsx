@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ShoppingCart, Plus, Loader2, CreditCard, AlertTriangle, Receipt } from 'lucide-react';
+import { ShoppingCart, Plus, Loader2, CreditCard, AlertTriangle, Receipt, Tag } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface Product { sku: string; name: string; price: number; stock: number }
 interface CartLine { sku: string; name: string; unitPrice: number; qty: number }
-interface Cart { id: string; lines: CartLine[]; discountPercent: number }
+interface Cart { id: string; lines: CartLine[]; discountPercent: number; appliedDiscountCode?: string; freeShipping?: boolean }
 interface Order { id: string; total: number; lines: CartLine[]; tenders?: { kind: string; amount: number }[]; closedAt: string; stripe?: { paymentIntentId?: string } }
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -32,6 +32,9 @@ export function LivePosTerminal() {
   const [error, setError] = useState<string | null>(null);
   const [stripePending, setStripePending] = useState(false);
   const [stripeIntent, setStripeIntent] = useState<{ clientSecret?: string; paymentIntentId?: string } | null>(null);
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountBusy, setDiscountBusy] = useState(false);
+  const [discountMessage, setDiscountMessage] = useState<string | null>(null);
 
   const refresh = useMutation({
     mutationFn: async () => {
@@ -66,6 +69,23 @@ export function LivePosTerminal() {
       const t = await callMacro<{ subtotal: number; tax: number; total: number }>('cart-total', { cartId, taxRate: 8.875 });
       if (t.ok && t.result) setTotal({ subtotal: t.result.subtotal, tax: t.result.tax, total: t.result.total });
     } else setError(env.error || 'add failed');
+  };
+
+  const applyDiscount = async () => {
+    if (!cart || !discountCode.trim()) return;
+    setDiscountBusy(true);
+    setDiscountMessage(null);
+    const env = await callMacro<{ cart: Cart; discountAmount: number }>('discounts-apply', { cartId: cart.id, code: discountCode.trim() });
+    if (env.ok && env.result) {
+      setCart(env.result.cart);
+      setDiscountMessage(`Applied ${discountCode.trim().toUpperCase()} — saved $${env.result.discountAmount.toFixed(2)}`);
+      setDiscountCode('');
+      const t = await callMacro<{ subtotal: number; tax: number; total: number }>('cart-total', { cartId: cart.id, taxRate: 8.875 });
+      if (t.ok && t.result) setTotal({ subtotal: t.result.subtotal, tax: t.result.tax, total: t.result.total });
+    } else {
+      setDiscountMessage(env.error || 'Discount code invalid');
+    }
+    setDiscountBusy(false);
   };
 
   const tenderCash = async () => {
@@ -157,6 +177,30 @@ export function LivePosTerminal() {
                 ))}
                 {cart.lines.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">Tap a catalog tile to add it.</div>}
               </div>
+              {cart.lines.length > 0 && (
+                <div className="mt-2 flex items-center gap-1.5">
+                  {cart.appliedDiscountCode ? (
+                    <span className="flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-300">
+                      <Tag className="h-3 w-3" /> {cart.appliedDiscountCode} applied
+                    </span>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        value={discountCode}
+                        onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                        placeholder="Discount code"
+                        className="flex-1 px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-gray-100 font-mono"
+                      />
+                      <button onClick={applyDiscount} disabled={!discountCode.trim() || discountBusy}
+                        className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300 hover:bg-amber-500/20 disabled:opacity-40">
+                        {discountBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Tag className="h-3 w-3" />} Apply
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+              {discountMessage && <p className="mt-1 text-[10px] text-amber-300">{discountMessage}</p>}
               {total && (
                 <div className="mt-2 rounded-md border border-cyan-500/20 bg-cyan-500/5 p-2 text-[11px]">
                   <div className="flex justify-between text-zinc-400"><span>Subtotal</span><span className="font-mono">${total.subtotal.toFixed(2)}</span></div>

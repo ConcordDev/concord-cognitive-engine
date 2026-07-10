@@ -42,6 +42,8 @@ export function ExperimentTracker() {
   const [showNew, setShowNew] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualMetrics, setManualMetrics] = useState({ trainLoss: '', valLoss: '', accuracy: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,10 +71,15 @@ export function ExperimentTracker() {
     await load();
     setBusy(null);
   };
+  // There is no in-browser GPU training loop to log real steps from, so this
+  // button generates one synthetic decay-curve step and persists it through
+  // the same `ml.experiment-log` macro a real training script would call via
+  // the API — clearly labeled "Simulate" in the UI so it never reads as a
+  // real run's metrics. `logManualEpoch` below is the honest counterpart for
+  // pasting in numbers from an actual training job.
   const logEpoch = async (exp: Experiment) => {
     setBusy(exp.id);
     const epoch = exp.metrics.length + 1;
-    // simulate one training step — deterministic decay curve
     const trainLoss = Math.max(0.02, 2.5 * Math.exp(-epoch / 12) + Math.random() * 0.06);
     const valLoss = trainLoss + 0.04 + Math.random() * 0.1;
     const accuracy = Math.min(0.99, 1 - valLoss / 3);
@@ -81,6 +88,15 @@ export function ExperimentTracker() {
       trainLoss: Math.round(trainLoss * 1e4) / 1e4,
       valLoss: Math.round(valLoss * 1e4) / 1e4,
       accuracy: Math.round(accuracy * 1e4) / 1e4,
+    });
+    await load();
+    setBusy(null);
+  };
+
+  const logManualEpoch = async (exp: Experiment, metrics: { trainLoss: number; valLoss: number; accuracy: number }) => {
+    setBusy(exp.id);
+    await lensRun('ml', 'experiment-log', {
+      experimentId: exp.id, epoch: exp.metrics.length + 1, ...metrics,
     });
     await load();
     setBusy(null);
@@ -139,8 +155,14 @@ export function ExperimentTracker() {
                   {selected.status === 'running' && (
                     <>
                       <button className="btn-neon small" disabled={busy === selected.id}
-                        onClick={() => logEpoch(selected)}>
-                        {busy === selected.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Log epoch'}
+                        onClick={() => setManualOpen((v) => !v)}
+                        title="Log a real epoch's metrics from an external training run">
+                        Log metrics
+                      </button>
+                      <button className="btn-neon small" disabled={busy === selected.id}
+                        onClick={() => logEpoch(selected)}
+                        title="No metrics on hand? Generate one synthetic decay-curve step to see the tracker in action">
+                        {busy === selected.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Simulate epoch'}
                       </button>
                       <button className="btn-neon small pink" disabled={busy === selected.id}
                         onClick={() => finish(selected.id, false)}>
@@ -154,6 +176,31 @@ export function ExperimentTracker() {
                   </button>
                 </div>
               </div>
+              {manualOpen && selected.status === 'running' && (
+                <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-lattice-border bg-lattice-surface p-3 md:grid-cols-4">
+                  <input value={manualMetrics.trainLoss} type="number" step="0.0001" placeholder="Train loss"
+                    onChange={(e) => setManualMetrics((m) => ({ ...m, trainLoss: e.target.value }))}
+                    className="rounded border border-lattice-border bg-lattice-bg px-2 py-1.5 text-sm font-mono outline-none focus:border-neon-cyan" />
+                  <input value={manualMetrics.valLoss} type="number" step="0.0001" placeholder="Val loss"
+                    onChange={(e) => setManualMetrics((m) => ({ ...m, valLoss: e.target.value }))}
+                    className="rounded border border-lattice-border bg-lattice-bg px-2 py-1.5 text-sm font-mono outline-none focus:border-neon-cyan" />
+                  <input value={manualMetrics.accuracy} type="number" step="0.0001" placeholder="Accuracy (0-1)"
+                    onChange={(e) => setManualMetrics((m) => ({ ...m, accuracy: e.target.value }))}
+                    className="rounded border border-lattice-border bg-lattice-bg px-2 py-1.5 text-sm font-mono outline-none focus:border-neon-cyan" />
+                  <button className="btn-neon small"
+                    disabled={busy === selected.id || !manualMetrics.trainLoss || !manualMetrics.valLoss || !manualMetrics.accuracy}
+                    onClick={async () => {
+                      await logManualEpoch(selected, {
+                        trainLoss: parseFloat(manualMetrics.trainLoss),
+                        valLoss: parseFloat(manualMetrics.valLoss),
+                        accuracy: parseFloat(manualMetrics.accuracy),
+                      });
+                      setManualMetrics({ trainLoss: '', valLoss: '', accuracy: '' });
+                    }}>
+                    Record
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 {Object.entries(selected.hyperparams).map(([k, v]) => (
                   <div key={k} className="bg-lattice-surface p-2.5 rounded-lg">

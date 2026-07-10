@@ -32,27 +32,18 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { useAuth } from '@/hooks/useAuth';
 
 // -- Types ------------------------------------------------------------------
 interface JournalEntry { id: string; date: string; mood: number | null; notes: string; workedOn: string; learned: string; goals: string }
 interface SessionLog { id: string; project: string; duration: number; category: string; startedAt: string }
-interface AudioClip { id: string; name: string; duration: number; waveform: number[]; recordedAt: string }
+// `mediaId` is set once the clip's real bytes have landed on the server
+// (via /api/media/upload) so playback can stream from /api/media/:id/stream
+// even after a page reload, when the in-memory `blobUrl` no longer exists.
+interface AudioClip { id: string; name: string; duration: number; waveform: number[]; recordedAt: string; mediaId?: string; blobUrl?: string }
 interface Reminder { id: string; title: string; dueAt: string; completed: boolean }
 interface PracticeSession { id: string; skill: string; duration: number; completedAt: string }
 interface HabitEntry { habit: string; currentStreak: number; status: string }
-
-// -- Demo data --------------------------------------------------------------
-const QUOTES = [
-  { text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs' },
-  { text: 'Creativity is intelligence having fun.', author: 'Albert Einstein' },
-  { text: 'The best way to predict the future is to create it.', author: 'Peter Drucker' },
-  { text: 'Every artist was first an amateur.', author: 'Ralph Waldo Emerson' },
-  { text: 'What gets measured gets managed.', author: 'Peter Drucker' },
-  { text: 'Start where you are. Use what you have. Do what you can.', author: 'Arthur Ashe' },
-  { text: 'Art is not what you see, but what you make others see.', author: 'Edgar Degas' },
-];
-
-const _INITIAL_CLIPS: AudioClip[] = [];
 
 const SKILLS = ['Finger drumming', 'Chord voicings', 'Sound design', 'Ear training', 'Mixing technique', 'Rhythm exercises'];
 const MOODS = ['😤', '😕', '😐', '🙂', '🔥'];
@@ -86,6 +77,43 @@ function CircularTimer({ progress, timeLeft, size = 160 }: { progress: number; t
   );
 }
 
+// -- Real waveform extraction -------------------------------------------------
+// Decodes the ACTUAL recorded PCM samples via Web Audio and reduces them to
+// `buckets` peak-amplitude values. Replaces an earlier version of this file
+// that rendered a `Math.sin(...)`-generated curve labeled as the clip's
+// waveform — a fabricated visual with no relationship to the real audio
+// (see CLAUDE.md §3 "no air" — a decorative sensor-style readout presented
+// as measured data). On decode failure (unsupported codec in this browser),
+// returns a flat honest placeholder rather than another fake curve.
+async function computeWaveformFromBlob(blob: Blob, buckets = 24): Promise<number[]> {
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AudioCtx();
+    try {
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const channel = audioBuffer.getChannelData(0);
+      const perBucket = Math.max(1, Math.floor(channel.length / buckets));
+      const waveform: number[] = [];
+      for (let i = 0; i < buckets; i++) {
+        const start = i * perBucket;
+        const end = Math.min(start + perBucket, channel.length);
+        let peak = 0;
+        for (let j = start; j < end; j++) {
+          const abs = Math.abs(channel[j]);
+          if (abs > peak) peak = abs;
+        }
+        waveform.push(Math.max(0.04, Math.min(1, peak)));
+      }
+      return waveform;
+    } finally {
+      void ctx.close();
+    }
+  } catch {
+    return Array(buckets).fill(0.15);
+  }
+}
+
 // -- Mini Waveform ----------------------------------------------------------
 function MiniWaveform({ data, playing }: { data: number[]; playing: boolean }) {
   return (
@@ -104,6 +132,7 @@ function MiniWaveform({ data, playing }: { data: number[]; playing: boolean }) {
 export default function DailyLensPage() {
   useLensNav('daily');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('daily');
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const today = new Date().toISOString().split('T')[0];
 
@@ -126,6 +155,7 @@ export default function DailyLensPage() {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingStartRef = useRef<number>(0);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
   const [timerDuration, setTimerDuration] = useState(15 * 60);
   const [timeLeft, setTimeLeft] = useState(15 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -133,7 +163,6 @@ export default function DailyLensPage() {
   const [practiceHistory, setPracticeHistory] = useState<PracticeSession[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [localReminders, setLocalReminders] = useState<Reminder[]>([]);
-  const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)]);
   const [calMonth, setCalMonth] = useState(() => {
     const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() };
   });
@@ -165,6 +194,45 @@ export default function DailyLensPage() {
       setLocalReminders(reminderItems.map(i => i.data as unknown as Reminder));
     }
   }, [reminderItems, localReminders.length]);
+
+  // Rehydrate previously-recorded voice notes from the real media store on
+  // mount — the clip's bytes are genuinely persisted (`/api/media/upload`),
+  // but until this fix the in-memory `clips` list always started empty, so a
+  // reload made durably-saved recordings look like they'd vanished.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get(`/api/media/author/${user.id}`, { params: { limit: 50 } });
+        const items = (res.data?.media || []) as Array<{
+          id: string; title: string; duration?: number; waveform?: number[]; createdAt: string; tags?: string[]; mediaType?: string;
+        }>;
+        const voiceNotes = items.filter((m) => m.mediaType === 'audio' && (m.tags || []).includes('daily'));
+        if (!cancelled && voiceNotes.length > 0) {
+          setClips((prev) => {
+            const known = new Set(prev.map((c) => c.mediaId).filter(Boolean));
+            const restored: AudioClip[] = voiceNotes
+              .filter((m) => !known.has(m.id))
+              .map((m) => ({
+                id: m.id,
+                mediaId: m.id,
+                name: m.title,
+                duration: m.duration || 0,
+                // `waveform` is 0-100 scale server-side; MiniWaveform reads 0-1.
+                waveform: m.waveform && m.waveform.length > 0 ? m.waveform.map((v) => v / 100) : Array(24).fill(0.15),
+                recordedAt: m.createdAt,
+              }));
+            return [...prev, ...restored].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime());
+          });
+        }
+      } catch {
+        // Honest failure: leave whatever was already recorded this session;
+        // never fabricate a clip list when the fetch fails.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // -- API queries (preserved from original) --------------------------------
   const { data: dailyData, isError: isError4, error: error4, refetch: refetch4,} = useQuery({
@@ -262,23 +330,31 @@ export default function DailyLensPage() {
       recorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
         const duration = Math.round((Date.now() - recordingStartRef.current) / 1000);
-        const waveform = Array.from({ length: 24 }, (_, i) => 0.2 + (Math.sin(i * 0.5) * 0.35 + 0.35 + Math.sin(i * 1.2 + 1) * 0.15));
         const clipId = `clip-${Date.now()}`;
-        const newClip: AudioClip = {
-          id: clipId,
-          name: `Quick Note ${clips.length + 1}`,
-          duration,
-          waveform,
-          recordedAt: new Date().toISOString(),
-        };
-        setClips(prev => [newClip, ...prev]);
-        // Upload actual audio data to backend
         const blob = new Blob(chunks, { type: 'audio/webm' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        // Real waveform, decoded from the actual recorded samples — not a
+        // fabricated sine curve — plus real, immediately-playable audio via
+        // a local blob URL (upgraded to the persisted /stream URL below).
+        void computeWaveformFromBlob(blob).then((waveform) => {
+          const newClip: AudioClip = {
+            id: clipId,
+            name: `Quick Note ${clips.length + 1}`,
+            duration,
+            waveform,
+            recordedAt: new Date().toISOString(),
+            blobUrl,
+          };
+          setClips(prev => [newClip, ...prev]);
+        });
+
+        // Upload the actual audio bytes to backend so the clip survives reload.
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1];
           api.post('/api/media/upload', {
-            title: newClip.name,
+            title: `Quick Note ${clips.length + 1}`,
             mediaType: 'audio',
             mimeType: 'audio/webm',
             fileSize: blob.size,
@@ -287,7 +363,12 @@ export default function DailyLensPage() {
             privacy: 'private',
             duration,
             data: base64,
-          }).catch(err => { console.error('[Daily] Upload failed:', err); showToast('error', 'Upload failed'); });
+          }).then((res) => {
+            const mediaId = res.data?.mediaDTU?.id as string | undefined;
+            if (mediaId) {
+              setClips((prev) => prev.map((c) => (c.id === clipId ? { ...c, mediaId } : c)));
+            }
+          }).catch(err => { console.error('[Daily] Upload failed:', err); showToast('error', 'Voice note recorded locally, but failed to save — it will not survive a reload.'); });
         };
         reader.readAsDataURL(blob);
       };
@@ -299,6 +380,29 @@ export default function DailyLensPage() {
       console.warn('[Daily] Microphone access denied:', err);
     }
   }, [isRecording, clips.length]);
+
+  // -- Real playback: streams the actual recorded bytes via a shared hidden
+  // <audio> element — replaces a prior version that toggled a "playing" icon
+  // and colored the waveform without ever playing any sound.
+  const handlePlayClip = useCallback((clip: AudioClip) => {
+    const audio = audioElRef.current;
+    if (!audio) return;
+    if (playingClip === clip.id) {
+      audio.pause();
+      setPlayingClip(null);
+      return;
+    }
+    const src = clip.blobUrl || (clip.mediaId ? `/api/media/${clip.mediaId}/stream` : null);
+    if (!src) {
+      showToast('error', 'This clip finished uploading — refresh in a moment to play it back.');
+      return;
+    }
+    audio.src = src;
+    audio.currentTime = 0;
+    audio.play()
+      .then(() => setPlayingClip(clip.id))
+      .catch(() => showToast('error', 'Playback failed'));
+  }, [playingClip]);
 
   // -- Add session ----------------------------------------------------------
   const addSession = useCallback(() => {
@@ -334,6 +438,22 @@ export default function DailyLensPage() {
   const entriesThisWeek = entries.filter((e) => {
     return (new Date().getTime() - new Date(e.date).getTime()) / 86400000 <= 7;
   }).length;
+
+  // Real consecutive-day streak computed from actual journal-entry dates —
+  // replaces a previously hardcoded "5 days" label that never moved with
+  // real data. Counts backward from today; a day with no entry yet (today,
+  // before writing one) doesn't break a streak that ended yesterday.
+  const journalStreak = useMemo(() => {
+    if (entryDates.size === 0) return 0;
+    let streak = 0;
+    const cursor = new Date();
+    if (!entryDates.has(cursor.toISOString().split('T')[0])) cursor.setDate(cursor.getDate() - 1);
+    while (entryDates.has(cursor.toISOString().split('T')[0])) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }, [entryDates]);
 
   // -- Daily digest ----------------------------------------------------------
   const dailyDigest = useMemo(() => {
@@ -446,11 +566,11 @@ export default function DailyLensPage() {
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-400 flex items-center gap-1.5"><Flame className="w-3.5 h-3.5 text-orange-400" /> Streak</span>
-            <span className="font-semibold text-orange-400">5 days</span>
+            <span className="font-semibold text-orange-400">{journalStreak} day{journalStreak === 1 ? '' : 's'}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-400 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Total</span>
-            <span className="font-semibold">47 entries</span>
+            <span className="font-semibold">{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</span>
           </div>
         </div>
       </aside>
@@ -458,13 +578,6 @@ export default function DailyLensPage() {
       {/* =================== MAIN CONTENT =================== */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-6 space-y-6">
-          {/* Inspiration quote */}
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-            className="text-center py-3 px-4 rounded-lg bg-gradient-to-r from-neon-purple/10 to-neon-cyan/10 border border-lattice-border">
-            <p className="text-sm italic text-gray-300">&ldquo;{quote.text}&rdquo;</p>
-            <p className="text-xs text-gray-400 mt-1">&mdash; {quote.author}</p>
-          </motion.div>
-
           {/* Date header */}
           <div className="flex items-center justify-between">
             <div>
@@ -615,7 +728,7 @@ export default function DailyLensPage() {
                 const isPlaying = playingClip === clip.id;
                 return (
                   <div key={clip.id} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-lattice-border">
-                    <button onClick={() => setPlayingClip(isPlaying ? null : clip.id)}
+                    <button onClick={() => handlePlayClip(clip)} aria-label={isPlaying ? `Pause ${clip.name}` : `Play ${clip.name}`}
                       className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${isPlaying ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/10 hover:bg-white/20'}`}>
                       {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
                     </button>
@@ -628,7 +741,10 @@ export default function DailyLensPage() {
                   </div>
                 );
               })}
+              {clips.length === 0 && <p className="text-center text-sm text-gray-400 py-4">No voice notes yet — record a quick one above.</p>}
             </div>
+            {/* Shared playback element for every clip in the list above. */}
+            <audio ref={audioElRef} onEnded={() => setPlayingClip(null)} onPause={() => setPlayingClip(null)} className="hidden" />
           </motion.div>
 
           {/* Practice timer */}

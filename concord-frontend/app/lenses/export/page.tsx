@@ -16,19 +16,16 @@ import { api, lensRun } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Download, FileJson, FileText, Database, Check, Package, Layers,
-  ChevronDown, FileCode, FileSpreadsheet, Hash, ArrowDownToLine,
-  Loader2, Clock, Archive, X, CalendarClock, ShieldCheck, Zap, GitCompare,
+  Download, FileJson, FileText, Database, Check, Package,
+  FileCode, FileSpreadsheet, Hash, ArrowDownToLine,
+  Loader2, Clock, Archive, X, ShieldCheck, Zap, GitCompare,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 
 type ExportFormat = 'json' | 'csv' | 'markdown' | 'text' | 'dtu';
 
@@ -43,9 +40,7 @@ const EXPORT_FORMATS: Array<{ id: ExportFormat; label: string; desc: string; ext
 export default function ExportLensPage() {
   useLensNav('export');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('export');
-  const [showFeatures, setShowFeatures] = useState(true);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('json');
-  const [selectedData, setSelectedData] = useState<string[]>(['dtus']);
   const [exporting, setExporting] = useState(false);
   const [exportingDtuId, setExportingDtuId] = useState<string | null>(null);
   const [singleExportFormat, setSingleExportFormat] = useState<ExportFormat>('json');
@@ -60,33 +55,65 @@ export default function ExportLensPage() {
     { lensId: 'export' }
   );
 
-  // Backend action wiring
-  const runAction = useRunArtifact('export');
-  const { items: exportItems } = useLensData<Record<string, unknown>>('export', 'export', { seed: [] });
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
-
-  const handleExportAction = async (action: string) => {
-    const targetId = exportItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ _action: action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult({ _action: action, ...(res.result as Record<string, unknown>) }); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setIsRunning(null);
-  };
 
   const { data: dtusData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['dtus'],
     queryFn: () => api.get('/api/dtus').then((r) => r.data),
   });
+  const liveDtus = (dtusData?.dtus || []) as Record<string, unknown>[];
 
-  const dataOptions = [
-    { id: 'dtus', label: 'DTUs', count: dtusData?.dtus?.length || 0, icon: Database },
-    { id: 'events', label: 'Events', count: 500, icon: FileText },
-    { id: 'settings', label: 'Settings', count: 45, icon: Package },
-  ];
+  // Backend action wiring — every quick action below is fed the REAL current
+  // DTU set (never a disconnected generic artifact), so the computed output
+  // reflects what's actually about to be exported.
+  const handleGeneratePackage = async () => {
+    setIsRunning('generatePackage');
+    try {
+      const res = await lensRun('export', 'generatePackage', { items: liveDtus, format: selectedFormat, includeRelationships: true });
+      setActionResult(res.data.ok === false
+        ? { _action: 'generatePackage', message: `Action failed: ${res.data.error || 'Unknown error'}` }
+        : { _action: 'generatePackage', ...(res.data.result as Record<string, unknown>) });
+    } catch (e) { setActionResult({ _action: 'generatePackage', message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    setIsRunning(null);
+  };
+
+  const handleValidateExport = async () => {
+    setIsRunning('validateExport');
+    try {
+      const res = await lensRun('export', 'validateExport', { items: liveDtus, schema: { requiredFields: ['id', 'title'] } });
+      setActionResult(res.data.ok === false
+        ? { _action: 'validateExport', message: `Action failed: ${res.data.error || 'Unknown error'}` }
+        : { _action: 'validateExport', ...(res.data.result as Record<string, unknown>) });
+    } catch (e) { setActionResult({ _action: 'validateExport', message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    setIsRunning(null);
+  };
+
+  // Diff the live DTU set against the last JSON export this browser ran
+  // (pulled from the real export history log) — an honest "what's new since
+  // I last exported" check, not a fabricated comparison.
+  const handleDiffExport = async () => {
+    setIsRunning('diffExport');
+    try {
+      const hist = await lensRun('export', 'history-list', { limit: 25 });
+      const runs = ((hist.data.result as { runs?: Array<Record<string, unknown>> } | null)?.runs || [])
+        .filter((r) => r.format === 'json' && r.hasPayload);
+      if (runs.length === 0) {
+        setActionResult({ _action: 'diffExport', message: 'No previous JSON export with a retained payload yet — run a JSON export below, then diff again.' });
+        setIsRunning(null);
+        return;
+      }
+      const dl = await lensRun('export', 'history-download', { id: runs[0].id });
+      const payload = (dl.data.result as { payload?: string } | null)?.payload;
+      let previous: unknown[] = [];
+      try { previous = (JSON.parse(payload || '{}').dtus) || []; } catch { previous = []; }
+      const res = await lensRun('export', 'diffExport', { current: liveDtus, previous });
+      setActionResult(res.data.ok === false
+        ? { _action: 'diffExport', message: `Action failed: ${res.data.error || 'Unknown error'}` }
+        : { _action: 'diffExport', ...(res.data.result as Record<string, unknown>) });
+    } catch (e) { setActionResult({ _action: 'diffExport', message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    setIsRunning(null);
+  };
 
   // Bulk export handler
   const handleExport = async () => {
@@ -157,7 +184,7 @@ export default function ExportLensPage() {
             format: selectedFormat,
             itemCount: (data.dtus as unknown[]).length,
             byteLength: content.length,
-            dataSources: selectedData,
+            dataSources: ['dtus'],
             trigger: 'manual',
             filename,
             payload: content,
@@ -186,12 +213,6 @@ export default function ExportLensPage() {
     } finally {
       setExportingDtuId(null);
     }
-  };
-
-  const toggleData = (id: string) => {
-    setSelectedData((prev) =>
-      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
-    );
   };
 
   if (isLoading) {
@@ -243,27 +264,32 @@ export default function ExportLensPage() {
         </div>
       </header>
 
-      {/* Action Panel */}
+      {/* Action Panel — every action below runs against the REAL, currently-loaded
+          DTU set (never a disconnected placeholder artifact). Schedule Export
+          lives in the Export Toolkit below (a real persisted scheduler), so it
+          isn't duplicated here as a one-shot dead click. */}
       <div className="panel p-4 space-y-3">
         <h2 className="font-semibold text-sm flex items-center gap-2">
           <Zap className="w-4 h-4 text-neon-cyan" />
           Export Actions
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {[
-            { action: 'generatePackage', label: 'Generate Package', icon: Package, color: 'text-neon-green' },
-            { action: 'validateExport',  label: 'Validate Export',  icon: ShieldCheck, color: 'text-neon-cyan' },
-            { action: 'scheduleExport',  label: 'Schedule Export',  icon: CalendarClock, color: 'text-yellow-400' },
-            { action: 'diffExport',      label: 'Diff Export',      icon: GitCompare, color: 'text-neon-purple' },
-          ].map(({ action, label, icon: Icon, color }) => (
+            { action: 'generatePackage', label: 'Generate Package', desc: 'Dry-run size + format preview', icon: Package, color: 'text-neon-green', onClick: handleGeneratePackage },
+            { action: 'validateExport',  label: 'Validate Export',  desc: 'Check every DTU has id + title', icon: ShieldCheck, color: 'text-neon-cyan', onClick: handleValidateExport },
+            { action: 'diffExport',      label: 'Diff vs Last Export', desc: 'Changed since your last JSON export', icon: GitCompare, color: 'text-neon-purple', onClick: handleDiffExport },
+          ].map(({ action, label, desc, icon: Icon, color, onClick }) => (
             <button
               key={action}
-              onClick={() => handleExportAction(action)}
-              disabled={!!isRunning || !exportItems[0]?.id}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-deep border border-lattice-border text-sm hover:border-white/20 disabled:opacity-40 transition-colors"
+              onClick={onClick}
+              disabled={!!isRunning}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-deep border border-lattice-border text-sm hover:border-white/20 disabled:opacity-40 transition-colors text-left"
             >
-              {isRunning === action ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className={`w-4 h-4 ${color}`} />}
-              <span className="truncate">{label}</span>
+              {isRunning === action ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Icon className={`w-4 h-4 shrink-0 ${color}`} />}
+              <span className="min-w-0">
+                <span className="block truncate">{label}</span>
+                <span className="block truncate text-[10px] text-gray-400 font-normal">{desc}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -329,51 +355,34 @@ export default function ExportLensPage() {
               </div>
             )}
 
-            {/* scheduleExport */}
-            {actionResult._action === 'scheduleExport' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Schedule Configured</p>
-                {!!actionResult.schedule && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {[
-                      { label: 'Frequency', value: String((actionResult.schedule as Record<string,unknown>).frequency ?? '—') },
-                      { label: 'Destination', value: String((actionResult.schedule as Record<string,unknown>).destination ?? '—') },
-                      { label: 'Format', value: String((actionResult.schedule as Record<string,unknown>).format ?? '—').toUpperCase() },
-                      { label: 'Next Run', value: String((actionResult.schedule as Record<string,unknown>).nextRun ?? '—') },
-                      { label: 'Status', value: String(actionResult.status ?? '—') },
-                    ].map(({ label, value }) => (
-                      <div key={label} className="bg-white/5 rounded-lg p-3">
-                        <p className="text-xs text-gray-400">{label}</p>
-                        <p className="text-sm font-semibold text-white capitalize">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* diffExport */}
             {actionResult._action === 'diffExport' && (
               <div className="space-y-3">
                 <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Export Diff</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Added', value: String(actionResult.added ?? 0), color: 'text-neon-green' },
-                    { label: 'Removed', value: String(actionResult.removed ?? 0), color: 'text-red-400' },
-                    { label: 'Modified', value: String(actionResult.modified ?? 0), color: 'text-yellow-400' },
-                    { label: 'Unchanged', value: String(actionResult.unchanged ?? 0), color: 'text-gray-400' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                      <p className={`text-xl font-bold ${color}`}>{value}</p>
-                      <p className="text-xs text-gray-400">{label}</p>
+                {actionResult.message ? (
+                  <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Added', value: String(actionResult.added ?? 0), color: 'text-neon-green' },
+                        { label: 'Removed', value: String(actionResult.removed ?? 0), color: 'text-red-400' },
+                        { label: 'Modified', value: String(actionResult.modified ?? 0), color: 'text-yellow-400' },
+                        { label: 'Unchanged', value: String(actionResult.unchanged ?? 0), color: 'text-gray-400' },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
+                          <p className={`text-xl font-bold ${color}`}>{value}</p>
+                          <p className="text-xs text-gray-400">{label}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-4 text-xs text-gray-400">
-                  <span>Current: {actionResult.totalCurrent as number} items</span>
-                  <span>Previous: {actionResult.totalPrevious as number} items</span>
-                  <span className="text-yellow-400">Change: {actionResult.changePercent as number}%</span>
-                </div>
+                    <div className="flex items-center gap-4 text-xs text-gray-400">
+                      <span>Current: {actionResult.totalCurrent as number} items</span>
+                      <span>Previous: {actionResult.totalPrevious as number} items</span>
+                      <span className="text-yellow-400">Change: {actionResult.changePercent as number}%</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -385,7 +394,7 @@ export default function ExportLensPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="lens-card">
           <Database className="w-5 h-5 text-neon-blue mb-2" />
           <p className="text-2xl font-bold">{dtus.length}</p>
-          <p className="text-sm text-gray-400">Total Exports</p>
+          <p className="text-sm text-gray-400">Total DTUs</p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="lens-card">
           <Clock className="w-5 h-5 text-yellow-400 mb-2" />
@@ -416,26 +425,15 @@ export default function ExportLensPage() {
           Bulk Export
         </h2>
 
-        {/* Data Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          {dataOptions.map((opt) => {
-            const Icon = opt.icon;
-            const selected = selectedData.includes(opt.id);
-            return (
-              <button
-                key={opt.id}
-                onClick={() => toggleData(opt.id)}
-                className={`lens-card text-left ${selected ? 'border-neon-green ring-1 ring-neon-green' : ''}`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <Icon className={`w-5 h-5 ${selected ? 'text-neon-green' : 'text-gray-400'}`} />
-                  {selected && <Check className="w-4 h-4 text-neon-green" />}
-                </div>
-                <p className="font-semibold">{opt.label}</p>
-                <p className="text-sm text-gray-400">{opt.count.toLocaleString()} items</p>
-              </button>
-            );
-          })}
+        {/* Data source — the DTU knowledge base is the only real bulk-exportable
+            source today; no fabricated "Events"/"Settings" counts. */}
+        <div className="lens-card flex items-center gap-3 mb-4 border-neon-green ring-1 ring-neon-green">
+          <Database className="w-5 h-5 text-neon-green shrink-0" />
+          <div>
+            <p className="font-semibold">DTUs</p>
+            <p className="text-sm text-gray-400">{dtus.length.toLocaleString()} item{dtus.length === 1 ? '' : 's'} will be exported</p>
+          </div>
+          <Check className="w-4 h-4 text-neon-green ml-auto" />
         </div>
 
         {/* Format Selection */}
@@ -456,11 +454,11 @@ export default function ExportLensPage() {
 
         <button
           onClick={handleExport}
-          disabled={selectedData.length === 0 || exporting}
+          disabled={dtus.length === 0 || exporting}
           className="btn-neon green w-full py-3 text-sm flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
           {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          {exporting ? 'Exporting...' : `Export ${selectedData.length} dataset(s) as ${selectedFormat.toUpperCase()}`}
+          {exporting ? 'Exporting...' : `Export ${dtus.length} DTU${dtus.length === 1 ? '' : 's'} as ${selectedFormat.toUpperCase()}`}
         </button>
       </div>
 
@@ -588,24 +586,6 @@ export default function ExportLensPage() {
 
       <ConnectiveTissueBar lensId="export_import" />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="export_import" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ExportFormatGallery />
       </section>

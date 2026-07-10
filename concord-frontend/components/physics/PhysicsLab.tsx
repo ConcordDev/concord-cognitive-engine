@@ -210,6 +210,12 @@ export function PhysicsLab() {
   const [importCode, setImportCode] = useState('');
   const [showCurriculum, setShowCurriculum] = useState(false);
 
+  // Predict → verify (pendulum-period analytic helper backs the Pendulum Lab module)
+  const [pendLength, setPendLength] = useState('1.6');
+  const [pendAmplitude, setPendAmplitude] = useState('15');
+  const [pendPrediction, setPendPrediction] = useState<{ smallAnglePeriod_s: number; correctedPeriod_s: number; frequency_hz: number } | null>(null);
+  const [pendBusy, setPendBusy] = useState(false);
+
   // Measurement tools
   const [rulerPts, setRulerPts] = useState<Array<{ x: number; y: number }>>([]);
   const [protractorPts, setProtractorPts] = useState<Array<{ x: number; y: number }>>([]);
@@ -384,6 +390,25 @@ export function PhysicsLab() {
       setBusy(null);
     }
   }, []);
+
+  const predictPendulum = useCallback(async () => {
+    setPendBusy(true);
+    try {
+      const r = await lensRun<{ smallAnglePeriod_s: number; correctedPeriod_s: number; frequency_hz: number }>('physics', 'pendulum-period', {
+        length: Number(pendLength) || 1,
+        gravity: scene.settings.gravityY || 9.81,
+        amplitudeDeg: Number(pendAmplitude) || 0,
+      });
+      if (r.data.ok && r.data.result) {
+        setPendPrediction(r.data.result);
+        setStatus(`Predicted T ≈ ${r.data.result.correctedPeriod_s}s — now Run the sim and compare the bob's oscillation.`);
+      } else {
+        setStatus(`Prediction failed: ${r.data.error || 'unknown'}`);
+      }
+    } finally {
+      setPendBusy(false);
+    }
+  }, [pendLength, pendAmplitude, scene.settings.gravityY]);
 
   // ── Canvas placement / drag ──
 
@@ -1099,6 +1124,39 @@ export function PhysicsLab() {
                   </li>
                 ))}
               </ol>
+
+              {/* Predict → verify — the analytic pendulum-period macro backs this
+                  loop: predict the period from L and g, then Run the sim above
+                  and compare against the bob's actual oscillation. */}
+              {activeModule.id === 'pendulum-lab' && (
+                <div className="mt-2 rounded border border-emerald-500/20 bg-black/20 p-2 space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Predict, then verify</p>
+                  <div className="flex items-center gap-1.5">
+                    <label className="flex flex-col gap-0.5">
+                      <span className="text-[9px] text-zinc-500 font-mono">length m</span>
+                      <input type="text" inputMode="decimal" value={pendLength} onChange={(e) => setPendLength(e.target.value)}
+                        className="w-16 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[11px] text-white font-mono" />
+                    </label>
+                    <label className="flex flex-col gap-0.5">
+                      <span className="text-[9px] text-zinc-500 font-mono">amplitude °</span>
+                      <input type="text" inputMode="decimal" value={pendAmplitude} onChange={(e) => setPendAmplitude(e.target.value)}
+                        className="w-16 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[11px] text-white font-mono" />
+                    </label>
+                    <button type="button" onClick={predictPendulum} disabled={pendBusy}
+                      className="mt-3.5 px-2 py-1 text-[11px] rounded bg-emerald-500/15 text-emerald-200 border border-emerald-500/30 disabled:opacity-50 inline-flex items-center gap-1">
+                      {pendBusy && <Loader2 className="w-3 h-3 animate-spin" />} Predict period
+                    </button>
+                  </div>
+                  {pendPrediction && (
+                    <p className="text-[11px] text-zinc-300">
+                      T (small-angle) = <span className="font-mono text-emerald-200">{pendPrediction.smallAnglePeriod_s}s</span>
+                      {' · '}T (amplitude-corrected) = <span className="font-mono text-emerald-200">{pendPrediction.correctedPeriod_s}s</span>
+                      {' · '}f = <span className="font-mono text-emerald-200">{pendPrediction.frequency_hz} Hz</span>
+                      {' — run the sim above and check the bob against this.'}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

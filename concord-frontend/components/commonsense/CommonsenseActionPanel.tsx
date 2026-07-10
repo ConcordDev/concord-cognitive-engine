@@ -3,14 +3,24 @@
 /**
  * CommonsenseActionPanel — knowledge graph + reasoning bench.
  * conceptnet-edges / conceptnet-relatedness / plausibilityCheck /
- * analogyMapping + mint/DM/publish/agent.
+ * analogyMapping / defaultReasoning + mint/DM/publish/agent.
  *
  * Max-polish pass: empty defaults (no seed concepts/statements), pipe
  * publish/import for cross-panel hand-off, recall window on DM + publish.
+ *
+ * defaultReasoning moved here from the page-level "Commonsense Actions"
+ * panel (removed — it dispatched through the generic per-artifact
+ * `/api/lens/commonsense/:id/run` path keyed off a raw fact-store id
+ * (`fact_xxx`), which is never registered in the artifact store the
+ * generic runner reads from, so every click there resolved to a
+ * structurally-guaranteed "not found" — a dead control, not a working
+ * one. This panel calls the macro directly via `/api/lens/run` with an
+ * inline `artifact.data` payload (the same path `plaus`/`analog` already
+ * use successfully below), so it actually reaches the handler.
  */
 
 import { useState } from 'react';
-import { Brain, Link2, Lightbulb, ArrowLeftRight, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { Brain, Link2, Lightbulb, ArrowLeftRight, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, GitMerge } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -31,7 +41,7 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'edges' | 'rel' | 'plaus' | 'analog' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'edges' | 'rel' | 'plaus' | 'analog' | 'reason' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
 interface Edge { relation?: string; start?: string; end?: string; weight?: number; surfaceText?: string }
@@ -58,6 +68,41 @@ interface AnalogResult {
   coverage?: { entitiesMapped: number; totalSourceEntities: number; relationsMapped: number; totalSourceRelations: number };
 }
 
+// Aligned to server/domains/commonsense.js#defaultReasoning return shape.
+interface ReasonConflictDetail { property: string; overriddenValue: unknown; overriddenBy: string; newValue: unknown; newSource: string }
+interface ReasonResult {
+  message?: string;
+  instanceClass?: string;
+  inheritanceChain?: string[];
+  resolvedProperties?: Record<string, unknown>;
+  propertySources?: Record<string, string>;
+  totalProperties?: number;
+  conflicts?: { inheritanceOverrides: number; siblingConflicts: number; details?: ReasonConflictDetail[] };
+  warnings?: string[];
+}
+
+const REASON_PLACEHOLDER = `{
+  "classes": [
+    { "name": "bird", "defaults": { "canFly": true, "hasFeathers": true } },
+    { "name": "penguin", "parent": "bird", "overrides": { "canFly": false } }
+  ],
+  "instance": { "class": "penguin" }
+}`;
+
+// Parse the default-reasoning JSON field: { classes:[{name,parent?,defaults?,overrides?}], instance:{class,properties?} }.
+// The handler needs a real class hierarchy — unlike the analogy/plausibility
+// fields there's no honest free-text degradation, so invalid JSON surfaces
+// as a validation error instead of silently reasoning over nothing.
+function parseReasonInput(raw: string): { classes: { name: string; parent?: string; defaults?: Record<string, unknown>; overrides?: Record<string, unknown> }[]; instance: { class?: string; properties?: Record<string, unknown> } } | null {
+  try {
+    const obj = JSON.parse(raw.trim());
+    if (obj && typeof obj === 'object' && Array.isArray(obj.classes) && obj.classes.length > 0) {
+      return { classes: obj.classes, instance: (obj.instance && typeof obj.instance === 'object') ? obj.instance : {} };
+    }
+  } catch { /* invalid JSON — caller surfaces the error */ }
+  return null;
+}
+
 // Parse an analogy-domain text field. Accepts either a JSON structure
 // `{ domain, entities:[{name,type}], relations:[{type,from,to}] }` (what the
 // handler reads) OR a plain free-text label, which degrades to a single named
@@ -81,6 +126,7 @@ export function CommonsenseActionPanel() {
   const [statement, setStatement] = useState('');
   const [analogSource, setAnalogSource] = useState('');
   const [analogTarget, setAnalogTarget] = useState('');
+  const [reasonInput, setReasonInput] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -89,6 +135,7 @@ export function CommonsenseActionPanel() {
   const [relResult, setRelResult] = useState<RelResult | null>(null);
   const [plausResult, setPlausResult] = useState<PlausResult | null>(null);
   const [analogResult, setAnalogResult] = useState<AnalogResult | null>(null);
+  const [reasonResult, setReasonResult] = useState<ReasonResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
@@ -159,6 +206,22 @@ export function CommonsenseActionPanel() {
       } else err(r.error ?? 'analogy failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+  async function actReason() {
+    const parsed = parseReasonInput(reasonInput);
+    if (!parsed) { err('Enter a class hierarchy as JSON — { classes:[...], instance:{...} }.'); return; }
+    setBusy('reason'); setFeedback(null);
+    try {
+      const r = await callMacro<ReasonResult>('defaultReasoning', { artifact: { data: parsed } });
+      if (r.ok && r.result) {
+        setReasonResult(r.result);
+        if (r.result.message) { err(r.result.message); }
+        else {
+          pipe.publish('commonsense.reason', r.result, { label: `${r.result.instanceClass ?? '?'}: ${r.result.totalProperties ?? 0} properties` });
+          ok(`${r.result.instanceClass ?? '?'} · ${r.result.totalProperties ?? 0} resolved propert${(r.result.totalProperties ?? 0) === 1 ? 'y' : 'ies'}.`);
+        }
+      } else err(r.error ?? 'reasoning failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
@@ -224,6 +287,7 @@ export function CommonsenseActionPanel() {
     { id: 'rel' as ActionId, label: 'Related', desc: 'embedding similarity', icon: ArrowLeftRight, accent: '#22c55e', handler: actRel },
     { id: 'plaus' as ActionId, label: 'Plausible', desc: 'plausibilityCheck', icon: Lightbulb, accent: '#f59e0b', handler: actPlaus },
     { id: 'analog' as ActionId, label: 'Analogy', desc: 'analogyMapping', icon: Brain, accent: '#a855f7', handler: actAnalog },
+    { id: 'reason' as ActionId, label: 'Reason', desc: 'defaultReasoning', icon: GitMerge, accent: '#14b8a6', handler: actReason },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private KG DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief', icon: Send, accent: '#ec4899', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public KG card', icon: Globe, accent: '#15803d', handler: actPublish },
@@ -237,7 +301,7 @@ export function CommonsenseActionPanel() {
       <header className="flex items-center gap-2 border-b border-violet-500/10 pb-2">
         <Brain className="h-4 w-4 text-violet-400" />
         <h3 className="text-sm font-semibold text-white">Commonsense KG</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">ConceptNet 5 · plausibility · analogy</span>
+        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">ConceptNet 5 · plausibility · analogy · inheritance</span>
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -253,13 +317,14 @@ export function CommonsenseActionPanel() {
         <input type="text" value={analogTarget} onChange={(e) => setAnalogTarget(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Analogy target" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
         <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={2} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Statement to plausibility-check" />
+        <textarea value={reasonInput} onChange={(e) => setReasonInput(e.target.value)} rows={4} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder={REASON_PLACEHOLDER} />
         <div className="md:col-span-5 flex items-center gap-2 flex-wrap">
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-2">
         {actions.map(act => {
           const Icon = act.icon; const isBusy = busy === act.id;
           return (
@@ -319,6 +384,40 @@ export function CommonsenseActionPanel() {
                 <div className="text-[9px] uppercase tracking-wider text-purple-300/70">Candidate inferences</div>
                 {(analogResult.candidateInferences ?? []).slice(0, 4).map((inf, i) => (
                   <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><span className="text-amber-300">{inf.predictedRelation}</span>: <span className="font-mono text-purple-200">{inf.from}</span> → <span className="font-mono text-purple-200">{inf.to}</span></div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {reasonResult && !reasonResult.message && (
+          <div className="rounded-md border border-teal-500/30 bg-teal-500/5 p-2.5 md:col-span-2">
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-teal-300 font-semibold">
+              <span>{reasonResult.instanceClass}</span>
+              <span className="normal-case text-zinc-500">via</span>
+              <span className="font-mono text-zinc-300 normal-case">{(reasonResult.inheritanceChain ?? []).join(' → ')}</span>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] text-zinc-400 mt-1">
+              <span>properties <span className="font-mono text-zinc-200">{reasonResult.totalProperties ?? 0}</span></span>
+              <span>overrides <span className={cn('font-mono', (reasonResult.conflicts?.inheritanceOverrides ?? 0) > 0 ? 'text-amber-300' : 'text-emerald-300')}>{reasonResult.conflicts?.inheritanceOverrides ?? 0}</span></span>
+              <span>sibling conflicts <span className={cn('font-mono', (reasonResult.conflicts?.siblingConflicts ?? 0) > 0 ? 'text-red-300' : 'text-emerald-300')}>{reasonResult.conflicts?.siblingConflicts ?? 0}</span></span>
+            </div>
+            {reasonResult.resolvedProperties && Object.keys(reasonResult.resolvedProperties).length > 0 && (
+              <div className="mt-1.5 space-y-0.5 max-h-32 overflow-y-auto">
+                {Object.entries(reasonResult.resolvedProperties).map(([key, val]) => (
+                  <div key={key} className="flex items-center justify-between text-[11px]">
+                    <span className="text-teal-200">{key}</span>
+                    <span className="font-mono text-zinc-300">{String(val)}</span>
+                    <span className="text-zinc-600 ml-2">← {reasonResult.propertySources?.[key]}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {(reasonResult.warnings ?? []).length > 0 && (
+              <div className="mt-1.5 space-y-1">
+                {(reasonResult.warnings ?? []).map((w, i) => (
+                  <div key={i} className="flex items-center gap-1.5 text-[10px] bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1 text-amber-300">
+                    <AlertTriangle className="h-3 w-3 shrink-0" /> {w}
+                  </div>
                 ))}
               </div>
             )}

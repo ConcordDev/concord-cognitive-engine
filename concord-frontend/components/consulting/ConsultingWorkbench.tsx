@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Timer, FileText, FileSignature, Users, Receipt, Repeat, TrendingUp, Share2,
+  Timer, FileText, FileSignature, Users, Receipt, Repeat, TrendingUp, Share2, Calculator,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { LiveTimer } from './LiveTimer';
@@ -21,9 +21,10 @@ import { ExpenseTracker } from './ExpenseTracker';
 import { RetainerManager } from './RetainerManager';
 import { ProfitabilityReport } from './ProfitabilityReport';
 import { ClientPortal } from './ClientPortal';
+import { ConsultingCalculators } from './ConsultingCalculators';
 
 interface EngagementOption { id: string; name: string }
-type Panel = 'timer' | 'invoices' | 'proposals' | 'staffing' | 'expenses' | 'retainers' | 'profit' | 'portal';
+type Panel = 'timer' | 'invoices' | 'proposals' | 'staffing' | 'expenses' | 'retainers' | 'profit' | 'portal' | 'calculators';
 
 const PANELS: { id: Panel; label: string; icon: typeof Timer }[] = [
   { id: 'timer', label: 'Timer', icon: Timer },
@@ -34,6 +35,7 @@ const PANELS: { id: Panel; label: string; icon: typeof Timer }[] = [
   { id: 'retainers', label: 'Retainers', icon: Repeat },
   { id: 'profit', label: 'Profitability', icon: TrendingUp },
   { id: 'portal', label: 'Client Portal', icon: Share2 },
+  { id: 'calculators', label: 'Calculators', icon: Calculator },
 ];
 
 export function ConsultingWorkbench() {
@@ -76,6 +78,7 @@ export function ConsultingWorkbench() {
       {panel === 'retainers' && <RetainerManager />}
       {panel === 'profit' && <ProfitabilityReport key={refreshKey} />}
       {panel === 'portal' && <ClientPortal engagements={engagements} />}
+      {panel === 'calculators' && <ConsultingCalculators />}
     </div>
   );
 }

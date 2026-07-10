@@ -117,21 +117,23 @@ export default function registerMessageActions(registerLensAction) {
 
   // ── Message search index + search ──
 
-  registerLensAction("message", "index-message", (ctx, _artifact, params = {}) => {
-    const s = getMessageState();
-    if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = msgActor(ctx);
-    const messageId = String(params.messageId || "");
-    if (!messageId) return { ok: false, error: "messageId required" };
+  // Shared core for index-message AND every message-creation path (send /
+  // thread-reply / scheduled-send flush). Previously ONLY the macro wrote
+  // to the index, and nothing ever called it when a message was actually
+  // created — so `search-messages` (the index-backed search in
+  // MessageWorkbench's Search tab) silently returned zero hits forever,
+  // no matter how many messages existed. Indexing now happens inline at
+  // creation time so the search index can never drift from reality.
+  function indexMessageEntry(s, userId, { messageId, threadId, body, sender, ts }) {
     if (!s.searchIdx.has(userId)) s.searchIdx.set(userId, []);
     const arr = s.searchIdx.get(userId);
     const existing = arr.findIndex((m) => m.messageId === messageId);
     const entry = {
-      messageId,
-      threadId: String(params.threadId || ""),
-      body: String(params.body || "").slice(0, 4000),
-      sender: String(params.sender || ""),
-      ts: String(params.ts || nowIsoMsg()),
+      messageId: String(messageId || ""),
+      threadId: String(threadId || ""),
+      body: String(body || "").slice(0, 4000),
+      sender: String(sender || ""),
+      ts: String(ts || nowIsoMsg()),
     };
     if (existing >= 0) arr[existing] = entry;
     else {
@@ -139,8 +141,18 @@ export default function registerMessageActions(registerLensAction) {
       // Cap index at 5000 messages
       if (arr.length > 5000) arr.splice(0, arr.length - 5000);
     }
+    return arr.length;
+  }
+
+  registerLensAction("message", "index-message", (ctx, _artifact, params = {}) => {
+    const s = getMessageState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const messageId = String(params.messageId || "");
+    if (!messageId) return { ok: false, error: "messageId required" };
+    const total = indexMessageEntry(s, userId, params);
     saveMessageState();
-    return { ok: true, result: { messageId, total: arr.length } };
+    return { ok: true, result: { messageId, total } };
   });
 
   registerLensAction("message", "search-messages", (ctx, _artifact, params = {}) => {
@@ -400,6 +412,7 @@ export default function registerMessageActions(registerLensAction) {
     msgs.push(msg);
     // Author auto-reads their own message
     mapB(s.readState, userId).set(channelId, new Date(msg.ts).getTime());
+    indexMessageEntry(s, userId, { messageId: msg.id, threadId: channelId, body, sender: msg.senderName, ts: msg.ts });
     emitToUserRoom(userId, 'message:new', { channelId, messageId: msg.id });
     saveMessageState();
     return { ok: true, result: { message: msg, mentionsFanout: mentions.length } };
@@ -419,6 +432,7 @@ export default function registerMessageActions(registerLensAction) {
     m.body = newBody;
     m.edited = true;
     m.editedAt = nowIsoMsg();
+    indexMessageEntry(s, userId, { messageId: m.id, threadId: channelId, body: newBody, sender: m.senderName, ts: m.ts });
     saveMessageState();
     return { ok: true, result: { message: m } };
   });
@@ -473,6 +487,7 @@ export default function registerMessageActions(registerLensAction) {
     const list = listB(mapB(s.threads, userId), rootId);
     list.push(reply);
     root.threadCount = list.length;
+    indexMessageEntry(s, userId, { messageId: reply.id, threadId: rootId, body, sender: reply.senderName, ts: reply.ts });
     saveMessageState();
     return { ok: true, result: { reply, threadCount: root.threadCount } };
   });
@@ -669,6 +684,7 @@ export default function registerMessageActions(registerLensAction) {
       };
       seq.msg++;
       listB(mapB(s.messages, userId), item.channelId).push(msg);
+      indexMessageEntry(s, userId, { messageId: msg.id, threadId: item.channelId, body: msg.body, sender: msg.senderName, ts: msg.ts });
       item.sent = true;
       item.sentAt = nowIsoMsg();
       sent.push(msg);

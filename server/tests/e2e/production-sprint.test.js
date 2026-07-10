@@ -127,8 +127,13 @@ describe("Phase D — Production sprint structural", () => {
     assert.match(SERVER, /\/api\/fishing\/catalog/);
     assert.match(SERVER, /\/api\/fishing\/catches\/mine/);
     assert.match(SERVER, /\/api\/fishing\/cast/);
+    // Frontend Rebuild Program Wave 1 (commit 13f3734d) split the fishing
+    // hub's catch log out of the monolithic page into its own component —
+    // the real capability moved, the page still mounts it.
     const lens = readFile("concord-frontend/app/lenses/fishing/page.tsx");
-    assert.match(lens, /Catch log/);
+    assert.match(lens, /CatchLog/);
+    const catchLog = readFile("concord-frontend/components/fishing/CatchLog.tsx");
+    assert.match(catchLog, /Catch log/);
   });
 
   it("DC6 creatures lens + world list route", () => {

@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Flame, Loader2, ExternalLink } from 'lucide-react';
+import { Flame, Loader2, ExternalLink, MapPinned } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
@@ -21,6 +21,11 @@ interface Fire {
   startDate?: string; lastUpdated?: string;
   latitude?: number | null; longitude?: number | null;
   incidentUrl?: string;
+}
+
+interface FirePerimeter {
+  objectId?: number; incidentName?: string; gisAcres?: number;
+  mapMethod?: string; polygonDateTime?: string; sourceCode?: string;
 }
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -38,10 +43,17 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 export function FireIncidents() {
   const [state, setState] = useState('');
   const [fires, setFires] = useState<Fire[]>([]);
+  const [perimeters, setPerimeters] = useState<FirePerimeter[]>([]);
+  const [showPerimeters, setShowPerimeters] = useState(false);
 
   const load = useMutation({
     mutationFn: async () => callMacro<{ fires: Fire[] }>('inciweb-active-fires', state ? { state, limit: 60 } : { limit: 60 }),
     onSuccess: (env) => { if (env.ok && env.result) setFires(env.result.fires); else setFires([]); },
+  });
+
+  const loadPerimeters = useMutation({
+    mutationFn: async () => callMacro<{ features: FirePerimeter[]; count: number; totalArea: number }>('nifc-fire-perimeters', { maxFeatures: 200 }),
+    onSuccess: (env) => { if (env.ok && env.result) setPerimeters(env.result.features); else setPerimeters([]); },
   });
 
   return (
@@ -98,6 +110,45 @@ export function FireIncidents() {
             </motion.div>
           );
         })}
+      </div>
+
+      <div className="border-t border-zinc-800 pt-3">
+        <button
+          type="button"
+          onClick={() => { setShowPerimeters((v) => !v); if (!showPerimeters && perimeters.length === 0) loadPerimeters.mutate(); }}
+          className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-500/20"
+        >
+          {loadPerimeters.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MapPinned className="h-3.5 w-3.5" />}
+          {showPerimeters ? 'Hide' : 'Show'} fire perimeter GIS data
+        </button>
+        <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">nifc wfigs</span>
+
+        {showPerimeters && (
+          <div className="mt-2 space-y-1">
+            {perimeters.length === 0 && !loadPerimeters.isPending && (
+              <p className="text-[11px] text-zinc-400">No mapped perimeters currently in the NIFC feed.</p>
+            )}
+            {perimeters.slice(0, 50).map((p) => (
+              <div key={p.objectId ?? p.incidentName} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-medium text-white">{p.incidentName || 'Unnamed perimeter'}</span>
+                  <span className="ml-2 text-[10px] text-zinc-500">{p.mapMethod || ''}{p.polygonDateTime ? ` · mapped ${p.polygonDateTime}` : ''}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {p.gisAcres != null && <span className="font-mono text-[11px] text-amber-300">{Math.round(p.gisAcres).toLocaleString()} ac</span>}
+                  <SaveAsDtuButton
+                    compact
+                    apiSource="nifc-wfigs-perimeters"
+                    title={`${p.incidentName || 'Perimeter'} — ${Math.round(p.gisAcres || 0).toLocaleString()} acres (mapped GIS boundary)`}
+                    content={`Incident: ${p.incidentName}\nGIS acres: ${p.gisAcres}\nMap method: ${p.mapMethod}\nPolygon date/time: ${p.polygonDateTime}\nSource: ${p.sourceCode}`}
+                    extraTags={['forestry', 'wildfire', 'nifc', 'perimeter']}
+                    rawData={p}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

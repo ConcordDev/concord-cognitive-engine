@@ -21,12 +21,20 @@
 const EXPORT_MAX_ROWS = 5000;
 const SEARCH_MAX_ROWS = 500;
 
-// Per-user saved filter presets live on the shared runtime STATE so they
-// survive across macro calls within a process lifetime.
+// Per-user saved filter presets live on the shared runtime STATE, nested
+// under STATE.eventTimelineLens (the "eventTimelineLens" entry in
+// lib/lens-state-persistence.js#LENS_STATE_KEYS) rather than a flat
+// STATE.eventTimelineViews field. This matters: server.js#_serializeState()
+// only writes the explicit LENS_STATE_KEYS-listed STATE.<x>Lens buckets to
+// disk (server/lib/lens-state-persistence.js#serializeLensState) — a flat
+// ad hoc STATE key is invisible to that whitelist and silently drops on
+// every restart even though persistState() below calls the same debounced
+// save. Keep this nested shape; don't flatten it back.
 function savedViewsMap() {
   const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
-  if (!STATE.eventTimelineViews) STATE.eventTimelineViews = new Map();
-  return STATE.eventTimelineViews;
+  if (!STATE.eventTimelineLens) STATE.eventTimelineLens = { views: new Map() };
+  if (!STATE.eventTimelineLens.views) STATE.eventTimelineLens.views = new Map();
+  return STATE.eventTimelineLens.views;
 }
 
 function persistState() {

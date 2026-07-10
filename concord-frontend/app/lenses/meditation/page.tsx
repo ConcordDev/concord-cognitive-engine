@@ -6,11 +6,18 @@
  * + 5 real-backend actions (mint, DM streak, publish session,
  * extend-streak agent, save session log).
  *
- * Backed by the new meditation domain macros:
- *   meditation.pickTrack    → goal-banded track selector
- *   meditation.sessionLog   → append to the user's sessions artifact
- *   meditation.streakSummary → current + longest streak
- *   meditation.dailyPrompt  → date-deterministic mindful prompt
+ * Backed by the meditation domain macros:
+ *   meditation.pickTrack     → goal-banded track selector
+ *   meditation.sessionLog    → append to the shared STATE-backed practice ledger
+ *   meditation.streakSummary → real current + longest streak (server-computed)
+ *   meditation.history       → recent session log (surfaced below "Your practice")
+ *   meditation.dailyPrompt   → date-deterministic mindful prompt
+ *
+ * All practice-mutating actions across the studio tabs (play a library
+ * track, log a breathwork session, complete a course day) funnel through
+ * `notifyPractice()` so the header streak badge + "Your practice" card stay
+ * in sync with whatever tab the user actually acted in — they all write to
+ * the same `meditation.streak`/`meditation.history`-backed ledger.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -23,7 +30,6 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { MeditationStudio } from '@/components/meditation/MeditationStudio';
 import { BreathingVisual } from '@/components/meditation/BreathingVisual';
 import { SoundscapePlayer } from '@/components/meditation/SoundscapePlayer';
@@ -34,7 +40,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wind, Play, Pause, RotateCcw, Sparkles, Send, Globe, Wand2,
   Loader2, Check, AlertTriangle, Flame, Clock, BookOpen, Heart,
-  GraduationCap, Bell, Volume2, Lightbulb,
+  GraduationCap, Bell, Volume2, Lightbulb, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -53,6 +59,10 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 interface Track { trackId: string; title: string; narrator: string; durationMinutes: number; goal: string; vibe: string }
 interface StreakResult { currentStreak: number; longestStreak: number; totalSessions: number; totalMinutes: number; lastSessionAt?: string | null }
 interface PromptResult { date: string; prompt: string }
+interface HistoryEntry {
+  id: string; sessionId: string; title: string; category: string;
+  durationMin: number; moodAfter: number | null; completedAt: string;
+}
 
 type Goal = 'focus' | 'sleep' | 'anxiety' | 'gratitude' | 'breath';
 const GOALS: { id: Goal; label: string; color: string; vibe: string }[] = [
@@ -111,10 +121,11 @@ export default function MeditationLensPage() {
   const [dmRecipient, setDmRecipient] = useState('');
   const [agentReply, setAgentReply] = useState<string | null>(null);
 
-  const tickRef = useRef<number | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  // useLensData wires the lens artifact substrate; sessions get appended via macro.
-  const { items: sessionsArtifacts, refetch: refetchSessions } = useLensData<{ sessions?: Array<{ id: string; trackId: string; minutes: number; completedAt: string }> }>('meditation', 'sessions', { seed: [] });
+  const tickRef = useRef<number | null>(null);
 
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
@@ -139,28 +150,21 @@ export default function MeditationLensPage() {
     })();
   }, []);
 
-  // Practice summary loads from the STATE-backed `meditation.streak` macro and
+  // Practice summary loads from the server-computed `meditation.streakSummary`
+  // macro (real currentStreak + longestStreak from the full practice ledger —
+  // not a client-side approximation that resets on every page load) and
   // drives the four-UX-state surface (loading → error+Retry → empty → populated).
   const loadPractice = useCallback(async () => {
     setPracticeState('loading');
     setPracticeError(null);
     try {
-      const r = await callMacro<{
-        currentStreak: number; totalSessions: number; totalMinutes: number;
-      }>('streak', {});
+      const r = await callMacro<StreakResult>('streakSummary', {});
       if (!r.ok || !r.result) {
         setPracticeError(r.error ?? 'Could not load your practice.');
         setPracticeState('error');
         return;
       }
-      // Fold the streak macro into the page's longest-streak-aware shape.
-      setStreak((prev) => ({
-        currentStreak: r.result!.currentStreak,
-        longestStreak: Math.max(prev?.longestStreak ?? 0, r.result!.currentStreak),
-        totalSessions: r.result!.totalSessions,
-        totalMinutes: r.result!.totalMinutes,
-        lastSessionAt: prev?.lastSessionAt ?? null,
-      }));
+      setStreak(r.result);
       setPracticeState('ready');
     } catch (e) {
       setPracticeError(pickMessage(e));
@@ -168,12 +172,29 @@ export default function MeditationLensPage() {
     }
   }, []);
 
-  useEffect(() => { loadPractice(); }, [loadPractice]);
-  // Re-pull the practice summary whenever a new session artifact lands.
-  useEffect(() => {
-    if (sessionsArtifacts.length === 0) return;
+  // Recent session history — `meditation.history` was a real, registered
+  // macro with zero UI surface until now (it reads the same practice ledger
+  // sessionLog/play write to). Lazy-loads on first expand, then refreshes
+  // alongside loadPractice.
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const r = await callMacro<{ sessions: HistoryEntry[] }>('history', {});
+      if (r.ok && r.result) setHistory(r.result.sessions);
+    } catch {/* history is supplementary to the streak card */}
+    finally { setHistoryLoading(false); }
+  }, []);
+
+  // Every practice-mutating action anywhere in the lens (main player Log,
+  // Studio play/mood-checkin, Breathing log, course-day complete, Insights
+  // play) calls this so the header streak badge + "Your practice" card never
+  // go stale behind whichever tab the user actually acted in.
+  const notifyPractice = useCallback(() => {
     loadPractice();
-  }, [sessionsArtifacts.length, loadPractice]);
+    if (historyOpen) loadHistory();
+  }, [loadPractice, historyOpen, loadHistory]);
+
+  useEffect(() => { loadPractice(); }, [loadPractice]);
 
   // Timer
   useEffect(() => {
@@ -211,13 +232,15 @@ export default function MeditationLensPage() {
     try {
       const r = await callMacro<{ entry: unknown; total: number }>('sessionLog', {
         trackId: track.trackId,
+        title: track.title,
+        category: goal === 'breath' ? 'breathwork' : 'guided',
         minutes,
         completedAt: new Date().toISOString(),
         rating: rating || undefined,
       });
       if (r.ok && r.result) {
         ok(`Logged session ${r.result.total}.`);
-        refetchSessions();
+        notifyPractice();
       } else err(r.error ?? 'log failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -576,24 +599,60 @@ export default function MeditationLensPage() {
             )}
 
             {practiceState === 'ready' && streak && streak.totalSessions > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <div className="rounded bg-zinc-950/60 p-2 text-center">
-                  <div className="text-lg font-bold text-orange-300 flex items-center justify-center gap-1"><Flame className="w-3 h-3" />{streak.currentStreak}</div>
-                  <div className="text-[10px] text-zinc-400">current streak</div>
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="rounded bg-zinc-950/60 p-2 text-center">
+                    <div className="text-lg font-bold text-orange-300 flex items-center justify-center gap-1"><Flame className="w-3 h-3" />{streak.currentStreak}</div>
+                    <div className="text-[10px] text-zinc-400">current streak</div>
+                  </div>
+                  <div className="rounded bg-zinc-950/60 p-2 text-center">
+                    <div className="text-lg font-bold text-purple-300">{streak.longestStreak}</div>
+                    <div className="text-[10px] text-zinc-400">longest streak</div>
+                  </div>
+                  <div className="rounded bg-zinc-950/60 p-2 text-center">
+                    <div className="text-lg font-bold text-zinc-100">{streak.totalSessions}</div>
+                    <div className="text-[10px] text-zinc-400">sessions</div>
+                  </div>
+                  <div className="rounded bg-zinc-950/60 p-2 text-center">
+                    <div className="text-lg font-bold text-emerald-300">{streak.totalMinutes}</div>
+                    <div className="text-[10px] text-zinc-400">minutes</div>
+                  </div>
                 </div>
-                <div className="rounded bg-zinc-950/60 p-2 text-center">
-                  <div className="text-lg font-bold text-purple-300">{streak.longestStreak}</div>
-                  <div className="text-[10px] text-zinc-400">longest streak</div>
-                </div>
-                <div className="rounded bg-zinc-950/60 p-2 text-center">
-                  <div className="text-lg font-bold text-zinc-100">{streak.totalSessions}</div>
-                  <div className="text-[10px] text-zinc-400">sessions</div>
-                </div>
-                <div className="rounded bg-zinc-950/60 p-2 text-center">
-                  <div className="text-lg font-bold text-emerald-300">{streak.totalMinutes}</div>
-                  <div className="text-[10px] text-zinc-400">minutes</div>
-                </div>
-              </div>
+
+                <button
+                  type="button"
+                  onClick={() => { const next = !historyOpen; setHistoryOpen(next); if (next && history.length === 0) loadHistory(); }}
+                  className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] text-zinc-400 hover:text-zinc-200 border-t border-zinc-800/80 transition-colors"
+                >
+                  {historyOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  {historyOpen ? 'Hide session history' : 'View session history'}
+                </button>
+
+                {historyOpen && (
+                  <div className="mt-1 space-y-1 max-h-64 overflow-y-auto">
+                    {historyLoading ? (
+                      <div className="flex items-center justify-center py-4 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+                    ) : history.length === 0 ? (
+                      <p className="text-xs text-zinc-500 text-center py-3">No sessions logged yet.</p>
+                    ) : (
+                      history.map((h) => (
+                        <div key={h.id} className="flex items-center gap-2.5 rounded bg-zinc-950/50 px-2.5 py-1.5">
+                          <Clock className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] text-zinc-200 truncate">{h.title}</p>
+                            <p className="text-[10px] text-zinc-500">
+                              {new Date(h.completedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              {' · '}{h.category}
+                            </p>
+                          </div>
+                          <span className="text-[11px] text-zinc-400 flex-shrink-0">{h.durationMin}m</span>
+                          {h.moodAfter != null && <span className="text-[11px] flex-shrink-0">{['😣','😕','😐','🙂','😌'][h.moodAfter - 1]}</span>}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -637,12 +696,12 @@ export default function MeditationLensPage() {
             );
           })}
         </div>
-        {studioTab === 'studio' && <MeditationStudio />}
-        {studioTab === 'breathe' && <BreathingVisual />}
+        {studioTab === 'studio' && <MeditationStudio onPractice={notifyPractice} />}
+        {studioTab === 'breathe' && <BreathingVisual onPractice={notifyPractice} />}
         {studioTab === 'sounds' && <SoundscapePlayer />}
-        {studioTab === 'courses' && <CoursesPanel />}
+        {studioTab === 'courses' && <CoursesPanel onPractice={notifyPractice} />}
         {studioTab === 'reminders' && <RemindersPanel />}
-        {studioTab === 'insights' && <InsightsPanel onPlayed={refetchSessions} />}
+        {studioTab === 'insights' && <InsightsPanel onPlayed={notifyPractice} />}
       </section>
           <RecentMineCard domain="meditation" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="meditation" hideWhenEmpty className="mt-3" />

@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { SaveToCollectionButton } from '@/components/gallery/SaveToCollectionButton';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -204,7 +205,28 @@ export function GalleryActionPanel() {
       {allResults.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-80 overflow-y-auto">
           {allResults.slice(0, 24).map((a, i) => (
-            <button key={i} type="button" onClick={() => { setSelectedArt(a); setArtworkId(String(a.id ?? '')); }} className={cn('rounded border p-1.5 text-left hover:border-pink-400/50', selectedArt?.id === a.id ? 'border-pink-400 bg-pink-500/10' : 'border-zinc-800 bg-zinc-900/40')}>
+            <div
+              key={i}
+              role="button"
+              tabIndex={0}
+              onClick={() => { setSelectedArt(a); setArtworkId(String(a.id ?? '')); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedArt(a); setArtworkId(String(a.id ?? '')); } }}
+              className={cn('relative rounded border p-1.5 text-left hover:border-pink-400/50 cursor-pointer', selectedArt?.id === a.id ? 'border-pink-400 bg-pink-500/10' : 'border-zinc-800 bg-zinc-900/40')}
+            >
+              <div className="absolute right-1 top-1 z-10">
+                <SaveToCollectionButton
+                  compact
+                  className="bg-black/50 backdrop-blur-sm"
+                  artwork={{
+                    refId: `${a.source === 'SI' ? 'si' : 'cma'}:${a.id}`,
+                    title: a.title || 'Untitled',
+                    artist: a.artist,
+                    date: a.date,
+                    image: a.thumbnail,
+                    museum: a.source === 'SI' ? 'Smithsonian Institution' : 'Cleveland Museum of Art',
+                  }}
+                />
+              </div>
               {a.thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={a.thumbnail} alt={a.title} className="w-full h-24 object-cover rounded" />
@@ -213,7 +235,7 @@ export function GalleryActionPanel() {
               )}
               <div className="text-[10px] text-zinc-300 mt-1 line-clamp-2">{a.title}</div>
               <div className="text-[9px] text-zinc-400">{a.artist ?? a.source}</div>
-            </button>
+            </div>
           ))}
         </div>
       )}

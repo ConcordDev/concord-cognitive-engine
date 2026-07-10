@@ -27,15 +27,22 @@ const FIELDS = [
   { key: 'costPerKg', label: '$/kg' },
 ];
 
+interface Dashboard { shortlisted: number; byCategory: Record<string, number> }
+
 export function MaterialShortlist() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<Record<string, string>>({ name: '', category: '', density: '', tensileStrengthMPa: '', meltingPointC: '', youngsModulusGPa: '', costPerKg: '' });
 
   const refresh = useCallback(async () => {
-    const r = await lensRun('materials', 'shortlist-list', {});
-    setMaterials((r.data?.result?.materials as Material[]) || []);
+    const [listRes, dashRes] = await Promise.all([
+      lensRun('materials', 'shortlist-list', {}),
+      lensRun('materials', 'shortlist-dashboard', {}),
+    ]);
+    setMaterials((listRes.data?.result?.materials as Material[]) || []);
+    if (dashRes.data?.ok) setDashboard(dashRes.data.result as Dashboard);
     setLoading(false);
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
@@ -68,6 +75,11 @@ export function MaterialShortlist() {
         <Layers className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-zinc-100">Material Shortlist</h3>
         <span className="text-[11px] text-zinc-400">Granta MI shape</span>
+        {dashboard && dashboard.shortlisted > 0 && (
+          <span className="text-[11px] text-zinc-400">
+            &middot; {dashboard.shortlisted} shortlisted across {Object.keys(dashboard.byCategory).length} categor{Object.keys(dashboard.byCategory).length === 1 ? 'y' : 'ies'}
+          </span>
+        )}
         <button onClick={compare} disabled={materials.length < 2}
           className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-40">Compare</button>
       </div>

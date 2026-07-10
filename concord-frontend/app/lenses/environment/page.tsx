@@ -31,12 +31,12 @@ import {
   ShieldCheck as MTabComp, Leaf as MTabCarbon, Target as MTabGoals,
 } from 'lucide-react';
 import { ComplianceDiversionPanel } from '@/components/environment/ComplianceDiversionPanel';
+import { FieldMonitoringPanel } from '@/components/environment/FieldMonitoringPanel';
 import { AirQualityActionStack } from '@/components/environment/AirQualityActionStack';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -78,7 +78,6 @@ import {
   Users,
   Clipboard,
   Minus,
-  Zap,
   Map,
 } from 'lucide-react';
 
@@ -375,39 +374,6 @@ const SAMPLE_PARAMETERS = [
   'Coliform',
 ];
 
-const DOMAIN_ACTIONS = [
-  {
-    id: 'population_trend',
-    label: 'Population Trend Analysis',
-    icon: TrendingUp,
-    description: 'Analyze species population trends over time',
-  },
-  {
-    id: 'compliance_check',
-    label: 'Compliance Check',
-    icon: ShieldCheck,
-    description: 'Run regulatory compliance verification',
-  },
-  {
-    id: 'diversion_calc',
-    label: 'Diversion Rate Calc',
-    icon: Recycle,
-    description: 'Calculate waste diversion metrics',
-  },
-  {
-    id: 'trail_report',
-    label: 'Trail Condition Report',
-    icon: Footprints,
-    description: 'Generate trail condition summary',
-  },
-  {
-    id: 'water_quality',
-    label: 'Water Quality Summary',
-    icon: Droplets,
-    description: 'Summarize water quality parameters',
-  },
-];
-
 const CARBON_CATEGORIES = [
   'Transport',
   'Energy',
@@ -458,7 +424,7 @@ export default function EnvironmentLensPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [view, setView] = useState<'library' | 'dashboard' | 'actions'>('library');
+  const [view, setView] = useState<'library' | 'dashboard'>('library');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -466,18 +432,15 @@ export default function EnvironmentLensPage() {
     [
       { id: 'tab-library', keys: 'l', description: 'Library', category: 'navigation', action: () => setView('library') },
       { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setView('dashboard') },
-      { id: 'tab-actions', keys: 'a', description: 'Actions', category: 'navigation', action: () => setView('actions') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
-
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
     ],
     { lensId: 'environment' }
   );
   const [detailItem, setDetailItem] = useState<string | null>(null);
-  const [selectedAction, setSelectedAction] = useState<string | null>(null);
 
   const [formTitle, setFormTitle] = useState('');
   const [formStatus, setFormStatus] = useState<Status>('active');
   const [formData, setFormData] = useState<Record<string, unknown>>({});
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
 
   const currentType = MODE_TABS.find((t) => t.id === mode)!.artifactType;
 
@@ -516,9 +479,6 @@ export default function EnvironmentLensPage() {
     'SustainabilityGoal',
     { seed: [] }
   );
-
-  const runAction = useRunArtifact('environment');
-  const editingItem = items.find((i) => i.id === editingId) || null;
 
   /* ---- filtering ---- */
   const filtered = useMemo(() => {
@@ -570,23 +530,6 @@ export default function EnvironmentLensPage() {
   const handleDelete = async (id: string) => {
     await remove(id);
     if (detailItem === id) setDetailItem(null);
-  };
-
-  const handleAction = async (action: string, artifactId?: string) => {
-    const targetId = artifactId || editingItem?.id || filtered[0]?.id;
-    if (!targetId) return;
-    try {
-      const result = await runAction.mutateAsync({ id: targetId, action });
-      if (result.ok === false) {
-        setActionResult({
-          message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}`,
-        });
-      } else {
-        setActionResult(result.result as unknown as Record<string, unknown>);
-      }
-    } catch (err) {
-      console.error('Action failed:', err);
-    }
   };
 
   /* ---- computed stats ---- */
@@ -1194,10 +1137,18 @@ export default function EnvironmentLensPage() {
                       const input = document.createElement('input');
                       input.type = 'file';
                       input.accept = 'image/*';
+                      // Honest scope: this lens has no photo-storage backend for field
+                      // survey records, so we don't pretend to "upload" anything — we
+                      // fill the reference field from the picked filename, exactly what
+                      // the field already accepts when typed by hand.
+                      input.onchange = () => {
+                        const picked = input.files?.[0];
+                        if (picked) setFormData((prev) => ({ ...prev, photoLogRef: picked.name }));
+                      };
                       input.click();
                     }}
                     className={ds.btnGhost}
-                    title="Attach photo"
+                    title="Fill reference from a local photo filename"
                   >
                     <Camera className="w-4 h-4" />
                   </button>
@@ -3252,96 +3203,6 @@ export default function EnvironmentLensPage() {
     </div>
   );
 
-  /* ---------------------------------------------------------------- */
-  /*  Domain Actions Panel                                             */
-  /* ---------------------------------------------------------------- */
-  const renderActionsPanel = () => (
-    <div className="space-y-6">
-      <div className={ds.panel}>
-        <h3 className={cn(ds.heading3, 'mb-4')}>Domain Actions</h3>
-        <p className={ds.textMuted}>
-          Run specialized analyses and reports on your environmental data.
-        </p>
-      </div>
-
-      <div className={ds.grid2}>
-        {DOMAIN_ACTIONS.map((action) => {
-          const Icon = action.icon;
-          return (
-            <div key={action.id} className={cn(ds.panelHover, 'space-y-3')}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-emerald-500" />
-                </div>
-                <div>
-                  <h4 className={ds.heading3}>{action.label}</h4>
-                  <p className={cn(ds.textMuted, 'text-xs')}>{action.description}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  className={cn(ds.select, 'text-sm flex-1')}
-                  value={selectedAction === action.id ? detailItem || '' : ''}
-                  onChange={(e) => {
-                    setSelectedAction(action.id);
-                    setDetailItem(e.target.value || null);
-                  }}
-                >
-                  <option value="">Select target artifact...</option>
-                  {items.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.title}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className={ds.btnPrimary}
-                  onClick={() => {
-                    const targetId = selectedAction === action.id ? detailItem : siteItems[0]?.id;
-                    if (targetId) handleAction(action.id, targetId);
-                  }}
-                  disabled={runAction.isPending}
-                >
-                  <Zap className="w-4 h-4" />
-                  Run
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Action Result */}
-      {actionResult && (
-        <div className={ds.panel}>
-          <div className={ds.sectionHeader}>
-            <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <pre
-            className={cn(
-              ds.textMono,
-              'text-xs overflow-auto max-h-64 mt-3 p-3 rounded-lg bg-lattice-elevated/30'
-            )}
-          >
-            {JSON.stringify(actionResult, null, 2)}
-          </pre>
-        </div>
-      )}
-
-      {runAction.isPending && (
-        <div className="flex items-center justify-center py-8">
-          <div className="flex items-center gap-3">
-            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-emerald-500" />
-            <span className="text-emerald-500 text-sm">Running action...</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   /* ================================================================ */
   /*  Main Render                                                      */
   /* ================================================================ */
@@ -3376,12 +3237,6 @@ export default function EnvironmentLensPage() {
             onClick={() => setView('dashboard')}
           >
             <BarChart3 className="w-4 h-4" /> Dashboard
-          </button>
-          <button
-            className={cn(view === 'actions' ? ds.btnPrimary : ds.btnSecondary)}
-            onClick={() => setView('actions')}
-          >
-            <Zap className="w-4 h-4" /> Actions
           </button>
           <div className="w-px h-6 bg-lattice-border" />
           <button className={ds.btnGhost} onClick={exportGeoJSON} title="Export GeoJSON">
@@ -3531,8 +3386,6 @@ export default function EnvironmentLensPage() {
       {/* View Content */}
       {view === 'dashboard' ? (
         renderDashboard()
-      ) : view === 'actions' ? (
-        renderActionsPanel()
       ) : (
         <>
           {/* Search/Filter Bar */}
@@ -3576,9 +3429,6 @@ export default function EnvironmentLensPage() {
               <span className={cn(ds.textMuted, 'text-xs')}>
                 {filtered.length} of {items.length} items
               </span>
-              {runAction.isPending && (
-                <span className="text-xs text-emerald-500 animate-pulse">Running action...</span>
-              )}
             </div>
           </div>
 
@@ -3609,20 +3459,6 @@ export default function EnvironmentLensPage() {
         </>
       )}
 
-      {/* Action Result Panel (library view) */}
-      {actionResult && view === 'library' && (
-        <div className={ds.panel}>
-          <div className={ds.sectionHeader}>
-            <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <pre className={cn(ds.textMono, 'text-xs overflow-auto max-h-48 mt-2')}>
-            {JSON.stringify(actionResult, null, 2)}
-          </pre>
-        </div>
-      )}
 
       {/* ---- Editor Modal ---- */}
       {showEditor && (
@@ -3748,6 +3584,12 @@ export default function EnvironmentLensPage() {
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <ComplianceDiversionPanel />
+      </section>
+      {/* environment.populationTrend + trailCondition — the two remaining
+          pure-compute macros, previously only reachable through a legacy
+          quick-actions panel whose ids never matched the real macro names. */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
+        <FieldMonitoringPanel />
       </section>
     </LensPageShell>
     {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}

@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Loader2, ArrowLeft, Undo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers, Eye, EyeOff, Music,
-  Wrench,
+  Wrench, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -140,6 +140,9 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
   const [customBrushes, setCustomBrushes] = useState<CustomBrush[]>([]);
   // Pressure dynamics for the active brush (how stylus pressure maps to size).
   const [pressureSize, setPressureSize] = useState(0);
+  // Real playback duration, sourced from the `playback-frames` macro (the
+  // exposure-expanded sequence length) rather than recomputed client-side.
+  const [duration, setDuration] = useState<{ totalFrames: number; durationSec: number } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
@@ -179,6 +182,20 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     // Onscreen grid / guides overlay (non-destructive, drawn last).
     drawGuides(ctx, cv.width, cv.height, anim.guides);
   }, [anim]);
+
+  // Real playback duration — only re-fetches when frame count or exposure
+  // actually changes (not on every stroke), so drawing stays chatter-free.
+  const framesSignature = anim ? `${anim.frames.length}:${anim.frames.map((f) => f.exposure).join(',')}` : '';
+  useEffect(() => {
+    if (!anim) { setDuration(null); return; }
+    let active = true;
+    void lensRun('animation', 'playback-frames', { id: anim.id }).then((r) => {
+      if (!active) return;
+      if (r.data?.ok) setDuration(r.data.result as { totalFrames: number; durationSec: number });
+    });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anim?.id, framesSignature]);
 
   // Custom brush library — saved brushes from the tools panel.
   const loadBrushes = useCallback(async () => {
@@ -361,6 +378,21 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     setFrameIdx(Math.max(0, frameIdx - 1));
   };
 
+  const moveFrame = async (direction: 'left' | 'right') => {
+    if (!anim) return;
+    const fid = anim.frames[frameIdx].id;
+    const r = await lensRun('animation', 'frame-reorder', { animId: anim.id, frameId: fid, direction });
+    const order = r.data?.result?.order as string[] | undefined;
+    if (!order) return;
+    setAnim((prev) => {
+      if (!prev) return prev;
+      const byId = new Map(prev.frames.map((f) => [f.id, f]));
+      const frames = order.map((id) => byId.get(id)).filter((f): f is Frame => !!f);
+      return { ...prev, frames };
+    });
+    setFrameIdx(order.indexOf(fid));
+  };
+
   const setExposure = async (val: number) => {
     if (!anim) return;
     const fid = anim.frames[frameIdx].id;
@@ -448,7 +480,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-zinc-400">
-            Frame {frameIdx + 1}/{anim.frames.length} · {anim.fps} fps
+            Frame {frameIdx + 1}/{anim.frames.length} · {anim.fps} fps{duration ? ` · ${duration.durationSec}s total` : ''}
           </span>
           <label className="flex items-center gap-1 text-[11px] text-zinc-400">
             Hold
@@ -456,6 +488,14 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
               onChange={(e) => setExposure(Math.max(1, Number(e.target.value) || 1))}
               className="w-12 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] text-zinc-100" />
           </label>
+          <button aria-label="Move frame left" type="button" onClick={() => moveFrame('left')} disabled={frameIdx === 0}
+            className="p-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:hover:text-zinc-400">
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+          <button aria-label="Move frame right" type="button" onClick={() => moveFrame('right')} disabled={frameIdx === anim.frames.length - 1}
+            className="p-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:hover:text-zinc-400">
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
           <div className="flex-1" />
           <button type="button" onClick={() => addFrame(false)}
             className="flex items-center gap-1 px-2 py-1 text-[11px] bg-cyan-600 hover:bg-cyan-500 text-white rounded">

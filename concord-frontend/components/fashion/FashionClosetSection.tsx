@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Shirt, Grid3x3, Layers, CalendarDays, Luggage, Loader2, Wand2, Sparkles, Users, Recycle, Package } from 'lucide-react';
+import { Shirt, Grid3x3, Layers, CalendarDays, Luggage, Loader2, Wand2, Sparkles, Users, Recycle, Package, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { FashionClosetPanel } from './FashionClosetPanel';
@@ -18,13 +18,15 @@ import { FashionStyleQuizPanel } from './FashionStyleQuizPanel';
 import { FashionSocialPanel } from './FashionSocialPanel';
 import { FashionResalePanel } from './FashionResalePanel';
 import { FashionCapsulePanel } from './FashionCapsulePanel';
+import { FashionTrendSandboxPanel } from './FashionTrendSandboxPanel';
 
 interface Dash {
   items: number; outfits: number; lookbooks: number; packingLists: number;
   wornThisMonth: number; closetValue: number; neverWorn: number;
 }
-type TabId = 'closet' | 'outfits' | 'calendar' | 'plan' | 'ai' | 'style' | 'social' | 'resale' | 'capsule';
-const TABS: { id: TabId; label: string; icon: typeof Grid3x3 }[] = [
+export type FashionTabId =
+  | 'closet' | 'outfits' | 'calendar' | 'plan' | 'ai' | 'style' | 'social' | 'resale' | 'capsule' | 'trends';
+const TABS: { id: FashionTabId; label: string; icon: typeof Grid3x3 }[] = [
   { id: 'closet', label: 'Closet', icon: Grid3x3 },
   { id: 'outfits', label: 'Outfits', icon: Layers },
   { id: 'ai', label: 'AI Stylist', icon: Wand2 },
@@ -34,10 +36,20 @@ const TABS: { id: TabId; label: string; icon: typeof Grid3x3 }[] = [
   { id: 'capsule', label: 'Capsule', icon: Package },
   { id: 'social', label: 'Community', icon: Users },
   { id: 'resale', label: 'Resale', icon: Recycle },
+  { id: 'trends', label: 'Trends', icon: TrendingUp },
 ];
 
-export function FashionClosetSection() {
-  const [tab, setTab] = useState<TabId>('closet');
+export interface FashionClosetSectionProps {
+  /** Controlled active tab — falls back to internal state when omitted. */
+  activeTab?: FashionTabId;
+  /** Called on tab change when controlled. */
+  onTabChange?: (tab: FashionTabId) => void;
+}
+
+export function FashionClosetSection({ activeTab, onTabChange }: FashionClosetSectionProps = {}) {
+  const [internalTab, setInternalTab] = useState<FashionTabId>('closet');
+  const tab = activeTab ?? internalTab;
+  const setTab = onTabChange ?? setInternalTab;
   const [dash, setDash] = useState<Dash | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -94,6 +106,7 @@ export function FashionClosetSection() {
         {tab === 'capsule' && <FashionCapsulePanel />}
         {tab === 'social' && <FashionSocialPanel />}
         {tab === 'resale' && <FashionResalePanel onChange={refreshDash} />}
+        {tab === 'trends' && <FashionTrendSandboxPanel />}
       </div>
     </div>
   );

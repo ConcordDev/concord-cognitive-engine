@@ -135,6 +135,39 @@ interface Controls {
   sensitiveMedia: 'blur' | 'show' | 'hide';
 }
 
+/**
+ * CandidatePost — the shape `rank-for-you` / `list-feed` / `saved-search-run`
+ * / `controls-apply` all expect for their `candidates` param (server/domains/
+ * feed.js). These 4 macros are pure filter/rank functions over a caller-
+ * supplied post set — the feed domain's own shadow state only holds
+ * per-user preference/interaction state (affinity, lists, saved searches,
+ * controls), not the actual post corpus (that lives in the real social
+ * feed system). The parent page passes the real, currently-loaded feed
+ * posts down as `candidates` so these 4 macros have real data to operate
+ * on instead of being structurally unreachable.
+ */
+export interface CandidatePost {
+  id: string;
+  authorId: string;
+  content: string;
+  tags?: string[];
+  likes?: number;
+  comments?: number;
+  reposts?: number;
+  createdAt?: string;
+  sensitive?: boolean;
+}
+
+interface RankedPost {
+  id: string;
+  authorId: string;
+  score: number;
+  affinity: number;
+  recency: number;
+  engagement: number;
+  reasons: string[];
+}
+
 // ── Small UI atoms ─────────────────────────────────────────────────────────
 
 function SectionHeader({ icon: Icon, title, hint }: { icon: typeof Plus; title: string; hint?: string }) {
@@ -155,9 +188,11 @@ function EmptyHint({ text }: { text: string }) {
 
 // ── For You — affinity model ───────────────────────────────────────────────
 
-function ForYouTool() {
+function ForYouTool({ candidates }: { candidates: CandidatePost[] }) {
   const [authors, setAuthors] = useState<AffinityAuthor[]>([]);
   const [loading, setLoading] = useState(false);
+  const [ranked, setRanked] = useState<RankedPost[] | null>(null);
+  const [ranking, setRanking] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -169,6 +204,13 @@ function ForYouTool() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const runRanking = useCallback(async () => {
+    setRanking(true);
+    const r = await lensRun<{ ranked: RankedPost[] }>('feed', 'rank-for-you', { candidates });
+    if (r.data?.ok && r.data.result) setRanked(r.data.result.ranked || []);
+    setRanking(false);
+  }, [candidates]);
 
   const maxAffinity = Math.max(1, ...authors.map((a) => a.affinity));
 
@@ -206,6 +248,33 @@ function ForYouTool() {
           ))}
         </ul>
       )}
+
+      <div className="mt-4 border-t border-lattice-border pt-3">
+        <button
+          onClick={runRanking}
+          disabled={ranking || candidates.length === 0}
+          className="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium text-neon-cyan hover:bg-white/10 disabled:opacity-40"
+        >
+          {ranking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+          Rank the {candidates.length} posts currently loaded
+        </button>
+        {candidates.length === 0 && (
+          <p className="mt-1.5 text-[11px] text-gray-400">Scroll the main feed to load posts, then rank them here.</p>
+        )}
+        {ranked && (
+          <ul className="mt-2 space-y-1.5">
+            {ranked.length === 0 && <EmptyHint text="Nothing ranked — the loaded posts were all muted or blocked." />}
+            {ranked.slice(0, 10).map((r, i) => (
+              <li key={r.id} className="rounded-lg bg-lattice-deep border border-lattice-border p-2 text-[11px]">
+                <span className="text-gray-400 font-mono mr-1.5">#{i + 1}</span>
+                <span className="text-white font-medium">@{r.authorId}</span>
+                <span className="ml-2 font-mono text-neon-cyan">score {r.score}</span>
+                {r.reasons.length > 0 && <span className="ml-2 text-gray-400">{r.reasons.join(' · ')}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -399,12 +468,15 @@ function ThreadsTool() {
 
 // ── Lists — curated timelines ──────────────────────────────────────────────
 
-function ListsTool() {
+function ListsTool({ candidates }: { candidates: CandidatePost[] }) {
   const [lists, setLists] = useState<FeedList[]>([]);
   const [name, setName] = useState('');
   const [members, setMembers] = useState('');
   const [loading, setLoading] = useState(false);
   const [memberDraft, setMemberDraft] = useState<Record<string, string>>({});
+  const [openListId, setOpenListId] = useState<string | null>(null);
+  const [listFeed, setListFeed] = useState<{ listId: string; posts: CandidatePost[]; memberCount: number } | null>(null);
+  const [viewingFeed, setViewingFeed] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -442,6 +514,14 @@ function ListsTool() {
   const del = async (listId: string) => {
     await lensRun('feed', 'list-delete', { listId });
     await load();
+  };
+  const viewFeed = async (listId: string) => {
+    if (openListId === listId) { setOpenListId(null); setListFeed(null); return; }
+    setOpenListId(listId);
+    setViewingFeed(true);
+    const r = await lensRun<{ posts: CandidatePost[]; memberCount: number }>('feed', 'list-feed', { listId, candidates });
+    if (r.data?.ok && r.data.result) setListFeed({ listId, posts: r.data.result.posts || [], memberCount: r.data.result.memberCount });
+    setViewingFeed(false);
   };
 
   return (
@@ -500,6 +580,26 @@ function ListsTool() {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
+              <button
+                onClick={() => viewFeed(l.id)}
+                disabled={viewingFeed && openListId === l.id}
+                className="mt-1.5 text-[11px] text-neon-cyan hover:underline disabled:opacity-40"
+              >
+                {openListId === l.id ? 'Hide feed' : `View feed (from ${candidates.length} loaded posts)`}
+              </button>
+              {openListId === l.id && listFeed?.listId === l.id && (
+                <div className="mt-1.5 space-y-1">
+                  {listFeed.posts.length === 0 ? (
+                    <p className="text-[11px] text-gray-400">None of this list's members have a post in the currently-loaded feed.</p>
+                  ) : (
+                    listFeed.posts.map((p) => (
+                      <div key={p.id} className="rounded bg-white/5 p-1.5 text-[11px] text-gray-300">
+                        <span className="text-white font-medium">@{p.authorId}</span> {p.content?.slice(0, 100)}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
               {l.members.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {l.members.map((m) => (
@@ -710,13 +810,15 @@ function PollsTool() {
 
 // ── Saved — folders + saved searches ───────────────────────────────────────
 
-function SavedTool() {
+function SavedTool({ candidates }: { candidates: CandidatePost[] }) {
   const [folders, setFolders] = useState<BookmarkFolder[]>([]);
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [folderName, setFolderName] = useState('');
   const [query, setQuery] = useState('');
   const [alertOn, setAlertOn] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [runResult, setRunResult] = useState<{ searchId: string; matches: CandidatePost[]; newSinceLastCheck: number } | null>(null);
+  const [running, setRunning] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -756,6 +858,12 @@ function SavedTool() {
   const delSearch = async (searchId: string) => {
     await lensRun('feed', 'saved-search-delete', { searchId });
     await load();
+  };
+  const runSearch = async (searchId: string) => {
+    setRunning(searchId);
+    const r = await lensRun<{ searchId: string; matches: CandidatePost[]; newSinceLastCheck: number }>('feed', 'saved-search-run', { searchId, candidates });
+    if (r.data?.ok && r.data.result) setRunResult(r.data.result);
+    setRunning(null);
   };
 
   return (
@@ -855,8 +963,15 @@ function SavedTool() {
                     </span>
                   )}
                   <button
+                    onClick={() => runSearch(s.id)}
+                    disabled={running === s.id}
+                    className="ml-auto text-[11px] text-neon-cyan hover:underline disabled:opacity-40"
+                  >
+                    {running === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Run'}
+                  </button>
+                  <button
                     onClick={() => delSearch(s.id)}
-                    className="ml-auto p-1 text-gray-600 hover:text-red-400"
+                    className="p-1 text-gray-600 hover:text-red-400"
                     aria-label="Delete saved search"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -864,6 +979,19 @@ function SavedTool() {
                 </li>
               ))}
             </ul>
+          )}
+          {runResult && (
+            <div className="mt-3 rounded-lg bg-lattice-deep border border-lattice-border p-2.5">
+              <p className="text-[11px] text-gray-400 mb-1.5">
+                {runResult.matches.length} match{runResult.matches.length === 1 ? '' : 'es'} in the {candidates.length} currently-loaded posts
+                {runResult.newSinceLastCheck > 0 && <span className="ml-1 text-neon-purple">· {runResult.newSinceLastCheck} new since last check</span>}
+              </p>
+              {runResult.matches.slice(0, 5).map((p) => (
+                <div key={p.id} className="text-[11px] text-gray-300">
+                  <span className="text-white font-medium">@{p.authorId}</span> {p.content?.slice(0, 100)}
+                </div>
+              ))}
+            </div>
           )}
         </>
       )}
@@ -1004,10 +1132,12 @@ function SpacesTool() {
 
 // ── Controls — mute / block / sensitive media ──────────────────────────────
 
-function ControlsTool() {
+function ControlsTool({ candidates }: { candidates: CandidatePost[] }) {
   const [controls, setControls] = useState<Controls | null>(null);
   const [word, setWord] = useState('');
   const [blockUser, setBlockUser] = useState('');
+  const [preview, setPreview] = useState<{ posts: CandidatePost[]; removed: { muted: number; blocked: number }; sensitiveFlagged: number } | null>(null);
+  const [previewing, setPreviewing] = useState(false);
 
   const load = useCallback(async () => {
     const r = await lensRun<{ controls: Controls }>('feed', 'controls-get', {});
@@ -1030,13 +1160,21 @@ function ControlsTool() {
     const r = await lensRun<{ controls: Controls }>('feed', 'controls-sensitive-media', { mode });
     if (r.data?.ok && r.data.result) setControls(r.data.result.controls);
   };
+  const runPreview = async () => {
+    setPreviewing(true);
+    const r = await lensRun<{ posts: CandidatePost[]; removed: { muted: number; blocked: number }; sensitiveFlagged: number }>(
+      'feed', 'controls-apply', { candidates },
+    );
+    if (r.data?.ok && r.data.result) setPreview(r.data.result);
+    setPreviewing(false);
+  };
 
   return (
     <div>
       <SectionHeader
         icon={ShieldAlert}
         title="Content controls"
-        hint="Mute words, block accounts, and choose how sensitive media is shown. These filters apply to the ranked For You feed."
+        hint="Mute words, block accounts, and choose how sensitive media is shown. Preview below shows exactly which currently-loaded posts these rules would remove or flag."
       />
       {!controls ? (
         <div className="flex justify-center py-6">
@@ -1145,6 +1283,22 @@ function ControlsTool() {
               </div>
             )}
           </div>
+
+          <div className="border-t border-lattice-border pt-3">
+            <button
+              onClick={runPreview}
+              disabled={previewing || candidates.length === 0}
+              className="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium text-neon-cyan hover:bg-white/10 disabled:opacity-40"
+            >
+              {previewing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldAlert className="w-3.5 h-3.5" />}
+              Preview effect on the {candidates.length} currently-loaded posts
+            </button>
+            {preview && (
+              <p className="mt-1.5 text-[11px] text-gray-400">
+                {preview.posts.length} kept · {preview.removed.blocked} removed (blocked) · {preview.removed.muted} removed (muted) · {preview.sensitiveFlagged} flagged sensitive
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -1163,7 +1317,7 @@ const TABS: { key: ToolTab; label: string; icon: typeof Plus }[] = [
   { key: 'controls', label: 'Controls', icon: ShieldAlert },
 ];
 
-export function FeedToolsPanel({ className }: { className?: string }) {
+export function FeedToolsPanel({ className, candidates = [] }: { className?: string; candidates?: CandidatePost[] }) {
   const [tab, setTab] = useState<ToolTab>('for-you');
 
   return (
@@ -1189,13 +1343,13 @@ export function FeedToolsPanel({ className }: { className?: string }) {
           </button>
         ))}
       </div>
-      {tab === 'for-you' && <ForYouTool />}
+      {tab === 'for-you' && <ForYouTool candidates={candidates} />}
       {tab === 'threads' && <ThreadsTool />}
-      {tab === 'lists' && <ListsTool />}
+      {tab === 'lists' && <ListsTool candidates={candidates} />}
       {tab === 'polls' && <PollsTool />}
-      {tab === 'saved' && <SavedTool />}
+      {tab === 'saved' && <SavedTool candidates={candidates} />}
       {tab === 'spaces' && <SpacesTool />}
-      {tab === 'controls' && <ControlsTool />}
+      {tab === 'controls' && <ControlsTool candidates={candidates} />}
     </div>
   );
 }

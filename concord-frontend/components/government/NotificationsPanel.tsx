@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bell, Loader2, BellRing, CheckCheck, Mail, Smartphone, Plus } from 'lucide-react';
+import { Bell, Loader2, BellRing, CheckCheck, Mail, Smartphone, Plus, Send } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface GovNotification {
@@ -25,6 +25,9 @@ export function NotificationsPanel() {
   const [subForm, setSubForm] = useState({ subjectKind: 'permit', subjectId: '', channel: 'email', contact: '' });
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [subError, setSubError] = useState<string | null>(null);
+  const [emitForm, setEmitForm] = useState({ subjectKind: 'permit', subjectId: '', message: '' });
+  const [emitError, setEmitError] = useState<string | null>(null);
+  const [emitSending, setEmitSending] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -51,6 +54,29 @@ export function NotificationsPanel() {
       if (sub) setSubscriptions(prev => [...prev.filter(s => s.id !== sub.id), sub]);
       setSubForm({ subjectKind: 'permit', subjectId: '', channel: 'email', contact: '' });
     } catch (e) { setSubError(e instanceof Error ? e.message : 'failed'); }
+  }
+
+  // government.notifications-emit — sends an ad hoc case-status update.
+  // Automatic status-change notices already fire from the permit/service-
+  // request/fine/court-case macros themselves (they call the same shared
+  // queueGovNotification helper internally); this is the separate,
+  // staff-composed manual update (e.g. "inspection rescheduled due to
+  // weather") that had no UI caller anywhere despite being a real, working
+  // macro.
+  async function sendUpdate() {
+    setEmitError(null);
+    if (!emitForm.subjectId.trim() || !emitForm.message.trim()) {
+      setEmitError('Subject ID and message required.');
+      return;
+    }
+    setEmitSending(true);
+    try {
+      const res = await lensRun({ domain: 'government', action: 'notifications-emit', input: emitForm });
+      if (res.data?.ok === false) { setEmitError((res.data?.error as string) || 'send failed'); return; }
+      setEmitForm({ subjectKind: emitForm.subjectKind, subjectId: '', message: '' });
+      await refresh();
+    } catch (e) { setEmitError(e instanceof Error ? e.message : 'failed'); }
+    finally { setEmitSending(false); }
   }
 
   async function markRead(id?: string) {
@@ -108,6 +134,23 @@ export function NotificationsPanel() {
             ))}
           </ul>
         )}
+      </div>
+
+      {/* Manual staff update — separate from the automatic status-change
+          notices (those already fire on permit/SR/fine/court-case changes). */}
+      <div className="p-3 border-b border-white/10">
+        <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><Send className="w-3 h-3" />Send a manual case update</div>
+        <div className="grid grid-cols-6 gap-2">
+          <select value={emitForm.subjectKind} onChange={e => setEmitForm({ ...emitForm, subjectKind: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+            {SUBJECT_KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <input value={emitForm.subjectId} onChange={e => setEmitForm({ ...emitForm, subjectId: e.target.value })} placeholder="Case / record ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <button onClick={sendUpdate} disabled={emitSending} className="col-span-2 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
+            {emitSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Send
+          </button>
+        </div>
+        <input value={emitForm.message} onChange={e => setEmitForm({ ...emitForm, message: e.target.value })} placeholder="Update message (e.g. 'Inspection rescheduled to Friday due to weather')" className="w-full mt-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        {emitError && <div className="mt-1 text-[10px] text-rose-400">{emitError}</div>}
       </div>
 
       <div className="max-h-80 overflow-y-auto">

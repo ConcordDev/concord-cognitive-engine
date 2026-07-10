@@ -3,7 +3,7 @@
 /**
  * PlaceShareSheet — Google Maps-style share + act sheet for a focused
  * place in the atlas lens. Mounts as a modal triggered by a "Share /
- * act" button next to SaveAsDtuButton in PlaceFinder.
+ * act" button next to SaveAsDtuButton in AtlasSection's Explore panel.
  *
  * Per leader-app UX (Google Maps share sheet + Apple Maps share-to)
  * the sheet bundles 5 paid-app-tier actions, all wiring real Concord

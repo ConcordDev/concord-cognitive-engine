@@ -2,8 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertOctagon, Loader2, ExternalLink, MapPin, Activity } from 'lucide-react';
+import { AlertOctagon, Loader2, ExternalLink, MapPin, Activity, Database, Check, AlertTriangle } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { lensRun } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
+
+interface FeedIngestResult { ingested: number; skipped: number; source: string; dtuIds: string[] }
 
 interface Quake {
   id: string;
@@ -30,6 +34,31 @@ const FEEDS = [
 
 export function QuakeFeed() {
   const [feed, setFeed] = useState<typeof FEEDS[number]['id']>('significant_week');
+  const [ingesting, setIngesting] = useState(false);
+  const [ingestResult, setIngestResult] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  async function ingestToSubstrate() {
+    setIngesting(true);
+    setIngestResult(null);
+    try {
+      const r = await lensRun<FeedIngestResult>('emergency-services', 'feed', { limit: 15 });
+      if (r?.data?.ok && r.data.result) {
+        const { ingested, skipped } = r.data.result;
+        setIngestResult({
+          kind: 'ok',
+          text: ingested > 0
+            ? `Ingested ${ingested} new event${ingested === 1 ? '' : 's'} as DTUs · ${skipped} already tracked.`
+            : `No new events — ${skipped} already tracked.`,
+        });
+      } else {
+        setIngestResult({ kind: 'err', text: (r?.data as { error?: string } | undefined)?.error ?? 'Ingest failed.' });
+      }
+    } catch (e) {
+      setIngestResult({ kind: 'err', text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setIngesting(false);
+    }
+  }
 
   const quakes = useQuery({
     queryKey: ['usgs-quakes', feed],
@@ -60,6 +89,16 @@ export function QuakeFeed() {
           <select value={feed} onChange={(e) => setFeed(e.target.value as typeof FEEDS[number]['id'])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
             {FEEDS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
           </select>
+          <button
+            type="button"
+            onClick={ingestToSubstrate}
+            disabled={ingesting}
+            title="Server-side dedup + bulk DTU-mint of the last-day USGS feed (emergency-services.feed macro)"
+            className="flex items-center gap-1.5 rounded border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-medium text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-40"
+          >
+            {ingesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
+            Ingest to substrate
+          </button>
           {list.length > 0 && (
             <SaveAsDtuButton
               compact
@@ -73,6 +112,17 @@ export function QuakeFeed() {
           )}
         </div>
       </header>
+      {ingestResult && (
+        <div className={cn(
+          'flex items-start gap-2 rounded-md border px-3 py-2 text-xs',
+          ingestResult.kind === 'ok'
+            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+            : 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+        )}>
+          {ingestResult.kind === 'ok' ? <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+          <span>{ingestResult.text}</span>
+        </div>
+      )}
       {quakes.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">USGS unreachable.</div>}
       <div className="grid grid-cols-4 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">

@@ -64,6 +64,22 @@ describe("game-design GDD / mechanics / entities", () => {
     assert.equal(call("game-get", ctxA, { id: gid }).result.mechanics.length, 2);
   });
 
+  it("edits a mechanic in place without creating a duplicate", () => {
+    const gid = newGame();
+    const m = call("mechanic-add", ctxA, { gameId: gid, name: "Dubble jump", category: "core", description: "typo" }).result.mechanic;
+    const u = call("mechanic-update", ctxA, { id: m.id, name: "Double jump", category: "progression", description: "fixed" });
+    assert.equal(u.ok, true);
+    assert.equal(u.result.mechanic.name, "Double jump");
+    assert.equal(u.result.mechanic.category, "progression");
+    const list = call("game-get", ctxA, { id: gid }).result.mechanics;
+    assert.equal(list.length, 1);
+    assert.equal(list[0].description, "fixed");
+  });
+
+  it("mechanic-update fails honestly on an unknown id", () => {
+    assert.equal(call("mechanic-update", ctxA, { id: "ghost", name: "x" }).error, "mechanic not found");
+  });
+
   it("adds entities with stats", () => {
     const gid = newGame();
     const e = call("entity-add", ctxA, { gameId: gid, name: "Slime", kind: "enemy", health: 20, damage: 5 }).result.entity;

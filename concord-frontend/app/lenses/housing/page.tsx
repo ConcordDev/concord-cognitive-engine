@@ -12,10 +12,11 @@
  * player teleports in via the world lens.
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { Home, Lock, Eye, Users, RefreshCcw, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Home, Lock, Eye, Users, RefreshCcw, Plus, Trash2, MapPin, Building2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { lensRun } from '@/lib/api/client';
 
 interface HouseRow {
   id: string;
@@ -26,6 +27,28 @@ interface HouseRow {
   visibility: 'private' | 'friends' | 'public';
   allow_live_visits: number;
   last_decorated_at: number;
+}
+
+interface LandClaim {
+  id: string;
+  world_id: string;
+  anchor_x: number;
+  anchor_z: number;
+  radius_m: number;
+  status: string;
+  owner_user_id: string;
+}
+
+interface WorldBuilding {
+  id: string;
+  world_id: string;
+  building_type?: string;
+  name?: string;
+  x: number;
+  z: number;
+  owner_type?: string;
+  owner_id?: string;
+  state?: string;
 }
 
 interface FurnitureItem { itemId: string; x: number; y: number; z: number; rot: number; }
@@ -58,6 +81,18 @@ export default function HousingLensPage() {
   const [mineError, setMineError] = useState<string | null>(null);
   const [publicState, setPublicState] = useState<LoadState>('idle');
   const [publicError, setPublicError] = useState<string | null>(null);
+
+  // Claim-a-house flow: land_claims.list_for_user -> pick a claim -> buildings
+  // in that claim's world (filtered client-side to inside the claim radius
+  // and not already housed) -> POST /api/housing/claim.
+  const [myClaims, setMyClaims] = useState<LandClaim[]>([]);
+  const [claimsState, setClaimsState] = useState<LoadState>('idle');
+  const [selectedClaimId, setSelectedClaimId] = useState<string>('');
+  const [claimBuildings, setClaimBuildings] = useState<WorldBuilding[]>([]);
+  const [buildingsState, setBuildingsState] = useState<LoadState>('idle');
+  const [houseName, setHouseName] = useState('');
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [showClaimPanel, setShowClaimPanel] = useState(false);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
@@ -115,6 +150,74 @@ export default function HousingLensPage() {
 
   useEffect(() => { refreshMine(); }, [refreshMine]);
   useEffect(() => { if (tab === 'visit') refreshPublic(worldId); }, [tab, worldId, refreshPublic]);
+
+  const refreshClaims = useCallback(async () => {
+    setClaimsState('loading');
+    try {
+      const r = await lensRun<{ claims: LandClaim[] }>('land_claims', 'list_for_user');
+      if (r.data.ok && r.data.result) {
+        const owned = (r.data.result.claims || []).filter(c => c.status === 'active');
+        setMyClaims(owned);
+        setClaimsState('ready');
+        if (owned.length && !selectedClaimId) setSelectedClaimId(owned[0].id);
+      } else {
+        setClaimsState('error');
+      }
+    } catch {
+      setClaimsState('error');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => { if (showClaimPanel && claimsState === 'idle') refreshClaims(); }, [showClaimPanel, claimsState, refreshClaims]);
+
+  const selectedClaim = useMemo(() => myClaims.find(c => c.id === selectedClaimId) || null, [myClaims, selectedClaimId]);
+  const housedBuildingIds = useMemo(() => new Set(myHouses.map(h => h.building_id)), [myHouses]);
+
+  const loadClaimBuildings = useCallback(async (claim: LandClaim) => {
+    setBuildingsState('loading');
+    try {
+      const r = await fetch(`/api/worlds/${encodeURIComponent(claim.world_id)}/buildings`);
+      const j = await r.json();
+      if (!r.ok || !j.ok) { setBuildingsState('error'); return; }
+      const inside = (j.buildings as WorldBuilding[]).filter(b => {
+        const dx = b.x - claim.anchor_x;
+        const dz = b.z - claim.anchor_z;
+        return Math.hypot(dx, dz) <= claim.radius_m;
+      });
+      setClaimBuildings(inside);
+      setBuildingsState('ready');
+    } catch {
+      setBuildingsState('error');
+    }
+  }, []);
+
+  useEffect(() => { if (selectedClaim) loadClaimBuildings(selectedClaim); }, [selectedClaim, loadClaimBuildings]);
+
+  const claimAsHouse = useCallback(async (building: WorldBuilding) => {
+    if (!selectedClaim) return;
+    setClaiming(building.id);
+    try {
+      const r = await fetch('/api/housing/claim', {
+        method: 'POST', credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ landClaimId: selectedClaim.id, buildingId: building.id, name: houseName.trim() || undefined }),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        showFlash('ok', j.alreadyExisted ? 'That building is already a house.' : `Claimed "${houseName.trim() || 'My House'}".`);
+        setHouseName('');
+        refreshMine();
+        loadClaimBuildings(selectedClaim);
+      } else {
+        showFlash('err', j.error || 'Claim failed.');
+      }
+    } catch (e) {
+      showFlash('err', e instanceof Error ? e.message : 'Network error');
+    } finally {
+      setClaiming(null);
+    }
+  }, [selectedClaim, houseName, showFlash, refreshMine, loadClaimBuildings]);
 
   const setVisibility = useCallback(async (houseId: string, visibility: HouseRow['visibility']) => {
     setBusy(`vis-${houseId}`);
@@ -220,7 +323,15 @@ export default function HousingLensPage() {
         {tab === 'mine' && (
           <section className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-3">
             <aside className="rounded-xl border border-emerald-500/20 bg-zinc-950/60 p-3">
-              <h2 className="mb-2 text-[11px] uppercase tracking-wider text-emerald-300/60">My houses</h2>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-[11px] uppercase tracking-wider text-emerald-300/60">My houses</h2>
+                <button
+                  onClick={() => setShowClaimPanel(v => !v)}
+                  data-testid="housing-claim-toggle"
+                  className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] ${showClaimPanel ? 'bg-emerald-500/30 text-emerald-100' : 'border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10'}`}>
+                  <Plus className="h-3 w-3" /> Claim
+                </button>
+              </div>
               {mineState === 'loading' ? (
                 <div role="status" aria-live="polite" className="space-y-1.5 py-2" data-testid="housing-mine-loading">
                   <span className="sr-only">Loading your houses…</span>
@@ -236,7 +347,12 @@ export default function HousingLensPage() {
                   </button>
                 </div>
               ) : myHouses.length === 0 ? (
-                <p className="py-4 text-center text-[12px] text-slate-500" data-testid="housing-mine-empty">No houses yet. Claim a land plot, place a building, then claim it as a house.</p>
+                <div className="py-4 text-center text-[12px] text-slate-500" data-testid="housing-mine-empty">
+                  <p>No houses yet.</p>
+                  <button onClick={() => setShowClaimPanel(true)} className="mt-1 text-emerald-300 underline decoration-dotted hover:text-emerald-200">
+                    Claim a building on your land as a house →
+                  </button>
+                </div>
               ) : (
                 <ul className="space-y-1" data-testid="housing-mine-list">
                   {myHouses.map(h => (
@@ -250,11 +366,63 @@ export default function HousingLensPage() {
                   ))}
                 </ul>
               )}
+
+              {showClaimPanel && (
+                <div className="mt-3 space-y-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2.5" data-testid="housing-claim-panel">
+                  <p className="flex items-center gap-1.5 text-[10px] text-emerald-300/80">
+                    <MapPin className="h-3 w-3" /> Claim a building inside one of your land claims as a house.
+                  </p>
+                  {claimsState === 'loading' ? (
+                    <div className="h-5 animate-pulse rounded bg-slate-800/60" />
+                  ) : claimsState === 'error' ? (
+                    <p className="text-[11px] text-rose-300">Couldn&apos;t load your land claims.</p>
+                  ) : myClaims.length === 0 ? (
+                    <p className="text-[11px] text-slate-500">No active land claims. Claim a plot from the <span className="text-emerald-300">Land Claims</span> lens first.</p>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedClaimId}
+                        onChange={(e) => setSelectedClaimId(e.target.value)}
+                        className="w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100">
+                        {myClaims.map(c => (
+                          <option key={c.id} value={c.id}>{c.world_id} — plot @({c.anchor_x.toFixed(0)}, {c.anchor_z.toFixed(0)}) r{c.radius_m}m</option>
+                        ))}
+                      </select>
+                      <input
+                        value={houseName}
+                        onChange={(e) => setHouseName(e.target.value)}
+                        placeholder="House name (optional)"
+                        className="w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
+                      {buildingsState === 'loading' ? (
+                        <div className="h-10 animate-pulse rounded bg-slate-800/60" />
+                      ) : buildingsState === 'error' ? (
+                        <p className="text-[11px] text-rose-300">Couldn&apos;t load buildings for this plot.</p>
+                      ) : (
+                        <ul className="max-h-40 space-y-1 overflow-y-auto" data-testid="housing-claim-buildings">
+                          {claimBuildings.filter(b => !housedBuildingIds.has(b.id)).length === 0 ? (
+                            <p className="py-2 text-[11px] text-slate-500">No unclaimed buildings on this plot yet. Place a building here in the world lens first.</p>
+                          ) : claimBuildings.filter(b => !housedBuildingIds.has(b.id)).map(b => (
+                            <li key={b.id}>
+                              <button
+                                onClick={() => claimAsHouse(b)}
+                                disabled={claiming === b.id}
+                                className="flex w-full items-center justify-between rounded border border-slate-700 bg-slate-900/50 px-2 py-1 text-left text-[11px] text-slate-200 hover:border-emerald-500/40 hover:bg-emerald-500/10 disabled:opacity-50">
+                                <span className="flex items-center gap-1.5"><Building2 className="h-3 w-3 text-emerald-400" />{b.name || b.building_type || b.id}</span>
+                                <span className="text-[10px] text-emerald-300">{claiming === b.id ? 'claiming…' : 'claim'}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </aside>
 
             <div className="lg:col-span-2 rounded-xl border border-emerald-500/20 bg-zinc-950/60 p-4">
               {!selectedHouse ? (
-                <div className="py-12 text-center text-[12px] text-slate-500">Select a house to manage it.</div>
+                <div className="py-12 text-center text-[12px] text-slate-500">Select a house to manage it, or use &quot;Claim&quot; on the left to turn a building on your land into a house.</div>
               ) : (
                 <>
                   <header className="mb-3 flex items-baseline justify-between gap-2">

@@ -40,6 +40,7 @@ import { Hammer, Sparkles, Loader2, AlertTriangle, HelpCircle } from 'lucide-rea
 import { useLensCommand } from '@/hooks/useLensCommand';
 import ForgeWorkbench from '@/components/forge/ForgeWorkbench';
 import ForgeStudio from '@/components/forge/ForgeStudio';
+import ForgeSharedView from '@/components/forge/ForgeSharedView';
 
 export default function ForgeLensPage() {
   const [loading, setLoading] = useState(true);
@@ -129,6 +130,10 @@ export default function ForgeLensPage() {
           </div>
         </div>
       )}
+
+      {/* Resolves ?share=<token> into a read-only shared-app view; renders
+          nothing when the page wasn't opened via a Forge share link. */}
+      <ForgeSharedView />
 
       <section className="mx-auto max-w-screen-2xl px-2 py-3 sm:px-4 sm:py-4">
         {loading ? (

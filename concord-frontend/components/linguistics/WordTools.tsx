@@ -1,15 +1,17 @@
 'use client';
 
 /**
- * WordTools — pronunciation, contextual usage, and etymology lookup
- * for a single word. All data is real: pronunciation audio + IPA,
+ * WordTools — pronunciation, contextual usage, etymology, and morphology
+ * lookup for a single word. All data is real: pronunciation audio + IPA,
  * usage sentences, and word-history origins come from the Free
  * Dictionary API via the linguistics.pronounce / word-context /
- * etymology macros. Nothing is fabricated; empty fields say so.
+ * etymology macros; the morphology breakdown (prefix/root/suffix) is a
+ * pure-compute call to linguistics.morphologyBreakdown. Nothing is
+ * fabricated; empty fields say so.
  */
 
 import { useCallback, useRef, useState } from 'react';
-import { Volume2, Quote, ScrollText, Loader2, Search } from 'lucide-react';
+import { Volume2, Quote, ScrollText, Loader2, Search, Puzzle } from 'lucide-react';
 
 import { lensRun } from '@/lib/api/client';
 
@@ -18,6 +20,7 @@ interface PronounceResult { word: string; ipa: string | null; audio: string | nu
 interface ContextExample { sentence: string; partOfSpeech: string; sense: string }
 interface ContextResult { word: string; examples: ContextExample[]; count: number }
 interface EtymologyResult { word: string; origin: string | null; allOrigins: string[]; hasEtymology: boolean }
+interface MorphologyResult { word: string; prefix: string; root: string; suffix: string; morphemeCount: number; wordClass: string }
 
 export function WordTools() {
   const [word, setWord] = useState('');
@@ -26,6 +29,7 @@ export function WordTools() {
   const [pron, setPron] = useState<PronounceResult | null>(null);
   const [context, setContext] = useState<ContextResult | null>(null);
   const [etym, setEtym] = useState<EtymologyResult | null>(null);
+  const [morph, setMorph] = useState<MorphologyResult | null>(null);
   const [queried, setQueried] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -37,17 +41,20 @@ export function WordTools() {
     setPron(null);
     setContext(null);
     setEtym(null);
+    setMorph(null);
     setQueried(true);
-    const [p, c, e] = await Promise.all([
+    const [p, c, e, m] = await Promise.all([
       lensRun<PronounceResult>('linguistics', 'pronounce', { word: w }),
       lensRun<ContextResult>('linguistics', 'word-context', { word: w }),
       lensRun<EtymologyResult>('linguistics', 'etymology', { word: w }),
+      lensRun<MorphologyResult>('linguistics', 'morphologyBreakdown', { word: w }),
     ]);
     setBusy(false);
     if (p.data?.ok && p.data.result) setPron(p.data.result);
     if (c.data?.ok && c.data.result) setContext(c.data.result);
     if (e.data?.ok && e.data.result) setEtym(e.data.result);
-    if (!p.data?.ok && !c.data?.ok && !e.data?.ok) {
+    if (m.data?.ok && m.data.result) setMorph(m.data.result);
+    if (!p.data?.ok && !c.data?.ok && !e.data?.ok && !m.data?.ok) {
       setErr(p.data?.error || `No data found for "${w}".`);
     }
   }, [word]);
@@ -166,7 +173,7 @@ export function WordTools() {
 
       {/* Etymology */}
       {etym && (
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2.5">
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2.5 mb-2">
           <p className="text-[11px] text-zinc-400 mb-1 inline-flex items-center gap-1">
             <ScrollText className="w-3 h-3" />Etymology
           </p>
@@ -182,7 +189,28 @@ export function WordTools() {
         </div>
       )}
 
-      {queried && !busy && !pron && !context && !etym && !err && (
+      {/* Morphology — prefix/root/suffix breakdown */}
+      {morph && (
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2.5">
+          <p className="text-[11px] text-zinc-400 mb-1.5 inline-flex items-center gap-1">
+            <Puzzle className="w-3 h-3" />Morphology
+          </p>
+          <div className="flex items-center gap-1 flex-wrap font-mono text-xs">
+            {morph.prefix !== 'none' && (
+              <span className="px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300 border border-blue-700/40">{morph.prefix}-</span>
+            )}
+            <span className="px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-300 border border-emerald-700/40">{morph.root}</span>
+            {morph.suffix !== 'none' && (
+              <span className="px-1.5 py-0.5 rounded bg-violet-900/40 text-violet-300 border border-violet-700/40">-{morph.suffix}</span>
+            )}
+          </div>
+          <p className="text-[10px] text-zinc-400 mt-1.5">
+            {morph.morphemeCount} morpheme{morph.morphemeCount !== 1 ? 's' : ''} · inferred class: <span className="text-zinc-300">{morph.wordClass}</span>
+          </p>
+        </div>
+      )}
+
+      {queried && !busy && !pron && !context && !etym && !morph && !err && (
         <p className="text-xs text-zinc-400 italic">No data yet.</p>
       )}
     </div>

@@ -5,7 +5,13 @@
 
 export default function registerCreatorActions(registerLensAction) {
   /**
-   * dashboard — single rollup the lens page renders into a header.
+   * dashboard — early, shallow rollup (dtuCount/publishedCount/recentDTUs
+   * only). Superseded by the richer `GET /api/creator/dashboard` REST route
+   * (summary with listingCount/totalEarnings/citations/lineageDepth/
+   * reputationScore) that the real lens page (app/lenses/creator/page.tsx)
+   * actually calls. Kept registered for API back-compat; not a frontend gap
+   * — it's reachable only via the generic macro-runner, by design, since the
+   * real Overview tab already surfaces the superseding data.
    */
   registerLensAction("creator", "dashboard", (ctx) => {
     const STATE = globalThis._concordSTATE;
@@ -45,9 +51,11 @@ export default function registerCreatorActions(registerLensAction) {
   });
 
   /**
-   * royalty-summary — placeholder for the royalty cascade ledger view.
-   * The actual ledger is queried via /api/economy/* routes; this macro
-   * exposes a small summary for the lens header chip.
+   * royalty-summary — early placeholder that only echoes an endpoint URL.
+   * Superseded by the real royalty cascade UI: `GET /api/creator/cascade/:dtuId`
+   * (per-generation counts/rates/projected share), rendered by the Cascade
+   * tab in app/lenses/creator/page.tsx. Kept for back-compat; not a frontend
+   * gap — the real cascade view already covers this ground.
    */
   registerLensAction("creator", "royalty-summary", (ctx) => {
     const userId = ctx?.actor?.id || ctx?.actor?.userId;

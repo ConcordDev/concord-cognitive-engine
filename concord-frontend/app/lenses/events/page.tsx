@@ -19,7 +19,6 @@ import { useState, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -47,8 +46,7 @@ import {
   Camera,
   Shield,
   BarChart3,
-  FileText,
-  Play,
+  ArrowDown,
   MessageCircle,
   ListChecks,
   PieChart,
@@ -336,7 +334,6 @@ export default function EventsLensPage() {
   const [showEditor, setShowEditor] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
 
   // Form state
   const [formTitle, setFormTitle] = useState('');
@@ -409,8 +406,6 @@ export default function EventsLensPage() {
     update: updateTicket,
     remove: removeTicket,
   } = useLensData('events', 'TicketTier', { seed: EMPTY_DATA.TicketTier });
-
-  const runAction = useRunArtifact('events');
 
   // RSVP / Ticket purchase state
   const [rsvpLoading, setRsvpLoading] = useState<string | null>(null);
@@ -630,20 +625,16 @@ export default function EventsLensPage() {
     resetForm();
   };
 
-  const handleAction = async (action: string, artifactId?: string) => {
-    const targetId = artifactId || detailId || filtered[0]?.id;
-    if (!targetId) return;
-    try {
-      const result = await runAction.mutateAsync({ id: targetId, action });
-      if (result.ok === false) {
-        setActionResult({
-          message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}`,
-        });
-      } else {
-        setActionResult(result.result as Record<string, unknown>);
-      }
-    } catch (err) {
-      console.error('Action failed:', err);
+  // Jump to the real, STATE-backed Event Operations console (ticketing,
+  // seating, budget, agenda, check-in, blasts, production advance — see
+  // EventOps below). The tab system above this line manages a separate,
+  // generic DTU-artifact CRUD surface (Event/Venue/Vendor/Guest/RunOfShow/
+  // Budget/TicketTier) that intentionally does NOT share an id-space with
+  // the events.js production engine, so no per-item deep link is possible —
+  // this is an honest anchor scroll, not a fabricated per-event action.
+  const jumpToEventOps = () => {
+    if (typeof document !== 'undefined') {
+      document.getElementById('event-operations')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -1025,35 +1016,20 @@ export default function EventsLensPage() {
         </div>
       </div>
 
-      {/* Quick actions */}
-      <div className={ds.panel}>
-        <h3 className={cn(ds.heading3, 'mb-3 flex items-center gap-2')}>
-          <Play className="w-5 h-5 text-green-400" /> Domain Actions
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { label: 'Budget Analysis', action: 'budgetReconcile', icon: PieChart },
-            { label: 'Vendor Check', action: 'vendor_check', icon: CheckCircle2 },
-            { label: 'Run-of-Show Generate', action: 'ros_generate', icon: ListChecks },
-            { label: 'Registration Report', action: 'registration_report', icon: FileText },
-            { label: 'Event Summary', action: 'advanceSheet', icon: ClipboardList },
-          ].map((a) => (
-            <button
-              key={a.action}
-              onClick={() => handleAction(a.action)}
-              className={cn(ds.btnSecondary, ds.btnSmall)}
-              disabled={runAction.isPending}
-            >
-              <a.icon className="w-4 h-4" /> {a.label}
-            </button>
-          ))}
-          {runAction.isPending && (
-            <span className="text-xs text-neon-blue animate-pulse self-center ml-2">
-              Running...
-            </span>
-          )}
+      {/* Jump to the real production engine */}
+      <button onClick={jumpToEventOps} className={cn(ds.panel, 'w-full text-left flex items-center justify-between gap-3 hover:border-neon-cyan/40 transition-colors')}>
+        <div className="flex items-center gap-3">
+          <Ticket className="w-5 h-5 text-neon-cyan shrink-0" />
+          <div>
+            <h3 className={ds.heading3}>Event Operations</h3>
+            <p className={ds.textMuted}>
+              Ticket tiers, attendee check-in, floor plan, run-of-show, blasts, and tour production
+              advance (advance sheet, tech rider match, settlement calc) — jump to the live console.
+            </p>
+          </div>
         </div>
-      </div>
+        <ArrowDown className="w-5 h-5 text-gray-400 shrink-0" />
+      </button>
     </div>
   );
 
@@ -1557,28 +1533,20 @@ export default function EventsLensPage() {
           </div>
         )}
 
-        {/* Domain actions for this event */}
-        <div className={ds.panel}>
-          <h3 className={cn(ds.heading3, 'mb-3')}>Actions</h3>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: 'Budget Analysis', action: 'budgetReconcile', icon: PieChart },
-              { label: 'Vendor Check', action: 'vendor_check', icon: CheckCircle2 },
-              { label: 'Generate Run-of-Show', action: 'ros_generate', icon: ListChecks },
-              { label: 'Registration Report', action: 'registration_report', icon: FileText },
-              { label: 'Event Summary', action: 'advanceSheet', icon: ClipboardList },
-            ].map((a) => (
-              <button
-                key={a.action}
-                onClick={() => handleAction(a.action, item.id)}
-                className={cn(ds.btnSecondary, ds.btnSmall)}
-                disabled={runAction.isPending}
-              >
-                <a.icon className="w-4 h-4" /> {a.label}
-              </button>
-            ))}
+        {/* Real ticketing/ops for this event live in the STATE-backed events engine */}
+        <button onClick={jumpToEventOps} className={cn(ds.panel, 'w-full text-left flex items-center justify-between gap-3 hover:border-neon-cyan/40 transition-colors')}>
+          <div className="flex items-center gap-3">
+            <ClipboardList className="w-5 h-5 text-neon-cyan shrink-0" />
+            <div>
+              <h3 className={ds.heading3}>Manage in Event Operations</h3>
+              <p className={ds.textMuted}>
+                Create a matching event there to sell ticket tiers, build a floor plan, run
+                check-in, send blasts, and generate a production advance sheet.
+              </p>
+            </div>
           </div>
-        </div>
+          <ArrowDown className="w-5 h-5 text-gray-400 shrink-0" />
+        </button>
       </div>
     );
   };
@@ -1978,21 +1946,13 @@ export default function EventsLensPage() {
               {segments.length === 0 && (
                 <p className={cn(ds.textMuted, 'py-4 text-center')}>No segments added yet</p>
               )}
-              {/* Quick action */}
+              {/* The real run-of-show timeline (agenda-item-add/agenda-timeline) lives in
+                  Event Operations, keyed to a STATE-backed event — link there instead of a
+                  same-page action that would run against this generic artifact's mismatched
+                  shape. */}
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-lattice-border">
-                <button
-                  onClick={() => handleAction('ros_generate', item.id)}
-                  className={cn(ds.btnSecondary, ds.btnSmall)}
-                  disabled={runAction.isPending}
-                >
-                  <Sparkles className="w-4 h-4" /> AI Generate Segments
-                </button>
-                <button
-                  onClick={() => handleAction('advanceSheet', item.id)}
-                  className={cn(ds.btnSecondary, ds.btnSmall)}
-                  disabled={runAction.isPending}
-                >
-                  <FileText className="w-4 h-4" /> Export
+                <button onClick={jumpToEventOps} className={cn(ds.btnSecondary, ds.btnSmall)}>
+                  <ListChecks className="w-4 h-4" /> Build real run-of-show in Event Operations
                 </button>
               </div>
             </div>
@@ -2216,14 +2176,12 @@ export default function EventsLensPage() {
                 </div>
               </div>
 
-              {/* Action */}
+              {/* Line-item budget reconciliation (budget-line-add/budget-summary) and the
+                  quick budgetReconcile calculator both live in Event Operations' Budget /
+                  Production tabs, keyed to a STATE-backed event. */}
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-lattice-border">
-                <button
-                  onClick={() => handleAction('budgetReconcile', item.id)}
-                  className={cn(ds.btnSecondary, ds.btnSmall)}
-                  disabled={runAction.isPending}
-                >
-                  <PieChart className="w-4 h-4" /> AI Budget Analysis
+                <button onClick={jumpToEventOps} className={cn(ds.btnSecondary, ds.btnSmall)}>
+                  <PieChart className="w-4 h-4" /> Reconcile in Event Operations
                 </button>
               </div>
             </div>
@@ -2684,20 +2642,6 @@ export default function EventsLensPage() {
         renderContent()
       )}
 
-      {/* Action result display */}
-      {actionResult && (
-        <div className={ds.panel}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className={ds.heading3}>Action Result</h3>
-            <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <pre className={cn(ds.textMono, 'text-xs overflow-auto max-h-48')}>
-            {JSON.stringify(actionResult, null, 2)}
-          </pre>
-        </div>
-      )}
 
       {/* Editor modal */}
       {showEditor && (
@@ -2885,7 +2829,7 @@ export default function EventsLensPage() {
           </div>
         )}
       </div>
-      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-elevated/30 p-4">
+      <section id="event-operations" className="mt-6 rounded-xl border border-lattice-border bg-lattice-elevated/30 p-4 scroll-mt-20">
         <EventOps />
       </section>
       <section className="mt-6">

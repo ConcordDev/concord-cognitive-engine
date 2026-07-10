@@ -3,12 +3,13 @@
 /** AcPayrollPanel — employees, pay runs and pay stubs. */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Users, Play } from 'lucide-react';
+import { Loader2, Plus, Trash2, Users, Play, Pencil, Check, X, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Employee { id: string; name: string; payType: string; rate: number; title: string | null; active: boolean }
 interface Stub { employeeName: string; hours: number | null; gross: number; withholding: number; net: number }
 interface Run { id: string; periodStart: string; periodEnd: string; payDate: string; employeeCount: number; totalGross: number; totalNet: number }
+interface PayrollSummary { runs: number; employees: number; ytdGross: number; ytdNet: number; ytdWithholding: number }
 
 export function AcPayrollPanel() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -17,15 +18,20 @@ export function AcPayrollPanel() {
   const [loading, setLoading] = useState(true);
   const [emp, setEmp] = useState({ name: '', payType: 'salary', rate: '', title: '' });
   const [run, setRun] = useState({ periodStart: '', periodEnd: '', payDate: '', hours: {} as Record<string, string> });
+  const [summary, setSummary] = useState<PayrollSummary | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: '', title: '', payType: 'salary', rate: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [e, r] = await Promise.all([
+    const [e, r, sm] = await Promise.all([
       lensRun({ domain: 'accounting', action: 'employee-list', input: {} }),
       lensRun({ domain: 'accounting', action: 'payrun-list', input: {} }),
+      lensRun({ domain: 'accounting', action: 'payroll-summary', input: {} }),
     ]);
     setEmployees(e.data?.result?.employees || []);
     setRuns(r.data?.result?.runs || []);
+    setSummary((sm.data?.result as PayrollSummary) || null);
     setLoading(false);
   }, []);
 
@@ -35,6 +41,16 @@ export function AcPayrollPanel() {
     if (!emp.name.trim()) return;
     await lensRun({ domain: 'accounting', action: 'employee-create', input: { ...emp, rate: Number(emp.rate) || 0 } });
     setEmp({ name: '', payType: 'salary', rate: '', title: '' });
+    await refresh();
+  };
+  const startEditEmp = (e: Employee) => {
+    setEditingId(e.id);
+    setEditDraft({ name: e.name, title: e.title || '', payType: e.payType, rate: String(e.rate) });
+  };
+  const saveEditEmp = async (id: string) => {
+    if (!editDraft.name.trim()) return;
+    await lensRun({ domain: 'accounting', action: 'employee-update', input: { id, ...editDraft, rate: Number(editDraft.rate) || 0 } });
+    setEditingId(null);
     await refresh();
   };
   const runPayroll = async () => {
@@ -53,6 +69,15 @@ export function AcPayrollPanel() {
 
   return (
     <div className="space-y-4 p-1">
+      {summary && (
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <SummaryStat label="Active employees" value={String(summary.employees)} />
+          <SummaryStat label="Pay runs (all time)" value={String(summary.runs)} />
+          <SummaryStat label="YTD gross" value={`$${summary.ytdGross.toLocaleString()}`} accent="emerald" />
+          <SummaryStat label="YTD withholding" value={`$${summary.ytdWithholding.toLocaleString()}`} accent="amber" />
+        </section>
+      )}
+
       <section className="bg-black/30 border border-white/10 rounded-lg p-3">
         <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2"><Users className="w-3.5 h-3.5" /> Employees</h3>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-2">
@@ -68,6 +93,20 @@ export function AcPayrollPanel() {
         {employees.length > 0 && (
           <ul className="space-y-1">
             {employees.map((e) => (
+              editingId === e.id ? (
+                <li key={e.id} className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 bg-emerald-500/5 rounded px-2 py-1.5">
+                  <input value={editDraft.name} onChange={(ev) => setEditDraft({ ...editDraft, name: ev.target.value })} placeholder="Name" className={inp} />
+                  <input value={editDraft.title} onChange={(ev) => setEditDraft({ ...editDraft, title: ev.target.value })} placeholder="Title" className={inp} />
+                  <select value={editDraft.payType} onChange={(ev) => setEditDraft({ ...editDraft, payType: ev.target.value })} className={inp}>
+                    <option value="salary">Salary</option><option value="hourly">Hourly</option>
+                  </select>
+                  <input value={editDraft.rate} onChange={(ev) => setEditDraft({ ...editDraft, rate: ev.target.value })} inputMode="decimal" placeholder={editDraft.payType === 'hourly' ? 'Rate/hr' : 'Annual'} className={inp} />
+                  <div className="flex gap-1">
+                    <button type="button" onClick={() => saveEditEmp(e.id)} className="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded"><Check className="w-3.5 h-3.5" /></button>
+                    <button type="button" onClick={() => setEditingId(null)} className="flex-1 inline-flex items-center justify-center gap-1 border border-white/15 text-gray-300 hover:bg-white/5 text-xs font-medium rounded"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                </li>
+              ) : (
               <li key={e.id} className="flex items-center gap-2 text-xs text-gray-300 bg-black/20 rounded px-2 py-1">
                 <span className="flex-1">{e.name}{e.title && <span className="text-gray-400"> · {e.title}</span>}</span>
                 <span className="text-gray-400">{e.payType === 'hourly' ? `$${e.rate}/hr` : `$${e.rate.toLocaleString()}/yr`}</span>
@@ -76,9 +115,12 @@ export function AcPayrollPanel() {
                     onChange={(ev) => setRun({ ...run, hours: { ...run.hours, [e.id]: ev.target.value } })}
                     className="w-14 bg-black/40 border border-white/10 rounded px-1 py-0.5 text-[11px]" />
                 )}
+                <button aria-label="Edit" type="button" onClick={() => startEditEmp(e)}
+                  className="text-gray-500 hover:text-gray-200"><Pencil className="w-3.5 h-3.5" /></button>
                 <button aria-label="Delete" type="button" onClick={() => lensRun({ domain: 'accounting', action: 'employee-delete', input: { id: e.id } }).then(refresh)}
                   className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
+              )
             ))}
           </ul>
         )}
@@ -135,3 +177,15 @@ const inp = 'bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text
 const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded';
 function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
 function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-400 italic">{text}</p>; }
+function SummaryStat({ label, value, accent }: { label: string; value: string; accent?: 'emerald' | 'amber' }) {
+  const color = accent === 'emerald' ? 'text-emerald-300' : accent === 'amber' ? 'text-amber-300' : 'text-gray-100';
+  return (
+    <div className="bg-black/30 border border-white/10 rounded-lg p-3 text-center">
+      <p className={`text-lg font-bold ${color} flex items-center justify-center gap-1`}>
+        {accent === 'emerald' && <TrendingUp className="w-3.5 h-3.5" />}
+        {value}
+      </p>
+      <p className="text-[10px] text-gray-400 uppercase">{label}</p>
+    </div>
+  );
+}

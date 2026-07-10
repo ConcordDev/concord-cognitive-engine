@@ -1,13 +1,22 @@
 'use client';
 
 /**
- * LawEnforcementActionPanel — investigator + commander bench.
+ * LawEnforcementActionPanel — investigator + commander quick-analysis bench.
  * caseAnalysis / patrolOptimize / incidentReport / crimeStats +
  * mint/DM/publish/agent.
+ *
+ * Each analysis tool is a real, structured form (repeatable-row builders for
+ * evidence/witnesses/suspects, patrol zones, and incident log entries) — not
+ * a raw JSON-paste textarea. The prior JSON-paste shape was flagged as a
+ * "structured form" invariant violation (docs/lens-specs/
+ * law-enforcement-capability-map.md) and the incident-report call used to
+ * send a hardcoded `officer: 'badge-1138'` value as if it were real data;
+ * that field is now a genuine (optional) operator input that falls back to
+ * the authenticated caller's id server-side when left blank.
  */
 
 import { useState } from 'react';
-import { Shield, MapPin, FileText, BarChart3, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { Shield, MapPin, FileText, BarChart3, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -32,14 +41,57 @@ interface PatrolResult { zones: ZoneRec[]; totalUnitsNeeded: number; totalCurren
 interface ReportResult { reportId: string; complete: boolean; missingFields: string[]; type: string; date: string; location: string; severity: string; status: string }
 interface CrimeStatsResult { totalIncidents: number; byType: { type: string; count: number }[]; clearanceRate: number; mostCommon: string; trend: string }
 
-// No seeded case/zones/log — paste real data.
+// ---- small repeatable-row form primitives ---------------------------------
+
+function RowInput({ value, onChange, placeholder, type = 'text', className }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string; className?: string }) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={cn('bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none', className)}
+    />
+  );
+}
+
+function AddRowBtn({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button type="button" onClick={onClick} className="flex items-center gap-1 text-[10px] text-blue-300 hover:text-blue-200 mt-1">
+      <Plus className="w-3 h-3" /> {label}
+    </button>
+  );
+}
+
+function RemoveRowBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-label="Remove row" className="text-zinc-500 hover:text-red-400 shrink-0">
+      <X className="w-3.5 h-3.5" />
+    </button>
+  );
+}
+
+// No seeded case/zones/log — build real rows.
 export function LawEnforcementActionPanel() {
-  const [caseText, setCaseText] = useState('');
-  const [zonesText, setZonesText] = useState('');
-  const [crimeLogText, setCrimeLogText] = useState('');
+  // Case analysis — structured evidence / witness / suspect rows.
+  const [caseId, setCaseId] = useState('');
+  const [evidenceRows, setEvidenceRows] = useState<string[]>(['']);
+  const [witnessRows, setWitnessRows] = useState<string[]>(['']);
+  const [suspectRows, setSuspectRows] = useState<{ name: string; evidenceLinks: string }[]>([{ name: '', evidenceLinks: '0' }]);
+
+  // Patrol zones.
+  const [zoneRows, setZoneRows] = useState<{ name: string; crimeRate: string; population: string; currentPatrols: string }[]>([
+    { name: '', crimeRate: '', population: '', currentPatrols: '' },
+  ]);
+
+  // Crime stats — incident log rows.
+  const [incidentRows, setIncidentRows] = useState<{ type: string; resolved: boolean }[]>([{ type: '', resolved: false }]);
+
+  // Incident report.
   const [incidentType, setIncidentType] = useState('');
   const [incidentLoc, setIncidentLoc] = useState('');
   const [incidentDesc, setIncidentDesc] = useState('');
+  const [incidentOfficer, setIncidentOfficer] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -60,34 +112,62 @@ export function LawEnforcementActionPanel() {
   const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
 
   async function actCase() {
-    if (!caseText.trim()) { err('Paste case JSON first.'); return; }
-    try { const parsed = JSON.parse(caseText); setBusy('case'); setFeedback(null);
-      const r = await callMacro<CaseResult>('caseAnalysis', { artifact: { data: parsed, title: parsed.caseId } });
+    const evidence = evidenceRows.map((v) => v.trim()).filter(Boolean).map((description) => ({ description }));
+    const witnesses = witnessRows.map((v) => v.trim()).filter(Boolean).map((name) => ({ name }));
+    const suspects = suspectRows
+      .filter((s) => s.name.trim())
+      .map((s) => ({ name: s.name.trim(), evidenceLinks: Array(Math.max(0, parseInt(s.evidenceLinks, 10) || 0)).fill(true) }));
+    if (evidence.length === 0 && witnesses.length === 0 && suspects.length === 0) { err('Add at least one evidence item, witness, or suspect.'); return; }
+    setBusy('case'); setFeedback(null);
+    try {
+      const r = await callMacro<CaseResult>('caseAnalysis', { artifact: { data: { caseId: caseId.trim() || undefined, evidence, witnesses, suspects } } });
       if (r.ok && r.result) { setCaseResult(r.result); pipe.publish('le.case', r.result, { label: `Case ${r.result.caseStrength}/100` }); ok(`Strength ${r.result.caseStrength} · ${r.result.status}.`); } else err(r.error ?? 'case failed');
-    } catch (e) { err(e instanceof SyntaxError ? 'Invalid case JSON.' : pickMessage(e)); } finally { setBusy(null); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actPatrol() {
-    if (!zonesText.trim()) { err('Paste zones JSON first.'); return; }
-    try { const parsed = JSON.parse(zonesText); setBusy('patrol'); setFeedback(null);
-      const r = await callMacro<PatrolResult>('patrolOptimize', { artifact: { data: parsed } });
+    const zones = zoneRows
+      .filter((z) => z.name.trim())
+      .map((z) => ({ name: z.name.trim(), crimeRate: z.crimeRate, population: z.population, currentPatrols: z.currentPatrols }));
+    if (zones.length === 0) { err('Add at least one patrol zone.'); return; }
+    setBusy('patrol'); setFeedback(null);
+    try {
+      const r = await callMacro<PatrolResult>('patrolOptimize', { artifact: { data: { zones } } });
       if (r.ok && r.result) { setPatrolResult(r.result); pipe.publish('le.patrol', r.result, { label: `Patrol ${r.result.hotspots.length} hotspots` }); ok(`${r.result.hotspots.length} hotspots · need ${r.result.totalUnitsNeeded} units.`); } else err(r.error ?? 'patrol failed');
-    } catch (e) { err(e instanceof SyntaxError ? 'Invalid zones JSON.' : pickMessage(e)); } finally { setBusy(null); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actReport() {
     if (!incidentType.trim() || !incidentLoc.trim()) { err('Incident type + location required.'); return; }
     setBusy('report'); setFeedback(null);
     try {
-      const r = await callMacro<ReportResult>('incidentReport', { artifact: { data: { type: incidentType, date: new Date().toISOString(), location: incidentLoc, description: incidentDesc, officer: 'badge-1138' } } });
+      const r = await callMacro<ReportResult>('incidentReport', {
+        artifact: {
+          data: {
+            type: incidentType,
+            date: new Date().toISOString(),
+            location: incidentLoc,
+            description: incidentDesc,
+            ...(incidentOfficer.trim() ? { officer: incidentOfficer.trim() } : {}),
+          },
+        },
+      });
       if (r.ok && r.result) { setReportResult(r.result); pipe.publish('le.report', r.result, { label: `IR ${r.result.reportId}` }); ok(`Filed ${r.result.reportId}.`); } else err(r.error ?? 'report failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actStats() {
-    if (!crimeLogText.trim()) { err('Paste crime log JSON first.'); return; }
-    try { const parsed = JSON.parse(crimeLogText); setBusy('stats'); setFeedback(null);
-      const r = await callMacro<CrimeStatsResult>('crimeStats', { artifact: { data: parsed } });
+    const incidents = incidentRows
+      .filter((i) => i.type.trim())
+      .map((i) => ({ type: i.type.trim(), resolved: i.resolved }));
+    if (incidents.length === 0) { err('Add at least one incident log entry.'); return; }
+    setBusy('stats'); setFeedback(null);
+    try {
+      const r = await callMacro<CrimeStatsResult>('crimeStats', { artifact: { data: { incidents } } });
       if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('le.stats', r.result, { label: `Stats ${r.result.totalIncidents}, ${r.result.clearanceRate}% cleared` }); ok(`${r.result.totalIncidents} incidents · ${r.result.clearanceRate}% cleared.`); } else err(r.error ?? 'stats failed');
-    } catch (e) { err(e instanceof SyntaxError ? 'Invalid log JSON.' : pickMessage(e)); } finally { setBusy(null); }
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
@@ -96,6 +176,7 @@ export function LawEnforcementActionPanel() {
       if (id) { setMintedDtuId(id); pipe.publish('le.mintedDtuId', id, { label: `Beat DTU ${id.slice(0, 8)}…` }); ok(`Beat DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
@@ -115,6 +196,7 @@ export function LawEnforcementActionPanel() {
       if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actPublish() {
     if (!statsResult) { err('Run crime stats first.'); return; }
     setBusy('publish'); setFeedback(null);
@@ -130,6 +212,7 @@ export function LawEnforcementActionPanel() {
       if (id) { setPublishedDtuId(id); pipe.publish('le.publishedDtuId', id, { label: `Public stats ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
@@ -157,27 +240,91 @@ export function LawEnforcementActionPanel() {
     <div className="rounded-lg border border-blue-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-blue-500/10 pb-2">
         <Shield className="h-4 w-4 text-blue-400" />
-        <h3 className="text-sm font-semibold text-white">Law enforcement</h3>
+        <h3 className="text-sm font-semibold text-white">Quick Analysis</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">case · patrol · report · stats</span>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Case JSON</label>
-          <textarea value={caseText} onChange={(e) => setCaseText(e.target.value)} rows={8} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* ---- Case analysis ---- */}
+        <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-2.5 space-y-2">
+          <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Case strength</div>
+          <RowInput value={caseId} onChange={setCaseId} placeholder="Case ID (optional)" className="w-full" />
+
+          <div>
+            <span className="text-[9px] uppercase tracking-wider text-zinc-500">Evidence</span>
+            {evidenceRows.map((v, i) => (
+              <div key={i} className="flex items-center gap-1 mt-1">
+                <RowInput value={v} onChange={(nv) => setEvidenceRows((r) => r.map((x, j) => (j === i ? nv : x)))} placeholder="9mm shell casing" className="flex-1" />
+                {evidenceRows.length > 1 && <RemoveRowBtn onClick={() => setEvidenceRows((r) => r.filter((_, j) => j !== i))} />}
+              </div>
+            ))}
+            <AddRowBtn label="Add evidence" onClick={() => setEvidenceRows((r) => [...r, ''])} />
+          </div>
+
+          <div>
+            <span className="text-[9px] uppercase tracking-wider text-zinc-500">Witnesses</span>
+            {witnessRows.map((v, i) => (
+              <div key={i} className="flex items-center gap-1 mt-1">
+                <RowInput value={v} onChange={(nv) => setWitnessRows((r) => r.map((x, j) => (j === i ? nv : x)))} placeholder="Witness name" className="flex-1" />
+                {witnessRows.length > 1 && <RemoveRowBtn onClick={() => setWitnessRows((r) => r.filter((_, j) => j !== i))} />}
+              </div>
+            ))}
+            <AddRowBtn label="Add witness" onClick={() => setWitnessRows((r) => [...r, ''])} />
+          </div>
+
+          <div>
+            <span className="text-[9px] uppercase tracking-wider text-zinc-500">Suspects</span>
+            {suspectRows.map((s, i) => (
+              <div key={i} className="flex items-center gap-1 mt-1">
+                <RowInput value={s.name} onChange={(nv) => setSuspectRows((r) => r.map((x, j) => (j === i ? { ...x, name: nv } : x)))} placeholder="Suspect name" className="flex-1" />
+                <RowInput value={s.evidenceLinks} onChange={(nv) => setSuspectRows((r) => r.map((x, j) => (j === i ? { ...x, evidenceLinks: nv } : x)))} placeholder="# links" type="number" className="w-16" />
+                {suspectRows.length > 1 && <RemoveRowBtn onClick={() => setSuspectRows((r) => r.filter((_, j) => j !== i))} />}
+              </div>
+            ))}
+            <AddRowBtn label="Add suspect" onClick={() => setSuspectRows((r) => [...r, { name: '', evidenceLinks: '0' }])} />
+          </div>
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Patrol zones JSON</label>
-          <textarea value={zonesText} onChange={(e) => setZonesText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
-          <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold mt-2 block">Crime log JSON</label>
-          <textarea value={crimeLogText} onChange={(e) => setCrimeLogText(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+
+        {/* ---- Patrol zones + crime log ---- */}
+        <div className="space-y-3">
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-2.5 space-y-2">
+            <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Patrol zones</div>
+            {zoneRows.map((z, i) => (
+              <div key={i} className="flex items-center gap-1 flex-wrap">
+                <RowInput value={z.name} onChange={(nv) => setZoneRows((r) => r.map((x, j) => (j === i ? { ...x, name: nv } : x)))} placeholder="Zone name" className="flex-1 min-w-[90px]" />
+                <RowInput value={z.crimeRate} onChange={(nv) => setZoneRows((r) => r.map((x, j) => (j === i ? { ...x, crimeRate: nv } : x)))} placeholder="Crime rate" type="number" className="w-20" />
+                <RowInput value={z.population} onChange={(nv) => setZoneRows((r) => r.map((x, j) => (j === i ? { ...x, population: nv } : x)))} placeholder="Population" type="number" className="w-20" />
+                <RowInput value={z.currentPatrols} onChange={(nv) => setZoneRows((r) => r.map((x, j) => (j === i ? { ...x, currentPatrols: nv } : x)))} placeholder="Patrols" type="number" className="w-16" />
+                {zoneRows.length > 1 && <RemoveRowBtn onClick={() => setZoneRows((r) => r.filter((_, j) => j !== i))} />}
+              </div>
+            ))}
+            <AddRowBtn label="Add zone" onClick={() => setZoneRows((r) => [...r, { name: '', crimeRate: '', population: '', currentPatrols: '' }])} />
+          </div>
+
+          <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-2.5 space-y-2">
+            <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Crime log</div>
+            {incidentRows.map((inc, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <RowInput value={inc.type} onChange={(nv) => setIncidentRows((r) => r.map((x, j) => (j === i ? { ...x, type: nv } : x)))} placeholder="Incident type" className="flex-1" />
+                <label className="flex items-center gap-1 text-[10px] text-zinc-300 shrink-0">
+                  <input type="checkbox" checked={inc.resolved} onChange={(e) => setIncidentRows((r) => r.map((x, j) => (j === i ? { ...x, resolved: e.target.checked } : x)))} className="accent-green-500" />
+                  resolved
+                </label>
+                {incidentRows.length > 1 && <RemoveRowBtn onClick={() => setIncidentRows((r) => r.filter((_, j) => j !== i))} />}
+              </div>
+            ))}
+            <AddRowBtn label="Add incident" onClick={() => setIncidentRows((r) => [...r, { type: '', resolved: false }])} />
+          </div>
         </div>
+
+        {/* ---- Incident report + DM/publish recipient ---- */}
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Incident report</div>
-          <input type="text" value={incidentType} onChange={(e) => setIncidentType(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="Type" />
-          <input type="text" value={incidentLoc} onChange={(e) => setIncidentLoc(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="Location" />
-          <textarea value={incidentDesc} onChange={(e) => setIncidentDesc(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" />
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <RowInput value={incidentType} onChange={setIncidentType} placeholder="Type" className="w-full" />
+          <RowInput value={incidentLoc} onChange={setIncidentLoc} placeholder="Location" className="w-full" />
+          <RowInput value={incidentOfficer} onChange={setIncidentOfficer} placeholder="Filing officer (optional)" className="w-full" />
+          <textarea value={incidentDesc} onChange={(e) => setIncidentDesc(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="Narrative" />
+          <RowInput value={recipient} onChange={setRecipient} placeholder="DM recipient" className="w-full" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
             <RecallSlot ctl={publishRecall} />
@@ -204,7 +351,7 @@ export function LawEnforcementActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {caseResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{caseResult.caseId}</div>
+            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{caseResult.caseId || 'Untitled case'}</div>
             <div className={cn('text-2xl font-bold', STATUS_COLOR[caseResult.status])}>{caseResult.caseStrength}<span className="text-xs text-zinc-400">/100</span></div>
             <div className={cn('text-[11px] font-semibold capitalize', STATUS_COLOR[caseResult.status])}>{caseResult.status.replace(/-/g, ' ')}</div>
             <div className="text-[10px] text-zinc-400">E {caseResult.evidenceCount} · W {caseResult.witnessCount} · S {caseResult.suspectCount}</div>

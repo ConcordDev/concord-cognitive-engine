@@ -32,7 +32,8 @@ import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import registerGoddessActions from "../domains/goddess.js";
-import { composeDispatch, recordDispatch } from "../lib/goddess-broadcaster.js";
+import { composeDispatch, recordDispatch, composeAndRecord } from "../lib/goddess-broadcaster.js";
+import { getDriftStore, DRIFT_SEVERITY } from "../emergent/drift-monitor.js";
 
 // ── live dispatch mirror ────────────────────────────────────────────────────
 const ACTIONS = new Map();
@@ -414,5 +415,52 @@ describe("goddess — fail-CLOSED on poisoned numeric/string inputs", () => {
       const corr = call("correlate", ctxA(db), { dispatchId: 1, windowSeconds: poison });
       assert.equal(corr.ok, true, `correlate ok on poison window ${String(poison)}`);
     }
+  });
+});
+
+// ── composeAndRecord — the real compose_now/heartbeat path ──────────────────
+// composeAndRecord (server.js "goddess"/"compose_now" and "recent" macros
+// delegate here) is the ONLY caller of composeDispatch outside this test
+// file's own direct seeding. It previously hardcoded driftKind = null
+// forever, so the "I detect a drift: ..." branch in composeDispatch — which
+// the file's own header comment promises ("...and most-recent drift-alert
+// and produces a tone + prose dispatch") — was dead in every real dispatch.
+// This pins the fix: a real, active drift alert on STATE surfaces in the
+// composed dispatch and in the persisted row.
+describe("goddess — composeAndRecord wires the real drift-alert signal", () => {
+  it("surfaces the most recent alert/critical drift alert in the dispatch", async () => {
+    const db = freshDb();
+    const STATE = { worlds: new Map([["concordia-hub", { ecosystem_score: 0.1 }]]) };
+    const store = getDriftStore(STATE);
+    store.alerts.push({
+      alertId: "a1", type: "self_reference", severity: DRIFT_SEVERITY.WARNING,
+      message: "warning only — should NOT surface", data: {}, timestamp: new Date().toISOString(), acknowledged: false,
+    });
+    store.alerts.push({
+      alertId: "a2", type: "goodhart", severity: DRIFT_SEVERITY.CRITICAL,
+      message: "critical — should surface", data: {}, timestamp: new Date().toISOString(), acknowledged: false,
+    });
+
+    const r = await composeAndRecord(db, STATE, "concordia-hub");
+    assert.equal(r.ok, true);
+    assert.match(r.dispatch.body, /metric devours the meaning/, "critical goodhart alert reached the composed prose");
+
+    const rows = db.prepare("SELECT drift_kind, body FROM goddess_dispatches WHERE world_id = ?").all("concordia-hub");
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].drift_kind, "goodhart", "the persisted row carries the real drift kind, not null");
+  });
+
+  it("degrades to no drift line when nothing is alert/critical", async () => {
+    const db = freshDb();
+    const STATE = { worlds: new Map([["concordia-hub", { ecosystem_score: 0.1 }]]) };
+    const store = getDriftStore(STATE);
+    store.alerts.push({
+      alertId: "a1", type: "self_reference", severity: DRIFT_SEVERITY.INFO,
+      message: "info only", data: {}, timestamp: new Date().toISOString(), acknowledged: false,
+    });
+
+    const r = await composeAndRecord(db, STATE, "concordia-hub");
+    assert.equal(r.ok, true);
+    assert.doesNotMatch(r.dispatch.body, /I detect a drift/);
   });
 });

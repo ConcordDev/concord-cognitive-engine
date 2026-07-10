@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, SlidersHorizontal, RotateCcw, Save, Wand2 } from 'lucide-react';
+import { Loader2, SlidersHorizontal, RotateCcw, Save, Wand2, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Photo { id: string; title: string; develop: Record<string, number>; appliedPreset?: string | null }
@@ -87,6 +87,11 @@ export function LightroomDevelopPanel({ onChange }: { onChange: () => void }) {
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     await refresh();
   };
+  const deletePreset = async (presetId: string) => {
+    const r = await lensRun('photography', 'preset-delete', { id: presetId });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Delete failed'); return; }
+    await refresh();
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
@@ -146,10 +151,16 @@ export function LightroomDevelopPanel({ onChange }: { onChange: () => void }) {
               <p className="text-[11px] text-zinc-400 mb-1">Apply a preset</p>
               <div className="flex flex-wrap gap-1">
                 {presets.map((pr) => (
-                  <button key={pr.id} type="button" onClick={() => applyPreset(pr.id)}
-                    className="text-[11px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-300 hover:border-indigo-700/50 hover:text-indigo-300">
-                    {pr.name}
-                  </button>
+                  <span key={pr.id} className="flex items-center gap-1 rounded-full border border-zinc-700 pl-2 pr-1 py-0.5">
+                    <button type="button" onClick={() => applyPreset(pr.id)}
+                      className="text-[11px] text-zinc-300 hover:text-indigo-300">
+                      {pr.name}
+                    </button>
+                    <button aria-label="Delete preset" type="button" onClick={() => deletePreset(pr.id)}
+                      className="text-zinc-600 hover:text-rose-400">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </span>
                 ))}
               </div>
             </div>

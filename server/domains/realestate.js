@@ -46,7 +46,12 @@ export default function registerRealEstateActions(registerLensAction) {
 
   registerLensAction("realestate", "vacancyReport", (ctx, artifact, params) => {
   try {
-    const units = artifact.data?.units || [];
+    // A persisted RentalUnit artifact models exactly one unit, not a
+    // portfolio, so a rent-roll-wide caller (many separate RentalUnit
+    // records rather than one record with a units[] array) passes the
+    // aggregated list via params.units. artifact.data.units stays the
+    // primary source for any caller that does persist a portfolio shape.
+    const units = artifact.data?.units || params.units || [];
     const avgRent = params.avgMarketRent || artifact.data?.avgMarketRent || 0;
     const now = new Date();
     const unitDetails = units.map(u => {

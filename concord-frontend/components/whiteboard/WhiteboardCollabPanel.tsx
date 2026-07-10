@@ -13,7 +13,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Frame, Link2, Globe, Image as ImageIcon, FileText, Video, Presentation,
-  Plus, Trash2, Loader2, Download, Smile, Users, ChevronLeft, ChevronRight, X,
+  Plus, Trash2, Loader2, Download, Smile, Users, ChevronLeft, ChevronRight, X, LogOut, ExternalLink, BarChart2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -26,8 +26,9 @@ interface ConnectorRec { id: string; fromId: string; toId: string; label: string
 interface EmbedRec { id: string; url: string; kind: 'image' | 'video' | 'document' | 'link'; title: string; description: string; previewImage?: string; x: number; y: number; w: number; h: number }
 interface SlideRec { index: number; frameId: string; title: string; camera: { x: number; y: number; width: number; height: number }; memberIds: string[] }
 interface PresenceRec { userId: string; name: string; color: string; x: number; y: number }
+export interface SharedBoardRec { id: string; title: string; ownerId: string; participants: string[]; participantCount: number; elementCount: number; createdAt: string; updatedAt: string }
 
-type CollabTab = 'frames' | 'connectors' | 'embeds' | 'export' | 'live';
+type CollabTab = 'frames' | 'connectors' | 'embeds' | 'export' | 'shared' | 'live';
 
 const REACTION_EMOJI = ['👍', '❤️', '🎉', '🔥', '😂', '👀', '💡', '✅', '❓', '🚀'];
 const EMBED_ICON: Record<EmbedRec['kind'], React.ComponentType<{ className?: string }>> = {
@@ -35,17 +36,29 @@ const EMBED_ICON: Record<EmbedRec['kind'], React.ComponentType<{ className?: str
 };
 
 export function WhiteboardCollabPanel({
-  boardId, shapes, livePresence, lastPeerReaction,
+  boardId, shapes, livePresence, lastPeerReaction, onOpenShared,
 }: {
   boardId: string | null;
   shapes: Shape[];
   livePresence?: Record<string, LivePresence>;
   lastPeerReaction?: LiveReaction | null;
+  /** Open a shared board (by id) in the canvas. Omit if the host doesn't support it. */
+  onOpenShared?: (id: string, title: string) => void;
 }) {
   const [tab, setTab] = useState<CollabTab>('frames');
 
-  if (!boardId) {
-    return <div className="text-xs text-gray-400 italic p-3">Open a board to use frames, connectors, embeds and live collaboration.</div>;
+  // "Shared" is the entry point for browsing/joining boards other people
+  // shared with you — it works with no board open (that's often *why*
+  // you're here). Every other tab operates on the currently-open board.
+  if (!boardId && tab !== 'shared') {
+    return (
+      <div className="p-3">
+        <div className="text-xs text-gray-400 italic mb-2">Open a board to use frames, connectors, embeds and live collaboration.</div>
+        <button onClick={() => setTab('shared')} className="px-2 py-1 text-[11px] rounded border border-sky-500/30 text-sky-200 hover:bg-sky-500/10">
+          Browse shared boards
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -56,6 +69,7 @@ export function WhiteboardCollabPanel({
           { id: 'connectors', label: 'Connectors' },
           { id: 'embeds', label: 'Embeds' },
           { id: 'export', label: 'Export' },
+          { id: 'shared', label: 'Shared' },
           { id: 'live', label: 'Live' },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} className={cn(
@@ -65,11 +79,12 @@ export function WhiteboardCollabPanel({
         ))}
       </nav>
       <div className="flex-1 overflow-y-auto p-3 text-xs">
-        {tab === 'frames' && <FramesTab boardId={boardId} />}
-        {tab === 'connectors' && <ConnectorsTab boardId={boardId} shapes={shapes} />}
-        {tab === 'embeds' && <EmbedsTab boardId={boardId} />}
-        {tab === 'export' && <ExportTab boardId={boardId} />}
-        {tab === 'live' && <LiveTab boardId={boardId} livePresence={livePresence} lastPeerReaction={lastPeerReaction} />}
+        {tab === 'frames' && boardId && <FramesTab boardId={boardId} />}
+        {tab === 'connectors' && boardId && <ConnectorsTab boardId={boardId} shapes={shapes} />}
+        {tab === 'embeds' && boardId && <EmbedsTab boardId={boardId} />}
+        {tab === 'export' && boardId && <ExportTab boardId={boardId} />}
+        {tab === 'shared' && <SharedTab activeBoardId={boardId} onOpenShared={onOpenShared} />}
+        {tab === 'live' && boardId && <LiveTab boardId={boardId} livePresence={livePresence} lastPeerReaction={lastPeerReaction} />}
       </div>
     </div>
   );
@@ -388,6 +403,91 @@ function ExportTab({ boardId }: { boardId: string }) {
             <div className="text-amber-300">{plan.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}</div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Shared boards — browse boards you're a participant of, open one ── */
+function SharedTab({ activeBoardId, onOpenShared }: { activeBoardId: string | null; onOpenShared?: (id: string, title: string) => void }) {
+  const [boards, setBoards] = useState<SharedBoardRec[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tally, setTally] = useState<{ boardId: string; rows: Array<{ elementId: string; count: number }>; total: number } | null>(null);
+  const [leavingId, setLeavingId] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await lensRun({ domain: 'whiteboard', action: 'shared-list', input: {} });
+      if (r.data?.ok) setBoards((r.data.result?.boards || []) as SharedBoardRec[]);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  async function leave(id: string) {
+    setLeavingId(id);
+    try {
+      const r = await lensRun({ domain: 'whiteboard', action: 'leave-shared', input: { id } });
+      if (r.data?.ok) await refresh();
+    } finally { setLeavingId(null); }
+  }
+
+  async function showTally(id: string) {
+    const r = await lensRun({ domain: 'whiteboard', action: 'shared-vote-tally', input: { id } });
+    if (r.data?.ok) {
+      const result = r.data.result as { tally?: Array<{ elementId: string; count: number }>; total?: number };
+      setTally({ boardId: id, rows: result.tally || [], total: result.total || 0 });
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-gray-400">Boards someone shared with you, or that you promoted from a private board via the session workbench's Share action. Opening one joins its live room — edits broadcast to every participant in real time.</p>
+      {loading ? (
+        <div className="text-gray-400"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading…</div>
+      ) : boards.length === 0 ? (
+        <div className="text-gray-400 italic">No shared boards yet. Save a board, then use the session workbench's Share action to invite others.</div>
+      ) : (
+        <ul className="space-y-1.5">
+          {boards.map(b => (
+            <li key={b.id} className={cn('rounded border bg-black/30 p-2', activeBoardId === b.id ? 'border-sky-500/40' : 'border-white/10')}>
+              <div className="flex items-center gap-2">
+                <Users className="w-3.5 h-3.5 text-sky-300 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="truncate text-white">{b.title}{activeBoardId === b.id && <span className="text-sky-300 text-[9px] ml-1.5 uppercase">open</span>}</div>
+                  <div className="text-[10px] text-gray-400 font-mono">{b.participantCount} participant{b.participantCount === 1 ? '' : 's'} · {b.elementCount} elements · updated {new Date(b.updatedAt).toLocaleDateString()}</div>
+                </div>
+                <button
+                  onClick={() => onOpenShared?.(b.id, b.title)}
+                  disabled={!onOpenShared || activeBoardId === b.id}
+                  className="p-1 text-sky-300 hover:bg-sky-500/15 rounded disabled:opacity-30"
+                  title="Open in canvas"
+                ><ExternalLink className="w-3.5 h-3.5" /></button>
+                <button onClick={() => showTally(b.id)} className="p-1 text-gray-400 hover:text-amber-300 hover:bg-amber-500/10 rounded" title="Vote tally">
+                  <BarChart2 className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => leave(b.id)} disabled={leavingId === b.id} className="p-1 text-gray-400 hover:text-rose-300 hover:bg-rose-500/10 rounded disabled:opacity-40" title="Leave">
+                  {leavingId === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              {tally?.boardId === b.id && (
+                <div className="mt-1.5 pt-1.5 border-t border-white/10 text-[10px] text-amber-200">
+                  {tally.total === 0 ? <span className="text-gray-400 italic">No votes cast yet.</span> : (
+                    <ul className="space-y-0.5">
+                      {tally.rows.map(row => (
+                        <li key={row.elementId} className="flex justify-between font-mono">
+                          <span className="text-gray-400 truncate">{row.elementId.slice(0, 16)}</span>
+                          <span>{row.count} vote{row.count === 1 ? '' : 's'}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

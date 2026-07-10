@@ -15,7 +15,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Virtuoso } from 'react-virtuoso';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart,
@@ -49,6 +49,9 @@ import {
   Loader2,
   X,
   Hash,
+  ArrowUpDown,
+  UserCog,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -564,6 +567,27 @@ export default function FeedLensPage() {
   });
   const feedPosts = useMemo(() => feedPages?.pages.flat() ?? [], [feedPages]);
 
+  // Real candidate set for the feed domain's pure filter/rank macros
+  // (rank-for-you / list-feed / saved-search-run / controls-apply — see
+  // components/feed/FeedToolsPanel.tsx's CandidatePost doc comment). These
+  // macros never touch the DB themselves; the caller supplies the actual
+  // post corpus, which lives in the real social-feed system, not the feed
+  // domain's own shadow state.
+  const feedCandidates = useMemo(
+    () =>
+      feedPosts.map((p) => ({
+        id: p.id,
+        authorId: p.author?.id || p.author?.handle || 'unknown',
+        content: p.content,
+        tags: p.tags,
+        likes: p.likes,
+        comments: p.comments,
+        reposts: p.reposts,
+        createdAt: p.createdAt,
+      })),
+    [feedPosts],
+  );
+
   const {
     data: trending,
     isError: isError3,
@@ -641,9 +665,21 @@ export default function FeedLensPage() {
     },
   });
 
+  // Fire-and-forget training signal for the feed domain's real "For You"
+  // affinity model (feed.record-interaction — see FeedToolsPanel's
+  // ForYouTool). Best-effort: a failure here never blocks the real
+  // like/repost/bookmark action, it only means one signal doesn't land.
+  const recordFeedInteraction = useCallback((authorId: string | undefined, kind: 'like' | 'reply' | 'repost' | 'bookmark') => {
+    if (!authorId) return;
+    void lensRun('feed', 'record-interaction', { authorId, kind }).catch(() => { /* best-effort */ });
+  }, []);
+
   const likeMutation = useMutation({
-    mutationFn: (postId: string) => api.post('/api/social/react', { postId, type: 'like' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['feed-posts'] }),
+    mutationFn: ({ postId }: { postId: string; authorId?: string }) => api.post('/api/social/react', { postId, type: 'like' }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+      recordFeedInteraction(vars.authorId, 'like');
+    },
     onError: () => {
       useUIStore
         .getState()
@@ -652,10 +688,11 @@ export default function FeedLensPage() {
   });
 
   const repostMutation = useMutation({
-    mutationFn: (postId: string) => api.post('/api/social/share', { postId }),
-    onSuccess: () => {
+    mutationFn: ({ postId }: { postId: string; authorId?: string }) => api.post('/api/social/share', { postId }),
+    onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
       useUIStore.getState().addToast({ type: 'success', message: 'Reposted!' });
+      recordFeedInteraction(vars.authorId, 'repost');
     },
     onError: () => {
       useUIStore
@@ -665,8 +702,11 @@ export default function FeedLensPage() {
   });
 
   const bookmarkMutation = useMutation({
-    mutationFn: (postId: string) => api.post('/api/social/bookmark', { postId }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['feed-posts'] }),
+    mutationFn: ({ postId }: { postId: string; authorId?: string }) => api.post('/api/social/bookmark', { postId }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+      recordFeedInteraction(vars.authorId, 'bookmark');
+    },
     onError: () => {
       useUIStore
         .getState()
@@ -1320,7 +1360,7 @@ export default function FeedLensPage() {
                                 </button>
                                 <button
                                   onClick={() => {
-                                    bookmarkMutation.mutate(post.id);
+                                    bookmarkMutation.mutate({ postId: post.id, authorId: post.author?.id });
                                     setPostMenuOpen(null);
                                   }}
                                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
@@ -1457,7 +1497,7 @@ export default function FeedLensPage() {
                         </button>
 
                         <button
-                          onClick={() => repostMutation.mutate(post.id)}
+                          onClick={() => repostMutation.mutate({ postId: post.id, authorId: post.author?.id })}
                           className={cn(
                             'flex items-center gap-1.5 group',
                             post.reposted && 'text-neon-green'
@@ -1472,7 +1512,7 @@ export default function FeedLensPage() {
                         </button>
 
                         <button
-                          onClick={() => likeMutation.mutate(post.id)}
+                          onClick={() => likeMutation.mutate({ postId: post.id, authorId: post.author?.id })}
                           className={cn(
                             'flex items-center gap-1.5 group',
                             post.liked && 'text-neon-pink'
@@ -1498,7 +1538,7 @@ export default function FeedLensPage() {
                         <div className="flex items-center gap-0.5">
                           <PullToSubstrate domain="feed" artifactId={post.id} compact />
                           <button
-                            onClick={() => bookmarkMutation.mutate(post.id)}
+                            onClick={() => bookmarkMutation.mutate({ postId: post.id, authorId: post.author?.id })}
                             className="p-1.5 rounded-full hover:bg-neon-cyan/15 hover:text-neon-cyan hover:scale-110 transition-all duration-200"
                           aria-label="Bookmark">
                             <Bookmark
@@ -1869,6 +1909,24 @@ export default function FeedLensPage() {
                 icon: Hash,
                 color: 'text-yellow-400',
               },
+              {
+                action: 'rank',
+                label: 'Rank This Post',
+                icon: ArrowUpDown,
+                color: 'text-orange-400',
+              },
+              {
+                action: 'personalize',
+                label: 'Personalize Score',
+                icon: UserCog,
+                color: 'text-pink-400',
+              },
+              {
+                action: 'cluster_topics',
+                label: 'Topic Clusters',
+                icon: Layers,
+                color: 'text-teal-400',
+              },
             ].map(({ action, label, icon: Icon, color }) => (
               <button
                 key={action}
@@ -2158,6 +2216,101 @@ export default function FeedLensPage() {
                   )}
                 </div>
               )}
+
+              {/* rank — feed.rank (a real macro registered directly in server.js,
+                  distinct from server/domains/feed.js's analytics macros above) */}
+              {feedActionResult._action === 'rank' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Rank — {String((feedActionResult.rank as Record<string, unknown> | undefined)?.postId ?? '')}
+                  </p>
+                  {(() => {
+                    const rank = feedActionResult.rank as
+                      | { score: number; factors: Record<string, number> }
+                      | undefined;
+                    if (!rank) return <p className="text-sm text-gray-400">No rank computed.</p>;
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className="text-lg font-bold text-orange-400">{rank.score}</p>
+                            <p className="text-xs text-gray-400">Final Score</p>
+                          </div>
+                          {Object.entries(rank.factors).map(([k, v]) => (
+                            <div key={k} className="bg-white/5 rounded-lg p-3 text-center">
+                              <p className="text-sm font-bold text-white">{String(v)}</p>
+                              <p className="text-xs text-gray-400">{k}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* personalize — feed.personalize */}
+              {feedActionResult._action === 'personalize' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Personalization score
+                  </p>
+                  {(() => {
+                    const p = feedActionResult.personalized as
+                      | { relevanceScore: number; recencyBoost: number; finalScore: number; matchedTags: number; totalInteractionsAnalyzed: number }
+                      | undefined;
+                    if (!p) return <p className="text-sm text-gray-400">No personalization computed.</p>;
+                    return (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-white/5 rounded-lg p-3 text-center">
+                          <p className="text-lg font-bold text-pink-400">{p.finalScore}</p>
+                          <p className="text-xs text-gray-400">Final Score</p>
+                        </div>
+                        <div className="bg-white/5 rounded-lg p-3 text-center">
+                          <p className="text-sm font-bold text-white">{p.relevanceScore}</p>
+                          <p className="text-xs text-gray-400">Relevance</p>
+                        </div>
+                        <div className="bg-white/5 rounded-lg p-3 text-center">
+                          <p className="text-sm font-bold text-white">{p.recencyBoost}</p>
+                          <p className="text-xs text-gray-400">Recency Boost</p>
+                        </div>
+                        <div className="bg-white/5 rounded-lg p-3 text-center">
+                          <p className="text-sm font-bold text-white">{p.matchedTags} / {p.totalInteractionsAnalyzed}</p>
+                          <p className="text-xs text-gray-400">Matched Tags / Interactions</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* cluster_topics — feed.cluster_topics */}
+              {feedActionResult._action === 'cluster_topics' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Topic clusters — {String(feedActionResult.totalTopics ?? 0)} topics
+                  </p>
+                  {Array.isArray(feedActionResult.clusters) && (feedActionResult.clusters as unknown[]).length === 0 ? (
+                    <p className="text-sm text-gray-400">No tagged posts yet to cluster.</p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {(feedActionResult.clusters as { topic: string; postCount: number; related: { tag: string; cooccurrences: number }[] }[])
+                        .slice(0, 8)
+                        .map((c) => (
+                          <li key={c.topic} className="flex items-center gap-2 text-xs px-2 py-1 rounded bg-white/5">
+                            <span className="text-teal-400 font-mono">#{c.topic}</span>
+                            <span className="text-gray-400">×{c.postCount}</span>
+                            {c.related.length > 0 && (
+                              <span className="text-gray-400 truncate">
+                                related: {c.related.map((r) => `#${r.tag}`).join(', ')}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2176,7 +2329,7 @@ export default function FeedLensPage() {
       {/* 2026 X/Threads parity tools — ranked For You, threads, lists,
           polls, bookmark folders + saved searches, audio Spaces, controls */}
       <section className="mt-6">
-        <FeedToolsPanel />
+        <FeedToolsPanel candidates={feedCandidates} />
       </section>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

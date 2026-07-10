@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -16,26 +15,55 @@ import { ShoppingList } from '@/components/home-improvement/ShoppingList';
 import { HomeInventory } from '@/components/home-improvement/HomeInventory';
 import { ProjectGantt } from '@/components/home-improvement/ProjectGantt';
 import { MaintenanceReminders } from '@/components/home-improvement/MaintenanceReminders';
+import { ProductRecalls } from '@/components/home-improvement/ProductRecalls';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { UniversalActions } from '@/components/lens/UniversalActions';
+import { lensRun } from '@/lib/api/client';
 import {
   Hammer, Plus, Search, Trash2, DollarSign,
   CheckCircle2, Wrench, Layers, ChevronDown,
   Home, ToggleLeft, ToggleRight, Loader2, BarChart3, Calculator,
   Camera, Lightbulb, ShoppingCart, Boxes, GanttChartSquare, CalendarClock,
+  ListChecks, Receipt, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+
+const DOMAIN = 'home-improvement';
+
+// ─── Types mirroring the real STATE-backed substrate in
+// server/domains/homeimprovement.js exactly (room/status enums, field
+// names) — NOT a client-invented shape. See capability map for the
+// grep-verified backend contract this was rebuilt against. ─────────────
+
+interface HiTask { id: string; label: string; done: boolean }
+interface HiExpense { id: string; label: string; amount: number; kind: 'materials' | 'labor' | 'permit' | 'tools' | 'other'; date: string }
+interface HiProject {
+  id: string;
+  name: string;
+  room: string;
+  budget: number;
+  status: 'planning' | 'in_progress' | 'on_hold' | 'complete';
+  notes: string;
+  tasks: HiTask[];
+  expenses: HiExpense[];
+  createdAt: string;
+  taskCount: number;
+  tasksDone: number;
+  spent: number;
+  budgetRemaining: number;
+}
+interface HiDashboard {
+  projects: number; activeProjects: number;
+  totalBudget: number; totalSpent: number;
+  tasks: number; tasksDone: number;
+}
 
 interface ProjectEstimateResult {
   projectType: string;
@@ -57,6 +85,7 @@ interface RoiResult {
   totalInvested: number;
   totalValueAdded: number;
   avgROI: number;
+  message?: string;
 }
 
 interface PermitResult {
@@ -81,35 +110,35 @@ interface ColorPaletteResult {
   coverage: string;
 }
 
-interface ProjectData {
-  name: string;
-  room: string;
-  category: string;
-  status: 'idea' | 'planning' | 'in-progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-  budget: number;
-  spent: number;
-  contractor: string;
-  startDate: string;
-  dueDate: string;
-  materials: string[];
-  notes: string;
-}
+const ROOM_OPTIONS = [
+  { value: 'kitchen', label: 'Kitchen' },
+  { value: 'bathroom', label: 'Bathroom' },
+  { value: 'bedroom', label: 'Bedroom' },
+  { value: 'living_room', label: 'Living Room' },
+  { value: 'basement', label: 'Basement' },
+  { value: 'garage', label: 'Garage' },
+  { value: 'exterior', label: 'Exterior' },
+  { value: 'whole_house', label: 'Whole House' },
+  { value: 'other', label: 'Other' },
+];
+const roomLabel = (room: string) => ROOM_OPTIONS.find(r => r.value === room)?.label
+  || room.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
+const STATUS_OPTIONS: { value: HiProject['status']; label: string }[] = [
+  { value: 'planning', label: 'Planning' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'on_hold', label: 'On Hold' },
+  { value: 'complete', label: 'Complete' },
+];
 const STATUS_COLORS: Record<string, string> = {
-  idea: 'text-gray-400 bg-gray-400/10',
   planning: 'text-yellow-400 bg-amber-500/10',
-  'in-progress': 'text-neon-cyan bg-neon-cyan/10',
-  completed: 'text-neon-green bg-neon-green/10',
+  in_progress: 'text-neon-cyan bg-neon-cyan/10',
+  on_hold: 'text-orange-400 bg-orange-400/10',
+  complete: 'text-neon-green bg-neon-green/10',
 };
+const statusLabel = (s: string) => STATUS_OPTIONS.find(o => o.value === s)?.label || s;
 
-const PRIORITY_COLORS: Record<string, string> = {
-  low: 'text-gray-400',
-  medium: 'text-yellow-400',
-  high: 'text-red-400',
-};
-
-const ROOMS = ['Kitchen', 'Bathroom', 'Bedroom', 'Living Room', 'Garage', 'Basement', 'Exterior', 'Garden', 'Office', 'Other'];
+const EXPENSE_KINDS: HiExpense['kind'][] = ['materials', 'labor', 'permit', 'tools', 'other'];
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -144,26 +173,51 @@ export default function HomeImprovementLensPage() {
     { lensId: 'home-improvement' }
   );
   const [beforeAfterView, setBeforeAfterView] = useState<'before' | 'after'>('before');
-  const [newProject, setNewProject] = useState({ name: '', room: 'Kitchen', priority: 'medium' as 'low' | 'medium' | 'high', budget: 0 });
+  const [newProject, setNewProject] = useState({ name: '', room: 'kitchen', budget: 0, notes: '' });
 
-  const {
-    items, isLoading, isError, error, refetch,
-    create, createMut, remove, deleteMut,
-  } = useLensData<ProjectData>('home-improvement', 'project', { seed: [] });
+  // ─── Real project/task/expense substrate (project-list / project-add /
+  // project-status / project-delete / task-add / task-toggle / expense-log /
+  // home-improvement-dashboard) — replaces a generic `useLensData('home-
+  // improvement','project',...)` artifact store that had zero backing
+  // macros and diverged in every field name from this real system. ──────
+  const [projects, setProjects] = useState<HiProject[]>([]);
+  const [dashboard, setDashboard] = useState<HiDashboard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [taskDraft, setTaskDraft] = useState('');
+  const [expenseDraft, setExpenseDraft] = useState({ label: '', amount: '', kind: 'materials' as HiExpense['kind'] });
 
-  const projects = useMemo(() =>
-    items.map(item => ({ id: item.id, ...item.data, name: item.title || item.data?.name || 'Untitled Project' }))
-      .filter(p => !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.room?.toLowerCase().includes(search.toLowerCase()))
+  const loadProjects = useCallback(async () => {
+    setLoading(true);
+    const { data } = await lensRun<{ projects: HiProject[] }>(DOMAIN, 'project-list', {});
+    if (data.ok && data.result) setProjects(data.result.projects || []);
+    setLoading(false);
+  }, []);
+
+  const loadDashboard = useCallback(async () => {
+    const { data } = await lensRun<HiDashboard>(DOMAIN, 'home-improvement-dashboard', {});
+    if (data.ok && data.result) setDashboard(data.result);
+  }, []);
+
+  const refreshAll = useCallback(async () => { await Promise.all([loadProjects(), loadDashboard()]); }, [loadProjects, loadDashboard]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { refreshAll(); }, []);
+
+  const filteredProjects = useMemo(() =>
+    projects
+      .filter(p => !search || p.name?.toLowerCase().includes(search.toLowerCase()) || roomLabel(p.room).toLowerCase().includes(search.toLowerCase()))
       .filter(p => !statusFilter || p.status === statusFilter),
-    [items, search, statusFilter]
+    [projects, search, statusFilter]
   );
 
   const stats = useMemo(() => ({
     total: projects.length,
-    active: projects.filter(p => p.status === 'in-progress').length,
+    active: projects.filter(p => p.status === 'in_progress').length,
     totalBudget: projects.reduce((s, p) => s + (p.budget || 0), 0),
     totalSpent: projects.reduce((s, p) => s + (p.spent || 0), 0),
-    completed: projects.filter(p => p.status === 'completed').length,
+    completed: projects.filter(p => p.status === 'complete').length,
   }), [projects]);
 
   const budgetRemaining = stats.totalBudget - stats.totalSpent;
@@ -171,62 +225,86 @@ export default function HomeImprovementLensPage() {
 
   // Room-by-room grouping
   const roomGroups = useMemo(() => {
-    const groups: Record<string, typeof projects> = {};
-    projects.forEach(p => {
-      const room = p.room || 'Other';
+    const groups: Record<string, HiProject[]> = {};
+    filteredProjects.forEach(p => {
+      const room = p.room || 'other';
       if (!groups[room]) groups[room] = [];
       groups[room].push(p);
     });
     return groups;
-  }, [projects]);
+  }, [filteredProjects]);
 
-  // Contractor data
-  const contractors = useMemo(() => {
-    const map: Record<string, { name: string; projects: number; totalBudget: number }> = {};
-    projects.forEach(p => {
-      if (p.contractor) {
-        if (!map[p.contractor]) map[p.contractor] = { name: p.contractor, projects: 0, totalBudget: 0 };
-        map[p.contractor].projects++;
-        map[p.contractor].totalBudget += p.budget || 0;
-      }
-    });
-    return Object.values(map);
-  }, [projects]);
-
-  const runAction = useRunArtifact('home-improvement');
-  const [hiActionResult, setHiActionResult] = useState<{ action: string; data: unknown } | null>(null);
-
-  const handleHiAction = useCallback((action: string) => {
-    const artifactId = items[0]?.id;
-    if (!artifactId) return;
-    runAction.mutate(
-      { id: artifactId, action, params: {} },
-      {
-        onSuccess: (res) => setHiActionResult({ action, data: res.result }),
-        onError: (e) => {
-          console.error(`Action failed:`, e);
-          setHiActionResult({ action, data: { error: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` } });
-        },
-      }
-    );
-  }, [items, runAction]);
-
-  const handleCreate = useCallback(async () => {
+  const createProject = useCallback(async () => {
     if (!newProject.name.trim()) return;
-    await create({
-      title: newProject.name,
-      data: {
-        name: newProject.name, room: newProject.room, category: '',
-        status: 'idea', priority: newProject.priority, budget: newProject.budget,
-        spent: 0, contractor: '', startDate: '', dueDate: '',
-        materials: [], notes: '',
-      },
-    });
-    setNewProject({ name: '', room: 'Kitchen', priority: 'medium', budget: 0 });
-    setShowCreate(false);
-  }, [newProject, create]);
+    setBusy(true);
+    const { data } = await lensRun(DOMAIN, 'project-add', newProject);
+    setBusy(false);
+    if (data.ok) {
+      setNewProject({ name: '', room: 'kitchen', budget: 0, notes: '' });
+      setShowCreate(false);
+      await refreshAll();
+    }
+  }, [newProject, refreshAll]);
 
-  if (isError) return <div className="flex items-center justify-center h-full p-8"><ErrorState error={error?.message} onRetry={refetch} /></div>;
+  const setStatus = useCallback(async (id: string, status: HiProject['status']) => {
+    setBusy(true);
+    await lensRun(DOMAIN, 'project-status', { id, status });
+    setBusy(false);
+    await refreshAll();
+  }, [refreshAll]);
+
+  const deleteProject = useCallback(async (id: string) => {
+    setBusy(true);
+    await lensRun(DOMAIN, 'project-delete', { id });
+    setBusy(false);
+    if (expandedId === id) setExpandedId(null);
+    await refreshAll();
+  }, [refreshAll, expandedId]);
+
+  const addTask = useCallback(async (projectId: string) => {
+    if (!taskDraft.trim()) return;
+    setBusy(true);
+    await lensRun(DOMAIN, 'task-add', { projectId, label: taskDraft });
+    setTaskDraft('');
+    setBusy(false);
+    await refreshAll();
+  }, [taskDraft, refreshAll]);
+
+  const toggleTask = useCallback(async (projectId: string, taskId: string) => {
+    setBusy(true);
+    await lensRun(DOMAIN, 'task-toggle', { projectId, taskId });
+    setBusy(false);
+    await refreshAll();
+  }, [refreshAll]);
+
+  const logExpense = useCallback(async (projectId: string) => {
+    if (!expenseDraft.label.trim() || !expenseDraft.amount) return;
+    setBusy(true);
+    await lensRun(DOMAIN, 'expense-log', { projectId, label: expenseDraft.label, amount: Number(expenseDraft.amount), kind: expenseDraft.kind });
+    setExpenseDraft({ label: '', amount: '', kind: 'materials' });
+    setBusy(false);
+    await refreshAll();
+  }, [expenseDraft, refreshAll]);
+
+  // ─── Planning calculators (projectEstimate / roiCalculator / permitCheck
+  // / colorPalette) — real handlers, called directly through the virtual-
+  // artifact `lensRun` path with real input forms instead of the previous
+  // useRunArtifact() flow, which required a persisted "project" artifact
+  // that never existed and left the whole panel permanently disabled. ───
+  const [calcPending, setCalcPending] = useState<string | null>(null);
+  const [hiActionResult, setHiActionResult] = useState<{ action: string; data: unknown } | null>(null);
+  const [estimateForm, setEstimateForm] = useState({ squareFootage: '400', projectType: 'kitchen' });
+  const [permitForm, setPermitForm] = useState({ projectType: 'deck' });
+  const [paletteForm, setPaletteForm] = useState({ room: 'living room', style: 'modern', squareFootage: '' });
+  const [roiRows, setRoiRows] = useState([{ name: '', cost: '', valueAdded: '' }]);
+
+  const runCalc = useCallback(async (action: string, params: Record<string, unknown>) => {
+    setCalcPending(action);
+    const { data } = await lensRun(DOMAIN, action, params);
+    setCalcPending(null);
+    if (data.ok) setHiActionResult({ action, data: data.result });
+    else setHiActionResult({ action, data: { error: data.error || 'Action failed' } });
+  }, []);
 
   const tabs = [
     { key: 'projects' as const, label: 'Projects', icon: Hammer },
@@ -265,8 +343,6 @@ export default function HomeImprovementLensPage() {
         </button>
       </motion.header>
 
-      <UniversalActions domain="home-improvement" artifactId={items[0]?.id} compact />
-
       <AnimatePresence>
         {showCreate && (
           <motion.div
@@ -279,15 +355,13 @@ export default function HomeImprovementLensPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input value={newProject.name} onChange={e => setNewProject(p => ({ ...p, name: e.target.value }))} placeholder="Project name..." className="input-lattice" />
               <select value={newProject.room} onChange={e => setNewProject(p => ({ ...p, room: e.target.value }))} className="input-lattice">
-                {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-              <select value={newProject.priority} onChange={e => setNewProject(p => ({ ...p, priority: e.target.value as ProjectData['priority'] }))} className="input-lattice">
-                <option value="low">Low Priority</option><option value="medium">Medium Priority</option><option value="high">High Priority</option>
+                {ROOM_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
               <input type="number" value={newProject.budget || ''} onChange={e => setNewProject(p => ({ ...p, budget: Number(e.target.value) }))} placeholder="Budget..." className="input-lattice" />
+              <input value={newProject.notes} onChange={e => setNewProject(p => ({ ...p, notes: e.target.value }))} placeholder="Notes (optional)..." className="input-lattice" />
             </div>
-            <button onClick={handleCreate} disabled={createMut.isPending || !newProject.name.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
-              {createMut.isPending ? 'Creating...' : 'Create Project'}
+            <button onClick={createProject} disabled={busy || !newProject.name.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
+              {busy ? 'Creating...' : 'Create Project'}
             </button>
           </motion.div>
         )}
@@ -314,6 +388,12 @@ export default function HomeImprovementLensPage() {
           </motion.div>
         ))}
       </div>
+      {dashboard && dashboard.tasks > 0 && (
+        <p className="text-xs text-gray-400 -mt-3 flex items-center gap-1.5">
+          <ListChecks className="w-3.5 h-3.5 text-neon-cyan" />
+          {dashboard.tasksDone}/{dashboard.tasks} tasks done across all projects
+        </p>
+      )}
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1">
@@ -351,8 +431,7 @@ export default function HomeImprovementLensPage() {
               </div>
               <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input-lattice w-40">
                 <option value="">All Status</option>
-                <option value="idea">Idea</option><option value="planning">Planning</option>
-                <option value="in-progress">In Progress</option><option value="completed">Completed</option>
+                {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
 
@@ -362,50 +441,140 @@ export default function HomeImprovementLensPage() {
                 <div key={room} className="space-y-2">
                   <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
                     <Home className="w-3.5 h-3.5 text-amber-400" />
-                    {room}
+                    {roomLabel(room)}
                     <span className="text-xs text-gray-400">({roomProjects.length})</span>
                   </h3>
-                  {roomProjects.map((p, i) => (
+                  {roomProjects.map((p, i) => {
+                    const expanded = expandedId === p.id;
+                    return (
                     <motion.div
                       key={p.id}
                       custom={i}
                       variants={cardVariants}
                       initial="hidden"
                       animate="visible"
-                      className="panel p-4 flex items-center justify-between"
+                      className="panel p-4 space-y-3"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-white truncate">{p.name}</h3>
-                          <span className={cn('text-xs px-2 py-0.5 rounded', STATUS_COLORS[p.status || 'idea'])}>{p.status}</span>
-                          <span className={cn('text-xs', PRIORITY_COLORS[p.priority || 'medium'])}>{p.priority}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-400">
-                          {p.budget > 0 && (
-                            <span className="flex items-center gap-1">
-                              <DollarSign className="w-3 h-3" />
-                              {p.spent?.toLocaleString() || 0} / {p.budget.toLocaleString()}
-                            </span>
-                          )}
-                          {p.contractor && <span className="flex items-center gap-1"><Wrench className="w-3 h-3" />{p.contractor}</span>}
-                        </div>
-                        {p.budget > 0 && (
-                          <div className="mt-2 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
-                            <div
-                              className={cn('h-full rounded-full transition-all', (p.spent || 0) > p.budget ? 'bg-red-400' : 'bg-neon-green')}
-                              style={{ width: `${Math.min(100, ((p.spent || 0) / p.budget) * 100)}%` }}
-                            />
+                      <div className="flex items-center justify-between">
+                        <button
+                          onClick={() => setExpandedId(expanded ? null : p.id)}
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-white truncate">{p.name}</h3>
+                            <span className={cn('text-xs px-2 py-0.5 rounded', STATUS_COLORS[p.status])}>{statusLabel(p.status)}</span>
+                            {p.taskCount > 0 && (
+                              <span className="text-xs text-gray-400 flex items-center gap-1">
+                                <ListChecks className="w-3 h-3" />{p.tasksDone}/{p.taskCount}
+                              </span>
+                            )}
                           </div>
-                        )}
+                          <div className="flex items-center gap-4 text-sm text-gray-400">
+                            {p.budget > 0 && (
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="w-3 h-3" />
+                                {p.spent?.toLocaleString() || 0} / {p.budget.toLocaleString()}
+                              </span>
+                            )}
+                            {p.notes && <span className="truncate max-w-xs">{p.notes}</span>}
+                          </div>
+                          {p.budget > 0 && (
+                            <div className="mt-2 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
+                              <div
+                                className={cn('h-full rounded-full transition-all', (p.spent || 0) > p.budget ? 'bg-red-400' : 'bg-neon-green')}
+                                style={{ width: `${Math.min(100, ((p.spent || 0) / p.budget) * 100)}%` }}
+                              />
+                            </div>
+                          )}
+                        </button>
+                        <div className="flex items-center gap-1 ml-3">
+                          <ChevronDown className={cn('w-4 h-4 text-gray-500 transition-transform', expanded && 'rotate-180')} onClick={() => setExpandedId(expanded ? null : p.id)} />
+                          <button onClick={() => deleteProject(p.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+                        </div>
                       </div>
-                      <button onClick={() => remove(p.id)} disabled={deleteMut.isPending} className="text-gray-400 hover:text-red-400 p-1 ml-3">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+
+                      <AnimatePresence>
+                        {expanded && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden border-t border-lattice-border pt-3 space-y-3"
+                          >
+                            {/* Status */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs text-gray-400">Status:</span>
+                              {STATUS_OPTIONS.map(o => (
+                                <button
+                                  key={o.value}
+                                  onClick={() => setStatus(p.id, o.value)}
+                                  disabled={busy}
+                                  className={cn(
+                                    'text-xs px-2 py-1 rounded border transition-colors',
+                                    p.status === o.value
+                                      ? cn(STATUS_COLORS[o.value], 'border-current')
+                                      : 'text-gray-500 border-lattice-border hover:text-white'
+                                  )}
+                                >{o.label}</button>
+                              ))}
+                            </div>
+
+                            {/* Tasks */}
+                            <div className="space-y-1.5">
+                              <p className="text-xs font-semibold text-gray-300 flex items-center gap-1.5"><ListChecks className="w-3.5 h-3.5" />Tasks</p>
+                              {p.tasks.length === 0 && <p className="text-xs text-gray-500">No tasks yet.</p>}
+                              {p.tasks.map(t => (
+                                <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                                  <input type="checkbox" checked={t.done} onChange={() => toggleTask(p.id, t.id)} disabled={busy} className="accent-neon-green" />
+                                  <span className={cn(t.done ? 'text-gray-500 line-through' : 'text-gray-200')}>{t.label}</span>
+                                </label>
+                              ))}
+                              <div className="flex gap-2 pt-1">
+                                <input
+                                  value={taskDraft} onChange={e => setTaskDraft(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') addTask(p.id); }}
+                                  placeholder="Add a task..." className="input-lattice text-xs flex-1"
+                                />
+                                <button onClick={() => addTask(p.id)} disabled={busy || !taskDraft.trim()} className="btn-neon text-xs px-3 disabled:opacity-50">Add</button>
+                              </div>
+                            </div>
+
+                            {/* Expenses */}
+                            <div className="space-y-1.5">
+                              <p className="text-xs font-semibold text-gray-300 flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" />Expenses</p>
+                              {p.expenses.length === 0 && <p className="text-xs text-gray-500">No expenses logged yet.</p>}
+                              {p.expenses.map(ex => (
+                                <div key={ex.id} className="flex items-center justify-between text-xs text-gray-300">
+                                  <span>{ex.label} <span className="text-gray-500">({ex.kind})</span></span>
+                                  <span className="text-neon-green">${ex.amount.toLocaleString()}</span>
+                                </div>
+                              ))}
+                              <div className="grid grid-cols-4 gap-2 pt-1">
+                                <input
+                                  value={expenseDraft.label} onChange={e => setExpenseDraft(d => ({ ...d, label: e.target.value }))}
+                                  placeholder="Item" className="input-lattice text-xs col-span-2"
+                                />
+                                <input
+                                  value={expenseDraft.amount} onChange={e => setExpenseDraft(d => ({ ...d, amount: e.target.value }))}
+                                  type="number" placeholder="$" className="input-lattice text-xs"
+                                />
+                                <select value={expenseDraft.kind} onChange={e => setExpenseDraft(d => ({ ...d, kind: e.target.value as HiExpense['kind'] }))} className="input-lattice text-xs">
+                                  {EXPENSE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                                </select>
+                              </div>
+                              <button onClick={() => logExpense(p.id)} disabled={busy || !expenseDraft.label.trim() || !expenseDraft.amount} className="btn-neon green text-xs w-full disabled:opacity-50">Log expense</button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </div>
               ))
             ) : (
               <div className="panel p-6 text-center text-gray-400">
-                {isLoading ? 'Loading projects...' : 'No home improvement projects yet. Plan your first renovation or repair.'}
+                {loading ? 'Loading projects...' : 'No home improvement projects yet. Plan your first renovation or repair.'}
               </div>
             )}
 
@@ -541,18 +710,6 @@ export default function HomeImprovementLensPage() {
         {activeTab === 'pros' && (
           <motion.div key="pros" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="panel p-4">
             <ContractorDirectory />
-            {contractors.length > 0 && (
-              <div className="mt-4 border-t border-lattice-border pt-3">
-                <p className="text-xs text-gray-400 mb-2">Contractors referenced on project cards</p>
-                <div className="flex flex-wrap gap-2">
-                  {contractors.map((c) => (
-                    <span key={c.name} className="text-xs px-2 py-1 bg-lattice-surface rounded text-gray-300">
-                      {c.name} · {c.projects} project{c.projects !== 1 ? 's' : ''}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </motion.div>
         )}
 
@@ -577,39 +734,81 @@ export default function HomeImprovementLensPage() {
 
       <RealtimeDataPanel domain="home-improvement" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
-      {/* AI Actions Panel */}
+      {/* Planning calculators */}
       <div className="panel p-4 space-y-4">
         <h2 className="font-semibold flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-amber-400" />
-          AI Home Improvement Actions
+          Planning Calculators
         </h2>
-        {!items[0]?.id && (
-          <p className="text-xs text-gray-400">Create a project to run AI actions.</p>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[
-            { action: 'projectEstimate', label: 'Project Estimate', icon: Hammer, color: 'text-amber-400' },
-            { action: 'roiCalculator', label: 'ROI Calculator', icon: Calculator, color: 'text-neon-green' },
-            { action: 'permitCheck', label: 'Permit Check', icon: CheckCircle2, color: 'text-neon-cyan' },
-            { action: 'colorPalette', label: 'Color Palette', icon: Home, color: 'text-neon-purple' },
-          ].map(({ action, label, icon: Icon, color }) => (
-            <button
-              key={action}
-              onClick={() => handleHiAction(action)}
-              disabled={runAction.isPending || !items[0]?.id}
-              className="flex items-center gap-2 px-4 py-3 bg-lattice-surface border border-lattice-border rounded-lg text-sm font-medium text-white hover:border-amber-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {runAction.isPending && hiActionResult?.action !== action ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Icon className={`w-4 h-4 ${color}`} />
-              )}
-              {label}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Project estimate */}
+          <div className="lens-card space-y-2">
+            <p className="text-xs font-semibold text-amber-400 flex items-center gap-1.5"><Hammer className="w-3.5 h-3.5" />Project Estimate</p>
+            <div className="flex gap-2">
+              <input type="number" value={estimateForm.squareFootage} onChange={e => setEstimateForm(f => ({ ...f, squareFootage: e.target.value }))} placeholder="Sq ft" className="input-lattice text-xs flex-1" />
+              <select value={estimateForm.projectType} onChange={e => setEstimateForm(f => ({ ...f, projectType: e.target.value }))} className="input-lattice text-xs flex-1">
+                {['kitchen', 'bathroom', 'flooring', 'painting', 'roofing', 'deck', 'basement', 'addition', 'general'].map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <button onClick={() => runCalc('projectEstimate', estimateForm)} disabled={calcPending === 'projectEstimate'} className="btn-neon text-xs w-full disabled:opacity-50">
+              {calcPending === 'projectEstimate' ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : 'Estimate'}
             </button>
-          ))}
+          </div>
+
+          {/* Permit check */}
+          <div className="lens-card space-y-2">
+            <p className="text-xs font-semibold text-neon-cyan flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" />Permit Check</p>
+            <input value={permitForm.projectType} onChange={e => setPermitForm({ projectType: e.target.value })} placeholder="e.g. deck, electrical, painting" className="input-lattice text-xs w-full" />
+            <button onClick={() => runCalc('permitCheck', permitForm)} disabled={calcPending === 'permitCheck' || !permitForm.projectType.trim()} className="btn-neon text-xs w-full disabled:opacity-50">
+              {calcPending === 'permitCheck' ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : 'Check permit'}
+            </button>
+          </div>
+
+          {/* Color palette */}
+          <div className="lens-card space-y-2">
+            <p className="text-xs font-semibold text-neon-purple flex items-center gap-1.5"><Home className="w-3.5 h-3.5" />Color Palette</p>
+            <div className="flex gap-2">
+              <input value={paletteForm.room} onChange={e => setPaletteForm(f => ({ ...f, room: e.target.value }))} placeholder="Room" className="input-lattice text-xs flex-1" />
+              <select value={paletteForm.style} onChange={e => setPaletteForm(f => ({ ...f, style: e.target.value }))} className="input-lattice text-xs flex-1">
+                {['modern', 'farmhouse', 'coastal', 'traditional', 'minimalist'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <button onClick={() => runCalc('colorPalette', paletteForm)} disabled={calcPending === 'colorPalette'} className="btn-neon text-xs w-full disabled:opacity-50">
+              {calcPending === 'colorPalette' ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : 'Suggest palette'}
+            </button>
+          </div>
+
+          {/* ROI calculator */}
+          <div className="lens-card space-y-2">
+            <p className="text-xs font-semibold text-neon-green flex items-center gap-1.5"><Calculator className="w-3.5 h-3.5" />ROI Calculator</p>
+            {roiRows.map((row, i) => (
+              <div key={i} className="flex gap-1.5">
+                <input value={row.name} onChange={e => setRoiRows(rows => rows.map((r, j) => j === i ? { ...r, name: e.target.value } : r))} placeholder="Project" className="input-lattice text-xs flex-1 min-w-0" />
+                <input value={row.cost} onChange={e => setRoiRows(rows => rows.map((r, j) => j === i ? { ...r, cost: e.target.value } : r))} type="number" placeholder="Cost" className="input-lattice text-xs w-16" />
+                <input value={row.valueAdded} onChange={e => setRoiRows(rows => rows.map((r, j) => j === i ? { ...r, valueAdded: e.target.value } : r))} type="number" placeholder="Value+" className="input-lattice text-xs w-16" />
+                {roiRows.length > 1 && (
+                  <button onClick={() => setRoiRows(rows => rows.filter((_, j) => j !== i))} className="text-gray-500 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
+                )}
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <button onClick={() => setRoiRows(rows => [...rows, { name: '', cost: '', valueAdded: '' }])} className="text-xs text-gray-400 hover:text-white">+ row</button>
+              <button
+                onClick={() => runCalc('roiCalculator', { projects: roiRows.filter(r => r.name.trim()).map(r => ({ name: r.name, cost: r.cost, valueAdded: r.valueAdded })) })}
+                disabled={calcPending === 'roiCalculator' || roiRows.every(r => !r.name.trim())}
+                className="btn-neon text-xs flex-1 disabled:opacity-50"
+              >
+                {calcPending === 'roiCalculator' ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : 'Calculate ROI'}
+              </button>
+            </div>
+          </div>
         </div>
 
-        {hiActionResult && !runAction.isPending && (() => {
+        {hiActionResult && !calcPending && (() => {
+          if ((hiActionResult.data as { error?: string })?.error) {
+            return <p className="text-xs text-red-400 pt-2 border-t border-lattice-border">{(hiActionResult.data as { error: string }).error}</p>;
+          }
           if (hiActionResult.action === 'projectEstimate') {
             const d = hiActionResult.data as ProjectEstimateResult;
             return (
@@ -645,6 +844,7 @@ export default function HomeImprovementLensPage() {
           }
           if (hiActionResult.action === 'roiCalculator') {
             const d = hiActionResult.data as RoiResult;
+            if (d.message) return <p className="text-xs text-gray-400 pt-2 border-t border-lattice-border">{d.message}</p>;
             return (
               <div className="space-y-3 pt-2 border-t border-lattice-border">
                 <h3 className="text-sm font-semibold text-neon-green">ROI Calculator</h3>
@@ -757,7 +957,7 @@ export default function HomeImprovementLensPage() {
         <HomeImprovementFeed />
       </section>
     </div>
-          <section className="mt-4"><LensFeedButton domain="home-improvement" label="Live product-recall feed" /></section>
+          <section className="mt-4"><ProductRecalls /></section>
           <RecentMineCard domain="home-improvement" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="home-improvement" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="home-improvement" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

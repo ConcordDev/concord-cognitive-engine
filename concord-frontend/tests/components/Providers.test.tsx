@@ -1,6 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 
+// Providers now reads the route (shell-diet: gates the world-lens-only
+// providers on it) — default to a non-world route so the world-lens-only
+// dynamic() providers (SoundSystem/AdaptiveComplexity/HiddenAssistance/
+// SecretsDiscovery) never even attempt to mount in this suite, matching
+// their pre-existing "not exercised by this test file" scope.
+let mockPathname = '/dashboard';
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockPathname,
+}));
+
 // Mock modules
 const mockConnectSocket = vi.fn();
 const mockDisconnectSocket = vi.fn();
@@ -68,6 +78,7 @@ import { Providers } from '@/components/Providers';
 describe('Providers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPathname = '/dashboard';
     mockApiGet.mockResolvedValue({ data: { scopes: ['read', 'write'] } });
   });
 

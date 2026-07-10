@@ -1148,6 +1148,15 @@ Constraints:
     return { ok: true, result: { submission } };
   });
 
+  registerLensAction("education", "assignments-submissions", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const assignmentId = String(params.assignmentId || "");
+    if (!assignmentId) return { ok: false, error: "assignmentId required" };
+    const submissions = ensureEduBucket(s, "submissions", userId).filter(sb => sb.assignmentId === assignmentId);
+    return { ok: true, result: { submissions, total: submissions.length } };
+  });
+
   registerLensAction("education", "assignments-peer-review", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
