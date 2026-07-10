@@ -36,7 +36,11 @@ import { ds } from '@/lib/design-system';
 
 const MIN_WITHDRAWAL = 20;
 const MAX_DAILY_WITHDRAWAL = 5_000;
-const PLATFORM_FEE_PERCENT = 5; // 5% platform fee on withdrawals
+// Must match calculateFee("WITHDRAWAL", amount) in server/economy/fees.js
+// (FEES.WITHDRAWAL = 0.0146 — the same constitutional 1.46% universal rate
+// used for TOKEN_PURCHASE/TRANSFER/WITHDRAWAL). This is a display-only
+// mirror of that constant, not a second source of truth for the fee itself.
+const PLATFORM_FEE_PERCENT = 1.46;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -123,8 +127,10 @@ function WithdrawFlow({
 
   // Parsed amount
   const parsedAmount = parseInt(amount, 10) || 0;
-  const fee = Math.ceil(parsedAmount * (PLATFORM_FEE_PERCENT / 100));
-  const netPayout = parsedAmount - fee;
+  // Cent-precise rounding matching calculateFee's Math.round(amount * rate * 100) / 100 —
+  // the previous Math.ceil()-to-whole-CC rounding overstated the fee shown to the user.
+  const fee = Math.round(parsedAmount * (PLATFORM_FEE_PERCENT / 100) * 100) / 100;
+  const netPayout = Math.round((parsedAmount - fee) * 100) / 100;
   const isValidAmount =
     parsedAmount >= MIN_WITHDRAWAL &&
     parsedAmount <= MAX_DAILY_WITHDRAWAL &&
@@ -360,13 +366,13 @@ function WithdrawFlow({
                         Platform Fee ({PLATFORM_FEE_PERCENT}%)
                         <Info className="w-3 h-3" />
                       </span>
-                      <span className="font-mono text-red-400">-{fee.toLocaleString()} CC</span>
+                      <span className="font-mono text-red-400">-{fee.toFixed(2)} CC</span>
                     </div>
                     <div className="border-t border-lattice-border pt-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-white">You Receive</span>
                         <span className="font-mono text-lg font-bold text-neon-green">
-                          ${netPayout.toLocaleString()}.00
+                          ${netPayout.toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -457,13 +463,13 @@ function WithdrawFlow({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-400">Fee ({PLATFORM_FEE_PERCENT}%)</span>
-                <span className="font-mono text-red-400">-{fee.toLocaleString()} CC</span>
+                <span className="font-mono text-red-400">-{fee.toFixed(2)} CC</span>
               </div>
               <div className="border-t border-lattice-border pt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-white">Payout Amount</span>
                   <span className="font-mono text-xl font-bold text-neon-green">
-                    ${netPayout.toLocaleString()}.00
+                    ${netPayout.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -523,10 +529,10 @@ function WithdrawFlow({
               <span className="text-neon-green font-mono font-bold">
                 {parsedAmount.toLocaleString()} CC
               </span>{' '}
-              (${netPayout.toLocaleString()} after fees) has been submitted for review.
+              (${netPayout.toFixed(2)} after fees) has been submitted for review.
             </p>
             <p className="text-xs text-gray-400">
-              You will receive ${netPayout.toLocaleString()}.00 within 1-3 business days.
+              You will receive ${netPayout.toFixed(2)} within 1-3 business days.
             </p>
             <button
               onClick={() => {

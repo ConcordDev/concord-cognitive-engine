@@ -63,12 +63,9 @@ import { StripeConnectPanel } from '@/components/wallet/StripeConnectPanel';
 import { WalletWidget } from '@/components/wallet/WalletWidget';
 import { TokenBalance } from '@/components/economy/TokenBalance';
 import { TransactionHistory } from '@/components/economy/TransactionHistory';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { BountiesAndFutures } from '@/components/economy/BountiesAndFutures';
 import { WalletBadge } from '@/components/economy/WalletBadge';
-import { Zap, X as XIcon } from 'lucide-react';
+import { X as XIcon } from 'lucide-react';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -175,23 +172,6 @@ function WalletPageInner() {
     ],
     { lensId: 'wallet' }
   );
-
-  const { items: walletItems } = useLensData<Record<string, unknown>>('wallet', 'account');
-  const runWalletAction = useRunArtifact('wallet');
-  const [walletActionResult, setWalletActionResult] = useState<{ action: string; result: Record<string, unknown> } | null>(null);
-  const [walletActiveAction, setWalletActiveAction] = useState<string | null>(null);
-
-  const handleWalletAction = useCallback(async (action: string) => {
-    const id = walletItems[0]?.id;
-    if (!id) return;
-    setWalletActiveAction(action);
-    try {
-      const res = await runWalletAction.mutateAsync({ id, action });
-      if (res.ok) setWalletActionResult({ action, result: res.result as Record<string, unknown> });
-    } finally {
-      setWalletActiveAction(null);
-    }
-  }, [walletItems, runWalletAction]);
 
   // Check for Stripe return params
   const isStripeReturn =
@@ -415,8 +395,6 @@ function WalletPageInner() {
           <WalletWidget compact className="ml-auto" />
         </div>
       </div>
-
-      <UniversalActions domain="wallet" artifactId={null} compact />
 
       {/* ── Balance Card ──────────────────────────────────────────────────── */}
       <motion.div
@@ -1047,105 +1025,6 @@ function WalletPageInner() {
         )}
       </AnimatePresence>
 
-      {/* Wallet Actions Panel */}
-      <div className="p-4 border-t border-lattice-border bg-lattice-surface/30">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-neon-cyan" />
-            Wallet Actions
-          </h3>
-          {walletActionResult && (
-            <button onClick={() => setWalletActionResult(null)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400" aria-label="Xicon">
-              <XIcon className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {(['portfolioBalance', 'transactionCategorize', 'budgetCheck', 'spendingTrend'] as const).map((action) => (
-            <button
-              key={action}
-              onClick={() => handleWalletAction(action)}
-              disabled={!walletItems[0]?.id || walletActiveAction !== null}
-              className="px-3 py-1.5 text-sm rounded-lg bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {walletActiveAction === action ? (
-                <div className="w-3 h-3 border border-neon-cyan border-t-transparent rounded-full animate-spin" />
-              ) : null}
-              {action === 'portfolioBalance' ? 'Portfolio Balance' : action === 'transactionCategorize' ? 'Categorize Txns' : action === 'budgetCheck' ? 'Budget Check' : 'Spending Trend'}
-            </button>
-          ))}
-        </div>
-        {walletActionResult && (
-          <div className="panel p-3 space-y-2 text-sm">
-            {walletActionResult.action === 'portfolioBalance' && (() => {
-              const r = walletActionResult.result;
-              return (
-                <div className="space-y-2">
-                  <div className="flex gap-4 text-xs">
-                    <span className="text-gray-400">Total Balance: <span className="text-neon-cyan font-bold text-base">{String(r.totalBalance ?? 0)}</span></span>
-                    <span className="text-gray-400">Credits: <span className="text-neon-green">{String(r.credits ?? 0)}</span></span>
-                    <span className="text-gray-400">Debits: <span className="text-red-400">{String(r.debits ?? 0)}</span></span>
-                  </div>
-                </div>
-              );
-            })()}
-            {walletActionResult.action === 'transactionCategorize' && (() => {
-              const r = walletActionResult.result;
-              const categories = r.categories as Record<string, unknown> | undefined;
-              return (
-                <div className="space-y-2">
-                  <div className="text-xs text-gray-400">Transactions: <span className="text-white">{String(r.totalTransactions ?? 0)}</span></div>
-                  {categories && (
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      {Object.entries(categories).slice(0, 6).map(([cat, count]) => (
-                        <div key={cat} className="bg-lattice-elevated px-2 py-1 rounded flex justify-between">
-                          <span className="text-gray-400 capitalize">{cat}</span>
-                          <span className="text-white">{String(count)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-            {walletActionResult.action === 'budgetCheck' && (() => {
-              const r = walletActionResult.result;
-              const withinBudget = r.withinBudget as boolean | undefined;
-              return (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-gray-400">Status:</span>
-                    <span className={`font-semibold px-2 py-0.5 rounded ${withinBudget ? 'bg-neon-green/20 text-neon-green' : 'bg-red-500/20 text-red-400'}`}>
-                      {withinBudget ? 'Within Budget' : 'Over Budget'}
-                    </span>
-                    <span className="text-gray-400">Spent: <span className="text-white">{String(r.totalSpent ?? 0)}</span></span>
-                    <span className="text-gray-400">Budget: <span className="text-white">{String(r.budget ?? 0)}</span></span>
-                  </div>
-                  {!!r.recommendations && Array.isArray(r.recommendations) && (
-                    <div className="text-xs text-gray-400">
-                      {(r.recommendations as string[]).slice(0, 2).map((rec, i) => <div key={i} className="text-gray-300">• {rec}</div>)}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-            {walletActionResult.action === 'spendingTrend' && (() => {
-              const r = walletActionResult.result;
-              const trend = String(r.trend ?? 'stable');
-              const trendColor = trend === 'increasing' ? 'text-red-400' : trend === 'decreasing' ? 'text-neon-green' : 'text-gray-300';
-              return (
-                <div className="space-y-2">
-                  <div className="flex gap-4 text-xs">
-                    <span className="text-gray-400">Trend: <span className={`font-semibold ${trendColor}`}>{trend}</span></span>
-                    <span className="text-gray-400">Avg Spend: <span className="text-white">{String(r.avgSpend ?? 0)}</span></span>
-                    <span className="text-gray-400">Period: <span className="text-white">{String(r.period ?? '-')}</span></span>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
