@@ -40808,19 +40808,32 @@ registerLensAction("marketplace", "distribute_royalties", (ctx, artifact, params
 });
 
 // === Forum ===
-registerLensAction("forum", "vote", (ctx, artifact, params) => {
-  const vote = { id: uid("fvote"), postId: artifact.id, direction: params.direction || "up", voterId: ctx.actor?.userId || "anon", votedAt: nowISO() };
-  const votes = artifact.data?.votes || 0;
-  artifact.data = { ...artifact.data, votes: votes + (params.direction === "down" ? -1 : 1) };
+// NOTE (Wave 3 rebuild, 2026-07): a `forum.vote` used to be registered here
+// too, but `server/domains/forum.js` (loaded LATER, via `domainModules.forEach`
+// at the `await import('./domains/index.js')` call below this point in the
+// file) registers its own `forum.vote` for the real Discourse+Reddit STATE
+// substrate (categories/topics/posts) — since `registerLensAction` just does
+// `LENS_ACTIONS.set(key, handler)`, the later registration silently overwrote
+// this one. The artifact-scoped `vote` below was therefore DEAD CODE: it could
+// never run, on any build, ever. Removed rather than left as a red herring —
+// see docs/lens-specs/forum-capability-map.md for the full collision writeup.
+// The five actions below (pin/moderate/rank_posts/extract_thesis/
+// generate_summary_dtu) operate on the OTHER forum surface: a single persisted
+// "post" lens-artifact (`useLensData('forum','post',...)` in the page), not
+// the STATE.forumLens substrate. Real Post objects carry `content`/`score`,
+// never the `body`/`votes` fields these handlers originally read — an honest
+// field-mismatch bug fixed in the same pass that wired them to real UI
+// (PostInsightsPanel.tsx). `content`/`body` and `score`/`votes` are read
+// interchangeably below for back-compat with any caller still using the old
+// shape (e.g. a hand-built params object).
+registerLensAction("forum", "pin", (ctx, artifact, params) => {
+  // Toggleable (params.pinned === false unpins); defaults to true so any
+  // existing no-param caller keeps the original always-pin behavior.
+  const pinned = params?.pinned !== false;
+  artifact.data = { ...artifact.data, pinned, pinnedAt: pinned ? nowISO() : (artifact.data?.pinnedAt ?? null) };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
-  return { ok: true, vote, newScore: artifact.data.votes };
-});
-registerLensAction("forum", "pin", (ctx, artifact, _params) => {
-  artifact.data = { ...artifact.data, pinned: true, pinnedAt: nowISO() };
-  artifact.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, pinned: true };
+  return { ok: true, pinned };
 });
 registerLensAction("forum", "moderate", (ctx, artifact, params) => {
   const action = params.action || "flag";
@@ -40830,8 +40843,15 @@ registerLensAction("forum", "moderate", (ctx, artifact, params) => {
   return { ok: true, moderation: { action, moderatedAt: nowISO() } };
 });
 registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
-  const upvotes = artifact.data?.upvotes || Math.max(0, artifact.data?.votes || 0);
-  const downvotes = artifact.data?.downvotes || 0;
+  const d = artifact.data || {};
+  // Real forum posts track one net `score` (+ the caller's own `userVote`) —
+  // there is no per-voter up/down ledger. Derive an honest split from the net
+  // score (all-positive above zero, all-negative below) instead of reading a
+  // `votes` field no live post shape sets; explicit upvotes/downvotes still
+  // win when a caller supplies them.
+  const netScore = Number.isFinite(Number(d.score)) ? Number(d.score) : (Number.isFinite(Number(d.votes)) ? Number(d.votes) : 0);
+  const upvotes = Number.isFinite(Number(d.upvotes)) ? Number(d.upvotes) : Math.max(0, netScore);
+  const downvotes = Number.isFinite(Number(d.downvotes)) ? Number(d.downvotes) : Math.max(0, -netScore);
   const totalVotes = upvotes + downvotes;
   let wilsonScore = 0;
   if (totalVotes > 0) {
@@ -40845,7 +40865,7 @@ registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
   const ageHours = (Date.now() - new Date(artifact.createdAt || 0).getTime()) / 3600000;
   const gravity = params.gravity || 1.8;
   const hotScore = totalVotes > 0 ? (upvotes - downvotes) / Math.pow(ageHours + 2, gravity) : 0;
-  const commentCount = artifact.data?.commentCount || 0;
+  const commentCount = d.commentCount || 0;
   const engagementFactor = Math.log2(1 + commentCount);
   const compositeScore = Math.round((wilsonScore * 100 + hotScore * 10 + engagementFactor) * 100) / 100;
   return {
@@ -40861,7 +40881,7 @@ registerLensAction("forum", "rank_posts", (ctx, artifact, params) => {
   };
 });
 registerLensAction("forum", "extract_thesis", (ctx, artifact, _params) => {
-  const body = artifact.data?.body || artifact.title || "";
+  const body = artifact.data?.content || artifact.data?.body || artifact.title || "";
   const sentences = (body.match(/[^.!?]+[.!?]+/g) || [body]).map(s => s.trim()).filter(Boolean);
   const thesisIndicators = ["i believe", "i think", "i argue", "my thesis", "the point is", "in conclusion", "therefore", "thus", "hence", "the argument is", "we should", "it is clear"];
   let thesis = sentences[0] || body;
@@ -40883,10 +40903,11 @@ registerLensAction("forum", "extract_thesis", (ctx, artifact, _params) => {
   return { ok: true, thesis: { text: thesis, confidence, sentenceCount: sentences.length, method: confidence >= 0.85 ? "indicator_match" : confidence >= 0.75 ? "conclusion_position" : "heuristic", extractedAt: nowISO() } };
 });
 registerLensAction("forum", "generate_summary_dtu", (ctx, artifact, _params) => {
-  const body = artifact.data?.body || "";
-  const votes = artifact.data?.votes || 0;
-  const commentCount = artifact.data?.commentCount || 0;
-  const tags = artifact.data?.tags || [];
+  const d = artifact.data || {};
+  const body = d.content || d.body || "";
+  const votes = Number.isFinite(Number(d.score)) ? Number(d.score) : (d.votes || 0);
+  const commentCount = d.commentCount || 0;
+  const tags = d.tags || [];
   const words = body.split(/\s+/).filter(Boolean);
   const sentences = (body.match(/[^.!?]+[.!?]+/g) || []).map(s => s.trim());
   return { ok: true, dtu: { type: "forum_summary", postId: artifact.id, title: artifact.title, excerpt: sentences.slice(0, 2).join(" ") || body.slice(0, 200), wordCount: words.length, votes, commentCount, tags, engagement: votes + commentCount, generatedAt: nowISO() } };
