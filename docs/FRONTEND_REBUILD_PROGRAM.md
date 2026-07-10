@@ -404,6 +404,8 @@ to have):
 
 | Date | Phase | What shipped | Commit |
 |---|---|---|---|
+| 2026-07-10 | Wave 3 | society rebuilt — wired the previously-dead `wb-transform-series` macro, killing a redundant World Bank upstream re-fetch (incl. a full population-series re-fetch) on every per-capita/inflation-adjust toggle; documented (not fixed — real IA question) that `/lenses/society` conflates a 6-domain NPC-society sim dashboard with the actual World-Bank-explorer `society` domain under one URL | `09a6f19a` |
+| 2026-07-10 | Wave 3 | social rebuilt — wired `reactionKinds` (was hardcoded) + `pollResults` (real bug: poll checkmark never persisted across reloads), new `ModerationPanel.tsx` self-service tab (mute/block/report review, previously one-way post-menu only) | `c5205030` |
 | 2026-07-10 | Wave 3 | vote rebuilt — removed a fake parallel proposal/dashboard system (vote buttons wired to the wrong domain, macro calls against wrong field shapes); new `BallotAnalysisLab.tsx` wires `tallyVotes`/`fairnessCheck`/`consensusMeasure` correctly | `4b4a54b8` |
 | 2026-07-10 | Wave 3 | repos rebuilt — removed a fabricated repo/issue/commit browser duplicating the already-real `ConcordRepoWorkspace`; fixed an envelope-unwrap bug causing silent-failure-as-success on mutations and render crashes on reads; wired 3 previously-uncallable analysis macros (codeComplexity/commitAnalysis/dependencyAudit) | `410f7cfe` |
 | 2026-07-10 | Wave 3 | staking audited — confirmed clean frontend (0/13 macros unsurfaced, no fabrication); real defect found and deliberately flagged rather than silently patched (staking never touches the real wallet — a closed simulation), per the money-invariant escalation rule | `0c3d1ad6` |
