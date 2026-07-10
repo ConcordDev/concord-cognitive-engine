@@ -3,28 +3,40 @@
 /**
  * ExperimentActionPanel — Quartzy / Benchling-shape action surface for
  * the science lens. Self-contained: takes an experiment name + brief
- * protocol + sample list, then runs the 4 most-load-bearing science
- * macros plus mint/DM/publish/agent.
+ * protocol + sample list, then runs the most load-bearing science macros
+ * plus mint/DM/publish/agent.
  *
- *   1. Calibration check  → science.calibrationCheck
- *   2. Validate protocol  → science.validateProtocol
- *   3. Data quality report → science.dataQualityReport
- *   4. Chain of custody   → science.chainOfCustody
- *   5. Mint experiment    → dtu.create with protocol + samples
- *   6. DM collaborator    → /api/social/dm with protocol + samples
- *   7. Publish protocol   → dtu.create public + cite + flag published
- *   8. Replication agent  → chat_agent.do "design a replication plan
- *                            using minimum equipment and budget"
+ *   1. Calibration check     → science.calibrationCheck (once per instrument row)
+ *   2. Validate protocol     → science.validateProtocol
+ *   3. Sample audit          → science.sampleAudit
+ *   4. Chain of custody      → science.chainOfCustody
+ *   5. Vision (lab image)    → science.vision
+ *   6. Mint experiment       → dtu.create with protocol + samples
+ *   7. DM collaborator       → /api/social/dm with protocol + samples
+ *   8. Publish protocol      → dtu.create public + cite + flag published
+ *   9. Replication agent     → chat_agent.do "design a replication plan
+ *                              using minimum equipment and budget"
+ *
+ * Field-shape note (2026-07, Wave 3 rebuild): the four macro-backed actions
+ * were previously wired with payloads that didn't match what the backend
+ * handlers read (a list of instrument *names* instead of one equipment's
+ * calibration dates; a raw protocol string instead of a `{steps, safetyChecks,
+ * equipment}` object; a list of sample *IDs* instead of storage/handling
+ * fields; no chain-of-custody transfer records at all) — every one of those
+ * calls silently returned a constant, near-useless result (calibration
+ * always "unknown", protocol always "4 steps missing" regardless of the
+ * real steps, custody always "0 transfers, intact"). This rewrite gives each
+ * macro the shape it actually reads, verified against `server/domains/science.js`.
  */
 
 import { useState } from 'react';
 import {
-  FlaskConical, ShieldCheck, CheckCircle2, ListChecks, GitMerge,
-  Sparkles, Send, Globe, Wand2,
+  FlaskConical, ShieldCheck, CheckCircle2, ListChecks, GitMerge, Eye,
+  Sparkles, Send, Globe, Wand2, Plus, Trash2,
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -40,14 +52,34 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'calibration' | 'protocol' | 'quality' | 'custody' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'calibration' | 'protocol' | 'audit' | 'custody' | 'vision' | 'mint' | 'dm' | 'publish' | 'agent';
 
 function pickMessage(e: unknown): string {
   const ax = e as { response?: { data?: { error?: string } }; message?: string };
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface MacroResult { ok?: boolean; status?: string; issues?: string[]; notes?: string; report?: unknown; message?: string }
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const s = String(reader.result || '');
+      resolve(s.includes(',') ? s.slice(s.indexOf(',') + 1) : s);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+interface MacroResult { ok?: boolean; status?: string; issues?: string[]; message?: string; notes?: string; report?: unknown }
+
+interface CalibRow { name: string; serial: string; calibrationDate: string; nextCalibration: string }
+interface SafetyRow { desc: string; verified: boolean }
+interface SampleRow {
+  id: string; name: string; reqTemp: string; actualTemp: string; expiryDate: string;
+  requiresGloves: boolean; glovesUsed: boolean; requiresSterile: boolean; sterileConfirmed: boolean;
+}
+interface CustodyRow { transferredTo: string; receivedBy: string; date: string }
 
 export function ExperimentActionPanel() {
   const [name, setName] = useState('');
@@ -56,13 +88,20 @@ export function ExperimentActionPanel() {
   const [instruments, setInstruments] = useState('');
   const [dmRecipient, setDmRecipient] = useState('');
 
+  const [calibRows, setCalibRows] = useState<CalibRow[]>([{ name: '', serial: '', calibrationDate: '', nextCalibration: '' }]);
+  const [safetyRows, setSafetyRows] = useState<SafetyRow[]>([{ desc: '', verified: false }]);
+  const [sampleRows, setSampleRows] = useState<SampleRow[]>([{ id: '', name: '', reqTemp: '', actualTemp: '', expiryDate: '', requiresGloves: false, glovesUsed: false, requiresSterile: false, sterileConfirmed: false }]);
+  const [custodySampleName, setCustodySampleName] = useState('');
+  const [custodyRows, setCustodyRows] = useState<CustodyRow[]>([{ transferredTo: '', receivedBy: '', date: '' }]);
+
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   const [calibrationResult, setCalibrationResult] = useState<MacroResult | null>(null);
   const [protocolResult, setProtocolResult] = useState<MacroResult | null>(null);
-  const [qualityResult, setQualityResult] = useState<MacroResult | null>(null);
+  const [auditResult, setAuditResult] = useState<MacroResult | null>(null);
   const [custodyResult, setCustodyResult] = useState<MacroResult | null>(null);
+  const [visionResult, setVisionResult] = useState<string | null>(null);
   const [mintDtuId, setMintDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
@@ -89,46 +128,148 @@ export function ExperimentActionPanel() {
   const instrumentList = instruments.split('\n').map(s => s.trim()).filter(Boolean);
   const ready = name.trim().length > 0;
 
+  const namedCalibRows = () => calibRows.filter(r => r.name.trim());
+  const namedSampleRows = () => sampleRows.filter(r => r.id.trim() || r.name.trim());
+  const namedCustodyRows = () => custodyRows.filter(r => r.transferredTo.trim() && r.receivedBy.trim());
+
+  /* ---- calibration: the macro checks ONE piece of equipment at a time, so
+     a multi-instrument check is N real calls, aggregated client-side. ---- */
   async function actCalibration() {
-    if (!instrumentList.length) { err('Add at least one instrument.'); return; }
+    const rows = namedCalibRows();
+    if (!rows.length) { err('Add at least one instrument with a name.'); return; }
     setBusy('calibration'); setFeedback(null);
     try {
-      const r = await callMacro<MacroResult>('calibrationCheck', { instruments: instrumentList.map(name => ({ name })) });
-      if (r.ok && r.result) { setCalibrationResult(r.result); pipe.publish('science.calibration', r.result, { label: r.result.status ?? 'calibration' }); ok('Calibration checked.'); }
-      else err(r.error ?? 'calibration check failed');
+      const rowResults: { name: string; status: string; daysUntilDue: number | null }[] = [];
+      for (const row of rows) {
+        const r = await callMacro<{ status: string; daysUntilDue: number | null }>('calibrationCheck', {
+          serial: row.serial.trim() || undefined,
+          calibrationDate: row.calibrationDate || undefined,
+          nextCalibration: row.nextCalibration || undefined,
+        });
+        rowResults.push({
+          name: row.name.trim(),
+          status: r.ok && r.result ? r.result.status : 'error',
+          daysUntilDue: r.ok && r.result ? r.result.daysUntilDue : null,
+        });
+      }
+      const overdue = rowResults.filter(x => x.status === 'overdue').length;
+      const dueSoon = rowResults.filter(x => x.status === 'due_soon').length;
+      const summary: MacroResult = {
+        status: overdue > 0 ? 'overdue' : dueSoon > 0 ? 'due_soon' : 'current',
+        issues: rowResults.map(x => `${x.name}: ${x.status.replace(/_/g, ' ')}${x.daysUntilDue != null ? ` (${x.daysUntilDue}d)` : ''}`),
+      };
+      setCalibrationResult(summary);
+      pipe.publish('science.calibration', summary, { label: summary.status ?? 'calibration' });
+      ok(`Checked ${rowResults.length} instrument(s).`);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
 
   async function actProtocol() {
-    if (!protocol.trim()) { err('Enter a protocol.'); return; }
+    const steps = protocol.split('\n').map(s => s.trim()).filter(Boolean);
+    if (!steps.length) { err('Enter protocol steps (one per line).'); return; }
     setBusy('protocol'); setFeedback(null);
     try {
-      const r = await callMacro<MacroResult>('validateProtocol', { protocol: protocol.trim(), steps: protocol.split('\n').filter(s => s.trim()) });
-      if (r.ok && r.result) { setProtocolResult(r.result); pipe.publish('science.protocol', r.result, { label: r.result.status ?? 'protocol' }); ok('Protocol validated.'); }
-      else err(r.error ?? 'protocol validate failed');
+      const r = await callMacro<{
+        status: string; totalSteps: number; safetyChecksTotal: number; safetyChecksVerified: number;
+        equipmentCount: number; calibrationIssues: unknown[];
+        issues: Array<{ type: string; step?: string; detail?: string; severity?: string }>;
+      }>('validateProtocol', {
+        protocol: {
+          name: name.trim() || 'Untitled protocol',
+          steps: steps.map(s => ({ name: s })),
+          safetyChecks: safetyRows.filter(s => s.desc.trim()).map(s => ({ description: s.desc.trim(), verified: s.verified })),
+          equipment: namedCalibRows().map(eq => ({ name: eq.name.trim(), nextCalibration: eq.nextCalibration || undefined })),
+        },
+      });
+      if (r.ok && r.result) {
+        const rr = r.result;
+        const summary: MacroResult = {
+          status: rr.status,
+          message: `${rr.totalSteps} step(s) · ${rr.safetyChecksVerified}/${rr.safetyChecksTotal} safety check(s) verified · ${rr.equipmentCount} equipment item(s)`,
+          issues: (rr.issues || []).map(i => i.detail || (i.step ? `missing step: ${i.step}` : i.type)),
+        };
+        setProtocolResult(summary);
+        pipe.publish('science.protocol', summary, { label: summary.status ?? 'protocol' });
+        ok('Protocol validated.');
+      } else err(r.error ?? 'protocol validate failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
 
-  async function actQuality() {
-    if (!sampleList.length) { err('Add at least one sample.'); return; }
-    setBusy('quality'); setFeedback(null);
+  async function actAudit() {
+    const rows = namedSampleRows();
+    if (!rows.length) { err('Add at least one sample.'); return; }
+    setBusy('audit'); setFeedback(null);
     try {
-      const r = await callMacro<MacroResult>('dataQualityReport', { samples: sampleList.map(id => ({ id })) });
-      if (r.ok && r.result) { setQualityResult(r.result); pipe.publish('science.quality', r.result, { label: r.result.status ?? 'quality' }); ok('Quality report ready.'); }
-      else err(r.error ?? 'quality report failed');
+      const r = await callMacro<{
+        totalSamples: number; compliant: number; nonCompliant: number;
+        samples: Array<{ sampleId?: string; name?: string; status: string; issueCount: number; issues: Array<{ type: string; detail?: string }> }>;
+      }>('sampleAudit', {
+        samples: rows.map(row => ({
+          sampleId: row.id.trim() || undefined,
+          name: row.name.trim() || undefined,
+          storage: (row.reqTemp.trim() || row.actualTemp.trim()) ? {
+            requiredTemp: row.reqTemp.trim() ? Number(row.reqTemp) : undefined,
+            actualTemp: row.actualTemp.trim() ? Number(row.actualTemp) : undefined,
+          } : undefined,
+          expiryDate: row.expiryDate || undefined,
+          handling: {
+            requiresGloves: row.requiresGloves, glovesUsed: row.glovesUsed,
+            requiresSterile: row.requiresSterile, sterileConfirmed: row.sterileConfirmed,
+          },
+        })),
+      });
+      if (r.ok && r.result) {
+        const summary: MacroResult = {
+          status: r.result.nonCompliant > 0 ? 'non-compliant' : 'compliant',
+          message: `${r.result.compliant}/${r.result.totalSamples} compliant`,
+          issues: r.result.samples.filter(s => s.issueCount > 0)
+            .map(s => `${s.name || s.sampleId || 'sample'}: ${s.issues.map(i => i.detail || i.type).join(', ')}`),
+        };
+        setAuditResult(summary);
+        pipe.publish('science.audit', summary, { label: summary.status ?? 'audit' });
+        ok('Sample audit complete.');
+      } else err(r.error ?? 'sample audit failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
 
   async function actCustody() {
-    if (!sampleList.length) { err('Add at least one sample.'); return; }
+    const rows = namedCustodyRows();
+    if (!rows.length) { err('Add at least one transfer (transferred to + received by).'); return; }
     setBusy('custody'); setFeedback(null);
     try {
-      const r = await callMacro<MacroResult>('chainOfCustody', { samples: sampleList.map(id => ({ id })) });
-      if (r.ok && r.result) { setCustodyResult(r.result); pipe.publish('science.custody', r.result, { label: r.result.status ?? 'custody' }); ok('Chain of custody ready.'); }
-      else err(r.error ?? 'chain of custody failed');
+      const r = await callMacro<{ intact: boolean; transfers: number; gaps: Array<{ position: number; expected: string; actual: string }> }>('chainOfCustody', {
+        chainOfCustody: rows.map(row => ({ transferredTo: row.transferredTo.trim(), receivedBy: row.receivedBy.trim(), date: row.date || undefined })),
+      });
+      if (r.ok && r.result) {
+        const summary: MacroResult = {
+          status: r.result.intact ? 'intact' : 'broken',
+          message: `${custodySampleName.trim() || 'Sample'} — ${r.result.transfers} transfer(s)`,
+          issues: r.result.gaps.map(g => `Position ${g.position}: expected "${g.expected}", got "${g.actual}"`),
+        };
+        setCustodyResult(summary);
+        pipe.publish('science.custody', summary, { label: summary.status ?? 'custody' });
+        ok('Chain of custody verified.');
+      } else err(r.error ?? 'chain of custody failed');
+    } catch (e) { err(pickMessage(e)); }
+    finally { setBusy(null); }
+  }
+
+  async function actVision(file: File) {
+    setBusy('vision'); setFeedback(null); setVisionResult(null);
+    try {
+      const imageB64 = await fileToBase64(file);
+      const r = await lensRun<{ ok: boolean; content?: string; error?: string }>('science', 'vision', { imageB64 });
+      const inner = r.data?.result;
+      if (inner?.ok && inner.content) {
+        setVisionResult(inner.content);
+        pipe.publish('science.vision', inner.content, { label: 'vision analysis' });
+        ok('Image analyzed.');
+      } else {
+        err(inner?.error || r.data?.error || 'vision analysis failed');
+      }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -152,7 +293,7 @@ export function ExperimentActionPanel() {
               samples: sampleList,
               instruments: instrumentList,
               startedAt: new Date().toISOString(),
-              results: { calibration: calibrationResult, protocolValid: protocolResult, dataQuality: qualityResult, custody: custodyResult },
+              results: { calibration: calibrationResult, protocolValid: protocolResult, sampleAudit: auditResult, custody: custodyResult },
             },
           },
         },
@@ -253,10 +394,10 @@ export function ExperimentActionPanel() {
   }
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
-    { id: 'calibration', label: 'Calibration',  desc: 'Check instrument calibration status',           icon: ShieldCheck,   accent: '#06b6d4', handler: actCalibration, disabled: instrumentList.length === 0 },
+    { id: 'calibration', label: 'Calibration',  desc: 'Check instrument calibration status',           icon: ShieldCheck,   accent: '#06b6d4', handler: actCalibration, disabled: namedCalibRows().length === 0 },
     { id: 'protocol',    label: 'Validate',      desc: 'Protocol structure + step validation',         icon: CheckCircle2,  accent: '#22c55e', handler: actProtocol,    disabled: !protocol.trim() },
-    { id: 'quality',     label: 'Data quality',  desc: 'Sample data quality report',                   icon: ListChecks,    accent: '#eab308', handler: actQuality,     disabled: sampleList.length === 0 },
-    { id: 'custody',     label: 'Chain custody', desc: 'Sample provenance chain',                      icon: GitMerge,      accent: '#8b5cf6', handler: actCustody,     disabled: sampleList.length === 0 },
+    { id: 'audit',       label: 'Sample audit',  desc: 'Storage / expiry / handling compliance',       icon: ListChecks,    accent: '#eab308', handler: actAudit,       disabled: namedSampleRows().length === 0 },
+    { id: 'custody',     label: 'Chain custody', desc: 'Sample provenance transfer chain',             icon: GitMerge,      accent: '#8b5cf6', handler: actCustody,     disabled: namedCustodyRows().length === 0 },
     { id: 'mint',        label: mintDtuId      ? 'Saved'     : 'Mint experiment',  desc: mintDtuId      ? `DTU ${mintDtuId.slice(0, 8)}…`      : 'Private DTU with full experiment state',                icon: Sparkles, accent: '#3b82f6', handler: actMint,        disabled: !ready || !!mintDtuId },
     { id: 'dm',          label: 'DM collaborator', desc: 'Send protocol + samples + DTU embed',         icon: Send,          accent: '#ec4899', handler: actDm,          disabled: !ready },
     { id: 'publish',     label: publishedDtuId ? 'Published' : 'Publish protocol', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public protocol DTU + federation',                       icon: Globe,    accent: '#15803d', handler: actPublish,     disabled: !ready || !!publishedDtuId },
@@ -280,18 +421,18 @@ export function ExperimentActionPanel() {
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40" placeholder="e.g. BL21 expression of mScarlet" />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Protocol (one step per line)</label>
-            <textarea value={protocol} onChange={(e) => setProtocol(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 resize-none font-mono" placeholder="1. Inoculate 5 mL LB+amp&#10;2. Grow to OD600 = 0.6&#10;3. Induce with 0.5 mM IPTG&#10;4. ..." />
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Protocol steps (one per line — include preparation / execution / data collection / cleanup phases to pass validation)</label>
+            <textarea value={protocol} onChange={(e) => setProtocol(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 resize-none font-mono" placeholder="1. Preparation: inoculate 5 mL LB+amp&#10;2. Execution: grow to OD600 = 0.6, induce with IPTG&#10;3. Data collection: read plate at 590nm&#10;4. Cleanup: autoclave waste" />
           </div>
         </div>
         <div className="space-y-2">
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Sample IDs (one per line)</label>
-            <textarea value={samples} onChange={(e) => setSamples(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 resize-none font-mono" placeholder="S-001&#10;S-002&#10;S-003" />
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Sample IDs (one per line, for mint/DM context)</label>
+            <textarea value={samples} onChange={(e) => setSamples(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 resize-none font-mono" placeholder="S-001&#10;S-002" />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Instruments (one per line)</label>
-            <textarea value={instruments} onChange={(e) => setInstruments(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-cyan-400/40 resize-none font-mono" placeholder="NanoDrop spectrophotometer&#10;BioTek plate reader" />
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Instruments (one per line, for mint/DM context)</label>
+            <textarea value={instruments} onChange={(e) => setInstruments(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-cyan-400/40 resize-none font-mono" placeholder="NanoDrop spectrophotometer" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">DM collaborator</label>
@@ -300,12 +441,110 @@ export function ExperimentActionPanel() {
         </div>
       </div>
 
+      {/* Equipment calibration rows — feeds Calibration check + Protocol's equipment list */}
+      <div className="space-y-1.5 border-t border-white/5 pt-2">
+        <p className="text-[10px] uppercase tracking-wider text-cyan-400 font-semibold flex items-center gap-1">
+          <ShieldCheck className="w-3 h-3" /> Equipment calibration
+        </p>
+        {calibRows.map((r, i) => (
+          <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-1">
+            <input value={r.name} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="Instrument name" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+            <input value={r.serial} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, serial: e.target.value } : x))} placeholder="Serial #" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+            <input type="date" value={r.calibrationDate} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, calibrationDate: e.target.value } : x))} className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" title="Last calibration" />
+            <input type="date" value={r.nextCalibration} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, nextCalibration: e.target.value } : x))} className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" title="Next calibration due" />
+            <button type="button" onClick={() => setCalibRows(rs => rs.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400" aria-label="Remove instrument"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>
+        ))}
+        <button type="button" onClick={() => setCalibRows(rs => [...rs, { name: '', serial: '', calibrationDate: '', nextCalibration: '' }])} className="text-[11px] text-teal-400 hover:text-teal-200"><Plus className="w-3 h-3 inline" /> Add instrument</button>
+      </div>
+
+      {/* Safety checks — feeds Protocol's safetyChecks list */}
+      <div className="space-y-1.5">
+        <p className="text-[10px] uppercase tracking-wider text-green-400 font-semibold flex items-center gap-1">
+          <CheckCircle2 className="w-3 h-3" /> Safety checks
+        </p>
+        {safetyRows.map((r, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <input value={r.desc} onChange={(e) => setSafetyRows(rs => rs.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))} placeholder="e.g. Fume hood inspected" className="flex-1 px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+            <label className="flex items-center gap-1 text-[10px] text-zinc-400">
+              <input type="checkbox" checked={r.verified} onChange={(e) => setSafetyRows(rs => rs.map((x, j) => j === i ? { ...x, verified: e.target.checked } : x))} /> verified
+            </label>
+            <button type="button" onClick={() => setSafetyRows(rs => rs.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400" aria-label="Remove safety check"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>
+        ))}
+        <button type="button" onClick={() => setSafetyRows(rs => [...rs, { desc: '', verified: false }])} className="text-[11px] text-teal-400 hover:text-teal-200"><Plus className="w-3 h-3 inline" /> Add safety check</button>
+      </div>
+
+      {/* Sample compliance — feeds Sample audit */}
+      <div className="space-y-1.5 border-t border-white/5 pt-2">
+        <p className="text-[10px] uppercase tracking-wider text-yellow-400 font-semibold flex items-center gap-1">
+          <ListChecks className="w-3 h-3" /> Sample compliance
+        </p>
+        {sampleRows.map((r, i) => (
+          <div key={i} className="rounded border border-zinc-800 p-1.5 space-y-1">
+            <div className="grid grid-cols-[1fr_1fr_1fr] gap-1">
+              <input value={r.id} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, id: e.target.value } : x))} placeholder="Sample ID" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+              <input value={r.name} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="Name" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+              <input type="date" value={r.expiryDate} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, expiryDate: e.target.value } : x))} className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" title="Expiry date" />
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <input type="number" value={r.reqTemp} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, reqTemp: e.target.value } : x))} placeholder="Required temp (°C)" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+              <input type="number" value={r.actualTemp} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, actualTemp: e.target.value } : x))} placeholder="Actual temp (°C)" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[10px] text-zinc-400">
+              <label className="flex items-center gap-1"><input type="checkbox" checked={r.requiresGloves} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, requiresGloves: e.target.checked } : x))} /> gloves required</label>
+              <label className="flex items-center gap-1"><input type="checkbox" checked={r.glovesUsed} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, glovesUsed: e.target.checked } : x))} /> gloves used</label>
+              <label className="flex items-center gap-1"><input type="checkbox" checked={r.requiresSterile} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, requiresSterile: e.target.checked } : x))} /> sterile required</label>
+              <label className="flex items-center gap-1"><input type="checkbox" checked={r.sterileConfirmed} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, sterileConfirmed: e.target.checked } : x))} /> sterile confirmed</label>
+              <button type="button" onClick={() => setSampleRows(rs => rs.filter((_, j) => j !== i))} className="ml-auto text-zinc-600 hover:text-red-400" aria-label="Remove sample"><Trash2 className="w-3.5 h-3.5" /></button>
+            </div>
+          </div>
+        ))}
+        <button type="button" onClick={() => setSampleRows(rs => [...rs, { id: '', name: '', reqTemp: '', actualTemp: '', expiryDate: '', requiresGloves: false, glovesUsed: false, requiresSterile: false, sterileConfirmed: false }])} className="text-[11px] text-teal-400 hover:text-teal-200"><Plus className="w-3 h-3 inline" /> Add sample</button>
+      </div>
+
+      {/* Chain of custody — a single sample's transfer log */}
+      <div className="space-y-1.5 border-t border-white/5 pt-2">
+        <p className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold flex items-center gap-1">
+          <GitMerge className="w-3 h-3" /> Chain of custody
+        </p>
+        <input value={custodySampleName} onChange={(e) => setCustodySampleName(e.target.value)} placeholder="Sample name (for display)" className="w-full px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+        {custodyRows.map((r, i) => (
+          <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-1">
+            <input value={r.transferredTo} onChange={(e) => setCustodyRows(rs => rs.map((x, j) => j === i ? { ...x, transferredTo: e.target.value } : x))} placeholder="Transferred to" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+            <input value={r.receivedBy} onChange={(e) => setCustodyRows(rs => rs.map((x, j) => j === i ? { ...x, receivedBy: e.target.value } : x))} placeholder="Received by (next row)" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+            <input type="date" value={r.date} onChange={(e) => setCustodyRows(rs => rs.map((x, j) => j === i ? { ...x, date: e.target.value } : x))} className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+            <button type="button" onClick={() => setCustodyRows(rs => rs.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400" aria-label="Remove transfer"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>
+        ))}
+        <button type="button" onClick={() => setCustodyRows(rs => [...rs, { transferredTo: '', receivedBy: '', date: '' }])} className="text-[11px] text-teal-400 hover:text-teal-200"><Plus className="w-3 h-3 inline" /> Add transfer</button>
+        <p className="text-[10px] text-zinc-500">Chain is intact when each transfer&apos;s recipient matches the next transfer&apos;s sender — e.g. row 1 &quot;Transferred to: Priya&quot; then row 2 &quot;Received by: Priya&quot;.</p>
+      </div>
+
+      {/* Vision — lab image analysis */}
+      <div className="space-y-1.5 border-t border-white/5 pt-2">
+        <p className="text-[10px] uppercase tracking-wider text-fuchsia-400 font-semibold flex items-center gap-1">
+          <Eye className="w-3 h-3" /> Vision — analyze a gel, microscopy image, or label
+        </p>
+        <input
+          type="file" accept="image/*"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) actVision(f); }}
+          disabled={busy === 'vision'}
+          className="text-[11px] text-zinc-400 file:mr-2 file:px-2 file:py-1 file:rounded file:border file:border-zinc-800 file:bg-zinc-900 file:text-fuchsia-300 file:text-[11px]"
+        />
+        {visionResult && (
+          <div className="rounded border border-fuchsia-500/30 bg-fuchsia-500/5 p-2 text-[11px] text-zinc-200 whitespace-pre-wrap max-h-40 overflow-y-auto">
+            {visionResult}
+          </div>
+        )}
+      </div>
+
       <div className="flex items-center gap-2 flex-wrap">
         <RecallSlot ctl={dmRecall} />
         <RecallSlot ctl={publishRecall} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
         {actions.map(a => {
           const Icon = a.icon;
           const isBusy = busy === a.id;
@@ -332,11 +571,11 @@ export function ExperimentActionPanel() {
       </div>
 
       {/* Result panes */}
-      {(calibrationResult || protocolResult || qualityResult || custodyResult) && (
+      {(calibrationResult || protocolResult || auditResult || custodyResult) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {calibrationResult && <ResultPane label="Calibration" accent="#06b6d4" icon={ShieldCheck} result={calibrationResult} />}
           {protocolResult    && <ResultPane label="Protocol"    accent="#22c55e" icon={CheckCircle2} result={protocolResult} />}
-          {qualityResult     && <ResultPane label="Data quality" accent="#eab308" icon={ListChecks}   result={qualityResult} />}
+          {auditResult        && <ResultPane label="Sample audit" accent="#eab308" icon={ListChecks}   result={auditResult} />}
           {custodyResult     && <ResultPane label="Chain of custody" accent="#8b5cf6" icon={GitMerge}  result={custodyResult} />}
         </div>
       )}
@@ -383,9 +622,8 @@ function ResultPane({ label, accent, icon: Icon, result }: { label: string; acce
         <ul className="text-[11px] text-amber-300 list-disc list-inside">
           {result.issues.map((i, idx) => <li key={idx}>{i}</li>)}
         </ul>
-      ) : null}
-      {!result.message && !result.notes && !result.issues?.length && (
-        <pre className="text-[10px] text-zinc-400 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">{JSON.stringify(result, null, 2)}</pre>
+      ) : (
+        <p className="text-[11px] text-emerald-300">No issues found.</p>
       )}
     </div>
   );

@@ -1,10 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Save, Database, FileSpreadsheet, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Save, Database, FileSpreadsheet, ArrowLeft, Target } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useDatasets, RunButton, type DatasetFull } from '@/components/science/ScienceWorkbench';
+
+interface FieldStat {
+  field: string; total: number; present: number; missing: number; completeness: number;
+  numeric?: { min: number; max: number; mean: number; median: number; stdDev: number; q1: number; q3: number; outlierCount: number };
+}
+interface QualityReport {
+  totalRecords: number; totalFields: number; overallCompleteness: number;
+  qualityRating: string; fieldStats: Record<string, FieldStat>;
+}
 
 /**
  * Spreadsheet-style data-entry grid. Datasets persist server-side via the
@@ -19,6 +28,8 @@ export function ScienceDataGrid() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [quality, setQuality] = useState<QualityReport | null>(null);
+  const [qualityBusy, setQualityBusy] = useState(false);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -103,6 +114,22 @@ export function ScienceDataGrid() {
     if (r.data?.ok) await refresh();
     else setMsg(r.data?.error || 'Delete failed');
     setBusy(false);
+  };
+
+  /* Data-quality report — runs against the CURRENT grid content (no save
+     required), converting the columns/rows into row objects the way
+     dataQualityReport (server/domains/science.js) actually reads them. */
+  const runQuality = async () => {
+    if (columns.length === 0 || rows.length === 0) { setMsg('Add at least one row first'); return; }
+    setQualityBusy(true);
+    setMsg(null);
+    setQuality(null);
+    const dataset = coercedRows().map((row) =>
+      Object.fromEntries(columns.map((c, i) => [c.trim() || `col${i + 1}`, row[i]])));
+    const r = await lensRun<QualityReport>('science', 'dataQualityReport', { dataset });
+    if (r.data?.ok && r.data.result) setQuality(r.data.result);
+    else setMsg(r.data?.error || 'Quality report failed');
+    setQualityBusy(false);
   };
 
   const inGrid = editing !== null || columns.length > 0;
@@ -249,16 +276,54 @@ export function ScienceDataGrid() {
         </table>
       </div>
 
-      <button
-        type="button"
-        onClick={addRow}
-        className={cn(
-          'inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded',
-          'border border-white/10 text-gray-300 hover:bg-white/5',
-        )}
-      >
-        <Plus className="w-3 h-3" /> Add Row
-      </button>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={addRow}
+          className={cn(
+            'inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded',
+            'border border-white/10 text-gray-300 hover:bg-white/5',
+          )}
+        >
+          <Plus className="w-3 h-3" /> Add Row
+        </button>
+        <RunButton onClick={runQuality} busy={qualityBusy}>
+          <Target className="w-3 h-3" /> Data Quality Report
+        </RunButton>
+      </div>
+
+      {quality && (
+        <div className="rounded border border-teal-500/20 bg-teal-500/5 p-2.5 space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-teal-200 font-semibold">
+              {quality.totalRecords} record(s) · {quality.totalFields} field(s) · {quality.overallCompleteness}% complete
+            </span>
+            <span className={cn(
+              'px-1.5 py-0.5 rounded text-[10px] uppercase',
+              quality.qualityRating === 'excellent' || quality.qualityRating === 'good'
+                ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300',
+            )}>
+              {quality.qualityRating}
+            </span>
+          </div>
+          <div className="space-y-1">
+            {Object.values(quality.fieldStats).map((f) => (
+              <div key={f.field} className="flex items-center gap-2 text-[11px]">
+                <span className="w-24 truncate text-gray-300">{f.field}</span>
+                <div className="flex-1 h-1.5 bg-black/40 rounded overflow-hidden">
+                  <div className="h-full bg-teal-400" style={{ width: `${f.completeness}%` }} />
+                </div>
+                <span className="w-14 text-right font-mono text-gray-400">{f.completeness}%</span>
+                {f.numeric && (
+                  <span className="text-gray-500 font-mono">
+                    μ={f.numeric.mean} σ={f.numeric.stdDev} {f.numeric.outlierCount > 0 ? `· ${f.numeric.outlierCount} outlier(s)` : ''}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {msg && <p className="text-xs text-gray-400">{msg}</p>}
     </div>
