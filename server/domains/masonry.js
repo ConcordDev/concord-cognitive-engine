@@ -65,7 +65,7 @@ export default function registerMasonryActions(registerLensAction) {
     const s = STATE.masonryLens;
     for (const k of [
       "takeoffs", "proposals", "schedule", "photos",
-      "changeOrders", "priceBook", "invoices", "codeRefs",
+      "changeOrders", "priceBook", "invoices", "codeRefs", "clients",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -611,6 +611,74 @@ export default function registerMasonryActions(registerLensAction) {
       const tag = (mclean(params.checkType, 40).toLowerCase()) || "wall-strength";
       const refs = MASONRY_CODES.filter((c) => (c.tags || []).includes(tag));
       return { ok: true, result: { checkType: tag, references: refs.length ? refs : MASONRY_CODES.filter((c) => (c.tags || []).includes("wall-strength")) } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // FEATURE 9 — Client CRM (contact book, cross-referenced against the
+  // proposals/invoices this same user already owns)
+  // Every client record is real, stored state; the per-client revenue and
+  // activity numbers are computed live from proposals/invoices by name
+  // match — never a fabricated figure.
+  // ─────────────────────────────────────────────────────────────────────
+  function clientStatsFor(s, userId, name) {
+    const norm = (v) => String(v || "").trim().toLowerCase();
+    const n = norm(name);
+    const proposals = mlist(s.proposals, userId).filter((p) => norm(p.client) === n);
+    const invoices = mlist(s.invoices, userId).filter((i) => norm(i.client) === n);
+    const proposalsValue = Math.round(proposals.reduce((sm, p) => sm + (p.total || 0), 0) * 100) / 100;
+    const invoicesTotal = Math.round(invoices.reduce((sm, i) => sm + (i.amount || 0), 0) * 100) / 100;
+    const invoicesPaid = Math.round(invoices.reduce((sm, i) => sm + (i.amountPaid || 0), 0) * 100) / 100;
+    return {
+      proposalsCount: proposals.length, proposalsValue,
+      invoicesCount: invoices.length, invoicesTotal, invoicesPaid,
+      invoicesOutstanding: Math.round((invoicesTotal - invoicesPaid) * 100) / 100,
+    };
+  }
+
+  registerLensAction("masonry", "client-add", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = maid(ctx);
+      const name = mclean(params.name, 120);
+      if (!name) return { ok: false, error: "Name required" };
+      const list = mlist(s.clients, userId);
+      const fields = {
+        name, phone: mclean(params.phone, 40), email: mclean(params.email, 160),
+        address: mclean(params.address, 300), notes: mclean(params.notes, 1000),
+      };
+      const existing = params.id ? list.find((c) => c.id === params.id) : null;
+      if (existing) {
+        Object.assign(existing, fields, { updatedAt: mnow() });
+        saveMasonState();
+        return { ok: true, result: { ...existing, ...clientStatsFor(s, userId, existing.name) } };
+      }
+      const rec = { id: mid("cli"), ...fields, createdAt: mnow(), updatedAt: mnow() };
+      list.unshift(rec);
+      saveMasonState();
+      return { ok: true, result: { ...rec, ...clientStatsFor(s, userId, rec.name) } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("masonry", "client-list", (ctx, _a, _params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = maid(ctx);
+      const list = mlist(s.clients, userId).map((c) => ({ ...c, ...clientStatsFor(s, userId, c.name) }));
+      const totalRevenue = Math.round(list.reduce((sm, c) => sm + c.invoicesPaid, 0) * 100) / 100;
+      return { ok: true, result: { clients: list, totalRevenue } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("masonry", "client-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = mlist(s.clients, maid(ctx));
+      const idx = list.findIndex((c) => c.id === params.id);
+      if (idx < 0) return { ok: false, error: "Client not found" };
+      list.splice(idx, 1);
+      saveMasonState();
+      return { ok: true, result: { deleted: params.id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 }
