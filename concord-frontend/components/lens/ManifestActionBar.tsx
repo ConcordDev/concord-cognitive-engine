@@ -103,6 +103,11 @@ function humanize(action: string, noisyPrefix?: string | null): string {
     a = a.replace(re, '');
   }
   return a
+    // Some manifest actions are literal camelCase macro names (e.g.
+    // "listMultiFramework") rather than snake_case labels — split at
+    // lower→upper transitions first so they read as words, not one
+    // squished word. No-op on already-separated snake_case/kebab-case.
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/[-_.]+/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
     .trim();

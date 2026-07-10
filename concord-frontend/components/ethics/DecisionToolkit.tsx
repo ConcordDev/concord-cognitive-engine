@@ -2,16 +2,22 @@
 
 /**
  * DecisionToolkit — the actionable ethics-decision surface for the
- * ethics lens. Wires all six backlog features end-to-end against the
- * `ethics` domain macros:
+ * ethics lens. Wires all 19 `ethics` domain macros end-to-end, split
+ * across nine tools:
  *   - multiFrameworkDilemma / listMultiFramework
  *   - stakeholderMap / listStakeholderMaps
  *   - decisionMatrix / listDecisionMatrices
  *   - biasChecklistTemplate / biasChecklist / listBiasChecklists
  *   - submitReview / addReviewOpinion / recordVerdict / listReviews
  *   - archiveCase / searchCases / deleteCase
+ *   - frameworkAnalysis (deep 4-framework synthesis of a single action)
+ *   - stakeholderImpact (Mitchell-Agle-Wood salience/equity analysis)
+ *   - biasDetection (dataset-level 4/5ths-rule disparate-impact audit)
  *
- * Every value rendered comes from a real macro response.
+ * Every value rendered comes from a real macro response. The last three
+ * tools are single-shot compute (the backend never persists them — no
+ * `list*` macro exists for them), so their panels are "fill in → run →
+ * see the real computed result," not a fabricated history list.
  */
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
@@ -22,17 +28,23 @@ import { cn } from '@/lib/utils';
 import {
   Scale, Users, Grid3x3, ListChecks, MessagesSquare, Archive,
   Plus, Trash2, X, Loader2, Search, Gavel, ThumbsUp, ThumbsDown, RefreshCw,
+  Brain, Target, ShieldAlert,
 } from 'lucide-react';
 
-type ToolTab = 'multiframework' | 'stakeholder' | 'matrix' | 'bias' | 'review' | 'cases';
+export type ToolTab =
+  | 'multiframework' | 'stakeholder' | 'matrix' | 'bias' | 'review' | 'cases'
+  | 'framework' | 'impact' | 'audit';
 
-const TOOL_TABS: { id: ToolTab; label: string; icon: typeof Scale }[] = [
-  { id: 'multiframework', label: 'Multi-Framework', icon: Scale },
-  { id: 'stakeholder', label: 'Stakeholder Map', icon: Users },
-  { id: 'matrix', label: 'Decision Matrix', icon: Grid3x3 },
-  { id: 'bias', label: 'Bias Checklist', icon: ListChecks },
-  { id: 'review', label: 'Ethics Review', icon: MessagesSquare },
-  { id: 'cases', label: 'Case Library', icon: Archive },
+export const TOOL_TABS: { id: ToolTab; label: string; icon: typeof Scale; key: string }[] = [
+  { id: 'multiframework', label: 'Multi-Framework', icon: Scale, key: 'm' },
+  { id: 'stakeholder', label: 'Stakeholder Map', icon: Users, key: 's' },
+  { id: 'matrix', label: 'Decision Matrix', icon: Grid3x3, key: 'd' },
+  { id: 'bias', label: 'Bias Checklist', icon: ListChecks, key: 'b' },
+  { id: 'review', label: 'Ethics Review', icon: MessagesSquare, key: 'r' },
+  { id: 'cases', label: 'Case Library', icon: Archive, key: 'c' },
+  { id: 'framework', label: 'Framework Analysis', icon: Brain, key: 'f' },
+  { id: 'impact', label: 'Stakeholder Impact', icon: Target, key: 'i' },
+  { id: 'audit', label: 'Bias Audit', icon: ShieldAlert, key: 'a' },
 ];
 
 interface MfaOption {
@@ -216,8 +228,15 @@ function impactColor(v: number): string {
   return v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-gray-400';
 }
 
-export function DecisionToolkit() {
-  const [tab, setTab] = useState<ToolTab>('multiframework');
+export function DecisionToolkit({
+  activeTab, onTabChange,
+}: { activeTab?: ToolTab; onTabChange?: (tab: ToolTab) => void } = {}) {
+  const [internalTab, setInternalTab] = useState<ToolTab>('multiframework');
+  const tab = activeTab ?? internalTab;
+  const setTab = (t: ToolTab) => {
+    setInternalTab(t);
+    onTabChange?.(t);
+  };
 
   return (
     <div className="space-y-4">
@@ -235,6 +254,9 @@ export function DecisionToolkit() {
           >
             <t.icon className="w-4 h-4" />
             {t.label}
+            <kbd className="hidden sm:inline text-[10px] px-1 py-0.5 rounded border border-current/30 opacity-60">
+              {t.key}
+            </kbd>
           </button>
         ))}
       </nav>
@@ -244,6 +266,9 @@ export function DecisionToolkit() {
       {tab === 'bias' && <BiasChecklistPanel />}
       {tab === 'review' && <ReviewWorkflowPanel />}
       {tab === 'cases' && <CaseLibraryPanel />}
+      {tab === 'framework' && <FrameworkAnalysisPanel />}
+      {tab === 'impact' && <StakeholderImpactPanel />}
+      {tab === 'audit' && <BiasAuditPanel />}
     </div>
   );
 }
@@ -1172,6 +1197,551 @@ function CaseLibraryPanel() {
         </div>
       ))}
       </LoadGate>
+    </div>
+  );
+}
+
+/* ───────────────────────── Framework Analysis ───────────────────────── */
+
+interface FaFrameworkDetail {
+  name: string;
+  score: number;
+  assessment: string;
+  details: Record<string, unknown>;
+}
+interface FrameworkAnalysisResult {
+  frameworks: Record<string, FaFrameworkDetail>;
+  overallScore: number;
+  consensus: string;
+  tensions: string[];
+  recommendation: string;
+}
+
+function scoreBadgeColor(score: number): string {
+  return score >= 50 ? 'text-green-400' : score >= 20 ? 'text-yellow-400' : 'text-red-400';
+}
+
+function FrameworkAnalysisPanel() {
+  const [description, setDescription] = useState('');
+  const [principlesText, setPrinciplesText] = useState('');
+  const [consequences, setConsequences] = useState([
+    { description: '', impact: '', affectedCount: '', probability: '' },
+  ]);
+  const [stakeholders, setStakeholders] = useState([
+    { name: '', description: '', vulnerable: false, impact: '' },
+  ]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [result, setResult] = useState<FrameworkAnalysisResult | null>(null);
+
+  const setCons = (i: number, field: string, val: string) => {
+    setConsequences((prev) => prev.map((c, idx) => (idx === i ? { ...c, [field]: val } : c)));
+  };
+  const setSh = (i: number, field: string, val: string | boolean) => {
+    setStakeholders((prev) => prev.map((s, idx) => (idx === i ? { ...s, [field]: val } : s)));
+  };
+
+  const run = async () => {
+    setErr('');
+    if (!description.trim()) { setErr('Action description required.'); return; }
+    const action = {
+      description: description.trim(),
+      principles: principlesText.split(',').map((p) => p.trim()).filter(Boolean),
+      consequences: consequences
+        .filter((c) => c.description.trim())
+        .map((c) => ({
+          description: c.description.trim(),
+          impact: c.impact !== '' ? Number(c.impact) : 0,
+          affectedCount: c.affectedCount !== '' ? Number(c.affectedCount) : 1,
+          probability: c.probability !== '' ? Number(c.probability) : 1,
+        })),
+      stakeholders: stakeholders
+        .filter((s) => s.name.trim())
+        .map((s) => ({
+          name: s.name.trim(),
+          description: s.description.trim(),
+          vulnerable: s.vulnerable,
+          impact: s.impact !== '' ? Number(s.impact) : 0,
+        })),
+    };
+    setBusy(true);
+    const r = await lensRun('ethics', 'frameworkAnalysis', { action });
+    setBusy(false);
+    if (!r.data.ok) { setErr(r.data.error || 'Analysis failed.'); return; }
+    setResult(r.data.result);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className={SECTION}>
+        <h4 className={ds.heading3}>Evaluate one action across four ethical frameworks</h4>
+        <p className="text-xs text-gray-500">
+          Utilitarian, Kantian deontological, virtue ethics, and care ethics — run
+          side by side against the same action, surfacing where they agree and
+          where they pull in different directions.
+        </p>
+        <textarea
+          className={ds.textarea}
+          rows={2}
+          placeholder="Describe the action or decision under evaluation..."
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <input
+          className={ds.input}
+          placeholder="Principles at stake (comma-separated, e.g. consent, transparency)"
+          value={principlesText}
+          onChange={(e) => setPrinciplesText(e.target.value)}
+        />
+
+        <div className="space-y-2">
+          <p className={ds.textMuted}>Consequences</p>
+          {consequences.map((c, i) => (
+            <div key={i} className="grid grid-cols-12 gap-2 items-center">
+              <input className={cn(ds.input, 'col-span-5')} placeholder="What happens"
+                value={c.description} onChange={(e) => setCons(i, 'description', e.target.value)} />
+              <input type="number" className={cn(ds.input, 'col-span-2')} placeholder="Impact -100..100"
+                value={c.impact} onChange={(e) => setCons(i, 'impact', e.target.value)} />
+              <input type="number" className={cn(ds.input, 'col-span-2')} placeholder="# affected"
+                value={c.affectedCount} onChange={(e) => setCons(i, 'affectedCount', e.target.value)} />
+              <input type="number" step="0.1" className={cn(ds.input, 'col-span-2')} placeholder="Prob. 0-1"
+                value={c.probability} onChange={(e) => setCons(i, 'probability', e.target.value)} />
+              <button className={ds.btnGhost} aria-label="Remove consequence"
+                onClick={() => setConsequences((p) => p.filter((_, idx) => idx !== i))}>
+                <Trash2 className="w-4 h-4 text-red-400" />
+              </button>
+            </div>
+          ))}
+          <button className={ds.btnSecondary}
+            onClick={() => setConsequences((p) => [...p, { description: '', impact: '', affectedCount: '', probability: '' }])}>
+            <Plus className="w-4 h-4" /> Consequence
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <p className={ds.textMuted}>Stakeholders</p>
+          {stakeholders.map((s, i) => (
+            <div key={i} className="grid grid-cols-12 gap-2 items-center">
+              <input className={cn(ds.input, 'col-span-3')} placeholder="Name"
+                value={s.name} onChange={(e) => setSh(i, 'name', e.target.value)} />
+              <input className={cn(ds.input, 'col-span-4')} placeholder="Description"
+                value={s.description} onChange={(e) => setSh(i, 'description', e.target.value)} />
+              <label className="col-span-2 flex items-center gap-1 text-xs text-gray-400">
+                <input type="checkbox" checked={s.vulnerable}
+                  onChange={(e) => setSh(i, 'vulnerable', e.target.checked)} />
+                Vulnerable
+              </label>
+              <input type="number" className={cn(ds.input, 'col-span-2')} placeholder="Impact -100..100"
+                value={s.impact} onChange={(e) => setSh(i, 'impact', e.target.value)} />
+              <button className={ds.btnGhost} aria-label="Remove stakeholder"
+                onClick={() => setStakeholders((p) => p.filter((_, idx) => idx !== i))}>
+                <Trash2 className="w-4 h-4 text-red-400" />
+              </button>
+            </div>
+          ))}
+          <button className={ds.btnSecondary}
+            onClick={() => setStakeholders((p) => [...p, { name: '', description: '', vulnerable: false, impact: '' }])}>
+            <Plus className="w-4 h-4" /> Stakeholder
+          </button>
+        </div>
+
+        <button className={ds.btnPrimary} onClick={run} disabled={busy}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
+          Run Framework Analysis
+        </button>
+        {err && <div className={errBox}>{err}</div>}
+      </div>
+
+      {result && (
+        <div className={SECTION}>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-white font-medium">
+              Overall: <span className={scoreBadgeColor(result.overallScore)}>{result.overallScore}</span>
+              <span className="text-gray-500"> / 100</span>
+            </p>
+            <span className="text-xs text-gray-400">{result.consensus.replace(/-/g, ' ')}</span>
+          </div>
+          <ChartKit
+            kind="bar"
+            xKey="name"
+            height={180}
+            data={Object.values(result.frameworks).map((f) => ({ name: f.name, Score: f.score }))}
+            series={[{ key: 'Score', color: '#a855f7' }]}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {Object.entries(result.frameworks).map(([key, f]) => (
+              <div key={key} className="rounded-lg border border-lattice-border p-2 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-200 text-sm font-medium">{f.name}</span>
+                  <span className={cn('text-sm font-bold', scoreBadgeColor(f.score))}>{f.score}</span>
+                </div>
+                <p className="text-xs text-gray-400">{f.assessment.replace(/-/g, ' ')}</p>
+                <div className="flex flex-wrap gap-1">
+                  {Object.entries(f.details)
+                    .filter(([, dv]) => typeof dv !== 'object' || dv === null)
+                    .map(([dk, dv]) => (
+                      <span key={dk} className="text-[10px] px-1.5 py-0.5 rounded bg-lattice-elevated text-gray-400">
+                        {dk}: {String(dv)}
+                      </span>
+                    ))}
+                </div>
+                {key === 'virtue' && f.details.virtueScores && typeof f.details.virtueScores === 'object' && (
+                  <div className="flex flex-wrap gap-1">
+                    {Object.entries(f.details.virtueScores as Record<string, number>)
+                      .filter(([, v]) => v > 0)
+                      .map(([vk, vv]) => (
+                        <span key={vk} className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple">
+                          {vk}: {vv}
+                        </span>
+                      ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {result.tensions.length > 0 && (
+            <div className="space-y-1">
+              <p className={ds.textMuted}>Tensions</p>
+              {result.tensions.map((t, i) => (
+                <p key={i} className="text-xs text-yellow-400">⚠ {t}</p>
+              ))}
+            </div>
+          )}
+          <p className="text-sm text-neon-cyan">{result.recommendation}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ───────────────────────── Stakeholder Impact ───────────────────────── */
+
+interface SiStakeholder {
+  name: string;
+  group?: string;
+  power: number;
+  interest: number;
+  impact: number;
+  vulnerability: number;
+  urgency: number;
+  legitimacy: number;
+  salience: number;
+  quadrant: string;
+  weightedImpact: number;
+  priority: string;
+}
+interface SiGroup {
+  members: number;
+  avgImpact: number;
+  avgVulnerability: number;
+  netSentiment: string;
+}
+interface StakeholderImpactResult {
+  message?: string;
+  stakeholders: SiStakeholder[];
+  groups: Record<string, SiGroup>;
+  summary: {
+    total: number;
+    positivelyAffected: number;
+    negativelyAffected: number;
+    vulnerableHarmed: number;
+    highPriority: number;
+  };
+  equityScore: number;
+  equityAssessment: string;
+  quadrantDistribution: Record<string, number>;
+}
+
+function StakeholderImpactPanel() {
+  const [rows, setRows] = useState([
+    { name: '', group: '', power: '', interest: '', impact: '', vulnerability: '' },
+  ]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [result, setResult] = useState<StakeholderImpactResult | null>(null);
+
+  const setRow = (i: number, field: string, val: string) => {
+    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: val } : r)));
+  };
+
+  const run = async () => {
+    setErr('');
+    const payload = rows
+      .filter((r) => r.name.trim())
+      .map((r) => ({
+        name: r.name.trim(),
+        group: r.group.trim() || undefined,
+        power: r.power !== '' ? Number(r.power) : 50,
+        interest: r.interest !== '' ? Number(r.interest) : 50,
+        impact: r.impact !== '' ? Number(r.impact) : 0,
+        vulnerability: r.vulnerability !== '' ? Number(r.vulnerability) : 0,
+      }));
+    if (payload.length === 0) { setErr('Add at least one named stakeholder.'); return; }
+    setBusy(true);
+    const r = await lensRun('ethics', 'stakeholderImpact', { stakeholders: payload });
+    setBusy(false);
+    if (!r.data.ok) { setErr(r.data.error || 'Analysis failed.'); return; }
+    setResult(r.data.result);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className={SECTION}>
+        <h4 className={ds.heading3}>Power/interest salience &amp; equity analysis</h4>
+        <p className="text-xs text-gray-500">
+          Mitchell-Agle-Wood stakeholder salience: classifies each party into a
+          power/interest quadrant, weights negative impact by vulnerability, and
+          scores overall decision equity. Distinct from Stakeholder Map — this
+          tool analyzes one decision's full stakeholder field, not per-option
+          comparisons.
+        </p>
+        <div className="space-y-2">
+          {rows.map((r, i) => (
+            <div key={i} className="grid grid-cols-12 gap-2 items-center">
+              <input className={cn(ds.input, 'col-span-3')} placeholder="Stakeholder name"
+                value={r.name} onChange={(e) => setRow(i, 'name', e.target.value)} />
+              <input className={cn(ds.input, 'col-span-2')} placeholder="Group"
+                value={r.group} onChange={(e) => setRow(i, 'group', e.target.value)} />
+              <input type="number" className={cn(ds.input, 'col-span-2')} placeholder="Power 0-100"
+                value={r.power} onChange={(e) => setRow(i, 'power', e.target.value)} />
+              <input type="number" className={cn(ds.input, 'col-span-2')} placeholder="Interest 0-100"
+                value={r.interest} onChange={(e) => setRow(i, 'interest', e.target.value)} />
+              <input type="number" className={cn(ds.input, 'col-span-2')} placeholder="Impact -100..100"
+                value={r.impact} onChange={(e) => setRow(i, 'impact', e.target.value)} />
+              <button className={ds.btnGhost} aria-label="Remove stakeholder"
+                onClick={() => setRows((p) => p.filter((_, idx) => idx !== i))}>
+                <Trash2 className="w-4 h-4 text-red-400" />
+              </button>
+              <input type="number" className={cn(ds.input, 'col-span-3')} placeholder="Vulnerability 0-100"
+                value={r.vulnerability} onChange={(e) => setRow(i, 'vulnerability', e.target.value)} />
+            </div>
+          ))}
+          <button className={ds.btnSecondary}
+            onClick={() => setRows((p) => [...p, { name: '', group: '', power: '', interest: '', impact: '', vulnerability: '' }])}>
+            <Plus className="w-4 h-4" /> Stakeholder
+          </button>
+        </div>
+        <button className={ds.btnPrimary} onClick={run} disabled={busy}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
+          Analyze Impact
+        </button>
+        {err && <div className={errBox}>{err}</div>}
+      </div>
+
+      {result && !result.message && (
+        <div className={SECTION}>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-white font-medium">
+              Equity: <span className={scoreBadgeColor(result.equityScore)}>{result.equityScore}</span>
+              <span className="text-gray-500"> / 100 — {result.equityAssessment}</span>
+            </p>
+            <span className="text-xs text-gray-400">
+              {result.summary.vulnerableHarmed} vulnerable harmed · {result.summary.highPriority} high priority
+            </span>
+          </div>
+          <ChartKit
+            kind="bar"
+            xKey="quadrant"
+            height={160}
+            data={Object.entries(result.quadrantDistribution).map(([quadrant, count]) => ({ quadrant, Count: count }))}
+            series={[{ key: 'Count', color: '#6366f1' }]}
+          />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-400 border-b border-lattice-border">
+                  <th className="py-1 pr-3">Stakeholder</th>
+                  <th className="py-1 pr-3">Quadrant</th>
+                  <th className="py-1 pr-3">Salience</th>
+                  <th className="py-1 pr-3">Priority</th>
+                  <th className="py-1">Weighted impact</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.stakeholders.map((s) => (
+                  <tr key={s.name} className="border-b border-lattice-border/50">
+                    <td className="py-1 pr-3 text-gray-300">
+                      {s.name} {s.group && <span className="text-gray-600">({s.group})</span>}
+                    </td>
+                    <td className="py-1 pr-3 text-gray-400">{s.quadrant.replace(/-/g, ' ')}</td>
+                    <td className="py-1 pr-3 text-gray-400">{s.salience}</td>
+                    <td className={cn(
+                      'py-1 pr-3',
+                      s.priority === 'high' ? 'text-red-400' : s.priority === 'medium' ? 'text-yellow-400' : 'text-gray-400',
+                    )}>
+                      {s.priority}
+                    </td>
+                    <td className={cn('py-1', impactColor(s.weightedImpact))}>{s.weightedImpact}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {Object.keys(result.groups).length > 1 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {Object.entries(result.groups).map(([name, g]) => (
+                <div key={name} className="rounded-lg border border-lattice-border p-2">
+                  <p className="text-xs text-gray-400">{name}</p>
+                  <p className={cn('text-sm font-bold', impactColor(g.avgImpact))}>{g.avgImpact}</p>
+                  <p className="text-xs text-gray-500">{g.netSentiment}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ───────────────────────── Bias Audit ───────────────────────── */
+
+interface BiasGroupRow { group: string; total: number; positiveRate: number; }
+interface BiasAttrResult {
+  groups: BiasGroupRow[];
+  disparateImpactRatio: number;
+  fourFifthsRule: string;
+  statisticalParityDifference: number;
+  chiSquared: number;
+  pValueApprox: number;
+  biasDetected: boolean;
+  severity: string;
+  favoredGroup?: string;
+  disadvantagedGroup?: string;
+}
+interface BiasDetectionResult {
+  attributes: Record<string, BiasAttrResult>;
+  totalDecisions: number;
+  biasedAttributes: string[];
+  overallAssessment: string;
+  recommendations: string[];
+}
+
+function parseDecisionCsv(text: string):
+  | { decisions: { id: string; outcome: string; attributes: Record<string, string> }[]; protectedAttributes: string[] }
+  | { error: string } {
+  const lines = text.trim().split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) return { error: 'Paste a header row (must include "outcome") plus at least 10 data rows.' };
+  const header = lines[0].split(',').map((h) => h.trim());
+  const outcomeIdx = header.indexOf('outcome');
+  if (outcomeIdx === -1) return { error: 'Header row must include an "outcome" column.' };
+  const attrCols = header.filter((_, idx) => idx !== outcomeIdx);
+  if (attrCols.length === 0) return { error: 'Header row needs at least one protected-attribute column besides "outcome".' };
+  const dataLines = lines.slice(1);
+  if (dataLines.length < 10) return { error: `Need at least 10 data rows (found ${dataLines.length}).` };
+  const decisions = dataLines.map((line, i) => {
+    const cells = line.split(',').map((c) => c.trim());
+    const attributes: Record<string, string> = {};
+    header.forEach((h, idx) => { if (idx !== outcomeIdx) attributes[h] = cells[idx] ?? ''; });
+    return { id: `row_${i}`, outcome: cells[outcomeIdx] ?? '', attributes };
+  });
+  return { decisions, protectedAttributes: attrCols };
+}
+
+function BiasAuditPanel() {
+  const [csv, setCsv] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [result, setResult] = useState<BiasDetectionResult | null>(null);
+
+  const run = async () => {
+    setErr('');
+    const parsed = parseDecisionCsv(csv);
+    if ('error' in parsed) { setErr(parsed.error); return; }
+    setBusy(true);
+    const r = await lensRun('ethics', 'biasDetection', {
+      decisions: parsed.decisions,
+      protectedAttributes: parsed.protectedAttributes,
+    });
+    setBusy(false);
+    if (!r.data.ok) { setErr(r.data.error || 'Audit failed.'); return; }
+    setResult(r.data.result);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className={SECTION}>
+        <h4 className={ds.heading3}>Dataset-level disparate-impact audit</h4>
+        <p className="text-xs text-gray-500">
+          Paste a CSV of decisions — a header row starting with &quot;outcome&quot;,
+          then one protected-attribute column per group you want to test
+          (gender, race, age bracket, …), and at least 10 data rows. Computes
+          the four-fifths rule, statistical parity difference, and a rough
+          chi-squared significance per attribute. Distinct from Bias Checklist —
+          this audits a dataset of past decisions for disparate impact, not a
+          single decision for cognitive bias.
+        </p>
+        <textarea
+          className={cn(ds.textarea, 'font-mono text-xs')}
+          rows={8}
+          placeholder={'outcome,gender,age_bracket\napproved,female,25-34\ndenied,female,25-34\napproved,male,35-44\n… (10+ rows)'}
+          value={csv}
+          onChange={(e) => setCsv(e.target.value)}
+        />
+        <button className={ds.btnPrimary} onClick={run} disabled={busy}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldAlert className="w-4 h-4" />}
+          Run Bias Audit
+        </button>
+        {err && <div className={errBox}>{err}</div>}
+      </div>
+
+      {result && (
+        <div className={SECTION}>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-white font-medium">
+              {result.totalDecisions} decisions ·{' '}
+              <span className={result.overallAssessment === 'no_significant_bias' ? 'text-green-400' : 'text-red-400'}>
+                {result.overallAssessment.replace(/_/g, ' ')}
+              </span>
+            </p>
+          </div>
+          {Object.entries(result.attributes).map(([attr, a]) => (
+            <div key={attr} className="rounded-lg border border-lattice-border p-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-200 text-sm font-medium">{attr}</span>
+                <span className={cn('text-xs font-bold', a.fourFifthsRule === 'passed' ? 'text-green-400' : 'text-red-400')}>
+                  4/5ths rule: {a.fourFifthsRule}
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-gray-400 border-b border-lattice-border">
+                      <th className="py-1 pr-3">Group</th>
+                      <th className="py-1 pr-3">N</th>
+                      <th className="py-1">Positive rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {a.groups.map((g) => (
+                      <tr key={g.group} className="border-b border-lattice-border/50">
+                        <td className="py-1 pr-3 text-gray-300">
+                          {g.group}
+                          {g.group === a.favoredGroup && <span className="text-green-400"> (favored)</span>}
+                          {g.group === a.disadvantagedGroup && <span className="text-red-400"> (disadvantaged)</span>}
+                        </td>
+                        <td className="py-1 pr-3 text-gray-400">{g.total}</td>
+                        <td className="py-1 text-gray-300">{g.positiveRate}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] text-gray-500">
+                Disparate impact ratio {a.disparateImpactRatio} · parity Δ {a.statisticalParityDifference} ·
+                χ² {a.chiSquared} (p≈{a.pValueApprox}) · severity {a.severity}
+              </p>
+            </div>
+          ))}
+          {result.recommendations.length > 0 && (
+            <div className="space-y-1">
+              {result.recommendations.map((rec, i) => (
+                <p key={i} className="text-xs text-yellow-400">⚠ {rec}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
