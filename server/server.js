@@ -1001,6 +1001,18 @@ registerHeartbeat("land-claims-cycle", {
   handler: runLandClaimsCycle,
 });
 
+// Wire-the-unwired: goddess.compose_now (lib/goddess-broadcaster.js) had no
+// caller anywhere — no heartbeat, no frontend button — so the /lenses/
+// goddess page's "composed hourly" claim was false and the feed stayed
+// permanently empty in any real deployment. Every ~240 ticks (~1h), walk
+// active worlds and compose+record one dispatch each. Kill-switch:
+// CONCORD_GODDESS_BROADCAST=0.
+import { runGoddessBroadcastCycle } from "./emergent/goddess-broadcast-cycle.js";
+registerHeartbeat("goddess-broadcast-cycle", {
+  frequency: 240,
+  handler: runGoddessBroadcastCycle,
+});
+
 // Civic Capital — auto-pause stalled bond drives (kill-switch CONCORD_CIVIC_BONDS).
 import { runCivicBondCycle, CIVIC_BOND_CYCLE_FREQUENCY } from "./emergent/civic-bond-cycle.js";
 registerHeartbeat("civic-bond-cycle", {
