@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Leaf, Plus, Trash2, Loader2, Factory, Zap, Plane } from 'lucide-react';
+import { Leaf, Plus, Trash2, Loader2, Factory, Zap, Plane, Calculator } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +21,7 @@ export function EmissionsActivitiesPanel() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'' | '1' | '2' | '3'>('');
   const [form, setForm] = useState({ factorKey: 'diesel_gallon', amount: '', date: new Date().toISOString().slice(0, 10), facility: '', category: '' });
+  const [preview, setPreview] = useState<Factor | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -36,6 +37,21 @@ export function EmissionsActivitiesPanel() {
   }, [filter]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // Live "verify before you log" preview: look the selected factor up
+  // authoritatively (rather than trusting the already-cached list) whenever
+  // it changes, so the citation + rate shown are always freshly confirmed.
+  useEffect(() => {
+    let cancelled = false;
+    if (!form.factorKey) { setPreview(null); return; }
+    (async () => {
+      try {
+        const r = await lensRun({ domain: 'environment', action: 'emission-factors-lookup', input: { key: form.factorKey } });
+        if (!cancelled) setPreview(r.data?.ok !== false ? (r.data?.result as Factor) || null : null);
+      } catch { if (!cancelled) setPreview(null); }
+    })();
+    return () => { cancelled = true; };
+  }, [form.factorKey]);
 
   async function log() {
     if (!form.amount) return;
@@ -85,6 +101,17 @@ export function EmissionsActivitiesPanel() {
         <input value={form.facility} onChange={e => setForm({ ...form, facility: e.target.value })} placeholder="Facility" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={log} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Log</button>
       </div>
+      {preview && (
+        <div className="px-4 py-1.5 border-b border-white/10 flex items-center gap-1.5 text-[11px] text-emerald-300/80">
+          <Calculator className="w-3 h-3" />
+          {form.amount ? (
+            <span>≈ <span className="font-mono text-emerald-200">{(Number(form.amount) * preview.co2e).toFixed(2)} kg</span> CO₂e ({(Number(form.amount) * preview.co2e / 1000).toFixed(3)}t) at {preview.co2e} kg/{preview.unit}</span>
+          ) : (
+            <span>{preview.co2e} kg CO₂e per {preview.unit}</span>
+          )}
+          <span className="text-gray-500">· {preview.source}</span>
+        </div>
+      )}
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>

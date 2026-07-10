@@ -1,9 +1,17 @@
 'use client';
 
 /**
- * SupplyChainActionPanel — operations planner bench.
- * leadTimeAnalysis / inventoryOptimize (EOQ + reorder point) /
- * supplierScore / demandForecast + mint/DM/publish/agent.
+ * SupplyChainActionPanel — Scorecards & Ops bench.
+ *
+ * Wires the 4 "quick analysis" supplychain macros (leadTimeAnalysis /
+ * inventoryOptimize / supplierScore / demandForecast) plus DTU mint / DM /
+ * publish / agent-review bonus actions.
+ *
+ * Inputs are structured line-based fields (same `field | field | field`
+ * idiom the rest of the domain uses in SupplyChainPlanner) instead of a raw
+ * JSON-paste textarea — pasting JSON is not a designed input surface.
+ *
+ * Every rendered value comes from a real macro call. No mock data.
  */
 
 import { useState } from 'react';
@@ -34,6 +42,37 @@ interface SupResult { suppliers: ScoredSup[]; topSupplier: string; atRisk: numbe
 interface ForecastPt { period: string; predicted: number; confidence: string }
 interface ForecastResult { historicalPeriods: number; avgDemand: number; trend: string; forecast: ForecastPt[] }
 
+const AREA = 'w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-white font-mono placeholder:text-zinc-600';
+const FIELD_LABEL = 'text-[10px] uppercase tracking-wider font-semibold';
+
+function num(v: string, d = 0): number { const n = Number(v); return Number.isFinite(n) ? n : d; }
+
+// order line: reference | supplier | orderDate | receivedDate (blank = still pending)
+function parseOrders(text: string) {
+  return text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const [id, supplier, orderDate, receivedDate] = l.split('|').map((x) => x.trim());
+    return { id, supplier, orderDate, receivedDate: receivedDate || undefined };
+  });
+}
+// item line: name | dailyDemand | leadTimeDays | currentStock | orderCost | holdingCost
+function parseInvItems(text: string) {
+  return text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const [name, dd, lt, cur, oc, hc] = l.split('|').map((x) => x.trim());
+    return { name, dailyDemand: num(dd, 1), leadTimeDays: num(lt, 7), currentStock: num(cur), orderCost: oc ? num(oc) : undefined, holdingCost: hc ? num(hc) : undefined };
+  });
+}
+// supplier line: name | qualityScore | onTimePercent | priceCompetitiveness | responsiveness
+function parseSuppliers(text: string) {
+  return text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const [name, q, ot, price, resp] = l.split('|').map((x) => x.trim());
+    return { name, qualityScore: num(q, 70), onTimePercent: num(ot, 80), priceCompetitiveness: price ? num(price) : undefined, responsiveness: resp ? num(resp) : undefined };
+  });
+}
+// demand history: space/comma separated values, oldest first
+function parseHistory(text: string) {
+  return text.split(/[\s,]+/).map((t) => Number(t)).filter((n) => Number.isFinite(n)).map((demand) => ({ demand }));
+}
+
 // No seeded data — every input starts empty.
 export function SupplyChainActionPanel() {
   const [ordersText, setOrdersText] = useState('');
@@ -55,15 +94,13 @@ export function SupplyChainActionPanel() {
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
 
-  function parseJSON<T>(text: string): T | null { try { return JSON.parse(text) as T; } catch { return null; } }
-
   const pipe = usePipe();
   const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
   const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
 
   async function actLead() {
-    if (!ordersText.trim()) { err('Paste orders JSON first.'); return; }
-    const orders = parseJSON<unknown[]>(ordersText); if (!orders) { err('Invalid orders JSON.'); return; }
+    const orders = parseOrders(ordersText);
+    if (orders.length === 0) { err('Add at least one order line.'); return; }
     setBusy('lead'); setFeedback(null);
     try {
       const r = await callMacro<LeadResult>('leadTimeAnalysis', { artifact: { data: { orders } } });
@@ -71,8 +108,8 @@ export function SupplyChainActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actInv() {
-    if (!invText.trim()) { err('Paste inventory JSON first.'); return; }
-    const items = parseJSON<unknown[]>(invText); if (!items) { err('Invalid inventory JSON.'); return; }
+    const items = parseInvItems(invText);
+    if (items.length === 0) { err('Add at least one inventory item line.'); return; }
     setBusy('inv'); setFeedback(null);
     try {
       const r = await callMacro<InvResult>('inventoryOptimize', { artifact: { data: { items } } });
@@ -80,8 +117,8 @@ export function SupplyChainActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSup() {
-    if (!supText.trim()) { err('Paste suppliers JSON first.'); return; }
-    const suppliers = parseJSON<unknown[]>(supText); if (!suppliers) { err('Invalid suppliers JSON.'); return; }
+    const suppliers = parseSuppliers(supText);
+    if (suppliers.length === 0) { err('Add at least one supplier line.'); return; }
     setBusy('sup'); setFeedback(null);
     try {
       const r = await callMacro<SupResult>('supplierScore', { artifact: { data: { suppliers } } });
@@ -89,8 +126,8 @@ export function SupplyChainActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actFore() {
-    if (!histText.trim()) { err('Paste history JSON first.'); return; }
-    const history = parseJSON<unknown[]>(histText); if (!history) { err('Invalid history JSON.'); return; }
+    const history = parseHistory(histText);
+    if (history.length < 3) { err('Enter at least 3 demand values.'); return; }
     setBusy('fore'); setFeedback(null);
     try {
       const r = await callMacro<ForecastResult>('demandForecast', { artifact: { data: { history } } });
@@ -149,66 +186,57 @@ export function SupplyChainActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
-  const actions = [
-    { id: 'lead' as ActionId, label: 'Lead time', desc: 'leadTimeAnalysis', icon: Truck, accent: '#3b82f6', handler: actLead },
-    { id: 'inv' as ActionId, label: 'EOQ', desc: 'inventoryOptimize', icon: Package, accent: '#22c55e', handler: actInv },
-    { id: 'sup' as ActionId, label: 'Scorecard', desc: 'supplierScore', icon: Star, accent: '#f59e0b', handler: actSup },
-    { id: 'fore' as ActionId, label: 'Forecast', desc: 'demandForecast', icon: TrendingUp, accent: '#06b6d4', handler: actFore },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private ops DTU', icon: Sparkles, accent: '#a855f7', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send ops brief', icon: Send, accent: '#ec4899', handler: actDm },
+  const bonusActions = [
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint DTU', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private ops record', icon: Sparkles, accent: '#a855f7', handler: actMint },
+    { id: 'dm' as ActionId, label: 'DM brief', desc: 'Send ops brief', icon: Send, accent: '#ec4899', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon benchmark', icon: Globe, accent: '#15803d', handler: actPublish },
-    { id: 'agent' as ActionId, label: 'Risk', desc: 'Agent: resilience', icon: Wand2, accent: '#eab308', handler: actAgent },
+    { id: 'agent' as ActionId, label: 'Risk review', desc: 'Agent: resilience', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
   const TIER_COLOR: Record<string, string> = { preferred: 'text-emerald-300', approved: 'text-blue-300', conditional: 'text-amber-300', 'at-risk': 'text-red-300' };
   const REL_COLOR: Record<string, string> = { excellent: 'text-emerald-300', good: 'text-blue-300', acceptable: 'text-amber-300', poor: 'text-red-300' };
 
   return (
-    <div className="rounded-lg border border-blue-500/20 bg-zinc-950/60 p-3 space-y-3">
-      <header className="flex items-center gap-2 border-b border-blue-500/10 pb-2">
+    <div className="space-y-4">
+      <header className="flex items-center gap-2">
         <Truck className="h-4 w-4 text-blue-400" />
-        <h3 className="text-sm font-semibold text-white">Supply-chain bench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">lead time · EOQ · scorecard · forecast</span>
+        <h3 className="text-sm font-semibold text-white">Scorecards &amp; quick analysis</h3>
+        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">lead time · EOQ · supplier scorecard · forecast</span>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Orders (JSON)</label>
-          <textarea value={ordersText} onChange={(e) => setOrdersText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
+          <label className={cn(FIELD_LABEL, 'text-blue-400')}>Orders — <span className="normal-case text-zinc-500">reference | supplier | orderDate | receivedDate</span></label>
+          <textarea value={ordersText} onChange={(e) => setOrdersText(e.target.value)} rows={4} className={AREA}
+            placeholder={'PO-101 | Acme Corp | 2026-05-01 | 2026-05-09\nPO-102 | Globex | 2026-06-02 | '} />
+          <button onClick={actLead} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
+            {busy === 'lead' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Truck className="w-3.5 h-3.5" />} Analyze lead time
+          </button>
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Inventory (JSON)</label>
-          <textarea value={invText} onChange={(e) => setInvText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+        <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
+          <label className={cn(FIELD_LABEL, 'text-green-400')}>Inventory — <span className="normal-case text-zinc-500">name | dailyDemand | leadTimeDays | currentStock | orderCost | holdingCost</span></label>
+          <textarea value={invText} onChange={(e) => setInvText(e.target.value)} rows={4} className={AREA}
+            placeholder={'Widget A | 12 | 7 | 40 | 50 | 5\nWidget B | 6 | 5 | 90 | 60 | 4'} />
+          <button onClick={actInv} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-green-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-green-500 disabled:opacity-50">
+            {busy === 'inv' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Package className="w-3.5 h-3.5" />} Optimize (EOQ)
+          </button>
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Suppliers (JSON)</label>
-          <textarea value={supText} onChange={(e) => setSupText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+        <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
+          <label className={cn(FIELD_LABEL, 'text-amber-400')}>Suppliers — <span className="normal-case text-zinc-500">name | qualityScore | onTimePercent | priceCompetitiveness | responsiveness</span></label>
+          <textarea value={supText} onChange={(e) => setSupText(e.target.value)} rows={4} className={AREA}
+            placeholder={'Acme Corp | 45 | 55 | 60 | 50\nGlobex | 80 | 92 | 70 | 85'} />
+          <button onClick={actSup} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-500 disabled:opacity-50">
+            {busy === 'sup' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Star className="w-3.5 h-3.5" />} Score suppliers
+          </button>
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-cyan-400 font-semibold">Demand history (JSON)</label>
-          <textarea value={histText} onChange={(e) => setHistText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+        <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
+          <label className={cn(FIELD_LABEL, 'text-cyan-400')}>Demand history — <span className="normal-case text-zinc-500">space/comma-separated, oldest first</span></label>
+          <textarea value={histText} onChange={(e) => setHistText(e.target.value)} rows={4} className={AREA}
+            placeholder="120 95 140 180 130 100 155 200" />
+          <button onClick={actFore} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-cyan-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-cyan-500 disabled:opacity-50">
+            {busy === 'fore' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />} Forecast demand
+          </button>
         </div>
-        <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
-          <RecallSlot ctl={dmRecall} />
-          <RecallSlot ctl={publishRecall} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-        {actions.map(act => {
-          const Icon = act.icon; const isBusy = busy === act.id;
-          return (
-            <button key={act.id} type="button" disabled={!!busy} onClick={act.handler}
-              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
-              <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: act.accent + '20', color: act.accent }}>
-                {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
-              </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
-            </button>
-          );
-        })}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -239,6 +267,30 @@ export function SupplyChainActionPanel() {
             {foreResult.forecast.map((f, i) => <div key={i} className="text-[11px] text-zinc-300">{f.period}: <span className="text-cyan-200 font-mono">{f.predicted}</span> <span className="text-zinc-400">({f.confidence})</span></div>)}
           </div>
         )}
+      </div>
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 space-y-2.5">
+        <div className={cn(FIELD_LABEL, 'text-zinc-400')}>Share this analysis</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {bonusActions.map(act => {
+            const Icon = act.icon; const isBusy = busy === act.id;
+            return (
+              <button key={act.id} type="button" disabled={busy !== null} onClick={act.handler}
+                className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
+                <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: act.accent + '20', color: act.accent }}>
+                  {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
+                </div>
+                <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
+                <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient (userId)" />
+          <RecallSlot ctl={dmRecall} />
+          <RecallSlot ctl={publishRecall} />
+        </div>
       </div>
 
       {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Resilience play</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre></div>)}

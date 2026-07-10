@@ -15,10 +15,11 @@ import { BomPanel } from '@/components/engineering/BomPanel';
 import { TolerancePanel } from '@/components/engineering/TolerancePanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useQuery } from '@tanstack/react-query';
 import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { api, lensRun } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { FEAResultViewer } from '@/components/engineering/FEAResultViewer';
+import { MultiDisciplineCalcPanel } from '@/components/engineering/MultiDisciplineCalcPanel';
+import { SimHistoryPanel } from '@/components/engineering/SimHistoryPanel';
 import {
   Wrench,
   Plus,
@@ -124,6 +125,7 @@ const TABS = [
   'Analysis',
   'BOM',
   'Tolerance',
+  'Calcs',
   'Results',
 ] as const;
 type Tab = (typeof TABS)[number];
@@ -193,9 +195,11 @@ export default function EngineeringPage() {
   );
   const [model, setModel] = useState<FEAModel>(DEFAULT_FEA_MODEL);
   const [feaResult, setFeaResult] = useState<Record<string, unknown> | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState<string>('');
+  // Bumped on every completed FEA run so <SimHistoryPanel> refetches
+  // engineering.listSimJobs and the Results tab shows the new run.
+  const [historyKey, setHistoryKey] = useState(0);
 
   // Material library (loaded from engineering.materialLibrary macro).
   const [libMaterials, setLibMaterials] = useState<LibMaterial[]>([]);
@@ -322,38 +326,13 @@ export default function EngineeringPage() {
     }
   }, [model, meshDivisions]);
 
-  // Poll async FEA job
-  const { data: jobData } = useQuery({
-    queryKey: ['sim-job', jobId],
-    queryFn: () => api.get(`/api/simulation/${jobId}`).then((r) => r.data),
-    enabled: !!jobId,
-    refetchInterval: (q) => {
-      const st = (q.state.data as { job?: { status?: string } } | undefined)?.job?.status;
-      return st === 'completed' || st === 'failed' ? false : 2000;
-    },
-  });
-
-  useEffect(() => {
-    if (!jobData?.job) return;
-    const j = jobData.job as { status: string; result?: unknown; error?: string };
-    if (j.status === 'completed' && j.result) {
-      setFeaResult(j.result as Record<string, unknown>);
-      setJobId(null);
-      setRunning(false);
-      setStatus('Analysis complete');
-      setTab('Results');
-    } else if (j.status === 'failed') {
-      setJobId(null);
-      setRunning(false);
-      setStatus(`Analysis failed: ${j.error}`);
-    } else {
-      setStatus(`Running… (${j.status})`);
-    }
-  }, [jobData]);
-
+  // engineering.runFEA is a synchronous direct-stiffness-method solve
+  // (server/lib/simulation/fea-solver.js: "200-member structure completes
+  // in <20ms") — there is no async job variant of this macro, so this is a
+  // single request/response, not a submit-then-poll flow.
   const runFEA = useCallback(() => {
     setRunning(true);
-    setStatus('Submitting…');
+    setStatus('Solving…');
     setFeaResult(null);
 
     // Save model as artifact first
@@ -365,15 +344,16 @@ export default function EngineeringPage() {
           { id, action: 'runFEA', params: { model } },
           {
             onSuccess: (data: unknown) => {
-              const d = data as { ok?: boolean; async?: boolean; jobId?: string; result?: unknown };
-              if (d?.async && d?.jobId) {
-                setJobId(d.jobId);
-                setStatus('Running async…');
-              } else if (d?.result) {
+              const d = data as { ok?: boolean; result?: unknown };
+              if (d?.result) {
                 setFeaResult(d.result as Record<string, unknown>);
                 setRunning(false);
                 setStatus('Analysis complete');
+                setHistoryKey((k) => k + 1);
                 setTab('Results');
+              } else {
+                setRunning(false);
+                setStatus('Analysis returned no result');
               }
             },
             onError: (e) => {
@@ -1066,6 +1046,9 @@ export default function EngineeringPage() {
       {/* ── Tolerance Tab — directional stack-up chain ─────────────────────────── */}
       {tab === 'Tolerance' && <TolerancePanel />}
 
+      {/* ── Calcs Tab — structural / thermal / electrical / hydraulic ──────────── */}
+      {tab === 'Calcs' && <MultiDisciplineCalcPanel />}
+
       {/* ── Analysis Tab ───────────────────────────────────────────────────────── */}
       {tab === 'Analysis' && (
         <div className="space-y-4">
@@ -1143,8 +1126,8 @@ export default function EngineeringPage() {
           <div className="panel p-4 space-y-3">
             <h3 className="font-semibold text-sm">Run Analysis</h3>
             <p className="text-xs text-gray-400">
-              Models with ≤100 members run synchronously (&lt;20ms). Larger models use async jobs
-              with status polling.
+              Direct-stiffness-method solve, computed synchronously — a 200-member frame
+              solves in under 20ms, so there is no job queue or polling to wait on.
             </p>
             <button
               onClick={runFEA}
@@ -1183,6 +1166,7 @@ export default function EngineeringPage() {
               height="500px"
             />
           )}
+          <SimHistoryPanel refreshKey={historyKey} />
         </div>
       )}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

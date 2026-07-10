@@ -13,6 +13,19 @@
  * Distinct from /lenses/forge (the polyglot single-file *app*
  * generator) — different domain namespace (foundry.* macros),
  * different product.
+ *
+ * Frontend Rebuild Program (Wave 3, 2026-07-10): retired two generic
+ * surfaces that duplicated / diluted the real designed builder — the
+ * auto-generated ManifestActionBar button wall (the flagship proof unit
+ * omits it too), and FoundryActionPanel, a broken "item" workbench whose
+ * data contracts never matched the real foundry.* macros (it read
+ * `.items`/`.id`/`.issues`/`.url` where the macros return
+ * `worlds`/`world.id`/`errors`/`previewWorldId`, so its list was always
+ * empty, Create silently minted orphan empty worlds then reported "No id
+ * returned", and Validate/Preview never rendered their results). The real
+ * create → configure → validate → preview → publish → playtest loop lives
+ * in FoundryWorldsPanel + FoundryCanvas + BuilderStudio + FoundryPreview,
+ * each wired to the correct macro shapes. Nothing real was lost.
  */
 
 import dynamic from 'next/dynamic';
@@ -27,10 +40,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { WorldBuilderRepos } from '@/components/foundry/WorldBuilderRepos';
-import { FoundryActionPanel } from '@/components/foundry/FoundryActionPanel';
 import { BuilderStudio } from '@/components/foundry/BuilderStudio';
-import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Boxes, Loader2 } from 'lucide-react';
 
 // Drag-drop + the catalog fetch are browser-only — load client-side.
@@ -52,7 +62,6 @@ export default function FoundryLensPage() {
   return (
     <LensShell lensId="foundry" asMain={false}>
       <FirstRunTour lensId="foundry" />
-      <ManifestActionBar />
       <DepthBadge lensId="foundry" size="sm" className="ml-2" />
       <LensVerticalHero lensId="foundry" className="mx-6 mt-4" />
       <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-950 to-sky-950/10 text-slate-100">
@@ -97,13 +106,6 @@ export default function FoundryLensPage() {
         <section className="mx-auto mt-6 max-w-screen-2xl">
           <BuilderStudio />
         </section>
-
-        {/* Unity + Roblox Studio-shape foundry workbench: list / create / validate / preview / publish + actions */}
-        <PipingProvider>
-          <section className="mx-auto mt-6 max-w-screen-2xl">
-            <FoundryActionPanel />
-          </section>
-        </PipingProvider>
       </main>
           <SessionRail lensId="foundry" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="foundry" limit={10} hideWhenEmpty className="mt-4" />

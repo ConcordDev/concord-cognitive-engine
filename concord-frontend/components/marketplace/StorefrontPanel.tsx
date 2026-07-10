@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Store, Loader2, ShoppingCart, Search, Plus, Trash2, Check, X } from 'lucide-react';
+import { Store, Loader2, ShoppingCart, Search, Plus, Trash2, Check, X, Star, Receipt, ExternalLink } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -61,6 +61,17 @@ interface CheckoutResult {
   grandTotalUsd: number;
   orders: Array<{ orderId: string; number: string; sellerId: string; totalUsd: number }>;
 }
+interface CheckoutHistoryEntry {
+  id: string; number: string; grandTotalUsd: number; placedAt: string;
+  orders: Array<{ orderId: string; number: string; sellerId: string; totalUsd: number }>;
+}
+interface ShopDetail {
+  shop: { id: string; name: string; tagline: string; bio: string; policies?: string };
+  listingCount: number;
+  avgShopRating: number | null;
+  shopReviewCount: number;
+  listings: Array<{ listingId: string; title: string; priceUsd: number; stockQty: number | null }>;
+}
 
 type SortKey = 'newest' | 'price_asc' | 'price_desc' | 'popular';
 
@@ -81,19 +92,34 @@ export function StorefrontPanel() {
   const [buyer, setBuyer] = useState({ buyerName: '', buyerEmail: '', buyerAddress: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<StoreListing | null>(null);
+  const [shop, setShop] = useState<ShopDetail | null>(null);
+  const [shopLoading, setShopLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<CheckoutHistoryEntry[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const refreshCatalog = useCallback(async () => {
     setLoading(true);
     try {
+      const searchTerm = search.trim();
       const input: Record<string, unknown> = { sort };
-      if (search.trim()) input.search = search.trim();
+      if (searchTerm) input.search = searchTerm;
       if (kind) input.kind = kind;
       if (minPrice !== '') input.minPrice = Number(minPrice);
       if (maxPrice !== '') input.maxPrice = Number(maxPrice);
       const r = await lensRun('marketplace', 'storefront-browse', input);
       if (r.data?.ok) {
-        setListings((r.data.result?.listings || []) as StoreListing[]);
+        const results = (r.data.result?.listings || []) as StoreListing[];
+        setListings(results);
         setCategories((r.data.result?.categories || []) as string[]);
+        // Search visibility (Etsy Stats parity): every listing surfaced against a
+        // keyword search racks up an impression the seller can see in Insights.
+        if (searchTerm) {
+          for (const l of results.slice(0, 24)) {
+            void lensRun('marketplace', 'search-impression', { listingId: l.listingId, keyword: searchTerm });
+          }
+        }
       }
     } catch (e) {
       console.error('[Storefront] browse failed', e);
@@ -134,9 +160,48 @@ export function StorefrontPanel() {
         setError(r.data.error || 'Could not add to cart');
         return;
       }
+      // A click on a listing that was surfaced by an active keyword search
+      // counts as the click-through half of the CTR the seller sees in Insights.
+      if (search.trim()) {
+        void lensRun('marketplace', 'search-impression', { listingId: l.listingId, keyword: search.trim(), click: true });
+      }
       await refreshCart();
     } catch (e) {
       console.error('[Storefront] cart-add failed', e);
+    }
+  }
+
+  function openListing(l: StoreListing) {
+    setViewing(l);
+    // Etsy Stats parity: opening a listing's detail is the "view" event the
+    // seller's Analytics tab (analytics-summary / analytics-by-listing) counts.
+    void lensRun('marketplace', 'analytics-track-view', { listingId: l.listingId, uniqueVisit: true });
+  }
+
+  async function openShop(sellerId: string) {
+    setShopLoading(true);
+    setShop(null);
+    try {
+      const r = await lensRun<ShopDetail>('marketplace', 'storefront-shop', { sellerId });
+      if (r.data?.ok) setShop((r.data.result as ShopDetail) || null);
+    } catch (e) {
+      console.error('[Storefront] shop failed', e);
+    } finally {
+      setShopLoading(false);
+    }
+  }
+
+  async function loadHistory() {
+    setShowHistory(true);
+    setHistoryLoading(true);
+    try {
+      const r = await lensRun<{ checkouts: CheckoutHistoryEntry[] }>('marketplace', 'checkout-history', {});
+      setHistory((r.data?.result?.checkouts || []) as CheckoutHistoryEntry[]);
+    } catch (e) {
+      console.error('[Storefront] checkout-history failed', e);
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
@@ -195,8 +260,15 @@ export function StorefrontPanel() {
           <span className="text-sm font-semibold text-gray-200">Storefront</span>
           <span className="text-[10px] text-gray-400">{listings.length} listings</span>
           <button
+            onClick={loadHistory}
+            className="ml-auto px-2.5 py-1 text-xs rounded bg-white/[0.04] text-gray-300 border border-white/10 hover:bg-white/[0.08] inline-flex items-center gap-1"
+          >
+            <Receipt className="w-3 h-3" />
+            My orders
+          </button>
+          <button
             onClick={() => setShowCart((v) => !v)}
-            className="ml-auto relative px-2.5 py-1 text-xs rounded bg-orange-500/15 text-orange-300 border border-orange-500/30 hover:bg-orange-500/25 inline-flex items-center gap-1"
+            className="relative px-2.5 py-1 text-xs rounded bg-orange-500/15 text-orange-300 border border-orange-500/30 hover:bg-orange-500/25 inline-flex items-center gap-1"
           >
             <ShoppingCart className="w-3 h-3" />
             Cart
@@ -281,17 +353,21 @@ export function StorefrontPanel() {
                   key={l.listingId}
                   className="rounded-lg border border-white/10 bg-black/40 overflow-hidden flex flex-col"
                 >
-                  <div className="aspect-square bg-black/40 border-b border-white/5 flex items-center justify-center overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => openListing(l)}
+                    className="aspect-square bg-black/40 border-b border-white/5 flex items-center justify-center overflow-hidden"
+                  >
                     {l.images?.[0] ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={l.images[0]} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <Store className="w-8 h-8 text-gray-600" />
                     )}
-                  </div>
+                  </button>
                   <div className="p-2.5 space-y-1.5 flex flex-col flex-1">
-                    <div className="text-sm text-white font-medium truncate">{l.title}</div>
-                    <div className="text-[10px] text-gray-400 truncate">{l.shopName}</div>
+                    <button type="button" onClick={() => openListing(l)} className="text-sm text-white font-medium truncate text-left hover:text-orange-300">{l.title}</button>
+                    <button type="button" onClick={() => openShop(l.sellerId)} className="text-[10px] text-gray-400 truncate text-left hover:text-orange-300 w-fit">{l.shopName}</button>
                     <div className="flex items-center gap-2 text-[10px] text-gray-400">
                       {l.avgRating !== null ? (
                         <span className="text-amber-300">
@@ -458,6 +534,121 @@ export function StorefrontPanel() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Listing detail modal */}
+      {viewing && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setViewing(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setViewing(null); }}>
+          <div className="w-full max-w-lg bg-[#0d1117] border border-orange-500/20 rounded-lg overflow-hidden max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => e.stopPropagation()}>
+            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
+              <Store className="w-4 h-4 text-orange-400" />
+              <span className="text-sm font-semibold text-gray-200 truncate flex-1">{viewing.title}</span>
+              <button onClick={() => setViewing(null)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
+            </header>
+            <div className="p-4 space-y-3">
+              {viewing.images?.[0] && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={viewing.images[0]} alt="" className="w-full aspect-video object-cover rounded" />
+              )}
+              <div className="flex items-center justify-between">
+                <button onClick={() => { setViewing(null); openShop(viewing.sellerId); }} className="text-xs text-gray-400 hover:text-orange-300 underline">{viewing.shopName}</button>
+                {viewing.avgRating !== null ? (
+                  <span className="text-xs text-amber-300 inline-flex items-center gap-1"><Star className="w-3 h-3 fill-amber-300" /> {viewing.avgRating} ({viewing.reviewCount})</span>
+                ) : (
+                  <span className="text-xs text-gray-600">No reviews yet</span>
+                )}
+              </div>
+              {viewing.description && <p className="text-xs text-gray-300 whitespace-pre-wrap">{viewing.description}</p>}
+              {viewing.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {viewing.tags.map((t) => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{t}</span>)}
+                </div>
+              )}
+              <div className="flex items-center justify-between border-t border-white/10 pt-3">
+                <span className="text-lg font-mono text-orange-300 font-bold">${viewing.priceUsd.toFixed(2)}</span>
+                <button
+                  onClick={() => { addToCart(viewing); }}
+                  disabled={viewing.stockQty === 0}
+                  className="px-3 py-1.5 text-xs rounded bg-orange-500 text-black font-bold hover:bg-orange-400 disabled:opacity-40 inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />{viewing.stockQty === 0 ? 'Sold out' : 'Add to cart'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shop page modal */}
+      {(shop || shopLoading) && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => { setShop(null); setShopLoading(false); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setShop(null); setShopLoading(false); } }}>
+          <div className="w-full max-w-lg bg-[#0d1117] border border-orange-500/20 rounded-lg overflow-hidden max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => e.stopPropagation()}>
+            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
+              <Store className="w-4 h-4 text-orange-400" />
+              <span className="text-sm font-semibold text-gray-200 truncate flex-1">{shop ? shop.shop.name : 'Loading shop…'}</span>
+              <button onClick={() => { setShop(null); setShopLoading(false); }} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
+            </header>
+            {shopLoading ? (
+              <div className="p-8 flex items-center justify-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading shop…</div>
+            ) : shop && (
+              <div className="p-4 space-y-3">
+                {shop.shop.tagline && <p className="text-xs text-orange-300 italic">{shop.shop.tagline}</p>}
+                {shop.shop.bio && <p className="text-xs text-gray-300">{shop.shop.bio}</p>}
+                <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                  <span>{shop.listingCount} listings</span>
+                  {shop.avgShopRating !== null && (
+                    <span className="text-amber-300 inline-flex items-center gap-1"><Star className="w-3 h-3 fill-amber-300" />{shop.avgShopRating} ({shop.shopReviewCount})</span>
+                  )}
+                </div>
+                <ul className="divide-y divide-white/5 border-t border-white/10 pt-1">
+                  {shop.listings.map((l) => (
+                    <li key={l.listingId} className="py-2 flex items-center justify-between text-xs">
+                      <span className="text-white truncate flex-1">{l.title}</span>
+                      <span className="font-mono text-orange-300">${l.priceUsd.toFixed(2)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Order history modal */}
+      {showHistory && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowHistory(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowHistory(false); }}>
+          <div className="w-full max-w-lg bg-[#0d1117] border border-orange-500/20 rounded-lg overflow-hidden max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => e.stopPropagation()}>
+            <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
+              <Receipt className="w-4 h-4 text-orange-400" />
+              <span className="text-sm font-semibold text-gray-200 flex-1">My order history</span>
+              <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>
+            </header>
+            <div className="p-4">
+              {historyLoading ? (
+                <div className="py-8 flex items-center justify-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+              ) : !history || history.length === 0 ? (
+                <div className="py-8 text-center text-xs text-gray-400"><Receipt className="w-6 h-6 mx-auto mb-2 opacity-30" />No past checkouts yet.</div>
+              ) : (
+                <ul className="space-y-2">
+                  {history.map((h) => (
+                    <li key={h.id} className="rounded border border-white/10 bg-black/30 p-2.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-gray-400">{h.number}</span>
+                        <span className="font-mono text-orange-300 font-bold">${h.grandTotalUsd.toFixed(2)}</span>
+                      </div>
+                      <div className="text-[10px] text-gray-400 mt-0.5">{new Date(h.placedAt).toLocaleString()} · {h.orders.length} order{h.orders.length !== 1 ? 's' : ''}</div>
+                      <ul className="mt-1 space-y-0.5 text-[10px] text-gray-400">
+                        {h.orders.map((o) => (
+                          <li key={o.orderId} className="font-mono inline-flex items-center gap-1">{o.number} — ${o.totalUsd.toFixed(2)}<ExternalLink className="w-2.5 h-2.5 opacity-50" /></li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       )}

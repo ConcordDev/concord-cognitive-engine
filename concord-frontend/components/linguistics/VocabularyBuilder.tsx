@@ -3,11 +3,12 @@
 /**
  * VocabularyBuilder — a personal vocabulary list with Leitner-box
  * spaced review: save words with definitions, then review the due
- * ones. Wires the linguistics.vocab-* macros.
+ * ones, and edit an entry's definition/example/part-of-speech in place.
+ * Wires the linguistics.vocab-* macros (add/list/update/delete/review-due/review/dashboard).
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { BookA, Plus, Trash2, GraduationCap, Loader2, Check, X } from 'lucide-react';
+import { BookA, Plus, Trash2, GraduationCap, Loader2, Check, X, Pencil, Save } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,10 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
   const [reviewQueue, setReviewQueue] = useState<Word[] | null>(null);
   const [reviewIdx, setReviewIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  // inline edit mode — wires linguistics.vocab-update
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ definition: '', example: '', partOfSpeech: '' });
+  const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     const [wl, d] = await Promise.all([
@@ -69,6 +74,23 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
   }
   async function del(id: string) {
     await lensRun('linguistics', 'vocab-delete', { id });
+    await refresh();
+    onChange?.();
+  }
+  function startEdit(w: Word) {
+    setEditingId(w.id);
+    setEditForm({ definition: w.definition || '', example: w.example || '', partOfSpeech: w.partOfSpeech || '' });
+  }
+  async function saveEdit(id: string) {
+    setSaving(true);
+    await lensRun('linguistics', 'vocab-update', {
+      id,
+      definition: editForm.definition.trim(),
+      example: editForm.example.trim(),
+      partOfSpeech: editForm.partOfSpeech.trim(),
+    });
+    setSaving(false);
+    setEditingId(null);
     await refresh();
     onChange?.();
   }
@@ -169,15 +191,50 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
       ) : (
         <ul className="space-y-1 max-h-72 overflow-y-auto">
           {words.map(w => (
-            <li key={w.id} className="group flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-1.5">
-              <div className="flex gap-0.5 shrink-0">
-                {[0, 1, 2, 3, 4].map(i => (
-                  <span key={i} className={cn('w-1.5 h-1.5 rounded-full', i < w.level ? 'bg-emerald-500' : 'bg-zinc-700')} />
-                ))}
-              </div>
-              <span className="text-xs font-semibold text-zinc-100">{w.word}</span>
-              <span className="text-[11px] text-zinc-400 truncate flex-1">{w.definition}</span>
-              <button aria-label="Delete" onClick={() => del(w.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <li key={w.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-1.5">
+              {editingId === w.id ? (
+                <div className="space-y-1.5 py-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-zinc-100">{w.word}</span>
+                    <input
+                      value={editForm.partOfSpeech}
+                      onChange={e => setEditForm({ ...editForm, partOfSpeech: e.target.value })}
+                      placeholder="part of speech"
+                      className="w-24 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-200"
+                    />
+                  </div>
+                  <input
+                    value={editForm.definition}
+                    onChange={e => setEditForm({ ...editForm, definition: e.target.value })}
+                    placeholder="Definition"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-200"
+                  />
+                  <input
+                    value={editForm.example}
+                    onChange={e => setEditForm({ ...editForm, example: e.target.value })}
+                    placeholder="Example sentence"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-200"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => saveEdit(w.id)} disabled={saving} className="px-2 py-0.5 text-[11px] rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
+                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}Save
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="text-[11px] text-zinc-400 hover:text-white">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="group flex items-center gap-2">
+                  <div className="flex gap-0.5 shrink-0">
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <span key={i} className={cn('w-1.5 h-1.5 rounded-full', i < w.level ? 'bg-emerald-500' : 'bg-zinc-700')} />
+                    ))}
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-100">{w.word}</span>
+                  <span className="text-[11px] text-zinc-400 truncate flex-1">{w.definition}</span>
+                  <button aria-label="Edit" onClick={() => startEdit(w)} className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-indigo-400"><Pencil className="w-3 h-3" /></button>
+                  <button aria-label="Delete" onClick={() => del(w.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

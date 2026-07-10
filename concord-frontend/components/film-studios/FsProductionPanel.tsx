@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, MapPin, CheckSquare, CalendarDays, Grid3x3, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Plus, Trash2, MapPin, CheckSquare, CalendarDays, Grid3x3, ChevronLeft, ChevronRight, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +27,8 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
   const [dood, setDood] = useState<{ days: number[]; rows: DoodRow[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [locForm, setLocForm] = useState({ name: '', address: '', contact: '' });
+  const [editingLoc, setEditingLoc] = useState<string | null>(null);
+  const [editLocForm, setEditLocForm] = useState({ name: '', address: '', contact: '' });
   const [taskForm, setTaskForm] = useState({ title: '', department: '', dueDate: '' });
   const now = new Date();
   const [year, setYear] = useState(now.getUTCFullYear());
@@ -58,6 +60,15 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
     if (!locForm.name.trim()) return;
     await lensRun('film-studios', 'location-create', { projectId, ...locForm, name: locForm.name.trim() });
     setLocForm({ name: '', address: '', contact: '' });
+    await refresh();
+  };
+  const startEditLoc = (l: Location) => {
+    setEditingLoc(l.id);
+    setEditLocForm({ name: l.name, address: l.address || '', contact: l.contact || '' });
+  };
+  const saveEditLoc = async (id: string) => {
+    await lensRun('film-studios', 'location-update', { id, ...editLocForm });
+    setEditingLoc(null);
     await refresh();
   };
   const addTask = async () => {
@@ -99,12 +110,27 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
         {locations.length === 0 ? <Empty text="No locations." /> : (
           <ul className="space-y-1">
             {locations.map((l) => (
-              <li key={l.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                <span className="text-xs text-zinc-100 flex-1">{l.name}
-                  {l.address && <span className="text-zinc-400"> · {l.address}</span>}</span>
-                {l.contact && <span className="text-[10px] text-zinc-400">{l.contact}</span>}
-                <button aria-label="Delete" type="button" onClick={() => lensRun('film-studios', 'location-delete', { id: l.id }).then(refresh)}
-                  className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+              <li key={l.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
+                {editingLoc === l.id ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 items-center">
+                    <input placeholder="Name" value={editLocForm.name} onChange={(e) => setEditLocForm({ ...editLocForm, name: e.target.value })} className={inp} />
+                    <input placeholder="Address" value={editLocForm.address} onChange={(e) => setEditLocForm({ ...editLocForm, address: e.target.value })} className={inp} />
+                    <input placeholder="Contact" value={editLocForm.contact} onChange={(e) => setEditLocForm({ ...editLocForm, contact: e.target.value })} className={inp} />
+                    <div className="flex items-center gap-1.5">
+                      <button aria-label="Save" type="button" onClick={() => saveEditLoc(l.id)} className="text-emerald-400 hover:text-emerald-300"><Check className="w-3.5 h-3.5" /></button>
+                      <button aria-label="Cancel" type="button" onClick={() => setEditingLoc(null)} className="text-zinc-600 hover:text-zinc-300"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-zinc-100 flex-1">{l.name}
+                      {l.address && <span className="text-zinc-400"> · {l.address}</span>}</span>
+                    {l.contact && <span className="text-[10px] text-zinc-400">{l.contact}</span>}
+                    <button aria-label="Edit" type="button" onClick={() => startEditLoc(l)} className="text-zinc-600 hover:text-fuchsia-400"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button aria-label="Delete" type="button" onClick={() => lensRun('film-studios', 'location-delete', { id: l.id }).then(refresh)}
+                      className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

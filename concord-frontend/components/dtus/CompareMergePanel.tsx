@@ -3,12 +3,21 @@
 /**
  * CompareMergePanel — side-by-side DTU comparison with a duplicate-merge
  * step. Wired to `dtus.compareDtus` (field diff + similarity) and
- * `dtus.mergeDtus` (produce a merged record + tombstone target).
+ * `dtus.mergeDtus` (produce a merged record + a tombstone recommendation
+ * — a preview, not a persisted merge).
+ *
+ * The merge itself is honestly two separate, explicit, real actions the
+ * user takes on the preview — never automatic:
+ *   - "Save merged as new DTU" → `dtu.create` (a genuinely new DTU).
+ *   - "Delete the duplicate" → `dtu.delete` (hard delete, confirmed) —
+ *     there is no soft-delete/tombstone field on the DTU substrate yet,
+ *     so this is the only real removal path available today.
  */
 
 import { useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
-import { GitMerge, Loader2, ArrowRight, Check, X } from 'lucide-react';
+import { GitMerge, Loader2, ArrowRight, Check, X, Save, Trash2 } from 'lucide-react';
 
 export interface CompareDtu extends Record<string, unknown> {
   id: string;
@@ -51,10 +60,17 @@ export function CompareMergePanel({
   b: CompareDtu | null;
   onClear: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [compare, setCompare] = useState<CompareResult | null>(null);
   const [merge, setMerge] = useState<MergeResult | null>(null);
   const [loading, setLoading] = useState<'compare' | 'merge' | null>(null);
   const [strategy, setStrategy] = useState<Strategy>('union');
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const runCompare = useCallback(async () => {
     if (!a || !b) return;
@@ -68,10 +84,54 @@ export function CompareMergePanel({
   const runMerge = useCallback(async () => {
     if (!a || !b) return;
     setLoading('merge');
+    setSavedId(null);
+    setSaveError(null);
+    setDeleted(false);
+    setDeleteError(null);
     const res = await lensRun<MergeResult>('dtus', 'mergeDtus', { a, b, strategy });
     setLoading(null);
     if (res.data.ok && res.data.result) setMerge(res.data.result);
   }, [a, b, strategy]);
+
+  // Persist the preview as a genuinely new DTU (dtu.create) — the merge
+  // preview itself is never auto-saved.
+  const saveMergedAsNew = useCallback(async () => {
+    if (!merge) return;
+    setSaving(true);
+    setSaveError(null);
+    const m = merge.merged as { title?: string; summary?: string; tags?: string[] };
+    const res = await lensRun<{ dtu?: { id?: string } }>('dtu', 'create', {
+      title: m.title || 'Merged DTU',
+      content: m.summary || '',
+      tags: Array.isArray(m.tags) ? m.tags : [],
+      meta: { mergedFrom: merge.merged.mergedFrom || [], mergeStrategy: merge.strategy },
+    });
+    setSaving(false);
+    if (res.data.ok && res.data.result?.dtu?.id) {
+      setSavedId(res.data.result.dtu.id);
+      queryClient.invalidateQueries({ queryKey: ['dtus-browser'] });
+    } else {
+      setSaveError(res.data.error || 'Save failed');
+    }
+  }, [merge, queryClient]);
+
+  // Hard-delete the tombstone-recommended duplicate. There is no soft
+  // delete/status field on the DTU substrate today, so this is a real,
+  // explicit, confirmed destructive action — never automatic.
+  const deleteDuplicate = useCallback(async () => {
+    if (!merge) return;
+    if (!window.confirm(`Permanently delete DTU "${merge.tombstone}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const res = await lensRun('dtu', 'delete', { id: merge.tombstone });
+    setDeleting(false);
+    if (res.data.ok) {
+      setDeleted(true);
+      queryClient.invalidateQueries({ queryKey: ['dtus-browser'] });
+    } else {
+      setDeleteError(res.data.error || 'Delete failed');
+    }
+  }, [merge, queryClient]);
 
   if (!a || !b) {
     return (
@@ -182,15 +242,15 @@ export function CompareMergePanel({
               ) : (
                 <GitMerge className="h-3.5 w-3.5" />
               )}
-              Build merged DTU
+              Preview merged DTU
             </button>
           </div>
         </div>
       )}
 
       {merge && (
-        <div className="space-y-2 rounded-lg border border-green-500/30 bg-green-500/5 p-3">
-          <p className="text-xs font-medium text-green-400">{merge.summary}</p>
+        <div className="space-y-2 rounded-lg border border-lattice-border bg-lattice-surface/60 p-3">
+          <p className="text-xs font-medium text-gray-300">{merge.summary} (preview — not yet saved)</p>
           <div className="space-y-1 text-[11px] text-gray-300">
             <p>
               <span className="text-gray-400">Title:</span>{' '}
@@ -209,9 +269,33 @@ export function CompareMergePanel({
               {String(merge.merged.citationCount ?? 0)}
             </p>
             <p className="text-yellow-400">
-              Keep {merge.keep} · tombstone {merge.tombstone}
+              Recommendation: keep {merge.keep} · retire {merge.tombstone}
             </p>
           </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={saveMergedAsNew}
+              disabled={saving || !!savedId}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 py-1.5 text-xs text-green-400 hover:bg-green-500/20 disabled:opacity-40"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {savedId ? 'Saved as new DTU' : 'Save merged as new DTU'}
+            </button>
+            <button
+              onClick={deleteDuplicate}
+              disabled={deleting || deleted}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 py-1.5 text-xs text-red-400 hover:bg-red-500/20 disabled:opacity-40"
+            >
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              {deleted ? 'Duplicate deleted' : `Delete duplicate (${merge.tombstone.slice(0, 10)})`}
+            </button>
+          </div>
+          {savedId && (
+            <p className="text-[11px] text-green-400">Created DTU {savedId}. It now exists alongside the two originals until you delete the duplicate.</p>
+          )}
+          {saveError && <p className="text-[11px] text-red-400">{saveError}</p>}
+          {deleteError && <p className="text-[11px] text-red-400">{deleteError}</p>}
         </div>
       )}
     </div>

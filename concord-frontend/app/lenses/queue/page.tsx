@@ -15,17 +15,17 @@ import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useCallback, useState } from 'react';
 import {
-  Inbox, Play, Clock, Zap, Layers, ChevronDown, RefreshCw,
+  Inbox, Play, Clock, Zap, Activity, RefreshCw,
   BarChart3, ListOrdered, Timer, AlertTriangle, Pause, PlayCircle,
   Trash2, RotateCcw, Server, CalendarClock, ShieldAlert,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ChartKit } from '@/components/viz';
 import { JobList, type QueueJob } from '@/components/queue/JobList';
 import { JobDetailDrawer, type QueueEvent } from '@/components/queue/JobDetailDrawer';
 import { EnqueueForm, type EnqueueInput } from '@/components/queue/EnqueueForm';
+import { QueueAnalyticsPanel } from '@/components/queue/QueueAnalyticsPanel';
 
 interface QueueRow {
   name: string;
@@ -50,14 +50,13 @@ interface QueueMetrics {
   alerts: QueueAlert[];
 }
 
-type TabKey = 'jobs' | 'scheduled' | 'dead' | 'workers';
+type TabKey = 'jobs' | 'scheduled' | 'dead' | 'workers' | 'analytics';
 
 export default function QueueLensPage() {
   useLensNav('queue');
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>('jobs');
   const [queueFilter, setQueueFilter] = useState<string>('');
-  const [showFeatures, setShowFeatures] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [detail, setDetail] = useState<{ job: QueueJob; history: QueueEvent[] } | null>(null);
 
@@ -85,6 +84,17 @@ export default function QueueLensPage() {
     refetchInterval: 4000,
   });
   const jobs: QueueJob[] = jobsQ.data?.jobs || [];
+
+  // Unfiltered snapshot across every status — feeds the analytics tab's
+  // queueing-theory / scheduling-simulation / backpressure computations,
+  // which need the full population regardless of the Jobs tab's own filter.
+  const allJobsQ = useQuery({
+    queryKey: ['queue', 'list', 'all'],
+    queryFn: async () => (await lensRun('queue', 'list', { limit: 1000 })).data.result as { jobs: QueueJob[]; total: number } | null,
+    refetchInterval: 8000,
+    enabled: tab === 'analytics',
+  });
+  const allJobs: QueueJob[] = allJobsQ.data?.jobs || [];
 
   const scheduledQ = useQuery({
     queryKey: ['queue', 'scheduled'],
@@ -182,6 +192,7 @@ export default function QueueLensPage() {
       { id: 'queue-scheduled', keys: 's', description: 'Scheduled tab', category: 'navigation', action: () => setTab('scheduled') },
       { id: 'queue-dead', keys: 'd', description: 'Dead-letter tab', category: 'navigation', action: () => setTab('dead') },
       { id: 'queue-workers', keys: 'w', description: 'Workers tab', category: 'navigation', action: () => setTab('workers') },
+      { id: 'queue-analytics', keys: 'a', description: 'Analytics tab', category: 'navigation', action: () => setTab('analytics') },
       { id: 'queue-next', keys: 'n', description: 'Process next job', category: 'actions', action: handleProcessNext },
     ],
     { lensId: 'queue' },
@@ -403,6 +414,7 @@ export default function QueueLensPage() {
             { key: 'scheduled', label: 'Scheduled', icon: <CalendarClock className="h-4 w-4" />, count: t?.delayed },
             { key: 'dead', label: 'Dead-letter', icon: <ShieldAlert className="h-4 w-4" />, count: (t?.failed ?? 0) + (t?.dead ?? 0) },
             { key: 'workers', label: 'Workers', icon: <Server className="h-4 w-4" />, count: workers.length },
+            { key: 'analytics', label: 'Analytics', icon: <Activity className="h-4 w-4" />, count: undefined },
           ] as const).map((tabDef) => (
             <button
               key={tabDef.key}
@@ -557,6 +569,8 @@ export default function QueueLensPage() {
               )}
             </>
           )}
+
+          {tab === 'analytics' && <QueueAnalyticsPanel allJobs={allJobs} servers={workers.length || 1} />}
         </div>
 
         {/* Recent activity feed — live events macro */}
@@ -588,25 +602,6 @@ export default function QueueLensPage() {
 
         {/* ConnectiveTissueBar */}
         <ConnectiveTissueBar lensId="queue" />
-
-        {/* Lens Features */}
-        <div className="border-t border-white/10">
-          <button
-            onClick={() => setShowFeatures(!showFeatures)}
-            className="flex w-full items-center justify-between rounded-lg bg-white/[0.02] px-4 py-3 text-sm text-gray-300 transition-colors hover:bg-white/[0.04] hover:text-white"
-          >
-            <span className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              Lens Features &amp; Capabilities
-            </span>
-            <ChevronDown className={`h-4 w-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-          </button>
-          {showFeatures && (
-            <div className="px-4 pb-4">
-              <LensFeaturePanel lensId="queue" />
-            </div>
-          )}
-        </div>
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <QueueRepos />

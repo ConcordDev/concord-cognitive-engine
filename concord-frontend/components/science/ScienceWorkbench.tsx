@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import {
   X, Sigma, BarChart3, Activity, Table2, BookOpen,
-  ClipboardCheck, FlaskRound, FileText, Loader2,
+  ClipboardCheck, FlaskRound, FileText, Loader2, MapPin,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ import { ScienceDataGrid } from '@/components/science/ScienceDataGrid';
 import { ScienceProtocolRuns } from '@/components/science/ScienceProtocolRuns';
 import { ScienceReagents } from '@/components/science/ScienceReagents';
 import { SciencePublicationExport } from '@/components/science/SciencePublicationExport';
+import { ScienceFieldLog } from '@/components/science/ScienceFieldLog';
 
 interface Props {
   open: boolean;
@@ -22,7 +23,7 @@ interface Props {
 
 type Tab =
   | 'datagrid' | 'charts' | 'stats' | 'notebook'
-  | 'protocols' | 'reagents' | 'publication';
+  | 'protocols' | 'reagents' | 'publication' | 'fieldlog';
 
 const TABS: { id: Tab; label: string; icon: typeof Sigma }[] = [
   { id: 'datagrid', label: 'Data Grid', icon: Table2 },
@@ -32,6 +33,7 @@ const TABS: { id: Tab; label: string; icon: typeof Sigma }[] = [
   { id: 'protocols', label: 'Protocol Runs', icon: ClipboardCheck },
   { id: 'reagents', label: 'Reagents', icon: FlaskRound },
   { id: 'publication', label: 'Publication', icon: FileText },
+  { id: 'fieldlog', label: 'Field Log', icon: MapPin },
 ];
 
 export function ScienceWorkbench({ open, onClose }: Props) {
@@ -86,6 +88,7 @@ export function ScienceWorkbench({ open, onClose }: Props) {
         {tab === 'protocols' && <ScienceProtocolRuns />}
         {tab === 'reagents' && <ScienceReagents />}
         {tab === 'publication' && <SciencePublicationExport />}
+        {tab === 'fieldlog' && <ScienceFieldLog />}
       </div>
     </div>
   );

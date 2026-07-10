@@ -170,9 +170,14 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
             </button>
           )}
         </div>
+        {subs.length > 0 && (
+          <p className="mb-2 text-[10px] text-zinc-500">
+            Subscriptions are evaluated on demand — click &quot;Check against fresh forecast&quot; (or press <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 font-mono">7</kbd> then check) to see what trips. There is no background push yet.
+          </p>
+        )}
         {subs.length === 0 ? (
           <p className="py-6 text-center text-xs italic text-zinc-400">
-            No subscriptions yet — add one above to get notified of predicted severe events.
+            No subscriptions yet — add one above, then use &quot;Check against fresh forecast&quot; to see whether it trips. Checks are on demand, not pushed automatically.
           </p>
         ) : (
           <ul className="space-y-1.5">

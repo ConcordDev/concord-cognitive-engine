@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, Loader2, Plus, Trash2, Mail, Phone, Building2 } from 'lucide-react';
+import { Users, Loader2, Plus, Trash2, Mail, Phone, Building2, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Customer {
@@ -9,11 +9,15 @@ interface Customer {
   company: string; billingAddress: string; taxId: string; notes: string;
 }
 
+type EditDraft = { name: string; email: string; phone: string; company: string; billingAddress: string; taxId: string };
+
 export function CustomersPanel() {
   const [list, setList] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ name: '', email: '', phone: '', company: '', billingAddress: '', taxId: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<EditDraft>({ name: '', email: '', phone: '', company: '', billingAddress: '', taxId: '' });
 
   useEffect(() => { refresh(); }, []);
 
@@ -42,6 +46,20 @@ export function CustomersPanel() {
       await lensRun({ domain: 'accounting', action: 'customers-delete', input: { id } });
       setList(prev => prev.filter(c => c.id !== id));
     } catch (e) { console.error('[Customers] delete failed', e); }
+  }
+
+  function startEdit(c: Customer) {
+    setEditingId(c.id);
+    setEditDraft({ name: c.name, email: c.email, phone: c.phone, company: c.company, billingAddress: c.billingAddress, taxId: c.taxId });
+  }
+
+  async function saveEdit(id: string) {
+    if (!editDraft.name.trim()) return;
+    try {
+      await lensRun({ domain: 'accounting', action: 'customers-update', input: { id, ...editDraft } });
+      setEditingId(null);
+      await refresh();
+    } catch (e) { console.error('[Customers] update failed', e); }
   }
 
   return (
@@ -78,6 +96,20 @@ export function CustomersPanel() {
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(c => (
+              editingId === c.id ? (
+                <li key={c.id} className="px-4 py-3 bg-emerald-500/5 grid grid-cols-12 gap-2">
+                  <input value={editDraft.name} onChange={e => setEditDraft({ ...editDraft, name: e.target.value })} placeholder="Customer name *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.company} onChange={e => setEditDraft({ ...editDraft, company: e.target.value })} placeholder="Company" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.email} onChange={e => setEditDraft({ ...editDraft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.phone} onChange={e => setEditDraft({ ...editDraft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.billingAddress} onChange={e => setEditDraft({ ...editDraft, billingAddress: e.target.value })} placeholder="Billing address" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={editDraft.taxId} onChange={e => setEditDraft({ ...editDraft, taxId: e.target.value })} placeholder="Tax ID" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                  <div className="col-span-12 flex gap-2">
+                    <button onClick={() => saveEdit(c.id)} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center gap-1"><Check className="w-3 h-3" />Save</button>
+                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs rounded border border-white/15 text-gray-300 hover:bg-white/5 inline-flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
+                  </div>
+                </li>
+              ) : (
               <li key={c.id} className="px-4 py-2.5 hover:bg-white/[0.02] group flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-300 flex items-center justify-center text-xs font-bold flex-shrink-0">
                   {c.name.slice(0, 1).toUpperCase()}
@@ -91,10 +123,14 @@ export function CustomersPanel() {
                     {c.taxId && <span className="inline-flex items-center gap-0.5"><Building2 className="w-2.5 h-2.5" />{c.taxId}</span>}
                   </div>
                 </div>
+                <button onClick={() => startEdit(c)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-white/10 text-gray-300" title="Edit">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
                 <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300" title="Delete">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>
+              )
             ))}
           </ul>
         )}

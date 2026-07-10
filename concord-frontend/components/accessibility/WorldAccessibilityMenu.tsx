@@ -11,6 +11,8 @@
 import { useEffect } from 'react';
 import AccessibilityPanel from '@/components/world-lens/AccessibilityPanel';
 import KeybindRemapPanel from './KeybindRemapPanel';
+import { QualityPresetSelector } from '@/components/settings/QualityPresetSelector';
+import { MouseSensitivitySlider } from '@/components/settings/MouseSensitivitySlider';
 import { useAccessibilitySettings, useSetAccessibility } from '@/hooks/useAccessibilitySettings';
 import type { AccessibilitySettings } from '@/store/slices/accessibility';
 
@@ -61,6 +63,14 @@ export default function WorldAccessibilityMenu({ open, onClose }: { open: boolea
           </button>
         </div>
         <AccessibilityPanel settings={settings} onChange={(next) => setAllAccessibility(next)} />
+        {/* Graphics — the quality preset + look sensitivity ConcordiaScene
+            already reads from localStorage (getStoredQualityPreset /
+            getStoredSensitivity). Surfaced here so the player can change them
+            in-world instead of only from the standalone /lenses/settings page. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <QualityPresetSelector />
+          <MouseSensitivitySlider />
+        </div>
         <div style={{ background: 'rgba(20,20,28,0.92)', borderRadius: 8, padding: 16, color: '#fff' }}>
           <KeybindRemapPanel />
         </div>

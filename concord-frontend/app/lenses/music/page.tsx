@@ -47,14 +47,12 @@ import {
   Package,
   Layers,
   Filter,
-  Loader2,
   Music2,
 } from 'lucide-react';
 import { SessionView } from '@/components/music/SessionView';
 import { MusicArtistExplorer } from '@/components/music/MusicArtistExplorer';
 import { MusicActionPanel } from '@/components/music/MusicActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
@@ -139,35 +137,6 @@ export default function MusicLensPage() {
     publishToMarketplace,
     isLoading: dtusLoading,
   } = useLensDTUs({ lens: 'music' });
-
-  const runAction = useRunArtifact('music');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = trackItems[0]?.id;
-    if (!targetId) {
-      setActionResult({ message: 'Add a track first to run music analysis.' });
-      return;
-    }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) {
-        setActionResult({
-          message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
-        });
-      } else {
-        setActionResult(res.result as Record<string, unknown>);
-      }
-    } catch (e) {
-      console.error(`Action ${action} failed:`, e);
-      setActionResult({
-        message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`,
-      });
-    } finally {
-      setIsRunning(null);
-    }
-  };
 
   // ---- Transform lens items to domain types ----
   const tracks = useMemo<MusicTrack[]>(
@@ -2231,121 +2200,6 @@ export default function MusicLensPage() {
         </div>
       )}
 
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Music className="w-4 h-4 text-neon-purple" />
-          Music Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'bpmAnalyze', label: 'BPM Analyze' },
-            { action: 'keyDetect', label: 'Key Detect' },
-            { action: 'chordProgress', label: 'Chord Progression' },
-            { action: 'setlistPlan', label: 'Setlist Plan' },
-          ].map(({ action, label }) => (
-            <button
-              key={action}
-              onClick={() => handleAction(action)}
-              disabled={!!isRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50"
-            >
-              {isRunning === action ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Play className="w-3 h-3" />
-              )}
-              {label}
-            </button>
-          ))}
-        </div>
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'bpm' in actionResult && (
-              <div className="flex flex-wrap gap-4 text-xs">
-                <span className="text-gray-400">
-                  BPM:{' '}
-                  <span className="text-neon-cyan font-bold text-base">
-                    {String(actionResult.bpm)}
-                  </span>
-                </span>
-                <span className="text-gray-400">
-                  Class: <span className="text-neon-purple">{String(actionResult.tempoClass)}</span>
-                </span>
-                <span className="text-gray-400">
-                  Stability:{' '}
-                  <span className="text-neon-green">{String(actionResult.stability)}</span>
-                </span>
-                <span className="text-gray-400">
-                  Range:{' '}
-                  <span className="text-white">
-                    {String(actionResult.minBpm)}–{String(actionResult.maxBpm)}
-                  </span>
-                </span>
-              </div>
-            )}
-            {'key' in actionResult && 'mode' in actionResult && !('bpm' in actionResult) && (
-              <div className="flex flex-wrap gap-4 text-xs">
-                <span className="text-gray-400">
-                  Key:{' '}
-                  <span className="text-neon-purple font-bold text-base">
-                    {String(actionResult.fullKey)}
-                  </span>
-                </span>
-                <span className="text-gray-400">
-                  Confidence:{' '}
-                  <span className="text-neon-green">{String(actionResult.confidence)}</span>
-                </span>
-              </div>
-            )}
-            {'chordCount' in actionResult && (
-              <div className="space-y-1">
-                <div className="flex gap-4 text-xs text-gray-400">
-                  <span>
-                    Chords:{' '}
-                    <span className="text-neon-cyan">{String(actionResult.chordCount)}</span>
-                  </span>
-                  <span>
-                    Unique:{' '}
-                    <span className="text-neon-cyan">{String(actionResult.uniqueChords)}</span>
-                  </span>
-                  <span>
-                    Mood: <span className="text-neon-purple">{String(actionResult.mood)}</span>
-                  </span>
-                </div>
-                {'matchedPattern' in actionResult && (
-                  <p className="text-xs text-gray-300">
-                    Pattern: {String(actionResult.matchedPattern)}
-                  </p>
-                )}
-              </div>
-            )}
-            {'suggestedOrder' in actionResult && Array.isArray(actionResult.suggestedOrder) && (
-              <div className="space-y-2">
-                <div className="flex gap-4 text-xs text-gray-400">
-                  <span>
-                    Tracks:{' '}
-                    <span className="text-neon-cyan">{String(actionResult.trackCount)}</span>
-                  </span>
-                  <span>
-                    Duration:{' '}
-                    <span className="text-neon-cyan">{String(actionResult.totalMinutes)} min</span>
-                  </span>
-                  <span>
-                    Avg BPM: <span className="text-neon-purple">{String(actionResult.avgBpm)}</span>
-                  </span>
-                </div>
-                {'peakMoment' in actionResult && (
-                  <p className="text-xs text-gray-300">Peak: {String(actionResult.peakMoment)}</p>
-                )}
-              </div>
-            )}
-            {'message' in actionResult && (
-              <p className="text-gray-400">{String(actionResult.message)}</p>
-            )}
-          </div>
-        )}
-      </div>
     </div>
     <LensAgentFab
       lensId="music"

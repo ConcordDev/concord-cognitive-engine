@@ -9,6 +9,8 @@
 //   ghost-hunt.progress   — multi-stage hunt progression (track → investigate → confront)
 //   ghost-hunt.advance    — advance the current hunt stage for a residue
 //   ghost-hunt.leaderboard — hunter ranks across confronted hauntings
+//   ghost-hunt.create      — mint a Spectral Dossier DTU from a residue (the persistent artifact)
+//   ghost-hunt.dossiers    — list the calling hunter's own saved Spectral Dossiers
 //
 // Persistent per-user data lives in globalThis._concordSTATE Maps keyed
 // by userId. drift_alerts are append-only in the DB; hunt state is the
@@ -516,10 +518,20 @@ export default function registerGhostHuntMacros(register) {
       };
       const tags = ["ghost-tracker", "ghost_residue", row.drift_type, row.severity];
 
+      // `type`/`creator_id` are the standard dtus-table columns every other
+      // "my recent X" surface reads (migration 087; server/domains/_dtu-
+      // recent-mine.js's `creator_id = ? AND type IN (...)` query, and the
+      // bulk registration's ghost-tracker -> ["ghost_sighting"] map in
+      // server/domains/_recent-mine-bulk.js). Omitting them left `type`
+      // defaulting to 'knowledge' and `creator_id` NULL, which silently
+      // orphaned every dossier from both the generic RecentMineCard widget
+      // and this lens's own dossier listing (ghost-hunt.dossiers, below) —
+      // the row persisted but was permanently unlistable. Set both so a
+      // saved dossier is actually findable.
       db.prepare(`
-        INSERT INTO dtus (id, owner_user_id, title, body_json, tags_json, visibility, tier)
-        VALUES (?, ?, ?, ?, ?, ?, 'regular')
-      `).run(dtuId, userId, dossierTitle, JSON.stringify(body), JSON.stringify(tags), visibility);
+        INSERT INTO dtus (id, owner_user_id, creator_id, title, body_json, tags_json, visibility, tier, type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 'ghost_sighting')
+      `).run(dtuId, userId, userId, dossierTitle, JSON.stringify(body), JSON.stringify(tags), visibility);
 
       return {
         ok: true,
@@ -533,4 +545,48 @@ export default function registerGhostHuntMacros(register) {
       return { ok: false, reason: "create_failed", err: String(err?.message || err) };
     }
   }, { note: "Mint a Spectral Dossier DTU from a confronted residue — the lens's persistent artifact." });
+
+  // ── dossiers — the calling hunter's own saved Spectral Dossiers ─────
+  // Reads back exactly what `create` writes (creator_id + type='ghost_sighting'
+  // on the raw `dtus` row) and unpacks body_json so the lens can render
+  // drift_type/severity/outcome chips without a second round-trip. This is
+  // the "my saved case files" list for the ghost-tracker lens page.
+  register("ghost-hunt", "dossiers", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = actorId(ctx);
+    if (!db || !userId) return { ok: false, reason: "no_db_or_actor" };
+    const { limit = 20 } = input || {};
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: "invalid_numeric_field", field: badNum };
+    try {
+      const rows = db.prepare(`
+        SELECT id, title, body_json, visibility, created_at
+          FROM dtus
+         WHERE creator_id = ? AND type = 'ghost_sighting'
+         ORDER BY created_at DESC, rowid DESC
+         LIMIT ?
+      `).all(userId, Math.min(100, Math.max(1, Number(limit) || 20)));
+
+      const dossiers = rows.map((row) => {
+        let body = {};
+        try { body = JSON.parse(row.body_json || "{}"); } catch { body = {}; }
+        return {
+          id: row.id,
+          title: row.title,
+          visibility: row.visibility,
+          createdAt: row.created_at,
+          residueId: body.residueId || null,
+          drift_type: body.drift_type || null,
+          severity: body.severity || null,
+          stage: body.stage || null,
+          outcome: body.outcome || null,
+          notes: body.notes || "",
+        };
+      });
+
+      return { ok: true, dossiers, count: dossiers.length };
+    } catch (err) {
+      return { ok: false, reason: "dossiers_failed", err: String(err?.message || err) };
+    }
+  }, { note: "List the calling hunter's own saved Spectral Dossier case files." });
 }

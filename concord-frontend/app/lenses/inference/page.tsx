@@ -12,17 +12,15 @@ import { InferenceFrameworks } from '@/components/inference/InferenceFrameworks'
 import { RuleEngineWorkbench } from '@/components/inference/RuleEngineWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { apiHelpers, lensRun } from '@/lib/api/client';
+import { useState, useMemo, useEffect } from 'react';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion } from 'framer-motion';
 import {
   GitMerge, Plus, ArrowRight, Database, Search, Zap,
   Clock, Gauge, Activity, ListOrdered, ChevronDown, ChevronUp,
-  RefreshCw, AlertCircle, CheckCircle2, Timer, Layers, Loader2, BarChart3, Link,
+  RefreshCw, AlertCircle, CheckCircle2, Timer, Layers, Link,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -30,28 +28,6 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-
-interface ForwardChainResult {
-  initialFactCount: number;
-  derivedFactCount: number;
-  totalFactCount: number;
-  iterations: number;
-  fixedPointReached: boolean;
-  derivedFacts: string[];
-  derivationLog: { iteration: number; rule: string; derived: string }[];
-  factsByPredicate: Record<string, number>;
-  rulesApplied: string[];
-}
-
-interface BackwardChainResult {
-  goal: string;
-  proved: boolean;
-  answerCount: number;
-  answers: string[];
-  proofCount: number;
-  proofTrees: { root: string; children: unknown[] }[];
-  nodesExplored: number;
-}
 
 interface UnifyResult {
   unifiable: boolean;
@@ -76,6 +52,37 @@ interface InferenceHistoryEntry {
   status?: string;
 }
 
+type InferenceTerm = string | { functor: string; args: InferenceTerm[] };
+
+/**
+ * Parses a compact Prolog-style term for the `unify` macro
+ * (server/domains/inference.js:357) — `functor(arg1, arg2, ...)` for a
+ * compound term (args may themselves be compound), or a bare token for a
+ * constant/variable (variables are conventionally prefixed `?`, e.g. `?X`).
+ * Not a JSON-paste box — a real, bounded grammar matching the macro's own
+ * term shape (`isVar`/`isConstant`/`isCompound` in the handler).
+ */
+function parseInferenceTerm(input: string): InferenceTerm {
+  const s = input.trim();
+  const m = s.match(/^([a-zA-Z0-9_?]+)\((.*)\)$/s);
+  if (!m) return s;
+  const functor = m[1];
+  const args = splitTermArgs(m[2]).map(parseInferenceTerm);
+  return { functor, args };
+}
+function splitTermArgs(s: string): string[] {
+  const parts: string[] = [];
+  let depth = 0, cur = '';
+  for (const ch of s) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  if (cur.trim()) parts.push(cur);
+  return parts.map((p) => p.trim());
+}
+
 const MODEL_OPTIONS = [
   { id: 'default', label: 'Default Engine', description: 'Built-in logical inference' },
   { id: 'forward-chain', label: 'Forward Chaining', description: 'Rule-based forward reasoning' },
@@ -88,12 +95,18 @@ export default function InferenceLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('inference');
 
   const queryClient = useQueryClient();
-  const [factInput, setFactInput] = useState('');
-  const [queryInput, setQueryInput] = useState('');
+  const [factSubject, setFactSubject] = useState('');
+  const [factPredicate, setFactPredicate] = useState('');
+  const [factObject, setFactObject] = useState('');
+  const [querySubject, setQuerySubject] = useState('');
+  const [queryPredicate, setQueryPredicate] = useState('');
+  const [queryObject, setQueryObject] = useState('');
   const [majorPremise, setMajorPremise] = useState('');
   const [minorPremise, setMinorPremise] = useState('');
   const [results, setResults] = useState<unknown>(null);
-  const [tab, setTab] = useState<'facts' | 'query' | 'syllogism' | 'forward'>('facts');
+  const [tab, setTab] = useState<'facts' | 'query' | 'syllogism' | 'forward' | 'unify'>('facts');
+  const [unifyTerm1, setUnifyTerm1] = useState('');
+  const [unifyTerm2, setUnifyTerm2] = useState('');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -102,6 +115,7 @@ export default function InferenceLensPage() {
       { id: 'tab-query', keys: 'q', description: 'Query', category: 'navigation', action: () => setTab('query') },
       { id: 'tab-syllogism', keys: 's', description: 'Syllogism', category: 'navigation', action: () => setTab('syllogism') },
       { id: 'tab-forward', keys: 'o', description: 'Forward', category: 'navigation', action: () => setTab('forward') },
+      { id: 'tab-unify', keys: 'u', description: 'Unify', category: 'navigation', action: () => setTab('unify') },
     ],
     { lensId: 'inference' }
   );
@@ -111,45 +125,10 @@ export default function InferenceLensPage() {
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
 
-  // --- Lens Bridge ---
+  // --- Lens Bridge --- (syncs real engine status into a real artifact;
+  // UniversalActions below reads bridge.selectedId from this real sync,
+  // never from an auto-created blank placeholder)
   const bridge = useLensBridge('inference', 'snapshot');
-
-  const { items: infArtifacts } = useLensData('inference', 'snapshot', { seed: [] });
-  const runAction = useRunArtifact('inference');
-  const [infActionResult, setInfActionResult] = useState<{ action: string; data: unknown } | null>(null);
-
-  const handleInfAction = useCallback(async (action: string) => {
-    let artifactId = infArtifacts[0]?.id;
-    // Auto-create a snapshot artifact if none exists yet
-    if (!artifactId) {
-      try {
-        const created = await apiHelpers.lens.create('inference', {
-          type: 'snapshot',
-          title: 'Inference Engine Snapshot',
-          data: { model: selectedModel },
-        });
-        artifactId = created?.data?.artifact?.id;
-      } catch (e) {
-        console.error('[Inference] Failed to auto-create artifact:', e);
-        setInfActionResult({ action, data: { error: 'No inference artifact found. Try again after the auto-create completes.' } });
-        return;
-      }
-      if (!artifactId) {
-        setInfActionResult({ action, data: { error: 'Could not create inference artifact. Please try again.' } });
-        return;
-      }
-    }
-    runAction.mutate(
-      { id: artifactId, action, params: {} },
-      {
-        onSuccess: (res) => setInfActionResult({ action, data: res.result }),
-        onError: (e) => {
-          console.error(`Action failed:`, e);
-          setInfActionResult({ action, data: { error: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` } });
-        },
-      }
-    );
-  }, [infArtifacts, runAction, selectedModel]);
 
   const { data: status, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['inference-status'],
@@ -173,27 +152,39 @@ export default function InferenceLensPage() {
     setInferenceHistory(prev => [entry, ...prev].slice(0, 50));
   };
 
+  // add_fact (server.js:67284) reads {subject,predicate,object} directly off
+  // the POST body — NOT a {facts:[...]} array. The prior textarea-of-lines
+  // UI sent {facts:[...]}, which the handler silently ignores (falls back to
+  // empty-string subject/predicate/object on every call), so every "Add
+  // Facts" click added a blank fact regardless of what was typed.
   const addFacts = useMutation({
     mutationFn: () => {
       const startTime = Date.now();
-      return apiHelpers.inference.facts({ facts: factInput.split('\n').filter(Boolean) }).then(res => {
-        trackInference('add-facts', `${factInput.split('\n').filter(Boolean).length} facts`, res.data, startTime);
+      return apiHelpers.inference.facts({ subject: factSubject.trim(), predicate: factPredicate.trim(), object: factObject.trim() }).then(res => {
+        trackInference('add-fact', `${factSubject} ${factPredicate} ${factObject}`, res.data, startTime);
         return res;
       });
     },
     onSuccess: (res) => {
       setResults(res.data);
       queryClient.invalidateQueries({ queryKey: ['inference-status'] });
-      setFactInput('');
+      setFactSubject(''); setFactPredicate(''); setFactObject('');
     },
     onError: (err) => console.error('addFacts failed:', err instanceof Error ? err.message : err),
   });
 
+  // query (server.js:67560) reads {subject,predicate,object} directly too
+  // (falsy fields act as wildcards) — the prior single free-text-string
+  // "query" field was wrapped as {query: "..."}, which the handler never
+  // reads (it destructures .subject/.predicate/.object off the same object
+  // it was itself passed as, so a plain string query always searched with
+  // all three wildcarded regardless of what was typed).
   const runQuery = useMutation({
     mutationFn: () => {
       const startTime = Date.now();
-      return apiHelpers.inference.query({ query: queryInput }).then(res => {
-        trackInference('query', queryInput, res.data, startTime);
+      const q = { subject: querySubject.trim() || undefined, predicate: queryPredicate.trim() || undefined, object: queryObject.trim() || undefined };
+      return apiHelpers.inference.query(q).then(res => {
+        trackInference('query', `${querySubject} ${queryPredicate} ${queryObject}`.trim(), res.data, startTime);
         return res;
       });
     },
@@ -201,10 +192,30 @@ export default function InferenceLensPage() {
     onError: (err) => console.error('runQuery failed:', err instanceof Error ? err.message : err),
   });
 
+  // unify (server/domains/inference.js:357, registerLensAction family) — a
+  // standalone Robinson's-algorithm unifier. Not covered by the kb-* engine
+  // (RuleEngineWorkbench.tsx) at all, so it gets its own real tab here
+  // instead of the broken generic-artifact-bridge quick panel this lens
+  // used to route it through (an auto-created blank "snapshot" artifact
+  // with no term1/term2 — always failed "Both term1 and term2 are required").
+  const runUnify = useMutation({
+    mutationFn: () => {
+      const startTime = Date.now();
+      const term1 = parseInferenceTerm(unifyTerm1);
+      const term2 = parseInferenceTerm(unifyTerm2);
+      return lensRun('inference', 'unify', { term1, term2 }).then(res => {
+        trackInference('unify', `${unifyTerm1} =? ${unifyTerm2}`, res.data, startTime);
+        return res;
+      });
+    },
+    onSuccess: (res) => setResults(res.data.ok ? res.data.result : { error: res.data.error }),
+    onError: (err) => console.error('runUnify failed:', err instanceof Error ? err.message : err),
+  });
+
   const runSyllogism = useMutation({
     mutationFn: () => {
       const startTime = Date.now();
-      return apiHelpers.inference.syllogism({ major: majorPremise, minor: minorPremise }).then(res => {
+      return apiHelpers.inference.syllogism({ majorPremise, minorPremise }).then(res => {
         trackInference('syllogism', `${majorPremise} + ${minorPremise}`, res.data, startTime);
         return res;
       });
@@ -363,8 +374,8 @@ export default function InferenceLensPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2">
-        {(['facts', 'query', 'syllogism', 'forward'] as const).map((t) => (
+      <div className="flex gap-2 flex-wrap">
+        {(['facts', 'query', 'syllogism', 'forward', 'unify'] as const).map((t) => (
           <button
             key={t}
             onClick={() => { setTab(t); setResults(null); }}
@@ -385,20 +396,19 @@ export default function InferenceLensPage() {
           {tab === 'facts' && (
             <>
               <h2 className="font-semibold flex items-center gap-2">
-                <Plus className="w-4 h-4 text-neon-purple" /> Add Facts
+                <Plus className="w-4 h-4 text-neon-purple" /> Add a Fact
               </h2>
-              <textarea
-                value={factInput}
-                onChange={(e) => setFactInput(e.target.value)}
-                placeholder="Enter facts (one per line)..."
-                className="input-lattice w-full h-40 resize-none font-mono text-sm"
-              />
+              <p className="text-xs text-gray-400">A fact is a subject-predicate-object triple, e.g. &quot;socrates — is — mortal&quot;.</p>
+              <input type="text" value={factSubject} onChange={(e) => setFactSubject(e.target.value)} placeholder="Subject (e.g. socrates)" className="input-lattice w-full" />
+              <input type="text" value={factPredicate} onChange={(e) => setFactPredicate(e.target.value)} placeholder="Predicate (e.g. is)" className="input-lattice w-full" />
+              <input type="text" value={factObject} onChange={(e) => setFactObject(e.target.value)} placeholder="Object (e.g. mortal)" className="input-lattice w-full"
+                onKeyDown={(e) => { if (e.key === 'Enter' && factSubject && factPredicate && factObject && !addFacts.isPending) addFacts.mutate(); }} />
               <button
                 onClick={() => addFacts.mutate()}
-                disabled={!factInput || addFacts.isPending}
+                disabled={!factSubject.trim() || !factPredicate.trim() || !factObject.trim() || addFacts.isPending}
                 className="btn-neon purple w-full"
               >
-                {addFacts.isPending ? 'Adding...' : 'Add Facts'}
+                {addFacts.isPending ? 'Adding...' : 'Add Fact'}
               </button>
             </>
           )}
@@ -406,27 +416,43 @@ export default function InferenceLensPage() {
           {tab === 'query' && (
             <>
               <h2 className="font-semibold flex items-center gap-2">
-                <Search className="w-4 h-4 text-neon-cyan" /> Query Inference
+                <Search className="w-4 h-4 text-neon-cyan" /> Query Knowledge Base
               </h2>
-              <input
-                type="text"
-                value={queryInput}
-                onChange={(e) => setQueryInput(e.target.value)}
-                placeholder="Enter query..."
-                className="input-lattice w-full"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && queryInput && !runQuery.isPending) runQuery.mutate();
-                }}
-              />
+              <p className="text-xs text-gray-400">Leave a field blank to match any value in that position.</p>
+              <input type="text" value={querySubject} onChange={(e) => setQuerySubject(e.target.value)} placeholder="Subject (optional)" className="input-lattice w-full" />
+              <input type="text" value={queryPredicate} onChange={(e) => setQueryPredicate(e.target.value)} placeholder="Predicate (optional)" className="input-lattice w-full" />
+              <input type="text" value={queryObject} onChange={(e) => setQueryObject(e.target.value)} placeholder="Object (optional)" className="input-lattice w-full"
+                onKeyDown={(e) => { if (e.key === 'Enter' && !runQuery.isPending) runQuery.mutate(); }} />
               <p className="text-xs text-gray-400">
                 Using model: <span className="text-neon-cyan">{MODEL_OPTIONS.find(m => m.id === selectedModel)?.label}</span>
               </p>
               <button
                 onClick={() => runQuery.mutate()}
-                disabled={!queryInput || runQuery.isPending}
+                disabled={(!querySubject.trim() && !queryPredicate.trim() && !queryObject.trim()) || runQuery.isPending}
                 className="btn-neon purple w-full"
               >
                 {runQuery.isPending ? 'Querying...' : 'Run Query'}
+              </button>
+            </>
+          )}
+
+          {tab === 'unify' && (
+            <>
+              <h2 className="font-semibold flex items-center gap-2">
+                <Link className="w-4 h-4 text-neon-purple" /> Unify Terms
+              </h2>
+              <p className="text-xs text-gray-400">
+                Robinson&apos;s unification algorithm. A bare word is a constant; prefix with <code className="text-neon-cyan">?</code> for a variable; use <code className="text-neon-cyan">functor(arg1, arg2)</code> for a compound term.
+              </p>
+              <input type="text" value={unifyTerm1} onChange={(e) => setUnifyTerm1(e.target.value)} placeholder="e.g. loves(john, ?Y)" className="input-lattice w-full font-mono text-sm" />
+              <input type="text" value={unifyTerm2} onChange={(e) => setUnifyTerm2(e.target.value)} placeholder="e.g. loves(?X, mary)" className="input-lattice w-full font-mono text-sm"
+                onKeyDown={(e) => { if (e.key === 'Enter' && unifyTerm1 && unifyTerm2 && !runUnify.isPending) runUnify.mutate(); }} />
+              <button
+                onClick={() => runUnify.mutate()}
+                disabled={!unifyTerm1.trim() || !unifyTerm2.trim() || runUnify.isPending}
+                className="btn-neon purple w-full"
+              >
+                {runUnify.isPending ? 'Unifying...' : 'Unify'}
               </button>
             </>
           )}
@@ -527,7 +553,54 @@ export default function InferenceLensPage() {
             </div>
           )}
 
-          {results ? (
+          {results && tab === 'unify' && (results as UnifyResult).term1 !== undefined ? (() => {
+            const d = results as UnifyResult;
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-neon-purple">Unification Result</h3>
+                  <span className={`text-xs px-2 py-1 rounded font-semibold ${d.unifiable ? 'bg-neon-green/20 text-neon-green' : 'bg-red-400/20 text-red-400'}`}>
+                    {d.unifiable ? 'Unifiable' : 'Not Unifiable'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="lens-card">
+                    <p className="text-gray-400 mb-1">Term 1</p>
+                    <p className="text-white">{d.term1}</p>
+                  </div>
+                  <div className="lens-card">
+                    <p className="text-gray-400 mb-1">Term 2</p>
+                    <p className="text-white">{d.term2}</p>
+                  </div>
+                </div>
+                {d.unifiable && d.unifiedTerm && (
+                  <div className="lens-card">
+                    <p className="text-xs text-gray-400 mb-1">Unified Term</p>
+                    <p className="text-sm font-mono text-neon-purple">{d.unifiedTerm}</p>
+                  </div>
+                )}
+                {Object.keys(d.mgu || {}).length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-2">MGU Bindings ({d.bindingCount})</p>
+                    <div className="space-y-1">
+                      {Object.entries(d.mgu).slice(0, 5).map(([k, v]) => (
+                        <p key={k} className="text-xs font-mono"><span className="text-neon-cyan">{k}</span><span className="text-gray-400"> → </span><span className="text-white">{v}</span></p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {d.verification !== undefined && (
+                  <span className={`text-xs px-2 py-1 rounded ${d.verification ? 'bg-neon-green/10 text-neon-green' : 'bg-red-400/10 text-red-400'}`}>
+                    Verification: {d.verification ? 'Passed' : 'Failed'}
+                  </span>
+                )}
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-gray-400">Raw steps ({d.stepCount})</summary>
+                  <pre className="whitespace-pre-wrap text-[10px] text-gray-400 font-mono mt-1 max-h-48 overflow-y-auto">{JSON.stringify(d.steps, null, 2)}</pre>
+                </details>
+              </div>
+            );
+          })() : results ? (
             <div className="bg-lattice-surface p-3 rounded-lg">
               <pre className="whitespace-pre-wrap text-xs text-gray-300 font-mono max-h-96 overflow-y-auto">
                 {JSON.stringify(results, null, 2)}
@@ -624,162 +697,6 @@ export default function InferenceLensPage() {
           compact
         />
       )}
-      </div>
-
-      {/* AI Inference Actions Panel */}
-      <div className="panel p-4 space-y-4">
-        <h2 className="font-semibold flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-neon-blue" />
-          Logical Inference Actions
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {[
-            { action: 'forwardChain', label: 'Forward Chain', icon: Zap, color: 'text-neon-green' },
-            { action: 'backwardChain', label: 'Backward Chain', icon: ArrowRight, color: 'text-neon-cyan' },
-            { action: 'unify', label: 'Unify Terms', icon: Link, color: 'text-neon-purple' },
-          ].map(({ action, label, icon: Icon, color }) => (
-            <button
-              key={action}
-              onClick={() => handleInfAction(action)}
-              disabled={runAction.isPending}
-              className="flex items-center gap-2 px-4 py-3 bg-lattice-surface border border-lattice-border rounded-lg text-sm font-medium text-white hover:border-neon-blue/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {runAction.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Icon className={`w-4 h-4 ${color}`} />
-              )}
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {infActionResult && !runAction.isPending && (() => {
-          if (infActionResult.action === 'forwardChain') {
-            const d = infActionResult.data as ForwardChainResult;
-            return (
-              <div className="space-y-3 pt-2 border-t border-lattice-border">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-neon-green">Forward Chain Results</h3>
-                  <span className={`text-xs px-2 py-1 rounded ${d.fixedPointReached ? 'bg-neon-green/10 text-neon-green' : 'bg-yellow-400/10 text-yellow-400'}`}>
-                    {d.fixedPointReached ? 'Fixed Point Reached' : 'Not Saturated'}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Initial Facts', value: d.initialFactCount || 0, color: 'text-gray-300' },
-                    { label: 'Derived Facts', value: d.derivedFactCount || 0, color: 'text-neon-green' },
-                    { label: 'Total Facts', value: d.totalFactCount || 0, color: 'text-neon-cyan' },
-                    { label: 'Iterations', value: d.iterations || 0, color: 'text-neon-purple' },
-                  ].map(s => (
-                    <div key={s.label} className="lens-card text-center">
-                      <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
-                      <p className="text-xs text-gray-400">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-                {(d.derivedFacts || []).length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">Derived Facts (first 5)</p>
-                    <div className="space-y-1">
-                      {d.derivedFacts.slice(0, 5).map((f, i) => (
-                        <p key={i} className="text-xs font-mono text-neon-green bg-neon-green/5 px-2 py-1 rounded">{f}</p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {(d.rulesApplied || []).length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    <span className="text-xs text-gray-400 mr-1">Rules applied:</span>
-                    {d.rulesApplied.slice(0, 5).map((r, i) => (
-                      <span key={i} className="text-xs px-1.5 py-0.5 bg-lattice-surface rounded text-gray-400">{r}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          }
-          if (infActionResult.action === 'backwardChain') {
-            const d = infActionResult.data as BackwardChainResult;
-            return (
-              <div className="space-y-3 pt-2 border-t border-lattice-border">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-neon-cyan">Backward Chain — {d.goal}</h3>
-                  <span className={`text-xs px-2 py-1 rounded font-semibold ${d.proved ? 'bg-neon-green/20 text-neon-green' : 'bg-red-400/20 text-red-400'}`}>
-                    {d.proved ? 'Proved' : 'Unproved'}
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="lens-card text-center">
-                    <p className="text-lg font-bold text-neon-cyan">{d.answerCount || 0}</p>
-                    <p className="text-xs text-gray-400">Answers</p>
-                  </div>
-                  <div className="lens-card text-center">
-                    <p className="text-lg font-bold text-neon-purple">{d.proofCount || 0}</p>
-                    <p className="text-xs text-gray-400">Proofs</p>
-                  </div>
-                  <div className="lens-card text-center">
-                    <p className="text-lg font-bold text-gray-300">{d.nodesExplored || 0}</p>
-                    <p className="text-xs text-gray-400">Nodes Explored</p>
-                  </div>
-                </div>
-                {(d.answers || []).length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">Answers</p>
-                    {d.answers.slice(0, 5).map((a, i) => (
-                      <p key={i} className="text-xs font-mono text-neon-cyan bg-neon-cyan/5 px-2 py-1 rounded mb-1">{a}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          }
-          if (infActionResult.action === 'unify') {
-            const d = infActionResult.data as UnifyResult;
-            return (
-              <div className="space-y-3 pt-2 border-t border-lattice-border">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-neon-purple">Unification Result</h3>
-                  <span className={`text-xs px-2 py-1 rounded font-semibold ${d.unifiable ? 'bg-neon-green/20 text-neon-green' : 'bg-red-400/20 text-red-400'}`}>
-                    {d.unifiable ? 'Unifiable' : 'Not Unifiable'}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="lens-card">
-                    <p className="text-gray-400 mb-1">Term 1</p>
-                    <p className="text-white">{d.term1}</p>
-                  </div>
-                  <div className="lens-card">
-                    <p className="text-gray-400 mb-1">Term 2</p>
-                    <p className="text-white">{d.term2}</p>
-                  </div>
-                </div>
-                {d.unifiable && d.unifiedTerm && (
-                  <div className="lens-card">
-                    <p className="text-xs text-gray-400 mb-1">Unified Term</p>
-                    <p className="text-sm font-mono text-neon-purple">{d.unifiedTerm}</p>
-                  </div>
-                )}
-                {Object.keys(d.mgu || {}).length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">MGU Bindings ({d.bindingCount})</p>
-                    <div className="space-y-1">
-                      {Object.entries(d.mgu).slice(0, 5).map(([k, v]) => (
-                        <p key={k} className="text-xs font-mono"><span className="text-neon-cyan">{k}</span><span className="text-gray-400"> → </span><span className="text-white">{v}</span></p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {d.verification !== undefined && (
-                  <span className={`text-xs px-2 py-1 rounded ${d.verification ? 'bg-neon-green/10 text-neon-green' : 'bg-red-400/10 text-red-400'}`}>
-                    Verification: {d.verification ? 'Passed' : 'Failed'}
-                  </span>
-                )}
-              </div>
-            );
-          }
-          return null;
-        })()}
       </div>
 
       {/* Lens Features */}

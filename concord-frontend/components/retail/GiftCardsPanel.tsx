@@ -18,6 +18,9 @@ export function GiftCardsPanel() {
   const [redeemCode, setRedeemCode] = useState('');
   const [redeemAmount, setRedeemAmount] = useState('');
   const [redeemResult, setRedeemResult] = useState<string | null>(null);
+  const [balanceCode, setBalanceCode] = useState('');
+  const [balanceResult, setBalanceResult] = useState<string | null>(null);
+  const [balanceBusy, setBalanceBusy] = useState(false);
 
   useEffect(() => { refresh(); }, []);
 
@@ -57,6 +60,21 @@ export function GiftCardsPanel() {
         await refresh();
       }
     } catch (e) { setRedeemResult('Redemption failed'); console.error('[GiftCards] redeem', e); }
+  }
+
+  async function checkBalance() {
+    if (!balanceCode.trim()) return;
+    setBalanceBusy(true);
+    setBalanceResult(null);
+    try {
+      const res = await lensRun({ domain: 'retail', action: 'gift-cards-balance', input: { code: balanceCode.trim() } });
+      if (res.data?.ok === false) {
+        setBalanceResult(`Error: ${res.data?.error}`);
+      } else {
+        setBalanceResult(`$${Number(res.data?.result?.balance ?? 0).toFixed(2)} of $${Number(res.data?.result?.initialValue ?? 0).toFixed(2)} · ${res.data?.result?.status}`);
+      }
+    } catch (e) { setBalanceResult('Lookup failed'); console.error('[GiftCards] balance', e); }
+    finally { setBalanceBusy(false); }
   }
 
   return (
@@ -102,6 +120,13 @@ export function GiftCardsPanel() {
         <input type="number" value={redeemAmount} onChange={e => setRedeemAmount(e.target.value)} placeholder="Amount" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={redeem} className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 hover:bg-pink-500/30">Redeem</button>
         {redeemResult && <div className="col-span-4 text-[11px] text-emerald-300">{redeemResult}</div>}
+      </footer>
+      <footer className="px-3 py-2 border-t border-white/10 bg-white/[0.02] grid grid-cols-4 gap-2 text-xs">
+        <input value={balanceCode} onChange={e => setBalanceCode(e.target.value.toUpperCase())} placeholder="Code to check" className="col-span-2 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <button onClick={checkBalance} disabled={balanceBusy || !balanceCode.trim()} className="px-2 py-1 text-xs rounded bg-pink-500/10 text-pink-300 hover:bg-pink-500/20 disabled:opacity-40 col-span-2 inline-flex items-center justify-center gap-1">
+          {balanceBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Check balance (no redeem)
+        </button>
+        {balanceResult && <div className="col-span-4 text-[11px] text-cyan-300">{balanceResult}</div>}
       </footer>
     </div>
   );

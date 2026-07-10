@@ -6,18 +6,20 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Sparkles, TrendingUp, Play, UserPlus } from 'lucide-react';
+import { Loader2, Sparkles, TrendingUp, Play, UserPlus, Users } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Stats { totalPlays: number; listenedMinutes: number; listenedHours: number; byGenre: Record<string, number>; libraryTracks: number }
 interface Wrapped { year: string; totalPlays: number; minutesListened: number; topTracks: { title: string; plays: number }[]; topArtists: { artist: string; plays: number }[] }
 interface Track { id: string; title: string; artist: string; playCount: number }
 interface ArtistFollow { name: string; trackCount: number }
+interface TopArtist { artist: string; plays: number }
 
 export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [wrapped, setWrapped] = useState<Wrapped | null>(null);
   const [topTracks, setTopTracks] = useState<Track[]>([]);
+  const [topArtists, setTopArtists] = useState<TopArtist[]>([]);
   const [dailyMix, setDailyMix] = useState<Track[]>([]);
   const [artists, setArtists] = useState<ArtistFollow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,16 +27,18 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [s, w, tt, dm, a] = await Promise.all([
+    const [s, w, tt, ta, dm, a] = await Promise.all([
       lensRun('music', 'listening-stats', {}),
       lensRun('music', 'wrapped', {}),
       lensRun('music', 'top-tracks', {}),
+      lensRun('music', 'top-artists', {}),
       lensRun('music', 'daily-mix', {}),
       lensRun('music', 'artist-list', {}),
     ]);
     setStats((s.data?.result as Stats | null) || null);
     setWrapped((w.data?.result as Wrapped | null) || null);
     setTopTracks(tt.data?.result?.tracks || []);
+    setTopArtists(ta.data?.result?.artists || []);
     setDailyMix(dm.data?.result?.tracks || []);
     setArtists(a.data?.result?.artists || []);
     setLoading(false);
@@ -112,6 +116,24 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
                 <span className="w-4 text-zinc-600">{i + 1}</span>
                 <span className="text-zinc-200 truncate flex-1">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>
                 <span className="text-zinc-400">{t.playCount} plays</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Top artists */}
+      {topArtists.length > 0 && (
+        <section>
+          <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
+            <Users className="w-3.5 h-3.5 text-emerald-400" /> Top artists
+          </h3>
+          <ul className="space-y-1">
+            {topArtists.slice(0, 8).map((a, i) => (
+              <li key={a.artist} className="flex items-center gap-2 text-[11px] bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
+                <span className="w-4 text-zinc-600">{i + 1}</span>
+                <span className="text-zinc-200 truncate flex-1">{a.artist}</span>
+                <span className="text-zinc-400">{a.plays} plays</span>
               </li>
             ))}
           </ul>

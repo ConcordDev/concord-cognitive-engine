@@ -3,13 +3,15 @@
 /**
  * ThreadSidebar — Perplexity-shape conversation list. Lists the
  * caller's saved expert-mode threads (expert_mode.thread_list),
- * opens one (expert_mode.thread_get via parent), and deletes
- * (expert_mode.thread_delete). Every row is a real persisted thread.
+ * opens one (expert_mode.thread_get via parent), deletes
+ * (expert_mode.thread_delete), and exports a whole thread as one
+ * Markdown document (expert_mode.export_thread_markdown). Every row
+ * is a real persisted thread.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { MessageSquare, Plus, Trash2, Loader2 } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Loader2, Download } from 'lucide-react';
 
 export interface ThreadSummary {
   id: string;
@@ -34,6 +36,7 @@ export function ThreadSidebar({
 }) {
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -51,6 +54,20 @@ export function ThreadSidebar({
     if (id === activeThreadId) onNew();
     await refresh();
   }, [activeThreadId, onNew, refresh]);
+
+  const exportThread = useCallback(async (t: ThreadSummary) => {
+    setExportingId(t.id);
+    const r = await lensRun<{ markdown: string }>('expert_mode', 'export_thread_markdown', { threadId: t.id });
+    setExportingId(null);
+    if (!r.data.ok || !r.data.result?.markdown) return;
+    const blob = new Blob([r.data.result.markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${t.title.replace(/[^a-z0-9]+/gi, '-').slice(0, 60) || 'thread'}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
 
   return (
     <aside className="w-full">
@@ -101,6 +118,15 @@ export function ThreadSidebar({
                   <div className="text-[10px] text-zinc-400">
                     {t.turnCount} turn{t.turnCount === 1 ? '' : 's'} · {t.focus}
                   </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportThread(t)}
+                  disabled={exportingId === t.id}
+                  title="Export thread as Markdown"
+                  className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-amber-400 transition-opacity disabled:opacity-100"
+                >
+                  {exportingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                 </button>
                 <button
                   type="button"

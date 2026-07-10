@@ -268,17 +268,26 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
+interface SavedCurve { id: string; name: string; channel: string; points: Pt[] }
+
 // ── Item 2: Histogram + tone curve editor ──────────────────────────
 function ToneCurveTab({ photos, onChange }: { photos: Photo[]; onChange: () => void }) {
   const [sel, setSel] = useState(photos[0]?.id || '');
   const [hist, setHist] = useState<HistogramResult | null>(null);
   const [points, setPoints] = useState<Pt[]>([{ x: 0, y: 0 }, { x: 128, y: 128 }, { x: 255, y: 255 }]);
   const [curveName, setCurveName] = useState('');
+  const [savedCurves, setSavedCurves] = useState<SavedCurve[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const histCanvas = useRef<HTMLCanvasElement>(null);
   const curveCanvas = useRef<HTMLCanvasElement>(null);
   const dragIdx = useRef<number | null>(null);
+
+  const loadSavedCurves = useCallback(async () => {
+    const r = await lensRun('photography', 'tone-curve-list', {});
+    setSavedCurves(r.data?.result?.curves || []);
+  }, []);
+  useEffect(() => { void loadSavedCurves(); }, [loadSavedCurves]);
 
   // Sample the actual streamed image into RGB pixels for the histogram.
   const computeHistogram = useCallback(async () => {
@@ -431,6 +440,20 @@ function ToneCurveTab({ photos, onChange }: { photos: Photo[]; onChange: () => v
     setBusy(false);
     if (r.data?.ok === false) { setErr(r.data?.error || 'Save failed'); return; }
     setCurveName('');
+    await loadSavedCurves();
+  };
+  const loadCurveIntoEditor = (curve: SavedCurve) => setPoints(curve.points);
+  const applySavedCurve = async (curveId: string) => {
+    if (!sel) return;
+    setBusy(true); setErr(null);
+    const r = await lensRun('photography', 'tone-curve-apply', { photoId: sel, curveId });
+    setBusy(false);
+    if (r.data?.ok === false) { setErr(r.data?.error || 'Apply failed'); return; }
+    onChange();
+  };
+  const deleteSavedCurve = async (curveId: string) => {
+    await lensRun('photography', 'tone-curve-delete', { id: curveId });
+    await loadSavedCurves();
   };
 
   return (
@@ -483,6 +506,26 @@ function ToneCurveTab({ photos, onChange }: { photos: Photo[]; onChange: () => v
           </button>
         </div>
       </div>
+
+      {savedCurves.length > 0 && (
+        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
+          <p className="text-xs font-semibold text-zinc-300">Saved curves</p>
+          <ul className="space-y-1">
+            {savedCurves.map((c) => (
+              <li key={c.id} className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 rounded-lg px-2.5 py-1.5">
+                <span className="text-xs text-zinc-200 flex-1">{c.name} <span className="text-[10px] text-zinc-500">· {c.channel}</span></span>
+                <button type="button" onClick={() => loadCurveIntoEditor(c)}
+                  className="text-[10px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded">edit</button>
+                <button type="button" onClick={() => applySavedCurve(c.id)} disabled={busy}
+                  className="text-[10px] px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded">apply</button>
+                <button aria-label="Delete curve" type="button" onClick={() => deleteSavedCurve(c.id)} className="text-zinc-600 hover:text-rose-400">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -605,6 +648,8 @@ const COLOR_HEX: Record<string, string> = {
   red: '#ef4444', yellow: '#eab308', green: '#22c55e', blue: '#3b82f6', purple: '#a855f7',
 };
 
+interface CullSummary { total: number; picks: number; rejects: number; unflagged: number; byRating: Record<string, number>; fiveStar: number }
+
 function CullFilterTab() {
   const [rating, setRating] = useState(0);
   const [ratingCompare, setRatingCompare] = useState<'gte' | 'lte' | 'eq'>('gte');
@@ -612,8 +657,15 @@ function CullFilterTab() {
   const [colorLabels, setColorLabels] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'rating' | 'imported'>('rating');
   const [result, setResult] = useState<Photo[] | null>(null);
+  const [summary, setSummary] = useState<CullSummary | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const loadSummary = useCallback(async () => {
+    const r = await lensRun('photography', 'cull-summary', {});
+    setSummary((r.data?.result as CullSummary | undefined) || null);
+  }, []);
+  useEffect(() => { void loadSummary(); }, [loadSummary]);
 
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
@@ -633,6 +685,16 @@ function CullFilterTab() {
   return (
     <div className="space-y-3">
       <ErrLine msg={err} />
+      {summary && (
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
+          <Info label="Total" value={String(summary.total)} />
+          <Info label="Picks" value={String(summary.picks)} />
+          <Info label="Rejects" value={String(summary.rejects)} />
+          <Info label="Unflagged" value={String(summary.unflagged)} />
+          <Info label="5★" value={String(summary.fiveStar)} />
+          <Info label="0★" value={String(summary.byRating?.['0'] ?? 0)} />
+        </div>
+      )}
       <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11px] text-zinc-400 w-16">Rating</span>

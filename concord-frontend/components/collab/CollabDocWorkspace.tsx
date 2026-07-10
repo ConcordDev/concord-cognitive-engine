@@ -6,8 +6,10 @@
  * Wires the full collab co-editing backbone end-to-end against the
  * `collab` domain macros:
  *   docCreate / docList / docState / docOp / docSync   — conflict-free co-editing
- *   docSnapshot / docHistory / docRestore             — version history
- *   cursorUpdate / presenceState / setFollow          — live cursors + follow-mode
+ *   docSnapshot / docHistory / docRestore             — text version history
+ *   docCrdtSnapshot / docCrdtSnapshotList / docCrdtRestore — full-fidelity
+ *                                                        Y.Doc version history
+ *   cursorUpdate / setFollow                          — live cursors + follow-mode
  *   setPermission / getPermissions                    — view/comment/edit tiers
  *   addComment / listComments / resolveThread         — @-mention threaded pins
  *   notifications / markNotificationRead              — mention notifications
@@ -15,7 +17,10 @@
  * Sync is poll-based (1s) over `docSync` which returns CRDT ops newer than the
  * caller's lamport clock plus the live presence roster — concurrent edits
  * converge because the backend replays the op log in a deterministic
- * (lamport, authorId) total order.
+ * (lamport, authorId) total order. The live presence roster itself arrives
+ * via that same `docSync` payload (and via `cursorUpdate`'s own response),
+ * so a dedicated `presenceState` poll isn't needed here — it exists on the
+ * backend for a read-only observer that never heartbeats a cursor.
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -25,7 +30,7 @@ import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import {
   FileText, Plus, History, Users, MessageSquare, Bell, Shield,
-  Eye, RotateCcw, Check, Loader2, Send, AtSign, Crown, X, MapPin,
+  Eye, RotateCcw, Check, Loader2, Send, AtSign, Crown, X, MapPin, Layers,
 } from 'lucide-react';
 
 // ── Macro response shapes ──────────────────────────────────────────────────
@@ -55,6 +60,10 @@ interface Snapshot {
   id: string; label: string; lamport: number; opCount: number;
   authorId: string; authorName: string; createdAt: number;
   preview: string; chars: number;
+}
+interface CrdtSnapshot {
+  id: string; seq: number; label: string; bytes: number;
+  authorId: string; authorName: string; createdAt: number; preview: string;
 }
 interface Comment {
   id: string; threadId: string; parentId: string | null;
@@ -133,11 +142,20 @@ export function CollabDocWorkspace() {
   // (insert/delete operations are commutative + associative under
   // Yjs's conflict-free merge — the prior lamport+authorId total-order
   // op-log only converges via last-write-per-character).
-  const { doc: yDoc, synced: yDocSynced } = useYjsDoc({
+  const { doc: yDoc, synced: yDocSynced, resetVersion } = useYjsDoc({
     scope: 'collab:doc',
     docId: activeDocId,
     enabled: !!activeDocId,
   });
+  const resetVersionRef = useRef(0);
+  useEffect(() => {
+    // Skip the initial mount (resetVersion starts at 0); only flash when a
+    // CRDT restore actually landed — including ones initiated by a peer.
+    if (resetVersion > resetVersionRef.current) {
+      resetVersionRef.current = resetVersion;
+      flash('ok', 'Document reset to a restored CRDT snapshot.');
+    }
+  }, [resetVersion]);
   const yTextRef = useRef<Y.Text | null>(null);
   const yApplyingRemoteRef = useRef(false);
   useEffect(() => {
@@ -164,6 +182,14 @@ export function CollabDocWorkspace() {
   // ── Version history ──────────────────────────────────────────────────────
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [snapLabel, setSnapLabel] = useState('');
+
+  // ── CRDT (full-fidelity) version history ─────────────────────────────────
+  // Captures the exact Y.Doc binary state (structure + formatting, not just
+  // materialized text) so restore is exact — a stronger guarantee than the
+  // text-only snapshots above. See `server/domains/collab.js` docCrdtSnapshot*.
+  const [crdtSnapshots, setCrdtSnapshots] = useState<CrdtSnapshot[]>([]);
+  const [crdtLabel, setCrdtLabel] = useState('');
+  const [crdtBusy, setCrdtBusy] = useState(false);
 
   // ── Comments ─────────────────────────────────────────────────────────────
   const [threads, setThreads] = useState<CommentThread[]>([]);
@@ -390,6 +416,35 @@ export function CollabDocWorkspace() {
     } else flash('err', 'Restore failed.');
   }, [activeDocId, loadHistory]);
 
+  // ── CRDT (full-fidelity) version history ─────────────────────────────────
+  const loadCrdtHistory = useCallback(async () => {
+    if (!activeDocId) return;
+    const r = await call<{ snapshots: CrdtSnapshot[] }>('docCrdtSnapshotList', { docId: activeDocId });
+    setCrdtSnapshots(r?.snapshots ?? []);
+  }, [activeDocId]);
+  const takeCrdtSnapshot = useCallback(async () => {
+    if (!activeDocId) return;
+    setCrdtBusy(true);
+    const r = await call<{ label: string }>('docCrdtSnapshot', { docId: activeDocId, label: crdtLabel.trim() });
+    setCrdtBusy(false);
+    if (r) { setCrdtLabel(''); await loadCrdtHistory(); flash('ok', `Saved full-fidelity snapshot "${r.label}".`); }
+    else flash('err', 'CRDT snapshot failed (edit tier required).');
+  }, [activeDocId, crdtLabel, loadCrdtHistory]);
+  const restoreCrdtSnapshot = useCallback(async (snapshotId: string) => {
+    if (!activeDocId) return;
+    setCrdtBusy(true);
+    const r = await call<{ restoredTo: string; bytes: number }>('docCrdtRestore', { docId: activeDocId, snapshotId });
+    setCrdtBusy(false);
+    if (r) {
+      // The server broadcasts `yjs:doc-reset` to the room (including this
+      // client); useYjsDoc applies it and bumps `resetVersion`, which
+      // re-hydrates the textarea via the Y.Text observer above — no local
+      // text/lamport bookkeeping needed here.
+      await loadCrdtHistory();
+      flash('ok', `Restored full-fidelity snapshot "${r.restoredTo}".`);
+    } else flash('err', 'CRDT restore failed.');
+  }, [activeDocId, loadCrdtHistory]);
+
   // ── Comments ─────────────────────────────────────────────────────────────
   const loadComments = useCallback(async () => {
     if (!activeDocId) return;
@@ -473,10 +528,10 @@ export function CollabDocWorkspace() {
   // ── Tab-driven data loading ──────────────────────────────────────────────
   useEffect(() => {
     if (!activeDocId) return;
-    if (tab === 'history') loadHistory();
+    if (tab === 'history') { loadHistory(); loadCrdtHistory(); }
     if (tab === 'comments') loadComments();
     if (tab === 'permissions') loadPerms();
-  }, [tab, activeDocId, loadHistory, loadComments, loadPerms]);
+  }, [tab, activeDocId, loadHistory, loadCrdtHistory, loadComments, loadPerms]);
 
   const markRead = useCallback(async (id?: string) => {
     await call('markNotificationRead', id ? { notificationId: id } : { all: true });
@@ -688,6 +743,46 @@ export function CollabDocWorkspace() {
               ))}
             </div>
           )}
+
+          {/* Full-fidelity CRDT snapshots — capture exact Y.Doc structure,
+              not just materialized text (formatting, nested types survive
+              restore exactly; the text snapshots above can't). */}
+          <div className="pt-3 mt-1 border-t border-zinc-800 space-y-2">
+            <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 uppercase tracking-wider">
+              <Layers className="w-3 h-3" /> Full-fidelity CRDT snapshots
+            </div>
+            <div className="flex items-center gap-2">
+              <input value={crdtLabel} onChange={(e) => setCrdtLabel(e.target.value)}
+                placeholder="Snapshot label (optional)" disabled={!canEdit}
+                className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-white disabled:opacity-50" />
+              <button onClick={takeCrdtSnapshot} disabled={crdtBusy || !canEdit}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-purple-500/20 text-purple-300 text-xs font-semibold disabled:opacity-40">
+                {crdtBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />}
+                Save full snapshot
+              </button>
+            </div>
+            {crdtSnapshots.length === 0 ? (
+              <p className="text-xs text-zinc-400 py-3 text-center">No full-fidelity snapshots yet.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {crdtSnapshots.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between p-2.5 rounded border border-purple-500/15 bg-zinc-900/40">
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-zinc-100 truncate">{s.label}</div>
+                      <div className="text-[10px] text-zinc-400">
+                        {s.authorName} · {timeAgo(s.createdAt)} · {s.bytes.toLocaleString()} bytes
+                      </div>
+                      {s.preview && <div className="text-[10px] text-zinc-400 truncate mt-0.5 font-mono">{s.preview}</div>}
+                    </div>
+                    <button onClick={() => restoreCrdtSnapshot(s.id)} disabled={crdtBusy || !canEdit}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded bg-purple-500/15 text-purple-300 text-[10px] font-semibold hover:bg-purple-500/25 disabled:opacity-40 shrink-0 ml-2">
+                      <RotateCcw className="w-3 h-3" /> Restore
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

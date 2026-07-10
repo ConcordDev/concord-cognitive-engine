@@ -45,6 +45,14 @@ vi.mock('@/store/ui', () => ({
   useUIStore: (selector: (s: Record<string, unknown>) => unknown) => selector(mockUIStoreState as unknown as Record<string, unknown>),
 }));
 
+// SystemStatus now reads its refetch cadence from useClientConfig() (shell-
+// diet: server-tunable poll interval, /api/config/client). Mocked to the
+// hook's own baked defaults per the tests/link-shell.test.tsx precedent, so
+// this suite doesn't also exercise the hook's own async config fetch.
+vi.mock('@/hooks/useClientConfig', () => ({
+  useClientConfig: () => ({ poll: { systemStatusMs: 30000, connectionStatusMs: 20000 } }),
+}));
+
 import { SystemStatus } from '@/components/common/SystemStatus';
 
 describe('SystemStatus', () => {

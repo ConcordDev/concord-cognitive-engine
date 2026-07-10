@@ -25,6 +25,8 @@ export function RxPricePanel() {
   const [form, setForm] = useState({ drugName: '', pharmacyName: '', cashPrice: '', couponPrice: '' });
   const [compareDrug, setCompareDrug] = useState('');
   const [comparison, setComparison] = useState<{ quotes: Quote[]; savings: number; savingsPct: number } | null>(null);
+  const [couponForm, setCouponForm] = useState({ drugName: '', pharmacyName: '', discountedPrice: '', code: '' });
+  const [showCouponForm, setShowCouponForm] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -56,6 +58,19 @@ export function RxPricePanel() {
     setCompareDrug(drug);
     const r = await lensRun('pharmacy', 'price-compare', { drugName: drug });
     setComparison(r.data?.ok === false ? null : (r.data?.result as { quotes: Quote[]; savings: number; savingsPct: number }));
+  };
+
+  const saveCoupon = async () => {
+    if (!couponForm.drugName.trim()) { setError('Drug name is required.'); return; }
+    if (!(Number(couponForm.discountedPrice) >= 0)) { setError('Discounted price must be zero or greater.'); return; }
+    const r = await lensRun('pharmacy', 'coupon-save', {
+      drugName: couponForm.drugName.trim(), pharmacyName: couponForm.pharmacyName.trim() || undefined,
+      discountedPrice: Number(couponForm.discountedPrice), code: couponForm.code.trim() || undefined,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    setCouponForm({ drugName: '', pharmacyName: '', discountedPrice: '', code: '' });
+    setShowCouponForm(false); setError(null);
+    await refresh();
   };
 
   if (loading) {
@@ -129,9 +144,29 @@ export function RxPricePanel() {
 
       {/* Coupons */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
-          <Ticket className="w-3.5 h-3.5 text-amber-400" /> Saved coupons
-        </h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
+            <Ticket className="w-3.5 h-3.5 text-amber-400" /> Saved coupons
+          </h3>
+          <button type="button" onClick={() => setShowCouponForm((v) => !v)}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+            <Plus className="w-3.5 h-3.5" /> Save coupon
+          </button>
+        </div>
+        {showCouponForm && (
+          <div className="grid grid-cols-4 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 mb-2">
+            <input placeholder="Drug name" value={couponForm.drugName} onChange={(e) => setCouponForm({ ...couponForm, drugName: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <input placeholder="Pharmacy (optional)" value={couponForm.pharmacyName} onChange={(e) => setCouponForm({ ...couponForm, pharmacyName: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <input placeholder="Discounted $" inputMode="decimal" value={couponForm.discountedPrice} onChange={(e) => setCouponForm({ ...couponForm, discountedPrice: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <input placeholder="Code (optional)" value={couponForm.code} onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <button type="button" onClick={saveCoupon}
+              className="col-span-4 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save coupon</button>
+          </div>
+        )}
         {coupons.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">No coupons saved.</p>
         ) : (

@@ -1,686 +1,262 @@
 'use client';
 
-import { useLensNav } from '@/hooks/useLensNav';
-import { useLensCommand } from '@/hooks/useLensCommand';
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ * CONCORD // LAW & CONTRACTS — rebuild (Frontend Rebuild Program, Wave 2)
+ * ─────────────────────────────────────────────────────────────────────────
+ * Research-tool identity for case-law/patent research (CourtListener +
+ * USPTO PatentsView, real external data, always-on source attribution,
+ * one-click pull → DTU → cite) + a real Ironclad/LegalZoom-shape
+ * contract-lifecycle workbench, grouped into a designed workspace instead
+ * of a wall of auto-generated macro buttons.
+ *
+ * Honest-by-construction — every number on screen traces to a REAL macro:
+ *   • case-law search      → law.courtlistener-search (CourtListener v4 API)
+ *   • patent search        → law.uspto-patent-search  (USPTO PatentsView;
+ *                            previously ZERO frontend callers — first surface)
+ *   • recent opinions feed → law.feed                 (pull → DTU)
+ *   • community Q&A        → law.stackexchange.com    (real external feed)
+ *   • contracts             → law.contract-* / law.clause-* / law.approval-* /
+ *                            law.obligation-* / law.playbook-* / law.repository-search
+ *                            (real STATE-backed contract-lifecycle substrate)
+ *   • case files             → per-user lens artifacts (real, persisted)
+ *   • case analysis + deadlines → law.caseAnalysis / law.deadlineTracker,
+ *                            run over the REAL case-file list above (not a
+ *                            hand-authored JSON artifact)
+ *   • legal text search     → law.statuteLookup, run over text you paste
+ *                            (Concord ships no licensed statute database —
+ *                            disclosed inline, never faked as a live corpus)
+ *   • billing calculator    → law.billingCalculator, an ad-hoc calculator
+ *                            over session-only entries (disclosed as such)
+ *   • compliance screener   → law.check-compliance (real 4-rule keyword
+ *                            check server-side; previously ZERO frontend
+ *                            callers — the old page reimplemented 3 of its
+ *                            4 rules client-side with no macro call at all)
+ *   • framework coverage    → law.analyze (real per-framework keyword
+ *                            coverage/risk scoring; previously ZERO
+ *                            frontend callers — the old page's 4
+ *                            "legalFrameworks" tiles were a hardcoded
+ *                            array with a permanently-fixed status,
+ *                            unconnected to this real macro)
+ *
+ * REMOVED (fabrication + dead chrome the old page shipped): 4 hardcoded
+ * "legalFrameworks" with permanently-fixed "compliant"/"review" status
+ * (a static array presented as live compliance state — no macro, no
+ * computation, always the same answer — replaced by the real
+ * FrameworkCoverage panel above); useRealtimeLens('law') +
+ * LiveIndicator + RealtimeDataPanel (no realtime source is registered for
+ * the `law` domain — DOMAIN_EVENTS in useRealtimeLens.ts has no `law` key,
+ * only `legal` — so isLive was permanently false and latestData
+ * permanently null: decorative dead chrome, not a real live feed).
+ * RETIRED generic scaffold: the generated action-bar / auto-action-strip /
+ * recent-mine footer trio, the auto-discovered-macro button wall + generic
+ * capabilities-list body, the cross-lens-recents panel, the session rail,
+ * the connective-tissue bar, and the raw 4-button "Legal Analysis" strip
+ * (required a separate JSON artifact id — replaced by CaseAnalytics running
+ * the same macros over real, already-persisted case files).
+ *
+ * Full capability map: docs/lens-specs/law-capability-map.md
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+import { useCallback, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Scale, BookOpen, FileText, Briefcase, BarChart3, Keyboard } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { SessionRail } from '@/components/lens/SessionRail';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LawFeed } from '@/components/law/LawFeed';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
+import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import { DensityToggle } from '@/components/ui';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { cn } from '@/lib/utils';
+import { showToast } from '@/components/common/Toasts';
+
+// Reused, already-real bespoke components.
+import { LegalCaseSearch } from '@/components/legal/LegalCaseSearch';
 import { LawContracts, type LawContractsHandle } from '@/components/law/LawContracts';
 import { ContractPlaybooks } from '@/components/law/ContractPlaybooks';
 import { ObligationTracker } from '@/components/law/ObligationTracker';
 import { ContractRepositorySearch } from '@/components/law/ContractRepositorySearch';
-import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useState, useMemo, useRef } from 'react';
-import { Scale, Gavel, FileText, CheckCircle, XCircle, AlertTriangle, Plus, Layers, ChevronDown, Globe, Calendar, ChevronRight, Play, Loader2 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ErrorState } from '@/components/common/EmptyState';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
-import { showToast } from '@/components/common/Toasts';
+import { LawFeed } from '@/components/law/LawFeed';
 
-const JURISDICTIONS = ['US', 'EU', 'UK', 'CA', 'AU', 'INT'] as const;
-type Jurisdiction = typeof JURISDICTIONS[number];
+// New bespoke components built for this rebuild.
+import { PatentSearch } from '@/components/law/PatentSearch';
+import { CaseFiles } from '@/components/law/CaseFiles';
+import { CaseAnalytics } from '@/components/law/CaseAnalytics';
+import { LegalTextSearch } from '@/components/law/LegalTextSearch';
+import { BillingCalculator } from '@/components/law/BillingCalculator';
+import { ComplianceScreener } from '@/components/law/ComplianceScreener';
+import { FrameworkCoverage } from '@/components/law/FrameworkCoverage';
+import type { CaseFileSummary } from '@/components/law/case-types';
 
-const JURISDICTION_COLORS: Record<Jurisdiction, string> = {
-  US:  'bg-blue-400/15 border-blue-400/30 text-blue-400',
-  EU:  'bg-indigo-400/15 border-indigo-400/30 text-indigo-400',
-  UK:  'bg-purple-400/15 border-purple-400/30 text-purple-400',
-  CA:  'bg-red-400/15 border-red-400/30 text-red-400',
-  AU:  'bg-yellow-400/15 border-yellow-400/30 text-yellow-400',
-  INT: 'bg-teal-400/15 border-teal-400/30 text-teal-400',
-};
+type GroupId = 'research' | 'contracts' | 'cases' | 'analytics';
 
-const CASE_STATUSES = ['open', 'in-review', 'hearing', 'closed'] as const;
-type CaseStatus = typeof CASE_STATUSES[number];
+const GROUPS: { id: GroupId; label: string; hotkey: string; icon: typeof BookOpen }[] = [
+  { id: 'research', label: 'Research', hotkey: '1', icon: BookOpen },
+  { id: 'contracts', label: 'Contracts', hotkey: '2', icon: FileText },
+  { id: 'cases', label: 'Case Files', hotkey: '3', icon: Briefcase },
+  { id: 'analytics', label: 'Analytics & Tools', hotkey: '4', icon: BarChart3 },
+];
 
-const STATUS_COLORS: Record<CaseStatus, string> = {
-  'open':      'bg-blue-400/15 border-blue-400/30 text-blue-400',
-  'in-review': 'bg-yellow-400/15 border-yellow-400/30 text-yellow-400',
-  'hearing':   'bg-orange-400/15 border-orange-400/30 text-orange-400',
-  'closed':    'bg-green-400/15 border-green-400/30 text-green-400',
-};
-
-// Days until deadline countdown
-function deadlineDays(deadlineStr: string): number | null {
-  if (!deadlineStr) return null;
-  const diff = new Date(deadlineStr).getTime() - Date.now();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+function Panel({ title, right, children, className }: { title: string; right?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn('rounded-lg border border-lattice-border bg-lattice-surface/60 overflow-hidden', className)}>
+      <header className="flex items-center justify-between px-3 py-2 border-b border-lattice-border bg-lattice-elevated/40">
+        <h2 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">{title}</h2>
+        {right}
+      </header>
+      <div className="p-3">{children}</div>
+    </section>
+  );
 }
 
 export default function LawLensPage() {
   useLensNav('law');
-  const [testProposal, setTestProposal] = useState('');
-  const [gateResult, setGateResult] = useState<{ passed: boolean; reasons: string[] } | null>(null);
-  const [newCaseTitle, setNewCaseTitle] = useState('');
-  const [newCaseJurisdiction, setNewCaseJurisdiction] = useState<Jurisdiction>('US');
-  const [newCaseDeadline, setNewCaseDeadline] = useState('');
-  const [expandedCase, setExpandedCase] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
-  const [caseSearch, setCaseSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<CaseStatus | 'all'>('all');
-  const [jurisdictionFilter, setJurisdictionFilter] = useState<Jurisdiction | 'all'>('all');
-  const caseSearchInputRef = useRef<HTMLInputElement>(null);
-  const newCaseInputRef = useRef<HTMLInputElement>(null);
-  const contractsRef = useRef<LawContractsHandle>(null);
+  const [group, setGroup] = useState<GroupId>('research');
   const [contractList, setContractList] = useState<{ id: string; title: string }[]>([]);
-  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('law');
+  const [caseSummaries, setCaseSummaries] = useState<CaseFileSummary[]>([]);
+  const contractsRef = useRef<LawContractsHandle>(null);
 
-  // Lens artifact persistence layer
-  const { isLoading, isError: isError, error: error, refetch: refetch, items: caseItems, create: createCase } = useLensData('law', 'case', { noSeed: true });
-
-  // Filtered cases — search by title, narrow by status + jurisdiction.
-  // The status row used to fire setExpandedCase(null) (a bug — it just
-  // collapsed expanded cases without filtering), so this also wires
-  // those chips to do what they look like they should.
-  const visibleCases = useMemo(() => {
-    const q = caseSearch.trim().toLowerCase();
-    return caseItems.filter((item) => {
-      const status = (item.meta?.status as CaseStatus) || 'open';
-      if (statusFilter !== 'all' && status !== statusFilter) return false;
-      const jurisdiction = (item.data as Record<string, unknown>)?.jurisdiction as Jurisdiction || 'US';
-      if (jurisdictionFilter !== 'all' && jurisdiction !== jurisdictionFilter) return false;
-      if (q && !(item.title || '').toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [caseItems, caseSearch, statusFilter, jurisdictionFilter]);
+  const onContractsChange = useCallback((c: { id: string; title: string }[]) => setContractList(c), []);
+  const onCasesChange = useCallback((c: CaseFileSummary[]) => setCaseSummaries(c), []);
 
   useLensCommand(
     [
-      { id: 'focus-search', keys: '/', description: 'Search cases', category: 'navigation', action: () => caseSearchInputRef.current?.focus() },
-      { id: 'new-case',     keys: 'n', description: 'New case',      category: 'actions',    action: () => newCaseInputRef.current?.focus() },
-      { id: 'filter-all',   keys: '0', description: 'All statuses',  category: 'view',       action: () => setStatusFilter('all') },
-      { id: 'filter-open',  keys: '1', description: 'Open',          category: 'view',       action: () => setStatusFilter('open') },
-      { id: 'filter-review',keys: '2', description: 'In review',     category: 'view',       action: () => setStatusFilter('in-review') },
-      { id: 'filter-hearing',keys: '3', description: 'Hearing',      category: 'view',       action: () => setStatusFilter('hearing') },
-      { id: 'filter-closed',keys: '4', description: 'Closed',        category: 'view',       action: () => setStatusFilter('closed') },
+      ...GROUPS.map((g) => ({
+        id: `group-${g.id}`,
+        keys: g.hotkey,
+        description: `Go to ${g.label}`,
+        category: 'navigation' as const,
+        action: () => setGroup(g.id),
+      })),
     ],
     { lensId: 'law' }
   );
 
-  const legalFrameworks = [
-    { id: 'gdpr', name: 'GDPR', status: 'compliant', description: 'EU data protection' },
-    { id: 'ccpa', name: 'CCPA', status: 'compliant', description: 'California privacy' },
-    { id: 'ai-act', name: 'EU AI Act', status: 'review', description: 'AI regulations' },
-    { id: 'dmca', name: 'DMCA', status: 'compliant', description: 'Copyright law' },
-  ];
-
-  const handleCreateCase = () => {
-    if (!newCaseTitle.trim()) return;
-    createCase({
-      title: newCaseTitle,
-      data: {
-        jurisdiction: newCaseJurisdiction,
-        frameworks: ['GDPR', 'CCPA', 'DMCA'],
-        deadline: newCaseDeadline || null,
-        timeline: [
-          { label: 'Filed', date: new Date().toISOString(), done: true },
-          { label: 'Review', date: '', done: false },
-          { label: 'Hearing', date: '', done: false },
-          { label: 'Ruling', date: '', done: false },
-        ],
-      },
-      meta: { status: 'open' },
-    });
-    setNewCaseTitle('');
-    setNewCaseDeadline('');
+  const renderGroup = () => {
+    switch (group) {
+      case 'research':
+        return (
+          <div className="space-y-4">
+            <Panel title="Case law — CourtListener (9M+ opinions)">
+              <LegalCaseSearch />
+            </Panel>
+            <Panel title="Patent search — USPTO PatentsView">
+              <PatentSearch />
+            </Panel>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <LensFeedButton domain="law" label="Recent court opinions → DTU" />
+                <div className="mt-3">
+                  <LensFeedPanel lensId="law" limit={15} />
+                </div>
+              </div>
+              <Panel title="Community Q&A — law.stackexchange.com">
+                <LawFeed />
+              </Panel>
+            </div>
+          </div>
+        );
+      case 'contracts':
+        return (
+          <div className="space-y-4">
+            <LawContracts ref={contractsRef} onContractsChange={onContractsChange} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ContractPlaybooks
+                onApplied={(id) => {
+                  void contractsRef.current?.refresh();
+                  if (id) void contractsRef.current?.open(id);
+                  showToast('success', 'Contract created from playbook');
+                }}
+              />
+              <ObligationTracker contracts={contractList} />
+            </div>
+            <ContractRepositorySearch onOpen={(id) => { void contractsRef.current?.open(id); }} />
+          </div>
+        );
+      case 'cases':
+        return <CaseFiles onCasesChange={onCasesChange} />;
+      case 'analytics':
+        return (
+          <div className="space-y-4">
+            <CaseAnalytics cases={caseSummaries} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <LegalTextSearch />
+              <BillingCalculator />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ComplianceScreener />
+              <FrameworkCoverage />
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
-  const runAction = useRunArtifact('law');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = caseItems[0]?.id;
-    if (!targetId) { setActionResult({ message: 'Create a case file first to run analysis.' }); return; }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
-
-  const handleGateCheck = () => {
-    const lower = testProposal.toLowerCase();
-    const violations: string[] = [];
-
-    if (lower.includes('personal data') && lower.includes('sell')) {
-      violations.push('GDPR Art. 6: Unlawful processing');
-    }
-    if (lower.includes('copyright') && lower.includes('bypass')) {
-      violations.push('DMCA §1201: Circumvention');
-    }
-    if (lower.includes('discriminat')) {
-      violations.push('EU AI Act: Prohibited practice');
-    }
-
-    setGateResult({
-      passed: violations.length === 0,
-      reasons: violations.length > 0 ? violations : ['No legal violations detected'],
-    });
-  };
-
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message} onRetry={refetch} />
-      </div>
-    );
-  }
   return (
     <LensShell lensId="law" asMain={false}>
       <FirstRunTour lensId="law" />
-      <ManifestActionBar />
-      <DepthBadge lensId="law" size="sm" className="ml-2" />
-    <div data-lens-theme="law" className="p-6 space-y-6">
-      <header className="flex items-center gap-3">
-        <span className="text-2xl">⚖️</span>
-        <div>
-          <h1 className="text-xl font-bold">Law Lens</h1>
-          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-          <p className="text-sm text-gray-400">
-            Legality gate playground for compliance testing
-          </p>
-        </div>
-      </header>
-
-      <RealtimeDataPanel domain="law" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <UniversalActions domain="law" artifactId={null} compact />
-      <DTUExportButton domain="law" data={{}} compact />
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="lens-card">
-          <Scale className="w-5 h-5 text-neon-purple mb-2" />
-          <p className="text-2xl font-bold">{legalFrameworks.length}</p>
-          <p className="text-sm text-gray-400">Frameworks</p>
-        </div>
-        <div className="lens-card">
-          <CheckCircle className="w-5 h-5 text-neon-green mb-2" />
-          <p className="text-2xl font-bold">{legalFrameworks.filter((f) => f.status === 'compliant').length}</p>
-          <p className="text-sm text-gray-400">Compliant</p>
-        </div>
-        <div className="lens-card">
-          <AlertTriangle className="w-5 h-5 text-yellow-500 mb-2" />
-          <p className="text-2xl font-bold">{legalFrameworks.filter((f) => f.status === 'review').length}</p>
-          <p className="text-sm text-gray-400">Under Review</p>
-        </div>
-        <div className="lens-card">
-          <Gavel className="w-5 h-5 text-neon-blue mb-2" />
-          <p className="text-2xl font-bold">Active</p>
-          <p className="text-sm text-gray-400">Gate Status</p>
-        </div>
-      </div>
-
-      {/* Legality Gate Tester */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Gavel className="w-4 h-4 text-neon-purple" />
-          Legality Gate Tester
-        </h2>
-        <div className="flex gap-2 mb-4">
-          <input
-            type="text"
-            value={testProposal}
-            onChange={(e) => setTestProposal(e.target.value)}
-            placeholder="Describe a proposed action..."
-            className="input-lattice flex-1"
-          />
-          <button onClick={handleGateCheck} className="btn-neon purple focus:outline-none focus:ring-2 focus:ring-amber-500">
-            Check Gate
-          </button>
-        </div>
-        {gateResult && (
-          <div className={`p-4 rounded-lg ${gateResult.passed ? 'bg-neon-green/20' : 'bg-neon-pink/20'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              {gateResult.passed ? (
-                <CheckCircle className="w-5 h-5 text-neon-green" />
-              ) : (
-                <XCircle className="w-5 h-5 text-neon-pink" />
-              )}
-              <span className={gateResult.passed ? 'text-neon-green' : 'text-neon-pink'}>
-                {gateResult.passed ? 'GATE PASSED' : 'GATE BLOCKED'}
-              </span>
+      <div data-lens-theme="law" className="min-h-full p-4 md:p-6 space-y-4">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded bg-neon-purple/15 border border-neon-purple/30 flex items-center justify-center">
+              <Scale className="w-5 h-5 text-neon-purple" />
             </div>
-            <ul className="text-sm space-y-1">
-              {gateResult.reasons.map((r, i) => (
-                <li key={i} className="text-gray-300">• {r}</li>
-              ))}
-            </ul>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold text-white">Law &amp; Contracts</h1>
+                <DepthBadge lensId="law" size="sm" />
+              </div>
+              <p className="text-xs text-gray-400">Case-law &amp; patent research, contract lifecycle, and case-file tooling.</p>
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Case Files */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-neon-cyan" />
-          Case Files
-        </h2>
-
-        {/* Search + filters */}
-        <div className="space-y-2 mb-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <input
-              ref={caseSearchInputRef}
-              type="text"
-              value={caseSearch}
-              onChange={(e) => setCaseSearch(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Escape') { setCaseSearch(''); caseSearchInputRef.current?.blur(); } }}
-              placeholder="Search cases by title…  / focuses"
-              className="input-lattice flex-1 min-w-[200px] text-sm"
-            />
-            <select
-              value={jurisdictionFilter}
-              onChange={(e) => setJurisdictionFilter(e.target.value as Jurisdiction | 'all')}
-              className="input-lattice text-sm"
-              title="Filter by jurisdiction"
-            >
-              <option value="all">All jurisdictions</option>
-              {JURISDICTIONS.map(j => <option key={j} value={j}>{j}</option>)}
-            </select>
-            {(caseSearch || statusFilter !== 'all' || jurisdictionFilter !== 'all') && (
-              <span className="text-[10px] text-gray-400 whitespace-nowrap">
-                {visibleCases.length} of {caseItems.length}
-              </span>
-            )}
+          <div className="flex items-center gap-2">
+            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-500" title="1–4 switch view">
+              <Keyboard className="w-3.5 h-3.5" /> 1–4
+            </span>
+            <DensityToggle variant="dropdown" />
+            <DTUExportButton domain="law" data={{ contracts: contractList, cases: caseSummaries }} compact />
           </div>
-          <div className="flex items-center gap-1 flex-wrap">
-            <button
-              onClick={() => setStatusFilter('all')}
-              className={`text-[10px] px-2 py-1 rounded border font-medium transition-colors ${
-                statusFilter === 'all' ? 'bg-neon-cyan/20 border-neon-cyan/40 text-neon-cyan' : 'bg-gray-500/10 border-gray-500/30 text-gray-400 hover:bg-white/5'
-              }`}
-            >
-              all <kbd className="text-[8px] opacity-60 ml-0.5">0</kbd>
-            </button>
-            {CASE_STATUSES.map((s, i) => (
+        </header>
+
+        <nav className="flex items-center gap-1 overflow-x-auto border-b border-lattice-border pb-2" aria-label="Law views">
+          {GROUPS.map((g) => {
+            const active = group === g.id;
+            return (
               <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`text-[10px] px-2 py-1 rounded border font-medium transition-colors ${
-                  statusFilter === s ? STATUS_COLORS[s] : 'bg-gray-500/10 border-gray-500/30 text-gray-400 hover:bg-white/5'
-                }`}
+                key={g.id}
+                onClick={() => setGroup(g.id)}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded text-xs whitespace-nowrap border transition-colors',
+                  active ? 'bg-neon-purple/15 text-neon-purple border-neon-purple/30' : 'text-gray-400 hover:text-neon-purple hover:bg-neon-purple/10 border-transparent'
+                )}
               >
-                {s}<kbd className="text-[8px] opacity-60 ml-0.5">{i + 1}</kbd>
+                <span className="text-[10px] text-gray-600 tabular-nums">{g.hotkey}</span>
+                <g.icon className="w-3.5 h-3.5" />
+                {g.label}
+                {g.id === 'cases' && caseSummaries.length > 0 && (
+                  <span className="text-[9px] px-1 py-0.5 rounded-full bg-white/10 text-gray-300">{caseSummaries.length}</span>
+                )}
+                {g.id === 'contracts' && contractList.length > 0 && (
+                  <span className="text-[9px] px-1 py-0.5 rounded-full bg-white/10 text-gray-300">{contractList.length}</span>
+                )}
               </button>
-            ))}
-          </div>
-        </div>
+            );
+          })}
+        </nav>
 
-        {/* New case form */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
-          <input
-            ref={newCaseInputRef}
-            type="text"
-            value={newCaseTitle}
-            onChange={(e) => setNewCaseTitle(e.target.value)}
-            placeholder="Case title…  n focuses"
-            className="input-lattice md:col-span-2"
-          />
-          <select
-            value={newCaseJurisdiction}
-            onChange={e => setNewCaseJurisdiction(e.target.value as Jurisdiction)}
-            className="input-lattice"
-          >
-            {JURISDICTIONS.map(j => <option key={j} value={j}>{j}</option>)}
-          </select>
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={newCaseDeadline}
-              onChange={e => setNewCaseDeadline(e.target.value)}
-              className="input-lattice flex-1 text-xs"
-              title="Filing deadline"
-            />
-            <button onClick={handleCreateCase} className="btn-neon purple px-3" aria-label="Add">
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          {caseItems.length === 0 ? (
-            <p className="text-center py-4 text-gray-400 text-sm">No case files yet</p>
-          ) : visibleCases.length === 0 ? (
-            <p className="text-center py-4 text-gray-400 text-sm">
-              No cases match the current filters.
-            </p>
-          ) : (
-            visibleCases.map((item) => {
-              const jurisdiction = (item.data as Record<string, unknown>)?.jurisdiction as Jurisdiction || 'US';
-              const deadline = (item.data as Record<string, unknown>)?.deadline as string | null;
-              const timeline = ((item.data as Record<string, unknown>)?.timeline as { label: string; date: string; done: boolean }[]) || [];
-              const status = (item.meta?.status as CaseStatus) || 'open';
-              const daysLeft = deadline ? deadlineDays(deadline) : null;
-              const isExpanded = expandedCase === item.id;
-
-              return (
-                <motion.div key={item.id} layout className="lens-card overflow-hidden p-0">
-                  {/* Case header */}
-                  <div
-                    className="flex items-center justify-between p-3 cursor-pointer hover:bg-white/5 transition-colors"
-                    onClick={() => setExpandedCase(isExpanded ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <ChevronRight className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                      <p className="font-medium text-sm">{item.title}</p>
-                      {/* Jurisdiction badge */}
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium flex items-center gap-1 ${JURISDICTION_COLORS[jurisdiction] || JURISDICTION_COLORS.US}`}>
-                        <Globe className="w-2.5 h-2.5" />
-                        {jurisdiction}
-                      </span>
-                      {/* Status badge */}
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${STATUS_COLORS[status] || STATUS_COLORS.open}`}>
-                        {status}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {/* Deadline countdown */}
-                      {daysLeft !== null && (
-                        <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border ${
-                          daysLeft <= 3
-                            ? 'bg-red-400/15 border-red-400/30 text-red-400'
-                            : daysLeft <= 14
-                            ? 'bg-yellow-400/15 border-yellow-400/30 text-yellow-400'
-                            : 'bg-gray-600/20 border-gray-600/30 text-gray-400'
-                        }`}>
-                          <Calendar className="w-2.5 h-2.5" />
-                          {daysLeft > 0 ? `${daysLeft}d` : daysLeft === 0 ? 'Today' : 'Overdue'}
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-400">{new Date(item.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-
-                  {/* Expanded: timeline */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="border-t border-white/10 px-4 py-3 overflow-hidden"
-                      >
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-3">Case Timeline</p>
-                        <div className="flex items-start gap-0">
-                          {(timeline.length > 0 ? timeline : [
-                            { label: 'Filed', done: true },
-                            { label: 'Review', done: false },
-                            { label: 'Hearing', done: false },
-                            { label: 'Ruling', done: false },
-                          ]).map((step, idx, arr) => (
-                            <div key={step.label} className="flex-1 flex flex-col items-center">
-                              <div className="flex items-center w-full">
-                                {/* Line before */}
-                                {idx > 0 && (
-                                  <div className={`flex-1 h-0.5 ${step.done ? 'bg-neon-purple' : 'bg-white/10'}`} />
-                                )}
-                                {/* Node */}
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 border-2 ${
-                                  step.done
-                                    ? 'bg-neon-purple border-neon-purple'
-                                    : idx === arr.findIndex(s => !s.done)
-                                    ? 'bg-yellow-400/20 border-yellow-400'
-                                    : 'bg-black/40 border-white/20'
-                                }`}>
-                                  {step.done ? (
-                                    <CheckCircle className="w-3 h-3 text-white" />
-                                  ) : (
-                                    <span className="w-2 h-2 rounded-full bg-white/20" />
-                                  )}
-                                </div>
-                                {/* Line after */}
-                                {idx < arr.length - 1 && (
-                                  <div className={`flex-1 h-0.5 ${arr[idx + 1]?.done ? 'bg-neon-purple' : 'bg-white/10'}`} />
-                                )}
-                              </div>
-                              <p className={`text-[10px] mt-1.5 text-center ${step.done ? 'text-neon-purple' : 'text-gray-400'}`}>
-                                {step.label}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                        {deadline && (
-                          <div className={`mt-3 p-2 rounded-lg flex items-center gap-2 text-xs ${
-                            (daysLeft ?? 99) <= 3
-                              ? 'bg-red-400/10 border border-red-400/20 text-red-400'
-                              : 'bg-yellow-400/10 border border-yellow-400/20 text-yellow-400'
-                          }`}>
-                            <Calendar className="w-3.5 h-3.5 shrink-0" />
-                            <span>
-                              Filing deadline: {new Date(deadline).toLocaleDateString()}
-                              {daysLeft !== null && (
-                                <span className="font-semibold ml-1">
-                                  ({daysLeft > 0 ? `${daysLeft} days remaining` : daysLeft === 0 ? 'Due today' : 'OVERDUE'})
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              );
-            })
-          )}
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div key={group} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
+            {renderGroup()}
+          </motion.div>
+        </AnimatePresence>
       </div>
-
-      {/* Frameworks */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-neon-blue" />
-          Legal Frameworks
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {legalFrameworks.map((fw) => (
-            <div key={fw.id} className="lens-card">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold">{fw.name}</span>
-                <span className={`w-2 h-2 rounded-full ${
-                  fw.status === 'compliant' ? 'bg-neon-green' : 'bg-yellow-500'
-                }`} />
-              </div>
-              <p className="text-xs text-gray-400">{fw.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Contract lifecycle workbench — Ironclad-shape */}
-        <LensFeedButton domain="law" />
-      <LawContracts ref={contractsRef} onContractsChange={setContractList} />
-
-      {/* Guided drafting from pre-approved playbooks */}
-      <ContractPlaybooks
-        onApplied={(id) => {
-          void contractsRef.current?.refresh();
-          if (id) void contractsRef.current?.open(id);
-          showToast('success', 'Contract created from playbook');
-        }}
-      />
-
-      {/* Obligation tracking — renewal / expiry / payment tasks */}
-      <ObligationTracker contracts={contractList} />
-
-      {/* Full-text contract repository search */}
-      <ContractRepositorySearch onOpen={(id) => { void contractsRef.current?.open(id); }} />
-
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Scale className="w-4 h-4 text-neon-purple" />
-          Legal Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'caseAnalysis', label: 'Case Analysis' },
-            { action: 'statuteLookup', label: 'Statute Lookup' },
-            { action: 'deadlineTracker', label: 'Deadline Tracker' },
-            { action: 'billingCalculator', label: 'Billing Calculator' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleAction(action)} disabled={!!isRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
-              {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'totalCases' in actionResult && (
-              <div className="space-y-2">
-                <div className="flex gap-4">
-                  <span className="text-gray-400">Total Cases: <span className="text-neon-cyan font-bold">{String(actionResult.totalCases)}</span></span>
-                  <span className="text-gray-400">Open: <span className="text-yellow-400 font-bold">{String(actionResult.openCases)}</span></span>
-                  <span className="text-gray-400">Closed: <span className="text-neon-green font-bold">{String(actionResult.closedCases)}</span></span>
-                </div>
-                {'winRate' in actionResult && actionResult.winRate !== null && typeof actionResult.winRate === 'object' && (
-                  <div className="flex gap-4 text-xs">
-                    {Object.entries(actionResult.winRate as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-green">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-                {'typeBreakdown' in actionResult && Array.isArray(actionResult.typeBreakdown) && actionResult.typeBreakdown.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider">By Type</p>
-                    {(actionResult.typeBreakdown as Array<Record<string, unknown>>).map((t, i) => (
-                      <div key={i} className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1">
-                        <span className="text-gray-300">{String(t.type)}</span>
-                        <span className="text-neon-cyan">{String(t.count)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'totalMatches' in actionResult && (
-              <div className="space-y-2">
-                <p className="text-gray-400">Query: <span className="text-white">{String(actionResult.query)}</span> — <span className="text-neon-cyan font-bold">{String(actionResult.totalMatches)}</span> matches</p>
-                {'matches' in actionResult && Array.isArray(actionResult.matches) && actionResult.matches.length > 0 && (
-                  <div className="space-y-1">
-                    {(actionResult.matches as Array<Record<string, unknown>>).map((m, i) => (
-                      <div key={i} className="bg-lattice-surface rounded px-3 py-2 text-xs">
-                        <p className="text-neon-cyan font-medium">{String(m.citation || m.id)}</p>
-                        <p className="text-gray-400 line-clamp-2">{String(m.text || m.summary || '')}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'overdue' in actionResult && Array.isArray(actionResult.overdue) && (
-              <div className="space-y-2">
-                {'summary' in actionResult && actionResult.summary !== null && typeof actionResult.summary === 'object' && (
-                  <div className="flex gap-4 text-xs">
-                    {Object.entries(actionResult.summary as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-cyan">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-                {actionResult.overdue.length > 0 && (
-                  <div>
-                    <p className="text-xs text-red-400 font-semibold mb-1">Overdue ({actionResult.overdue.length})</p>
-                    {(actionResult.overdue as Array<Record<string, unknown>>).map((d, i) => (
-                      <div key={i} className="text-xs bg-red-400/10 border border-red-400/20 rounded px-2 py-1 mb-1">
-                        <span className="text-red-400">{String(d.title || d.name)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {'urgent' in actionResult && Array.isArray(actionResult.urgent) && actionResult.urgent.length > 0 && (
-                  <div>
-                    <p className="text-xs text-yellow-400 font-semibold mb-1">Urgent ({(actionResult.urgent as unknown[]).length})</p>
-                    {(actionResult.urgent as Array<Record<string, unknown>>).map((d, i) => (
-                      <div key={i} className="text-xs bg-yellow-400/10 border border-yellow-400/20 rounded px-2 py-1 mb-1">
-                        <span className="text-yellow-400">{String(d.title || d.name)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'totals' in actionResult && 'attorneyBreakdown' in actionResult ? (
-              <div className="space-y-2">
-                {'totals' in actionResult && actionResult.totals !== null && typeof actionResult.totals === 'object' && (
-                  <div className="flex gap-4">
-                    {Object.entries(actionResult.totals as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400 text-xs">{k}: <span className="text-neon-green font-bold">${String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
-                {'attorneyBreakdown' in actionResult && Array.isArray(actionResult.attorneyBreakdown) && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider">By Attorney</p>
-                    {(actionResult.attorneyBreakdown as Array<Record<string, unknown>>).map((a, i) => (
-                      <div key={i} className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1">
-                        <span className="text-gray-300">{String(a.attorney)}</span>
-                        <span className="text-neon-green">${String(a.billableAmount || a.totalAmount || 0)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : null}
-            {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
-          </div>
-        )}
-      </div>
-
-      <ConnectiveTissueBar lensId="ext_law" />
-
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="ext_law" />
-          </div>
-        )}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <LawFeed />
-      </section>
-    </div>
-          <SessionRail lensId="law" hideWhenEmpty className="mt-4" />
-          <RecentMineCard domain="law" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="law" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="law" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

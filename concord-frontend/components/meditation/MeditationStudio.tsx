@@ -3,44 +3,49 @@
 /**
  * MeditationStudio — Calm / Headspace 2026-shape session studio: a
  * curated library (guided / breathwork / sleep stories / soundscapes /
- * SOS), one-tap play, a breathwork pacer, a mood check-in and a streak
- * dashboard. Wires the meditation.library, meditation.play,
- * meditation.streak, meditation.breathwork, meditation.mood-* and
- * meditation.meditation-dashboard macros.
+ * SOS), one-tap play, a breathwork pacer, a mood check-in + trend and a
+ * streak dashboard. Wires the meditation.library, meditation.play,
+ * meditation.streak, meditation.breathwork, meditation.mood-checkin,
+ * meditation.mood-history and meditation.meditation-dashboard macros.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Sparkles, Play, Wind, Flame, Loader2, Smile } from 'lucide-react';
+import { Sparkles, Play, Wind, Flame, Loader2, Smile, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Session { id: string; title: string; category: string; durationMin: number; narrator?: string; goal: string; pattern?: string }
 interface Dash { totalSessions: number; totalMinutes: number; currentStreak: number; byCategory: Record<string, number> }
 interface Breath { pattern: string; name: string; phases: { label: string; sec: number }[]; cycleSeconds: number }
+interface MoodEntry { id: string; mood: number; note: string; at: string }
+interface MoodHist { moods: MoodEntry[]; averageMood: number | null; count: number }
 
 const CAT_LABEL: Record<string, string> = {
   guided: 'Guided', breathwork: 'Breathwork', sleep_story: 'Sleep Stories', soundscape: 'Soundscapes', sos: 'SOS',
 };
 const MOODS = ['😣', '😕', '😐', '🙂', '😌'];
 
-export function MeditationStudio() {
+export function MeditationStudio({ onPractice }: { onPractice?: () => void }) {
   const [library, setLibrary] = useState<Session[]>([]);
   const [cats, setCats] = useState<string[]>([]);
   const [cat, setCat] = useState('guided');
   const [dash, setDash] = useState<Dash | null>(null);
+  const [moodHist, setMoodHist] = useState<MoodHist | null>(null);
   const [loading, setLoading] = useState(true);
   const [nowPlaying, setNowPlaying] = useState<string | null>(null);
   const [breath, setBreath] = useState<Breath | null>(null);
   const [mood, setMood] = useState(3);
 
   const refresh = useCallback(async () => {
-    const [lib, d] = await Promise.all([
+    const [lib, d, mh] = await Promise.all([
       lensRun('meditation', 'library', {}),
       lensRun('meditation', 'meditation-dashboard', {}),
+      lensRun('meditation', 'mood-history', {}),
     ]);
     setLibrary((lib.data?.result?.sessions as Session[]) || []);
     setCats((lib.data?.result?.categories as string[]) || []);
     setDash((d.data?.result as Dash) || null);
+    setMoodHist((mh.data?.result as MoodHist) || null);
     setLoading(false);
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
@@ -55,6 +60,7 @@ export function MeditationStudio() {
     }
     await lensRun('meditation', 'play', { sessionId: s.id });
     await refresh();
+    onPractice?.();
   }
   async function checkin() {
     await lensRun('meditation', 'mood-checkin', { mood });
@@ -142,6 +148,23 @@ export function MeditationStudio() {
         </div>
         <button onClick={checkin} className="ml-auto px-2.5 py-1 text-[11px] rounded bg-indigo-600 hover:bg-indigo-500 text-white">Check in</button>
       </div>
+
+      {/* Mood trend — meditation.mood-history */}
+      {moodHist && moodHist.count > 0 && (
+        <div className="mt-2 bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 flex items-center gap-2">
+          <TrendingUp className="w-3.5 h-3.5 text-indigo-300 flex-shrink-0" />
+          <span className="text-[11px] text-zinc-400 flex-shrink-0">
+            avg {moodHist.averageMood}/5 · {moodHist.count} check-in{moodHist.count === 1 ? '' : 's'}
+          </span>
+          <div className="flex gap-1 ml-auto overflow-x-auto">
+            {moodHist.moods.slice(0, 10).reverse().map((m) => (
+              <span key={m.id} title={new Date(m.at).toLocaleString()} className="text-sm flex-shrink-0">
+                {MOODS[m.mood - 1]}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

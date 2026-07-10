@@ -12,6 +12,10 @@
  *   librarySave / libraryList / libraryDelete                           (component library)
  *   connectorKinds / connectorSave / connectorList / connectorDelete / connectorTest
  *   versionSnapshot / versionList / versionRestore                      (version history)
+ *   dataBindElement / dataUnbindElement / dataBindings                  (canvas element <-> table/connector wiring)
+ *   questGraphCreate/List/Get/Delete, questNodeSave/Delete, questEdgeAdd/Delete,
+ *   questGraphValidate                                                  (branching quest/narrative author graph)
+ *   marketPublish / marketBrowse / marketInstall / marketUnpublish      (cross-user component marketplace)
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -20,12 +24,14 @@ import {
   Plus, Trash2, Copy, Layers, Database, Workflow, Eye, Rocket,
   Package, Plug, History, MousePointer2, Save, RefreshCw, ExternalLink,
   CheckCircle, XCircle, Loader2, GripVertical, FileCode,
+  Link2, Unlink, Store, GitBranch, AlertTriangle, Info,
 } from 'lucide-react';
 
 const DOMAIN = 'app-maker';
 
 interface PaletteItem { type: string; label: string; category: string; w: number; h: number }
-interface CanvasEl { id: string; type: string; x: number; y: number; w: number; h: number; props: Record<string, unknown> }
+interface ElBinding { kind: 'table' | 'connector'; refId: string; label: string; query?: string; boundAt?: string }
+interface CanvasEl { id: string; type: string; x: number; y: number; w: number; h: number; props: Record<string, unknown>; binding?: ElBinding }
 interface Page { id: string; name: string; route: string; elements: CanvasEl[] }
 interface Field { id: string; name: string; type: string; required: boolean; primary: boolean }
 interface Table { id: string; name: string; fields: Field[] }
@@ -47,7 +53,7 @@ interface ProjectSummary {
   deployment: { status: string; url: string | null };
 }
 
-type Tab = 'canvas' | 'data' | 'workflows' | 'connectors' | 'library' | 'preview' | 'deploy' | 'versions';
+type Tab = 'canvas' | 'data' | 'workflows' | 'connectors' | 'library' | 'quests' | 'preview' | 'deploy' | 'versions';
 
 const TABS: { id: Tab; label: string; icon: typeof Layers }[] = [
   { id: 'canvas', label: 'Editor', icon: MousePointer2 },
@@ -55,6 +61,7 @@ const TABS: { id: Tab; label: string; icon: typeof Layers }[] = [
   { id: 'workflows', label: 'Workflows', icon: Workflow },
   { id: 'connectors', label: 'Connectors', icon: Plug },
   { id: 'library', label: 'Components', icon: Package },
+  { id: 'quests', label: 'Quests', icon: GitBranch },
   { id: 'preview', label: 'Preview', icon: Eye },
   { id: 'deploy', label: 'Deploy', icon: Rocket },
   { id: 'versions', label: 'History', icon: History },
@@ -199,6 +206,7 @@ export function AppBuilderStudio() {
           {tab === 'workflows' && <WorkflowBuilder project={project} run={run} reload={() => loadProject(project.id)} />}
           {tab === 'connectors' && <ConnectorPanel project={project} run={run} reload={() => loadProject(project.id)} />}
           {tab === 'library' && <ComponentLibraryPanel project={project} run={run} reload={() => loadProject(project.id)} />}
+          {tab === 'quests' && <QuestGraphEditor project={project} run={run} reload={() => loadProject(project.id)} />}
           {tab === 'preview' && <LivePreview project={project} run={run} />}
           {tab === 'deploy' && <DeployPanel project={project} run={run} reload={() => loadProject(project.id)} />}
           {tab === 'versions' && <VersionHistory project={project} run={run} reload={() => loadProject(project.id)} />}
@@ -223,6 +231,8 @@ function CanvasEditor({ project, run, reload }: SubProps) {
   const dragOff = useRef({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
   const [saved, setSaved] = useState(false);
+  const [bindDraft, setBindDraft] = useState<{ kind: 'table' | 'connector'; refId: string; query: string }>({ kind: 'table', refId: '', query: '' });
+  const [binding, setBinding] = useState(false);
 
   useEffect(() => {
     run('editorPalette', {}).then((d) => {
@@ -271,6 +281,24 @@ function CanvasEditor({ project, run, reload }: SubProps) {
   const deleteElement = (id: string) => {
     setElements((els) => els.filter((el) => el.id !== id));
     if (selected === id) setSelected(null);
+  };
+
+  const bindElement = async () => {
+    if (!selected || !bindDraft.refId) return;
+    setBinding(true);
+    const d = await run('dataBindElement', {
+      projectId: project.id, pageId, elementId: selected,
+      source: { kind: bindDraft.kind, refId: bindDraft.refId, query: bindDraft.query },
+    });
+    setBinding(false);
+    if (d?.ok) reload();
+  };
+  const unbindElement = async () => {
+    if (!selected) return;
+    setBinding(true);
+    const d = await run('dataUnbindElement', { projectId: project.id, pageId, elementId: selected });
+    setBinding(false);
+    if (d?.ok) reload();
   };
 
   const savePage = async () => {
@@ -413,6 +441,64 @@ function CanvasEditor({ project, run, reload }: SubProps) {
                   </label>
                 ))}
               </div>
+              <div className="border-t border-lattice-edge pt-2 space-y-1.5">
+                <p className="text-[10px] uppercase text-gray-400 flex items-center gap-1"><Link2 className="w-3 h-3" /> Data binding</p>
+                {sel.binding ? (
+                  <div className="flex items-center gap-1.5 bg-lattice-deep rounded px-2 py-1.5">
+                    <span className="text-[11px] text-neon-cyan truncate flex-1">
+                      {sel.binding.kind}: {sel.binding.label}
+                    </span>
+                    <button
+                      onClick={unbindElement}
+                      disabled={binding}
+                      title="Unbind"
+                      className="text-gray-400 hover:text-red-400 shrink-0"
+                    >
+                      <Unlink className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (project.dataModel.tables.length === 0 && project.connectors.length === 0) ? (
+                  <p className="text-[10px] text-gray-400">Add a table (Data Model tab) or connector to bind this element to live data.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-1">
+                      <select
+                        value={bindDraft.kind}
+                        onChange={(e) => setBindDraft({ kind: e.target.value as 'table' | 'connector', refId: '', query: '' })}
+                        className="bg-lattice-deep border border-lattice-edge rounded px-1.5 py-1 text-[11px]"
+                      >
+                        <option value="table">Table</option>
+                        <option value="connector">Connector</option>
+                      </select>
+                      <select
+                        value={bindDraft.refId}
+                        onChange={(e) => setBindDraft({ ...bindDraft, refId: e.target.value })}
+                        className="flex-1 bg-lattice-deep border border-lattice-edge rounded px-1.5 py-1 text-[11px] min-w-0"
+                      >
+                        <option value="">
+                          {bindDraft.kind === 'table' ? 'Choose table…' : 'Choose connector…'}
+                        </option>
+                        {(bindDraft.kind === 'table' ? project.dataModel.tables : project.connectors).map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <input
+                      value={bindDraft.query}
+                      onChange={(e) => setBindDraft({ ...bindDraft, query: e.target.value })}
+                      placeholder="Optional query/filter…"
+                      className="w-full bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-[11px]"
+                    />
+                    <button
+                      onClick={bindElement}
+                      disabled={!bindDraft.refId || binding}
+                      className="w-full text-[11px] text-neon-cyan hover:bg-neon-cyan/10 rounded py-1 flex items-center justify-center gap-1 disabled:opacity-40"
+                    >
+                      {binding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Link2 className="w-3 h-3" />} Bind element
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => deleteElement(sel.id)}
                 className="w-full text-xs text-red-400 hover:bg-red-500/10 rounded py-1 flex items-center justify-center gap-1"
@@ -430,11 +516,14 @@ function CanvasEditor({ project, run, reload }: SubProps) {
 // ──────────────────────────────────────────────────────────────────
 // Data-model designer
 // ──────────────────────────────────────────────────────────────────
+interface BindingRow { pageId: string; pageName: string; elementId: string; elementType: string; kind: string; refId: string; label: string; query?: string }
+
 function DataModelDesigner({ project, run, reload }: SubProps) {
   const [fieldTypes, setFieldTypes] = useState<string[]>([]);
   const [newTable, setNewTable] = useState('');
   const [editFields, setEditFields] = useState<Record<string, Field[]>>({});
   const [rel, setRel] = useState({ fromTable: '', toTable: '', kind: 'one-to-many' });
+  const [bindings, setBindings] = useState<BindingRow[]>([]);
 
   const tables = project.dataModel.tables;
   const relations = project.dataModel.relations;
@@ -444,6 +533,12 @@ function DataModelDesigner({ project, run, reload }: SubProps) {
       if (d?.ok) setFieldTypes((d.result as { fieldTypes: string[] }).fieldTypes || []);
     });
   }, [run]);
+
+  useEffect(() => {
+    run('dataBindings', { projectId: project.id }).then((d) => {
+      if (d?.ok) setBindings((d.result as { bindings: BindingRow[] }).bindings || []);
+    });
+  }, [run, project.id, project.updatedAt]);
 
   const addTable = async () => {
     if (!newTable.trim()) return;
@@ -576,6 +671,23 @@ function DataModelDesigner({ project, run, reload }: SubProps) {
             <span className="text-neon-purple font-mono">{r.kind}</span>
             <span className="text-white">{r.toName}</span>
             <button aria-label="Delete" onClick={() => deleteRelation(r.id)} className="ml-auto text-gray-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+          </div>
+        ))}
+      </div>
+
+      {/* data bindings across the whole project — bound in the Editor tab's inspector */}
+      <div className="panel p-3 space-y-2">
+        <p className="text-sm font-semibold flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5 text-neon-cyan" /> Data bindings</p>
+        {bindings.length === 0 ? (
+          <p className="text-xs text-gray-400">No canvas elements are bound to live data yet — select an element in the Editor tab and bind it to a table or connector.</p>
+        ) : bindings.map((b) => (
+          <div key={`${b.pageId}:${b.elementId}`} className="flex items-center gap-2 text-xs bg-lattice-deep rounded px-2 py-1">
+            <span className="text-gray-400">{b.pageName}</span>
+            <span className="text-white font-mono">{b.elementType}</span>
+            <span className="text-gray-600">→</span>
+            <span className="text-[10px] bg-neon-cyan/15 text-neon-cyan rounded px-1.5 py-0.5">{b.kind}</span>
+            <span className="text-white">{b.label}</span>
+            {b.query && <span className="text-gray-400 font-mono truncate">({b.query})</span>}
           </div>
         ))}
       </div>
@@ -793,15 +905,55 @@ function ConnectorPanel({ project, run, reload }: SubProps) {
 // ──────────────────────────────────────────────────────────────────
 // Reusable component library
 // ──────────────────────────────────────────────────────────────────
+interface MarketListing { id: string; name: string; description: string; category: string; baseType: string; publisherId: string; installs: number; publishedAt: string }
+
 function ComponentLibraryPanel({ project, run, reload }: SubProps) {
   const [draft, setDraft] = useState({ name: '', baseType: 'card', bg: '#1e293b', radius: '8', text: '#e2e8f0' });
   const [lib, setLib] = useState<LibComponent[]>(project.componentLibrary || []);
+  const [listings, setListings] = useState<MarketListing[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [marketQuery, setMarketQuery] = useState('');
+  const [marketCategory, setMarketCategory] = useState('all');
+  const [publishing, setPublishing] = useState<string | null>(null);
+  const [installing, setInstalling] = useState<string | null>(null);
 
   useEffect(() => {
     run('libraryList', { projectId: project.id }).then((d) => {
       if (d?.ok) setLib((d.result as { library: LibComponent[] }).library || []);
     });
   }, [run, project.id]);
+
+  const loadMarket = useCallback(async () => {
+    const d = await run('marketBrowse', { category: marketCategory === 'all' ? undefined : marketCategory, q: marketQuery.trim() || undefined });
+    if (d?.ok) {
+      const r = d.result as { listings: MarketListing[]; categories: string[] };
+      setListings(r.listings || []);
+      setCategories(r.categories || []);
+    }
+  }, [run, marketCategory, marketQuery]);
+
+  useEffect(() => { void loadMarket(); }, [loadMarket]);
+
+  const publishComponent = async (componentId: string) => {
+    setPublishing(componentId);
+    const d = await run('marketPublish', { projectId: project.id, componentId });
+    setPublishing(null);
+    if (d?.ok) void loadMarket();
+  };
+  const installListing = async (listingId: string) => {
+    setInstalling(listingId);
+    const d = await run('marketInstall', { projectId: project.id, listingId });
+    setInstalling(null);
+    if (d?.ok) {
+      setLib((d.result as { library: LibComponent[] }).library || []);
+      reload();
+      void loadMarket();
+    }
+  };
+  const unpublishListing = async (listingId: string) => {
+    const d = await run('marketUnpublish', { listingId });
+    if (d?.ok) void loadMarket();
+  };
 
   const saveComponent = async () => {
     if (!draft.name.trim()) return;
@@ -867,11 +1019,391 @@ function ComponentLibraryPanel({ project, run, reload }: SubProps) {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-gray-400">{c.baseType}</span>
-              <button aria-label="Delete" onClick={() => deleteComponent(c.id)} className="text-gray-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => publishComponent(c.id)}
+                  disabled={publishing === c.id}
+                  title="Publish to community marketplace"
+                  className="text-gray-400 hover:text-neon-purple"
+                >
+                  {publishing === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Store className="w-3 h-3" />}
+                </button>
+                <button aria-label="Delete" onClick={() => deleteComponent(c.id)} className="text-gray-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+              </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* ── Community marketplace — install other users' published components ── */}
+      <div className="panel p-3 space-y-2">
+        <p className="text-sm font-semibold flex items-center gap-1.5"><Store className="w-3.5 h-3.5 text-neon-purple" /> Community marketplace</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            value={marketQuery}
+            onChange={(e) => setMarketQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && loadMarket()}
+            placeholder="Search published components…"
+            className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-xs flex-1 min-w-[160px]"
+          />
+          <select
+            value={marketCategory}
+            onChange={(e) => setMarketCategory(e.target.value)}
+            className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-xs"
+          >
+            <option value="all">All categories</option>
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        {listings.length === 0 ? (
+          <p className="text-xs text-gray-400">No published components yet — publish one of yours above to seed the marketplace.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {listings.map((l) => (
+              <div key={l.id} className="panel p-2 space-y-1">
+                <p className="text-xs font-medium text-white truncate">{l.name}</p>
+                <p className="text-[10px] text-gray-400 truncate">{l.description || l.baseType}</p>
+                <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                  <span className="bg-lattice-deep rounded px-1 py-0.5">{l.category}</span>
+                  <span>{l.installs} installs</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => installListing(l.id)}
+                    disabled={installing === l.id}
+                    className="flex-1 text-[11px] text-neon-cyan hover:bg-neon-cyan/10 rounded py-1 flex items-center justify-center gap-1"
+                  >
+                    {installing === l.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Install
+                  </button>
+                  <button
+                    onClick={() => unpublishListing(l.id)}
+                    title="Unpublish (only your own listings)"
+                    className="text-gray-600 hover:text-red-400"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Quest / branching-narrative graph author. Distinct from the runtime
+// quest engine — this is a per-user authoring surface for step/choice/
+// reward/ending nodes connected by labelled edges, with structural lint.
+// ──────────────────────────────────────────────────────────────────
+interface QNode { id: string; kind: string; title: string; body: string; x: number; y: number; reward?: string }
+interface QEdge { id: string; from: string; to: string; label?: string }
+interface QGraphSummary { id: string; title: string; createdAt: string; updatedAt: string; nodeCount: number; edgeCount: number }
+interface QGraph { id: string; title: string; nodes: QNode[]; edges: QEdge[] }
+interface QIssue { severity: 'error' | 'warning' | 'info'; type: string; nodeId?: string; title?: string }
+interface QValidation { valid: boolean; issues: QIssue[]; summary: { nodes: number; edges: number; reachable: number; endings: number; errorCount: number; warningCount: number } }
+
+const QNODE_COLORS: Record<string, string> = {
+  start: '#16a34a', step: '#334155', choice: '#7c3aed', reward: '#ca8a04', ending: '#dc2626',
+};
+
+function QuestGraphEditor({ run }: SubProps) {
+  const [graphs, setGraphs] = useState<QGraphSummary[]>([]);
+  const [graph, setGraph] = useState<QGraph | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [selected, setSelected] = useState<string | null>(null);
+  const [connectFrom, setConnectFrom] = useState<string | null>(null);
+  const [validation, setValidation] = useState<QValidation | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const dragOff = useRef({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  const loadGraphs = useCallback(async () => {
+    const d = await run('questGraphList', {});
+    if (d?.ok) setGraphs((d.result as { graphs: QGraphSummary[] }).graphs || []);
+  }, [run]);
+
+  useEffect(() => { void loadGraphs(); }, [loadGraphs]);
+
+  const openGraph = useCallback(async (id: string) => {
+    const d = await run('questGraphGet', { graphId: id });
+    if (d?.ok) {
+      setGraph((d.result as { graph: QGraph }).graph);
+      setSelected(null);
+      setConnectFrom(null);
+      setValidation(null);
+    }
+  }, [run]);
+
+  const createGraph = async () => {
+    if (!newTitle.trim()) return;
+    const d = await run('questGraphCreate', { title: newTitle.trim() });
+    if (d?.ok) {
+      setNewTitle('');
+      await loadGraphs();
+      await openGraph((d.result as { graph: QGraph }).graph.id);
+    }
+  };
+  const deleteGraph = async (id: string) => {
+    const d = await run('questGraphDelete', { graphId: id });
+    if (d?.ok) {
+      if (graph?.id === id) setGraph(null);
+      await loadGraphs();
+    }
+  };
+
+  const addNode = async (kind: string) => {
+    if (!graph) return;
+    const d = await run('questNodeSave', {
+      graphId: graph.id,
+      node: { kind, title: kind[0].toUpperCase() + kind.slice(1), x: 40 + Math.round(Math.random() * 300), y: 40 + Math.round(Math.random() * 200) },
+    });
+    if (d?.ok) { await openGraph(graph.id); setSelected((d.result as { node: QNode }).node.id); }
+  };
+  const saveNode = async (node: QNode) => {
+    if (!graph) return;
+    const d = await run('questNodeSave', { graphId: graph.id, node });
+    if (d?.ok) await openGraph(graph.id);
+  };
+  const deleteNode = async (nodeId: string) => {
+    if (!graph) return;
+    const d = await run('questNodeDelete', { graphId: graph.id, nodeId });
+    if (d?.ok) { if (selected === nodeId) setSelected(null); await openGraph(graph.id); }
+  };
+  const addEdge = async (from: string, to: string) => {
+    if (!graph) return;
+    const label = window.prompt('Edge condition/label (optional)?') || '';
+    const d = await run('questEdgeAdd', { graphId: graph.id, from, to, label });
+    if (d?.ok) await openGraph(graph.id);
+  };
+  const deleteEdge = async (edgeId: string) => {
+    if (!graph) return;
+    const d = await run('questEdgeDelete', { graphId: graph.id, edgeId });
+    if (d?.ok) await openGraph(graph.id);
+  };
+  const validate = async () => {
+    if (!graph) return;
+    const d = await run('questGraphValidate', { graphId: graph.id });
+    if (d?.ok) setValidation(d.result as QValidation);
+  };
+
+  const onNodeMouseDown = (e: React.MouseEvent, n: QNode) => {
+    if (connectFrom) {
+      if (connectFrom !== n.id) void addEdge(connectFrom, n.id);
+      setConnectFrom(null);
+      return;
+    }
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    dragOff.current = { x: e.clientX - rect.left - n.x, y: e.clientY - rect.top - n.y };
+    setDragId(n.id);
+    setSelected(n.id);
+  };
+  const onCanvasMouseMove = (e: React.MouseEvent) => {
+    if (!dragId || !canvasRef.current || !graph) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.round(e.clientX - rect.left - dragOff.current.x));
+    const y = Math.max(0, Math.round(e.clientY - rect.top - dragOff.current.y));
+    setGraph({ ...graph, nodes: graph.nodes.map((n) => (n.id === dragId ? { ...n, x, y } : n)) });
+  };
+  const onCanvasMouseUp = () => {
+    if (dragId && graph) { const n = graph.nodes.find((x) => x.id === dragId); if (n) void saveNode(n); }
+    setDragId(null);
+  };
+
+  const sel = graph?.nodes.find((n) => n.id === selected) || null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <input
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && createGraph()}
+          placeholder="New quest title…"
+          className="bg-lattice-deep border border-lattice-edge rounded px-3 py-1.5 text-sm flex-1 min-w-[160px]"
+        />
+        <button onClick={createGraph} disabled={!newTitle.trim()} className="bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan rounded px-3 py-1.5 text-sm flex items-center gap-1 disabled:opacity-40">
+          <Plus className="w-3.5 h-3.5" /> New Quest Graph
+        </button>
+      </div>
+
+      {graphs.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {graphs.map((g) => (
+            <div key={g.id} className={`flex items-center gap-1.5 rounded border px-2 py-1 text-xs ${graph?.id === g.id ? 'border-neon-cyan/60 bg-neon-cyan/10' : 'border-lattice-edge bg-lattice-deep'}`}>
+              <button onClick={() => openGraph(g.id)} className="font-medium">{g.title}</button>
+              <span className="text-gray-400">{g.nodeCount}n · {g.edgeCount}e</span>
+              <button onClick={() => deleteGraph(g.id)} title="Delete graph" className="text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!graph ? (
+        <div className="panel p-8 text-center text-sm text-gray-400">
+          Create or select a quest graph to author branching steps, choices, rewards and endings.
+        </div>
+      ) : (
+        <div className="grid grid-cols-[1fr_220px] gap-3">
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {['step', 'choice', 'reward', 'ending'].map((kind) => (
+                <button
+                  key={kind}
+                  onClick={() => addNode(kind)}
+                  className="text-xs px-2 py-1 rounded bg-lattice-deep hover:bg-lattice-edge flex items-center gap-1"
+                  style={{ color: QNODE_COLORS[kind] }}
+                >
+                  <Plus className="w-3 h-3" /> {kind}
+                </button>
+              ))}
+              <button
+                onClick={() => setConnectFrom(connectFrom ? null : selected)}
+                disabled={!selected && !connectFrom}
+                className={`text-xs px-2 py-1 rounded flex items-center gap-1 ml-1 ${connectFrom ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-lattice-deep text-gray-400 hover:text-white'}`}
+              >
+                <GitBranch className="w-3 h-3" /> {connectFrom ? 'Click target node…' : 'Connect from selected'}
+              </button>
+              <button onClick={validate} className="ml-auto text-xs px-2 py-1 rounded bg-lattice-deep text-gray-400 hover:text-neon-cyan flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" /> Validate
+              </button>
+            </div>
+
+            <div
+              ref={canvasRef}
+              onMouseMove={onCanvasMouseMove}
+              onMouseUp={onCanvasMouseUp}
+              onMouseLeave={() => setDragId(null)}
+              className="relative bg-[#020617] border border-lattice-edge rounded-lg overflow-hidden h-[400px]"
+              style={{ backgroundImage: 'radial-gradient(circle, #1e293b 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+            >
+              <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                {graph.edges.map((e) => {
+                  const from = graph.nodes.find((n) => n.id === e.from);
+                  const to = graph.nodes.find((n) => n.id === e.to);
+                  if (!from || !to) return null;
+                  return (
+                    <g key={e.id}>
+                      <line x1={from.x + 60} y1={from.y + 18} x2={to.x + 60} y2={to.y + 18} stroke="#475569" strokeWidth={1.5} markerEnd="url(#qarrow)" />
+                      {e.label && (
+                        <text x={(from.x + to.x) / 2 + 60} y={(from.y + to.y) / 2 + 14} fill="#94a3b8" fontSize={10}>{e.label}</text>
+                      )}
+                    </g>
+                  );
+                })}
+                <defs>
+                  <marker id="qarrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                    <path d="M0,0 L8,4 L0,8 z" fill="#475569" />
+                  </marker>
+                </defs>
+              </svg>
+              {graph.nodes.map((n) => (
+                <div
+                  key={n.id}
+                  onMouseDown={(e) => onNodeMouseDown(e, n)}
+                  className={`absolute rounded px-2 py-1.5 text-[11px] text-white select-none w-[120px] ${
+                    selected === n.id ? 'ring-2 ring-neon-cyan' : 'ring-1 ring-white/10'
+                  } ${connectFrom ? 'cursor-crosshair' : 'cursor-move'}`}
+                  style={{ left: n.x, top: n.y, background: QNODE_COLORS[n.kind] || '#334155' }}
+                >
+                  <p className="font-semibold truncate">{n.title}</p>
+                  <p className="text-[9px] uppercase opacity-70">{n.kind}</p>
+                </div>
+              ))}
+              {graph.nodes.length === 0 && (
+                <p className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 pointer-events-none">
+                  Add a node to start branching this quest.
+                </p>
+              )}
+            </div>
+
+            {validation && (
+              <div className="panel p-3 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  {validation.valid ? <CheckCircle className="w-4 h-4 text-green-400" /> : <AlertTriangle className="w-4 h-4 text-red-400" />}
+                  <span className={`text-sm font-medium ${validation.valid ? 'text-green-400' : 'text-red-400'}`}>
+                    {validation.valid ? 'Structurally valid' : 'Issues found'}
+                  </span>
+                  <span className="text-xs text-gray-400 ml-auto">
+                    {validation.summary.nodes} nodes · {validation.summary.edges} edges · {validation.summary.reachable} reachable · {validation.summary.endings} endings
+                  </span>
+                </div>
+                {validation.issues.length === 0 ? (
+                  <p className="text-xs text-gray-400">No issues.</p>
+                ) : validation.issues.map((iss, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    {iss.severity === 'error' ? <XCircle className="w-3 h-3 text-red-400" /> : iss.severity === 'warning' ? <AlertTriangle className="w-3 h-3 text-yellow-400" /> : <Info className="w-3 h-3 text-gray-400" />}
+                    <span className="text-white">{iss.type.replace(/_/g, ' ')}</span>
+                    {iss.title && <span className="text-gray-400">— {iss.title}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* node inspector */}
+          <div className="panel p-2 space-y-2 max-h-[460px] overflow-y-auto">
+            <p className="text-[10px] uppercase text-gray-400">Node</p>
+            {!sel ? (
+              <p className="text-xs text-gray-400">Select a node to edit it.</p>
+            ) : (
+              <>
+                <p className="text-xs font-mono" style={{ color: QNODE_COLORS[sel.kind] }}>{sel.kind}</p>
+                <label className="block text-[10px] text-gray-400">Title
+                  <input
+                    value={sel.title}
+                    onChange={(e) => setGraph((g) => g && { ...g, nodes: g.nodes.map((n) => (n.id === sel.id ? { ...n, title: e.target.value } : n)) })}
+                    onBlur={() => saveNode(sel)}
+                    className="w-full bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-xs mt-0.5"
+                  />
+                </label>
+                <label className="block text-[10px] text-gray-400">Body
+                  <textarea
+                    value={sel.body}
+                    onChange={(e) => setGraph((g) => g && { ...g, nodes: g.nodes.map((n) => (n.id === sel.id ? { ...n, body: e.target.value } : n)) })}
+                    onBlur={() => saveNode(sel)}
+                    rows={4}
+                    className="w-full bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-xs mt-0.5"
+                  />
+                </label>
+                {sel.kind === 'reward' && (
+                  <label className="block text-[10px] text-gray-400">Reward
+                    <input
+                      value={sel.reward || ''}
+                      onChange={(e) => setGraph((g) => g && { ...g, nodes: g.nodes.map((n) => (n.id === sel.id ? { ...n, reward: e.target.value } : n)) })}
+                      onBlur={() => saveNode(sel)}
+                      className="w-full bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-xs mt-0.5"
+                    />
+                  </label>
+                )}
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase text-gray-400">Outgoing edges</p>
+                  {graph.edges.filter((e) => e.from === sel.id).length === 0 ? (
+                    <p className="text-[11px] text-gray-500">None — use &quot;Connect from selected&quot;.</p>
+                  ) : graph.edges.filter((e) => e.from === sel.id).map((e) => {
+                    const to = graph.nodes.find((n) => n.id === e.to);
+                    return (
+                      <div key={e.id} className="flex items-center gap-1 text-[11px] bg-lattice-deep rounded px-1.5 py-1">
+                        <span className="truncate flex-1">→ {to?.title || e.to}{e.label ? ` (${e.label})` : ''}</span>
+                        <button onClick={() => deleteEdge(e.id)} className="text-gray-600 hover:text-red-400"><XCircle className="w-3 h-3" /></button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => deleteNode(sel.id)}
+                  disabled={sel.kind === 'start'}
+                  className="w-full text-xs text-red-400 hover:bg-red-500/10 rounded py-1 flex items-center justify-center gap-1 disabled:opacity-30"
+                >
+                  <Trash2 className="w-3 h-3" /> Delete node
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

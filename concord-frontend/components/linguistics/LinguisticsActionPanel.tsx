@@ -3,11 +3,11 @@
 /**
  * LinguisticsActionPanel — text scientist + lexicographer workbench.
  * dictionary-lookup (Free Dictionary API) / datamuse-words / textAnalysis /
- * sentimentAnalysis + mint/DM/publish/agent.
+ * sentimentAnalysis / frequencyAnalysis + mint/DM/publish/agent.
  */
 
 import { useState } from 'react';
-import { BookOpen, Volume2, BarChart3, Smile, Search, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { BookOpen, Volume2, BarChart3, Smile, Search, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, ListOrdered } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,7 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'define' | 'rhyme' | 'analyze' | 'sentiment' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'define' | 'rhyme' | 'analyze' | 'sentiment' | 'frequency' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
 interface Phonetic { text?: string; audio?: string }
@@ -34,6 +34,8 @@ interface DictResult { word: string; entries: DictEntry[]; count: number }
 interface DatamuseWord { word: string; score?: number; tags?: string[] }
 interface TextResult { wordCount?: number; sentenceCount?: number; vocabularySize?: number; lexicalDiversity?: number; readabilityGrade?: number; readingLevel?: string; avgWordLength?: number; avgSentenceLength?: number }
 interface SentimentResult { sentiment?: string; score?: number; positiveWords?: number; negativeWords?: number; confidence?: string }
+interface FreqWord { word: string; count: number; frequency: number }
+interface FrequencyResult { totalWords?: number; uniqueWords?: number; topContentWords?: FreqWord[]; hapaxLegomena?: number; zipfCompliance?: string }
 
 export function LinguisticsActionPanel() {
   const [word, setWord] = useState('');
@@ -47,6 +49,7 @@ export function LinguisticsActionPanel() {
   const [datamuseWords, setDatamuseWords] = useState<DatamuseWord[]>([]);
   const [textResult, setTextResult] = useState<TextResult | null>(null);
   const [sentimentResult, setSentimentResult] = useState<SentimentResult | null>(null);
+  const [frequencyResult, setFrequencyResult] = useState<FrequencyResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
@@ -91,6 +94,12 @@ export function LinguisticsActionPanel() {
     if (!text.trim()) { err('Text required.'); return; }
     setBusy('sentiment'); setFeedback(null);
     try { const r = await callMacro<SentimentResult>('sentimentAnalysis', { artifact: { data: { text } } }); if (r.ok && r.result) { setSentimentResult(r.result); pipe.publish('linguistics.sentiment', r.result, { label: `${r.result.sentiment} ${r.result.score}` }); ok(`${r.result.sentiment} (${r.result.score}).`); } else err(r.error ?? 'sentiment failed'); }
+    catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+  async function actFrequency() {
+    if (!text.trim()) { err('Text required.'); return; }
+    setBusy('frequency'); setFeedback(null);
+    try { const r = await callMacro<FrequencyResult>('frequencyAnalysis', { artifact: { data: { text } } }); if (r.ok && r.result) { setFrequencyResult(r.result); pipe.publish('linguistics.frequency', r.result, { label: `${r.result.uniqueWords} unique · ${r.result.hapaxLegomena} hapax` }); ok(`${r.result.uniqueWords} unique words, ${r.result.hapaxLegomena} hapax legomena.`); } else err(r.error ?? 'frequency failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -145,6 +154,7 @@ export function LinguisticsActionPanel() {
     { id: 'rhyme' as ActionId, label: datamuseMode === 'rel_rhy' ? 'Rhymes' : datamuseMode === 'ml' ? 'Means-like' : datamuseMode === 'rel_syn' ? 'Synonyms' : datamuseMode === 'rel_ant' ? 'Antonyms' : 'Topics', desc: 'Datamuse association', icon: Search, accent: '#8b5cf6', handler: actRhyme },
     { id: 'analyze' as ActionId, label: 'Text stats', desc: 'Flesch-Kincaid + diversity', icon: BarChart3, accent: '#22c55e', handler: actAnalyze },
     { id: 'sentiment' as ActionId, label: 'Sentiment', desc: 'pos / neg / neutral', icon: Smile, accent: '#f59e0b', handler: actSentiment },
+    { id: 'frequency' as ActionId, label: 'Frequency', desc: 'Zipf + hapax legomena', icon: ListOrdered, accent: '#06b6d4', handler: actFrequency },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private lex DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send definition + word play', icon: Send, accent: '#ec4899', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public lexicon entry', icon: Globe, accent: '#15803d', handler: actPublish },
@@ -244,6 +254,21 @@ export function LinguisticsActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Sentiment</div>
             <div className="text-2xl font-bold capitalize" style={{ color: sentimentResult.sentiment === 'positive' ? '#34d399' : sentimentResult.sentiment === 'negative' ? '#f87171' : '#a1a1aa' }}>{sentimentResult.sentiment} <span className="text-sm text-zinc-400">{sentimentResult.score}</span></div>
             <div className="text-[10px] text-zinc-400">+{sentimentResult.positiveWords} · -{sentimentResult.negativeWords} · {sentimentResult.confidence} confidence</div>
+          </div>
+        )}
+        {frequencyResult && (
+          <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-72 overflow-y-auto">
+            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">
+              Frequency · {frequencyResult.uniqueWords}/{frequencyResult.totalWords} unique · {frequencyResult.hapaxLegomena} hapax
+            </div>
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {(frequencyResult.topContentWords ?? []).map((w, i) => (
+                <span key={i} className="text-[11px] text-cyan-200 bg-cyan-500/10 px-1.5 py-0.5 rounded font-mono">
+                  {w.word} <span className="text-zinc-400">×{w.count}</span>
+                </span>
+              ))}
+            </div>
+            <div className="text-[10px] text-zinc-400 italic mt-1.5">{frequencyResult.zipfCompliance}</div>
           </div>
         )}
       </div>

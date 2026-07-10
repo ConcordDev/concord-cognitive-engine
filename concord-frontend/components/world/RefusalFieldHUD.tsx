@@ -77,10 +77,10 @@ export default function RefusalFieldHUD({ worldId = 'concordia-hub', pollMs = 50
     ? 'bg-red-900/80 border-red-500 text-red-100'
     : strength >= 3
       ? 'bg-amber-900/80 border-amber-500 text-amber-100'
-      : 'bg-zinc-900/80 border-zinc-600 text-zinc-200';
+      : 'bg-black/80 border-white/10 text-zinc-200';
 
   return (
-    <div className={`fixed top-3 right-3 z-50 pointer-events-auto ${colorClass} backdrop-blur-md border rounded-xl px-3 py-2 shadow-lg select-none`}>
+    <div className={`fixed top-3 right-3 z-50 pointer-events-auto ${colorClass} backdrop-blur-sm border rounded-lg px-3 py-2 shadow-lg select-none`}>
       <button
         type="button"
         className="flex items-center gap-2 text-xs font-mono"

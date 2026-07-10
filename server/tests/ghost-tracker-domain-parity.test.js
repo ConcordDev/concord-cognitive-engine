@@ -36,11 +36,13 @@ function seed() {
     CREATE TABLE dtus (
       id TEXT PRIMARY KEY,
       owner_user_id TEXT,
+      creator_id TEXT,
       title TEXT NOT NULL DEFAULT 'Untitled',
       body_json TEXT NOT NULL DEFAULT '{}',
       tags_json TEXT NOT NULL DEFAULT '[]',
       visibility TEXT NOT NULL DEFAULT 'private',
       tier TEXT NOT NULL DEFAULT 'regular',
+      type TEXT NOT NULL DEFAULT 'knowledge',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -78,7 +80,7 @@ describe("ghost-hunt — registration", () => {
   it("registers every macro the lens calls", () => {
     for (const m of [
       "residues", "detail", "progress", "advance",
-      "confront", "history", "leaderboard", "create",
+      "confront", "history", "leaderboard", "create", "dossiers",
     ]) {
       assert.equal(typeof ACTIONS.get(`ghost-hunt.${m}`), "function", `missing ghost-hunt.${m}`);
     }
@@ -289,6 +291,14 @@ describe("ghost-hunt.create", () => {
     const tags = JSON.parse(row.tags_json);
     assert.ok(tags.includes("ghost-tracker"));
     assert.ok(tags.includes("memetic_drift"));
+
+    // Regression: type + creator_id must be set to the values the fleet's
+    // shared "my recent X" convention expects (migration 087 + the
+    // ghost-tracker -> ["ghost_sighting"] map in _recent-mine-bulk.js),
+    // or the row persists but is unlistable from every "my saved work"
+    // surface (RecentMineCard, ghost-hunt.dossiers).
+    assert.equal(row.creator_id, "user_hunter");
+    assert.equal(row.type, "ghost_sighting");
   });
 
   it("defaults the title and persists an empty-notes dossier", async () => {
@@ -318,5 +328,48 @@ describe("ghost-hunt.create", () => {
     const noActor = await call("create", { db }, { residueId: "res_1" });
     assert.equal(noActor.ok, false);
     assert.equal(noActor.reason, "no_db_or_actor");
+  });
+});
+
+describe("ghost-hunt.dossiers", () => {
+  it("lists the calling hunter's own saved dossiers, newest first, with parsed fields", async () => {
+    const c = ctx();
+    await call("create", c, { residueId: "res_1", title: "First case" });
+    await call("create", c, { residueId: "res_2", title: "Second case" });
+
+    const r = await call("dossiers", c, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.count, 2);
+    // Newest first.
+    assert.equal(r.dossiers[0].title, "Second case");
+    assert.equal(r.dossiers[0].drift_type, "echo_chamber");
+    assert.equal(r.dossiers[0].severity, "high");
+    assert.equal(r.dossiers[0].residueId, "res_2");
+    assert.equal(r.dossiers[1].title, "First case");
+    assert.equal(r.dossiers[1].drift_type, "spectral");
+  });
+
+  it("never leaks another hunter's dossiers", async () => {
+    await call("create", ctx(), { residueId: "res_1" });
+    const other = await call("dossiers", { db, actor: { userId: "someone_else" } }, {});
+    assert.equal(other.ok, true);
+    assert.equal(other.count, 0);
+  });
+
+  it("returns an empty list for a fresh hunter", async () => {
+    const r = await call("dossiers", ctx(), {});
+    assert.equal(r.ok, true);
+    assert.equal(r.count, 0);
+    assert.deepEqual(r.dossiers, []);
+  });
+
+  it("requires a db + actor and rejects a bad limit", async () => {
+    const noActor = await call("dossiers", { db }, {});
+    assert.equal(noActor.ok, false);
+    assert.equal(noActor.reason, "no_db_or_actor");
+
+    const badLimit = await call("dossiers", ctx(), { limit: -5 });
+    assert.equal(badLimit.ok, false);
+    assert.equal(badLimit.reason, "invalid_numeric_field");
   });
 });

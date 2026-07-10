@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -10,11 +10,14 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CountryAtlas } from '@/components/global/CountryAtlas';
 import { WorldBankPanel } from '@/components/global/WorldBankPanel';
 import { DataExplorer } from '@/components/global/DataExplorer';
+import { DevelopmentIndex } from '@/components/global/DevelopmentIndex';
+import { IndicatorCorrelations } from '@/components/global/IndicatorCorrelations';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, ChevronsLeft, ChevronsRight, RefreshCw, Globe, TrendingUp, Map, Loader2, BarChart3, Network, GitBranch, Compass } from 'lucide-react';
-import { apiHelpers } from '@/lib/api/client';
+import { Search, ChevronsLeft, ChevronsRight, RefreshCw, Globe, TrendingUp, Map, Award, GitBranch, Compass, Loader2, Bookmark } from 'lucide-react';
+import { apiHelpers, lensRun } from '@/lib/api/client';
+import { COUNTRIES as WB_COUNTRIES, INDICATORS as WB_INDICATORS } from '@/components/global/indicators';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { getCommandPaletteLenses } from '@/lib/lens-registry';
@@ -24,8 +27,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 
 const PAGE_SIZE = 50;
 
@@ -34,16 +35,7 @@ const cardVariants = {
   visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.04, duration: 0.3, ease: 'easeOut' } }),
 };
 
-const REGIONS = [
-  { name: 'North America', flag: '\u{1F1FA}\u{1F1F8}', index: 87, trend: 'up' as const, color: 'text-neon-green' },
-  { name: 'Europe', flag: '\u{1F1EA}\u{1F1FA}', index: 82, trend: 'up' as const, color: 'text-neon-cyan' },
-  { name: 'Asia Pacific', flag: '\u{1F1EF}\u{1F1F5}', index: 78, trend: 'up' as const, color: 'text-neon-blue' },
-  { name: 'Latin America', flag: '\u{1F1E7}\u{1F1F7}', index: 64, trend: 'stable' as const, color: 'text-yellow-400' },
-  { name: 'Middle East', flag: '\u{1F1E6}\u{1F1EA}', index: 59, trend: 'up' as const, color: 'text-neon-purple' },
-  { name: 'Africa', flag: '\u{1F1F3}\u{1F1EC}', index: 48, trend: 'up' as const, color: 'text-amber-400' },
-];
-
-// ---- Action result types ----
+// ---- Cross-domain search result types (real global.crossDomainSearch shape) ----
 interface CrossDomainResult {
   query: string; matchCount: number; totalCandidates: number; sourcesSearched: number;
   diversityLabel: string; diversityScore: number;
@@ -51,20 +43,7 @@ interface CrossDomainResult {
   sourceDistribution: Record<string, number>;
   deduplication: { duplicatesFound: number; uniqueResults: number };
 }
-interface DashboardResult {
-  totalMetrics: number; domains: number; normalization: string; overallComposite: number; overallGrade: string;
-  rankings: { domain: string; compositeScore: number; grade: string; rank: number }[];
-  strengths: { domain: string; metric: string; score: number }[];
-  weaknesses: { domain: string; metric: string; score: number }[];
-}
-interface CorrelationResult {
-  variables: number; observations: number; method: string;
-  significantCount: number;
-  significantCorrelations: { var1: string; var2: string; pearson: number; spearman: number; strength: string; direction: string; pValue: number }[];
-  unexpectedRelationships: { var1: string; var2: string; strength: string; direction: string }[];
-  collinearGroups: string[][];
-  variableStatistics: { name: string; domain: string; mean: number; std: number }[];
-}
+interface CatalogIndicator { code: string; name: string; sourceNote: string; topics: string[]; }
 
 export default function GlobalLensPage() {
   useLensNav('global');
@@ -72,40 +51,19 @@ export default function GlobalLensPage() {
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState('');
   const [offset, setOffset] = useState(0);
-  const [activeTab, setActiveTab] = useState<'explore' | 'regions' | 'trends' | 'indicators' | 'actions'>('explore');
+  const [activeTab, setActiveTab] = useState<'explore' | 'index' | 'correlate' | 'search'>('explore');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
     [
       { id: 'tab-explore', keys: 'e', description: 'Data Explorer', category: 'navigation', action: () => setActiveTab('explore') },
-      { id: 'tab-regions', keys: 'r', description: 'Regions', category: 'navigation', action: () => setActiveTab('regions') },
-      { id: 'tab-trends', keys: 't', description: 'Trends', category: 'navigation', action: () => setActiveTab('trends') },
-      { id: 'tab-indicators', keys: 'i', description: 'Indicators', category: 'navigation', action: () => setActiveTab('indicators') },
-      { id: 'tab-actions', keys: 'a', description: 'Actions', category: 'navigation', action: () => setActiveTab('actions') },
+      { id: 'tab-index', keys: 'i', description: 'Development Index', category: 'navigation', action: () => setActiveTab('index') },
+      { id: 'tab-correlate', keys: 'c', description: 'Correlations', category: 'navigation', action: () => setActiveTab('correlate') },
+      { id: 'tab-search', keys: 's', description: 'Search', category: 'navigation', action: () => setActiveTab('search') },
     ],
     { lensId: 'global' }
   );
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('global');
-
-  // --- Action wiring ---
-  const { items: globalArtifacts } = useLensData('global', 'global-dataset', { seed: [] });
-  const runAction = useRunArtifact('global');
-  const [actionResult, setActionResult] = useState<{ action: string; data: unknown } | null>(null);
-
-  const handleRunAction = useCallback((action: string) => {
-    const artifactId = globalArtifacts[0]?.id;
-    if (!artifactId) return;
-    runAction.mutate(
-      { id: artifactId, action, params: {} },
-      {
-        onSuccess: (res) => setActionResult({ action, data: res.result }),
-        onError: (e) => {
-          console.error(`Action failed:`, e);
-          setActionResult({ action, data: { error: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` } });
-        },
-      }
-    );
-  }, [globalArtifacts, runAction]);
 
   const paletteLenses = useMemo(
     () => getCommandPaletteLenses().filter((l) => !['global', 'all'].includes(l.id)),
@@ -137,22 +95,53 @@ export default function GlobalLensPage() {
     },
   });
 
-  const items = data?.items || [];
+  const items = useMemo(() => data?.items || [], [data?.items]);
   const total = Number(data?.total || 0);
 
-  const getIndexColor = (index: number) => {
-    if (index >= 80) return 'text-neon-green';
-    if (index >= 60) return 'text-neon-cyan';
-    if (index >= 40) return 'text-yellow-400';
-    return 'text-red-400';
-  };
+  // Real per-user saved-view count (global.listViews) — replaces the old
+  // fabricated "Regions"/"Trending Up"/"Avg Index" stat cards that summarized
+  // a hardcoded REGIONS array.
+  const savedViewsQuery = useQuery({
+    queryKey: ['global-saved-views-count'],
+    queryFn: () => lensRun<{ total: number }>('global', 'listViews', {}).then((r) => (r.data.ok ? r.data.result?.total ?? 0 : null)),
+    staleTime: 60000,
+    retry: false,
+  });
 
-  const getIndexBg = (index: number) => {
-    if (index >= 80) return 'bg-neon-green';
-    if (index >= 60) return 'bg-neon-cyan';
-    if (index >= 40) return 'bg-yellow-400';
-    return 'bg-red-400';
-  };
+  // --- Unified search: real global.crossDomainSearch merging the DTU corpus
+  // (already loaded above) with a live World Bank indicator-catalog search,
+  // so a query surfaces both "your notes" and "the actual indicator" in one
+  // relevance-ranked, deduplicated, diversity-scored list. Replaces the old
+  // "Actions" tab's crossDomainSearch button, which only ever ran against a
+  // "global-dataset" artifact no UI path could create (permanently disabled).
+  const [crossResult, setCrossResult] = useState<CrossDomainResult | null>(null);
+  const [crossLoading, setCrossLoading] = useState(false);
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) { setCrossResult(null); return; }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setCrossLoading(true);
+      try {
+        const indRes = await lensRun<{ indicators: CatalogIndicator[] }>('global', 'searchIndicators', { query: q, limit: 20 });
+        const dtuItems = items.map((d: { id: string; title?: string; content?: string; tags?: string[] }) => ({
+          id: d.id, title: d.title, text: d.content, tags: d.tags,
+        }));
+        const indItems = (indRes.data.ok && indRes.data.result ? indRes.data.result.indicators : []).map((ind) => ({
+          id: ind.code, title: ind.name, text: ind.sourceNote, tags: ind.topics,
+        }));
+        const sources: { domain: string; items: unknown[] }[] = [];
+        if (dtuItems.length) sources.push({ domain: 'your DTUs', items: dtuItems });
+        if (indItems.length) sources.push({ domain: 'World Bank catalog', items: indItems });
+        if (sources.length === 0) { if (!cancelled) setCrossResult(null); return; }
+        const r = await lensRun<CrossDomainResult>('global', 'crossDomainSearch', { query: q, sources, maxResults: 20 });
+        if (!cancelled) setCrossResult(r.data.ok && r.data.result ? r.data.result : null);
+      } finally {
+        if (!cancelled) setCrossLoading(false);
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query, items]);
 
   if (isError) {
     return (
@@ -164,10 +153,9 @@ export default function GlobalLensPage() {
 
   const tabs = [
     { key: 'explore' as const, label: 'Data Explorer', icon: Compass },
-    { key: 'regions' as const, label: 'Regions', icon: Globe },
-    { key: 'trends' as const, label: 'Trends', icon: TrendingUp },
-    { key: 'indicators' as const, label: 'Indicators', icon: Map },
-    { key: 'actions' as const, label: 'Actions', icon: BarChart3 },
+    { key: 'index' as const, label: 'Development Index', icon: Award },
+    { key: 'correlate' as const, label: 'Correlations', icon: GitBranch },
+    { key: 'search' as const, label: 'Search', icon: Search },
   ];
 
   return (
@@ -186,10 +174,10 @@ export default function GlobalLensPage() {
         <div>
           <p className="text-xs uppercase text-gray-400 tracking-wider">Truth Lens</p>
           <h1 className="text-3xl font-bold text-gradient-neon flex items-center gap-2">
-            <Globe className="w-7 h-7" /> Global DTU Browser
+            <Globe className="w-7 h-7" /> Global — World Bank Data &amp; Knowledge
           </h1>
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-          <p className="text-neon-cyan mt-1 text-sm">{total.toLocaleString()} DTUs</p>
+          <p className="text-neon-cyan mt-1 text-sm">{total.toLocaleString()} DTUs in your global corpus</p>
         </div>
         <button
           className="btn-ghost text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -200,13 +188,15 @@ export default function GlobalLensPage() {
         </button>
       </motion.header>
 
-      {/* Stat Cards */}
+      {/* Stat Cards — every value is either live-fetched or an accurate count
+          of the real, code-backed catalogs the pickers below actually offer
+          (never an invented "index"). */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { icon: Globe, color: 'text-neon-cyan', value: total.toLocaleString(), label: 'Total DTUs' },
-          { icon: Map, color: 'text-neon-green', value: REGIONS.length, label: 'Regions' },
-          { icon: TrendingUp, color: 'text-neon-purple', value: REGIONS.filter(r => r.trend === 'up').length, label: 'Trending Up' },
-          { icon: Globe, color: 'text-yellow-400', value: Math.round(REGIONS.reduce((s, r) => s + r.index, 0) / REGIONS.length), label: 'Avg Index' },
+          { icon: Bookmark, color: 'text-neon-green', value: savedViewsQuery.data ?? '—', label: 'Saved Views' },
+          { icon: Map, color: 'text-neon-purple', value: WB_COUNTRIES.length, label: 'Countries Curated' },
+          { icon: TrendingUp, color: 'text-yellow-400', value: WB_INDICATORS.length, label: 'Indicators Curated' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -265,72 +255,51 @@ export default function GlobalLensPage() {
           </motion.div>
         )}
 
-        {activeTab === 'regions' && (
+        {activeTab === 'index' && (
           <motion.div
-            key="regions"
+            key="index"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.25 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            className="panel p-4"
           >
-            {REGIONS.map((region, i) => (
-              <motion.div
-                key={region.name}
-                custom={i}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                className="lens-card hover:border-neon-cyan/30 transition-colors"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{region.flag}</span>
-                    <h3 className="font-semibold text-white">{region.name}</h3>
-                  </div>
-                  <span className={cn('text-xs px-2 py-0.5 rounded', region.trend === 'up' ? 'bg-neon-green/10 text-neon-green' : 'bg-yellow-400/10 text-yellow-400')}>
-                    {region.trend === 'up' ? 'Trending Up' : 'Stable'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-gray-400">Development Index</span>
-                      <span className={getIndexColor(region.index)}>{region.index}/100</span>
-                    </div>
-                    <div className="h-2 bg-lattice-deep rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${region.index}%` }}
-                        transition={{ duration: 0.8, delay: i * 0.1 }}
-                        className={cn('h-full rounded-full', getIndexBg(region.index))}
-                      />
-                    </div>
-                  </div>
-                </div>
-                {/* Mini sparkline placeholder */}
-                <div className="mt-3 flex items-end gap-px h-8">
-                  {Array.from({ length: 12 }, (_, j) => {
-                    const h = 20 + Math.random() * 80;
-                    return (
-                      <motion.div
-                        key={j}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${h}%` }}
-                        transition={{ duration: 0.4, delay: i * 0.05 + j * 0.03 }}
-                        className={cn('flex-1 rounded-sm', region.color.replace('text-', 'bg-'), 'opacity-60')}
-                      />
-                    );
-                  })}
-                </div>
-              </motion.div>
-            ))}
+            <h2 className="font-semibold mb-1 flex items-center gap-2">
+              <Award className="w-4 h-4 text-neon-cyan" /> Global Development Index
+            </h2>
+            <p className="text-xs text-gray-400 mb-4">
+              A real composite country ranking, computed live from World Bank indicators via{' '}
+              <code className="text-neon-cyan">global.aggregateDashboard</code>
+              {' '}&mdash; every score is derived from fetched data, never an invented benchmark.
+            </p>
+            <DevelopmentIndex />
           </motion.div>
         )}
 
-        {activeTab === 'trends' && (
+        {activeTab === 'correlate' && (
           <motion.div
-            key="trends"
+            key="correlate"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.25 }}
+            className="panel p-4"
+          >
+            <h2 className="font-semibold mb-1 flex items-center gap-2">
+              <GitBranch className="w-4 h-4 text-neon-purple" /> Indicator Correlations
+            </h2>
+            <p className="text-xs text-gray-400 mb-4">
+              Real cross-country Pearson &amp; Spearman correlation between World Bank indicators via{' '}
+              <code className="text-neon-purple">global.correlationMatrix</code>
+              {' '}&mdash; e.g. does internet access correlate with life expectancy across countries?
+            </p>
+            <IndicatorCorrelations />
+          </motion.div>
+        )}
+
+        {activeTab === 'search' && (
+          <motion.div
+            key="search"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
@@ -338,19 +307,19 @@ export default function GlobalLensPage() {
           >
             <section className="panel p-4 grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
               <label className="space-y-2">
-                <span className="text-xs uppercase tracking-wider text-gray-400">Search</span>
+                <span className="text-xs uppercase tracking-wider text-gray-400">Search your DTUs + the World Bank catalog</span>
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     value={query}
                     onChange={(e) => { setOffset(0); setQuery(e.target.value); }}
-                    placeholder="Search title, content, tags"
+                    placeholder="Search title, content, tags, indicator names"
                     className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm"
                   />
                 </div>
               </label>
               <label className="space-y-2">
-                <span className="text-xs uppercase tracking-wider text-gray-400">Filter tags</span>
+                <span className="text-xs uppercase tracking-wider text-gray-400">Filter tags (DTU list only)</span>
                 <input
                   value={tags}
                   onChange={(e) => { setOffset(0); setTags(e.target.value); }}
@@ -359,6 +328,50 @@ export default function GlobalLensPage() {
                 />
               </label>
             </section>
+
+            {/* Unified cross-domain result (global.crossDomainSearch) -- appears
+                once the query is >=2 chars and real DTU/indicator matches exist.
+                Real relevance scoring, dedup, and diversity -- computed by the
+                macro, not the client. */}
+            {query.trim().length >= 2 && (
+              <section className="panel p-4 mb-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-neon-cyan flex items-center gap-2 text-sm">
+                    <Search className="w-4 h-4" /> Unified results for &quot;{query}&quot;
+                  </h3>
+                  {crossLoading && <Loader2 className="w-4 h-4 text-neon-cyan animate-spin" />}
+                </div>
+                {!crossLoading && crossResult && crossResult.results.length > 0 && (
+                  <>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                      <span>{crossResult.matchCount} matches across {crossResult.sourcesSearched} sources</span>
+                      <span className={cn('px-2 py-0.5 rounded font-medium',
+                        crossResult.diversityScore > 0.7 ? 'bg-neon-green/10 text-neon-green' :
+                        crossResult.diversityScore > 0.4 ? 'bg-yellow-400/10 text-yellow-400' : 'bg-red-400/10 text-red-400'
+                      )}>{crossResult.diversityLabel}</span>
+                      {crossResult.deduplication.duplicatesFound > 0 && (
+                        <span>{crossResult.deduplication.duplicatesFound} duplicates merged</span>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      {crossResult.results.slice(0, 8).map((item, i) => (
+                        <div key={i} className="lens-card flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{item.title || item.id}</p>
+                            {item.text && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{item.text}</p>}
+                            <span className="text-xs text-neon-cyan mt-1 inline-block">{item.domain}</span>
+                          </div>
+                          <span className="text-xs font-mono text-neon-cyan shrink-0">score: {item.relevanceScore}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {!crossLoading && (!crossResult || crossResult.results.length === 0) && (
+                  <p className="text-xs text-gray-400 italic">No matches in your DTUs or the World Bank indicator catalog.</p>
+                )}
+              </section>
+            )}
 
             <section className="panel divide-y divide-lattice-border">
               {isLoading ? (
@@ -423,294 +436,6 @@ export default function GlobalLensPage() {
                 </button>
               </div>
             </footer>
-          </motion.div>
-        )}
-
-        {activeTab === 'indicators' && (
-          <motion.div
-            key="indicators"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-            className="panel p-6"
-          >
-            <h2 className="font-semibold mb-4 flex items-center gap-2">
-              <Map className="w-4 h-4 text-neon-green" /> Development Indicators
-            </h2>
-            <div className="space-y-4">
-              {REGIONS.sort((a, b) => b.index - a.index).map((region, i) => (
-                <motion.div
-                  key={region.name}
-                  custom={i}
-                  variants={cardVariants}
-                  initial="hidden"
-                  animate="visible"
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm flex items-center gap-2">
-                      <span>{region.flag}</span>
-                      <span className="text-white">{region.name}</span>
-                    </span>
-                    <span className={cn('text-sm font-bold', getIndexColor(region.index))}>{region.index}</span>
-                  </div>
-                  <div className="h-3 bg-lattice-deep rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${region.index}%` }}
-                      transition={{ duration: 0.8, delay: i * 0.1 }}
-                      className={cn('h-full rounded-full', getIndexBg(region.index))}
-                    />
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {activeTab === 'actions' && (
-          <motion.div
-            key="actions"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-            className="space-y-4"
-          >
-            {/* Action Buttons */}
-            <div className="panel p-4">
-              <h2 className="font-semibold mb-4 flex items-center gap-2">
-                <Network className="w-4 h-4 text-neon-cyan" /> Global Domain Actions
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[
-                  { action: 'crossDomainSearch', label: 'Cross-Domain Search', icon: Search, color: 'neon-cyan', desc: 'Merge results with relevance scoring across all sources' },
-                  { action: 'aggregateDashboard', label: 'Aggregate Dashboard', icon: BarChart3, color: 'neon-green', desc: 'Normalize metrics and compute composite indices per domain' },
-                  { action: 'correlationMatrix', label: 'Correlation Matrix', icon: GitBranch, color: 'neon-purple', desc: 'Pearson & Spearman correlations, unexpected relationships' },
-                ].map(({ action, label, icon: Icon, color, desc }) => (
-                  <button
-                    key={action}
-                    onClick={() => handleRunAction(action)}
-                    disabled={runAction.isPending || !globalArtifacts[0]?.id}
-                    className={cn(
-                      'p-4 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed',
-                      `bg-${color}/5 border-${color}/20 hover:bg-${color}/10 hover:border-${color}/40`
-                    )}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      {runAction.isPending && actionResult === null ? (
-                        <Loader2 className={`w-4 h-4 text-${color} animate-spin`} />
-                      ) : (
-                        <Icon className={`w-4 h-4 text-${color}`} />
-                      )}
-                      <span className="text-sm font-semibold text-white">{label}</span>
-                    </div>
-                    <p className="text-xs text-gray-400">{desc}</p>
-                  </button>
-                ))}
-              </div>
-              {!globalArtifacts[0]?.id && (
-                <p className="text-xs text-gray-400 mt-3 text-center">Create a global-dataset artifact first to run actions.</p>
-              )}
-            </div>
-
-            {/* Result Display */}
-            {runAction.isPending && (
-              <div className="panel p-6 flex items-center justify-center gap-3">
-                <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
-                <span className="text-sm text-gray-400">Running action...</span>
-              </div>
-            )}
-
-            {actionResult && !runAction.isPending && (() => {
-              if (actionResult.action === 'crossDomainSearch') {
-                const r = actionResult.data as CrossDomainResult;
-                return (
-                  <div className="panel p-4 space-y-4">
-                    <h3 className="font-semibold text-neon-cyan flex items-center gap-2"><Search className="w-4 h-4" /> Cross-Domain Search Results</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[
-                        { label: 'Query', value: `"${r.query}"` },
-                        { label: 'Matches', value: r.matchCount },
-                        { label: 'Candidates', value: r.totalCandidates },
-                        { label: 'Sources Searched', value: r.sourcesSearched },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="lens-card text-center">
-                          <p className="text-lg font-bold text-white truncate">{value}</p>
-                          <p className="text-xs text-gray-400">{label}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-400">Diversity:</span>
-                      <span className={cn('text-xs px-2 py-0.5 rounded font-medium',
-                        r.diversityScore > 0.7 ? 'bg-neon-green/10 text-neon-green' :
-                        r.diversityScore > 0.4 ? 'bg-yellow-400/10 text-yellow-400' : 'bg-red-400/10 text-red-400'
-                      )}>{r.diversityLabel}</span>
-                      <span className="text-xs text-gray-400">Duplicates removed: {r.deduplication.duplicatesFound}</span>
-                    </div>
-                    {r.results.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-400 uppercase tracking-wider">Top Results</p>
-                        {r.results.slice(0, 5).map((item, i) => (
-                          <div key={i} className="lens-card flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-white truncate">{item.title || item.id}</p>
-                              {item.text && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{item.text}</p>}
-                              <span className="text-xs text-gray-400 mt-1 inline-block">{item.domain}</span>
-                            </div>
-                            <span className="text-xs font-mono text-neon-cyan shrink-0">score: {item.relevanceScore}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {Object.keys(r.sourceDistribution).length > 0 && (
-                      <div>
-                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Source Distribution</p>
-                        <div className="flex flex-wrap gap-2">
-                          {Object.entries(r.sourceDistribution).map(([src, cnt]) => (
-                            <span key={src} className="text-xs px-2 py-1 rounded bg-neon-cyan/10 text-neon-cyan">{src}: {cnt}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-              if (actionResult.action === 'aggregateDashboard') {
-                const r = actionResult.data as DashboardResult;
-                return (
-                  <div className="panel p-4 space-y-4">
-                    <h3 className="font-semibold text-neon-green flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Aggregate Dashboard</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="lens-card text-center">
-                        <p className="text-2xl font-bold text-neon-green">{r.overallComposite}</p>
-                        <p className="text-xs text-gray-400">Overall Score</p>
-                      </div>
-                      <div className="lens-card text-center">
-                        <p className={cn('text-2xl font-bold', r.overallGrade === 'A+' || r.overallGrade === 'A' ? 'text-neon-green' : r.overallGrade === 'B' ? 'text-neon-cyan' : 'text-yellow-400')}>{r.overallGrade}</p>
-                        <p className="text-xs text-gray-400">Grade</p>
-                      </div>
-                      <div className="lens-card text-center">
-                        <p className="text-2xl font-bold text-white">{r.domains}</p>
-                        <p className="text-xs text-gray-400">Domains</p>
-                      </div>
-                      <div className="lens-card text-center">
-                        <p className="text-2xl font-bold text-white">{r.totalMetrics}</p>
-                        <p className="text-xs text-gray-400">Metrics</p>
-                      </div>
-                    </div>
-                    {r.rankings.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-400 uppercase tracking-wider">Domain Rankings</p>
-                        {r.rankings.map((rank) => (
-                          <div key={rank.domain} className="lens-card flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="text-sm font-bold text-gray-400 w-5">#{rank.rank}</span>
-                              <span className="text-sm text-white">{rank.domain}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="w-24 h-2 bg-lattice-deep rounded-full overflow-hidden">
-                                <div className="h-full bg-neon-green rounded-full" style={{ width: `${rank.compositeScore * 100}%` }} />
-                              </div>
-                              <span className="text-xs font-mono text-gray-300 w-8">{rank.compositeScore}</span>
-                              <span className={cn('text-xs px-1.5 py-0.5 rounded font-bold',
-                                rank.grade === 'A+' || rank.grade === 'A' ? 'bg-neon-green/20 text-neon-green' :
-                                rank.grade === 'B' ? 'bg-neon-cyan/20 text-neon-cyan' :
-                                rank.grade === 'C' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-red-400/20 text-red-400'
-                              )}>{rank.grade}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {r.strengths.length > 0 && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-neon-green uppercase tracking-wider mb-2">Top Strengths</p>
-                          {r.strengths.map((s, i) => (
-                            <div key={i} className="text-xs flex justify-between py-1 border-b border-white/5">
-                              <span className="text-gray-300">{s.domain} / {s.metric}</span>
-                              <span className="text-neon-green font-mono">{s.score}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div>
-                          <p className="text-xs text-red-400 uppercase tracking-wider mb-2">Weaknesses</p>
-                          {r.weaknesses.map((w, i) => (
-                            <div key={i} className="text-xs flex justify-between py-1 border-b border-white/5">
-                              <span className="text-gray-300">{w.domain} / {w.metric}</span>
-                              <span className="text-red-400 font-mono">{w.score}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-              if (actionResult.action === 'correlationMatrix') {
-                const r = actionResult.data as CorrelationResult;
-                return (
-                  <div className="panel p-4 space-y-4">
-                    <h3 className="font-semibold text-neon-purple flex items-center gap-2"><GitBranch className="w-4 h-4" /> Correlation Matrix</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="lens-card text-center">
-                        <p className="text-2xl font-bold text-white">{r.variables}</p>
-                        <p className="text-xs text-gray-400">Variables</p>
-                      </div>
-                      <div className="lens-card text-center">
-                        <p className="text-2xl font-bold text-white">{r.observations}</p>
-                        <p className="text-xs text-gray-400">Observations</p>
-                      </div>
-                      <div className="lens-card text-center">
-                        <p className="text-2xl font-bold text-neon-cyan">{r.significantCount}</p>
-                        <p className="text-xs text-gray-400">Significant Pairs</p>
-                      </div>
-                      <div className="lens-card text-center">
-                        <p className="text-2xl font-bold text-yellow-400">{r.collinearGroups.length}</p>
-                        <p className="text-xs text-gray-400">Collinear Groups</p>
-                      </div>
-                    </div>
-                    {r.significantCorrelations.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-400 uppercase tracking-wider">Top Significant Correlations</p>
-                        {r.significantCorrelations.slice(0, 6).map((pair, i) => (
-                          <div key={i} className="lens-card flex items-center justify-between gap-3">
-                            <span className="text-sm text-white">{pair.var1} — {pair.var2}</span>
-                            <div className="flex items-center gap-2">
-                              <span className={cn('text-xs px-1.5 py-0.5 rounded',
-                                pair.direction === 'positive' ? 'bg-neon-green/10 text-neon-green' : 'bg-red-400/10 text-red-400'
-                              )}>{pair.direction}</span>
-                              <span className="text-xs text-gray-400">{pair.strength}</span>
-                              <span className="text-xs font-mono text-neon-purple">r={pair.pearson}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {r.variableStatistics.length > 0 && (
-                      <div>
-                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Variable Statistics</p>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                          {r.variableStatistics.map((v, i) => (
-                            <div key={i} className="lens-card text-xs">
-                              <p className="font-medium text-white">{v.name}</p>
-                              <p className="text-gray-400">{v.domain}</p>
-                              <div className="flex justify-between mt-1">
-                                <span className="text-gray-400">mean: <span className="text-white">{v.mean}</span></span>
-                                <span className="text-gray-400">std: <span className="text-white">{v.std}</span></span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-              return null;
-            })()}
           </motion.div>
         )}
       </AnimatePresence>

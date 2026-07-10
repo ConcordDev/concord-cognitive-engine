@@ -1,39 +1,41 @@
 'use client';
 
 /**
- * ClaimVerificationPanel — epistemic-grounding workbench for the
- * grounding lens (Insight Timer was a rubric miscategorization; the
- * Concord "grounding" lens is fact-checking, not meditation).
+ * ClaimVerificationPanel — quick-check epistemic workbench for the grounding
+ * lens (Insight Timer was a rubric miscategorization; the Concord
+ * "grounding" lens is fact-checking, not meditation).
  *
- *   1. Fact check        → grounding.factCheck (verdict + confidence)
- *   2. Source credibility → grounding.sourceCredibility
- *   3. Claim decomposition → grounding.claimDecomposition (atomic claims)
+ *   1. Fact check        → grounding.factCheck (verdict + confidence, stance-scored vs. evidence)
+ *   2. Source credibility → grounding.sourceCredibility (authority/recency/bias/consistency/transparency composite)
+ *   3. Claim decomposition → grounding.claimDecomposition (atomic claims + logical structure)
  *   4. Mint verification → private DTU with all 3 results
  *   5. DM source         → /api/social/dm with claim + verdict + sources
  *   6. Publish reviewed claim → public DTU + flag published
  *   7. Counter-evidence (agent) → chat_agent.do strongest counter
+ *
+ * WIRING NOTE (fixed 2026-07-09, grounding-lens rebuild): the previous
+ * version of this panel called `factCheck`/`sourceCredibility`/
+ * `claimDecomposition` with the WRONG input shapes — a plain string for
+ * `claim` instead of `{ text }`, a single `source` URL instead of a
+ * `sources[]` array, and no `evidence[]` at all. The real handlers
+ * (server/domains/grounding.js) always hit their trivial "no claim/evidence
+ * provided" branch as a result, while the UI still rendered a confident-
+ * looking "Verdict: undefined." success toast — a wiring bug that produced a
+ * fabricated-looking result from a check that never actually ran. Fixed by
+ * (a) adding a real evidence-entry list + a real structured source-detail
+ * form matching the macros' actual parameter shapes, and (b) correcting
+ * every TypeScript result interface to the macros' real output shape.
  */
 
 import { useState } from 'react';
 import {
   ShieldCheck, CheckCircle, FileBadge, ListTree,
-  Sparkles, Send, Globe, Wand2,
+  Sparkles, Send, Globe, Wand2, Plus, Trash2,
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
-async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
-  const r = await apiHelpers.lens.runDomain('grounding', action, { input });
-  const data = (r as { data?: { ok: boolean; result?: T } }).data;
-  if (!data) return { ok: false, error: 'empty response' };
-  if (data.ok && data.result && typeof data.result === 'object' && 'ok' in data.result) {
-    return data.result as MacroEnvelope<T>;
-  }
-  return data as MacroEnvelope<T>;
-}
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'factcheck' | 'credibility' | 'decompose' | 'mint' | 'dm' | 'publish' | 'agent';
@@ -43,13 +45,35 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface FactCheckResult { verdict?: string; confidence?: number; supporting?: string[]; contradicting?: string[]; rationale?: string }
-interface CredibilityResult { score?: number; tier?: string; flags?: string[]; notes?: string }
-interface DecomposeResult { atomicClaims?: Array<{ id: string; text: string; verifiable?: boolean }> }
+type EvidenceRow = { text: string; source: string };
+
+// ---- real macro result shapes (server/domains/grounding.js) ---------------
+interface FactCheckResult {
+  message?: string;
+  claim?: string; verdict?: string; confidence?: number; direction?: string;
+  evidenceCount?: number;
+  breakdown?: { supporting: { count: number }; contradicting: { count: number }; neutral: { count: number } };
+  evaluations?: Array<{ source: string; stance: string; relevance: number; reliability: number }>;
+}
+interface CredibilityResult {
+  message?: string;
+  sourceCount?: number; averageCredibility?: number; overallAssessment?: string;
+  sources?: Array<{ name: string; credibilityScore: number; credibilityLabel: string; type: string }>;
+  recommendations?: string[];
+}
+interface DecomposeResult {
+  message?: string;
+  atomicClaimCount?: number; logicalStructure?: string; claimComplexity?: string; overallAssessment?: string;
+  components?: Array<{ index: number; text: string; claimType: string; evaluation?: { verdict: string; score: number } | null }>;
+}
 
 export function ClaimVerificationPanel() {
   const [claim, setClaim] = useState('');
-  const [sourceUrl, setSourceUrl] = useState('');
+  const [evidence, setEvidence] = useState<EvidenceRow[]>([{ text: '', source: '' }]);
+  const [srcName, setSrcName] = useState('');
+  const [srcUrl, setSrcUrl] = useState('');
+  const [srcType, setSrcType] = useState('unknown');
+  const [srcClaims, setSrcClaims] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -62,28 +86,42 @@ export function ClaimVerificationPanel() {
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
 
-  const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
+  const ok = (text: string) => setFeedback({ kind: 'ok', text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
   const ready = claim.trim().length > 0;
+  const evidenceRows = evidence.filter((e) => e.text.trim());
 
   async function actFact() {
     if (!ready) { err('Enter a claim.'); return; }
     setBusy('factcheck'); setFeedback(null);
     try {
-      const r = await callMacro<FactCheckResult>('factCheck', { claim: claim.trim(), source: sourceUrl.trim() });
-      if (r.ok && r.result) { setFactResult(r.result); ok(`Verdict: ${r.result.verdict}.`); }
-      else err(r.error ?? 'fact check failed');
+      const r = await lensRun<FactCheckResult>('grounding', 'factCheck', {
+        claim: { text: claim.trim() },
+        evidence: evidenceRows.map((e) => ({ text: e.text.trim(), source: e.source.trim() || undefined })),
+      });
+      if (!r.data.ok) { err(r.data.error ?? 'fact check failed'); return; }
+      const res = r.data.result;
+      setFactResult(res);
+      if (res?.verdict) ok(`Verdict: ${res.verdict}${res.confidence != null ? ` (${Math.round(res.confidence * 100)}%)` : ''}.`);
+      else ok(res?.message || 'No verdict — add evidence to score this claim.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
 
   async function actCredibility() {
-    if (!sourceUrl.trim()) { err('Enter a source URL.'); return; }
+    if (!srcUrl.trim() && !srcName.trim()) { err('Enter a source name or URL.'); return; }
     setBusy('credibility'); setFeedback(null);
     try {
-      const r = await callMacro<CredibilityResult>('sourceCredibility', { source: sourceUrl.trim() });
-      if (r.ok && r.result) { setCredibilityResult(r.result); ok(`Tier: ${r.result.tier}.`); }
-      else err(r.error ?? 'credibility failed');
+      const claims = srcClaims.split('\n').map((s) => s.trim()).filter(Boolean);
+      const r = await lensRun<CredibilityResult>('grounding', 'sourceCredibility', {
+        sources: [{ name: srcName.trim() || undefined, url: srcUrl.trim() || undefined, type: srcType, claims }],
+      });
+      if (!r.data.ok) { err(r.data.error ?? 'credibility check failed'); return; }
+      const res = r.data.result;
+      setCredibilityResult(res);
+      const top = res?.sources?.[0];
+      if (top) ok(`${top.credibilityLabel} (${top.credibilityScore}/100).`);
+      else ok(res?.message || 'No sources scored.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -92,9 +130,14 @@ export function ClaimVerificationPanel() {
     if (!ready) { err('Enter a claim.'); return; }
     setBusy('decompose'); setFeedback(null);
     try {
-      const r = await callMacro<DecomposeResult>('claimDecomposition', { claim: claim.trim() });
-      if (r.ok && r.result) { setDecomposeResult(r.result); ok(`${r.result.atomicClaims?.length ?? 0} atomic claims.`); }
-      else err(r.error ?? 'decompose failed');
+      const r = await lensRun<DecomposeResult>('grounding', 'claimDecomposition', {
+        claim: { text: claim.trim() },
+        evidence: evidenceRows.map((e) => ({ text: e.text.trim(), source: e.source.trim() || undefined })),
+      });
+      if (!r.data.ok) { err(r.data.error ?? 'decompose failed'); return; }
+      const res = r.data.result;
+      setDecomposeResult(res);
+      ok(res?.atomicClaimCount ? `${res.atomicClaimCount} atomic claims (${res.logicalStructure}).` : (res?.message || 'No claims decomposed.'));
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -114,7 +157,7 @@ export function ClaimVerificationPanel() {
             consent: { allowCitations: false },
             verification: {
               claim: claim.trim(),
-              sourceUrl: sourceUrl.trim(),
+              evidence: evidenceRows,
               factCheck: factResult,
               credibility: credibilityResult,
               decomposition: decomposeResult,
@@ -139,10 +182,9 @@ export function ClaimVerificationPanel() {
       `🔍 Claim verification`,
       ``,
       `Claim: ${claim.trim()}`,
-      sourceUrl.trim() ? `Source: ${sourceUrl.trim()}` : '',
-      factResult?.verdict ? `Verdict: ${factResult.verdict} (${factResult.confidence ? Math.round(factResult.confidence * 100) + '%' : '—'})` : '',
-      credibilityResult?.tier ? `Source tier: ${credibilityResult.tier}` : '',
-      decomposeResult?.atomicClaims?.length ? `Atomic claims: ${decomposeResult.atomicClaims.length}` : '',
+      factResult?.verdict ? `Verdict: ${factResult.verdict} (${factResult.confidence != null ? Math.round(factResult.confidence * 100) + '%' : '—'})` : '',
+      credibilityResult?.sources?.[0] ? `Source: ${credibilityResult.sources[0].credibilityLabel} (${credibilityResult.sources[0].credibilityScore}/100)` : '',
+      decomposeResult?.atomicClaimCount ? `Atomic claims: ${decomposeResult.atomicClaimCount}` : '',
       mintedDtuId ? `\n[Verification DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -167,10 +209,8 @@ export function ClaimVerificationPanel() {
             visibility: 'public',
             consent: { allowCitations: true },
             claim: claim.trim(),
-            sourceUrl: sourceUrl.trim(),
             verdict: factResult?.verdict,
             confidence: factResult?.confidence,
-            sourceTier: credibilityResult?.tier,
           },
         },
       });
@@ -192,7 +232,6 @@ export function ClaimVerificationPanel() {
         `Provide the strongest counter-evidence to this claim. Be specific.`,
         ``,
         `Claim: "${claim.trim()}"`,
-        sourceUrl.trim() ? `Source: ${sourceUrl.trim()}` : '',
         factResult?.verdict ? `Initial verdict: ${factResult.verdict}.` : '',
         ``,
         `Return: 1) the 2-3 strongest pieces of counter-evidence (with source type if known);`,
@@ -208,8 +247,8 @@ export function ClaimVerificationPanel() {
   }
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
-    { id: 'factcheck',   label: 'Fact check',     desc: 'Verdict + confidence + sources',           icon: CheckCircle, accent: '#22c55e', handler: actFact,        disabled: !ready },
-    { id: 'credibility', label: 'Source tier',    desc: 'Score the source URL',                     icon: FileBadge,   accent: '#06b6d4', handler: actCredibility, disabled: !sourceUrl.trim() },
+    { id: 'factcheck',   label: 'Fact check',     desc: 'Verdict + confidence vs. evidence',        icon: CheckCircle, accent: '#22c55e', handler: actFact,        disabled: !ready },
+    { id: 'credibility', label: 'Source tier',    desc: 'Score the source below',                   icon: FileBadge,   accent: '#06b6d4', handler: actCredibility, disabled: !srcUrl.trim() && !srcName.trim() },
     { id: 'decompose',   label: 'Decompose',      desc: 'Break claim into atomic, verifiable parts', icon: ListTree,   accent: '#8b5cf6', handler: actDecompose,   disabled: !ready },
     { id: 'mint',        label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private verification DTU',                  icon: Sparkles,    accent: '#3b82f6', handler: actMint,        disabled: !ready || !!mintedDtuId },
     { id: 'dm',          label: 'DM',             desc: 'Send verdict + sources to another user',   icon: Send,        accent: '#ec4899', handler: actDm,          disabled: !ready },
@@ -221,25 +260,47 @@ export function ClaimVerificationPanel() {
     <div className="rounded-lg border border-blue-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-blue-500/10 pb-2">
         <ShieldCheck className="h-4 w-4 text-blue-400" />
-        <h3 className="text-sm font-semibold text-white">Claim verification</h3>
+        <h3 className="text-sm font-semibold text-white">Quick claim verification</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
           grounding · fact-check
         </span>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div className="md:col-span-2">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Claim</label>
-          <textarea value={claim} onChange={(e) => setClaim(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/40 resize-none" placeholder="e.g. The fastest land animal is the cheetah." />
+      <div>
+        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block" htmlFor="cvp-claim">Claim</label>
+        <textarea id="cvp-claim" value={claim} onChange={(e) => setClaim(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/40 resize-none" placeholder="e.g. The fastest land animal is the cheetah." />
+      </div>
+
+      {/* Evidence list — feeds factCheck + claimDecomposition */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Evidence (optional, sharpens the check)</span>
+          <button type="button" onClick={() => setEvidence((e) => [...e, { text: '', source: '' }])} className="flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-700">
+            <Plus className="h-3 w-3" /> Add evidence
+          </button>
         </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Source URL</label>
-          <input type="text" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-cyan-400/40" placeholder="https://..." />
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">DM recipient</label>
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40" placeholder="user id" />
-        </div>
+        {evidence.map((row, i) => (
+          <div key={i} className="flex gap-1.5">
+            <input value={row.text} onChange={(e) => setEvidence((arr) => arr.map((r, j) => j === i ? { ...r, text: e.target.value } : r))} placeholder="Evidence text…" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-blue-400/40" />
+            <input value={row.source} onChange={(e) => setEvidence((arr) => arr.map((r, j) => j === i ? { ...r, source: e.target.value } : r))} placeholder="Source (optional)" className="w-32 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-blue-400/40" />
+            {evidence.length > 1 && (
+              <button aria-label="Remove evidence" type="button" onClick={() => setEvidence((arr) => arr.filter((_, j) => j !== i))} className="rounded bg-zinc-800 px-1.5 text-zinc-400 hover:text-red-400">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Source-under-evaluation — feeds sourceCredibility */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 border-t border-zinc-900 pt-2">
+        <input value={srcName} onChange={(e) => setSrcName(e.target.value)} placeholder="Source name" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-cyan-400/40" />
+        <input value={srcUrl} onChange={(e) => setSrcUrl(e.target.value)} placeholder="Source URL" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-cyan-400/40" />
+        <select value={srcType} onChange={(e) => setSrcType(e.target.value)} className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-cyan-400/40">
+          {['peer-reviewed', 'academic', 'government', 'institutional', 'news-major', 'news', 'encyclopedia', 'book', 'report', 'blog', 'social-media', 'forum', 'unknown'].map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="DM recipient (user id)" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-pink-400/40" />
+        <textarea value={srcClaims} onChange={(e) => setSrcClaims(e.target.value)} rows={2} placeholder="Source's claims, one per line (optional — improves bias/consistency scoring)" className="md:col-span-4 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-cyan-400/40 resize-none" />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
@@ -270,32 +331,43 @@ export function ClaimVerificationPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {factResult && (
-          <div className={cn('rounded-md border p-2.5 space-y-0.5', factResult.verdict === 'true' || factResult.verdict === 'supported' ? 'border-emerald-500/40 bg-emerald-500/5' : factResult.verdict === 'false' || factResult.verdict === 'refuted' ? 'border-rose-500/40 bg-rose-500/5' : 'border-amber-500/40 bg-amber-500/5')}>
+          <div className={cn('rounded-md border p-2.5 space-y-0.5', factResult.verdict === 'likely true' ? 'border-emerald-500/40 bg-emerald-500/5' : factResult.verdict === 'likely false' ? 'border-rose-500/40 bg-rose-500/5' : 'border-amber-500/40 bg-amber-500/5')}>
             <div className="text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5 capitalize">
-              <CheckCircle className="w-3 h-3" /> {factResult.verdict ?? '—'}{factResult.confidence != null && ` · ${Math.round(factResult.confidence * 100)}%`}
+              <CheckCircle className="w-3 h-3" /> {factResult.verdict ?? factResult.message ?? '—'}{factResult.confidence != null && ` · ${Math.round(factResult.confidence * 100)}%`}
             </div>
-            {factResult.rationale && <p className="text-[11px] text-zinc-300">{factResult.rationale}</p>}
-            {factResult.supporting?.length ? <div className="text-[10px] text-emerald-300">Supporting: {factResult.supporting.length}</div> : null}
-            {factResult.contradicting?.length ? <div className="text-[10px] text-rose-300">Contradicting: {factResult.contradicting.length}</div> : null}
+            {factResult.breakdown && (
+              <div className="text-[10px] text-zinc-300">
+                <span className="text-emerald-300">{factResult.breakdown.supporting.count} supporting</span>
+                {' · '}<span className="text-rose-300">{factResult.breakdown.contradicting.count} contradicting</span>
+                {' · '}<span className="text-zinc-400">{factResult.breakdown.neutral.count} neutral</span>
+              </div>
+            )}
           </div>
         )}
         {credibilityResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 space-y-0.5">
-            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5">
-              <FileBadge className="w-3 h-3" /> Source: {credibilityResult.tier} ({credibilityResult.score})
-            </div>
-            {credibilityResult.flags?.length ? <ul className="text-[11px] text-amber-300 list-disc list-inside">{credibilityResult.flags.map((f, i) => <li key={i}>{f}</li>)}</ul> : null}
-            {credibilityResult.notes && <p className="text-[11px] text-zinc-300">{credibilityResult.notes}</p>}
+            {credibilityResult.sources?.[0] ? (
+              <>
+                <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5">
+                  <FileBadge className="w-3 h-3" /> {credibilityResult.sources[0].credibilityLabel} ({credibilityResult.sources[0].credibilityScore})
+                </div>
+                {credibilityResult.recommendations?.length ? <ul className="text-[11px] text-amber-300 list-disc list-inside">{credibilityResult.recommendations.map((f, i) => <li key={i}>{f}</li>)}</ul> : null}
+              </>
+            ) : <p className="text-[11px] text-zinc-400">{credibilityResult.message}</p>}
           </div>
         )}
-        {decomposeResult?.atomicClaims?.length ? (
+        {decomposeResult?.components?.length ? (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 space-y-0.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5">
-              <ListTree className="w-3 h-3" /> {decomposeResult.atomicClaims.length} atomic claims
+              <ListTree className="w-3 h-3" /> {decomposeResult.atomicClaimCount} atomic claims &middot; {decomposeResult.logicalStructure}
             </div>
-            {decomposeResult.atomicClaims.slice(0, 5).map((a) => (
-              <div key={a.id} className="text-[11px] text-zinc-300"><span className="text-purple-300 font-mono">{a.id}.</span> {a.text}{a.verifiable === false && <span className="text-amber-300 ml-1">⚠</span>}</div>
+            {decomposeResult.components.slice(0, 5).map((c) => (
+              <div key={c.index} className="text-[11px] text-zinc-300"><span className="text-purple-300 font-mono">{c.index}.</span> {c.text}{c.evaluation?.verdict === 'challenged' && <span className="text-amber-300 ml-1">⚠</span>}</div>
             ))}
+          </div>
+        ) : decomposeResult?.message ? (
+          <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
+            <p className="text-[11px] text-zinc-400">{decomposeResult.message}</p>
           </div>
         ) : null}
       </div>

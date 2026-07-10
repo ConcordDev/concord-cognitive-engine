@@ -34,7 +34,7 @@ import {
   XCircle, ChevronDown, ChevronRight, Fuel, MapPin,
   UserCheck, Clipboard, Calculator, BarChart3,
   Timer, Award, CloudRain, TrendingUp, Package,
-  Wind, Thermometer, Eye, Droplets, Layers,
+  Wind, Thermometer, Eye, Droplets, Layers, ShieldCheck,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { showToast } from '@/components/common/Toasts';
@@ -735,6 +735,9 @@ export default function AviationLensPage() {
         <div className="flex flex-wrap gap-2">
           <button onClick={() => handleAction('calculate-wb')} className={ds.btnSecondary}>
             <Calculator className="w-4 h-4" /> W&B Calculate
+          </button>
+          <button onClick={() => handleAction('validate-wb')} className={ds.btnSecondary}>
+            <ShieldCheck className="w-4 h-4" /> W&B Validate
           </button>
           <button onClick={() => handleAction('currencyCheck')} className={ds.btnSecondary}>
             <Shield className="w-4 h-4" /> Currency Check
@@ -1908,6 +1911,7 @@ export default function AviationLensPage() {
             {activeMode === 'wb' && (
               <>
                 <button onClick={() => handleAction('calculate-wb')} className={cn(ds.btnGhost, ds.btnSmall)}><Calculator className="w-3 h-3" /> W&B Calculate</button>
+                <button onClick={() => handleAction('validate-wb')} className={cn(ds.btnGhost, ds.btnSmall)}><ShieldCheck className="w-3 h-3" /> W&B Validate</button>
               </>
             )}
             {activeMode === 'weather' && (
@@ -2061,6 +2065,46 @@ export default function AviationLensPage() {
               {!!actionResult.summary && <p className="text-[11px] text-gray-300">{String(actionResult.summary)}</p>}
             </div>
           )}
+          {/* validate-wb (W&B envelope safety check) */}
+          {actionResult.withinEnvelope !== undefined && actionResult.issues !== undefined && (
+            <div className="space-y-2" data-testid="wb-validate-result">
+              <div className="flex items-center gap-3">
+                <span className={cn(
+                  'px-2 py-0.5 rounded text-xs font-semibold',
+                  actionResult.overallSeverity === 'critical' ? 'bg-red-500/20 text-red-400'
+                    : actionResult.overallSeverity === 'warning' ? 'bg-amber-500/20 text-amber-400'
+                    : 'bg-green-500/20 text-green-400'
+                )}>
+                  {actionResult.withinEnvelope ? 'Within Envelope' : 'OUT OF ENVELOPE'}
+                </span>
+                <span className="text-xs text-gray-400">{String(actionResult.aircraft ?? '')}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-neon-cyan">{String(actionResult.grossWeight)}<span className="text-[10px] text-gray-400"> lb</span></p>
+                  <p className="text-[10px] text-gray-400">Gross Weight</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-neon-cyan">{String(actionResult.cg)}<span className="text-[10px] text-gray-400"> in</span></p>
+                  <p className="text-[10px] text-gray-400">CG</p>
+                </div>
+              </div>
+              {(actionResult.issues as {severity:string;kind:string;message:string}[]).length === 0 ? (
+                <p className="text-[11px] text-gray-300">{String(actionResult.message ?? 'Within limits.')}</p>
+              ) : (
+                <div className="space-y-1">
+                  {(actionResult.issues as {severity:string;kind:string;message:string}[]).map((iss, i) => (
+                    <div key={i} className={cn(
+                      'p-1.5 rounded text-[11px]',
+                      iss.severity === 'critical' ? 'bg-red-500/10 text-red-300' : 'bg-amber-500/10 text-amber-300'
+                    )}>
+                      {iss.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {/* flightSummary */}
           {actionResult.totalHours !== undefined && actionResult.averageDuration !== undefined && (
             <div className="grid grid-cols-3 gap-2" data-testid="flight-summary-result">
@@ -2170,9 +2214,14 @@ export default function AviationLensPage() {
                     </button>
                   )}
                   {editingId && activeMode === 'wb' && (
-                    <button onClick={() => handleAction('calculate-wb', editingId)} className={ds.btnSecondary}>
-                      <Calculator className="w-4 h-4" /> Calculate
-                    </button>
+                    <>
+                      <button onClick={() => handleAction('calculate-wb', editingId)} className={ds.btnSecondary}>
+                        <Calculator className="w-4 h-4" /> Calculate
+                      </button>
+                      <button onClick={() => handleAction('validate-wb', editingId)} className={ds.btnSecondary}>
+                        <ShieldCheck className="w-4 h-4" /> Validate
+                      </button>
+                    </>
                   )}
                   {editingId && activeMode === 'weather' && (
                     <button onClick={() => handleAction('weatherCheck', editingId)} className={ds.btnSecondary}>

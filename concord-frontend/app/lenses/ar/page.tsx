@@ -1,124 +1,146 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ * CONCORD // AR STUDIO — Wave 2 rebuild (Frontend Rebuild Program,
+ * docs/FRONTEND_REBUILD_PROGRAM.md)
+ * ─────────────────────────────────────────────────────────────────────────
+ * Reference-parity target: Adobe Aero / 8th Wall Studio-class WebXR AR
+ * scene authoring (see docs/lens-specs/ar-capability-map.md step-1.5
+ * checklist). This lens is a genuine augmented-reality FEATURE-AUTHORING
+ * tool (scenes, spatial anchors, 3D model placement, WebXR sessions,
+ * marker/image targets) — not Concord's in-game world (that's the
+ * separate "Concordia" / world lens).
+ *
+ * Honest-by-construction — every surface traces to a real macro:
+ *   • Scene Studio         → ar.sceneSave/sceneList/sceneGet/sceneDelete,
+ *                            ar.behaviorValidate, ar.animationTimeline,
+ *                            ar.imageTargetCompile/imageTargetList,
+ *                            ar.publishScene, ar.webxrPreview (all
+ *                            DB-backed via migration 332 ar_scenes/
+ *                            ar_image_targets/ar_publishes) — was ALREADY
+ *                            real and complete (components/ar/SceneStudio.tsx,
+ *                            904 LOC); untouched here beyond re-mounting.
+ *   • Spatial Diagnostics  → ar.spatialMapping / ar.markerDetection /
+ *                            ar.sceneGraph — three pure-compute macros with
+ *                            ZERO frontend callers before this rebuild
+ *                            (confirmed by grep). Now a real workbench.
+ *   • Asset Library        → a real "My Models" catalog (generic
+ *                            lens-artifact CRUD, Model3D type only) +
+ *                            live Sketchfab search (components/ar/
+ *                            SketchfabModels.tsx, real api.sketchfab.com
+ *                            v3 call, no key) — was ALREADY real, kept.
+ *   • AR Preview viewport   → ar.render (deterministic drawList + WebXR
+ *                            session plan) driving a real Three.js
+ *                            viewport, with an honest `navigator.xr
+ *                            .isSessionSupported('immersive-ar')`
+ *                            feature-detect gate before offering
+ *                            immersive-ar — was already real, kept as-is.
+ *
+ * RESOLVED the SceneStudio-vs-generic-CRUD duplication flagged in the
+ * rebuild brief: the old page's "Scenes" tab was a flat, disconnected
+ * generic-artifact CRUD (useLensData('ar','Scene')) with NO relationship to
+ * SceneStudio's real ar_scenes-backed authoring model (objects + behaviors
+ * + audio + settings) — a strictly worse duplicate. RETIRED. The old
+ * "Layers"/"Configs" tabs carried fields (`dtuDensity`, disconnected
+ * `trackingMode`/`renderQuality`/`resolution`/`fps`) that no macro
+ * anywhere reads — sliders that went nowhere, a real instance of the
+ * "control presented as functional but wired to nothing" pattern this
+ * program's audits were built to catch. RETIRED. "Anchors" is now a real
+ * workbench input inside Spatial Diagnostics instead of a disconnected
+ * catalog record. "Captures" had no backing capture pipeline (no macro,
+ * no getUserMedia code anywhere) — honestly scoped as a future build
+ * rather than shipped as an empty-looking feature; see the capability map.
+ * "3D Models" survives, narrowed to real self-reported asset metadata,
+ * folded into the new Asset Library tab alongside the (already-real)
+ * Sketchfab search.
+ *
+ * RETIRED the entire generated-scaffold surface: ManifestActionBar,
+ * AutoActionStrip, RecentMineCard, CrossLensRecentsPanel, LensVerticalHero,
+ * UniversalActions, LensFeaturePanel. Also dropped the dead
+ * `useRealtimeLens('ar')` panel/live-indicator — `ar` has no registered
+ * realtime socket channel (`DOMAIN_EVENTS` in useRealtimeLens.ts has no
+ * `ar` entry and the server never emits `ar:update`), so `isLive` was
+ * permanently false and `realtimeData` permanently null — the same
+ * dead-panel anti-pattern already fixed in the `history` lens rebuild.
+ *
+ * Full capability map + reference-parity checklist:
+ * docs/lens-specs/ar-capability-map.md
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Glasses, Camera, Boxes, ScanEye, Library, X } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { motion } from 'framer-motion';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { DensityToggle, StatTile, StatTileGrid } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useLensCommand } from "@/hooks/useLensCommand";
-import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useLensData } from '@/lib/hooks/use-lens-data';
+import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import {
-  Glasses, Camera, Settings2, Layers, Eye, Plus,
-  Search, Trash2, X, BarChart3, Zap, ChevronDown, Box,
-  MapPin, Globe, Monitor,
-} from 'lucide-react';
-import { ErrorState } from '@/components/common/EmptyState';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { SketchfabModels } from '@/components/ar/SketchfabModels';
 import { SceneStudio } from '@/components/ar/SceneStudio';
+import { SpatialDiagnostics } from '@/components/ar/SpatialDiagnostics';
+import { AssetLibrary, type ArRenderPlan } from '@/components/ar/AssetLibrary';
 
-type ModeTab = 'scenes' | 'layers' | 'anchors' | 'models' | 'configs' | 'captures';
-type ArtifactType = 'Scene' | 'Layer' | 'Anchor' | 'Model3D' | 'Config' | 'Capture';
-type Status = 'active' | 'inactive' | 'rendering' | 'published' | 'draft' | 'archived';
+type Tab = 'studio' | 'diagnostics' | 'library';
 
-interface ARArtifact {
-  name: string; type: ArtifactType; status: Status; description: string; notes: string;
-  layerType?: string; opacity?: number; visible?: boolean; zIndex?: number;
-  trackingMode?: string; renderQuality?: string; dtuDensity?: number;
-  position?: string; rotation?: string; scale?: number;
-  format?: string; fileSize?: string; polyCount?: number;
-  resolution?: string; fps?: number; codec?: string;
-  anchorType?: string; surfaceType?: string; confidence?: number;
-}
-
-const MODE_TABS: { id: ModeTab; label: string; icon: typeof Glasses; artifactType: ArtifactType }[] = [
-  { id: 'scenes', label: 'Scenes', icon: Globe, artifactType: 'Scene' },
-  { id: 'layers', label: 'Layers', icon: Layers, artifactType: 'Layer' },
-  { id: 'anchors', label: 'Anchors', icon: MapPin, artifactType: 'Anchor' },
-  { id: 'models', label: '3D Models', icon: Box, artifactType: 'Model3D' },
-  { id: 'configs', label: 'Configs', icon: Settings2, artifactType: 'Config' },
-  { id: 'captures', label: 'Captures', icon: Camera, artifactType: 'Capture' },
+const TABS: { id: Tab; label: string; hotkey: string; icon: typeof Boxes; description: string }[] = [
+  { id: 'studio', label: 'Scene Studio', hotkey: '1', icon: Boxes, description: 'Author objects, behaviors, animation, image targets, and publish AR scenes' },
+  { id: 'diagnostics', label: 'Spatial Diagnostics', hotkey: '2', icon: ScanEye, description: 'Analyze spatial anchors, fiducial markers, and scene-graph hierarchies' },
+  { id: 'library', label: 'Asset Library', hotkey: '3', icon: Library, description: 'Catalog reference models and search Sketchfab' },
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  active: { label: 'Active', color: 'green-400' }, inactive: { label: 'Inactive', color: 'gray-400' },
-  rendering: { label: 'Rendering', color: 'blue-400' }, published: { label: 'Published', color: 'emerald-400' },
-  draft: { label: 'Draft', color: 'yellow-400' }, archived: { label: 'Archived', color: 'gray-400' },
-};
-
-const LAYER_TYPES = ['DTU Overlay', 'Resonance Field', 'Lattice Grid', 'Temporal Markers', 'Spatial Audio', 'Data Visualization', 'Navigation', 'Custom'];
-const TRACKING_MODES = ['World', 'Face', 'Image', 'Object', 'Body', 'Geo'];
-const RENDER_QUALITIES = ['Low', 'Medium', 'High', 'Ultra'];
-const ANCHOR_TYPES = ['Plane', 'Point', 'Image', 'Face', 'Object', 'Geo'];
-const MODEL_FORMATS = ['GLTF', 'GLB', 'USDZ', 'OBJ', 'FBX', 'STL'];
-
 export default function ARLensPage() {
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensNav('ar');
+
+  const [tab, setTab] = useState<Tab>('studio');
   useLensCommand(
-    [
-      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
-    ],
-    { lensId: "ar" }
+    TABS.map((t) => ({
+      id: `tab-${t.id}`,
+      keys: t.hotkey,
+      description: t.label,
+      category: 'navigation' as const,
+      action: () => setTab(t.id),
+    })),
+    { lensId: 'ar' },
   );
 
-  useLensNav('ar');
-  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('ar');
+  // Real, cheap header counts — deduped with AssetLibrary's own useLensData
+  // call by react-query's shared cache (same queryKey), so this costs no
+  // extra network round-trip beyond what the Asset Library tab already
+  // fetches when mounted.
+  const { items: models } = useLensData('ar', 'Model3D', { seed: [] });
+  const [sceneCount, setSceneCount] = useState<number | null>(null);
+  const [targetCount, setTargetCount] = useState<number | null>(null);
+  const refreshCounts = useCallback(() => {
+    lensRun('ar', 'sceneList', {}).then((r) => {
+      if (r.data?.ok) setSceneCount((r.data.result as { count?: number } | null)?.count ?? 0);
+    }).catch(() => {});
+    lensRun('ar', 'imageTargetList', {}).then((r) => {
+      if (r.data?.ok) setTargetCount((r.data.result as { count?: number } | null)?.count ?? 0);
+    }).catch(() => {});
+  }, []);
+  useEffect(() => { refreshCounts(); }, [refreshCounts]);
 
-  const [activeTab, setActiveTab] = useState<ModeTab>('scenes');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<LensItem<ARArtifact> | null>(null);
-  const [showDashboard, setShowDashboard] = useState(false);
-  const [showStudio, setShowStudio] = useState(true);
-  const [showFeatures, setShowFeatures] = useState(true);
-  const [arEnabled, setArEnabled] = useState(false);
+  const switchTab = useCallback((next: Tab) => {
+    setTab((prev) => {
+      if (prev !== next) refreshCounts();
+      return next;
+    });
+  }, [refreshCounts]);
 
-  const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formStatus, setFormStatus] = useState<Status>('active');
-  const [formNotes, setFormNotes] = useState('');
-  const [formLayerType, setFormLayerType] = useState(LAYER_TYPES[0]);
-  const [formOpacity, setFormOpacity] = useState('75');
-  const [formTrackingMode, setFormTrackingMode] = useState(TRACKING_MODES[0]);
-  const [formRenderQuality, setFormRenderQuality] = useState(RENDER_QUALITIES[1]);
-  const [formDtuDensity, setFormDtuDensity] = useState('50');
-  const [formPosition, setFormPosition] = useState('');
-  const [formRotation, setFormRotation] = useState('');
-  const [formScale, setFormScale] = useState('1');
-  const [formFormat, setFormFormat] = useState(MODEL_FORMATS[0]);
-  const [formPolyCount, setFormPolyCount] = useState('');
-  const [formResolution, setFormResolution] = useState('1920x1080');
-  const [formFps, setFormFps] = useState('60');
-  const [formAnchorType, setFormAnchorType] = useState(ANCHOR_TYPES[0]);
-  const [formConfidence, setFormConfidence] = useState('');
-  const [formZIndex, setFormZIndex] = useState('0');
-
-  // Three.js viewport
+  // ── Live AR preview viewport (Three.js) ──────────────────────────────
   const viewportRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<unknown>(null);
   const animFrameRef = useRef<number>(0);
-
-  // ar.render descriptor (drawList + WebXR session plan) + immersive-ar capability.
-  interface RenderDrawItem { id?: string; kind?: string; model?: string | null; transform?: { position?: { x: number; y: number; z: number }; rotation?: { x: number; y: number; z: number }; scale?: number }; opacity?: number; color?: string }
-  interface RenderPlan { sessionMode?: string; requiredFeatures?: string[]; optionalFeatures?: string[]; referenceSpace?: string; drawList?: RenderDrawItem[]; objectCount?: number; assets?: string[]; inlineFallback?: boolean; title?: string }
-  const [renderPlan, setRenderPlan] = useState<RenderPlan | null>(null);
+  const [arEnabled, setArEnabled] = useState(false);
+  const [renderPlan, setRenderPlan] = useState<ArRenderPlan | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string | null>(null);
   const [arSupported, setArSupported] = useState(false);
-  const renderPlanRef = useRef<RenderPlan | null>(null);
+  const renderPlanRef = useRef<ArRenderPlan | null>(null);
   renderPlanRef.current = renderPlan;
 
   // Feature-detect immersive-ar once (WebXR needs a secure context; defaults to `self`).
@@ -129,56 +151,50 @@ export default function ARLensPage() {
   }, []);
 
   useEffect(() => {
-    if (!arEnabled || !viewportRef.current) {
-      return;
-    }
+    if (!arEnabled || !viewportRef.current) return;
 
     const container = viewportRef.current;
     let disposed = false;
 
+    interface RenderDrawItem { id?: string; kind?: string; model?: string | null; transform?: { position?: { x: number; y: number; z: number }; rotation?: { x: number; y: number; z: number }; scale?: number }; opacity?: number; color?: string }
+
     const initThree = async () => {
       const THREE = await import('three');
-
       if (disposed || !container) return;
 
       const width = container.clientWidth;
       const height = container.clientHeight;
 
-      // Scene
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0d0d14); // lattice-deep
+      scene.background = new THREE.Color(0x0d0d14);
 
-      // Camera
       const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 100);
       camera.position.set(0, 1.5, 4);
       camera.lookAt(0, 0, 0);
 
-      // Renderer
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
       renderer.setSize(width, height);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       container.innerHTML = '';
       container.appendChild(renderer.domElement);
-      rendererRef.current = renderer;
 
-      // Lights
       const ambient = new THREE.AmbientLight(0x404060, 0.6);
       scene.add(ambient);
-
-      const dirLight = new THREE.DirectionalLight(0xa855f7, 1.2); // neon-purple tinted
+      const dirLight = new THREE.DirectionalLight(0xa855f7, 1.2);
       dirLight.position.set(3, 5, 4);
       scene.add(dirLight);
-
-      const fillLight = new THREE.DirectionalLight(0x00d4ff, 0.4); // neon-blue
+      const fillLight = new THREE.DirectionalLight(0x00d4ff, 0.4);
       fillLight.position.set(-3, 2, -2);
       scene.add(fillLight);
 
-      // Renderables: when ar.render produced a drawList, render those real objects;
-      // otherwise show the idle demo knot. Track disposables either way.
+      // Renderables: when ar.render produced a drawList, render those real
+      // objects; otherwise show an idle demo torus-knot — a decorative
+      // "nothing previewed yet" visual, never mistakable for real scene
+      // content (no data/labels attached to it).
       const disposables: { dispose: () => void }[] = [];
       const spin: { obj: { rotation: { x: number; y: number } }; sx: number; sy: number }[] = [];
       const plan = renderPlanRef.current;
-      const drawList = Array.isArray(plan?.drawList) ? plan!.drawList! : [];
+      const drawList = Array.isArray(plan?.drawList) ? (plan!.drawList as RenderDrawItem[]) : [];
       if (drawList.length > 0) {
         for (const d of drawList) {
           const isSphere = typeof d.model === 'string' && /sphere/i.test(d.model);
@@ -203,23 +219,15 @@ export default function ARLensPage() {
         spin.push({ obj: torusKnot, sx: 0.3, sy: 0.5 });
       }
 
-      // Grid helper for ground reference
       const gridHelper = new THREE.GridHelper(10, 20, 0x2a2a3a, 0x1a1a24);
       gridHelper.position.y = -1.5;
       scene.add(gridHelper);
 
-      // Subtle wireframe sphere for AR-like atmosphere
       const sphereGeo = new THREE.IcosahedronGeometry(3, 1);
-      const wireframeMat = new THREE.MeshBasicMaterial({
-        color: 0x00fff7, // neon-cyan
-        wireframe: true,
-        transparent: true,
-        opacity: 0.06,
-      });
+      const wireframeMat = new THREE.MeshBasicMaterial({ color: 0x00fff7, wireframe: true, transparent: true, opacity: 0.06 });
       const wireSphere = new THREE.Mesh(sphereGeo, wireframeMat);
       scene.add(wireSphere);
 
-      // Mouse interaction (simple orbit via pointer)
       let mouseX = 0;
       let mouseY = 0;
       const onPointerMove = (e: PointerEvent) => {
@@ -229,29 +237,21 @@ export default function ARLensPage() {
       };
       container.addEventListener('pointermove', onPointerMove);
 
-      // Animation loop
       const clock = new THREE.Clock();
       const animate = () => {
         if (disposed) return;
         animFrameRef.current = requestAnimationFrame(animate);
-
         const elapsed = clock.getElapsedTime();
-
         for (const s of spin) { s.obj.rotation.x = elapsed * s.sx; s.obj.rotation.y = elapsed * s.sy; }
-
         wireSphere.rotation.y = elapsed * 0.1;
         wireSphere.rotation.x = elapsed * 0.05;
-
-        // Gentle camera orbit influenced by mouse
         camera.position.x = 4 * Math.sin(elapsed * 0.2) + mouseX * 1.5;
         camera.position.y = 1.5 + mouseY * -0.8;
         camera.lookAt(0, 0, 0);
-
         renderer.render(scene, camera);
       };
       animate();
 
-      // Handle resize
       const onResize = () => {
         if (disposed || !container) return;
         const w = container.clientWidth;
@@ -263,7 +263,6 @@ export default function ARLensPage() {
       const resizeObserver = new ResizeObserver(onResize);
       resizeObserver.observe(container);
 
-      // Cleanup references stored for the dispose closure
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (container as any).__threeCleanup = () => {
         disposed = true;
@@ -274,47 +273,17 @@ export default function ARLensPage() {
         sphereGeo.dispose();
         wireframeMat.dispose();
         renderer.dispose();
-        if (container.contains(renderer.domElement)) {
-          container.removeChild(renderer.domElement);
-        }
-        rendererRef.current = null;
+        if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
       };
     };
 
     initThree();
-
     return () => {
       const cleanup = (container as unknown as Record<string, unknown>).__threeCleanup as (() => void) | undefined;
       if (cleanup) cleanup();
     };
   }, [arEnabled, renderPlan]);
 
-  const activeArtifactType = MODE_TABS.find(t => t.id === activeTab)?.artifactType || 'Scene';
-  const { items, isLoading, isError, error, refetch, create, update, remove } = useLensData<ARArtifact>('ar', activeArtifactType, { seed: [] });
-  const runAction = useRunArtifact('ar');
-
-  const filtered = useMemo(() => {
-    let result = items;
-    if (searchQuery) { const q = searchQuery.toLowerCase(); result = result.filter(i => i.title.toLowerCase().includes(q) || (i.data as unknown as ARArtifact).description?.toLowerCase().includes(q)); }
-    if (filterStatus !== 'all') result = result.filter(i => (i.data as unknown as ARArtifact).status === filterStatus);
-    return result;
-  }, [items, searchQuery, filterStatus]);
-
-  const handleAction = useCallback(async (action: string, artifactId?: string) => {
-    const targetId = artifactId || filtered[0]?.id;
-    if (!targetId) return;
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      // The render button drives the live viewport with the computed descriptor.
-      if (action === 'render') {
-        const plan = ((res as { result?: RenderPlan })?.result ?? res) as RenderPlan;
-        if (plan && Array.isArray(plan.drawList)) { setRenderPlan(plan); setArEnabled(true); }
-      }
-    } catch (err) { console.error('Action failed:', err); }
-  }, [filtered, runAction]);
-
-  // Launch an immersive-ar WebXR session from the current render plan (reuses the
-  // existing SceneStudio pattern: requestSession → renderer.xr.setSession → setAnimationLoop).
   const enterAR = useCallback(async () => {
     const plan = renderPlan;
     const xr = (navigator as Navigator & { xr?: { requestSession?: (m: string, o?: Record<string, unknown>) => Promise<unknown> } }).xr;
@@ -322,8 +291,8 @@ export default function ARLensPage() {
     try {
       const THREE = await import('three');
       const session = await xr.requestSession('immersive-ar', {
-        requiredFeatures: plan.requiredFeatures || ['local-floor'],
-        optionalFeatures: plan.optionalFeatures || ['dom-overlay'],
+        requiredFeatures: (plan.requiredFeatures as string[]) || ['local-floor'],
+        optionalFeatures: ['dom-overlay'],
       }) as unknown;
       const canvas = document.createElement('canvas');
       const gl = canvas.getContext('webgl2', { xrCompatible: true }) as WebGLRenderingContext;
@@ -333,7 +302,7 @@ export default function ARLensPage() {
       await renderer.xr.setSession(session as any);
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
-      for (const d of plan.drawList || []) {
+      for (const d of (plan.drawList as { color?: string; transform?: { position?: { x: number; y: number; z: number } } }[]) || []) {
         const geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
         let color = 0xa855f7; try { color = new THREE.Color(d.color || '#a855f7').getHex(); } catch { /* default */ }
         const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color }));
@@ -347,269 +316,123 @@ export default function ARLensPage() {
     } catch (err) { console.error('Enter AR failed:', err); }
   }, [renderPlan]);
 
-  const resetForm = () => {
-    setFormName(''); setFormDescription(''); setFormStatus('active'); setFormNotes('');
-    setFormLayerType(LAYER_TYPES[0]); setFormOpacity('75');
-    setFormTrackingMode(TRACKING_MODES[0]); setFormRenderQuality(RENDER_QUALITIES[1]);
-    setFormDtuDensity('50'); setFormPosition(''); setFormRotation('');
-    setFormScale('1'); setFormFormat(MODEL_FORMATS[0]); setFormPolyCount('');
-    setFormResolution('1920x1080'); setFormFps('60');
-    setFormAnchorType(ANCHOR_TYPES[0]); setFormConfidence(''); setFormZIndex('0');
-  };
-
-  const openCreate = () => { setEditingItem(null); resetForm(); setEditorOpen(true); };
-  const openEdit = (item: LensItem<ARArtifact>) => {
-    const d = item.data as unknown as ARArtifact;
-    setEditingItem(item); setFormName(d.name || ''); setFormDescription(d.description || '');
-    setFormStatus(d.status || 'active'); setFormNotes(d.notes || '');
-    setFormLayerType(d.layerType || LAYER_TYPES[0]); setFormOpacity(d.opacity?.toString() || '75');
-    setFormTrackingMode(d.trackingMode || TRACKING_MODES[0]);
-    setFormRenderQuality(d.renderQuality || RENDER_QUALITIES[1]);
-    setFormDtuDensity(d.dtuDensity?.toString() || '50');
-    setFormPosition(d.position || ''); setFormRotation(d.rotation || '');
-    setFormScale(d.scale?.toString() || '1'); setFormFormat(d.format || MODEL_FORMATS[0]);
-    setFormPolyCount(d.polyCount?.toString() || '');
-    setFormResolution(d.resolution || '1920x1080'); setFormFps(d.fps?.toString() || '60');
-    setFormAnchorType(d.anchorType || ANCHOR_TYPES[0]);
-    setFormConfidence(d.confidence?.toString() || ''); setFormZIndex(d.zIndex?.toString() || '0');
-    setEditorOpen(true);
-  };
-
-  const handleSave = async () => {
-    const data: Record<string, unknown> = {
-      name: formName, type: activeArtifactType, status: formStatus,
-      description: formDescription, notes: formNotes,
-      layerType: formLayerType, opacity: formOpacity ? parseInt(formOpacity) : undefined,
-      trackingMode: formTrackingMode, renderQuality: formRenderQuality,
-      dtuDensity: formDtuDensity ? parseInt(formDtuDensity) : undefined,
-      position: formPosition, rotation: formRotation,
-      scale: formScale ? parseFloat(formScale) : undefined,
-      format: formFormat, polyCount: formPolyCount ? parseInt(formPolyCount) : undefined,
-      resolution: formResolution, fps: formFps ? parseInt(formFps) : undefined,
-      anchorType: formAnchorType,
-      confidence: formConfidence ? parseFloat(formConfidence) : undefined,
-      zIndex: formZIndex ? parseInt(formZIndex) : undefined,
-    };
-    if (editingItem) await update(editingItem.id, { title: formName, data, meta: { tags: [], status: formStatus, visibility: 'private' } });
-    else await create({ title: formName, data, meta: { tags: [], status: formStatus, visibility: 'private' } });
-    setEditorOpen(false);
-  };
-
-  if (isError) return <ErrorState error={error?.message} onRetry={refetch} />;
-
-  const renderDashboard = () => {
-    const all = items.map(i => i.data as unknown as ARArtifact);
-    const activeLayers = all.filter(a => a.status === 'active').length;
-    const totalAnchors = all.filter(a => a.anchorType).length;
-    const modelCount = all.filter(a => a.format).length;
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className={ds.panel}><Layers className="w-5 h-5 text-neon-purple mb-2" /><p className={ds.textMuted}>Active Layers</p><p className="text-xl font-bold text-white">{activeLayers}</p></div>
-          <div className={ds.panel}><Eye className="w-5 h-5 text-neon-cyan mb-2" /><p className={ds.textMuted}>AR Status</p><p className="text-xl font-bold text-white">{arEnabled ? 'LIVE' : 'OFF'}</p></div>
-          <div className={ds.panel}><MapPin className="w-5 h-5 text-neon-green mb-2" /><p className={ds.textMuted}>Anchors</p><p className="text-xl font-bold text-white">{totalAnchors}</p></div>
-          <div className={ds.panel}><Box className="w-5 h-5 text-neon-blue mb-2" /><p className={ds.textMuted}>3D Models</p><p className="text-xl font-bold text-white">{modelCount}</p></div>
-        </div>
-        {/* AR Viewport Preview */}
-        <div className={ds.panel}>
-          <div className="h-64 relative overflow-hidden rounded-lg bg-lattice-deep">
-            {arEnabled ? (
-              <div ref={viewportRef} className="w-full h-full" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="text-center text-gray-400"><Glasses className="w-12 h-12 mx-auto mb-2 opacity-50" /><p className="text-sm">Enable AR to begin</p></div>
-              </div>
-            )}
-          </div>
-          {arEnabled && (
-            <div className="flex items-center gap-2 mt-2 px-1 flex-wrap">
-              <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
-              <span className="text-xs text-neon-cyan">3D Viewport Active</span>
-              {renderPlan && (
-                <span className="text-xs text-gray-400">· {renderPlan.objectCount ?? renderPlan.drawList?.length ?? 0} object(s) · {(renderPlan.requiredFeatures || []).join(', ')}</span>
-              )}
-              {renderPlan && (
-                arSupported ? (
-                  <button onClick={() => void enterAR()} className={cn(ds.btnPrimary, ds.btnSmall, 'ml-auto')}>
-                    <Glasses className="w-3.5 h-3.5" /> Enter AR
-                  </button>
-                ) : (
-                  <span className="text-xs text-gray-500 ml-auto" title="immersive-ar requires an AR-capable device (ARCore/ARKit) over HTTPS">Inline preview · immersive-ar unavailable on this device</span>
-                )
-              )}
-              {!renderPlan && <span className="text-xs text-gray-400 ml-auto">Move pointer to orbit</span>}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderEditor = () => {
-    if (!editorOpen) return null;
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-        <div className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button></div>
-          <div className="space-y-3">
-            <div><label className={ds.label}>Name</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} /></div>
-            <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={2} value={formDescription} onChange={e => setFormDescription(e.target.value)} /></div>
-            <div><label className={ds.label}>Status</label><select className={ds.select} value={formStatus} onChange={e => setFormStatus(e.target.value as Status)}>{Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
-
-            {(activeArtifactType === 'Scene' || activeArtifactType === 'Config') && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Tracking Mode</label><select className={ds.select} value={formTrackingMode} onChange={e => setFormTrackingMode(e.target.value)}>{TRACKING_MODES.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-                <div><label className={ds.label}>Render Quality</label><select className={ds.select} value={formRenderQuality} onChange={e => setFormRenderQuality(e.target.value)}>{RENDER_QUALITIES.map(q => <option key={q} value={q}>{q}</option>)}</select></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>DTU Density</label><input type="number" className={ds.input} value={formDtuDensity} onChange={e => setFormDtuDensity(e.target.value)} min="1" max="100" /></div>
-                <div><label className={ds.label}>Target FPS</label><input type="number" className={ds.input} value={formFps} onChange={e => setFormFps(e.target.value)} /></div>
-              </div>
-              <div><label className={ds.label}>Resolution</label><input className={ds.input} value={formResolution} onChange={e => setFormResolution(e.target.value)} /></div>
-            </>)}
-
-            {activeArtifactType === 'Layer' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Layer Type</label><select className={ds.select} value={formLayerType} onChange={e => setFormLayerType(e.target.value)}>{LAYER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                <div><label className={ds.label}>Z-Index</label><input type="number" className={ds.input} value={formZIndex} onChange={e => setFormZIndex(e.target.value)} /></div>
-              </div>
-              <div><label className={ds.label}>Opacity (%)</label><input type="number" className={ds.input} value={formOpacity} onChange={e => setFormOpacity(e.target.value)} min="0" max="100" /></div>
-            </>)}
-
-            {activeArtifactType === 'Anchor' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Anchor Type</label><select className={ds.select} value={formAnchorType} onChange={e => setFormAnchorType(e.target.value)}>{ANCHOR_TYPES.map(a => <option key={a} value={a}>{a}</option>)}</select></div>
-                <div><label className={ds.label}>Confidence (0-1)</label><input type="number" step="0.01" className={ds.input} value={formConfidence} onChange={e => setFormConfidence(e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Position (x,y,z)</label><input className={ds.input} value={formPosition} onChange={e => setFormPosition(e.target.value)} placeholder="0, 0, 0" /></div>
-                <div><label className={ds.label}>Rotation</label><input className={ds.input} value={formRotation} onChange={e => setFormRotation(e.target.value)} placeholder="0, 0, 0" /></div>
-              </div>
-            </>)}
-
-            {activeArtifactType === 'Model3D' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Format</label><select className={ds.select} value={formFormat} onChange={e => setFormFormat(e.target.value)}>{MODEL_FORMATS.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
-                <div><label className={ds.label}>Poly Count</label><input type="number" className={ds.input} value={formPolyCount} onChange={e => setFormPolyCount(e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Scale</label><input type="number" step="0.1" className={ds.input} value={formScale} onChange={e => setFormScale(e.target.value)} /></div>
-                <div><label className={ds.label}>Position</label><input className={ds.input} value={formPosition} onChange={e => setFormPosition(e.target.value)} placeholder="0, 0, 0" /></div>
-              </div>
-            </>)}
-
-            {activeArtifactType === 'Capture' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Resolution</label><input className={ds.input} value={formResolution} onChange={e => setFormResolution(e.target.value)} /></div>
-                <div><label className={ds.label}>Format</label><select className={ds.select} value={formFormat} onChange={e => setFormFormat(e.target.value)}><option value="PNG">PNG</option><option value="JPEG">JPEG</option><option value="MP4">MP4</option><option value="WebM">WebM</option></select></div>
-              </div>
-            </>)}
-
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} /></div>
-          </div>
-          <div className="flex justify-end gap-2 mt-4"><button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>Cancel</button><button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>Save</button></div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderLibrary = () => (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input className={cn(ds.input, 'pl-10')} placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
-        <select className={cn(ds.select, 'w-auto')} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">All Status</option>{Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
-        <button onClick={openCreate} className={ds.btnPrimary}><Plus className="w-4 h-4" /> New</button>
-      </div>
-      {isLoading ? <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" /></div>
-      : filtered.length === 0 ? <div className={cn(ds.panel, 'text-center py-12')}><Glasses className="w-12 h-12 text-gray-600 mx-auto mb-3" /><p className={ds.textMuted}>No {activeArtifactType} items yet</p><button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}><Plus className="w-4 h-4" /> Create First</button></div>
-      : filtered.map((item, index) => {
-        const d = item.data as unknown as ARArtifact;
-        const sc = STATUS_CONFIG[d.status] || STATUS_CONFIG.active;
-        return (
-          <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className={ds.panelHover} onClick={() => openEdit(item)}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3"><Glasses className="w-5 h-5 text-neon-purple" /><div>
-                <p className="text-white font-medium">{d.name || item.title}</p>
-                <p className={ds.textMuted}>
-                  {d.layerType && <span>{d.layerType} </span>}
-                  {d.trackingMode && <span>{d.trackingMode} tracking </span>}
-                  {d.anchorType && <span>{d.anchorType} anchor </span>}
-                  {d.format && <span>{d.format} </span>}
-                  {d.polyCount && <span>{d.polyCount.toLocaleString()} polys </span>}
-                  {d.renderQuality && <span>&middot; {d.renderQuality} </span>}
-                </p>
-              </div></div>
-              <div className="flex items-center gap-2">
-                {d.opacity !== undefined && <span className="text-xs text-neon-cyan">{d.opacity}%</span>}
-                {d.confidence !== undefined && <span className="text-xs text-neon-green">{(d.confidence * 100).toFixed(0)}%</span>}
-                <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>{sc.label}</span>
-                <button onClick={e => { e.stopPropagation(); handleAction('render', item.id); }} className={ds.btnGhost} aria-label="Activate"><Zap className="w-4 h-4 text-neon-purple" /></button>
-                <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-4 h-4 text-red-400" /></button>
-              </div>
-            </div>
-          </motion.div>
-        );
-      })}
-    </div>
-  );
+  const handlePreview = useCallback((plan: ArRenderPlan, title: string) => {
+    setRenderPlan(plan);
+    setPreviewTitle(title);
+    setArEnabled(true);
+  }, []);
 
   return (
     <LensShell lensId="ar" asMain={false}>
       <FirstRunTour lensId="ar" />
-      <ManifestActionBar />
-      <DepthBadge lensId="ar" size="sm" className="ml-2" />
-      <LensVerticalHero lensId="ar" className="mx-6 mt-4" />
-    <div data-lens-theme="ar" className="space-y-6 p-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center"><Glasses className="w-5 h-5 text-white" /></div>
-          <div><div className="flex items-center gap-2"><h1 className={ds.heading1}>AR</h1><LiveIndicator isLive={isLive} lastUpdated={lastUpdated} /></div><p className={ds.textMuted}>Scenes, layers, anchors, 3D models, configs, and captures</p></div>
-        </div>
-        <div className="flex items-center gap-2">
-          {runAction.isPending && <span className="text-xs text-neon-purple animate-pulse">AI processing...</span>}
-          <DTUExportButton domain="ar" data={{}} compact />
-          <button onClick={() => { setShowStudio(!showStudio); setShowDashboard(false); }} className={cn(showStudio ? ds.btnPrimary : ds.btnSecondary)}><Box className="w-4 h-4" /> Scene Studio</button>
-          <button onClick={() => setArEnabled(!arEnabled)} className={cn(arEnabled ? ds.btnPrimary : ds.btnSecondary)}>
-            {arEnabled ? <><Camera className="w-4 h-4" /> Stop AR</> : <><Glasses className="w-4 h-4" /> Start AR</>}
-          </button>
-          <button onClick={() => { setShowDashboard(!showDashboard); setShowStudio(false); }} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button>
-        </div>
-      </header>
-      <RealtimeDataPanel domain="ar" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <UniversalActions domain="ar" artifactId={items[0]?.id} compact />
+      <div data-lens-theme="ar" className="p-6 space-y-5">
+        {/* Header */}
+        <header className="space-y-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shrink-0">
+              <Glasses className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-white flex items-center gap-2">
+                AR
+                <DepthBadge lensId="ar" size="sm" />
+              </h1>
+              <p className="text-sm text-gray-400">
+                WebXR augmented-reality scene authoring — spatial anchors, 3D placement, behaviors, and publish-to-phone.
+              </p>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <DensityToggle variant="dropdown" />
+              <DTUExportButton domain="ar" data={{ scenes: sceneCount, models: models.length, imageTargets: targetCount }} compact />
+              <button
+                onClick={() => setArEnabled((v) => !v)}
+                className={cn(arEnabled ? ds.btnPrimary : ds.btnSecondary)}
+              >
+                {arEnabled ? <><Camera className="w-4 h-4" /> Stop preview</> : <><Glasses className="w-4 h-4" /> Start preview</>}
+              </button>
+            </div>
+          </div>
 
-      {(() => { const all = items.map(i => i.data as unknown as ARArtifact); return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className={ds.panel}><Layers className="w-5 h-5 text-neon-purple mb-2" /><p className={ds.textMuted}>Total Items</p><p className="text-xl font-bold text-white">{items.length}</p></div>
-          <div className={ds.panel}><Eye className="w-5 h-5 text-neon-cyan mb-2" /><p className={ds.textMuted}>AR Status</p><p className="text-xl font-bold text-white">{arEnabled ? 'LIVE' : 'OFF'}</p></div>
-          <div className={ds.panel}><MapPin className="w-5 h-5 text-neon-green mb-2" /><p className={ds.textMuted}>Active</p><p className="text-xl font-bold text-white">{all.filter(a => a.status === 'active').length}</p></div>
-          <div className={ds.panel}><Monitor className="w-5 h-5 text-neon-blue mb-2" /><p className={ds.textMuted}>Rendering</p><p className="text-xl font-bold text-white">{all.filter(a => a.status === 'rendering').length}</p></div>
-        </div>
-      ); })()}
+          <StatTileGrid columns={4}>
+            <StatTile label="Scenes authored" value={sceneCount ?? '—'} icon={<Boxes className="w-4 h-4" />} />
+            <StatTile label="Image targets" value={targetCount ?? '—'} icon={<ScanEye className="w-4 h-4" />} />
+            <StatTile label="Cataloged models" value={models.length} icon={<Library className="w-4 h-4" />} />
+            <StatTile label="Immersive-AR" value={arSupported ? 'Supported' : 'Screen-only'} caption={arSupported ? 'ARCore/ARKit detected' : 'no XR device — inline preview'} />
+          </StatTileGrid>
 
-      {showStudio ? (
-        <section className="rounded-xl border border-lattice-border bg-zinc-950/40 p-4">
-          <SceneStudio />
-        </section>
-      ) : (<>
-        <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
-        {showDashboard ? renderDashboard() : renderLibrary()}
-        {renderEditor()}
-      </>)}
-      <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
-        {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="ar" /></div>}
+          {/* AR preview viewport — driven by ar.render, either from a Model3D
+              catalog preview (Asset Library) or a published scene link opened
+              on-device. Not a scene editor viewport (SceneStudio has its own). */}
+          {arEnabled && (
+            <div className={ds.panel}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-300">{previewTitle ? `Previewing: ${previewTitle}` : 'AR preview'}</span>
+                {previewTitle && (
+                  <button onClick={() => { setRenderPlan(null); setPreviewTitle(null); }} className={ds.btnGhost} aria-label="Clear preview">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="h-64 relative overflow-hidden rounded-lg bg-lattice-deep">
+                <div ref={viewportRef} className="w-full h-full" />
+              </div>
+              <div className="flex items-center gap-2 mt-2 px-1 flex-wrap">
+                <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
+                <span className="text-xs text-neon-cyan">{renderPlan ? '3D viewport active' : 'Idle viewport — select "Preview in AR" on a model, or publish a scene'}</span>
+                {renderPlan && <span className="text-xs text-gray-400">· {renderPlan.objectCount ?? (renderPlan.drawList as unknown[] | undefined)?.length ?? 0} object(s)</span>}
+                {renderPlan && (
+                  arSupported ? (
+                    <button onClick={() => void enterAR()} className={cn(ds.btnPrimary, ds.btnSmall, 'ml-auto')}>
+                      <Glasses className="w-3.5 h-3.5" /> Enter AR
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-500 ml-auto" title="immersive-ar requires an AR-capable device (ARCore/ARKit) over HTTPS">Inline preview · immersive-ar unavailable on this device</span>
+                  )
+                )}
+                {!renderPlan && <span className="text-xs text-gray-400 ml-auto">Move pointer to orbit</span>}
+              </div>
+            </div>
+          )}
+        </header>
+
+        {/* Workspace nav */}
+        <nav className="flex gap-1 flex-wrap border-b border-lattice-border pb-0" aria-label="AR workspace sections">
+          {TABS.map((t) => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => switchTab(t.id)}
+                title={t.description}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-lg border-b-2 -mb-px transition-colors',
+                  active ? 'border-neon-purple text-neon-purple bg-neon-purple/5' : 'border-transparent text-gray-400 hover:text-white hover:bg-lattice-surface/50',
+                )}
+              >
+                <t.icon className="w-4 h-4" />
+                {t.label}
+                <kbd className="ml-1 hidden sm:inline text-[9px] px-1 py-0.5 rounded bg-black/30 text-gray-500 font-mono">{t.hotkey}</kbd>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Workspace body */}
+        <div role="tabpanel" aria-label={TABS.find((t) => t.id === tab)?.label}>
+          {tab === 'studio' && (
+            <section className="rounded-xl border border-lattice-border bg-zinc-950/40 p-4">
+              <SceneStudio />
+            </section>
+          )}
+          {tab === 'diagnostics' && (
+            <section className="rounded-xl border border-lattice-border bg-zinc-950/40 p-4">
+              <SpatialDiagnostics />
+            </section>
+          )}
+          {tab === 'library' && <AssetLibrary onPreview={handlePreview} />}
+        </div>
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SketchfabModels />
-      </section>
-    </div>
-
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <a href="#ar-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to ar content</a>
-          <RecentMineCard domain="ar" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="ar" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="ar" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

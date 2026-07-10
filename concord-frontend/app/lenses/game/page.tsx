@@ -13,21 +13,20 @@ import { GameFeed } from '@/components/game/GameFeed';
 import { HabitHub } from '@/components/game/HabitHub';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trophy, Star, Zap, Target, Users, Swords, Crown,
-  Flame, TrendingUp, ShoppingBag, Lock, Unlock,
-  ChevronRight, ChevronDown, Plus, X, Check, Clock,
-  BarChart3, Sparkles, Gem, Gamepad2, Joystick,
-  GitBranch, BookOpen, Cpu,
-  Activity, ArrowUp, Loader2, Scale, BarChart2,
+  Flame, TrendingUp, Plus, X, Check, Clock,
+  BarChart3, Sparkles, Gamepad2, FlaskConical,
+  ArrowUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
+import { GameDesignLab } from '@/components/game/GameDesignLab';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -39,10 +38,9 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 // Types
 // ---------------------------------------------------------------------------
 
-type MainTab = 'dashboard' | 'habits' | 'skills' | 'quests' | 'achievements' | 'leaderboard' | 'shop' | 'history' | 'minigame';
+type MainTab = 'dashboard' | 'habits' | 'design' | 'quests' | 'achievements' | 'leaderboard' | 'history' | 'minigame';
 type LeaderboardPeriod = 'weekly' | 'monthly' | 'alltime';
 type QuestStatus = 'available' | 'accepted' | 'completed';
-type SkillBranch = 'production' | 'theory' | 'engineering' | 'performance';
 
 interface Achievement {
   id: string;
@@ -63,42 +61,29 @@ interface Quest {
   description: string;
   icon: string;
   xpReward: number;
-  difficulty: 'easy' | 'medium' | 'hard';
+  // Difficulty is a real, user-chosen field only for locally-authored custom
+  // challenges. The /api/game/challenges daily-challenge feed has no
+  // difficulty concept server-side, so it's optional — never fabricated.
+  difficulty?: 'easy' | 'medium' | 'hard';
   type: 'daily' | 'weekly' | 'challenge';
   status: QuestStatus;
   timeLeft?: string;
+  // Real progress/target from /api/game/challenges (server-computed from
+  // actual DTU/vote activity) — undefined for locally-authored quests until
+  // the server round-trips them.
+  progress?: number;
+  target?: number;
 }
 
+// Matches the real /api/game/leaderboard response shape exactly — the
+// backend has no per-user display-name/title join, so this intentionally
+// does NOT invent `name`/`title` fields; the UI renders the real `userId`.
 interface LeaderboardPlayer {
-  id: string;
-  name: string;
-  title: string;
+  userId: string;
   level: number;
   xp: number;
-  achievements: number;
-  isCurrentUser?: boolean;
-}
-
-interface SkillNode {
-  id: string;
-  name: string;
-  description: string;
-  level: number;
-  maxLevel: number;
-  xpCost: number;
-  unlocked: boolean;
-  requires?: string;
-}
-
-interface ShopItem {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  type: 'badge' | 'title' | 'theme' | 'emote';
-  cost: number;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  owned: boolean;
+  badges: number;
+  badgeList: string[];
 }
 
 interface XpHistoryEntry {
@@ -108,8 +93,11 @@ interface XpHistoryEntry {
 }
 
 interface GameProfile {
-  name: string;
-  title: string;
+  // `name`/`title`/`joinDate`/`rank`/`completionRate`/`challengesWon` are
+  // deliberately NOT modeled here — /api/game/profile never returns them
+  // server-side. Rendering them would mean either literal "undefined" text
+  // or a permanently-fake zero. Rank is instead derived client-side from the
+  // real /api/game/leaderboard list (see `myRank` below).
   level: number;
   xp: number;
   nextLevelXp: number;
@@ -119,10 +107,6 @@ interface GameProfile {
   streak: number;
   longestStreak: number;
   questsCompleted: number;
-  challengesWon: number;
-  joinDate: string;
-  rank: number;
-  completionRate: number;
   xpHistory: XpHistoryEntry[];
 }
 
@@ -131,8 +115,6 @@ interface GameProfile {
 // ---------------------------------------------------------------------------
 
 const INITIAL_PROFILE = {
-  name: '',
-  title: '',
   level: 1,
   xp: 0,
   nextLevelXp: 1000,
@@ -142,10 +124,6 @@ const INITIAL_PROFILE = {
   streak: 0,
   longestStreak: 0,
   questsCompleted: 0,
-  challengesWon: 0,
-  joinDate: new Date().toISOString().slice(0, 10),
-  rank: 0,
-  completionRate: 0,
 };
 
 const INITIAL_XP_HISTORY: { day: string; xp: number; label: string }[] = [];
@@ -155,59 +133,6 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [];
 const INITIAL_QUESTS: Quest[] = [];
 
 const INITIAL_LEADERBOARD: LeaderboardPlayer[] = [];
-
-const SKILL_TREES: Record<SkillBranch, { label: string; color: string; icon: typeof Gamepad2; nodes: SkillNode[] }> = {
-  production: {
-    label: 'Building',
-    color: 'text-neon-purple',
-    icon: Gamepad2,
-    nodes: [
-      { id: 'p1', name: 'Prototyping', description: 'Rapidly turning ideas into working drafts', level: 0, maxLevel: 5, xpCost: 0, unlocked: true },
-      { id: 'p2', name: 'Architecture', description: 'Structuring complex systems and workflows', level: 0, maxLevel: 5, xpCost: 200, unlocked: false, requires: 'p1' },
-      { id: 'p3', name: 'Integration', description: 'Connecting tools, APIs, and data sources', level: 0, maxLevel: 5, xpCost: 300, unlocked: false, requires: 'p1' },
-      { id: 'p4', name: 'Automation', description: 'Building repeatable pipelines and triggers', level: 0, maxLevel: 5, xpCost: 400, unlocked: false, requires: 'p2' },
-      { id: 'p5', name: 'Optimization', description: 'Performance tuning and resource management', level: 0, maxLevel: 5, xpCost: 500, unlocked: false, requires: 'p2' },
-    ],
-  },
-  theory: {
-    label: 'Knowledge',
-    color: 'text-neon-cyan',
-    icon: BookOpen,
-    nodes: [
-      { id: 't1', name: 'Fundamentals', description: 'Core concepts and first principles', level: 0, maxLevel: 5, xpCost: 0, unlocked: true },
-      { id: 't2', name: 'Analysis', description: 'Breaking down problems systematically', level: 0, maxLevel: 5, xpCost: 250, unlocked: false, requires: 't1' },
-      { id: 't3', name: 'Pattern Recognition', description: 'Identifying recurring structures and signals', level: 0, maxLevel: 5, xpCost: 350, unlocked: false, requires: 't1' },
-      { id: 't4', name: 'Systems Thinking', description: 'Understanding complex interdependencies', level: 0, maxLevel: 5, xpCost: 450, unlocked: false, requires: 't2' },
-      { id: 't5', name: 'Research Mastery', description: 'Advanced investigation and synthesis', level: 0, maxLevel: 5, xpCost: 600, unlocked: false, requires: 't4' },
-    ],
-  },
-  engineering: {
-    label: 'Engineering',
-    color: 'text-neon-green',
-    icon: Cpu,
-    nodes: [
-      { id: 'e1', name: 'Data Wrangling', description: 'Cleaning, transforming, and shaping data', level: 0, maxLevel: 5, xpCost: 0, unlocked: true },
-      { id: 'e2', name: 'Debugging', description: 'Diagnosing and resolving complex issues', level: 0, maxLevel: 5, xpCost: 200, unlocked: false, requires: 'e1' },
-      { id: 'e3', name: 'Visualization', description: 'Presenting data and insights clearly', level: 0, maxLevel: 5, xpCost: 300, unlocked: false, requires: 'e1' },
-      { id: 'e4', name: 'Deployment', description: 'Shipping reliable systems to production', level: 0, maxLevel: 5, xpCost: 500, unlocked: false, requires: 'e2' },
-      { id: 'e5', name: 'AI & ML', description: 'Machine learning models and inference', level: 0, maxLevel: 5, xpCost: 400, unlocked: false, requires: 'e3' },
-    ],
-  },
-  performance: {
-    label: 'Leadership',
-    color: 'text-neon-pink',
-    icon: Joystick,
-    nodes: [
-      { id: 'r1', name: 'Communication', description: 'Clear and effective information exchange', level: 0, maxLevel: 5, xpCost: 0, unlocked: true },
-      { id: 'r2', name: 'Collaboration', description: 'Working effectively across teams and roles', level: 0, maxLevel: 5, xpCost: 250, unlocked: false, requires: 'r1' },
-      { id: 'r3', name: 'Decision Making', description: 'Quick, informed judgment under uncertainty', level: 0, maxLevel: 5, xpCost: 350, unlocked: false, requires: 'r1' },
-      { id: 'r4', name: 'Strategy', description: 'Long-term planning and resource allocation', level: 0, maxLevel: 5, xpCost: 450, unlocked: false, requires: 'r2' },
-      { id: 'r5', name: 'Mentorship', description: 'Teaching, guiding, and growing others', level: 0, maxLevel: 5, xpCost: 500, unlocked: false, requires: 'r3' },
-    ],
-  },
-};
-
-// Shop items are fetched from the backend via useLensData (see component body)
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -251,15 +176,13 @@ export default function GameLensPage() {
 
       { id: 'tab-habits', keys: 'b', description: 'Habit Hub', category: 'navigation', action: () => setActiveTab('habits') },
 
-      { id: 'tab-skills', keys: 's', description: 'Skills', category: 'navigation', action: () => setActiveTab('skills') },
+      { id: 'tab-design', keys: 'g', description: 'Design Lab', category: 'navigation', action: () => setActiveTab('design') },
 
       { id: 'tab-quests', keys: 'q', description: 'Quests', category: 'navigation', action: () => setActiveTab('quests') },
 
       { id: 'tab-achievements', keys: 'a', description: 'Achievements', category: 'navigation', action: () => setActiveTab('achievements') },
 
       { id: 'tab-leaderboard', keys: 'l', description: 'Leaderboard', category: 'navigation', action: () => setActiveTab('leaderboard') },
-
-      { id: 'tab-shop', keys: 'h', description: 'Shop', category: 'navigation', action: () => setActiveTab('shop') },
 
       { id: 'tab-history', keys: 'i', description: 'History', category: 'navigation', action: () => setActiveTab('history') },
 
@@ -271,34 +194,8 @@ export default function GameLensPage() {
 
   );
   const [lbPeriod, setLbPeriod] = useState<LeaderboardPeriod>('alltime');
-  const { items: shopLensItems, update: updateShopItem } = useLensData<ShopItem>('game', 'shop-item', { noSeed: true });
-
-  // Backend action wiring
-  const runGameAction = useRunArtifact('game');
-  const [gameActionResult, setGameActionResult] = useState<Record<string, unknown> | null>(null);
-  const [gameRunning, setGameRunning] = useState<string | null>(null);
-
-  const handleGameAction = useCallback(async (action: string) => {
-    const targetId = shopLensItems[0]?.id;
-    if (!targetId) return;
-    setGameRunning(action);
-    try {
-      const res = await runGameAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setGameActionResult({ _action: action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setGameActionResult({ _action: action, ...(res.result as Record<string, unknown>) }); }
-    } catch (e) { console.error(`Game action ${action} failed:`, e); setGameActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setGameRunning(null);
-  }, [shopLensItems, runGameAction]);
-  const [shopItems, setShopItems] = useState<ShopItem[]>([]);
-  const [purchasingIds, setPurchasingIds] = useState<Set<string>>(new Set());
-
-  // Sync shop items from API
-  useEffect(() => {
-    if (shopLensItems.length > 0) {
-      setShopItems(shopLensItems.map(i => ({ ...(i.data as unknown as ShopItem), id: i.id })));
-    }
-  }, [shopLensItems]);
+  const { user: authUser } = useAuth();
   const [playerXp, setPlayerXp] = useState(0);
-  const [expandedBranch, setExpandedBranch] = useState<SkillBranch | null>('production');
   const [showCreateChallenge, setShowCreateChallenge] = useState(false);
   const [newChallenge, setNewChallenge] = useState({ name: '', description: '', difficulty: 'medium' as Quest['difficulty'], xpReward: 300 });
   const [unlockAnim, setUnlockAnim] = useState<string | null>(null);
@@ -415,12 +312,13 @@ export default function GameLensPage() {
     setMgCombo(0);
     setMgTimeLeft(0);
     setMgState('ended');
-    // Award XP: 1 XP per 10 points scored, minimum 5 if any hits
+    // Practice XP: 1 XP per 10 points scored, minimum 5 if any hits.
+    // Deliberately NOT added to `playerXp` (the real header/progress-bar
+    // counter sourced from /api/game/profile) — no backend macro persists
+    // mini-game score as profile XP, so folding it into playerXp used to
+    // make session-only arcade points look like saved account progress.
     const xpEarned = Math.max(s.hits > 0 ? 5 : 0, Math.floor(s.score / 10));
     setMgXpAwarded(xpEarned);
-    if (xpEarned > 0) {
-      setPlayerXp((prev) => prev + xpEarned);
-    }
   }, []);
 
   // Main game loop -- pure canvas rendering, no React setState per frame
@@ -788,15 +686,20 @@ export default function GameLensPage() {
     queryFn: () => api.get('/api/game/challenges').then(r => r.data),
   });
   const { create: createQuest } = useLensData<Quest>('game', 'quest', { noSeed: true });
+  // /api/game/challenges has no difficulty/type-cadence concept server-side —
+  // only these four fields are real. `progress`/`target` ARE real (computed
+  // from live DTU/vote activity), so a challenge whose progress already
+  // cleared its target starts 'completed' instead of always 'available'.
   const quests: Quest[] = (challengesResp?.challenges || INITIAL_QUESTS).map((c: Record<string, unknown>) => ({
     id: c.id as string,
     name: c.name as string,
     description: c.description as string,
     icon: '⚡',
     xpReward: (c.reward as number) || 100,
-    difficulty: 'medium' as Quest['difficulty'],
-    type: 'daily' as Quest['type'],
-    status: 'available' as QuestStatus,
+    type: 'challenge' as Quest['type'],
+    status: (((c.progress as number) || 0) >= ((c.target as number) || Infinity) ? 'completed' : 'available') as QuestStatus,
+    progress: c.progress as number | undefined,
+    target: c.target as number | undefined,
   }));
 
   // Fetch profile from /api/game/profile
@@ -855,18 +758,6 @@ export default function GameLensPage() {
     completeQuestMutation.mutate(id);
   }, [quests, completeQuestMutation]);
 
-  // Shop purchase
-  const purchaseItem = useCallback((id: string) => {
-    const item = shopItems.find((i) => i.id === id);
-    if (!item || item.owned || playerXp < item.cost || purchasingIds.has(id)) return;
-    setPurchasingIds(prev => new Set(prev).add(id));
-    setShopItems((prev) => prev.map((i) => (i.id === id ? { ...i, owned: true } : i)));
-    setPlayerXp((prev) => prev - item.cost);
-    updateShopItem(id, { data: { owned: true } as unknown as Partial<ShopItem> })
-      .catch(err => { console.error('Failed to persist shop purchase:', err instanceof Error ? err.message : err); showToast('error', 'Purchase failed'); })
-      .finally(() => setPurchasingIds(prev => { const next = new Set(prev); next.delete(id); return next; }));
-  }, [shopItems, playerXp, purchasingIds, updateShopItem]);
-
   // Achievement unlock (optimistic UI - will refresh from API on next fetch)
   const [achievementOverrides, setAchievementOverrides] = useState<Record<string, boolean>>({});
   const effectiveAchievements = useMemo(() =>
@@ -906,6 +797,14 @@ export default function GameLensPage() {
     return [...apiPlayers].sort((a: LeaderboardPlayer, b: LeaderboardPlayer) => b.xp - a.xp);
   }, [leaderboardData]);
 
+  // Global rank is derived client-side from the real leaderboard list — the
+  // backend never sets a `rank` field on the profile object.
+  const myRank = useMemo(() => {
+    if (!authUser?.id) return null;
+    const idx = sortedLeaderboard.findIndex((p) => p.userId === authUser.id);
+    return idx === -1 ? null : idx + 1;
+  }, [sortedLeaderboard, authUser?.id]);
+
   const profile = (profileData || INITIAL_PROFILE) as unknown as GameProfile;
   const xpHistory: XpHistoryEntry[] = (profile.xpHistory || INITIAL_XP_HISTORY) as XpHistoryEntry[];
   const xpMax = Math.max(1, ...xpHistory.map((d: { xp: number }) => d.xp));
@@ -915,11 +814,10 @@ export default function GameLensPage() {
   const TABS: { id: MainTab; label: string; icon: typeof Trophy }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'habits', label: 'Habit Hub', icon: Flame },
-    { id: 'skills', label: 'Skill Tree', icon: GitBranch },
+    { id: 'design', label: 'Design Lab', icon: FlaskConical },
     { id: 'quests', label: 'Quests', icon: Target },
     { id: 'achievements', label: 'Achievements', icon: Trophy },
     { id: 'leaderboard', label: 'Leaderboard', icon: Users },
-    { id: 'shop', label: 'Shop', icon: ShoppingBag },
     { id: 'history', label: 'XP History', icon: TrendingUp },
     { id: 'minigame', label: 'Mini-Game', icon: Gamepad2 },
   ];
@@ -983,7 +881,7 @@ export default function GameLensPage() {
           </div>
           <div className="flex items-center gap-1 text-neon-pink font-mono text-sm">
             <Flame className="w-4 h-4" />
-            {profile.streak}d streak
+            {profile.streak || 0}d streak
           </div>
           <div className="flex items-center gap-1 text-neon-cyan font-mono text-sm">
             <Star className="w-4 h-4" />
@@ -1049,13 +947,13 @@ export default function GameLensPage() {
             ))}
           </div>
 
-          {/* Secondary Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Secondary Stats — only real, server-computed values. `Challenges
+              Won`/`Completion Rate` were removed: the backend has no field
+              for either, so they used to render a permanent, misleading "0". */}
+          <div className="grid grid-cols-2 gap-4 max-w-md">
             {[
               { label: 'Quests Done', value: profile.questsCompleted || quests.filter(q => q.status === 'completed').length, icon: Target, color: 'text-neon-cyan' },
-              { label: 'Challenges Won', value: profile.challengesWon || 0, icon: Crown, color: 'text-neon-yellow' },
-              { label: 'Completion Rate', value: `${profile.completionRate || 0}%`, icon: Activity, color: 'text-neon-green' },
-              { label: 'Global Rank', value: `#${profile.rank || '--'}`, icon: ArrowUp, color: 'text-neon-blue' },
+              { label: 'Global Rank', value: myRank ? `#${myRank}` : '—', icon: ArrowUp, color: 'text-neon-blue' },
             ].map((s) => (
               <div key={s.label} className="lens-card text-center">
                 <s.icon className={cn('w-6 h-6 mx-auto mb-1', s.color)} />
@@ -1119,70 +1017,13 @@ export default function GameLensPage() {
       )}
 
       {/* ================================================================= */}
-      {/* SKILL TREE TAB                                                     */}
+      {/* DESIGN LAB TAB — the 10 previously-dead game-design/balance and    */}
+      {/* turn-based playtest macros, given a real, designed home instead   */}
+      {/* of a permanently-disabled button wall. See GameDesignLab.tsx.     */}
       {/* ================================================================= */}
-      {activeTab === 'skills' && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-          <p className="text-sm text-gray-400">Invest XP to unlock and upgrade skills across four branches.</p>
-          {(Object.entries(SKILL_TREES) as [SkillBranch, typeof SKILL_TREES[SkillBranch]][]).map(([branch, data]) => {
-            const BranchIcon = data.icon;
-            const isExpanded = expandedBranch === branch;
-            return (
-              <div key={branch} data-lens-theme="game" className="panel overflow-hidden">
-                <button
-                  onClick={() => setExpandedBranch(isExpanded ? null : branch)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-lattice-surface/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <BranchIcon className={cn('w-5 h-5', data.color)} />
-                    <span className="font-semibold text-white">{data.label}</span>
-                    <span className="text-xs text-gray-400">{data.nodes.filter((n) => n.unlocked).length}/{data.nodes.length} unlocked</span>
-                  </div>
-                  {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-                </button>
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="border-t border-lattice-border"
-                    >
-                      <div className="p-4 space-y-3">
-                        {data.nodes.map((node) => (
-                          <div key={node.id} className={cn('flex items-center gap-4 rounded-lg p-3', node.unlocked ? 'bg-lattice-surface' : 'bg-lattice-bg opacity-60')}>
-                            <div className={cn('w-10 h-10 rounded-full flex items-center justify-center border-2', node.unlocked ? 'border-neon-green bg-neon-green/10' : 'border-gray-600 bg-gray-800')}>
-                              {node.unlocked ? <Unlock className="w-4 h-4 text-neon-green" /> : <Lock className="w-4 h-4 text-gray-400" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-white text-sm">{node.name}</span>
-                                {node.requires && <span className="text-[10px] text-gray-400">requires prev.</span>}
-                              </div>
-                              <p className="text-xs text-gray-400 truncate">{node.description}</p>
-                              {/* Level pips */}
-                              <div className="flex gap-1 mt-1">
-                                {Array.from({ length: node.maxLevel }).map((_, i) => (
-                                  <div key={i} className={cn('w-4 h-1.5 rounded-full', i < node.level ? 'bg-neon-green' : 'bg-gray-700')} />
-                                ))}
-                              </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <span className="text-xs font-mono text-gray-400">Lv {node.level}/{node.maxLevel}</span>
-                              {node.unlocked && node.level < node.maxLevel && (
-                                <p className="text-[10px] text-neon-yellow mt-0.5">{node.xpCost} XP to upgrade</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
+      {activeTab === 'design' && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <GameDesignLab />
         </motion.div>
       )}
 
@@ -1218,7 +1059,9 @@ export default function GameLensPage() {
                     {quest.timeLeft && (
                       <span className="text-[10px] text-gray-400 flex items-center gap-1"><Clock className="w-3 h-3" />{quest.timeLeft}</span>
                     )}
-                    <span className={cn('text-xs px-2 py-0.5 rounded', difficultyStyle[quest.difficulty])}>{quest.difficulty}</span>
+                    {quest.difficulty && (
+                      <span className={cn('text-xs px-2 py-0.5 rounded', difficultyStyle[quest.difficulty])}>{quest.difficulty}</span>
+                    )}
                     <span className={cn('text-xs px-2 py-0.5 rounded', quest.type === 'daily' ? 'bg-neon-cyan/15 text-neon-cyan' : quest.type === 'weekly' ? 'bg-neon-purple/15 text-neon-purple' : 'bg-neon-yellow/15 text-neon-yellow')}>
                       {quest.type}
                     </span>
@@ -1226,6 +1069,17 @@ export default function GameLensPage() {
                 </div>
                 <h4 className="font-semibold text-white">{quest.name}</h4>
                 <p className="text-sm text-gray-400 mt-1">{quest.description}</p>
+                {quest.progress != null && quest.target != null && (
+                  <div className="mt-2">
+                    <div className="flex justify-between text-[10px] text-gray-400 mb-1">
+                      <span>Progress</span>
+                      <span>{quest.progress}/{quest.target}</span>
+                    </div>
+                    <div className="h-1.5 bg-lattice-bg rounded-full overflow-hidden">
+                      <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${Math.min(100, (quest.progress / Math.max(1, quest.target)) * 100)}%` }} />
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-lattice-border">
                   <span className="text-sm text-neon-yellow flex items-center gap-1"><Zap className="w-4 h-4" />+{quest.xpReward} XP</span>
                   {quest.status === 'available' && (
@@ -1329,14 +1183,18 @@ export default function GameLensPage() {
             ))}
           </div>
           <div className="panel overflow-hidden">
+            {/* Backend note: /api/game/leaderboard has no per-user display-name
+                or title join, so the table shows the real userId, not an
+                invented display name. Avatar cosmetics + rewards live on the
+                Habit Hub tab's real cosmetic shop — there is no separate XP
+                shop macro, so one is not fabricated here. */}
             <table className="w-full">
               <thead>
                 <tr className="text-left text-xs text-gray-400 border-b border-lattice-border">
                   <th scope="col" className="pb-3 pt-4 px-4 w-16">Rank</th>
                   <th scope="col" className="pb-3 pt-4">Player</th>
-                  <th scope="col" className="pb-3 pt-4 text-right hidden md:table-cell">Title</th>
                   <th scope="col" className="pb-3 pt-4 text-right">Level</th>
-                  <th scope="col" className="pb-3 pt-4 text-right">Achievements</th>
+                  <th scope="col" className="pb-3 pt-4 text-right">Badges</th>
                   <th scope="col" className="pb-3 pt-4 text-right pr-4">XP</th>
                 </tr>
               </thead>
@@ -1345,76 +1203,33 @@ export default function GameLensPage() {
                   <tr><td colSpan={5} className="py-8 text-center text-gray-400">No players on the leaderboard yet. Start a game to climb the ranks.</td></tr>
                 )}
                 {sortedLeaderboard.length === 1 && (
-                  <tr><td colSpan={6} className="py-4 text-center text-neon-cyan text-xs">🏔️ Pioneer — First on the leaderboard!</td></tr>
+                  <tr><td colSpan={5} className="py-4 text-center text-neon-cyan text-xs">🏔️ Pioneer — First on the leaderboard!</td></tr>
                 )}
-                {sortedLeaderboard.map((player, index) => (
-                  <motion.tr
-                    key={player.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.04 }}
-                    className={cn('border-b border-lattice-border/30 transition-colors', player.isCurrentUser ? 'bg-neon-purple/10' : 'hover:bg-lattice-surface/50')}
-                  >
-                    <td className="py-3 px-4">
-                      {sortedLeaderboard.length === 1 ? <Sparkles className="w-5 h-5 text-neon-cyan" /> : index === 0 ? <Crown className="w-5 h-5 text-neon-yellow" /> : index === 1 ? <span className="text-gray-300 font-bold">2</span> : index === 2 ? <span className="text-amber-600 font-bold">3</span> : <span className="text-gray-400">#{index + 1}</span>}
-                    </td>
-                    <td className="py-3 font-medium text-white text-sm">
-                      {player.name}
-                      {player.isCurrentUser && <span className="ml-2 text-[10px] text-neon-cyan">(you)</span>}
-                    </td>
-                    <td className="py-3 text-right text-xs text-gray-400 hidden md:table-cell">{player.title}</td>
-                    <td className="py-3 text-right text-sm">{player.level}</td>
-                    <td className="py-3 text-right text-sm">{player.achievements}</td>
-                    <td className="py-3 text-right pr-4 font-mono text-neon-blue text-sm">{player.xp.toLocaleString()}</td>
-                  </motion.tr>
-                ))}
+                {sortedLeaderboard.map((player, index) => {
+                  const isCurrentUser = !!authUser?.id && player.userId === authUser.id;
+                  return (
+                    <motion.tr
+                      key={player.userId}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.04 }}
+                      className={cn('border-b border-lattice-border/30 transition-colors', isCurrentUser ? 'bg-neon-purple/10' : 'hover:bg-lattice-surface/50')}
+                    >
+                      <td className="py-3 px-4">
+                        {sortedLeaderboard.length === 1 ? <Sparkles className="w-5 h-5 text-neon-cyan" /> : index === 0 ? <Crown className="w-5 h-5 text-neon-yellow" /> : index === 1 ? <span className="text-gray-300 font-bold">2</span> : index === 2 ? <span className="text-amber-600 font-bold">3</span> : <span className="text-gray-400">#{index + 1}</span>}
+                      </td>
+                      <td className="py-3 font-medium text-white text-sm font-mono">
+                        {isCurrentUser ? (authUser?.username || player.userId) : player.userId}
+                        {isCurrentUser && <span className="ml-2 text-[10px] text-neon-cyan font-sans">(you)</span>}
+                      </td>
+                      <td className="py-3 text-right text-sm">{player.level}</td>
+                      <td className="py-3 text-right text-sm">{player.badges}</td>
+                      <td className="py-3 text-right pr-4 font-mono text-neon-blue text-sm">{player.xp.toLocaleString()}</td>
+                    </motion.tr>
+                  );
+                })}
               </tbody>
             </table>
-          </div>
-        </motion.div>
-      )}
-
-      {/* ================================================================= */}
-      {/* SHOP TAB                                                           */}
-      {/* ================================================================= */}
-      {activeTab === 'shop' && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-400">Spend your hard-earned XP on badges, titles, themes, and emotes.</p>
-            <div className="flex items-center gap-1 text-neon-yellow font-mono text-sm">
-              <Gem className="w-4 h-4" /> {playerXp.toLocaleString()} XP available
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {shopItems.map((item) => (
-              <motion.div
-                key={item.id}
-                whileHover={{ scale: 1.02 }}
-                className={cn('lens-card flex flex-col', item.owned && 'border-neon-green/30')}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-3xl">{item.icon}</span>
-                  <span className={cn('text-[10px] px-1.5 py-0.5 rounded border', rarityColor[item.rarity])}>{item.rarity}</span>
-                </div>
-                <h4 className="font-semibold text-white text-sm">{item.name}</h4>
-                <p className="text-xs text-gray-400 mt-1 flex-1">{item.description}</p>
-                <span className="text-[10px] text-gray-400 mt-1 capitalize">{item.type}</span>
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-lattice-border">
-                  <span className="text-sm text-neon-yellow flex items-center gap-1"><Gem className="w-3 h-3" />{item.cost.toLocaleString()}</span>
-                  {item.owned ? (
-                    <span className="text-xs text-neon-green flex items-center gap-1"><Check className="w-3 h-3" />Owned</span>
-                  ) : (
-                    <button
-                      onClick={() => purchaseItem(item.id)}
-                      disabled={playerXp < item.cost || purchasingIds.has(item.id)}
-                      className={cn('btn-neon text-xs py-1 px-3', (playerXp < item.cost || purchasingIds.has(item.id)) && 'opacity-40 cursor-not-allowed')}
-                    >
-                      {purchasingIds.has(item.id) ? 'Buying...' : 'Buy'}
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            ))}
           </div>
         </motion.div>
       )}
@@ -1424,24 +1239,32 @@ export default function GameLensPage() {
       {/* ================================================================= */}
       {activeTab === 'history' && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-          {/* Bar Chart */}
+          {/* Bar Chart — /api/game/profile does not yet return a daily
+              breakdown, so this is honestly empty until that field exists
+              server-side, rather than a fabricated week of bars. */}
           <div className="panel p-6">
             <h3 className="font-semibold text-white mb-1">XP Earned This Week</h3>
             <p className="text-xs text-gray-400 mb-6">Total: {xpHistory.reduce((s: number, d: { xp: number }) => s + d.xp, 0).toLocaleString()} XP</p>
-            <div className="flex items-end gap-3 h-48">
-              {xpHistory.map((d: { day: string; xp: number }, i: number) => (
-                <div key={d.day} className="flex-1 flex flex-col items-center gap-2">
-                  <span className="text-xs text-gray-400 font-mono">{d.xp}</span>
-                  <motion.div
-                    className="w-full rounded-t-md bg-gradient-to-t from-neon-purple via-neon-blue to-neon-cyan"
-                    initial={{ height: 0 }}
-                    animate={{ height: `${(d.xp / xpMax) * 100}%` }}
-                    transition={{ duration: 0.5, delay: i * 0.08 }}
-                  />
-                  <span className="text-xs text-gray-300 font-medium">{d.day}</span>
-                </div>
-              ))}
-            </div>
+            {xpHistory.length > 0 ? (
+              <div className="flex items-end gap-3 h-48">
+                {xpHistory.map((d: { day: string; xp: number }, i: number) => (
+                  <div key={d.day} className="flex-1 flex flex-col items-center gap-2">
+                    <span className="text-xs text-gray-400 font-mono">{d.xp}</span>
+                    <motion.div
+                      className="w-full rounded-t-md bg-gradient-to-t from-neon-purple via-neon-blue to-neon-cyan"
+                      initial={{ height: 0 }}
+                      animate={{ height: `${(d.xp / xpMax) * 100}%` }}
+                      transition={{ duration: 0.5, delay: i * 0.08 }}
+                    />
+                    <span className="text-xs text-gray-300 font-medium">{d.day}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 italic py-8 text-center">
+                Daily XP breakdown isn&apos;t tracked server-side yet — lifetime XP and streak below are real.
+              </p>
+            )}
           </div>
 
           {/* Summary Stats */}
@@ -1464,27 +1287,19 @@ export default function GameLensPage() {
             </div>
           </div>
 
-          {/* Recent Activity Feed */}
+          {/* Recent Activity — there is no per-event XP activity log on the
+              backend for this meta-progression layer (only running totals),
+              so this used to be a hardcoded fake feed (and one that literally
+              referenced a different lens's content — "Compression skill",
+              "Daily Mix Session"). Point at the real per-domain activity feed
+              instead of inventing timestamps. */}
           <div className="panel p-4">
-            <h3 className="font-semibold text-white mb-3">Recent Activity</h3>
-            <div className="space-y-3">
-              {[
-                { time: '2h ago', text: 'Completed "Daily Mix Session" quest', xp: '+120 XP', color: 'text-neon-green' },
-                { time: '5h ago', text: 'Unlocked "Plugin Collector" achievement', xp: '+350 XP', color: 'text-neon-yellow' },
-                { time: '1d ago', text: 'Purchased "Fire Emote" from shop', xp: '-300 XP', color: 'text-neon-pink' },
-                { time: '1d ago', text: 'Leveled up Compression skill to Lv 4', xp: '+200 XP', color: 'text-neon-cyan' },
-                { time: '2d ago', text: 'Completed "Genre Explorer" weekly quest', xp: '+500 XP', color: 'text-neon-green' },
-                { time: '3d ago', text: 'Reached Level 14', xp: 'Level up!', color: 'text-neon-purple' },
-              ].map((entry, i) => (
-                <div key={i} className="flex items-center justify-between text-sm border-b border-lattice-border/30 pb-2 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-gray-400 w-14 shrink-0">{entry.time}</span>
-                    <span className="text-gray-300">{entry.text}</span>
-                  </div>
-                  <span className={cn('font-mono text-xs shrink-0', entry.color)}>{entry.xp}</span>
-                </div>
-              ))}
-            </div>
+            <h3 className="font-semibold text-white mb-2">Recent Activity</h3>
+            <p className="text-xs text-gray-400">
+              A per-event XP log isn&apos;t tracked server-side yet. Your recent
+              DTUs, quest completions, and habit check-ins that feed this
+              profile&apos;s XP appear in the Recent panel below.
+            </p>
           </div>
         </motion.div>
       )}
@@ -1591,10 +1406,10 @@ export default function GameLensPage() {
                       className="flex items-center justify-center gap-2 text-neon-yellow bg-neon-yellow/10 border border-neon-yellow/30 rounded-lg py-2 px-4"
                     >
                       <Zap className="w-5 h-5" />
-                      <span className="font-bold">+{mgXpAwarded} XP earned!</span>
+                      <span className="font-bold">+{mgXpAwarded} practice XP!</span>
                     </motion.div>
                   )}
-                  <p className="text-xs text-gray-400">XP has been added to your profile</p>
+                  <p className="text-xs text-gray-400">Practice score — not saved to your profile XP</p>
                 </motion.div>
               </div>
             )}
@@ -1629,7 +1444,7 @@ export default function GameLensPage() {
               </div>
               <div className="flex items-start gap-2">
                 <Zap className="w-4 h-4 text-neon-green shrink-0 mt-0.5" />
-                <span>Your final score converts to XP (1 XP per 10 points, minimum 5 XP). XP is added to your Game Lens profile.</span>
+                <span>Your final score converts to practice XP (1 XP per 10 points, minimum 5 XP) for this session only — it&apos;s a warm-up, not saved profile progress.</span>
               </div>
             </div>
           </div>
@@ -1713,169 +1528,16 @@ export default function GameLensPage() {
                 <button onClick={submitChallenge} disabled={!newChallenge.name.trim()} className={cn('btn-neon py-2 px-6', !newChallenge.name.trim() && 'opacity-40 cursor-not-allowed')}>
                   Create
                 </button>
-
-      {/* Real-time Data Panel */}
-      <UniversalActions domain="game" artifactId={null} compact />
-
-      {/* Game Balance Actions */}
-      <div className="panel p-4 space-y-3 mx-4 mb-4">
-        <h2 className="font-semibold text-sm flex items-center gap-2">
-          <Scale className="w-4 h-4 text-neon-purple" />
-          Game Balance Tools
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {[
-            { action: 'balanceCheck',    label: 'Balance Check',     icon: Scale,      color: 'text-neon-green' },
-            { action: 'economySimulate', label: 'Economy Simulate',  icon: TrendingUp, color: 'text-neon-cyan' },
-            { action: 'levelCurve',      label: 'Level Curve',       icon: Activity,   color: 'text-neon-purple' },
-            { action: 'dropRateCalc',    label: 'Drop Rate Calc',    icon: BarChart2,  color: 'text-yellow-400' },
-          ].map(({ action, label, icon: Icon, color }) => (
-            <button
-              key={action}
-              onClick={() => handleGameAction(action)}
-              disabled={!!gameRunning || !shopLensItems[0]?.id}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-deep border border-lattice-border text-sm hover:border-neon-purple/30 disabled:opacity-40 transition-colors"
-            >
-              {gameRunning === action ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className={`w-4 h-4 ${color}`} />}
-              <span className="truncate text-xs">{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {gameActionResult && (
-          <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setGameActionResult(null)} className="absolute top-3 right-3 text-gray-400 hover:text-white" aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* balanceCheck */}
-            {gameActionResult._action === 'balanceCheck' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Balance Check</p>
-                {(gameActionResult.message as string) ? <p className="text-sm text-gray-400">{gameActionResult.message as string}</p> : (
-                  <>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[
-                        { label: 'Avg Power', value: String(gameActionResult.avgPower ?? 0), color: 'text-white' },
-                        { label: 'Variance', value: String(gameActionResult.powerVariance ?? 0), color: 'text-neon-cyan' },
-                        { label: 'Strongest', value: String(gameActionResult.strongest ?? '—'), color: 'text-neon-green' },
-                        { label: 'Weakest', value: String(gameActionResult.weakest ?? '—'), color: 'text-red-400' },
-                      ].map(({ label, value, color }) => (
-                        <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                          <p className={`text-sm font-bold ${color}`}>{value}</p>
-                          <p className="text-xs text-gray-400">{label}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className={`text-xs px-3 py-2 rounded border ${(gameActionResult.balance as string) === 'well-balanced' ? 'bg-neon-green/10 border-neon-green/30 text-neon-green' : (gameActionResult.balance as string) === 'slightly-unbalanced' ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400' : 'bg-red-400/10 border-red-400/30 text-red-400'}`}>
-                      Balance: {(gameActionResult.balance as string)?.replace(/-/g, ' ')}
-                    </div>
-                    {Array.isArray(gameActionResult.units) && (
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {(gameActionResult.units as {name:string;power:number;efficiency:number;cost:number}[]).map(u => (
-                          <div key={u.name} className="flex items-center gap-3 text-xs px-2 py-1 rounded bg-white/5">
-                            <span className="flex-1 text-white">{u.name}</span>
-                            <span className="text-gray-400">Cost: {u.cost}</span>
-                            <span className="text-neon-cyan">Power: {u.power}</span>
-                            <span className="text-neon-green">Eff: {u.efficiency}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
               </div>
-            )}
-
-            {/* economySimulate */}
-            {gameActionResult._action === 'economySimulate' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Economy Simulation</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Start Gold', value: String(gameActionResult.startGold ?? 0), color: 'text-white' },
-                    { label: 'Final Gold', value: String(gameActionResult.finalGold ?? 0), color: (gameActionResult.finalGold as number) >= (gameActionResult.startGold as number) ? 'text-neon-green' : 'text-red-400' },
-                    { label: 'Net Flow', value: `${(gameActionResult.netFlow as number) >= 0 ? '+' : ''}${gameActionResult.netFlow ?? 0}`, color: (gameActionResult.netFlow as number) >= 0 ? 'text-neon-green' : 'text-red-400' },
-                    { label: 'Sustainable', value: gameActionResult.sustainable ? 'Yes' : 'No', color: gameActionResult.sustainable ? 'text-neon-green' : 'text-red-400' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                      <p className={`text-lg font-bold ${color}`}>{value}</p>
-                      <p className="text-xs text-gray-400">{label}</p>
-                    </div>
-                  ))}
-                </div>
-                {!!gameActionResult.tip && <p className="text-xs text-gray-400 italic">{gameActionResult.tip as string}</p>}
-                {Array.isArray(gameActionResult.timeline) && (
-                  <div className="grid grid-cols-6 gap-1">
-                    {(gameActionResult.timeline as {minute:number;gold:number}[]).slice(0,6).map(t => (
-                      <div key={t.minute} className="bg-white/5 rounded p-2 text-center">
-                        <p className="text-[10px] text-gray-400">Min {t.minute}</p>
-                        <p className="text-xs font-mono text-neon-green">{t.gold}g</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* levelCurve */}
-            {gameActionResult._action === 'levelCurve' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Level Curve</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Max Level', value: String(gameActionResult.maxLevel ?? 0), color: 'text-white' },
-                    { label: 'Total XP', value: String((gameActionResult.totalXPToMax as number || 0).toLocaleString()), color: 'text-neon-cyan' },
-                    { label: 'Midpoint', value: `Lv ${gameActionResult.midpointLevel ?? 0}`, color: 'text-neon-purple' },
-                    { label: 'Growth', value: String(gameActionResult.growthFactor ?? 0), color: 'text-yellow-400' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                      <p className={`text-lg font-bold ${color}`}>{value}</p>
-                      <p className="text-xs text-gray-400">{label}</p>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-400">Feel: <span className="text-white capitalize">{(gameActionResult.earlyGameFeels as string)?.replace(/-/g, ' ')}</span></p>
-                {Array.isArray(gameActionResult.levels) && (
-                  <div className="flex gap-1 overflow-x-auto pb-1">
-                    {(gameActionResult.levels as {level:number;xpRequired:number}[]).map(l => (
-                      <div key={l.level} className="shrink-0 bg-white/5 rounded p-2 text-center min-w-[48px]">
-                        <p className="text-[10px] text-gray-400">Lv {l.level}</p>
-                        <p className="text-[10px] font-mono text-neon-green">{(l.xpRequired / 1000).toFixed(1)}k</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* dropRateCalc */}
-            {gameActionResult._action === 'dropRateCalc' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Drop Rate Calculator</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {[
-                    { label: 'Drop Rate', value: String(gameActionResult.dropRate ?? '—'), color: 'text-neon-cyan' },
-                    { label: 'Expected Drops', value: String(gameActionResult.expectedDrops ?? 0), color: 'text-white' },
-                    { label: 'P(≥1)', value: String(gameActionResult.probabilityAtLeastOne ?? '—'), color: 'text-neon-green' },
-                    { label: '50% Chance', value: `${gameActionResult.attemptsFor50Percent ?? 0} tries`, color: 'text-yellow-400' },
-                    { label: '90% Chance', value: `${gameActionResult.attemptsFor90Percent ?? 0} tries`, color: 'text-orange-400' },
-                    { label: '99% Chance', value: `${gameActionResult.attemptsFor99Percent ?? 0} tries`, color: 'text-red-400' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                      <p className={`text-sm font-bold ${color}`}>{value}</p>
-                      <p className="text-xs text-gray-400">{label}</p>
-                    </div>
-                  ))}
-                </div>
-                {!!gameActionResult.pitySystemSuggestion && (
-                  <p className="text-xs text-neon-cyan bg-neon-cyan/5 border border-neon-cyan/20 rounded px-3 py-2">{gameActionResult.pitySystemSuggestion as string}</p>
-                )}
-              </div>
-            )}
-          </div>
+            </motion.div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
+
+      {/* Small secondary AI-helper strip — no artifactId, per its own
+          optional-prop contract. The page around it is bespoke, not the
+          generic surface this could otherwise stand in for. */}
+      <UniversalActions domain="game" artifactId={null} compact />
 
       {realtimeData && (
         <RealtimeDataPanel
@@ -1887,18 +1549,14 @@ export default function GameLensPage() {
           compact
         />
       )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <GameFeed />
       </section>
+      <RecentMineCard domain="game" limit={10} hideWhenEmpty className="mt-4" />
+      <AutoActionStrip domain="game" hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="game" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </div>
-          <RecentMineCard domain="game" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="game" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="game" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

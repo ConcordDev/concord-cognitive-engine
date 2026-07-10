@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Tag, Lock, Unlock, History } from 'lucide-react';
+import { Loader2, Plus, Trash2, Tag, Lock, Unlock, History, Pencil, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +50,8 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
   const [expanded, setExpanded] = useState<string | null>(null);
   const [form, setForm] = useState({ intExt: 'INT', location: '', timeOfDay: 'DAY', pageEighths: '', description: '' });
   const [tag, setTag] = useState({ category: 'props', name: '' });
+  const [editingScene, setEditingScene] = useState<string | null>(null);
+  const [editSceneForm, setEditSceneForm] = useState({ intExt: 'INT', location: '', timeOfDay: 'DAY', pageEighths: '', description: '' });
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [revForm, setRevForm] = useState({ label: '', color: 'white', author: '' });
   const [lockPage, setLockPage] = useState<Record<string, string>>({});
@@ -84,6 +86,23 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
 
   const delScene = async (id: string) => {
     await lensRun('film-studios', 'scene-delete', { id });
+    await refresh();
+  };
+
+  const startEditScene = (sc: Scene) => {
+    setEditingScene(sc.id);
+    setEditSceneForm({
+      intExt: sc.intExt, location: sc.location, timeOfDay: sc.timeOfDay,
+      pageEighths: String(sc.pageEighths || ''), description: sc.description || '',
+    });
+  };
+  const saveEditScene = async (id: string) => {
+    await lensRun('film-studios', 'scene-update', {
+      id, intExt: editSceneForm.intExt, location: editSceneForm.location.trim(),
+      timeOfDay: editSceneForm.timeOfDay, pageEighths: Number(editSceneForm.pageEighths) || 0,
+      description: editSceneForm.description.trim(),
+    });
+    setEditingScene(null);
     await refresh();
   };
 
@@ -256,6 +275,9 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
                     {sc.shootDayNumber != null && (
                       <span className="text-[10px] text-emerald-400">Day {sc.shootDayNumber}</span>
                     )}
+                    <button aria-label="Edit scene" type="button" onClick={() => { startEditScene(sc); setExpanded(sc.id); }} className="text-zinc-600 hover:text-fuchsia-400">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
                     <button aria-label="Delete" type="button" onClick={() => delScene(sc.id)} className="text-zinc-600 hover:text-rose-400">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -263,6 +285,34 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
                 </div>
                 {expanded === sc.id && (
                   <div className="px-3 pb-3 border-t border-zinc-800 pt-2.5">
+                    {editingScene === sc.id && (
+                      <div className="mb-3 bg-zinc-950/60 border border-zinc-800 rounded-lg p-2.5 space-y-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                          <select value={editSceneForm.intExt} onChange={(e) => setEditSceneForm({ ...editSceneForm, intExt: e.target.value })}
+                            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                            {INT_EXT.map((x) => <option key={x} value={x}>{x}</option>)}
+                          </select>
+                          <input placeholder="Location" value={editSceneForm.location} onChange={(e) => setEditSceneForm({ ...editSceneForm, location: e.target.value })}
+                            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                          <select value={editSceneForm.timeOfDay} onChange={(e) => setEditSceneForm({ ...editSceneForm, timeOfDay: e.target.value })}
+                            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                            {TIME_OF_DAY.map((x) => <option key={x} value={x}>{x}</option>)}
+                          </select>
+                          <input placeholder="Page 1/8ths" inputMode="numeric" value={editSceneForm.pageEighths}
+                            onChange={(e) => setEditSceneForm({ ...editSceneForm, pageEighths: e.target.value })}
+                            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input placeholder="Description" value={editSceneForm.description}
+                            onChange={(e) => setEditSceneForm({ ...editSceneForm, description: e.target.value })}
+                            className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                          <button type="button" onClick={() => saveEditScene(sc.id)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">
+                            <Check className="w-3.5 h-3.5" /> Save
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {revisions.length > 0 && (
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-[11px] font-semibold text-zinc-400">Revision:</span>

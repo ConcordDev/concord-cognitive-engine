@@ -30,6 +30,9 @@ export function MeetingsPanel() {
   const [form, setForm] = useState({ title: '', body: 'city_council', scheduledAt: '', location: '', virtualUrl: '', agenda: '' });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [minutesDraft, setMinutesDraft] = useState('');
+  const [editingAgenda, setEditingAgenda] = useState(false);
+  const [agendaDraft, setAgendaDraft] = useState('');
+  const [agendaSaving, setAgendaSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -58,6 +61,23 @@ export function MeetingsPanel() {
       await lensRun({ domain: 'government', action: 'meetings-delete', input: { id } });
       setMeetings(prev => prev.filter(m => m.id !== id));
     } catch (e) { console.error('[Meetings] delete', e); }
+  }
+
+  // government.meetings-set-agenda — edits an already-scheduled meeting's
+  // agenda. Previously the agenda could only be set once, at creation
+  // (meetings-schedule); this real macro for amending it afterward (a
+  // routine civic workflow — agendas get revised before the meeting) had
+  // no caller anywhere in the frontend.
+  async function saveAgenda(id: string) {
+    setAgendaSaving(true);
+    try {
+      const agenda = agendaDraft.split('\n').map(s => s.trim()).filter(Boolean);
+      const res = await lensRun({ domain: 'government', action: 'meetings-set-agenda', input: { id, agenda } });
+      if (res.data?.ok === false) { alert(res.data?.error); return; }
+      setEditingAgenda(false);
+      await refresh();
+    } catch (e) { console.error('[Meetings] saveAgenda', e); }
+    finally { setAgendaSaving(false); }
   }
 
   async function publishMinutes(id: string) {
@@ -110,7 +130,7 @@ export function MeetingsPanel() {
               return (
                 <li key={m.id} className="px-3 py-2 hover:bg-white/[0.03] group">
                   <div className="flex items-center gap-2">
-                    <button onClick={() => { setExpanded(isOpen ? null : m.id); setMinutesDraft(m.minutes || ''); }} className="flex-1 min-w-0 text-left">
+                    <button onClick={() => { setExpanded(isOpen ? null : m.id); setMinutesDraft(m.minutes || ''); setEditingAgenda(false); }} className="flex-1 min-w-0 text-left">
                       <div className="text-sm text-white truncate">{m.title}</div>
                       <div className="text-[10px] text-gray-400 inline-flex items-center gap-2">
                         <span>{BODIES.find(b => b[0] === m.body)?.[1] || m.body}</span>
@@ -131,8 +151,23 @@ export function MeetingsPanel() {
                         </a>
                       )}
                       <div>
-                        <div className="text-[10px] uppercase text-gray-400 mb-1 inline-flex items-center gap-1"><ClipboardList className="w-3 h-3" />Agenda</div>
-                        {m.agenda.length === 0 ? (
+                        <div className="mb-1 flex items-center justify-between">
+                          <div className="text-[10px] uppercase text-gray-400 inline-flex items-center gap-1"><ClipboardList className="w-3 h-3" />Agenda</div>
+                          <button
+                            onClick={() => { setEditingAgenda(v => !v); setAgendaDraft(m.agenda.join('\n')); }}
+                            className="text-[10px] text-cyan-400 hover:underline"
+                          >
+                            {editingAgenda ? 'Cancel' : 'Edit agenda'}
+                          </button>
+                        </div>
+                        {editingAgenda ? (
+                          <div className="space-y-1">
+                            <textarea value={agendaDraft} onChange={e => setAgendaDraft(e.target.value)} placeholder="Agenda items, one per line" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                            <button onClick={() => saveAgenda(m.id)} disabled={agendaSaving} className="px-3 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40">
+                              {agendaSaving ? 'Saving…' : 'Save agenda'}
+                            </button>
+                          </div>
+                        ) : m.agenda.length === 0 ? (
                           <div className="text-[10px] text-gray-400">No agenda items.</div>
                         ) : (
                           <ol className="list-decimal list-inside text-xs text-gray-300 space-y-0.5">

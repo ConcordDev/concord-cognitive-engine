@@ -12,15 +12,37 @@
 //   POST /api/courtship/propose         → propose   (gated at ENGAGE_THRESHOLD)
 //   POST /api/courtship/wed             → wed        (gated at MARRY_THRESHOLD)
 //   POST /api/lens/run courtship.constants → ROMANCE_CONSTANTS (threshold source)
+//   POST /api/lens/run courtship.conceive  → conceive (start a pregnancy; married only)
+//   POST /api/lens/run courtship.birth     → birthChild (from a due pregnancy)
 //
 // The propose/marry floors are NOT duplicated here — they come from the
 // engine via courtship.constants so the lens can never drift from the
 // server's canonical gate.
+//
+// HeartEventModal (components/courtship/HeartEventModal.tsx) fires from the
+// real `heartEvent` field `/api/courtship/interact` returns when an affinity
+// crossing unlocks an authored scene (courtInteraction → heart-events.js) —
+// display only, never invented client-side.
+//
+// pregnancy-cache (components/courtship/pregnancy-cache.ts) is the only way
+// this lens can show "pregnancy pending" across a reload: there is no
+// courtship.listPregnancies / romance.pregnancies read macro in the backend
+// (confirmed by grep), so we remember the real pregnancyId/dueAt this browser
+// was handed at the moment `courtship.conceive` succeeded, and clear it once
+// `courtship.birth` succeeds (or the server tells us the cached id is stale).
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { Heart, Crown, Baby, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Heart, Crown, Baby, Loader2, AlertTriangle, RefreshCw, Sparkles } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
+import { useAuth } from '@/hooks/useAuth';
+import { HeartEventModal, type HeartEventScene } from '@/components/courtship/HeartEventModal';
+import {
+  loadCachedPregnancies,
+  addCachedPregnancy,
+  removeCachedPregnancy,
+  type CachedPregnancy,
+} from '@/components/courtship/pregnancy-cache';
 
 interface Courtship {
   partner_kind: string;
@@ -63,7 +85,16 @@ export default function CourtshipLensPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [engageThreshold, setEngageThreshold] = useState(DEFAULT_ENGAGE_THRESHOLD);
   const [marryThreshold, setMarryThreshold] = useState(DEFAULT_MARRY_THRESHOLD);
+  const [heartEvent, setHeartEvent] = useState<{ scene: HeartEventScene; partnerLabel: string } | null>(null);
+  const [pregnancies, setPregnancies] = useState<CachedPregnancy[]>([]);
   const addToast = useUIStore((s) => s.addToast);
+  const { user } = useAuth();
+
+  // Locally-cached pregnancies are per-user (see pregnancy-cache.ts honesty
+  // note) — load once we know who's signed in, and whenever that changes.
+  useEffect(() => {
+    setPregnancies(loadCachedPregnancies(user?.id));
+  }, [user?.id]);
 
   // Pull the canonical propose/marry floors from the engine once.
   useEffect(() => {
@@ -139,12 +170,120 @@ export default function CourtshipLensPage() {
     }
   }, [refresh, addToast]);
 
-  const interact = (c: Courtship, sentiment: number) =>
-    act('/api/courtship/interact', { partnerKind: c.partner_kind, partnerId: c.partner_id, sentiment });
+  // Dedicated (not the generic `act`) because we need to read the response
+  // body for a `heartEvent` payload — `act` discards the body on success.
+  const interact = useCallback(async (c: Courtship, sentiment: number) => {
+    setPending(true);
+    try {
+      const r = await fetch('/api/courtship/interact', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ partnerKind: c.partner_kind, partnerId: c.partner_id, sentiment }),
+      });
+      const j = await r.json().catch(() => ({ ok: false }));
+      if (!r.ok || j?.ok === false) {
+        setErrorMsg(j?.reason ? `Action failed: ${j.reason}` : `Action failed (${r.status}).`);
+        addToast({ type: 'error', message: 'Action failed' });
+      } else if (j?.heartEvent) {
+        setHeartEvent({
+          scene: j.heartEvent as HeartEventScene,
+          partnerLabel: `${c.partner_kind}:${c.partner_id.slice(0, 14)}`,
+        });
+      }
+      await refresh();
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Action failed.');
+      addToast({ type: 'error', message: 'Action failed' });
+    } finally {
+      setPending(false);
+    }
+  }, [refresh, addToast]);
   const propose = (c: Courtship) =>
     act('/api/courtship/propose', { partnerKind: c.partner_kind, partnerId: c.partner_id });
   const wed = (c: Courtship) =>
     act('/api/courtship/wed', { partnerKind: c.partner_kind, partnerId: c.partner_id });
+
+  // conceive / birth go through the macro dispatcher (courtship.conceive /
+  // courtship.birth) — there's no dedicated REST route for either, only the
+  // registered macros (server/domains/courtship.js), so we call
+  // POST /api/lens/run directly, same as the constants fetch above.
+  const conceive = useCallback(async (m: Marriage) => {
+    setPending(true);
+    try {
+      const r = await fetch('/api/lens/run', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'courtship',
+          name: 'conceive',
+          input: { partnerKind: m.partner_kind, partnerId: m.partner_id },
+        }),
+      });
+      const j = await r.json().catch(() => ({ ok: false }));
+      const result = j?.result ?? j;
+      if (result?.ok && result?.pregnancyId) {
+        const cached: CachedPregnancy = {
+          pregnancyId: result.pregnancyId,
+          partnerKind: m.partner_kind,
+          partnerId: m.partner_id,
+          dueAt: result.dueAt,
+          conceivedAt: Math.floor(Date.now() / 1000),
+        };
+        addCachedPregnancy(user?.id, cached);
+        setPregnancies(loadCachedPregnancies(user?.id));
+        addToast({ type: 'success', message: 'A pregnancy has begun.' });
+      } else {
+        setErrorMsg(result?.reason ? `Could not conceive: ${result.reason}` : 'Could not conceive.');
+        addToast({ type: 'error', message: 'Action failed' });
+      }
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Action failed.');
+      addToast({ type: 'error', message: 'Action failed' });
+    } finally {
+      setPending(false);
+    }
+  }, [user?.id, addToast]);
+
+  const birth = useCallback(async (p: CachedPregnancy) => {
+    setPending(true);
+    try {
+      const r = await fetch('/api/lens/run', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'courtship',
+          name: 'birth',
+          input: { pregnancyId: p.pregnancyId },
+        }),
+      });
+      const j = await r.json().catch(() => ({ ok: false }));
+      const result = j?.result ?? j;
+      if (result?.ok) {
+        removeCachedPregnancy(user?.id, p.pregnancyId);
+        setPregnancies(loadCachedPregnancies(user?.id));
+        addToast({ type: 'success', message: `${result.name || 'A child'} was born.` });
+        await refresh();
+      } else {
+        // Honest self-repair: if the server says the cached id is stale
+        // (already birthed, or the row is gone), drop it from the local
+        // cache rather than keep offering a dead action forever.
+        if (result?.reason === 'already_born' || result?.reason === 'pregnancy_not_found') {
+          removeCachedPregnancy(user?.id, p.pregnancyId);
+          setPregnancies(loadCachedPregnancies(user?.id));
+        }
+        setErrorMsg(result?.reason ? `Could not complete birth: ${result.reason}` : 'Could not complete birth.');
+        addToast({ type: 'error', message: 'Action failed' });
+      }
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Action failed.');
+      addToast({ type: 'error', message: 'Action failed' });
+    } finally {
+      setPending(false);
+    }
+  }, [user?.id, addToast, refresh]);
 
   const engagePct = Math.round(engageThreshold * 100);
 
@@ -272,14 +411,61 @@ export default function CourtshipLensPage() {
               ) : (
                 <ul className="space-y-1">
                   {marriages.map((m) => (
-                    <li key={m.id} className="flex flex-col gap-1 rounded border border-amber-500/30 bg-amber-950/30 p-2 text-xs sm:flex-row sm:justify-between">
-                      <span className="font-mono text-amber-100">{m.partner_kind}:{m.partner_id.slice(0, 14)}</span>
-                      <span className="text-amber-300/70">since {new Date(m.married_at * 1000).toLocaleDateString()}</span>
+                    <li key={m.id} className="flex flex-col gap-1 rounded border border-amber-500/30 bg-amber-950/30 p-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-col">
+                        <span className="font-mono text-amber-100">{m.partner_kind}:{m.partner_id.slice(0, 14)}</span>
+                        <span className="text-amber-300/70">since {new Date(m.married_at * 1000).toLocaleDateString()}</span>
+                      </div>
+                      {pregnancies.length === 0 && (
+                        <button
+                          type="button"
+                          aria-label={`Try for a child with ${m.partner_id}`}
+                          onClick={() => conceive(m)}
+                          disabled={pending}
+                          className="self-start rounded bg-emerald-500/30 px-2 py-1 text-[10px] text-emerald-100 hover:bg-emerald-500/50 disabled:opacity-50 sm:self-auto"
+                        >
+                          Try for a child
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
               )}
             </section>
+
+            {pregnancies.length > 0 && (
+              <section className="space-y-2" aria-labelledby="pregnancies-heading">
+                <h2 id="pregnancies-heading" className="flex items-center gap-1 text-sm font-semibold text-fuchsia-300">
+                  <Sparkles size={14} aria-hidden="true" /> Pending pregnancies ({pregnancies.length})
+                </h2>
+                <ul data-testid="pregnancy-list" className="space-y-1">
+                  {pregnancies.map((p) => {
+                    const due = p.dueAt <= Math.floor(Date.now() / 1000);
+                    return (
+                      <li key={p.pregnancyId} className="flex flex-col gap-1 rounded border border-fuchsia-500/30 bg-fuchsia-950/20 p-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col">
+                          <span className="font-mono text-fuchsia-100">{p.partnerKind}:{p.partnerId.slice(0, 14)}</span>
+                          <span className="text-fuchsia-300/70">
+                            {due ? 'ready to birth' : `due ${new Date(p.dueAt * 1000).toLocaleDateString()}`}
+                          </span>
+                        </div>
+                        {due && (
+                          <button
+                            type="button"
+                            aria-label="Birth this child"
+                            onClick={() => birth(p)}
+                            disabled={pending}
+                            className="self-start rounded bg-fuchsia-500/40 px-2 py-1 text-[10px] text-fuchsia-100 hover:bg-fuchsia-500/60 disabled:opacity-50 sm:self-auto"
+                          >
+                            <Baby size={11} className="mr-1 inline" aria-hidden="true" /> Birth
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
 
             <section className="space-y-2" aria-labelledby="children-heading">
               <h2 id="children-heading" className="flex items-center gap-1 text-sm font-semibold text-emerald-300">
@@ -307,6 +493,14 @@ export default function CourtshipLensPage() {
           </div>
         )}
       </div>
+
+      {heartEvent && (
+        <HeartEventModal
+          scene={heartEvent.scene}
+          partnerLabel={heartEvent.partnerLabel}
+          onClose={() => setHeartEvent(null)}
+        />
+      )}
     </LensShell>
   );
 }

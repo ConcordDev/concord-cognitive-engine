@@ -30,6 +30,7 @@ interface DownloadEntry { trackId: string; title: string; artist: string; sizeKb
 interface Device { id: string; name: string; kind: string; active: boolean }
 interface ScheduledPlaylist { kind: string; refreshedAt: string; nextRefreshAt: string; mood: string | null; trackCount: number; due: boolean }
 interface FriendActivity { userId: string; kind: string; track: { title: string; artist: string; genre: string }; at: string }
+interface JamState { id: string; code: string; name: string; hostId?: string; participants: string[]; currentTrackId?: string | null; positionSec?: number; playbackState?: string; queue?: string[] }
 interface ShareCard { id: string; kind: string; title: string; subtitle: string; gradient: string[]; shareUrl: string }
 interface StreamAnalytics {
   totalStreams: number; uniqueListeners: number; catalogSize: number;
@@ -278,7 +279,12 @@ function EngineTab() {
     setDeviceName('');
     await refresh();
   };
-  const transfer = async (deviceId: string) => {
+  // NOTE (honest-by-construction): `device-transfer` only flips an `active`
+  // flag inside THIS user's own device list in server STATE — it does NOT hand
+  // playback off to another browser/session. There is no real cross-session /
+  // cross-device playback transfer anywhere in the codebase. The UI copy below
+  // is deliberately worded as "set active device," not Continuity-style handoff.
+  const setActiveDevice = async (deviceId: string) => {
     await lensRun('music', 'device-transfer', { deviceId });
     await refresh();
   };
@@ -333,9 +339,9 @@ function EngineTab() {
         </label>
       </section>
 
-      {/* Device handoff */}
+      {/* Device registry (see setActiveDevice note — no live cross-session handoff) */}
       <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
-        <Head icon={Plug} title="Connect — Cross-Device Handoff" hint="control playback on another device" />
+        <Head icon={Plug} title="Playback Devices" hint="marks the active device for your account — no live cross-session handoff yet" />
         <div className="flex gap-2 mb-2">
           <input value={deviceName} onChange={(e) => setDeviceName(e.target.value)}
             placeholder="Device name…"
@@ -356,10 +362,10 @@ function EngineTab() {
                 <Smartphone className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 <span className="text-[11px] text-zinc-200 truncate flex-1">{d.name} <span className="text-zinc-400">· {d.kind}</span></span>
                 {d.active ? (
-                  <span className="text-[10px] text-emerald-300">● Playing here</span>
+                  <span className="text-[10px] text-emerald-300">● Active</span>
                 ) : (
-                  <button type="button" onClick={() => transfer(d.id)}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700">Transfer</button>
+                  <button type="button" onClick={() => setActiveDevice(d.id)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700">Set active</button>
                 )}
               </li>
             ))}
@@ -523,7 +529,7 @@ function DiscoverTab({ onChange }: { onChange: () => void }) {
 // SOCIAL — Jam (11), friend activity (12), collab edit (13), share (14)
 // ════════════════════════════════════════════════════════════════════
 function SocialTab({ onChange }: { onChange: () => void }) {
-  const [jam, setJam] = useState<{ id: string; code: string; name: string; participants: string[] } | null>(null);
+  const [jam, setJam] = useState<JamState | null>(null);
   const [jamName, setJamName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [jamMsg, setJamMsg] = useState('');
@@ -548,6 +554,30 @@ function SocialTab({ onChange }: { onChange: () => void }) {
     setLoading(false);
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // Keep the jam's shared playback position synchronized while a session is
+  // active. The host pushes its live now-playing position; participants pull
+  // the synced state. `jam-sync` gates host-only writes server-side, so it is
+  // always safe to send. Polls every 6s; tears down on leave/unmount.
+  const jamId = jam?.id ?? null;
+  useEffect(() => {
+    if (!jamId) return;
+    let cancelled = false;
+    const sync = async () => {
+      const np = await lensRun('music', 'now-playing', {});
+      const cur = (np.data?.result?.nowPlaying as { track: { id: string }; positionSec: number } | null) || null;
+      const payload: Record<string, unknown> = cur
+        ? { currentTrackId: cur.track.id, positionSec: cur.positionSec, playbackState: 'playing' }
+        : {};
+      const r = await lensRun('music', 'jam-sync', payload);
+      if (!cancelled && r.data?.ok && r.data.result?.jam) {
+        setJam((prev) => (prev ? { ...prev, ...(r.data!.result!.jam as JamState) } : prev));
+      }
+    };
+    void sync();
+    const t = setInterval(() => { void sync(); }, 6000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [jamId]);
 
   const createJam = async () => {
     const r = await lensRun('music', 'jam-create', { name: jamName.trim() || 'Listening Jam' });
@@ -595,6 +625,10 @@ function SocialTab({ onChange }: { onChange: () => void }) {
               <strong>{jam.name}</strong> · code <span className="font-mono text-pink-300">{jam.code}</span>
             </p>
             <p className="text-[11px] text-zinc-400">{jam.participants.length} participant{jam.participants.length !== 1 ? 's' : ''}</p>
+            <p className="text-[11px] text-emerald-300">
+              ● Synced {jam.currentTrackId ? `· ${jam.playbackState ?? 'paused'} @ ${Math.round(jam.positionSec ?? 0)}s` : '· waiting for the host to play'}
+              <span className="text-zinc-500"> · updates every 6s</span>
+            </p>
             <button type="button" onClick={leaveJam}
               className="px-2.5 py-1 text-[11px] rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200">Leave jam</button>
           </div>

@@ -50,13 +50,27 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface ProgressionResult { suggestions?: Array<{ lift: string; suggestion: string; nextWeight?: number }>; volumeKg?: number }
-interface HrZoneResult { maxHr?: number; zones?: Array<{ zone: number; range: string; purpose: string }> }
+// Field names match the REAL fitness.progressionCalc / fitness.hr-zones
+// response shapes (server/domains/fitness.js) — see
+// server/tests/fitness-lens-macros.test.js for the pinned contract.
+interface ProgressionResult {
+  recommendations?: Array<{
+    exercise: string; currentWeight: number; currentReps: number; currentRPE: number;
+    recommendedWeight: number; recommendation: string;
+  }>;
+}
+interface HrZoneResult {
+  maxHr?: number;
+  zones?: Array<{ zone: number; name: string; lowBpm: number; highBpm: number; purpose: string }>;
+}
 
 export function WorkoutFinishPanel() {
   const [title, setTitle] = useState('');
   const [lifts, setLifts] = useState<LiftEntry[]>([{ name: 'Squat', sets: [{ reps: 5, weight: 0, rir: 2 }] }]);
   const [avgHr, setAvgHr] = useState('');
+  // Distinct from avgHr: fitness.hr-zones computes max-HR zone bands from age
+  // + RESTING HR (Tanaka/Fox/Karvonen), not from a workout's average HR.
+  const [restingHr, setRestingHr] = useState('');
   const [age, setAge] = useState('30');
   const [partnerId, setPartnerId] = useState('');
   const [isPr, setIsPr] = useState(false);
@@ -101,7 +115,20 @@ export function WorkoutFinishPanel() {
     if (!ready) { err('Add a lift with at least one set.'); return; }
     setBusy('progression'); setFeedback(null);
     try {
-      const r = await callMacro<ProgressionResult>('progressionCalc', { lifts });
+      // fitness.progressionCalc reads artifact.data.exercises — a flat
+      // {name,weight,reps,rpe} row per exercise, not a nested per-set log.
+      // Derive one row per lift from its heaviest completed set (RIR → RPE:
+      // fewer reps in reserve = higher perceived exertion).
+      const exercises = lifts.filter(l => l.name.trim()).map(l => {
+        const top = l.sets.reduce((max, s) => (s.weight > (max?.weight ?? 0) ? s : max), l.sets[0]);
+        return {
+          name: l.name,
+          weight: top?.weight ?? 0,
+          reps: top?.reps ?? 0,
+          rpe: top?.rir != null ? Math.max(1, Math.min(10, 10 - top.rir)) : undefined,
+        };
+      });
+      const r = await callMacro<ProgressionResult>('progressionCalc', { exercises });
       if (r.ok && r.result) { setProgressionResult(r.result); ok('Progression suggestions ready.'); }
       else err(r.error ?? 'progression failed');
     } catch (e) { err(pickMessage(e)); }
@@ -109,10 +136,12 @@ export function WorkoutFinishPanel() {
   }
 
   async function actHr() {
-    if (!avgHr || !age) { err('Enter average HR + age.'); return; }
+    if (!restingHr || !age) { err('Enter resting HR + age.'); return; }
     setBusy('hrzones'); setFeedback(null);
     try {
-      const r = await callMacro<HrZoneResult>('hr-zones', { age: parseInt(age, 10), avgHr: parseInt(avgHr, 10) });
+      // fitness.hr-zones reads age + restingHr (Tanaka/Fox/Karvonen), not
+      // workout-average HR — restingHr is a distinct field from avgHr above.
+      const r = await callMacro<HrZoneResult>('hr-zones', { age: parseInt(age, 10), restingHr: parseInt(restingHr, 10) });
       if (r.ok && r.result) { setHrResult(r.result); ok('HR zones computed.'); }
       else err(r.error ?? 'HR zones failed');
     } catch (e) { err(pickMessage(e)); }
@@ -123,13 +152,25 @@ export function WorkoutFinishPanel() {
     if (!ready) { err('Add at least one logged lift.'); return; }
     setBusy('save'); setFeedback(null);
     try {
-      const r = await callMacro<{ workoutId?: string }>('workout-save', {
-        title: title.trim() || `Workout ${new Date().toISOString().slice(0, 10)}`,
-        lifts,
-        finishedAt: new Date().toISOString(),
+      // fitness.workout-save reads params.workout — a single object with an
+      // id, pushed as-is into the same STATE list fitness.workout-list reads
+      // (WorkoutLogger.tsx). Shape it identically to what WorkoutLogger saves
+      // so a session logged here shows up correctly there too.
+      const finishedAt = new Date().toISOString();
+      const workout = {
+        id: `wo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        title: title.trim() || `Workout ${finishedAt.slice(0, 10)}`,
+        startedAt: finishedAt,
+        finishedAt,
+        exercises: lifts.filter(l => l.name.trim()).map((l, i) => ({
+          id: `ex_${Date.now()}_${i}`,
+          name: l.name,
+          sets: l.sets.map(s => ({ reps: s.reps, weight: s.weight, rir: s.rir, done: true })),
+        })),
         notes: '',
-      });
-      if (r.ok && r.result?.workoutId) { setSavedWorkoutId(r.result.workoutId); ok(`Workout saved ${r.result.workoutId.slice(0, 8)}…`); }
+      };
+      const r = await callMacro<{ id?: string }>('workout-save', { workout });
+      if (r.ok && r.result?.id) { setSavedWorkoutId(r.result.id); ok(`Workout saved ${r.result.id.slice(0, 8)}…`); }
       else err(r.error ?? 'save failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -235,7 +276,7 @@ export function WorkoutFinishPanel() {
       const task = [
         `Today's workout: ${summary}.`,
         `Total volume: ${Math.round(totalVolume)} kg across ${totalSets} sets.`,
-        progressionResult?.suggestions?.length ? `Progression flags: ${progressionResult.suggestions.map(s => `${s.lift}: ${s.suggestion}`).join('; ')}.` : '',
+        progressionResult?.recommendations?.length ? `Progression flags: ${progressionResult.recommendations.map(s => `${s.exercise}: ${s.recommendation}`).join('; ')}.` : '',
         ``,
         `Design my next workout (same split-day). Return: 1) per-lift target weights + sets/reps;`,
         `2) one accessory lift to add; 3) a brief reasoning paragraph (linear progression vs deload).`,
@@ -311,14 +352,19 @@ export function WorkoutFinishPanel() {
         <button type="button" onClick={addLift} className="w-full inline-flex items-center justify-center gap-1 py-1.5 rounded border border-dashed border-zinc-700 text-zinc-400 text-[12px] hover:bg-zinc-900 hover:text-zinc-200"><Plus className="w-3 h-3" /> Add lift</button>
       </div>
 
-      {/* HR inputs (only relevant when computing HR zones) */}
+      {/* HR inputs. Avg HR describes THIS workout (recorded on mint/publish);
+          resting HR is the distinct input fitness.hr-zones actually needs. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Age (HR)</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Age (HR zones)</label>
           <input type="text" value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-400/40" />
         </div>
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Avg HR</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Resting HR (zones)</label>
+          <input type="text" value={restingHr} onChange={(e) => setRestingHr(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-400/40" placeholder="60" />
+        </div>
+        <div>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Avg HR (this workout)</label>
           <input type="text" value={avgHr} onChange={(e) => setAvgHr(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-400/40" placeholder="130" />
         </div>
       </div>
@@ -349,15 +395,15 @@ export function WorkoutFinishPanel() {
         })}
       </div>
 
-      {progressionResult?.suggestions?.length ? (
+      {progressionResult?.recommendations?.length ? (
         <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5 space-y-1">
           <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold flex items-center gap-1.5">
             <TrendingUp className="w-3 h-3" /> Progression suggestions
           </div>
-          {progressionResult.suggestions.map((s, i) => (
+          {progressionResult.recommendations.map((s, i) => (
             <div key={i} className="text-[11px] text-zinc-300">
-              <strong className="text-emerald-200">{s.lift}:</strong> {s.suggestion}
-              {s.nextWeight != null && <span className="text-emerald-400 font-mono ml-2">→ {s.nextWeight}kg</span>}
+              <strong className="text-emerald-200">{s.exercise}:</strong> {s.recommendation.replace(/_/g, ' ')} (RPE {s.currentRPE})
+              <span className="text-emerald-400 font-mono ml-2">{s.currentWeight}kg → {s.recommendedWeight}kg</span>
             </div>
           ))}
         </div>
@@ -371,8 +417,8 @@ export function WorkoutFinishPanel() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-1">
             {hrResult.zones.map(z => (
               <div key={z.zone} className="rounded bg-zinc-900/60 px-2 py-1 text-[10px]">
-                <div className="text-red-300 font-mono">Z{z.zone}</div>
-                <div className="text-zinc-300">{z.range}</div>
+                <div className="text-red-300 font-mono">Z{z.zone} {z.name}</div>
+                <div className="text-zinc-300">{z.lowBpm}–{z.highBpm} bpm</div>
                 <div className="text-zinc-400 text-[9px]">{z.purpose}</div>
               </div>
             ))}

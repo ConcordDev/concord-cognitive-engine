@@ -68,17 +68,34 @@ vi.mock('@/store/sessions', () => ({
   ),
 }));
 
-// --- onboarding / quick-capture hooks (co-exported with components) --------
+// --- onboarding / quick-capture ---------------------------------------------
+// Shell-diet split each state hook into its own module (imported statically
+// by AppShell, so the gate logic runs synchronously) from its heavy
+// component (imported via next/dynamic, only mounted once the hook's state
+// first goes true) — mock the two paths separately to match.
 const mockOnboarding = { isOpen: false, complete: vi.fn(), close: vi.fn() };
+vi.mock('@/components/onboarding/useOnboarding', () => ({
+  useOnboarding: () => mockOnboarding,
+}));
 vi.mock('@/components/onboarding/OnboardingWizard', () => ({
   OnboardingWizard: () => <div data-testid="onboarding-wizard" />,
-  useOnboarding: () => mockOnboarding,
 }));
 
 const mockQuickCapture = { isOpen: false, close: vi.fn() };
+vi.mock('@/components/capture/useQuickCapture', () => ({
+  useQuickCapture: () => mockQuickCapture,
+}));
 vi.mock('@/components/capture/QuickCapture', () => ({
   QuickCapture: () => <div data-testid="quick-capture" />,
-  useQuickCapture: () => mockQuickCapture,
+}));
+
+// AppShell now reads whether a track is loaded (to gate NowPlayingBar's lazy
+// mount) via useMusicStore((s) => !!s.nowPlaying.track).
+vi.mock('@/lib/music/store', () => ({
+  useMusicStore: (selector?: (s: { nowPlaying: { track: null } }) => unknown) => {
+    const state = { nowPlaying: { track: null } };
+    return typeof selector === 'function' ? selector(state) : state;
+  },
 }));
 
 // --- trivial child-component stubs ----------------------------------------
@@ -130,7 +147,11 @@ describe('AppShell', () => {
     const { getByTestId, getByText } = render(<AppShell><div>Body</div></AppShell>);
     await waitFor(() => expect(getByTestId('sidebar')).toBeInTheDocument());
     expect(getByTestId('topbar')).toBeInTheDocument();
-    expect(getByTestId('command-palette')).toBeInTheDocument();
+    // CommandPalette is now next/dynamic({ ssr: false }) — it's still
+    // unconditionally mounted (same as before), but the mock module now
+    // resolves asynchronously through the loadable-runtime, so this needs
+    // its own wait instead of being available on the same tick as `sidebar`.
+    await waitFor(() => expect(getByTestId('command-palette')).toBeInTheDocument());
     expect(getByTestId('connection-status')).toBeInTheDocument();
     expect(getByTestId('mobile-nav')).toBeInTheDocument();
     expect(getByText('Body')).toBeInTheDocument();
@@ -220,10 +241,13 @@ describe('AppShell', () => {
   });
 
   it('toggles the session sidebar via the topbar button', async () => {
-    const { getByTitle, getByTestId } = render(<AppShell><div>Body</div></AppShell>);
+    const { getByTitle, getByTestId, queryByTestId } = render(<AppShell><div>Body</div></AppShell>);
     await waitFor(() => expect(getByTestId('sidebar')).toBeInTheDocument());
-    expect(getByTestId('session-sidebar').getAttribute('data-open')).toBe('false');
+    // Shell-diet: SessionSidebar is lazily mounted the first time it's
+    // opened (useEverTrue-gated) rather than always-mounted-but-hidden, so
+    // it's genuinely absent from the DOM until the toggle is first clicked.
+    expect(queryByTestId('session-sidebar')).toBeNull();
     fireEvent.click(getByTitle('Open sessions (Ctrl+Shift+S)'));
-    expect(getByTestId('session-sidebar').getAttribute('data-open')).toBe('true');
+    await waitFor(() => expect(getByTestId('session-sidebar').getAttribute('data-open')).toBe('true'));
   });
 });

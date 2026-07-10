@@ -11,8 +11,6 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ServiceWorkerPanel } from '@/components/offline/ServiceWorkerPanel';
 import { StorageQuotaPanel } from '@/components/offline/StorageQuotaPanel';
 import { ReplicationPanel } from '@/components/offline/ReplicationPanel';
@@ -20,7 +18,6 @@ import { ConflictMergePanel, type Conflict } from '@/components/offline/Conflict
 import { BackoffPanel } from '@/components/offline/BackoffPanel';
 import { SyncAnalysisPanel } from '@/components/offline/SyncAnalysisPanel';
 import { OfflineRepos } from '@/components/offline/OfflineRepos';
-import { Layers, ChevronDown } from 'lucide-react';
 
 /**
  * Offline lens — a real PWA offline-sync workbench (PouchDB/Dexie + Workbox
@@ -36,7 +33,6 @@ export default function OfflineLensPage() {
   useLensNav('offline');
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [replicationKey, setReplicationKey] = useState(0);
-  const [showFeatures, setShowFeatures] = useState(false);
 
   // Conflicts surfaced by a push are held until the user resolves them.
   const handleConflicts = useCallback((c: Conflict[]) => {
@@ -105,8 +101,6 @@ export default function OfflineLensPage() {
           </div>
         </header>
 
-        <UniversalActions domain="offline" artifactId={null} compact />
-
         {/* Connectivity + retry backoff */}
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <BackoffPanel onRetryDue={handleRetryDue} />
@@ -150,27 +144,6 @@ export default function OfflineLensPage() {
         >
           <SyncAnalysisPanel />
         </section>
-
-        {/* Lens features */}
-        <div className="border-t border-white/10">
-          <button
-            onClick={() => setShowFeatures((v) => !v)}
-            className="flex w-full items-center justify-between rounded-lg bg-white/[0.02] px-4 py-3 text-sm text-gray-300 transition-colors hover:bg-white/[0.04] hover:text-white"
-          >
-            <span className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              Lens Features &amp; Capabilities
-            </span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-            />
-          </button>
-          {showFeatures && (
-            <div className="px-4 pb-4">
-              <LensFeaturePanel lensId="offline" />
-            </div>
-          )}
-        </div>
 
         {/* Real-world offline-first tooling */}
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

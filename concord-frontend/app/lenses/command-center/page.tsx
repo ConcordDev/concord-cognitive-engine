@@ -13,14 +13,13 @@ import { OpsCockpit } from '@/components/command-center/OpsCockpit';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import { useState, useEffect, useCallback } from 'react';
-import { useRunArtifact, useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
+import { useState, useEffect } from 'react';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useRouter } from 'next/navigation';
 import {
   Shield, Activity, Brain, Layers, Puzzle, Cpu, Users, Settings,
   AlertTriangle, Moon, FileText, Pause, Play,
-  Save, Trash2, XCircle, Loader2, Clock, ArrowUp,
+  Save, Trash2, XCircle, Clock, ArrowUp,
   Zap, Send, MapPin, Focus, ShieldAlert, ChevronDown,
   Lightbulb, GitBranch, Globe, Undo2, Compass, Radio, Gauge,
 } from 'lucide-react';
@@ -30,7 +29,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import FoundationCard from '@/components/chat/FoundationCard';
-import { ActionPreviewModal } from '@/components/guidance/ActionPreviewModal';
 import { ActivityFeed } from '@/components/guidance/ActivityFeed';
 import { UndoTimeline } from '@/components/guidance/UndoTimeline';
 import { SystemGuidePanel } from '@/components/guidance/SystemGuidePanel';
@@ -1802,49 +1800,6 @@ export default function CommandCenterPage() {
     ],
     { lensId: 'command-center' }
   );
-  const [actionPreview, setActionPreview] = useState<{ action: string; entityType: string; entityId: string; onConfirm: () => void } | null>(null);
-
-  // --- Backend action wiring ---
-  const runAction = useRunArtifact('commandcenter');
-  const bridge = useLensBridge('commandcenter', 'event');
-  const [actionResult, setActionResult] = useState<unknown>(null);
-  const [isRunning, setIsRunning] = useState(false);
-
-  // Fetch system health to seed the bridge artifact (gives actions a real target ID)
-  const { data: mainHealth } = useQuery({
-    queryKey: ['cc-health-bridge'],
-    queryFn: () => apiHelpers.guidance.health().then(r => r.data),
-    refetchInterval: 30000,
-  });
-
-  // Auto-sync health snapshot into lens artifacts so guidance actions have a target
-  useEffect(() => {
-    if (mainHealth && typeof mainHealth === 'object') {
-      bridge.sync(mainHealth as Record<string, unknown>, 'Command Center Health Snapshot');
-    }
-  }, [mainHealth, bridge]);
-
-  const handleAction = useCallback(async (action: string) => {
-    if (!bridge.selectedId) {
-      setActionResult({ message: 'No artifact available yet. Wait for system health data to sync.' });
-      return;
-    }
-    setIsRunning(true);
-    setActionResult(null);
-    try {
-      const res = await runAction.mutateAsync({ id: bridge.selectedId, action });
-      if (res.ok === false) {
-        setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` });
-      } else {
-        setActionResult(res.result ?? res);
-      }
-    } catch (err) {
-      setActionResult({ error: err instanceof Error ? err.message : 'Action failed' });
-    } finally {
-      setIsRunning(false);
-    }
-  }, [runAction, bridge.selectedId]);
-
   // Auth check — any authenticated user can access command center
   const { data: me, isLoading: authLoading } = useQuery({
     queryKey: ['cc-auth'],
@@ -1963,47 +1918,6 @@ export default function CommandCenterPage() {
       )}
       </div>
 
-      {/* Backend Action Panel */}
-      <div className="mx-4 mb-4 p-4 space-y-3 rounded-xl border border-cyan-900/30 bg-[#0d1219]">
-        <h3 className="text-sm font-semibold flex items-center gap-2 text-cyan-300">
-          <Brain className="w-4 h-4 text-cyan-400" />
-          Command Center Actions
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'situationReport', label: 'Generate Sitrep' },
-            { action: 'incidentCorrelation', label: 'Correlate Incidents' },
-            { action: 'escalationEngine', label: 'Escalation Analysis' },
-          ].map(({ action, label }) => (
-            <button
-              key={action}
-              onClick={() => handleAction(action)}
-              disabled={isRunning || !bridge.selectedId}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-              {label}
-            </button>
-          ))}
-        </div>
-        {actionResult !== null && (
-          <div className="mt-2 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">Result</span>
-              <button
-                onClick={() => setActionResult(null)}
-                className="text-gray-400 hover:text-white transition-colors"
-              aria-label="Xcircle">
-                <XCircle className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <pre className="bg-[#070b10] p-3 rounded-lg whitespace-pre-wrap text-xs text-gray-300 font-mono max-h-48 overflow-y-auto border border-cyan-900/20">
-              {typeof actionResult === 'string' ? actionResult : JSON.stringify(actionResult, null, 2)}
-            </pre>
-          </div>
-        )}
-      </div>
-
       {/* Lens Features */}
       <div className="border-t border-white/10">
         <button
@@ -2023,16 +1937,6 @@ export default function CommandCenterPage() {
         )}
       </div>
 
-      {/* Action Preview Modal — dry-run preview for destructive operations */}
-      {actionPreview && (
-        <ActionPreviewModal
-          action={actionPreview.action}
-          entityType={actionPreview.entityType}
-          entityId={actionPreview.entityId}
-          onConfirm={() => { actionPreview.onConfirm(); setActionPreview(null); }}
-          onCancel={() => setActionPreview(null)}
-        />
-      )}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ConcordVitals />
       </section>

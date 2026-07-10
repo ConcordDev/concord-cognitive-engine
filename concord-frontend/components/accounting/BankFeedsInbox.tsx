@@ -10,8 +10,8 @@
  *   3. Each row shows the suggestion inline with a [✓ accept] [edit ▼] [skip] toolbar.
  */
 
-import { useEffect, useState } from 'react';
-import { Banknote, Loader2, Sparkles, Check, RefreshCw, Plus, Upload } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Banknote, Loader2, Sparkles, Check, RefreshCw, Plus, Upload, Undo2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +37,10 @@ export function BankFeedsInbox() {
   const [suggesting, setSuggesting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importDraft, setImportDraft] = useState({ description: '', amount: '', date: '' });
+  const [view, setView] = useState<'inbox' | 'categorized'>('inbox');
+  const [categorized, setCategorized] = useState<BankTxn[]>([]);
+  const [categorizedLoading, setCategorizedLoading] = useState(false);
+  const [undoingId, setUndoingId] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -52,6 +56,28 @@ export function BankFeedsInbox() {
     } catch (e) { console.error('[BankFeeds] refresh failed', e); }
     finally { setLoading(false); }
   }
+
+  const loadCategorized = useCallback(async () => {
+    setCategorizedLoading(true);
+    try {
+      const r = await lensRun({ domain: 'accounting', action: 'bank-feeds-list', input: { status: 'categorized' } });
+      setCategorized((r.data?.result?.txns || []) as BankTxn[]);
+    } catch (e) { console.error('[BankFeeds] categorized list failed', e); }
+    finally { setCategorizedLoading(false); }
+  }, []);
+
+  useEffect(() => { if (view === 'categorized') void loadCategorized(); }, [view, loadCategorized]);
+
+  async function undoCategorize(txnId: string) {
+    setUndoingId(txnId);
+    try {
+      await lensRun({ domain: 'accounting', action: 'bank-feeds-uncategorize', input: { txnId } });
+      await Promise.all([loadCategorized(), refresh()]);
+    } catch (e) { console.error('[BankFeeds] uncategorize failed', e); }
+    finally { setUndoingId(null); }
+  }
+
+  const accountName = (id: string | null) => accounts.find(a => a.id === id)?.name || id || '—';
 
   async function suggestAll() {
     setSuggesting(true);
@@ -110,8 +136,18 @@ export function BankFeedsInbox() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Banknote className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Banking</span>
-        <span className="text-[10px] text-gray-400">{txns.length} uncategorized</span>
+        <nav className="flex items-center gap-1 ml-1">
+          <button type="button" onClick={() => setView('inbox')}
+            className={cn('px-2 py-0.5 text-[11px] rounded', view === 'inbox' ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30' : 'text-gray-400 hover:text-white border border-transparent')}>
+            Inbox · {txns.length}
+          </button>
+          <button type="button" onClick={() => setView('categorized')}
+            className={cn('px-2 py-0.5 text-[11px] rounded', view === 'categorized' ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30' : 'text-gray-400 hover:text-white border border-transparent')}>
+            Categorized
+          </button>
+        </nav>
 
+        {view === 'inbox' && (
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
@@ -139,8 +175,44 @@ export function BankFeedsInbox() {
             </button>
           )}
         </div>
+        )}
       </header>
 
+      {view === 'categorized' && (
+        categorizedLoading ? (
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        ) : categorized.length === 0 ? (
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Check className="w-6 h-6 mx-auto mb-2 opacity-30" />No categorized transactions yet.</div>
+        ) : (
+          <ul className="divide-y divide-white/5">
+            {categorized.map(t => {
+              const isDeposit = t.amount > 0;
+              return (
+                <li key={t.id} className="px-4 py-2.5 hover:bg-white/[0.02] group flex items-center gap-2">
+                  <span className="text-[10px] text-gray-400 font-mono w-20">{t.date}</span>
+                  <span className="text-xs text-white flex-1 truncate">{t.description}</span>
+                  <span className="text-[10px] text-gray-400">{accountName(t.accountId)}</span>
+                  <span className={cn('text-xs font-mono tabular-nums w-24 text-right', isDeposit ? 'text-emerald-300' : 'text-rose-300')}>
+                    {isDeposit ? '+' : ''}${Math.abs(t.amount).toFixed(2)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => undoCategorize(t.id)}
+                    disabled={undoingId === t.id}
+                    className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-[10px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] disabled:opacity-40 inline-flex items-center gap-1"
+                    title="Move back to inbox for re-categorization"
+                  >
+                    {undoingId === t.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />}Undo
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )
+      )}
+
+      {view === 'inbox' && (
+      <>
       {totalSuggested > 0 && (
         <div className="px-4 py-2 bg-emerald-500/[0.04] border-b border-emerald-500/10 text-[11px] text-emerald-200 flex items-center gap-2">
           <Sparkles className="w-3 h-3" />
@@ -248,6 +320,8 @@ export function BankFeedsInbox() {
             );
           })}
         </ul>
+      )}
+      </>
       )}
     </div>
   );

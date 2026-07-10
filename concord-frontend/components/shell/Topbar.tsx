@@ -22,11 +22,18 @@ export function Topbar() {
   const { isOnline } = useOnlineStatus();
   const { powerMode, togglePowerMode } = usePowerMode();
 
-  // Background resonance fetch (data consumed by HeartbeatBar via its own query)
+  // Background resonance fetch — exists ONLY to prime the react-query cache
+  // for HeartbeatBar's own `resonance-quick` query (same queryKey, same
+  // endpoint: GET /api/lattice/resonance). HeartbeatBar itself only mounts
+  // under `powerMode &&` below, so priming this cache for non-Power-Mode
+  // sessions (the default — see hooks/usePowerMode.ts) was pure waste: a
+  // 30s poll running forever for a component that never renders. Gated the
+  // same way HeartbeatBar is gated.
   useQuery({
     queryKey: ['resonance-quick'],
     queryFn: () => api.get('/api/lattice/resonance').then((r) => r.data).catch(() => null),
     refetchInterval: 30000,
+    enabled: powerMode,
     retry: false,
   });
 
@@ -45,19 +52,25 @@ export function Topbar() {
     retry: false,
   });
 
-  // Fetch system health for pulse indicator
+  // Fetch system health for the pulse indicator — that indicator only
+  // renders under `powerMode &&` below, so this poll is gated the same way
+  // (shell-diet: this was running a 60s background poll for every user on
+  // every page even though ~all of them never see its output).
   const { data: healthData } = useQuery({
     queryKey: ['system-health'],
     queryFn: () => api.get('/api/system/health').then((r) => r.data).catch(() => null),
     refetchInterval: 60000,
+    enabled: powerMode,
     retry: false,
   });
 
-  // Fetch affect state for mood indicator
+  // Fetch affect state for the mood indicator — same story, `powerMode &&`-only
+  // consumer below.
   const { data: affectData } = useQuery({
     queryKey: ['affect-topbar'],
     queryFn: () => api.get('/api/affect/state').then((r) => r.data).catch(() => null),
     refetchInterval: 30000,
+    enabled: powerMode,
     retry: false,
   });
 

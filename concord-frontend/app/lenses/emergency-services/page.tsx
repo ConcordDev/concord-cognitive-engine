@@ -1,525 +1,179 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef} from 'react';
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ * CONCORD // EMERGENCY SERVICES — CAD (Computer-Aided Dispatch) shape
+ * (Frontend Rebuild Program)
+ * ─────────────────────────────────────────────────────────────────────────
+ * Every panel on this page is real and wired to a macro in
+ * `server/domains/emergencyservices.js` — full audit + reference-parity
+ * checklist in `docs/lens-specs/emergency-services-capability-map.md`.
+ *
+ * REMOVED (fabrication + a disconnected generic surface the old page
+ * shipped, 7 of 9 tabs' worth):
+ *   - A generic-CRUD artifact store cycling through type strings that
+ *     never matched any registered backend macro, backing the old
+ *     Dashboard/Calls/Units/Fire/EMS/Dispatch/Resources/Map tabs. Two of
+ *     those type strings (fire-incident and EMS-call variants) had no
+ *     corresponding macro anywhere in the domain file — they rendered an
+ *     always-empty list.
+ *   - A literal hardcoded "4.2m" "Avg Response" stat tile — a decorative
+ *     string with no computation behind it, presented next to three real
+ *     counts as if it were live telemetry.
+ *   - A Map tab plotting lat/lng off the same disconnected fake store,
+ *     duplicating map data the real CAD console below it already renders
+ *     from the live map-state macro.
+ *   - The auto-generated scaffold action body that ships on every
+ *     un-rebuilt lens page — a manifest-driven quick-action strip layered
+ *     over a generic capabilities list, neither of which counted as a
+ *     designed feature even though the macros underneath were real.
+ *
+ * KEPT + PROMOTED: the CAD Console (`CADConsole`) already covered the
+ * entire live operational surface — incident intake, unit roster, live
+ * map, triage queue, dispatch, nearest-unit routing, timeline, readiness,
+ * alerts — but only inside one tab; the field-calculator bench
+ * (`EmergencyServicesActionPanel`) and the live USGS seismic feed
+ * (`QuakeFeed`) were both real but bolted below the tab nav, unreachable
+ * from it. All three are now first-class tabs.
+ *
+ * ADDED: `EmsOverviewPanel` — a real Dashboard wiring the previously
+ * unsurfaced `ems-dashboard` + `readiness-rollup` macros into honest KPI
+ * tiles. `QuakeFeed` gained a bulk "Ingest to substrate" action wired to
+ * the `feed` macro (server-side dedup + bulk DTU-mint), which had zero
+ * frontend caller before this rebuild.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+import { useState } from 'react';
+import { Siren, LayoutDashboard, Radio, Truck, AlertOctagon, Keyboard } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
+import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
+import { PipingProvider } from '@/components/panel-polish';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { cn } from '@/lib/utils';
+
 import { QuakeFeed } from '@/components/emergency-services/QuakeFeed';
 import { EmergencyServicesActionPanel } from '@/components/emergency-services/EmergencyServicesActionPanel';
 import { CADConsole } from '@/components/emergency-services/CADConsole';
-import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useLensCommand } from '@/hooks/useLensCommand';
-import { motion, AnimatePresence } from 'framer-motion';
-import dynamic from 'next/dynamic';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import {
-  Siren,
-  Plus,
-  Search,
-  Trash2,
-  BarChart3,
-  MapPin,
-  Flame,
-  Phone,
-  Heart,
-  Truck,
-  AlertTriangle,
-  Clock,
-  Radio,
-  Map,
-  Activity,
-  Zap,
-} from 'lucide-react';
+import { EmsOverviewPanel } from '@/components/emergency-services/EmsOverviewPanel';
 
-const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
-import { LensPageShell } from '@/components/lens/LensPageShell';
+type ModeTab = 'Dashboard' | 'CAD' | 'Actions' | 'Seismic';
 
-type ModeTab = 'Dashboard' | 'CAD' | 'Calls' | 'Units' | 'Fire' | 'EMS' | 'Dispatch' | 'Resources' | 'Map';
-
-interface CallData {
-  callNumber: string;
-  type:
-    | 'fire'
-    | 'medical'
-    | 'rescue'
-    | 'hazmat'
-    | 'mva'
-    | 'water_rescue'
-    | 'natural_disaster'
-    | 'structure_collapse';
-  priority: 'alpha' | 'bravo' | 'charlie' | 'delta' | 'echo';
-  status:
-    | 'received'
-    | 'dispatched'
-    | 'en_route'
-    | 'on_scene'
-    | 'transporting'
-    | 'resolved'
-    | 'cancelled';
-  location: string;
-  callerInfo: string;
-  receivedAt: string;
-  dispatchedAt: string;
-  arrivedAt: string;
-  resolvedAt: string;
-  narrative: string;
-  unitsAssigned: string[];
-  patients: number;
-  lat?: number;
-  lng?: number;
-}
-
-interface UnitData {
-  callSign: string;
-  type: 'engine' | 'ladder' | 'rescue' | 'ambulance' | 'hazmat' | 'battalion' | 'helicopter';
-  status: 'available' | 'dispatched' | 'en_route' | 'on_scene' | 'out_of_service' | 'returning';
-  station: string;
-  crew: string[];
-  crewCount: number;
-  equipment: string[];
-  lastMaintenance: string;
-  fuelLevel: number;
-  mileage: number;
-}
-
-interface IncidentData {
-  incidentNumber: string;
-  type: string;
-  severity: 'minor' | 'moderate' | 'major' | 'mass_casualty';
-  status: 'active' | 'controlled' | 'resolved' | 'under_investigation';
-  commander: string;
-  location: string;
-  startTime: string;
-  endTime: string;
-  casualties: number;
-  evacuated: number;
-  damageEstimate: string;
-  agencies: string[];
-  narrative: string;
-}
-
-type ArtifactDataUnion = CallData | UnitData | IncidentData | Record<string, unknown>;
-
-const MODE_TABS: { key: ModeTab; label: string; icon: typeof Siren }[] = [
-  { key: 'Dashboard', label: 'Dashboard', icon: BarChart3 },
-  { key: 'CAD', label: 'CAD Console', icon: Radio },
-  { key: 'Calls', label: 'Calls', icon: Phone },
-  { key: 'Units', label: 'Units', icon: Truck },
-  { key: 'Fire', label: 'Fire', icon: Flame },
-  { key: 'EMS', label: 'EMS', icon: Heart },
-  { key: 'Dispatch', label: 'Dispatch', icon: Radio },
-  { key: 'Resources', label: 'Resources', icon: MapPin },
-  { key: 'Map', label: 'Map', icon: Map },
+const MODE_TABS: { key: ModeTab; label: string; icon: typeof Siren; hotkey: string }[] = [
+  { key: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, hotkey: '1' },
+  { key: 'CAD', label: 'CAD Console', icon: Radio, hotkey: '2' },
+  { key: 'Actions', label: 'Quick Actions', icon: Truck, hotkey: '3' },
+  { key: 'Seismic', label: 'Seismic Feed', icon: AlertOctagon, hotkey: '4' },
 ];
 
-function getTypeForTab(tab: ModeTab): string {
-  const map: Record<ModeTab, string> = {
-    Dashboard: 'Call',
-    CAD: 'Call',
-    Calls: 'Call',
-    Units: 'Unit',
-    Fire: 'FireIncident',
-    EMS: 'EMSCall',
-    Dispatch: 'Dispatch',
-    Resources: 'Resource',
-    Map: 'Call',
-  };
-  return map[tab];
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  received: 'text-blue-400 bg-blue-400/10',
-  dispatched: 'text-yellow-400 bg-yellow-400/10',
-  en_route: 'text-orange-400 bg-orange-400/10',
-  on_scene: 'text-green-400 bg-green-400/10',
-  transporting: 'text-cyan-400 bg-cyan-400/10',
-  resolved: 'text-gray-400 bg-gray-400/10',
-  cancelled: 'text-gray-400 bg-gray-500/10',
-  available: 'text-green-400 bg-green-400/10',
-  out_of_service: 'text-red-400 bg-red-400/10',
-  returning: 'text-blue-400 bg-blue-400/10',
-  active: 'text-red-400 bg-red-400/10',
-  controlled: 'text-orange-400 bg-orange-400/10',
-  under_investigation: 'text-purple-400 bg-purple-400/10',
-  alpha: 'text-green-400 bg-green-400/10',
-  bravo: 'text-blue-400 bg-blue-400/10',
-  charlie: 'text-yellow-400 bg-yellow-400/10',
-  delta: 'text-orange-400 bg-orange-400/10',
-  echo: 'text-red-400 bg-red-400/10',
-};
-
 export default function EmergencyServicesLensPage() {
+  useLensNav('emergency-services');
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
-  const [searchQuery, setSearchQuery] = useState('');
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
-    [
-      { id: 'mode-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
-      { id: 'mode-cad', keys: 'a', description: 'CAD Console', category: 'navigation', action: () => setActiveMode('CAD') },
-      { id: 'mode-calls', keys: 'c', description: 'Calls', category: 'navigation', action: () => setActiveMode('Calls') },
-      { id: 'mode-units', keys: 'u', description: 'Units', category: 'navigation', action: () => setActiveMode('Units') },
-      { id: 'mode-fire', keys: 'f', description: 'Fire', category: 'navigation', action: () => setActiveMode('Fire') },
-      { id: 'mode-ems', keys: 'e', description: 'EMS', category: 'navigation', action: () => setActiveMode('EMS') },
-      { id: 'mode-dispatch', keys: 'p', description: 'Dispatch', category: 'navigation', action: () => setActiveMode('Dispatch') },
-      { id: 'mode-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveMode('Resources') },
-      { id: 'mode-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveMode('Map') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
-
-    ],
+    MODE_TABS.map((t) => ({
+      id: `mode-${t.key.toLowerCase()}`,
+      keys: t.hotkey,
+      description: t.label,
+      category: 'navigation' as const,
+      action: () => setActiveMode(t.key),
+    })),
     { lensId: 'emergency-services' }
   );
 
-  const currentType = getTypeForTab(activeMode);
-  const { items, isLoading, isError, error, refetch, create, remove } =
-    useLensData<ArtifactDataUnion>('emergency-services', currentType, {
-      search: searchQuery || undefined,
-    });
-
-  const { items: calls } = useLensData<CallData>('emergency-services', 'Call', { seed: [] });
-  const { items: units } = useLensData<UnitData>('emergency-services', 'Unit', { seed: [] });
-
-  const runAction = useRunArtifact('emergency-services');
-
-  const handleAction = useCallback(
-    async (action: string, artifactId?: string) => {
-      const targetId = artifactId || items[0]?.id;
-      if (!targetId) return;
-      try {
-        await runAction.mutateAsync({ id: targetId, action });
-      } catch (err) {
-        console.error('Action failed:', err);
-      }
-    },
-    [items, runAction]
-  );
-
-  const stats = useMemo(
-    () => ({
-      activeCalls: calls.filter((c) =>
-        ['dispatched', 'en_route', 'on_scene', 'transporting'].includes((c.data as CallData).status)
-      ).length,
-      totalCalls: calls.length,
-      availableUnits: units.filter((u) => (u.data as UnitData).status === 'available').length,
-      totalUnits: units.length,
-      criticalCalls: calls.filter((c) => ['delta', 'echo'].includes((c.data as CallData).priority))
-        .length,
-    }),
-    [calls, units]
-  );
+  const renderTab = () => {
+    switch (activeMode) {
+      case 'Dashboard':
+        return (
+          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <EmsOverviewPanel />
+          </section>
+        );
+      case 'CAD':
+        return (
+          <section className="rounded-xl border border-red-500/20 bg-zinc-950/50 p-4">
+            <CADConsole />
+          </section>
+        );
+      case 'Actions':
+        return (
+          <PipingProvider>
+            <section>
+              <EmergencyServicesActionPanel />
+            </section>
+          </PipingProvider>
+        );
+      case 'Seismic':
+        return (
+          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <QuakeFeed />
+          </section>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <LensShell lensId="emergency-services" asMain={false}>
       <FirstRunTour lensId="emergency-services" />
-      <ManifestActionBar />
-      <DepthBadge lensId="emergency-services" size="sm" className="ml-2" />
-    <LensPageShell
-      domain="emergency-services"
-      title="Emergency Services"
-      description="Fire, EMS, dispatch, units & resource management"
-      headerIcon={<Siren className="w-5 h-5 text-red-400" />}
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      onRetry={refetch}
-      actions={
-        runAction.isPending ? (
-          <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
-        ) : undefined
-      }
-    >
-      {/* Stat Cards Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          {
-            icon: Siren,
-            label: 'Active Calls',
-            value: stats.activeCalls,
-            color: 'text-red-400',
-            bg: 'bg-red-400/10',
-          },
-          {
-            icon: Truck,
-            label: 'Available Units',
-            value: stats.availableUnits,
-            color: 'text-green-400',
-            bg: 'bg-green-400/10',
-          },
-          {
-            icon: AlertTriangle,
-            label: 'Critical (D/E)',
-            value: stats.criticalCalls,
-            color: 'text-orange-400',
-            bg: 'bg-orange-400/10',
-          },
-          {
-            icon: Clock,
-            label: 'Avg Response',
-            value: '4.2m',
-            color: 'text-blue-400',
-            bg: 'bg-blue-400/10',
-          },
-        ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08, duration: 0.35 }}
-            className="p-3 bg-zinc-900 rounded-lg border border-zinc-800 flex items-center gap-3"
-          >
-            <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', stat.bg)}>
-              <stat.icon className={cn('w-5 h-5', stat.color)} />
+      <div data-lens-theme="emergency-services" className="min-h-full p-4 space-y-4">
+        {/* Command bar */}
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
+              <Siren className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <p className="text-xl font-bold text-white">{stat.value}</p>
-              <p className="text-xs text-gray-400">{stat.label}</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold">Emergency Services</h1>
+                <DepthBadge lensId="emergency-services" size="sm" />
+              </div>
+              <p className="text-xs text-gray-400">Computer-aided dispatch, field calculators &amp; live seismic intake</p>
             </div>
-          </motion.div>
-        ))}
-      </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="hidden md:flex items-center gap-1 text-[10px] text-gray-600" title="1–4 switch view">
+              <Keyboard className="w-3.5 h-3.5" /> 1–4
+            </span>
+            <DTUExportButton domain="emergency-services" data={{}} compact />
+          </div>
+        </header>
 
-      {/* Incident Severity Badges */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.35 }}
-        className="flex items-center gap-3 flex-wrap"
-      >
-        <span className="text-xs text-gray-400 uppercase tracking-wide">Severity:</span>
-        {[
-          {
-            label: 'Critical',
-            count: calls.filter((c) => (c.data as CallData).priority === 'echo').length,
-            color: 'bg-red-500/20 text-red-400 border-red-500/30',
-          },
-          {
-            label: 'Major',
-            count: calls.filter((c) => (c.data as CallData).priority === 'delta').length,
-            color: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-          },
-          {
-            label: 'Minor',
-            count: calls.filter((c) => ['alpha', 'bravo'].includes((c.data as CallData).priority))
-              .length,
-            color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-          },
-        ].map((sev) => (
-          <span
-            key={sev.label}
-            className={cn('text-xs px-3 py-1 rounded-full border font-medium', sev.color)}
-          >
-            {sev.label}: {sev.count}
-          </span>
-        ))}
-        <span className="ml-auto text-xs text-gray-400 flex items-center gap-1">
-          <Activity className="w-3 h-3" /> {stats.totalUnits} total units
-        </span>
-      </motion.div>
-
-      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap">
-        {MODE_TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveMode(key)}
-            className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
-              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
-            )}
-          >
-            <Icon className="w-4 h-4" /> {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            ref={searchInputRef}
-              value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={`Search ${currentType.toLowerCase()}s...`}
-            className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder-gray-500"
-          />
-        </div>
-        <button
-          onClick={() => create({ title: `New ${currentType}`, data: {} })}
-          className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm"
-        >
-          <Plus className="w-4 h-4" /> New {currentType}
-        </button>
-      </div>
-
-      {activeMode === 'Dashboard' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            {
-              label: 'Active Calls',
-              value: stats.activeCalls,
-              total: stats.totalCalls,
-              color: 'red',
-            },
-            {
-              label: 'Available Units',
-              value: stats.availableUnits,
-              total: stats.totalUnits,
-              color: 'green',
-            },
-            {
-              label: 'Critical (D/E)',
-              value: stats.criticalCalls,
-              total: stats.totalCalls,
-              color: 'orange',
-            },
-          ].map((s) => (
-            <div key={s.label} className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
-              <p className={`text-2xl font-bold text-${s.color}-400`}>{s.value}</p>
-              <p className="text-xs text-gray-400">{s.label}</p>
-              <p className="text-xs text-gray-400">of {s.total} total</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activeMode === 'CAD' && (
-        <section className="rounded-xl border border-red-500/20 bg-zinc-950/50 p-4">
-          <CADConsole />
-        </section>
-      )}
-
-      {activeMode !== 'CAD' && (
-      <div className="space-y-2">
-        <AnimatePresence mode="popLayout">
-          {items.map((item, idx) => {
-            const d = item.data as Record<string, unknown>;
-            const severity = String(d.priority || '');
-            const severityBorder =
-              severity === 'echo'
-                ? 'border-l-red-500'
-                : severity === 'delta'
-                  ? 'border-l-orange-500'
-                  : severity === 'charlie'
-                    ? 'border-l-yellow-500'
-                    : 'border-l-transparent';
+        {/* Tabs */}
+        <nav className="flex gap-2 border-b border-white/10 pb-2 overflow-x-auto">
+          {MODE_TABS.map((t) => {
+            const Icon = t.icon;
+            const active = activeMode === t.key;
             return (
-              <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ delay: idx * 0.04, duration: 0.3 }}
+              <button
+                key={t.key}
+                onClick={() => setActiveMode(t.key)}
                 className={cn(
-                  'p-4 bg-zinc-900 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors border-l-4',
-                  severityBorder
+                  'flex items-center gap-1.5 px-4 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap transition-colors',
+                  active
+                    ? 'bg-red-400/20 text-red-400 border-b-2 border-red-400'
+                    : 'text-gray-400 hover:text-white'
                 )}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-semibold text-white">{item.title}</h3>
-                    {Boolean(d.status) && (
-                      <span
-                        className={cn(
-                          'text-xs px-2 py-0.5 rounded-full',
-                          STATUS_COLORS[String(d.status)] || 'text-gray-400 bg-gray-400/10'
-                        )}
-                      >
-                        {String(d.status)}
-                      </span>
-                    )}
-                    {Boolean(d.priority) && (
-                      <span
-                        className={cn(
-                          'text-xs px-2 py-0.5 rounded-full font-mono',
-                          STATUS_COLORS[String(d.priority)] || 'text-gray-400 bg-gray-400/10'
-                        )}
-                      >
-                        {String(d.priority).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAction('analyze', item.id);
-                    }}
-                    className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-neon-cyan"
-                  aria-label="Activate">
-                    <Zap className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => remove(item.id)}
-                    className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-red-400"
-                  aria-label="Delete">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                {Boolean(d.location) && (
-                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> {String(d.location)}
-                  </p>
-                )}
-              </motion.div>
+                <Icon className="w-3.5 h-3.5" /> {t.label}
+              </button>
             );
           })}
-        </AnimatePresence>
-        {items.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <Siren className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p>No {currentType.toLowerCase()} records found</p>
-          </div>
-        )}
+        </nav>
+
+        <div className="min-h-[240px]">{renderTab()}</div>
+
+        <RecentMineCard domain="emergency-services" limit={10} hideWhenEmpty className="mt-2" />
+        <AutoActionStrip domain="emergency-services" hideWhenEmpty className="mt-3" title="More actions" />
+        <CrossLensRecentsPanel lensId="emergency-services" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
-      )}
-
-      {activeMode === 'Map' && (
-        <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800">
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <Map className="w-4 h-4 text-red-400" /> Dispatch Locations
-          </h3>
-          <MapView
-            markers={calls
-              .filter((c) => (c.data as CallData).lat && (c.data as CallData).lng)
-              .map((c) => {
-                const d = c.data as CallData;
-                return {
-                  lat: d.lat!,
-                  lng: d.lng!,
-                  label: c.title || d.callNumber,
-                  popup: `${d.type} - ${d.status} (${d.priority})`,
-                };
-              })}
-            className="h-[500px]"
-          />
-        </div>
-      )}
-
-      <UniversalActions domain="emergency-services" artifactId={items[0]?.id} />
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <QuakeFeed />
-      </section>
-
-      <PipingProvider>
-        <section className="mt-6 max-w-7xl mx-auto px-4">
-          <EmergencyServicesActionPanel />
-        </section>
-      </PipingProvider>
-    </LensPageShell>
-    
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
-      <a href="#emergency-services-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to emergency-services content</a>
-          <section className="mt-4"><LensFeedButton domain="emergency-services" label="Live seismic-event feed" /></section>
-          <RecentMineCard domain="emergency-services" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="emergency-services" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="emergency-services" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

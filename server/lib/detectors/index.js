@@ -35,6 +35,7 @@ import { runArchitecturalHubDetector } from "./architectural-hub-detector.js";
 import { runConcordiaSubstrateDetector } from "./concordia-substrate-detector.js";
 import { runMaintenanceGatesDetector } from "./maintenance-gates-detector.js";
 import { runFakeDataDetector } from "./fake-data-detector.js";
+import { runFrontendFakeDataDetector } from "./frontend-fake-data-detector.js";
 import { runResourceLeakDetector } from "./resource-leak-detector.js";
 import { runEnvConfigDriftDetector } from "./env-config-drift-detector.js";
 import { runObservabilityGapDetector } from "./observability-gap-detector.js";
@@ -323,6 +324,25 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Flags mock/fake/stub/placeholder data in production paths + test mocks of real modules.",
   run: runFakeDataDetector,
+});
+
+// Frontend fake-data detector — scoped to concord-frontend/app/lenses +
+// concord-frontend/components. Distinct from fake-data (name-based) and
+// fabrication-mechanism (assignment-taint-based): this one catches
+// hardcoded array-of-objects literals rendered as if live substrate data
+// with no fetch hook in the enclosing component, Math.random() called
+// directly inside a JSX expression container, and lorem/sample/placeholder
+// content sitting in a rendered string literal. A general UX-honesty
+// finding, NOT a security finding — deliberately not tagged "security" so
+// it feeds only the code-quality baseline/budget ratchet, never the
+// blocking security-gate consumer.
+registerDetector({
+  id: "frontend-fake-data",
+  label: "FrontendFakeDataDetector",
+  consumers: ["code-quality", "repair-cortex", "hud"],
+  dataNeeds: ["fs"],
+  description: "Flags hardcoded arrays rendered as live data with no fetch hook nearby, Math.random() synthesizing a rendered value inside JSX, and lorem/sample/placeholder content rendered as real copy, across lens pages + components.",
+  run: runFrontendFakeDataDetector,
 });
 
 // Category #2 — production resource leaks (setInterval without clear,
