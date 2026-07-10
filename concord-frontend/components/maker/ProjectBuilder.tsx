@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import {
-  Layers, Plus, Trash2, Copy, Loader2, LayoutGrid, Database, Zap, History, Eye, Store,
+  Layers, Plus, Trash2, Copy, Loader2, LayoutGrid, Database, Zap, History, Eye, Store, Plug,
 } from 'lucide-react';
 import { VisualEditor } from './VisualEditor';
 import { DataModelDesigner } from './DataModelDesigner';
@@ -18,6 +18,7 @@ import { WorkflowBuilder } from './WorkflowBuilder';
 import { VersionHistory } from './VersionHistory';
 import { PreviewPane } from './PreviewPane';
 import { ComponentMarket } from './ComponentMarket';
+import { ConnectorManager } from './ConnectorManager';
 
 interface ProjectSummary {
   id: string; name: string; pageCount: number; tableCount: number;
@@ -28,12 +29,13 @@ interface PageMeta { id: string; name: string; route: string }
 interface DataTable { id: string; name: string; fields: { name: string; type: string }[] }
 interface Connector { id: string; name: string; kind: string }
 
-type BuilderTab = 'editor' | 'data' | 'workflows' | 'market' | 'versions';
+type BuilderTab = 'editor' | 'data' | 'workflows' | 'connectors' | 'market' | 'versions';
 
 const SUBTABS: { key: BuilderTab; label: string; icon: typeof LayoutGrid }[] = [
   { key: 'editor', label: 'Editor', icon: LayoutGrid },
   { key: 'data', label: 'Data', icon: Database },
   { key: 'workflows', label: 'Workflows', icon: Zap },
+  { key: 'connectors', label: 'Connectors', icon: Plug },
   { key: 'market', label: 'Marketplace', icon: Store },
   { key: 'versions', label: 'Versions', icon: History },
 ];
@@ -199,6 +201,9 @@ export function ProjectBuilder() {
           )}
           {tab === 'workflows' && (
             <WorkflowBuilder key={active.id} projectId={active.id} onChanged={() => refreshProjects()} />
+          )}
+          {tab === 'connectors' && (
+            <ConnectorManager key={active.id} projectId={active.id} onChanged={() => loadProject(active.id)} />
           )}
           {tab === 'market' && (
             <ComponentMarket projectId={active.id} onLibraryChanged={() => loadProject(active.id)} />
