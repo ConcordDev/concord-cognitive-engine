@@ -41,7 +41,6 @@ import {
 } from 'lucide-react';
 import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
 import { BooksSection } from '@/components/accounting/BooksSection';
-import { AccountingActionPanel } from '@/components/accounting/AccountingActionPanel';
 import { CategoryRulesPanel } from '@/components/accounting/CategoryRulesPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { StripeInvoicePanel } from '@/components/accounting/StripeInvoicePanel';
@@ -3081,9 +3080,6 @@ export default function AccountingLensPage() {
     <AccountingWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
 
     <PipingProvider>
-      <section className="mt-6 max-w-7xl mx-auto px-4">
-        <AccountingActionPanel />
-      </section>
       <section className="mt-6 max-w-7xl mx-auto px-4">
         <CategoryRulesPanel />
       </section>

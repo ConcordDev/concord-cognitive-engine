@@ -41,6 +41,7 @@ export function BankFeedsInbox() {
   const [categorized, setCategorized] = useState<BankTxn[]>([]);
   const [categorizedLoading, setCategorizedLoading] = useState(false);
   const [undoingId, setUndoingId] = useState<string | null>(null);
+  const [suggestingId, setSuggestingId] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -89,6 +90,21 @@ export function BankFeedsInbox() {
       setSuggestions(map);
     } catch (e) { console.error('[BankFeeds] bulk-suggest failed', e); }
     finally { setSuggesting(false); }
+  }
+
+  // On-demand single-txn AI suggestion — for a row that arrived after the
+  // last "Suggest all" pass (e.g. just imported), without re-running the
+  // bulk suggester over every uncategorized transaction.
+  async function suggestOne(txnId: string) {
+    setSuggestingId(txnId);
+    try {
+      const res = await lensRun({ domain: 'accounting', action: 'ai-categorize-txn', input: { txnId } });
+      const r = res.data?.result as Suggestion | undefined;
+      if (r?.suggestedAccountId) {
+        setSuggestions(prev => { const next = new Map(prev); next.set(txnId, r); return next; });
+      }
+    } catch (e) { console.error('[BankFeeds] single suggest failed', e); }
+    finally { setSuggestingId(null); }
   }
 
   async function acceptOne(txnId: string, accountId?: string) {
@@ -300,6 +316,16 @@ export function BankFeedsInbox() {
                     </>
                   ) : (
                     <>
+                      <button
+                        type="button"
+                        onClick={() => suggestOne(t.id)}
+                        disabled={suggestingId === t.id}
+                        title="AI-suggest just this transaction"
+                        className="px-1.5 py-0.5 text-[10px] rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-40 inline-flex items-center gap-1"
+                      >
+                        {suggestingId === t.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        Suggest
+                      </button>
                       <select
                         defaultValue=""
                         onChange={(e) => { if (e.target.value) acceptOne(t.id, e.target.value); }}

@@ -1,13 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Receipt, Loader2, Plus, Paperclip } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Receipt, Loader2, Plus, Paperclip, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
 interface Expense {
   id: string; number: string; date: string; vendor: string; accountId: string;
   amount: number; memo: string; receiptUrl: string;
+}
+interface VendorSuggestion {
+  matched: boolean;
+  vendorId?: string;
+  vendorName?: string;
+  score?: number;
+  suggestedNewVendor?: string;
 }
 
 export function ExpensesPanel() {
@@ -16,8 +23,30 @@ export function ExpensesPanel() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ accountId: '', amount: '', vendor: '', memo: '', date: '', receiptUrl: '' });
+  const [vendorHint, setVendorHint] = useState<VendorSuggestion | null>(null);
+  const [vendorHintLoading, setVendorHintLoading] = useState(false);
+  const vendorHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { refresh(); }, []);
+
+  // AI vendor match — as the user describes the expense (memo), suggest a
+  // matching existing vendor or a clean name for a new one. Debounced;
+  // never overwrites the vendor field — the user clicks "Use" to accept.
+  useEffect(() => {
+    if (vendorHintTimer.current) clearTimeout(vendorHintTimer.current);
+    const desc = draft.memo.trim();
+    if (!creating || draft.vendor.trim() || desc.length < 4) { setVendorHint(null); return; }
+    vendorHintTimer.current = setTimeout(async () => {
+      setVendorHintLoading(true);
+      try {
+        const r = await lensRun({ domain: 'accounting', action: 'ai-suggest-vendor', input: { description: desc } });
+        const res = r.data?.result as VendorSuggestion | undefined;
+        if (res) setVendorHint(res);
+      } catch (err) { console.error('[Expenses] vendor suggest failed', err); }
+      finally { setVendorHintLoading(false); }
+    }, 500);
+    return () => { if (vendorHintTimer.current) clearTimeout(vendorHintTimer.current); };
+  }, [draft.memo, draft.vendor, creating]);
 
   async function refresh() {
     setLoading(true);
@@ -40,6 +69,7 @@ export function ExpensesPanel() {
         input: { ...draft, amount: Number(draft.amount) },
       });
       setDraft({ accountId: '', amount: '', vendor: '', memo: '', date: '', receiptUrl: '' });
+      setVendorHint(null);
       setCreating(false);
       await refresh();
     } catch (err) { console.error('[Expenses] create failed', err); }
@@ -70,6 +100,26 @@ export function ExpensesPanel() {
           <input type="date" value={draft.date} onChange={e => setDraft({ ...draft, date: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <input value={draft.memo} onChange={e => setDraft({ ...draft, memo: e.target.value })} placeholder="Memo" className="col-span-8 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={draft.receiptUrl} onChange={e => setDraft({ ...draft, receiptUrl: e.target.value })} placeholder="Receipt URL" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+
+          {!draft.vendor.trim() && (vendorHintLoading || vendorHint) && (
+            <div className="col-span-12 flex items-center gap-2 text-[10px] text-gray-400 -mt-1">
+              <Sparkles className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+              {vendorHintLoading ? (
+                <span className="inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Matching vendor…</span>
+              ) : vendorHint?.matched ? (
+                <>
+                  <span>Looks like <span className="text-white">{vendorHint.vendorName}</span> ({Math.round((vendorHint.score || 0) * 100)}% match)</span>
+                  <button type="button" onClick={() => { setDraft(d => ({ ...d, vendor: vendorHint.vendorName || '' })); setVendorHint(null); }} className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25">Use</button>
+                </>
+              ) : vendorHint?.suggestedNewVendor ? (
+                <>
+                  <span>New vendor? <span className="text-white">{vendorHint.suggestedNewVendor}</span></span>
+                  <button type="button" onClick={() => { setDraft(d => ({ ...d, vendor: vendorHint.suggestedNewVendor || '' })); setVendorHint(null); }} className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25">Use</button>
+                </>
+              ) : null}
+            </div>
+          )}
+
           <button onClick={create} className="col-span-12 px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Post expense (auto Dr Expense / Cr Cash)</button>
         </div>
       )}

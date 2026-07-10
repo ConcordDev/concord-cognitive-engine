@@ -95,7 +95,6 @@ vi.mock('@/components/mobile/MobileTabBar', () => ({ MobileTabBar: () => null })
 vi.mock('@/components/accounting/KPIStrip', () => ({ KPIStrip: () => null }));
 vi.mock('@/components/accounting/AccountingWorkbench', () => ({ default: () => null }));
 vi.mock('@/components/accounting/BooksSection', () => ({ BooksSection: () => null }));
-vi.mock('@/components/accounting/AccountingActionPanel', () => ({ AccountingActionPanel: () => null }));
 vi.mock('@/components/accounting/CategoryRulesPanel', () => ({ CategoryRulesPanel: () => null }));
 vi.mock('@/components/accounting/StripeInvoicePanel', () => ({ StripeInvoicePanel: () => null }));
 vi.mock('@/components/panel-polish', () => ({ PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children) }));
