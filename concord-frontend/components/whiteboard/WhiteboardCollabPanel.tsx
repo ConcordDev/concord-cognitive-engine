@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Frame, Link2, Globe, Image as ImageIcon, FileText, Video, Presentation,
   Plus, Trash2, Loader2, Download, Smile, Users, ChevronLeft, ChevronRight, X, LogOut, ExternalLink, BarChart2,
+  Pencil, Check,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -97,6 +98,11 @@ function FramesTab({ boardId }: { boardId: string }) {
   const [label, setLabel] = useState('');
   const [slides, setSlides] = useState<SlideRec[] | null>(null);
   const [presentIdx, setPresentIdx] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editW, setEditW] = useState(600);
+  const [editH, setEditH] = useState(400);
+  const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -119,6 +125,21 @@ function FramesTab({ boardId }: { boardId: string }) {
   async function deleteFrame(id: string) {
     const r = await lensRun({ domain: 'whiteboard', action: 'frame-delete', input: { boardId, id } });
     if (r.data?.ok) await refresh();
+  }
+  function startEdit(f: FrameRec) {
+    setEditingId(f.id);
+    setEditLabel(f.label);
+    setEditW(f.w);
+    setEditH(f.h);
+  }
+  async function saveEdit(id: string) {
+    setSaving(true);
+    try {
+      const r = await lensRun({ domain: 'whiteboard', action: 'frame-update', input: {
+        boardId, id, label: editLabel.trim() || undefined, w: editW, h: editH,
+      } });
+      if (r.data?.ok) { setEditingId(null); await refresh(); }
+    } finally { setSaving(false); }
   }
   async function buildPresentation() {
     const r = await lensRun({ domain: 'whiteboard', action: 'presentation-build', input: { boardId } });
@@ -173,13 +194,37 @@ function FramesTab({ boardId }: { boardId: string }) {
       ) : (
         <ul className="space-y-1">
           {frames.map(f => (
-            <li key={f.id} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 flex items-center gap-2">
-              <Frame className="w-3.5 h-3.5 text-sky-300 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="truncate text-white">{f.label}</div>
-                <div className="text-[10px] text-gray-400 font-mono">{f.memberIds.length} member{f.memberIds.length === 1 ? '' : 's'} · {Math.round(f.w)}×{Math.round(f.h)}</div>
-              </div>
-              <button aria-label="Delete" onClick={() => deleteFrame(f.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+            <li key={f.id} className="rounded border border-white/10 bg-black/30 px-2 py-1.5">
+              {editingId === f.id ? (
+                <div className="space-y-1.5">
+                  <input value={editLabel} onChange={e => setEditLabel(e.target.value)}
+                    placeholder="Frame name…"
+                    className="w-full px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <div className="flex items-center gap-1">
+                    <label className="text-[10px] text-gray-400">W</label>
+                    <input type="number" min={40} value={editW} onChange={e => setEditW(Math.max(40, Number(e.target.value) || 40))}
+                      className="w-16 px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                    <label className="text-[10px] text-gray-400">H</label>
+                    <input type="number" min={40} value={editH} onChange={e => setEditH(Math.max(40, Number(e.target.value) || 40))}
+                      className="w-16 px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                    <button onClick={() => saveEdit(f.id)} disabled={saving}
+                      className="ml-auto px-1.5 py-1 text-[10px] rounded bg-sky-500 text-white font-bold hover:bg-sky-400 disabled:opacity-40 inline-flex items-center gap-1">
+                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}Save
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:text-white"><X className="w-3 h-3" /></button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Frame className="w-3.5 h-3.5 text-sky-300 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate text-white">{f.label}</div>
+                    <div className="text-[10px] text-gray-400 font-mono">{f.memberIds.length} member{f.memberIds.length === 1 ? '' : 's'} · {Math.round(f.w)}×{Math.round(f.h)}</div>
+                  </div>
+                  <button aria-label="Edit" onClick={() => startEdit(f)} className="p-0.5 text-sky-300 hover:bg-sky-500/20 rounded"><Pencil className="w-3 h-3" /></button>
+                  <button aria-label="Delete" onClick={() => deleteFrame(f.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -287,6 +332,11 @@ function EmbedsTab({ boardId }: { boardId: string }) {
   const [url, setUrl] = useState('');
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editW, setEditW] = useState(240);
+  const [editH, setEditH] = useState(180);
+  const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -312,6 +362,21 @@ function EmbedsTab({ boardId }: { boardId: string }) {
     const r = await lensRun({ domain: 'whiteboard', action: 'embed-delete', input: { boardId, id } });
     if (r.data?.ok) await refresh();
   }
+  function startEdit(e: EmbedRec) {
+    setEditingId(e.id);
+    setEditTitle(e.title);
+    setEditW(e.w);
+    setEditH(e.h);
+  }
+  async function saveEdit(id: string) {
+    setSaving(true);
+    try {
+      const r = await lensRun({ domain: 'whiteboard', action: 'embed-update', input: {
+        boardId, id, title: editTitle.trim() || undefined, w: editW, h: editH,
+      } });
+      if (r.data?.ok) { setEditingId(null); await refresh(); }
+    } finally { setSaving(false); }
+  }
 
   return (
     <div className="space-y-2">
@@ -335,14 +400,37 @@ function EmbedsTab({ boardId }: { boardId: string }) {
         <ul className="space-y-1">
           {embeds.map(e => {
             const Icon = EMBED_ICON[e.kind];
+            if (editingId === e.id) {
+              return (
+                <li key={e.id} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 space-y-1.5">
+                  <input value={editTitle} onChange={ev => setEditTitle(ev.target.value)}
+                    placeholder="Title…"
+                    className="w-full px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <div className="flex items-center gap-1">
+                    <label className="text-[10px] text-gray-400">W</label>
+                    <input type="number" min={40} value={editW} onChange={ev => setEditW(Math.max(40, Number(ev.target.value) || 40))}
+                      className="w-16 px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                    <label className="text-[10px] text-gray-400">H</label>
+                    <input type="number" min={40} value={editH} onChange={ev => setEditH(Math.max(40, Number(ev.target.value) || 40))}
+                      className="w-16 px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                    <button onClick={() => saveEdit(e.id)} disabled={saving}
+                      className="ml-auto px-1.5 py-1 text-[10px] rounded bg-sky-500 text-white font-bold hover:bg-sky-400 disabled:opacity-40 inline-flex items-center gap-1">
+                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}Save
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:text-white"><X className="w-3 h-3" /></button>
+                  </div>
+                </li>
+              );
+            }
             return (
               <li key={e.id} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 flex items-center gap-2">
                 <Icon className="w-3.5 h-3.5 text-sky-300 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <a href={e.url} target="_blank" rel="noreferrer" className="truncate text-white hover:text-sky-300 block">{e.title || e.url}</a>
                   {e.description && <div className="text-[10px] text-gray-400 truncate">{e.description}</div>}
-                  <div className="text-[10px] text-gray-400 font-mono uppercase">{e.kind}</div>
+                  <div className="text-[10px] text-gray-400 font-mono uppercase">{e.kind} · {Math.round(e.w)}×{Math.round(e.h)}</div>
                 </div>
+                <button aria-label="Edit" onClick={() => startEdit(e)} className="p-0.5 text-sky-300 hover:bg-sky-500/20 rounded"><Pencil className="w-3 h-3" /></button>
                 <button aria-label="Delete" onClick={() => deleteEmbed(e.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
               </li>
             );

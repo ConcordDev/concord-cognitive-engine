@@ -15,12 +15,13 @@ import { lensRun } from '@/lib/api/client';
 import { WhiteboardCanvas, Shape } from './WhiteboardCanvas';
 import { WhiteboardCollabPanel } from './WhiteboardCollabPanel';
 import { useWhiteboardCollab } from '@/hooks/useWhiteboardCollab';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 interface BoardMeta { id: string; title: string; createdAt: string; updatedAt: string; elementCount: number }
 interface Cluster { theme: string; memberIds: string[]; size: number }
 interface SummaryResult { summary: string; actionItems: Array<{ text: string; owner: string | null }>; source: string }
-interface Comment { id: string; elementId: string; authorName: string; body: string; createdAt: string; resolved: boolean }
+interface Comment { id: string; elementId: string; authorId: string; authorName: string; body: string; createdAt: string; resolved: boolean }
 
 const TEMPLATE_KINDS = [
   { id: 'brainstorm',   label: 'Brainstorm' },
@@ -32,6 +33,7 @@ const TEMPLATE_KINDS = [
 ] as const;
 
 export function CollabBoardSection() {
+  const { user: currentUser } = useAuth();
   const [boards, setBoards] = useState<BoardMeta[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeShapes, setActiveShapes] = useState<Shape[]>([]);
@@ -283,6 +285,14 @@ export function CollabBoardSection() {
     } catch (e) { console.error('[Board] resolve', e); }
   }
 
+  async function deleteComment(id: string) {
+    if (!activeId) return;
+    try {
+      await lensRun({ domain: 'whiteboard', action: 'comments-delete', input: { boardId: activeId, id } });
+      await refreshComments(activeId);
+    } catch (e) { console.error('[Board] delete comment', e); }
+  }
+
   const totalOpenComments = useMemo(() => Object.values(comments).reduce((s, arr) => s + arr.filter(c => !c.resolved).length, 0), [comments]);
 
   return (
@@ -408,7 +418,7 @@ export function CollabBoardSection() {
                 <GenerateTab prompt={genPrompt} setPrompt={setGenPrompt} kind={genKind} setKind={setGenKind} loading={generating} onRun={runGenerate} />
               )}
               {aiTab === 'comments' && (
-                <CommentsTab activeId={activeId} shapes={activeShapes} comments={comments} onAdd={addComment} onResolve={resolveComment} />
+                <CommentsTab activeId={activeId} shapes={activeShapes} comments={comments} selfId={currentUser?.id ?? null} onAdd={addComment} onResolve={resolveComment} onDelete={deleteComment} />
               )}
               {aiTab === 'export' && (
                 <div className="space-y-2">
@@ -576,7 +586,7 @@ function GenerateTab({ prompt, setPrompt, kind, setKind, loading, onRun }: { pro
   );
 }
 
-function CommentsTab({ activeId, shapes, comments, onAdd, onResolve }: { activeId: string | null; shapes: Shape[]; comments: Record<string, Comment[]>; onAdd: (elementId: string, body: string) => void; onResolve: (id: string) => void }) {
+function CommentsTab({ activeId, shapes, comments, selfId, onAdd, onResolve, onDelete }: { activeId: string | null; shapes: Shape[]; comments: Record<string, Comment[]>; selfId: string | null; onAdd: (elementId: string, body: string) => void; onResolve: (id: string) => void; onDelete: (id: string) => void }) {
   const [expandedEl, setExpandedEl] = useState<string | null>(null);
   const [draftBody, setDraftBody] = useState('');
   if (!activeId) return <div className="text-gray-400 italic">No board open.</div>;
@@ -606,6 +616,9 @@ function CommentsTab({ activeId, shapes, comments, onAdd, onResolve }: { activeI
                         <span className="font-semibold">{c.authorName}</span>
                         <span className="text-[9px] text-gray-400 font-mono">{c.createdAt.slice(0, 16).replace('T', ' ')}</span>
                         {!c.resolved && <button onClick={() => onResolve(c.id)} className="ml-auto text-[10px] text-emerald-300 hover:text-emerald-200">resolve</button>}
+                        {selfId && c.authorId === selfId && (
+                          <button onClick={() => onDelete(c.id)} title="Delete comment" className={cn('text-[10px] text-rose-300 hover:text-rose-200', c.resolved && 'ml-auto')}>delete</button>
+                        )}
                       </div>
                       <div>{c.body}</div>
                     </div>
