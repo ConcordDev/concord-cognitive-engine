@@ -29,7 +29,12 @@ interface CrossRefWork {
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
     const r = await lensRun({ domain, name, input });
-    return r?.data as T;
+    // lensRun() already unwraps the { ok, result } envelope one (or more)
+    // levels — its own return shape is { data: { ok, result, error } }, so
+    // the macro's real payload ({ ok, works, total, ... }) is r.data.result,
+    // not r.data. Reading r.data directly used to silently return zero
+    // results for every real CrossRef search.
+    return (r?.data?.result ?? null) as T;
   } catch {
     return null;
   }

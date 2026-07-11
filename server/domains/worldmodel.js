@@ -11,6 +11,7 @@
 // model held in globalThis._concordSTATE.worldmodelLens:
 //
 //   graph                — full entity+relation graph for visualization
+//   wm_extract_from_dtu  — ground an entity in a real DTU the user picked
 //   create_relation_typed — relation creation/editing from the UI
 //   delete_relation       — relation deletion
 //   update_entity_attrs   — typed entity attribute editing
@@ -198,6 +199,73 @@ export default function registerWorldmodelActions(registerLensAction) {
         if (r.from === id || r.to === id) { rels.delete(rId); removed += 1; }
       }
       return { ok: true, result: { deleted: id, relationsRemoved: removed } };
+    } catch (err) {
+      return { ok: false, error: String(err && err.message || err) };
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // 1b. Extract an entity from a real DTU the user picked (Palantir-Foundry-
+  // style document ingestion). Grounds the entity in `attributes.sourceDtuIds`
+  // so the world model is fed from the platform's actual knowledge substrate,
+  // not hand-typed data only. Idempotent on (name) and on (dtuId): re-running
+  // extraction for the same DTU bumps evidence on the existing entity rather
+  // than creating a duplicate.
+  // ---------------------------------------------------------------------------
+
+  function inferTypeFromTags(tags) {
+    const t = (Array.isArray(tags) ? tags : []).map((x) => str(x, 40).toLowerCase());
+    if (t.includes("person") || t.includes("people")) return "person";
+    if (t.includes("org") || t.includes("organization") || t.includes("company")) return "organization";
+    if (t.includes("event")) return "event";
+    if (t.includes("location") || t.includes("place")) return "location";
+    return "concept";
+  }
+
+  registerLensAction("worldmodel", "wm_extract_from_dtu", (ctx, _artifact, params = {}) => {
+    try {
+      const S = wmState();
+      const uid = userIdOf(ctx);
+      const ents = bucket(S.entities, uid);
+      const dtuId = str(params.dtuId);
+      const title = str(params.title).trim();
+      if (!dtuId) return { ok: false, error: "dtuId required" };
+      if (!title) return { ok: false, error: "title required" };
+      const tags = Array.isArray(params.tags) ? params.tags.slice(0, 20) : [];
+      const summary = str(params.summary, 600);
+
+      // Match an existing entity either by prior extraction of this exact
+      // DTU, or by name (case-insensitive) — the same DTU re-picked, or a
+      // second DTU about the same named thing, both count as new evidence
+      // rather than a duplicate node.
+      const existing = Array.from(ents.values()).find((e) => {
+        const sourceDtuIds = Array.isArray(e.attributes && e.attributes.sourceDtuIds) ? e.attributes.sourceDtuIds : [];
+        return sourceDtuIds.includes(dtuId) || e.name.toLowerCase() === title.toLowerCase();
+      });
+
+      if (existing) {
+        const sourceDtuIds = Array.isArray(existing.attributes.sourceDtuIds) ? existing.attributes.sourceDtuIds : [];
+        const alreadyLinked = sourceDtuIds.includes(dtuId);
+        existing.attributes = {
+          ...existing.attributes,
+          sourceDtuIds: alreadyLinked ? sourceDtuIds : [...sourceDtuIds, dtuId],
+          summary: summary || existing.attributes.summary || "",
+        };
+        existing.updatedAt = new Date().toISOString();
+        return { ok: true, result: { entity: existing, created: false, alreadyLinked } };
+      }
+
+      const id = rid("ent");
+      const entity = {
+        id,
+        name: title,
+        type: inferTypeFromTags(tags),
+        attributes: { value: 100, sourceDtuIds: [dtuId], summary },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      ents.set(id, entity);
+      return { ok: true, result: { entity, created: true, alreadyLinked: false } };
     } catch (err) {
       return { ok: false, error: String(err && err.message || err) };
     }

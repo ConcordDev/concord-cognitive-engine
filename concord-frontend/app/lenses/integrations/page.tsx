@@ -4,77 +4,76 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { IntegrationsRepos } from '@/components/integrations/IntegrationsRepos';
 import { WorkflowsPanel } from '@/components/integrations/WorkflowsPanel';
 import { ConnectorCatalog } from '@/components/integrations/ConnectorCatalog';
+import { AnalysisPanel } from '@/components/integrations/AnalysisPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, lensRun } from '@/lib/api/client';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import type { CreateWebhookRequest } from '@/lib/api/generated-types';
 import { useUIStore } from '@/store/ui';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plug, Webhook, Zap, Code, FileText, Plus, Trash2, Play, ToggleLeft, ToggleRight, Layers, ChevronDown, Link, AlertCircle, Loader2, Activity, CheckCircle, Send, Clock, Filter } from 'lucide-react';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { Plug, Webhook, Zap, Plus, Trash2, ToggleLeft, ToggleRight, Link, AlertCircle, Loader2, CheckCircle, Send, Clock, Activity, ShieldCheck } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
+type Tab = 'workflows' | 'connectors' | 'webhooks' | 'analysis';
+
+const TAB_KEYS: Record<Tab, string> = { workflows: 'Z', connectors: 'C', webhooks: 'W', analysis: 'A' };
+
 export default function IntegrationsLensPage() {
   useLensNav('integrations');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('integrations');
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'workflows' | 'connectors' | 'webhooks' | 'automations' | 'services'>('workflows');
+  const [activeTab, setActiveTab] = useState<Tab>('workflows');
 
-  // Lens-scoped keyboard commands (auto-wired by codemod).
+  // Lens-scoped keyboard commands (surfaced as kbd chips on each tab).
   useLensCommand(
     [
       { id: 'tab-workflows', keys: 'z', description: 'Workflows', category: 'navigation', action: () => setActiveTab('workflows') },
       { id: 'tab-connectors', keys: 'c', description: 'Connectors', category: 'navigation', action: () => setActiveTab('connectors') },
-      { id: 'tab-automations', keys: 'a', description: 'Automations', category: 'navigation', action: () => setActiveTab('automations') },
       { id: 'tab-webhooks', keys: 'w', description: 'Webhooks', category: 'navigation', action: () => setActiveTab('webhooks') },
-      { id: 'tab-services', keys: 's', description: 'Services', category: 'navigation', action: () => setActiveTab('services') },
+      { id: 'tab-analysis', keys: 'a', description: 'Analysis', category: 'navigation', action: () => setActiveTab('analysis') },
     ],
     { lensId: 'integrations' }
   );
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [webhookTestResults, setWebhookTestResults] = useState<Record<string, { status: 'loading' | 'success' | 'error'; message: string }>>({});
   const [showDeliveryLog, setShowDeliveryLog] = useState<string | null>(null);
-  const [showAutomationBuilder, setShowAutomationBuilder] = useState(false);
 
-  // Action wiring
-  const runAction = useRunArtifact('integrations');
-  const { items: actionItems } = useLensData('integrations', 'integration', { noSeed: true });
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-
-  const handleAction = async (action: string) => {
-    const targetId = actionItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
-
-  const { data: webhooks, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
+  // ── Real stat sources (replaces the prior fabricated artifact-CRUD reads) ──
+  const { data: webhooks, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['webhooks'],
     queryFn: () => apiHelpers.webhooks.list().then(r => r.data),
   });
 
-  const { items: automationItems, isError: isError2, error: error2, refetch: refetch2, create: createAutomation } = useLensData('integrations', 'automation', { noSeed: true });
-  const { items: integrationItems, isError: isError3, error: error3, refetch: refetch3 } = useLensData('integrations', 'integration', { noSeed: true });
+  const { data: connections } = useQuery({
+    queryKey: ['integrations', 'connectionList'],
+    queryFn: async () => {
+      const r = await lensRun<{ connections: Array<{ credentialStored?: boolean }> }>('integrations', 'connectionList', {});
+      return r.data.result?.connections || [];
+    },
+  });
+
+  const { data: zaps } = useQuery({
+    queryKey: ['integrations', 'zapList'],
+    queryFn: async () => {
+      const r = await lensRun<{ zaps: Array<{ enabled: boolean }> }>('integrations', 'zapList', {});
+      return r.data.result?.zaps || [];
+    },
+  });
+
+  const connectedCount = connections?.length || 0;
+  const authorizedCount = connections?.filter((c) => c.credentialStored).length || 0;
+  const activeZaps = zaps?.filter((z) => z.enabled).length || 0;
 
   const createWebhookMutation = useMutation({
     mutationFn: (data: CreateWebhookRequest) => apiHelpers.webhooks.register(data),
@@ -102,7 +101,8 @@ export default function IntegrationsLensPage() {
       if (enabled) {
         await apiHelpers.webhooks.deactivate(id);
       } else {
-        await lensRun('integrations', 'webhookActivate', { webhookId: id, enabled: true });
+        const r = await lensRun('integrations', 'webhookActivate', { webhookId: id, enabled: true });
+        if (r.data.ok === false) throw new Error(r.data.error || 'Activate failed');
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['webhooks'] }),
@@ -111,16 +111,11 @@ export default function IntegrationsLensPage() {
     },
   });
 
-  const runAutomationMutation = useMutation({
-    mutationFn: (id: string) => apiHelpers.lens.run('integrations', id, { action: 'run' }),
-    onError: (err) => {
-      console.error('Automation run failed:', err instanceof Error ? err.message : err);
-    },
-  });
-
   const testWebhookMutation = useMutation({
     // /api/webhooks/:id/test has no REST route — resolve via the integrations
-    // domain webhookTest macro, which records a signed test-fire delivery.
+    // domain webhookTest macro, which records a signed test-fire delivery. The
+    // macro returns ok:false (surfaced by lensRun as r.data.ok) when there is
+    // no target URL, so a fabricated success is impossible here.
     mutationFn: async (wh: { id: string; url: string; events: string[] }) => {
       const testPayload = {
         event: wh.events?.[0] || 'test.ping',
@@ -182,13 +177,21 @@ export default function IntegrationsLensPage() {
     );
   }
 
-  if (isError || isError2 || isError3) {
+  if (isError) {
     return (
       <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message || error2?.message || error3?.message} onRetry={() => { refetch(); refetch2(); refetch3(); }} />
+        <ErrorState error={error?.message} onRetry={() => refetch()} />
       </div>
     );
   }
+
+  const TABS: Array<{ id: Tab; label: string; icon: React.ReactNode; count?: number }> = [
+    { id: 'workflows', label: 'Workflows', icon: <Zap className="w-4 h-4" />, count: zaps?.length },
+    { id: 'connectors', label: 'Connectors', icon: <Plug className="w-4 h-4" />, count: connectedCount || undefined },
+    { id: 'webhooks', label: 'Webhooks', icon: <Webhook className="w-4 h-4" />, count: webhooks?.count },
+    { id: 'analysis', label: 'Analysis', icon: <Activity className="w-4 h-4" />, count: undefined },
+  ];
+
   return (
     <LensShell lensId="integrations" asMain={false}>
       <FirstRunTour lensId="integrations" />
@@ -201,7 +204,7 @@ export default function IntegrationsLensPage() {
           <div>
             <h1 className="text-xl font-bold">Integrations</h1>
             <p className="text-sm text-gray-400">
-              Webhooks, automations, and external services
+              Zapier-style workflows, app connectors, webhooks &amp; integration analysis
             </p>
           </div>
 
@@ -216,44 +219,41 @@ export default function IntegrationsLensPage() {
         )}
       </div>
         </div>
-        <button onClick={() => activeTab === 'automations' ? setShowAutomationBuilder(true) : setShowCreate(true)} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add {activeTab === 'webhooks' ? 'Webhook' : 'Automation'}
-        </button>
+        {activeTab === 'webhooks' && (
+          <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add Webhook
+          </button>
+        )}
       </header>
 
-      {/* Stats Row */}
+      {/* Stats Row — real counts from connectionList / zapList / webhooks */}
       <div className="grid grid-cols-4 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="panel p-3 flex items-center gap-3">
           <Link className="w-5 h-5 text-neon-green" />
-          <div><p className="text-lg font-bold">{integrationItems?.length || 0}</p><p className="text-xs text-gray-400">Connected</p></div>
+          <div><p className="text-lg font-bold">{connectedCount}</p><p className="text-xs text-gray-400">Linked apps</p></div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="panel p-3 flex items-center gap-3">
-          <Zap className="w-5 h-5 text-neon-cyan" />
-          <div><p className="text-lg font-bold">{automationItems?.length || 0}</p><p className="text-xs text-gray-400">Active Syncs</p></div>
+          <ShieldCheck className="w-5 h-5 text-neon-cyan" />
+          <div><p className="text-lg font-bold">{authorizedCount}</p><p className="text-xs text-gray-400">OAuth-authorized</p></div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="panel p-3 flex items-center gap-3">
-          <Webhook className="w-5 h-5 text-neon-purple" />
-          <div><p className="text-lg font-bold">{webhooks?.count || 0}</p><p className="text-xs text-gray-400">Webhooks</p></div>
+          <Zap className="w-5 h-5 text-neon-purple" />
+          <div><p className="text-lg font-bold">{activeZaps}</p><p className="text-xs text-gray-400">Active workflows</p></div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="panel p-3 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400" />
-          <div><p className="text-lg font-bold">{realtimeAlerts.length}</p><p className="text-xs text-gray-400">Error Count</p></div>
+          <Webhook className="w-5 h-5 text-red-400" />
+          <div><p className="text-lg font-bold">{webhooks?.count || 0}</p><p className="text-xs text-gray-400">Webhooks</p></div>
         </motion.div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs (single-key shortcuts shown as kbd chips) */}
       <div className="flex gap-2 border-b border-lattice-border flex-wrap">
-        {[
-          { id: 'workflows', label: 'Workflows', icon: <Zap className="w-4 h-4" />, count: undefined },
-          { id: 'connectors', label: 'Connectors', icon: <Plug className="w-4 h-4" />, count: undefined },
-          { id: 'webhooks', label: 'Webhooks', icon: <Webhook className="w-4 h-4" />, count: webhooks?.count },
-          { id: 'automations', label: 'Automations', icon: <Zap className="w-4 h-4" />, count: automationItems?.length },
-          { id: 'services', label: 'Services', icon: <Plug className="w-4 h-4" />, count: integrationItems?.length },
-        ].map((tab) => (
+        {TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            onClick={() => setActiveTab(tab.id)}
+            title={`${tab.label} (press ${TAB_KEYS[tab.id]})`}
             className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
               activeTab === tab.id
                 ? 'border-neon-green text-neon-green'
@@ -265,6 +265,7 @@ export default function IntegrationsLensPage() {
             {tab.count !== undefined && (
               <span className="text-xs bg-lattice-surface px-1.5 py-0.5 rounded">{tab.count || 0}</span>
             )}
+            <kbd className="text-[9px] font-mono px-1 py-0.5 rounded bg-lattice-deep border border-lattice-border text-gray-500 hidden sm:inline">{TAB_KEYS[tab.id]}</kbd>
           </button>
         ))}
       </div>
@@ -273,6 +274,15 @@ export default function IntegrationsLensPage() {
       {activeTab === 'workflows' && <WorkflowsPanel />}
 
       {activeTab === 'connectors' && <ConnectorCatalog />}
+
+      {activeTab === 'analysis' && (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-400">
+            Deterministic integration engines — latency percentiles, flow-graph bottleneck detection, and semver compatibility scoring. Edit the inputs and run against the real backend.
+          </p>
+          <AnalysisPanel />
+        </div>
+      )}
 
       {activeTab === 'webhooks' && (
         <div className="space-y-3">
@@ -384,71 +394,6 @@ export default function IntegrationsLensPage() {
         </div>
       )}
 
-      {activeTab === 'automations' && (
-        <div className="space-y-3">
-          {automationItems?.length === 0 && !showAutomationBuilder ? (
-            <EmptyState icon={<Zap />} message="No automations configured" />
-          ) : (
-            automationItems?.map((auto) => (
-              <div key={auto.id} className="panel p-4 flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">{String((auto.data as Record<string, unknown>)?.name ?? auto.title)}</h3>
-                  <p className="text-xs text-gray-400">Trigger: {String((auto.data as Record<string, unknown>)?.trigger ?? '')} | Actions: {String((auto.data as Record<string, unknown>)?.actionCount ?? 0)}</p>
-                  <p className="text-xs text-gray-400 mt-1">Runs: {String((auto.data as Record<string, unknown>)?.runCount ?? 0)}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => runAutomationMutation.mutate(auto.id)}
-                    disabled={runAutomationMutation.isPending}
-                    className="btn-secondary text-sm flex items-center gap-1"
-                  >
-                    <Play className="w-4 h-4" />
-                    Run
-                  </button>
-                  <span className={`w-2 h-2 rounded-full ${(auto.data as Record<string, unknown>)?.enabled ? 'bg-green-500' : 'bg-gray-500'}`} />
-                </div>
-              </div>
-            ))
-          )}
-          {showAutomationBuilder && (
-            <AutomationBuilderPanel
-              onSave={async (data) => {
-                await createAutomation({ title: data.name, data: data as unknown as Partial<Record<string, unknown>> });
-                setShowAutomationBuilder(false);
-              }}
-              onCancel={() => setShowAutomationBuilder(false)}
-            />
-          )}
-        </div>
-      )}
-
-      {activeTab === 'services' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {integrationItems?.map((svc) => {
-            const svcData = svc.data as Record<string, unknown> | undefined;
-            const svcId = svcData?.id as string | undefined ?? svc.id;
-            return (
-            <div key={svc.id} className="panel p-4">
-              <div className="flex items-center gap-3 mb-2">
-                {svcId === 'vscode' && <Code className="w-6 h-6 text-blue-400" />}
-                {svcId === 'obsidian' && <FileText className="w-6 h-6 text-purple-400" />}
-                {svcId === 'notion' && <FileText className="w-6 h-6 text-white" />}
-                {!['vscode', 'obsidian', 'notion'].includes(svcId ?? '') && <Plug className="w-6 h-6 text-gray-400" />}
-                <div>
-                  <h3 className="font-semibold">{String(svcData?.name ?? svc.title)}</h3>
-                  <span className={`text-xs ${String(svcData?.status) === 'available' ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {String(svcData?.status ?? '')}
-                  </span>
-                </div>
-              </div>
-              <p className="text-sm text-gray-400">{String(svcData?.description ?? '')}</p>
-              <p className="text-xs text-gray-400 mt-2">Type: {String(svcData?.type ?? '')}</p>
-            </div>
-            );
-          })}
-        </div>
-      )}
-
       {showCreate && activeTab === 'webhooks' && (
         <CreateWebhookModal
           onClose={() => setShowCreate(false)}
@@ -459,131 +404,11 @@ export default function IntegrationsLensPage() {
 
       <RealtimeDataPanel data={realtimeInsights} />
 
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Activity className="w-4 h-4 text-neon-green" />
-          Integration Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {['apiHealthCheck', 'dataFlowMapping', 'compatibilityCheck'].map((action) => (
-            <button
-              key={action}
-              onClick={() => handleAction(action)}
-              disabled={!!isRunning || !actionItems[0]}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50"
-            >
-              {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {action === 'apiHealthCheck' ? 'API Health Check' : action === 'dataFlowMapping' ? 'Data Flow Map' : 'Compatibility Check'}
-            </button>
-          ))}
-        </div>
-        {!actionItems[0] && <p className="text-xs text-gray-400">Create an integration artifact to run analysis actions.</p>}
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'overallStatus' in actionResult && (
-              <>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-neon-green" />
-                  <span className="font-semibold">Overall Status: <span className={String(actionResult.overallStatus) === 'healthy' ? 'text-neon-green' : 'text-yellow-400'}>{String(actionResult.overallStatus)}</span></span>
-                  <span className="text-gray-400">Score: {String(actionResult.overallHealthScore)}</span>
-                </div>
-                {actionResult.summary && (
-                  <div className="grid grid-cols-4 gap-2 text-xs">
-                    {Object.entries(actionResult.summary as Record<string,unknown>).map(([k,v]) => (
-                      <div key={k} className="bg-lattice-surface rounded p-2 text-center">
-                        <div className="font-bold">{String(v)}</div>
-                        <div className="text-gray-400 capitalize">{k}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {Array.isArray(actionResult.endpoints) && (
-                  <div className="space-y-1">
-                    {(actionResult.endpoints as Record<string,unknown>[]).slice(0,5).map((ep, i) => (
-                      <div key={i} className="flex items-center justify-between bg-lattice-surface rounded p-2 text-xs">
-                        <span className="font-mono">{String(ep.name)}</span>
-                        <span className={String(ep.status) === 'healthy' ? 'text-neon-green' : 'text-yellow-400'}>{String(ep.status)}</span>
-                        <span className="text-gray-400">Score: {String(ep.healthScore)}</span>
-                        <span className="text-gray-400">Avail: {String(ep.availability)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-            {'nodes' in actionResult && Array.isArray(actionResult.nodes) && (
-              <>
-                <div className="font-semibold text-neon-cyan">Data Flow Analysis</div>
-                {actionResult.metrics && (
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    {Object.entries(actionResult.metrics as Record<string,unknown>).map(([k,v]) => (
-                      <div key={k} className="bg-lattice-surface rounded p-2">
-                        <div className="text-gray-400 capitalize">{k.replace(/([A-Z])/g,' $1').toLowerCase()}</div>
-                        <div className="font-bold">{String(v)}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {Array.isArray(actionResult.bottlenecks) && actionResult.bottlenecks.length > 0 && (
-                  <div>
-                    <div className="text-xs text-yellow-400 font-semibold mb-1">Bottlenecks:</div>
-                    {(actionResult.bottlenecks as Record<string,unknown>[]).map((b, i) => (
-                      <div key={i} className="text-xs text-gray-300">{String(b.node)} — score: {String(b.bottleneckScore)}</div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-            {'apis' in actionResult && Array.isArray(actionResult.apis) && (
-              <>
-                <div className="font-semibold text-neon-cyan">Compatibility Report</div>
-                {actionResult.summary && (
-                  <div className="text-xs text-gray-400">
-                    {String((actionResult.summary as Record<string,unknown>).totalApis)} APIs · {String((actionResult.summary as Record<string,unknown>).compatible)} compatible · {String((actionResult.summary as Record<string,unknown>).totalEstimatedHours)}h estimated migration
-                  </div>
-                )}
-                <div className="space-y-1">
-                  {(actionResult.apis as Record<string,unknown>[]).map((api, i) => (
-                    <div key={i} className="flex items-center justify-between bg-lattice-surface rounded p-2 text-xs">
-                      <span>{String(api.name)}</span>
-                      <span className="text-gray-400">{String(api.currentVersion)} → {String(api.targetVersion)}</span>
-                      <span className={api.backwardCompatible ? 'text-neon-green' : 'text-red-400'}>{api.backwardCompatible ? 'Compatible' : 'Breaking'}</span>
-                      <span className="text-gray-400">{String((api.migration as Record<string,unknown>)?.level)}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
-          </div>
-        )}
-      </div>
-
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="integrations" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <IntegrationsRepos />
       </section>
     </div>
           <RecentMineCard domain="integrations" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="integrations" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="integrations" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
@@ -696,144 +521,5 @@ function CreateWebhookModal({ onClose, onCreate, creating }: { onClose: () => vo
         </div>
       </div>
     </div>
-  );
-}
-
-interface AutomationFormData {
-  name: string;
-  trigger: string;
-  action: string;
-  condition: string;
-  enabled: boolean;
-  actionCount: number;
-  runCount: number;
-}
-
-const TRIGGER_OPTIONS = [
-  { value: 'dtu.created', label: 'DTU Created' },
-  { value: 'dtu.updated', label: 'DTU Updated' },
-  { value: 'webhook.received', label: 'Webhook Received' },
-  { value: 'schedule.cron', label: 'Scheduled (Cron)' },
-  { value: 'lens.alert', label: 'Lens Alert Fired' },
-  { value: 'integration.error', label: 'Integration Error' },
-  { value: 'manual', label: 'Manual Trigger' },
-];
-
-const ACTION_OPTIONS = [
-  { value: 'send_webhook', label: 'Send Webhook' },
-  { value: 'create_dtu', label: 'Create DTU' },
-  { value: 'run_analysis', label: 'Run Analysis' },
-  { value: 'send_notification', label: 'Send Notification' },
-  { value: 'transform_data', label: 'Transform Data' },
-  { value: 'sync_external', label: 'Sync to External Service' },
-  { value: 'log_event', label: 'Log Event' },
-];
-
-function AutomationBuilderPanel({ onSave, onCancel }: { onSave: (data: AutomationFormData) => Promise<void>; onCancel: () => void }) {
-  const [form, setForm] = useState<AutomationFormData>({
-    name: '',
-    trigger: 'dtu.created',
-    action: 'send_webhook',
-    condition: '',
-    enabled: true,
-    actionCount: 1,
-    runCount: 0,
-  });
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!form.name) return;
-    setSaving(true);
-    try {
-      await onSave(form);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="panel p-5 border-l-4 border-neon-cyan space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Zap className="w-4 h-4 text-neon-cyan" />
-          New Automation
-        </h3>
-        <button onClick={onCancel} className="text-gray-400 hover:text-white text-sm">Cancel</button>
-      </div>
-
-      <div className="space-y-3">
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">Name</label>
-          <input
-            type="text"
-            placeholder="e.g. Notify on new DTU"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-sm"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Trigger Event</label>
-            <select
-              value={form.trigger}
-              onChange={(e) => setForm({ ...form, trigger: e.target.value })}
-              className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-sm"
-            >
-              {TRIGGER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Action</label>
-            <select
-              value={form.action}
-              onChange={(e) => setForm({ ...form, action: e.target.value })}
-              className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-sm"
-            >
-              {ACTION_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">
-            <Filter className="w-3 h-3 inline mr-1" />
-            Condition / Filter (optional)
-          </label>
-          <input
-            type="text"
-            placeholder='e.g. domain == "integrations" && tags.includes("critical")'
-            value={form.condition}
-            onChange={(e) => setForm({ ...form, condition: e.target.value })}
-            className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-sm font-mono"
-          />
-          <p className="text-xs text-gray-400 mt-1">Leave blank to trigger on all matching events.</p>
-        </div>
-      </div>
-
-      {form.name && (
-        <div className="bg-lattice-surface rounded p-3 text-xs text-gray-400 space-y-1">
-          <p className="text-gray-300 font-semibold">Preview:</p>
-          <p>When <span className="text-neon-cyan">{TRIGGER_OPTIONS.find(o => o.value === form.trigger)?.label}</span> occurs{form.condition ? <> and <span className="text-yellow-400 font-mono">{form.condition}</span></> : null}, execute <span className="text-neon-green">{ACTION_OPTIONS.find(o => o.value === form.action)?.label}</span>.</p>
-        </div>
-      )}
-
-      <div className="flex gap-3 justify-end">
-        <button onClick={onCancel} className="btn-secondary text-sm">Cancel</button>
-        <button
-          onClick={handleSave}
-          disabled={saving || !form.name}
-          className="btn-primary text-sm flex items-center gap-1"
-        >
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-          {saving ? 'Creating...' : 'Create Automation'}
-        </button>
-      </div>
-    </motion.div>
   );
 }

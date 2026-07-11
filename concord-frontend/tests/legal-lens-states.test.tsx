@@ -1,78 +1,29 @@
 /**
- * /lenses/legal — four-UX-state contract for the Legal Practice lens.
+ * /lenses/legal — workbench-switcher contract for the Legal Practice lens.
  *
- * Pins that the lens renders genuine loading / error (with a WORKING Retry) /
- * empty / populated states against its real backend channel: the artifact list
- * (useLensData('legal', 'artifact') → GET /api/lens/legal), and that the
- * compute-action panel drives the 'legal' domain via useRunArtifact.
+ * The lens was rebuilt (2026-07) to remove a parallel generic-CRUD tab
+ * system (Cases/Documents/TimeBilling/Calendar/Contacts/Contracts/
+ * Compliance backed by useLensData('legal','artifact')) that duplicated,
+ * and was strictly inferior to, the real Clio-parity backend already
+ * wired through ClioSection. The page is now five bespoke workbenches
+ * (Practice/Analyzer/Docket/Q&A/Case Law), each a real independently-
+ * wired component — see docs/lens-specs/legal-capability-map.md.
  *
- * Load-bearing wiring assertion: the action runner must be constructed on the
- * 'legal' domain — a regression to any other id would resolve to NO backend
- * receiver (the conflictCheck / deadlineCalculator / generateInvoice /
- * caseSummary / complianceAudit buttons would post to a dead channel).
- *
- * a11y: loading is role=status (aria-busy), error is role=alert with a working
- * "Try again" that RE-FETCHES (we assert refetch fires). No fabricated data —
- * every state is driven by a mocked useLensData standing in for the real
- * backend in the exact shape it returns.
+ * This test pins: (1) the default workbench is Practice (ClioSection
+ * mounts), (2) each workbench button switches to its own real component
+ * and unmounts the others (no two workbenches render at once), (3) the
+ * always-on surfaces (disclaimer, LegalActionPanel, live feed) render
+ * regardless of workbench, (4) no leftover generic-scaffold components
+ * (UniversalActions / LensFeaturePanel / RecentMineCard / AutoActionStrip)
+ * are imported by the page.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, fireEvent } from '@testing-library/react';
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 
-// ── main list channel: useLensData (controls loading/error/empty/populated) ──
-const lensDataState: {
-  items: unknown[];
-  isLoading: boolean;
-  isError: boolean;
-  error: Error | null;
-} = { items: [], isLoading: false, isError: false, error: null };
-const refetch = vi.fn();
-
-// ── compute-action channel: useRunArtifact mutate ───────────────────────────
-const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
-const useRunArtifactSpy = vi.fn();
-
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  useLensData: () => ({
-    items: lensDataState.items,
-    total: lensDataState.items.length,
-    isLoading: lensDataState.isLoading,
-    isError: lensDataState.isError,
-    error: lensDataState.error,
-    isSeeding: false,
-    refetch,
-    create: vi.fn(() => Promise.resolve({})),
-    update: vi.fn(() => Promise.resolve({})),
-    remove: vi.fn(() => Promise.resolve({})),
-    createMut: { isPending: false },
-    updateMut: { isPending: false },
-    deleteMut: { isPending: false },
-  }),
-}));
-
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: (domain: string) => {
-    useRunArtifactSpy(domain);
-    return { mutateAsync: (...a: unknown[]) => runMutate(...a), isPending: false };
-  },
-}));
-
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({ data: null, isLoading: false }),
-}));
-vi.mock('@/lib/api/client', () => ({
-  api: { get: vi.fn(() => Promise.resolve({ data: null })), post: vi.fn(() => Promise.resolve({ data: {} })), delete: vi.fn(() => Promise.resolve({ data: {} })) },
-  apiHelpers: { lens: { runDomain: vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } })) } },
-  lensRun: vi.fn(() => Promise.resolve({ data: { result: {} } })),
-}));
-
-// ── headless chrome + heavy side panels: render-only / inert stubs ──────────
-vi.mock('@/components/lens/LensShell', () => ({
-  LensShell: ({ children }: { children: React.ReactNode }) =>
-    React.createElement('div', { 'data-testid': 'lens-shell' }, children),
-}));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/hooks/useRealtimeLens', () => ({
@@ -81,99 +32,113 @@ vi.mock('@/hooks/useRealtimeLens', () => ({
 vi.mock('@/store/ui', () => ({
   useUIStore: Object.assign(() => {}, { getState: () => ({ addToast: () => {} }) }),
 }));
-vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
-vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
+
+// ── headless chrome: render-only stubs ──────────────────────────────────────
+vi.mock('@/components/lens/LensShell', () => ({
+  LensShell: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', { 'data-testid': 'lens-shell' }, children),
+}));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
-vi.mock('@/components/lens/DraftedTextarea', () => ({ DraftedTextarea: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
 vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
 vi.mock('@/components/lens/LensAgentFab', () => ({ default: () => null }));
 vi.mock('@/components/lens/ShellPreview', () => ({ ShellPreview: () => null }));
 vi.mock('@/components/lens/LiveFeed', () => ({ default: () => null }));
-vi.mock('@/components/feeds/LensFeedPanel', () => ({ LensFeedPanel: () => null }));
+vi.mock('@/components/feeds/LensFeedPanel', () => ({
+  LensFeedPanel: () => React.createElement('div', { 'data-testid': 'lens-feed-panel' }),
+}));
 vi.mock('@/components/mobile/MobileTabBar', () => ({ MobileTabBar: () => null }));
-// legal-specific child surfaces — inert in this state test
-vi.mock('@/components/legal/ClioSection', () => ({ ClioSection: () => null }));
-vi.mock('@/components/legal/ContractAnalyzer', () => ({ default: () => null }));
-vi.mock('@/components/legal/LegalActionPanel', () => ({ LegalActionPanel: () => null }));
-vi.mock('@/components/legal/CaseTracker', () => ({ default: () => null }));
-vi.mock('@/components/legal/LegalQA', () => ({ default: () => null }));
-vi.mock('@/components/legal/LegalCaseSearch', () => ({ LegalCaseSearch: () => null }));
-vi.mock('@/components/legal/IntakeFormsPanel', () => ({ IntakeFormsPanel: () => null }));
-vi.mock('@/components/legal/ReportsPanel', () => ({ ReportsPanel: () => null }));
-vi.mock('@/components/panel-polish', () => ({ PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children) }));
-// framer-motion: render plain elements so animated nodes mount synchronously.
-vi.mock('framer-motion', () => ({
-  motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+vi.mock('@/components/panel-polish', () => ({
+  PipingProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+}));
+
+// ── the five real workbench components — identifiable stand-ins so we can
+//    assert exactly one mounts at a time, driven by real button clicks ────
+vi.mock('@/components/legal/ClioSection', () => ({
+  ClioSection: () => React.createElement('div', { 'data-testid': 'wb-practice' }, 'ClioSection'),
+}));
+vi.mock('@/components/legal/ContractAnalyzer', () => ({
+  default: () => React.createElement('div', { 'data-testid': 'wb-analyzer' }, 'ContractAnalyzer'),
+}));
+vi.mock('@/components/legal/CaseTracker', () => ({
+  default: () => React.createElement('div', { 'data-testid': 'wb-docket' }, 'CaseTracker'),
+}));
+vi.mock('@/components/legal/LegalQA', () => ({
+  default: () => React.createElement('div', { 'data-testid': 'wb-qa' }, 'LegalQA'),
+}));
+vi.mock('@/components/legal/LegalCaseSearch', () => ({
+  LegalCaseSearch: () => React.createElement('div', { 'data-testid': 'wb-caselaw' }, 'LegalCaseSearch'),
+}));
+vi.mock('@/components/legal/LegalActionPanel', () => ({
+  LegalActionPanel: () => React.createElement('div', { 'data-testid': 'legal-action-panel' }, 'LegalActionPanel'),
 }));
 
 import LegalLens from '@/app/lenses/legal/page';
 
-const CASE = {
-  id: 'art_case_1',
-  title: 'Smith v. Jones',
-  data: { artifactType: 'Case', status: 'active', description: 'Breach of contract', matterType: 'litigation', caseNumber: '23-CV-1234' },
-  meta: { tags: ['Case'], status: 'active', visibility: 'private' },
-  createdAt: '2026-06-27', updatedAt: '2026-06-27', version: 1,
-};
+const WORKBENCHES = [
+  { testId: 'wb-practice', buttonText: 'Practice' },
+  { testId: 'wb-analyzer', buttonText: 'Analyzer' },
+  { testId: 'wb-docket', buttonText: 'Docket' },
+  { testId: 'wb-qa', buttonText: 'Q&A' },
+  { testId: 'wb-caselaw', buttonText: 'Case Law' },
+];
 
-beforeEach(() => {
-  lensDataState.items = [];
-  lensDataState.isLoading = false;
-  lensDataState.isError = false;
-  lensDataState.error = null;
-  refetch.mockReset();
-  runMutate.mockReset();
-  runMutate.mockImplementation(() => Promise.resolve({ ok: true, result: {} }));
-  useRunArtifactSpy.mockReset();
-});
+describe('legal lens — workbench switcher', () => {
+  it('defaults to the Practice workbench (real ClioSection, not a generic CRUD tab)', () => {
+    const { getByTestId, queryByTestId } = render(<LegalLens />);
+    expect(getByTestId('wb-practice')).toBeInTheDocument();
+    for (const wb of WORKBENCHES.slice(1)) {
+      expect(queryByTestId(wb.testId)).toBeNull();
+    }
+  });
 
-describe('legal lens — wiring', () => {
-  it('drives the compute-action runner on the legal domain', () => {
-    render(<LegalLens />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('legal');
+  it.each(WORKBENCHES)('switching to $buttonText mounts exactly its own real component', ({ testId, buttonText }) => {
+    const { getByText, getByTestId, queryByTestId } = render(<LegalLens />);
+    fireEvent.click(getByText(buttonText));
+    expect(getByTestId(testId)).toBeInTheDocument();
+    for (const other of WORKBENCHES) {
+      if (other.testId !== testId) expect(queryByTestId(other.testId)).toBeNull();
+    }
+  });
+
+  it('shows the not-legal-advice disclaimer regardless of workbench', () => {
+    const { getByText } = render(<LegalLens />);
+    expect(getByText(/does not constitute legal advice/i)).toBeInTheDocument();
+  });
+
+  it('always mounts the legal workbench action panel (deadlines/renewals/conflicts/audit)', () => {
+    const { getByTestId } = render(<LegalLens />);
+    expect(getByTestId('legal-action-panel')).toBeInTheDocument();
+  });
+
+  it('always mounts the live web feed panel', () => {
+    const { getByTestId } = render(<LegalLens />);
+    expect(getByTestId('lens-feed-panel')).toBeInTheDocument();
   });
 });
 
-describe('legal lens — four UX states', () => {
-  it('LOADING: shows a role=status indicator while the list is in flight', () => {
-    lensDataState.isLoading = true;
-    const { container, getByText } = render(<LegalLens />);
-    const status = container.querySelector('[role="status"]');
-    expect(status).toBeTruthy();
-    expect(status?.getAttribute('aria-busy')).toBe('true');
-    expect(getByText(/Loading case files/i)).toBeInTheDocument();
+describe('legal lens — no leftover generic-scaffold imports', () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, '..', 'app', 'lenses', 'legal', 'page.tsx'),
+    'utf8'
+  );
+
+  it('does not import the generic action-array components', () => {
+    expect(source).not.toMatch(/UniversalActions/);
+    expect(source).not.toMatch(/LensFeaturePanel/);
   });
 
-  it('ERROR: a failed load shows role=alert + a working Retry that re-fetches', async () => {
-    lensDataState.isError = true;
-    lensDataState.error = new Error('case files offline');
-    const { container, getByText } = render(<LegalLens />);
-    const alert = container.querySelector('[role="alert"]');
-    expect(alert).toBeTruthy();
-    expect(getByText(/case files offline/i)).toBeInTheDocument();
-
-    // Retry must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Try again')); });
-    await waitFor(() => expect(refetch).toHaveBeenCalled());
+  it('does not import the GENERIC_TRIO scaffold components', () => {
+    expect(source).not.toMatch(/RecentMineCard/);
+    expect(source).not.toMatch(/AutoActionStrip/);
+    expect(source).not.toMatch(/ManifestActionBar/);
   });
 
-  it('EMPTY: shows an honest empty CTA when there are no cases', () => {
-    lensDataState.items = [];
-    const { getAllByText } = render(<LegalLens />);
-    // Dashboard (default tab) Recent-Cases section renders an honest empty cue.
-    expect(getAllByText(/No cases yet|Create one to get started|No .* found/i).length).toBeGreaterThan(0);
-  });
-
-  it('POPULATED: renders the real case row from the backend list', () => {
-    lensDataState.items = [CASE];
-    const { getAllByText } = render(<LegalLens />);
-    expect(getAllByText(/Smith v\. Jones/i).length).toBeGreaterThan(0);
+  it('does not depend on the generic per-lens artifact CRUD store', () => {
+    expect(source).not.toMatch(/use-lens-data/);
+    expect(source).not.toMatch(/use-lens-artifacts/);
   });
 });

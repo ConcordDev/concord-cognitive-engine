@@ -92,13 +92,20 @@ export function MessageWorkbench({ open, onClose }: Props) {
 function SavedTab() {
   const [saved, setSaved] = useState<SavedEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const r = await lensRun({ domain: 'message', action: 'saved-list', input: {} });
-      setSaved(((r.data as { result?: { saved?: SavedEntry[] } }).result?.saved) || []);
-    } catch (e) { console.error(e); }
+      if (r.data.ok === false) {
+        setError(r.data.error || 'Failed to load saved messages.');
+        setSaved([]);
+      } else {
+        setError(null);
+        setSaved(((r.data as { result?: { saved?: SavedEntry[] } }).result?.saved) || []);
+      }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }, []);
 
@@ -106,14 +113,19 @@ function SavedTab() {
 
   const unsave = async (messageId: string) => {
     try {
-      await lensRun({ domain: 'message', action: 'unsave-message', input: { messageId } });
+      const r = await lensRun({ domain: 'message', action: 'unsave-message', input: { messageId } });
+      if (r.data.ok === false) {
+        setError(r.data.error || 'Failed to remove saved message.');
+        return;
+      }
       await refresh();
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
 
   return (
     <div className="p-3 space-y-2">
       <p className="text-[10px] text-gray-400">Starred messages. Star any message via /api/lens/run domain=message action=save-message.</p>
+      {error && <p className="text-[11px] text-rose-300">{error}</p>}
       {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
         saved.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No saved messages.</p> :
         saved.map((s) => (
@@ -227,6 +239,7 @@ function VoiceTab() {
 function ReactionsTab() {
   const [messageId, setMessageId] = useState('');
   const [reactions, setReactions] = useState<Record<string, number>>({});
+  const [error, setError] = useState<string | null>(null);
   const COMMON = ['👍', '❤️', '😂', '🎉', '😮', '😢', '🔥', '🙏'];
 
   const load = async () => {
@@ -235,24 +248,37 @@ function ReactionsTab() {
       const r = await lensRun({
         domain: 'message', action: 'reactions-for', input: { messageId },
       });
+      if (r.data.ok === false) {
+        setError(r.data.error || 'Failed to load reactions.');
+        return;
+      }
+      setError(null);
       setReactions(((r.data as { result?: { reactions?: Record<string, number> } }).result?.reactions) || {});
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
 
   const react = async (emoji: string) => {
     if (!messageId.trim()) return;
     try {
-      await lensRun({ domain: 'message', action: 'react', input: { messageId, emoji } });
+      const r = await lensRun({ domain: 'message', action: 'react', input: { messageId, emoji } });
+      if (r.data.ok === false) {
+        setError(r.data.error || 'Failed to add reaction.');
+        return;
+      }
       await load();
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
 
   const unreact = async (emoji: string) => {
     if (!messageId.trim()) return;
     try {
-      await lensRun({ domain: 'message', action: 'unreact', input: { messageId, emoji } });
+      const r = await lensRun({ domain: 'message', action: 'unreact', input: { messageId, emoji } });
+      if (r.data.ok === false) {
+        setError(r.data.error || 'Failed to remove reaction.');
+        return;
+      }
       await load();
-    } catch (e) { console.error(e); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   };
 
   return (
@@ -265,6 +291,7 @@ function ReactionsTab() {
         <button type="button" onClick={load}
           className="px-3 py-1 rounded-md border border-sky-500/40 bg-sky-500/15 text-xs text-sky-100">Load</button>
       </div>
+      {error && <p className="text-[11px] text-rose-300">{error}</p>}
 
       <div className="flex flex-wrap gap-1">
         {COMMON.map((e) => (
