@@ -38079,6 +38079,41 @@ function _lensDomainArtifacts(domain) {
   return result;
 }
 
+// ── Ownership / visibility gate — shared by get/run/export/update ──────────
+// `lens.list` and `lens.get` already enforce "private, non-social artifacts
+// are only visible to their owner or an admin" (see SOCIAL_DOMAINS below).
+// `lens.run` and `lens.export` used to skip that check entirely: any
+// authenticated caller who knew (or could enumerate) another user's private
+// artifact id could invoke ANY domain action against it, or `GET
+// /api/lens/<domain>/<id>/export` to dump its full `data` — e.g. another
+// user's `security` Incident artifact (assignee, root cause, lessons
+// learned) or Access-Control artifact (badge holder, visitor name). An IDOR:
+// the read/list surface was gated, the direct-by-id surfaces were not.
+// `lens.update` had the matching write-side gap — no ownership check at all,
+// so any authenticated caller could silently overwrite another user's
+// artifact (title/data/meta), unlike `lens.delete` which already required
+// owner-or-admin. Centralizing the checks here so the four call sites can't
+// drift out of sync again. Pinned by tests/lens-artifact-authz.test.js.
+const LENS_SOCIAL_DOMAINS = new Set(["forum", "feed", "marketplace", "collab", "thread", "vote", "alliance", "global", "news", "questmarket"]);
+function _lensIsAdminActor(ctx) {
+  const role = ctx?.actor?.role;
+  return role === "owner" || role === "admin" || role === "founder";
+}
+function _lensIsOwnerActor(ctx, artifact) {
+  const userId = ctx?.actor?.userId;
+  return !!userId && (artifact.ownerId === userId || artifact.createdBy === userId || artifact.createdByUser === userId);
+}
+// Read visibility — same rule `lens.list`/`lens.get` already enforce: system/
+// anonymous-owned artifacts and social-domain artifacts are open; everything
+// else requires ownership, admin, or an explicit published/public visibility.
+function _lensArtifactVisible(ctx, artifact) {
+  if (LENS_SOCIAL_DOMAINS.has(artifact.domain)) return true;
+  if (!artifact.ownerId || artifact.ownerId === "anon") return true;
+  if (_lensIsOwnerActor(ctx, artifact) || _lensIsAdminActor(ctx)) return true;
+  const vis = artifact.meta?.visibility;
+  return vis === "published" || vis === "public";
+}
+
 function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
   try {
     const dtuId = uid("dtu");
@@ -38255,6 +38290,12 @@ register("lens", "update", async (ctx, input={}) => {
   if (!id) return { ok: false, error: "id required" };
   const artifact = STATE.lensArtifacts.get(id);
   if (!artifact) return { ok: false, error: "not found" };
+  // Ownership validation — mirrors lens.delete's rule (owner or admin), which
+  // this handler was missing entirely: any authenticated caller could
+  // silently overwrite another user's private artifact's title/data/meta.
+  if (!LENS_SOCIAL_DOMAINS.has(artifact.domain) && artifact.ownerId && artifact.ownerId !== "anon" && !_lensIsOwnerActor(ctx, artifact) && !_lensIsAdminActor(ctx)) {
+    return { ok: false, error: "unauthorized: you can only update your own artifacts" };
+  }
   // Validate status transitions if status is changing
   if (meta?.status && meta.status !== artifact.meta?.status) {
     const validNext = getValidTransitions(artifact.domain, artifact.meta?.status || "draft");
@@ -38310,6 +38351,11 @@ register("lens", "run", async (ctx, input={}) => {
   if (_lensActionForbiddenForAnon(ctx)) return { ok: false, error: "forbidden: authentication required" };
   const artifact = STATE.lensArtifacts.get(id);
   if (!artifact) return { ok: false, error: "not found" };
+  // Same visibility rule as lens.get/lens.list — a private, non-social
+  // artifact can only be acted on by its owner or an admin. Previously
+  // missing here: any authenticated caller who knew another user's artifact
+  // id could invoke any domain action against it (an IDOR).
+  if (!_lensArtifactVisible(ctx, artifact)) return { ok: false, error: "not found" }; // Don't reveal existence
   // Domain-specific action handlers can be registered via lens.registerAction
   const handler = LENS_ACTIONS.get(`${artifact.domain}.${action}`);
   if (!handler) {
@@ -38345,6 +38391,12 @@ register("lens", "export", (ctx, input={}) => {
   if (!id) return { ok: false, error: "id required" };
   const artifact = STATE.lensArtifacts.get(id);
   if (!artifact) return { ok: false, error: "not found" };
+  // Same visibility rule as lens.get/lens.list. Previously missing here: any
+  // authenticated caller could dump another user's private artifact data
+  // (e.g. a security-lens Incident's root cause / lessons learned / assignee,
+  // or an Access-Control artifact's badge holder / visitor name) via
+  // GET /api/lens/<domain>/<id>/export — an IDOR.
+  if (!_lensArtifactVisible(ctx, artifact)) return { ok: false, error: "not found" }; // Don't reveal existence
   _lensEmitDTU(ctx, artifact.domain, "export", artifact.type, artifact, { format });
   if (format === "json") return { ok: true, format: "json", data: artifact };
   if (format === "csv") return { ok: true, format: "csv", data: _lensExportCSV(artifact) };
