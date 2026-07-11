@@ -31,9 +31,20 @@ import { AcInventoryPanel } from './AcInventoryPanel';
 import { AcSalesTaxPanel } from './AcSalesTaxPanel';
 import { AcPurchaseOrdersPanel } from './AcPurchaseOrdersPanel';
 import { AcRatiosPanel } from './AcRatiosPanel';
+import { StripeInvoicePanel } from './StripeInvoicePanel';
 
-export function BooksSection() {
-  const [nav, setNav] = useState<BooksNav>('dashboard');
+export interface BooksSectionProps {
+  /** Controlled nav — pass together with onNavChange to drive the section
+   *  from the parent (e.g. lens-scoped keyboard shortcuts). Uninitialized
+   *  falls back to internal state ('dashboard'). */
+  nav?: BooksNav;
+  onNavChange?: (next: BooksNav) => void;
+}
+
+export function BooksSection({ nav: controlledNav, onNavChange }: BooksSectionProps = {}) {
+  const [internalNav, setInternalNav] = useState<BooksNav>('dashboard');
+  const nav = controlledNav ?? internalNav;
+  const setNav = onNavChange ?? setInternalNav;
   const [badges, setBadges] = useState<Partial<Record<BooksNav, number>>>({});
 
   useEffect(() => { refreshBadges(); }, [nav]);
@@ -61,7 +72,7 @@ export function BooksSection() {
     >
       {nav === 'dashboard' && <AccountingDashboard onJumpTo={(n) => setNav(n as BooksNav)} />}
       {nav === 'banking'   && <BankFeedsInbox />}
-      {nav === 'invoices'  && <InvoicesPlaceholder />}
+      {nav === 'invoices'  && <StripeInvoicePanel />}
       {nav === 'estimates' && <EstimatesPanel />}
       {nav === 'recurring' && <RecurringInvoicesPanel />}
       {nav === 'customers' && <CustomersPanel />}
@@ -86,16 +97,6 @@ export function BooksSection() {
   );
 }
 
-/** The detailed invoice grid lives in AccountingWorkbench (the existing
- *  side-drawer with create / Stripe link / mark-paid). For QB-section
- *  parity we surface a quick-open hint. */
-function InvoicesPlaceholder() {
-  return (
-    <div className="p-6 text-center text-sm text-gray-400 bg-black/30 border border-white/10 rounded">
-      Invoices live in the Workbench drawer — open the side workbench (button in the lens header) for full create / Stripe link / mark-paid flow. The dashboard counter and runway forecast already include them.
-    </div>
-  );
-}
 function ARAgingPlaceholder() {
   return (
     <div className="p-6 text-center text-sm text-gray-400 bg-black/30 border border-white/10 rounded">

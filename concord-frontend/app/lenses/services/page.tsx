@@ -15,7 +15,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -251,9 +251,6 @@ export default function ServicesLensPage() {
   const { items: transactions } = useLensData<TransactionData>('services', 'Transaction', { seed: [] });
   const { items: products } = useLensData<ProductData>('services', 'Product', { seed: [] });
 
-  const runAction = useRunArtifact('services');
-  const editingItem = items.find(i => i.id === editingId) || null;
-
   /* ---- filtering ---- */
   const filtered = useMemo(() => {
     let list = items;
@@ -298,14 +295,83 @@ export default function ServicesLensPage() {
     await remove(id);
   };
 
-  const handleAction = async (action: string, artifactId?: string) => {
-    const targetId = artifactId || editingItem?.id || filtered[0]?.id;
-    if (!targetId) return;
+  const [reportBusy, setReportBusy] = useState<string | null>(null);
+
+  /**
+   * The 7 report/analysis macros (scheduleOptimize, reminderGenerate,
+   * revenueByProvider, clientRetentionReport, commissionCalc,
+   * dailyCloseReport, supplyCheck) all read a PLURAL collection off
+   * `artifact.data` (e.g. `artifact.data.appointments`) — they are business
+   * reports over the whole book, not a per-record action. Running them
+   * through `/api/lens/services/:id/run` against a single Appointment/
+   * Transaction/Client/Product artifact leaves `artifact.data.appointments`
+   * (etc.) undefined, so the macro silently computes over an empty array —
+   * an honestly-shaped but hollow "0 results" response that looks like a
+   * successful run. Build the real collection from the already-loaded lens
+   * data and dispatch straight through `/api/lens/run` with the
+   * `{ artifact: { data: {...} } }` envelope the dispatch peels into both
+   * `artifact.data` and `params` (see server/lib/lens-input-normalize.js) —
+   * the same pattern RevenueRetentionPanel already uses correctly.
+   */
+  const runReport = async (action: string) => {
+    setReportBusy(action);
     try {
-      const result = await runAction.mutateAsync({ id: targetId, action });
-      if (result.ok === false) { setActionResult({ message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(result.result as unknown as Record<string, unknown>); }
-    } catch (err) {
-      console.error('Action failed:', err);
+      let payload: Record<string, unknown> = {};
+      if (action === 'dailyCloseReport') {
+        payload = {
+          appointments: appointments.map(a => {
+            const d = a.data as unknown as AppointmentData;
+            return { date: d.date, completedAt: d.date, status: a.meta.status, price: d.price ?? 0, provider: d.provider || 'Unknown' };
+          }),
+          productsSold: [],
+          date: new Date().toISOString().slice(0, 10),
+        };
+      } else if (action === 'commissionCalc') {
+        payload = {
+          sales: transactions.map(t => {
+            const d = t.data as unknown as TransactionData;
+            return { amount: d.total ?? 0, salesperson: d.staffMember || 'Unassigned', description: (d.services || []).join(', ') || d.paymentMethod };
+          }),
+        };
+      } else if (action === 'clientRetentionReport') {
+        payload = {
+          clients: clients.map(c => {
+            const d = c.data as unknown as ClientData;
+            return { name: c.title, clientId: c.id, visits: d.visitHistory ?? 0, totalRevenue: d.totalSpend ?? 0, lastVisit: d.lastVisit };
+          }),
+        };
+      } else if (action === 'supplyCheck') {
+        payload = {
+          materials: products.map(p => {
+            const d = p.data as unknown as ProductData;
+            return { name: p.title, currentStock: d.stockLevel ?? 0, reorderPoint: d.reorderLevel ?? 5, supplier: d.supplier || '' };
+          }),
+        };
+      } else if (action === 'scheduleOptimize') {
+        payload = {
+          appointments: appointments.filter(a => a.meta.status !== 'cancelled').map(a => {
+            const d = a.data as unknown as AppointmentData;
+            const start = d.date && d.time ? new Date(`${d.date}T${d.time}`) : null;
+            const end = start ? new Date(start.getTime() + (d.duration || 30) * 60000) : null;
+            return { client: d.clientName, serviceType: d.serviceType, time: start ? start.toISOString() : d.date, endTime: end ? end.toISOString() : undefined };
+          }),
+        };
+      } else if (action === 'reminderGenerate') {
+        payload = {
+          appointments: appointments.filter(a => a.meta.status === 'booked' || a.meta.status === 'confirmed').map(a => {
+            const d = a.data as unknown as AppointmentData;
+            return { date: d.date && d.time ? `${d.date}T${d.time}` : d.date, serviceType: d.serviceType, provider: d.provider, client: d.clientName };
+          }),
+          hoursAhead: 24,
+        };
+      }
+      const r = await lensRun<Record<string, unknown>>('services', action, { artifact: { data: payload } });
+      if (!r.data.ok) { setActionResult({ message: `Action failed: ${r.data.error || 'Unknown error'}` }); }
+      else { setActionResult(r.data.result); }
+    } catch (e) {
+      setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : String(e)}` });
+    } finally {
+      setReportBusy(null);
     }
   };
 
@@ -906,22 +972,29 @@ export default function ServicesLensPage() {
         </div>
       )}
 
-      {/* Domain Actions */}
+      {/* Domain Actions — reports computed over the real book (all appointments /
+          clients / transactions / products currently loaded), not a single record */}
       {mode !== 'Dashboard' && (
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => handleAction('dailyCloseReport')} className={ds.btnSecondary}>
+          <button onClick={() => runReport('scheduleOptimize')} className={ds.btnSecondary} disabled={!!reportBusy}>
+            <CalendarCheck className="w-4 h-4" /> Optimize Schedule
+          </button>
+          <button onClick={() => runReport('reminderGenerate')} className={ds.btnSecondary} disabled={!!reportBusy}>
+            <Bell className="w-4 h-4" /> Generate Reminders
+          </button>
+          <button onClick={() => runReport('dailyCloseReport')} className={ds.btnSecondary} disabled={!!reportBusy}>
             <Receipt className="w-4 h-4" /> Daily Close Report
           </button>
-          <button onClick={() => handleAction('commissionCalc')} className={ds.btnSecondary}>
+          <button onClick={() => runReport('commissionCalc')} className={ds.btnSecondary} disabled={!!reportBusy}>
             <Percent className="w-4 h-4" /> Commission Calc
           </button>
-          <button onClick={() => handleAction('clientRetentionReport')} className={ds.btnSecondary}>
+          <button onClick={() => runReport('clientRetentionReport')} className={ds.btnSecondary} disabled={!!reportBusy}>
             <UserPlus className="w-4 h-4" /> Client Retention Report
           </button>
-          <button onClick={() => handleAction('supplyCheck')} className={ds.btnSecondary}>
+          <button onClick={() => runReport('supplyCheck')} className={ds.btnSecondary} disabled={!!reportBusy}>
             <Package className="w-4 h-4" /> Inventory Check
           </button>
-          {runAction.isPending && <span className="text-xs text-neon-blue animate-pulse">Running...</span>}
+          {reportBusy && <span className="text-xs text-neon-blue animate-pulse">Running {reportBusy}…</span>}
         </div>
       )}
 
@@ -1033,6 +1106,83 @@ export default function ServicesLensPage() {
                   </div>
                 ))}
               </div>
+            )}
+            {/* dailyCloseReport */}
+            {actionResult.byProvider !== undefined && actionResult.date !== undefined && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-white">{String(actionResult.totalAppointments)}</p>
+                    <p className="text-[10px] text-gray-400">Booked ({String(actionResult.date)})</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-red-400">{String(actionResult.noShowCount)}</p>
+                    <p className="text-[10px] text-gray-400">No-shows</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.totalRevenue).toLocaleString()}</p>
+                    <p className="text-[10px] text-gray-400">Total Revenue</p>
+                  </div>
+                </div>
+                {(actionResult.byProvider as {provider:string;appointments:number;revenue:number}[]).slice(0,5).map((p, i) => (
+                  <div key={i} className="flex items-center justify-between px-2 py-1 bg-lattice-surface rounded text-xs">
+                    <span className="text-gray-300">{p.provider}</span>
+                    <span className="text-neon-cyan">${p.revenue.toLocaleString()} ({p.appointments} appts)</span>
+                  </div>
+                ))}
+                {(actionResult.byProvider as unknown[]).length === 0 && <p className={ds.textMuted}>No completed appointments for {String(actionResult.date)} yet.</p>}
+              </div>
+            )}
+            {/* commissionCalc */}
+            {actionResult.bySalesperson !== undefined && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.totalSales).toLocaleString()}</p>
+                    <p className="text-[10px] text-gray-400">Total Sales</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-green-400">${Number(actionResult.totalCommission).toLocaleString()}</p>
+                    <p className="text-[10px] text-gray-400">Total Commission</p>
+                  </div>
+                </div>
+                {(actionResult.bySalesperson as {salesperson:string;totalSales:number;totalCommission:number}[]).slice(0,5).map((s, i) => (
+                  <div key={i} className="flex items-center justify-between px-2 py-1 bg-lattice-surface rounded text-xs">
+                    <span className="text-gray-300">{s.salesperson}</span>
+                    <span className="text-green-400">${s.totalCommission.toLocaleString()} of ${s.totalSales.toLocaleString()}</span>
+                  </div>
+                ))}
+                {(actionResult.bySalesperson as unknown[]).length === 0 && <p className={ds.textMuted}>No transactions to calculate commission from yet.</p>}
+              </div>
+            )}
+            {/* clientRetentionReport */}
+            {actionResult.atRiskClients !== undefined && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-white">{String(actionResult.totalClients)}</p>
+                    <p className="text-[10px] text-gray-400">Clients</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-neon-cyan">{String(actionResult.repeatRate)}%</p>
+                    <p className="text-[10px] text-gray-400">Repeat Rate</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className={`text-sm font-bold ${Number(actionResult.atRiskCount) > 0 ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.atRiskCount)}</p>
+                    <p className="text-[10px] text-gray-400">At Risk</p>
+                  </div>
+                </div>
+                {(actionResult.atRiskClients as {name:string;daysSinceVisit:number;churnRisk:string;lifetimeValue:number}[]).slice(0,5).map((c, i) => (
+                  <div key={i} className="flex items-center justify-between px-2 py-1 bg-amber-500/10 rounded text-xs">
+                    <span className="text-gray-300">{c.name}</span>
+                    <span className="text-amber-400">{c.daysSinceVisit}d ago · {c.churnRisk} risk · ${c.lifetimeValue}</span>
+                  </div>
+                ))}
+                {(actionResult.atRiskClients as unknown[]).length === 0 && <p className={ds.textMuted}>No at-risk clients — nice retention.</p>}
+              </div>
+            )}
+            {typeof actionResult.message === 'string' && (
+              <p className="text-xs text-red-400"><AlertTriangle className="w-3 h-3 inline mr-1" />{actionResult.message}</p>
             )}
           </div>
         </div>
@@ -1148,26 +1298,20 @@ export default function ServicesLensPage() {
       {/* End-of-day close modal (Square-style) */}
       <AnimatePresence>
         {showCloseDayModal && (() => {
-          const today = new Date().toISOString().slice(0, 10);
           const tomorrowDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-          const todaysAppts = appointments.filter(a => {
-            const d = (a.data as unknown as AppointmentData).date;
-            return typeof d === 'string' && d.startsWith(today);
+          const allAppts = appointments.map(a => ({
+            id: a.id,
+            title: a.title,
+            meta: a.meta as { status: string; [k: string]: unknown },
+            data: a.data as unknown as Record<string, unknown>,
+          }));
+          const tomorrowAppts = allAppts.filter(a => {
+            const d = a.data.date;
+            return typeof d === 'string' && d.startsWith(tomorrowDate);
           });
-          const tomorrowAppts = appointments
-            .filter(a => {
-              const d = (a.data as unknown as AppointmentData).date;
-              return typeof d === 'string' && d.startsWith(tomorrowDate);
-            })
-            .map(a => ({
-              id: a.id,
-              title: a.title,
-              meta: a.meta as { status: string; [k: string]: unknown },
-              data: a.data as unknown as Record<string, unknown>,
-            }));
           return (
             <EndOfDayClose
-              representativeAppointmentId={todaysAppts[0]?.id ?? appointments[0]?.id ?? null}
+              allAppointments={allAppts}
               tomorrowAppointments={tomorrowAppts}
               onClose={() => setShowCloseDayModal(false)}
             />

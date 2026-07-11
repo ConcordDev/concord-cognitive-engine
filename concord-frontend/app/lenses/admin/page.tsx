@@ -321,6 +321,13 @@ export default function AdminDashboardPage() {
   const [sysHealthLoading, setSysHealthLoading] = useState(false);
   const [sysHealthError, setSysHealthError] = useState<string | null>(null);
 
+  // These three queries drive the AdminRequiredState gate below (via
+  // isForbidden on their `error`), so they MUST hit admin-role-gated
+  // endpoints with a real 403 on denial — not the public system-health /
+  // perf-metrics / events-log endpoints other (non-admin) lenses share.
+  // `/api/admin/{dashboard,metrics,logs}` wrap the `admin.{dashboard,metrics,logs}`
+  // macros, which enforce requireAdminRole() server-side and return the
+  // exact DashboardData/MetricsData shape this page renders.
   const {
     data: dashboard,
     refetch: refetchDashboard,
@@ -329,7 +336,7 @@ export default function AdminDashboardPage() {
     error: error,
   } = useQuery<DashboardData>({
     queryKey: ['admin-dashboard'],
-    queryFn: () => apiHelpers.guidance.health().then((r) => r.data),
+    queryFn: () => apiHelpers.admin.dashboard().then((r) => r.data),
     refetchInterval: autoRefresh ? 5000 : false,
   });
 
@@ -340,7 +347,7 @@ export default function AdminDashboardPage() {
     error: error2,
   } = useQuery<MetricsData>({
     queryKey: ['admin-metrics'],
-    queryFn: () => apiHelpers.perf.metrics().then((r) => r.data),
+    queryFn: () => apiHelpers.admin.metrics().then((r) => r.data),
     refetchInterval: autoRefresh ? 5000 : false,
   });
 
@@ -351,7 +358,7 @@ export default function AdminDashboardPage() {
     refetch: refetch3,
   } = useQuery({
     queryKey: ['admin-logs'],
-    queryFn: () => apiHelpers.eventsLog.list({ limit: 20 }).then((r) => r.data),
+    queryFn: () => apiHelpers.admin.logs({ limit: 20 }).then((r) => r.data),
     refetchInterval: autoRefresh ? 10000 : false,
   });
 

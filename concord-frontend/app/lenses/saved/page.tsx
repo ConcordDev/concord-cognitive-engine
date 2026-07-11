@@ -9,10 +9,11 @@
  * rendered comes from a real saved.* macro — no fake data.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bookmark, Search, Download, ArrowDownUp, RefreshCw,
 } from 'lucide-react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -61,6 +62,8 @@ export default function SavedLensPage() {
   const [error, setError] = useState<string | null>(null);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [notice, setNotice] = useState('');
+  const [saveFormOpen, setSaveFormOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const loadFolders = useCallback(async () => {
     const r = await lensRun<{ folders: SavedFolder[]; unfiledCount: number }>(
@@ -189,6 +192,35 @@ export default function SavedLensPage() {
     [query, kind, stateFilter, activeTag, activeFolder],
   );
 
+  // Discoverable keyboard shortcuts (shown in the ⌘K / "?" command palette
+  // via useLensCommand's registration — see docs/UI_QUALITY_RUBRIC.md §2).
+  useLensCommand(
+    [
+      {
+        id: 'save-new',
+        keys: 'n',
+        description: 'Save something',
+        category: 'actions',
+        action: () => setSaveFormOpen(true),
+      },
+      {
+        id: 'focus-search',
+        keys: '/',
+        description: 'Focus search',
+        category: 'navigation',
+        action: () => searchInputRef.current?.focus(),
+      },
+      {
+        id: 'refresh',
+        keys: 'r',
+        description: 'Refresh saved items',
+        category: 'actions',
+        action: () => { refreshAll(); },
+      },
+    ],
+    { lensId: 'saved' },
+  );
+
   return (
     <LensShell lensId="saved" asMain={false}>
       <FirstRunTour lensId="saved" />
@@ -268,7 +300,12 @@ export default function SavedLensPage() {
           {/* Items column */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
-              <SaveItemForm folders={folders} onSave={handleSave} />
+              <SaveItemForm
+                folders={folders}
+                onSave={handleSave}
+                open={saveFormOpen}
+                onOpenChange={setSaveFormOpen}
+              />
               <button
                 type="button"
                 onClick={refreshAll}
@@ -284,9 +321,10 @@ export default function SavedLensPage() {
               <div className="flex items-center gap-2">
                 <Search className="w-4 h-4 text-zinc-400 shrink-0" />
                 <input
+                  ref={searchInputRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search saved items by text, author, tag…"
+                  placeholder="Search saved items by text, author, tag… (/)"
                   className="flex-1 text-xs bg-transparent text-zinc-100 outline-none"
                 />
               </div>

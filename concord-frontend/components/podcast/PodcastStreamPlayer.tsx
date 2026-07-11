@@ -57,6 +57,8 @@ export function PodcastStreamPlayer({
   const [duration, setDuration] = useState(0);
   const [speed, setSpeed] = useState(1);
   const [introSkipped, setIntroSkipped] = useState(false);
+  const [skipIntroSec, setSkipIntroSecState] = useState(0);
+  const [savingSkipIntro, setSavingSkipIntro] = useState(false);
 
   // Load the stream descriptor from the backend.
   useEffect(() => {
@@ -68,6 +70,7 @@ export function PodcastStreamPlayer({
       if (r.data?.ok && r.data.result) {
         setDescriptor(r.data.result);
         setSpeed(r.data.result.playbackSpeed || 1);
+        setSkipIntroSecState(r.data.result.skipIntroSec || 0);
       } else {
         setError(r.data?.error || 'Could not load stream');
       }
@@ -166,6 +169,16 @@ export function PodcastStreamPlayer({
     }
   }, []);
   useEffect(() => () => { if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current); }, []);
+
+  // Skip-intro — persists the per-user auto-seek offset applied the next
+  // time any episode-stream descriptor is fetched (server/domains/podcast.js
+  // playback-prefs-set/episode-stream). Previously stored but had no
+  // control that ever set it, so it could never actually take effect.
+  const saveSkipIntro = useCallback(async (sec: number) => {
+    setSavingSkipIntro(true);
+    await lensRun('podcast', 'playback-prefs-set', { skipIntroSec: sec });
+    setSavingSkipIntro(false);
+  }, []);
 
   const activeChapterIdx = descriptor
     ? descriptor.chapters.reduce((acc, c, i) => (position >= c.startSec ? i : acc), -1)
@@ -288,6 +301,17 @@ export function PodcastStreamPlayer({
               {m === 0 ? 'off' : `${m}m`}
             </button>
           ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <Scissors className="w-3.5 h-3.5 text-amber-400" />
+          <span className="text-zinc-400">Skip intro</span>
+          <input
+            type="number" min={0} max={300} value={skipIntroSec}
+            onChange={(e) => setSkipIntroSecState(Math.max(0, Math.min(300, Number(e.target.value) || 0)))}
+            onBlur={(e) => void saveSkipIntro(Math.max(0, Math.min(300, Number(e.target.value) || 0)))}
+            className="w-12 bg-zinc-950 border border-zinc-700 rounded px-1 py-0.5 text-zinc-100 text-center"
+          />
+          <span className="text-zinc-600">s{savingSkipIntro && '…'}</span>
         </div>
       </div>
 

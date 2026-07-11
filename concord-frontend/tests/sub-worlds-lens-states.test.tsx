@@ -24,6 +24,17 @@ vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
+// ── next/navigation + world-travel — the real "Enter" hand-off surface ──────
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush, back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+}));
+const mockTravel = vi.fn(() => Promise.resolve());
+vi.mock('@/hooks/useWorldTravel', () => ({
+  useWorldTravel: () => ({ phase: 'idle', targetWorldId: null, error: null, shardStatus: null, firstTickEtaMs: null, travel: mockTravel }),
+}));
+vi.mock('@/components/world/PortalLoadScreen', () => ({ PortalLoadScreen: () => null }));
+
 // ── headless shell + lens-helper widgets: render-only stubs ─────────────────
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
@@ -40,9 +51,13 @@ vi.mock('@/components/sub-worlds/WorldSettingsPanel', () => ({ WorldSettingsPane
 vi.mock('@/components/sub-worlds/WorldEditorPanel', () => ({ WorldEditorPanel: () => null }));
 vi.mock('@/components/sub-worlds/WorldAnalyticsPanel', () => ({ WorldAnalyticsPanel: () => null }));
 vi.mock('@/components/sub-worlds/WorldCard', () => ({
-  // Render the world name so POPULATED can assert real macro data is on screen.
-  WorldCard: ({ world }: { world: { world_id: string; name: string } }) =>
-    React.createElement('div', { 'data-testid': `world-card-${world.world_id}` }, world.name),
+  // Render the world name + a real Enter button so POPULATED can assert real
+  // macro data on screen AND the travel test can drive the actual handler.
+  WorldCard: ({ world, onVisit }: { world: { world_id: string; name: string }; onVisit: () => void }) =>
+    React.createElement('div', { 'data-testid': `world-card-${world.world_id}` }, [
+      world.name,
+      React.createElement('button', { key: 'enter', onClick: onVisit }, 'Enter'),
+    ]),
 }));
 vi.mock('lucide-react', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -71,7 +86,7 @@ const PUBLIC_WORLD = {
   favorites: 1, popularity: 17, is_owner: false, can_edit: false,
 };
 
-beforeEach(() => { lensRun.mockReset(); });
+beforeEach(() => { lensRun.mockReset(); mockPush.mockReset(); mockTravel.mockReset(); mockTravel.mockResolvedValue(undefined); });
 
 describe('sub-worlds lens — four UX states', () => {
   it('LOADING: shows a role=status indicator while discover is in flight', async () => {
@@ -161,5 +176,45 @@ describe('sub-worlds lens — four UX states', () => {
     // spawn macro fired and the page switched to the populated "mine" list
     await waitFor(() => expect(lensRun.mock.calls.some((c) => c[1] === 'spawn')).toBe(true));
     await waitFor(() => expect(getByTestId('world-card-subw_new')).toBeInTheDocument());
+  });
+
+  it('Enter hands off to the REAL world-travel system, not a fabricated toast', async () => {
+    lensRun.mockImplementation((_d: string, name: string) => {
+      if (name === 'discover') return reply({ worlds: [PUBLIC_WORLD], total: 1 });
+      if (name === 'visit') return reply({ travel: { destination_world_id: PUBLIC_WORLD.world_id }, visits: 5, unique_visitors: 3 });
+      return reply({ worlds: [] });
+    });
+    const { getByTestId } = render(<SubWorldsPage />);
+    await waitFor(() => expect(getByTestId('world-card-subw_1')).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(getByTestId('world-card-subw_1').querySelector('button')!);
+    });
+
+    // 1. The lens's own visit macro fired (privacy/archived gate + counters).
+    await waitFor(() => expect(lensRun.mock.calls.some((c) => c[1] === 'visit')).toBe(true));
+    // 2. The REAL cross-world travel hook was invoked with the destination —
+    //    not just a status message claiming a trip that never happened.
+    await waitFor(() => expect(mockTravel).toHaveBeenCalledWith(PUBLIC_WORLD.world_id));
+    // 3. Only after travel resolves does the page route into the 3D world lens.
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/lenses/world'));
+  });
+
+  it('Enter surfaces an honest error and never navigates when travel fails', async () => {
+    mockTravel.mockRejectedValueOnce(new Error('travel_failed_404'));
+    lensRun.mockImplementation((_d: string, name: string) => {
+      if (name === 'discover') return reply({ worlds: [PUBLIC_WORLD], total: 1 });
+      if (name === 'visit') return reply({ travel: { destination_world_id: PUBLIC_WORLD.world_id }, visits: 1, unique_visitors: 1 });
+      return reply({ worlds: [] });
+    });
+    const { getByTestId, findByText } = render(<SubWorldsPage />);
+    await waitFor(() => expect(getByTestId('world-card-subw_1')).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(getByTestId('world-card-subw_1').querySelector('button')!);
+    });
+
+    await findByText(/Could not enter "Gravity Lab": travel_failed_404/i);
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

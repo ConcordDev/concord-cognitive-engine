@@ -54,6 +54,14 @@ this rebuild pass — it is PROTECTed per `CLAUDE.md` §4 and would need a
 separate bidirectional-correctness fix with authorization, not a Wave-3
 lens rebuild).
 
-No `Math.random()`, no fabricated numbers, no dead clicks found. No changes
-made — this lens is genuinely complete against its Mixpanel/Amplitude
-reference bar.
+No `Math.random()`, no fabricated numbers found in the four bespoke
+components reviewed here.
+
+**Correction (later Wave-3 pass, see `docs/lens-specs/analytics-capability-map.md`):**
+the "no dead clicks found" claim above was wrong — it audited the four
+bespoke components but missed the page's own "Actions" tab, which ran a
+second, broken copy of the four calculator macros through the generic
+`useLensData`/`useRunArtifact` artifact-CRUD hooks against a `dataset`
+artifact type that never existed, so all four buttons were dead clicks.
+Fixed by mounting the real, already-tested `AnalyticsActionPanel` in that
+tab instead. See the capability-map doc for the full writeup.
