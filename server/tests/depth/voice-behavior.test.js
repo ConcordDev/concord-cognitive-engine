@@ -525,6 +525,64 @@ describe("voice — sharing + segment comments (shared ctx)", () => {
     const detail = await lensRun("voice", "share-detail", { params: { recordingId: recId } }, ctx);
     assert.equal(detail.result.shared, false);
   });
+
+  // IDOR regression (Frontend Rebuild Program, Wave 3 voice audit): share-detail
+  // and segment-comments-list used to trust a caller-supplied recordingId with
+  // no ownership/collaborator check, unlike segment-comment-add/-delete which
+  // already gated correctly. Any authenticated user who knew (or enumerated)
+  // another user's recordingId could read the full share record — collaborator
+  // list + every segment comment — via a raw voice.share-detail /
+  // voice.segment-comments-list call. Fixed to match the established
+  // owner-or-collaborator gate; these pin the fix both ways (denied for a
+  // stranger, allowed for a real collaborator) so it can't silently regress.
+  it("share-detail and segment-comments-list deny a caller who is neither owner nor collaborator (IDOR fix)", async () => {
+    const owner = await depthCtx("voice-shares-owner");
+    const stranger = await depthCtx("voice-shares-stranger");
+
+    const rec = await lensRun("voice", "recording-create", {
+      params: { title: "Confidential 1:1", segments: [{ id: "sg_conf", text: "sensitive detail", startSec: 0 }] },
+    }, owner);
+    const recId = rec.result.recording.id;
+    await lensRun("voice", "recording-share", { params: { id: recId, collaborators: ["ally"] } }, owner);
+    await lensRun("voice", "segment-comment-add", { params: { recordingId: recId, segmentId: "sg_conf", body: "owner note" } }, owner);
+
+    // The owner and the listed collaborator can still read it (no regression).
+    const ownerView = await lensRun("voice", "share-detail", { params: { recordingId: recId } }, owner);
+    assert.equal(ownerView.result.shared, true);
+    assert.equal(ownerView.result.share.collaborators.length, 1);
+
+    // A caller with no relationship to the recording is denied on both macros,
+    // and the denial doesn't leak whether the recording exists or is shared.
+    const strangerShare = await lensRun("voice", "share-detail", { params: { recordingId: recId } }, stranger);
+    assert.equal(strangerShare.result.ok, false);
+    assert.match(strangerShare.result.error, /not found or not shared/);
+    assert.equal(strangerShare.result.share, undefined);
+
+    const strangerComments = await lensRun("voice", "segment-comments-list", { params: { recordingId: recId } }, stranger);
+    assert.equal(strangerComments.result.ok, false);
+    assert.match(strangerComments.result.error, /not found or not shared/);
+    assert.equal(strangerComments.result.comments, undefined);
+  });
+
+  it("share-detail and segment-comments-list allow a listed collaborator (not just the owner)", async () => {
+    const owner = await depthCtx("voice-shares-owner2");
+    const ally = await depthCtx("ally");
+
+    const rec = await lensRun("voice", "recording-create", {
+      params: { title: "Shared With Ally", segments: [{ id: "sg_ally", text: "collab note", startSec: 0 }] },
+    }, owner);
+    const recId = rec.result.recording.id;
+    // recording-share collaborator entries are raw actor-id strings — the
+    // collaborator's own ctx.actor.userId is "ally" (matches depthCtx's label).
+    await lensRun("voice", "recording-share", { params: { id: recId, collaborators: ["ally"] } }, owner);
+
+    const allyShare = await lensRun("voice", "share-detail", { params: { recordingId: recId } }, ally);
+    assert.equal(allyShare.result.shared, true);
+
+    const allyComments = await lensRun("voice", "segment-comments-list", { params: { recordingId: recId } }, ally);
+    assert.equal(allyComments.result.ok, true);
+    assert.equal(allyComments.result.count, 0);
+  });
 });
 
 describe("voice — translations list (deterministic; translate itself is network-skipped)", () => {
