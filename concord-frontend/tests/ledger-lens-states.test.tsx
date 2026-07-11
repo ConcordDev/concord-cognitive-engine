@@ -94,9 +94,11 @@ describe('ledger lens — four UX states', () => {
     const { getByText, getByTestId } = render(<LedgerLensPage />);
     await waitFor(() => expect(getByTestId('managed-parity')).toBeInTheDocument());
     expect(getByTestId('extraction-liens')).toBeInTheDocument();
-    // real values flow through, not placeholders
+    // real values flow through, not placeholders. house_pell/house_varn are
+    // each their own clickable dossier-trigger button now, so assert on the
+    // section's full text content rather than a single-node regex match.
     expect(getByText(/the_tessera/)).toBeInTheDocument();
-    expect(getByText(/house_pell and house_varn/)).toBeInTheDocument();
+    expect(getByTestId('managed-parity').textContent).toMatch(/house_pell.*and.*house_varn/);
     expect(getByText(/the_mercy_fund/)).toBeInTheDocument();
     expect(getByText(/9000/)).toBeInTheDocument();
   });
@@ -144,5 +146,52 @@ describe('ledger lens — four UX states', () => {
     const { getByRole } = render(<LedgerLensPage />);
     await waitFor(() => expect(getByRole('combobox', { name: /World to audit/i })).toBeInTheDocument());
     expect(getByRole('button', { name: /Refresh/i })).toBeInTheDocument();
+  });
+
+  it('DOSSIER: clicking a faction name calls ledger.faction_economy and renders the real dossier', async () => {
+    lensRun.mockImplementation((domain: string, name: string) => {
+      if (domain === 'ledger' && name === 'anomalies') return reply(POPULATED);
+      if (domain === 'ledger' && name === 'faction_economy') {
+        return reply({ ok: true, factionId: 'the_tessera', treasury: 4200, fundedBy: ['outer_concord'], liensAgainst: [{ creditor_id: 'the_mercy_fund', amount: 500 }] });
+      }
+      return reply(null, false, 'unexpected_macro');
+    });
+    const { getByText, getByTestId } = render(<LedgerLensPage />);
+    await waitFor(() => expect(getByTestId('managed-parity')).toBeInTheDocument());
+    await act(async () => { fireEvent.click(getByText('the_tessera')); });
+    await waitFor(() => expect(getByTestId('faction-dossier')).toBeInTheDocument());
+    expect(getByText('4200')).toBeInTheDocument();
+    expect(getByText('outer_concord')).toBeInTheDocument();
+    expect(lensRun).toHaveBeenCalledWith('ledger', 'faction_economy', { worldId: 'sere', factionId: 'the_tessera' });
+  });
+
+  it('DOSSIER error: a denied/failed faction_economy call renders role=alert with Retry, not a silent empty dossier', async () => {
+    lensRun.mockImplementation((domain: string, name: string) => {
+      if (domain === 'ledger' && name === 'anomalies') return reply(POPULATED);
+      if (domain === 'ledger' && name === 'faction_economy') return reply(null, false, 'missing_inputs');
+      return reply(null, false, 'unexpected_macro');
+    });
+    const { getByText, getByTestId } = render(<LedgerLensPage />);
+    await waitFor(() => expect(getByTestId('managed-parity')).toBeInTheDocument());
+    await act(async () => { fireEvent.click(getByText('the_tessera')); });
+    await waitFor(() => expect(getByTestId('faction-dossier').querySelector('[role="alert"]')).toBeTruthy());
+    expect(getByText(/missing_inputs/)).toBeInTheDocument();
+  });
+
+  it('PULSE: "Show global pulse" calls ledger.flow_summary and renders the real byType rollup', async () => {
+    lensRun.mockImplementation((domain: string, name: string) => {
+      if (domain === 'ledger' && name === 'anomalies') return reply(EMPTY);
+      if (domain === 'ledger' && name === 'flow_summary') {
+        return reply({ ok: true, byType: [{ type: 'MARKETPLACE_PURCHASE', n: 12, total: 3400.5 }] });
+      }
+      return reply(null, false, 'unexpected_macro');
+    });
+    const { getByText, getByTestId } = render(<LedgerLensPage />);
+    await waitFor(() => expect(getByText(/No anomalous flows surfaced/i)).toBeInTheDocument());
+    await act(async () => { fireEvent.click(getByText(/Show global pulse/i)); });
+    await waitFor(() => expect(getByTestId('flow-pulse')).toBeInTheDocument());
+    expect(getByText('MARKETPLACE_PURCHASE')).toBeInTheDocument();
+    expect(getByText(/3400\.5/)).toBeInTheDocument();
+    expect(lensRun).toHaveBeenCalledWith('ledger', 'flow_summary', { limit: 12 });
   });
 });

@@ -27,7 +27,12 @@ beforeEach(() => {
   if (globalThis._concordSTATE) delete globalThis._concordSTATE.adminLens;
 });
 
-const ctx = { actor: { userId: "admin_a" }, userId: "admin_a" };
+// This is an operator console — every macro in domains/admin.js enforces
+// requireAdminRole() in-handler (see the "admin — role gate" describe block
+// below), so every other describe block here must pass an admin-role ctx to
+// exercise the actual macro behavior rather than always hitting the denial
+// path.
+const ctx = { actor: { userId: "admin_a", role: "admin" }, userId: "admin_a" };
 
 describe("admin — time-series history", () => {
   it("records a metric point and reads it back", () => {
@@ -235,5 +240,59 @@ describe("admin — incidents + on-call", () => {
       action: "acknowledge",
     });
     assert.equal(r.ok, false);
+  });
+});
+
+describe("admin — role gate", () => {
+  // Every macro in this domain is an operator-console action (system audit
+  // logs, tenant suspend/role/quota, incident timeline, feature flags,
+  // alert rules) — none of it may be reachable by a plain authenticated
+  // user. Regression-guards the real gap found and fixed 2026-07-11: none
+  // of these 19 macros checked ctx.actor.role at all, so any signed-in user
+  // could suspend a tenant, grant themselves an admin tenant role, or open
+  // and resolve incidents.
+  const guestCtx = { actor: { userId: "u_guest" }, userId: "u_guest" };
+  const memberCtx = { actor: { userId: "u_member", role: "member" }, userId: "u_member" };
+
+  it("denies a no-role actor with a message the frontend's isForbidden() matches", () => {
+    const r = call("tenantAction", guestCtx, {}, { userId: "victim", action: "suspend" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /insufficient permission/i);
+  });
+
+  it("denies a non-admin 'member' role from every mutation surface", () => {
+    assert.equal(call("recordMetric", memberCtx, {}, { metric: "x", value: 1 }).ok, false);
+    assert.equal(call("alertRuleUpsert", memberCtx, {}, { rule: { name: "x", metric: "y", threshold: 1 } }).ok, false);
+    assert.equal(call("tenantAction", memberCtx, {}, { userId: "victim", action: "role", role: "admin" }).ok, false);
+    assert.equal(call("logAppend", memberCtx, {}, { level: "info", message: "hi" }).ok, false);
+    assert.equal(call("traceRecord", memberCtx, {}, { trace: { endpoint: "/x" } }).ok, false);
+    assert.equal(call("featureFlagSet", memberCtx, {}, { flag: { key: "x" } }).ok, false);
+    assert.equal(call("incidentOpen", memberCtx, {}, { title: "x" }).ok, false);
+  });
+
+  it("denies a non-admin role from every read surface too", () => {
+    assert.equal(call("auditLog", memberCtx, { entries: [] }, {}).ok, false);
+    assert.equal(call("permissionMatrix", memberCtx, { roles: [], users: [] }, {}).ok, false);
+    assert.equal(call("systemHealth", memberCtx, { metrics: [] }, {}).ok, false);
+    assert.equal(call("metricHistory", memberCtx, {}, {}).ok, false);
+    assert.equal(call("alertEvaluate", memberCtx, {}, {}).ok, false);
+    assert.equal(call("tenantList", memberCtx, {}, {}).ok, false);
+    assert.equal(call("logSearch", memberCtx, {}, {}).ok, false);
+    assert.equal(call("traceList", memberCtx, {}, {}).ok, false);
+    assert.equal(call("featureFlagList", memberCtx, {}, {}).ok, false);
+    assert.equal(call("incidentList", memberCtx, {}, {}).ok, false);
+  });
+
+  it("admits owner and founder roles, not just 'admin'", () => {
+    const ownerCtx = { actor: { userId: "u_owner", role: "owner" }, userId: "u_owner" };
+    const founderCtx = { actor: { userId: "u_founder", role: "founder" }, userId: "u_founder" };
+    assert.equal(call("tenantList", ownerCtx, {}, {}).ok, true);
+    assert.equal(call("tenantList", founderCtx, {}, {}).ok, true);
+  });
+
+  it("does not mutate state on a denied tenant action", () => {
+    call("tenantAction", memberCtx, {}, { userId: "victim", action: "suspend" });
+    const list = call("tenantList", ctx, {}, {}); // admin ctx from outer scope
+    assert.equal(list.result.tenants.length, 0, "denied action must not have created a tenant record");
   });
 });

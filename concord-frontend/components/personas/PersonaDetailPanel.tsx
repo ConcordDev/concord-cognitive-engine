@@ -8,9 +8,9 @@
  */
 
 import { useEffect, useState } from 'react';
-import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { PersonaChat } from './PersonaChat';
+import { runPersona } from './persona-envelope';
 import type { PersonaDetail } from './PersonaEditor';
 
 interface Review { userId: string; stars: number; review: string; at: number }
@@ -45,17 +45,17 @@ export function PersonaDetailPanel({
 
   const load = async () => {
     const [g, s, v] = await Promise.all([
-      lensRun('personas', 'get', { personaId }),
-      lensRun('personas', 'stats', { personaId }),
-      lensRun('personas', 'versions', { personaId }),
+      runPersona('get', { personaId }),
+      runPersona('stats', { personaId }),
+      runPersona('versions', { personaId }),
     ]);
-    if (g.data?.ok) {
-      const res = g.data.result as any;
+    if (g.ok) {
+      const res = g.data as any;
       setPersona(res.persona as PersonaDetail);
       setReviews((res.reviews || []) as Review[]);
     }
-    if (s.data?.ok) setStats(s.data.result as StatRow);
-    if (v.data?.ok) setVersions(((v.data.result as any)?.versions || []) as VersionRow[]);
+    if (s.ok) setStats(s.data as StatRow);
+    if (v.ok) setVersions(((v.data as any)?.versions || []) as VersionRow[]);
     setLoading(false);
   };
 
@@ -69,47 +69,47 @@ export function PersonaDetailPanel({
 
   const togglePublish = async () => {
     if (!persona) return;
-    const r = await lensRun('personas', 'publish', {
+    const r = await runPersona('publish', {
       personaId, published: !persona.published,
     });
-    if (r.data?.ok) {
-      flash((r.data.result as any)?.published ? 'Published to marketplace' : 'Unpublished');
+    if (r.ok) {
+      flash((r.data as any)?.published ? 'Published to marketplace' : 'Unpublished');
       await load();
       onChanged();
-    } else flash(`Failed: ${r.data?.error}`);
+    } else flash(`Failed: ${r.error}`);
   };
 
   const doInstall = async () => {
-    const r = await lensRun('personas', 'install', { personaId });
-    if (r.data?.ok) {
-      flash(`Installed (v${(r.data.result as any)?.version})`);
+    const r = await runPersona('install', { personaId });
+    if (r.ok) {
+      flash(`Installed (v${(r.data as any)?.version})`);
       await load();
       onChanged();
-    } else flash(`Failed: ${r.data?.error}`);
+    } else flash(`Failed: ${r.error}`);
   };
 
   const submitRate = async () => {
-    const r = await lensRun('personas', 'rate', { personaId, stars, review });
-    if (r.data?.ok) {
+    const r = await runPersona('rate', { personaId, stars, review });
+    if (r.ok) {
       flash('Rating submitted');
       setReview('');
       await load();
-    } else flash(`Failed: ${r.data?.error}`);
+    } else flash(`Failed: ${r.error}`);
   };
 
   const regenPortrait = async () => {
-    const r = await lensRun('personas', 'regenerate_portrait', { personaId });
-    if (r.data?.ok) { flash('Portrait regenerated'); await load(); }
-    else flash(`Failed: ${r.data?.error}`);
+    const r = await runPersona('regenerate_portrait', { personaId });
+    if (r.ok) { flash('Portrait regenerated'); await load(); }
+    else flash(`Failed: ${r.error}`);
   };
 
   const uploadPortrait = (file: File) => {
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUri = String(reader.result || '');
-      const r = await lensRun('personas', 'regenerate_portrait', { personaId, dataUri });
-      if (r.data?.ok) { flash('Portrait uploaded'); await load(); }
-      else flash(`Failed: ${r.data?.error}`);
+      const r = await runPersona('regenerate_portrait', { personaId, dataUri });
+      if (r.ok) { flash('Portrait uploaded'); await load(); }
+      else flash(`Failed: ${r.error}`);
     };
     reader.readAsDataURL(file);
   };

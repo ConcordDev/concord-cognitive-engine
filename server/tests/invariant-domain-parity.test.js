@@ -226,3 +226,46 @@ describe("invariant.quantifiedCheck", () => {
     assert.equal(call("quantifiedCheck", ctxA, { quantifier: "forall", predicate: "y", collection: [] }).ok, false);
   });
 });
+
+// Regression pin — the "Action Invariant Tester" panel on the frontend page
+// used to call a completely different (and broken) endpoint that always
+// resolved "not found" and silently rendered as a blocked verdict for every
+// input. testAction is the real macro that replaced it.
+describe("invariant.testAction", () => {
+  const INVARIANTS = [
+    { name: "NO_TELEMETRY", description: "Never track user behavior without explicit consent." },
+    { name: "NO_RESALE", description: "Never sell user data to third parties." },
+  ];
+
+  it("rejects empty text", () => {
+    assert.equal(call("testAction", ctxA, { text: "", invariants: INVARIANTS }).ok, false);
+  });
+
+  it("passes cleanly when there are no invariants to check against", () => {
+    const r = call("testAction", ctxA, { text: "track user behavior" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.passed, true);
+    assert.deepEqual(r.result.violations, []);
+  });
+
+  it("flags a matching keyword as a violation", () => {
+    const r = call("testAction", ctxA, { text: "quietly track user behavior in the background", invariants: INVARIANTS });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.passed, false);
+    assert.ok(r.result.violations.includes("NO_TELEMETRY"));
+    assert.match(r.result.message, /NO_TELEMETRY/);
+  });
+
+  it("passes when no invariant keyword matches", () => {
+    const r = call("testAction", ctxA, { text: "process everything locally on-device", invariants: INVARIANTS });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.passed, true);
+    assert.equal(r.result.violations.length, 0);
+  });
+
+  it("never throws on malformed invariant entries", () => {
+    const r = call("testAction", ctxA, { text: "sell data to a broker", invariants: [null, { name: "NO_RESALE", description: "Never sell user data." }, {}] });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.violations.includes("NO_RESALE"));
+  });
+});
