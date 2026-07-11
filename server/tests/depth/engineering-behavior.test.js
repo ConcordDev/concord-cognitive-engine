@@ -237,7 +237,8 @@ describe("engineering — multi-discipline calc suite (server.js inline LENS_ACT
     assert.ok(Math.abs(r.result.results.heatLoad.value - 461.53846153846155) < 1e-6);
     assert.equal(r.result.results.heatLoad.unit, "BTU/h");
     assert.ok(Math.abs(r.result.results.ductSize.value - 7.817640190446719) < 1e-6);
-    assert.ok(Math.abs(r.result.results.cooling.value - 2507.6923076923076) < 1e-6);
+    // envelope(461.538461538...) + people(2*250=500) + equip(500) + glass(2*30*30=1800) = 3261.538461538...
+    assert.ok(Math.abs(r.result.results.cooling.value - 3261.5384615384614) < 1e-6);
     assert.equal(r.result.results.cooling.peopleBtuH, 500); // 2 occupants × 250
   });
 
@@ -267,7 +268,8 @@ describe("engineering — multi-discipline calc suite (server.js inline LENS_ACT
     });
     assert.equal(r.ok, true);
     assert.ok(Math.abs(r.result.results.pipeSize.value - 2.0211283720151765) < 1e-6);
-    assert.ok(Math.abs(r.result.results.pumpHead.value - 2.8860028860028866) < 1e-6);
+    // BHP = Q·H·SG/(3960·η) = 50*80*1/(3960*0.7) = 4000/2772 = 1.443001443...
+    assert.ok(Math.abs(r.result.results.pumpHead.value - 1.4430014430014433) < 1e-6);
     assert.ok(Math.abs(r.result.results.pressureLoss.value - 2.3721865041812418) < 1e-6);
   });
 });

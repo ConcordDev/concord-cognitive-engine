@@ -169,11 +169,28 @@ export function expireDueDecrees(db) {
   return { ok: true, expired: r.changes };
 }
 
-/** Revoke a decree explicitly (player ruler action / inheritance reset). */
+/**
+ * Revoke a decree explicitly (player ruler action / inheritance reset).
+ *
+ * Authority check mirrors `proposeDecree`'s: a non-system caller (`by` set)
+ * must be the realm's current ruler. Before this check existed, any
+ * authenticated caller who knew (or enumerated) a `decreeId` could revoke
+ * ANY realm's decree — `revoke_decree`'s macro handler passes the calling
+ * user's id as `by` with no ownership check upstream, so this was the only
+ * gate. `by === null/undefined` (system/heartbeat callers, e.g. inheritance
+ * reset) is still unrestricted, matching `proposeDecree`'s
+ * `issuedByKind === "system"` bypass.
+ */
 export function revokeDecree(db, decreeId, by) {
   if (!db || !decreeId) return { ok: false };
   const d = db.prepare(`SELECT kingdom_id FROM realm_decrees WHERE id = ?`).get(decreeId);
   if (!d) return { ok: false, reason: "decree_not_found" };
+  if (by) {
+    const k = getKingdom(db, d.kingdom_id);
+    if (!k || k.ruler_kind !== "player" || k.ruler_id !== by) {
+      return { ok: false, reason: "not_authorised" };
+    }
+  }
   db.prepare(`UPDATE realm_decrees SET effect_state = 'revoked' WHERE id = ?`).run(decreeId);
   if (by) cascadeOpinionToCitizens(db, d.kingdom_id, +2, "decree revoked");
   return { ok: true };

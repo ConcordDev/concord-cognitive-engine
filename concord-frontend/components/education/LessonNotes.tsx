@@ -3,10 +3,20 @@
 import { useEffect, useState } from 'react';
 import { StickyNote, Plus, Trash2, Loader2, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useLessonOptions } from './useLessonOptions';
 
 interface Note { id: string; lessonId: string; text: string; videoTimestampSec: number | null; createdAt: string }
 
-export function LessonNotes({ lessonId }: { lessonId?: string }) {
+/**
+ * Notes for a specific lesson. When no `lessonId` prop is supplied (the
+ * standalone "Notes" tab case), the component picks its own lesson via
+ * `useLessonOptions` — previously it silently rendered in an always-empty,
+ * always-read-only "(all)" mode with no way to reach `notes-save` at all.
+ */
+export function LessonNotes({ lessonId: lessonIdProp }: { lessonId?: string }) {
+  const { options: lessonOptions, loading: optionsLoading } = useLessonOptions();
+  const [pickedLessonId, setPickedLessonId] = useState('');
+  const lessonId = lessonIdProp ?? (pickedLessonId || undefined);
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState('');
@@ -49,9 +59,20 @@ export function LessonNotes({ lessonId }: { lessonId?: string }) {
 
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
-      <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
+      <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2 flex-wrap">
         <StickyNote className="w-4 h-4 text-amber-300" />
-        <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Lesson notes{lessonId ? ` · ${lessonId.slice(0, 12)}` : ' (all)'}</span>
+        <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Lesson notes</span>
+        {!lessonIdProp && (
+          <select
+            value={pickedLessonId}
+            onChange={e => setPickedLessonId(e.target.value)}
+            disabled={optionsLoading || lessonOptions.length === 0}
+            className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white max-w-[220px] truncate disabled:opacity-50"
+          >
+            <option value="">{optionsLoading ? 'Loading lessons…' : lessonOptions.length === 0 ? 'No lessons yet' : 'All lessons'}</option>
+            {lessonOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        )}
         <span className="ml-auto text-[10px] text-gray-400">{notes.length}</span>
       </header>
       {lessonId && (

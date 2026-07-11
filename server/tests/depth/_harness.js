@@ -52,10 +52,77 @@ export async function load() {
     // (server/package.json's test:main), just scoped to this harness's
     // own confirmed-clean teardown instead of applied blanket across the
     // whole suite.
+    //
+    // Failure-masking fix (2026-07-11). The unconditional `process.exit(0)`
+    // that used to sit here had a serious bug, confirmed by a minimal
+    // reproduction (a test asserting 1===2, using only this exact
+    // after()+exit() shape): calling `process.exit()` from WITHIN a
+    // user-registered `after()` hook — no matter how long it's delayed
+    // first (tested up to 2s, plus a handle-unref sweep) — pre-empts
+    // `node:test`'s own internal completion path before it can emit the
+    // `not ok`/`# fail` lines for a failure that already happened, or set
+    // a non-zero `process.exitCode`. The failure doesn't just get a wrong
+    // summary; it never reaches stdout at all, and the run exits 0 —
+    // identical to a genuine pass, for both single-file and multi-file
+    // glob runs (a failure in one file was also observed to corrupt an
+    // unrelated passing file's reported result in the same run).
+    //
+    // The real fix is to NOT call process.exit() synchronously inside the
+    // hook at all — `node:test`'s own completion path only produces
+    // correct output when nothing intervenes. But without SOME exit call,
+    // the process never quiesces on its own: `terminateAllWorkersForTest`/
+    // `clearActiveTimersForTest` above correctly clear what they track,
+    // yet ~15 Socket handles (many already `destroyed:true`, so likely
+    // stale HTTP keep-alive / reconnect-attempt sockets from the brain
+    // LLM / embeddings / oracle clients that retry on init failure — this
+    // repo runs without Ollama reachable in CI) plus one `/bin/sh`
+    // ChildProcess are still open after cleanup (confirmed via
+    // `process._getActiveHandles()`), and node:test's own file-timeout is
+    // what eventually ends a run with no exit() at all — correctly, but
+    // only after tens of seconds.
+    //
+    // The fix used here: unref every remaining handle (so none of them
+    // keep the event loop alive on their own), then arm a SEPARATE,
+    // unref'd watchdog timer that force-exits only as a last resort if
+    // the process is still alive after it fires — decoupled from the
+    // after() hook's own synchronous continuation, so `node:test` gets a
+    // real chance to run its own completion/reporting path first. 200ms
+    // was empirically well above the reliability floor found in testing
+    // (as low as 20ms worked across repeated runs; 200ms adds real margin
+    // under system load) — negligible next to the ~3s per-file server
+    // boot this harness already pays. Verified: a failing test now
+    // correctly prints `not ok` + `# fail 1` and exits 1, in both
+    // single-file and multi-file glob runs, with zero cross-file
+    // corruption; a genuinely passing file's wall-clock time is
+    // unaffected (dominated by server boot, not this delay).
+    //
+    // Root cause traced (async_hooks init-hook stack capture on every
+    // TCPWRAP, the same technique this repo's own "runtime-truth" method
+    // section calls for): every lingering TCPWRAP handle bottoms out at
+    // `Client.connect` inside Node's built-in undici (the engine behind
+    // global `fetch`) — real `callBrain`/`oracle-brain.js` LLM calls (lore
+    // synthesis during content-seeding, embeddings init, etc.) that fire
+    // during a normal boot and fail with connection-refused because no
+    // Ollama instance is reachable in this test environment; undici's
+    // connection-pool bookkeeping for the failed attempts doesn't fully
+    // release before the event loop would otherwise go idle. NOT fixed at
+    // the source here on purpose: the fix would mean disabling HTTP
+    // keep-alive on `callBrain`'s real production call path (slowing down
+    // every genuine brain call in production to solve a test-only
+    // annoyance) or adding `undici` as a new explicit dependency to reach
+    // its global-dispatcher-close API (not installed in this repo) — both
+    // disproportionate to the problem now that the sweep+watchdog above
+    // makes the actual failure-masking bug moot. Left as a known, traced,
+    // low-priority follow-up rather than a production-code change.
     after(async () => {
       try { await _t?.terminateAllWorkersForTest?.(); } catch { /* best-effort teardown */ }
       try { _t?.clearActiveTimersForTest?.(); } catch { /* best-effort teardown */ }
-      process.exit(0);
+      try {
+        const handles = process._getActiveHandles ? process._getActiveHandles() : [];
+        for (const h of handles) { if (h && typeof h.unref === "function") h.unref(); }
+      } catch { /* best-effort teardown */ }
+      const watchdog = setTimeout(() => { process.exit(process.exitCode ?? 0); }, 200);
+      watchdog.unref();
     });
   }
   if (!_t) {

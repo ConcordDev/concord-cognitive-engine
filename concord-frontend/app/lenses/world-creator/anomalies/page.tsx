@@ -82,14 +82,24 @@ export default function AnomaliesPage() {
 
   const resolve = async (a: Anomaly, kind: 'resolve' | 'dismiss') => {
     try {
-      await fetch(`/api/anomalies/world/${encodeURIComponent(worldId)}/${a.id}/${kind}`, {
+      const res = await fetch(`/api/anomalies/world/${encodeURIComponent(worldId)}/${a.id}/${kind}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({ resolution: `${kind} via world-creator panel`, reason: kind }),
       });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        // Honest failure, not a swallowed click: a non-owner (session
+        // expired mid-review, or a stale worldId typed by the user) gets a
+        // visible reason instead of a button that silently does nothing.
+        setError(json?.error || `HTTP ${res.status}`);
+        return;
+      }
       await fetchWorld(worldId);
-    } catch { /* network error silent */ }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (

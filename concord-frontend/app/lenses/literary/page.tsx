@@ -39,6 +39,12 @@ interface Stats { ok: boolean; sources: number; chunks: number; embedded: number
 interface ResonanceEdge { dtuId: string; domain?: string; title?: string; score: number; kind?: string }
 interface ResonancePayload { ok: boolean; dtuId: string; edges: ResonanceEdge[] }
 interface AnnotationData { chunkId: string; note: string; title?: string; author?: string; citedDtuId?: string }
+interface ChunkNeighbor { chunkId: string; ord: number; heading?: string | null; preview: string }
+interface ChunkDetail {
+  ok: boolean; reason?: string;
+  chunk?: { chunkId: string; sourceId: string; dtuId: string; ord: number; heading?: string | null; content: string };
+  neighbors?: ChunkNeighbor[];
+}
 
 // ── Resonance-graph export (GraphML / CSV / JSON) — built from the live graph,
 // never fabricated. GraphML is the standard force-graph interchange (Gephi/yEd).
@@ -90,6 +96,10 @@ export default function LiteraryLensPage() {
   const [resonance, setResonance] = useState<ResonanceEdge[]>([]);
   const [note, setNote] = useState('');
   const [noteStatus, setNoteStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [detail, setDetail] = useState<ChunkDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // Durable annotations library — real persistence through the lens artifact
   // store (no MOCK/SEED). Reader annotations are first-class, listable artifacts.
@@ -143,8 +153,43 @@ export default function LiteraryLensPage() {
     }
   }, [query]);
 
-  // Reset the note editor when the selection changes.
-  useEffect(() => { setNote(''); setNoteStatus('idle'); }, [selected]);
+  // Reset the note editor + full-passage reader when the search-hit selection
+  // changes. detailChunkId tracks the passage being READ, which can drift to a
+  // neighboring chunk (not a search hit) without disturbing `selected` — the
+  // Annotate/Provenance/resonance panels stay anchored to the actual search hit.
+  const [detailChunkId, setDetailChunkId] = useState<string | null>(null);
+  useEffect(() => { setNote(''); setNoteStatus('idle'); setDetail(null); setDetailError(null); setDetailOpen(false); setDetailChunkId(selected); }, [selected]);
+
+  // literary.detail was registered and tested but had zero UI caller — search
+  // results only ever showed a 3-line snippet with no way to actually read the
+  // passage, in a lens whose whole point is reading literary text.
+  const loadDetail = useCallback(async (chunkId: string) => {
+    setDetailLoading(true);
+    setDetailError(null);
+    try {
+      const r = await lensRun<ChunkDetail>('literary', 'detail', { chunkId });
+      if (r.data?.ok === false || r.data?.result == null) { setDetailError(r.data?.error || 'unavailable'); return; }
+      const out = r.data.result as ChunkDetail;
+      if (out.ok === false) { setDetailError(out.reason || 'unavailable'); return; }
+      setDetail(out);
+    } catch {
+      setDetailError('request_failed');
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const openDetail = useCallback(() => {
+    if (!selected) return;
+    setDetailOpen(true);
+    if (!detail && !detailLoading) void loadDetail(selected);
+  }, [selected, detail, detailLoading, loadDetail]);
+
+  const gotoNeighbor = useCallback((chunkId: string) => {
+    setDetailChunkId(chunkId);
+    setDetail(null);
+    void loadDetail(chunkId);
+  }, [loadDetail]);
 
   const selectedHit = useMemo(() => hits.find((h) => h.chunkId === selected) || null, [hits, selected]);
 
@@ -362,10 +407,60 @@ export default function LiteraryLensPage() {
                     {selectedHit.provenance.license && <div className="flex justify-between gap-2"><dt className="text-zinc-500">License</dt><dd className="text-emerald-300 text-right">{selectedHit.provenance.license}</dd></div>}
                     <div className="flex justify-between gap-2"><dt className="text-zinc-500">Source DTU</dt><dd className="text-zinc-400 text-right font-mono text-[10px] truncate max-w-[10rem]">{selectedHit.dtuId}</dd></div>
                   </dl>
-                  {selectedHit.provenance.url && (
-                    <a href={selectedHit.provenance.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-violet-300 hover:text-violet-200 underline">
-                      Full text ↗
-                    </a>
+                  <div className="flex items-center gap-3 pt-1">
+                    <button type="button" onClick={() => void openDetail()} className="text-[11px] text-violet-300 hover:text-violet-200 underline">
+                      Read full passage ↓
+                    </button>
+                    {selectedHit.provenance.url && (
+                      <a href={selectedHit.provenance.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-violet-300 hover:text-violet-200 underline">
+                        Full text ↗
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Full-passage reader — literary.detail was registered/tested but had
+                  zero UI caller; search only ever surfaced a 3-line snippet. */}
+              {selectedHit && detailOpen && (
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 space-y-2" data-testid="passage-detail">
+                  <h3 className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
+                    <BookOpen className="w-3.5 h-3.5 text-violet-300" aria-hidden="true" /> Full passage
+                  </h3>
+                  {detailLoading && (
+                    <div role="status" aria-live="polite" className="flex items-center gap-2 text-xs text-zinc-400">
+                      <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> Loading passage…
+                    </div>
+                  )}
+                  {!detailLoading && detailError && (
+                    <div role="alert" className="flex items-center justify-between gap-2 text-xs text-rose-300">
+                      <span>Couldn&apos;t load the passage ({detailError}).</span>
+                      <button type="button" onClick={() => detailChunkId && void loadDetail(detailChunkId)} className="text-rose-200 underline flex-shrink-0">Retry</button>
+                    </div>
+                  )}
+                  {!detailLoading && !detailError && detail?.chunk && (
+                    <>
+                      <p className="text-xs text-zinc-200 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">{detail.chunk.content}</p>
+                      {(detail.neighbors?.length ?? 0) > 0 && (
+                        <div className="pt-2 border-t border-zinc-800">
+                          <h4 className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Nearby in this work</h4>
+                          <ul className="space-y-1">
+                            {detail.neighbors!.map((n) => (
+                              <li key={n.chunkId}>
+                                <button
+                                  type="button"
+                                  onClick={() => gotoNeighbor(n.chunkId)}
+                                  aria-current={n.chunkId === detailChunkId ? 'true' : undefined}
+                                  className="text-[11px] text-zinc-400 hover:text-violet-300 text-left truncate block w-full"
+                                >
+                                  {n.heading ? `${n.heading} — ` : ''}{n.preview}…
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

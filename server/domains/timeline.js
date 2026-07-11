@@ -484,6 +484,23 @@ export default function registerTimelineActions(registerLensAction) {
     return null;
   }
 
+  // A "private" post is "only me" by definition, regardless of the caller's
+  // knowledge of its id (e.g. a leaked notification payload or a guessed
+  // base36 id). Every macro that reads or writes a specific post BY ID
+  // (react / comment-add / comment-list / reactions-breakdown) must honor
+  // this — feed-list's privacy filter alone is not enough, since it only
+  // gates *listing*, not direct id-addressed access. `share-post` already
+  // enforced this; the others didn't. Returns { found, blocked } so callers
+  // can return an identical "Post not found." for both "doesn't exist" and
+  // "exists but is private and you're not the owner" — never let the error
+  // message itself become an oracle for "this private post exists".
+  function checkPostAccess(s, postId, viewerId) {
+    const found = findPost(s, postId);
+    if (!found) return { found: null, blocked: false };
+    const blocked = found.post.privacy === "private" && found.ownerId !== viewerId;
+    return { found, blocked };
+  }
+
   // Append a notification for a recipient (skips self-notifications).
   function pushNotif(s, recipientId, actorId, type, payload) {
     if (!recipientId || recipientId === actorId) return;
@@ -588,14 +605,14 @@ export default function registerTimelineActions(registerLensAction) {
     const postId = tlClean(params.postId, 64);
     const text = tlClean(params.text, 2000);
     if (!postId || !text) return { ok: false, error: "postId and text required." };
-    const found = findPost(s, postId);
-    if (!found) return { ok: false, error: "Post not found." };
+    const actorId = tlAid(ctx);
+    const { found, blocked } = checkPostAccess(s, postId, actorId);
+    if (!found || blocked) return { ok: false, error: "Post not found." };
     const parentId = params.parentId ? tlClean(params.parentId, 64) : null;
     const list = tlList(s.comments, postId);
     if (parentId && !list.some((c) => c.id === parentId)) {
       return { ok: false, error: "Parent comment not found." };
     }
-    const actorId = tlAid(ctx);
     const comment = {
       id: tlId("cmt"), postId, parentId,
       authorId: actorId, text, createdAt: tlNow(),
@@ -612,11 +629,13 @@ export default function registerTimelineActions(registerLensAction) {
 });
 
   // List comments for a post as a nested thread tree.
-  registerLensAction("timeline", "comment-list", (_ctx, _a, params = {}) => {
+  registerLensAction("timeline", "comment-list", (ctx, _a, params = {}) => {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = tlClean(params.postId, 64);
     if (!postId) return { ok: false, error: "postId required." };
+    const { blocked } = checkPostAccess(s, postId, tlAid(ctx));
+    if (blocked) return { ok: false, error: "Post not found." };
     const flat = [...(s.comments.get(postId) || [])];
     flat.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const byId = new Map(flat.map((c) => [c.id, { ...c, replies: [] }]));
@@ -656,9 +675,9 @@ export default function registerTimelineActions(registerLensAction) {
     const kind = String(params.kind || "like");
     if (!postId) return { ok: false, error: "postId required." };
     if (!REACTION_KINDS.includes(kind)) return { ok: false, error: "Unknown reaction kind." };
-    const found = findPost(s, postId);
-    if (!found) return { ok: false, error: "Post not found." };
     const actorId = tlAid(ctx);
+    const { found, blocked } = checkPostAccess(s, postId, actorId);
+    if (!found || blocked) return { ok: false, error: "Post not found." };
     const list = tlList(s.reactions, postId);
     const existing = list.findIndex((r) => r.userId === actorId);
     let action;
@@ -688,11 +707,13 @@ export default function registerTimelineActions(registerLensAction) {
 });
 
   // Full "who reacted" breakdown for a post.
-  registerLensAction("timeline", "reactions-breakdown", (_ctx, _a, params = {}) => {
+  registerLensAction("timeline", "reactions-breakdown", (ctx, _a, params = {}) => {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = tlClean(params.postId, 64);
     if (!postId) return { ok: false, error: "postId required." };
+    const { blocked } = checkPostAccess(s, postId, tlAid(ctx));
+    if (blocked) return { ok: false, error: "Post not found." };
     const list = [...(s.reactions.get(postId) || [])];
     list.sort((a, b) => b.at.localeCompare(a.at));
     const byKind = REACTION_KINDS.reduce((acc, k) => {

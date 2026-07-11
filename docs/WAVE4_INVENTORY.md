@@ -1,0 +1,382 @@
+# Wave 4 Inventory — Deferred Capabilities Across All 257 Lens Capability-Map Docs
+
+Generated 2026-07-11 as the first step of Wave 4 ("closing the hard 20%" — CLAUDE.md's sixth
+hard invariant). This is a **docs-only extraction pass**: every `docs/lens-specs/*-capability-map.md`
+file was read in full and every item the doc itself frames as genuinely missing, deferred, or
+scoped-out was pulled into one ledger with a DATA-SOURCING / ENGINEERING / CURATION triage, per
+the invariant's rule:
+
+- **DATA-SOURCING** — needs a real free/open external data feed/API.
+- **ENGINEERING** — a missing feature/endpoint/UI with no external data dependency — just needs
+  building.
+- **CURATION** — real open/authoritative reference material exists but needs authoring or
+  ingesting into Concord.
+
+No lens source code was re-read for this pass — Wave 3's capability-map docs already did that
+research; this is purely mining what was written down. Positive "already real" findings are
+excluded; only items the source doc itself calls out as not-done are listed. **259 items** were
+extracted across 194 lenses; **63 lenses** had zero deferred items per their own doc (fully
+closed). Table is sorted alphabetically by lens (matches capability-map filename order).
+
+This inventory is the input to gap-closure work, not the closure itself — each row is a
+candidate unit of future work, not yet actioned. `docs/lens-specs/README.md` should link here
+once this lands.
+
+## Concordia (3D world) findings — added 2026-07-11, second-half of this Wave
+
+The flat-lens sweep above covers 260 lens directories but explicitly excluded Concordia's own
+world-simulator, per `docs/lens-specs/world-capability-map.md`'s own admission that it's a
+"summary-level backfill, not an exhaustive audit." A dedicated 8-subsystem pass closed that gap:
+`docs/concordia-specs/{lore-worldbuilding,quests-dialogue,factions-politics,combat-feel-residuals,
+crafting-economy-housing,minigames,runmodes-endgame-social,runtime-health}-capability-map.md`,
+each benchmarked against a named genre leader (CK3, Witcher 3, WoW, Hades, etc.) with the same
+re-verify-against-live-code discipline. Three small, safe residuals were fixed inline during that
+pass (kingdom-decrees ruler-authorization gap, hidden-object/farming/restaurant minigame juice —
+see `docs/FRONTEND_REBUILD_PROGRAM.md`'s ledger). Below is the prioritized remainder, worst-first;
+full detail and file:line evidence lives in the source docs.
+
+| Priority | Item | Triage | Source doc |
+|---|---|---|---|
+| 🔴 Live-broken | Time-loop mode: 3 of 5 HTTP routes 404 (missing `/` before path params, verified live) — HUD never renders, loops can't be ended from the UI | ENGINEERING | runmodes-endgame-social |
+| 🔴 Live-broken | `getRelationScore()` hardcoded to `return 0` — silently breaks `PROPOSE_ALLIANCE` and relation-gated `DECLARE_WAR` targeting fleet-wide | ENGINEERING | factions-politics |
+| 🔴 Live-broken | `moral_branch`/`reputation_change` authored across 11 quest files, read by zero lines of code anywhere — the "meaningful choice" mechanic never fires for a player | ENGINEERING | quests-dialogue |
+| 🔴 Live-broken | AvatarSystem3D + ConcordiaScene effect-thrash — both heaviest 3D components fully teardown/rebuild on nearly every render during ordinary movement/combat; root cause of any world-lens jank | ENGINEERING | runtime-health |
+| 🔴 Live-broken | `window.__concordiaPlayerPos` read by 9+ production files, written by none — Extract button can never enable via ExtractionRunHUD, scheme-overhear earshot gate bypasses itself | ENGINEERING | runtime-health |
+| 🔴 Live-broken | SoundscapeEngine ambient noise layer leaks a new infinite audio loop on every district/time/interior change — directly audible (hiss compounds over a session) | ENGINEERING | runtime-health |
+| 🟠 Real, unreachable-but-built | Guild substrate — complete DB-backed bank/XP/hall system, 100% unreachable (zero callers outside its own tests) | ENGINEERING | runmodes-endgame-social |
+| 🟠 Real, unreachable-but-built | World bosses never spawn in production (scheduler has zero callers outside tests) | ENGINEERING | runmodes-endgame-social |
+| 🟠 Real, unreachable-but-built | `spawnFactionWar` (real combat pipeline) only reachable via admin/test endpoint, never triggered by autonomous war/raid moves | ENGINEERING | factions-politics |
+| 🟠 Real, unreachable-but-built | Roguelite shop catalog and effect-engine catalog share zero item IDs (purchases do nothing); price is client-supplied — security-adjacent | ENGINEERING | runmodes-endgame-social |
+| 🟠 Real, unreachable-but-built | Party-combat "ability" action has no server-side ability catalog — damage is a caller-supplied number — security-adjacent | ENGINEERING | runmodes-endgame-social |
+| 🟠 Real bug | Ragdoll physics bodies never freed (`despawnRagdoll` called but doesn't exist; real method is `removeRagdoll`) — every kill leaks 7 bodies, compounded by duplicate listeners per world switch | ENGINEERING | runtime-health |
+| 🟠 Real bug | Building collapse has full visual/audio wiring, zero physics-side consumer — player walks into an invisible wall where a collapsed building stood | ENGINEERING | runtime-health |
+| 🟠 Real bug | Procedural building materials/textures leak unbounded at module scope — the path most real buildings render through | ENGINEERING | runtime-health |
+| 🟠 Real bug | `AudioContext.close()` never called on unmount — repeated world-lens navigation stacks contexts, hits browser caps | ENGINEERING | runtime-health |
+| 🟠 Real bug | 6 polling HUDs cache `activeWorldId` once at mount, go stale on same-tab world travel (fix already exists in-repo as `useActiveWorldId()` — just needs migrating) | ENGINEERING | runtime-health |
+| 🟡 Content depth | Procedural NPC personality: only 10 traits/~31 secrets recycled across 74 NPCs; every one shares an identical closing backstory line | CURATION | lore-worldbuilding |
+| 🟡 Content depth | 29% (26/90) of cross-world "resonance" links point at NPCs that were never written | CURATION | lore-worldbuilding |
+| 🟡 Content depth | Only 15 of 136+ authored NPCs have bespoke dialogue trees (main arc's own named NPCs aren't among them) | CURATION | quests-dialogue |
+| 🟡 Content depth | `content/world/sere/` — the best-written content in the game — is undocumented, not in CLAUDE.md's "9 sub-worlds" claim | ENGINEERING (docs) | lore-worldbuilding |
+| 🟡 Content depth | `tunya/factions.json` names a fictional faction "Cree" — collides with a real living Indigenous nation | CURATION | lore-worldbuilding |
+| 🟡 Content depth | Mahjong: no chi/pon/kan/riichi (real engine, genuinely deepest minigame, but incomplete ruleset) | ENGINEERING | minigames |
+| 🟡 Content depth | Trivia bank is exactly 30 questions across 45 mostly-singleton tags — too small for repeat play | CURATION | minigames |
+| 🟡 Content depth | Romance/marriage (deepest mechanical system found — courtship→marriage→pregnancy→heir inheritance) has only 3 generic heart-event scenes for the entire cast | CURATION | runmodes-endgame-social |
+| 🟢 Small | 4 authored multi-step craft chains never loaded by any seeder (dead content) | ENGINEERING | crafting-economy-housing |
+| 🟢 Small | Resource-catalog/market-catalog ID mismatch — only 3 of ~30 IDs overlap, most traded materials fall back to generic properties | ENGINEERING | crafting-economy-housing |
+| 🟢 Small | Hacking's free unlimited hints can make the authored terminal tree trivially skippable | ENGINEERING | minigames |
+| 🟢 Small | Karaoke scores pitch-consistency not melody accuracy (songs already carry an unused `key` field — cheap fix) | ENGINEERING | minigames |
+| 🟢 Small | Mahjong legacy checkbox resolver route still reachable (non-exploitable, but an unverified-success path) | ENGINEERING/CURATION | combat-feel-residuals |
+| 🟢 Small | ~9 more lower-severity runtime findings (vehicle-renderer no per-despawn dispose, WaterRenderer texture leak, duplicate socket connection, crafting-minigame cancel-doesn't-cancel, etc.) | ENGINEERING | runtime-health |
+
+Not repeated here: the ~15 LOW-severity/cosmetic runtime findings and the several items each
+subsystem doc confirmed already fixed or false-positive — see the source docs for full detail.
+
+## Full ledger — flat lenses
+
+| Lens | Item | Reference Benchmark | Triage | Doc Disposition (source quote) | Source Doc |
+|---|---|---|---|---|---|
+| accounting | No real mobile affordance for `BooksShell`'s sidebar navigation | QuickBooks Online / Xero-class | ENGINEERING | "legitimate small follow-up... not attempted here" | accounting-capability-map.md |
+| accounting | `ai-suggest-vendor` macro has no UI — vendor field is a plain dropdown with no free-text auto-match | QuickBooks Online / Xero-class | ENGINEERING | "real gap... Small, contained addition — not attempted here" | accounting-capability-map.md |
+| accounting | `validate-ledger` macro (imported-books integrity checker) has no button in `AccountingActionPanel` | QuickBooks Online / Xero-class | ENGINEERING | "reasonable small ENGINEERING follow-up" | accounting-capability-map.md |
+| accounting | No multi-unit property / rent-roll management | QuickBooks Online / Xero-class | ENGINEERING (non-goal) | "arguably out of scope by design... **non-goal**" | accounting-capability-map.md |
+| admin | Ops-console backlog state (alert rules, feature flags, incident timeline) is in-memory, not persisted/replicated across shards | Datadog / Grafana | ENGINEERING | "out of scope for the auth-focused pass" | admin-capability-map.md |
+| agents | `routeTask`'s `requiredSkills` input has no UI to author a task definition — ranking ignores skill filters | AutoGPT / CrewAI / Zapier-Agents | ENGINEERING | "a future task-queue UI would be an ENGINEERING addition" | agents-capability-map.md |
+| alliance | No direct-message primitive between external alliance members | Slack Connect | ENGINEERING | "scoped future build... out of this rebuild's scope" | alliance-capability-map.md |
+| alliance | No message-search macro/UI across a shared alliance channel | Slack Connect | ENGINEERING | "would need a new `message-search` macro... not built here" | alliance-capability-map.md |
+| animation | No direct social-platform posting (TikTok/YouTube/Instagram/Discord) for exported clips | FlipaClip / Pencil2D | DATA-SOURCING | "would be a platform-wide connector, like the Gmail/Calendar work" | animation-capability-map.md |
+| animation | Public (logged-out) share-link viewing is blocked — `animation` isn't in `publicReadDomains` | FlipaClip / Pencil2D | ENGINEERING | "a permission-system change (Gate 1/2)... deliberately not done here" | animation-capability-map.md |
+| animation | No full cross-operation undo/redo stack (only single-level per-layer stroke undo) | FlipaClip / Pencil2D | ENGINEERING | "would need an operation log... deliberately deferred" | animation-capability-map.md |
+| animation | No rotoscope-style photo-reference import onto a frame | FlipaClip / Pencil2D | ENGINEERING | "would need a new macro + a canvas image-layer render path" | animation-capability-map.md |
+| anon | Differential-privacy epsilon-budget tracking only reflects the current call, no cross-session accumulation | ARX / k-anonymity & DP tooling | ENGINEERING | "an honest limitation, not a regression" | anon-capability-map.md |
+| ar | No live physics simulation step in the viewport (fields authored/persisted, nothing steps them) | Adobe Aero / 8th Wall Studio | ENGINEERING | "out of scope for this rebuild (a new runtime dependency)" | ar-capability-map.md |
+| ar | No AR capture/screenshot/recording gallery | Adobe Aero / 8th Wall Studio | ENGINEERING | "a `MediaRecorder`/`canvas.captureStream()` client-side capture... real new work" | ar-capability-map.md |
+| ar | No multi-user / collaborative AR sessions | Adobe Aero / 8th Wall Studio | ENGINEERING | "would require a new realtime layer, not a UI fix" | ar-capability-map.md |
+| art | `stroke-batch` (bulk-insert for importing/pasting many strokes) has no producing UI workflow | Procreate / Krita | ENGINEERING | "Genuinely missing, but not a defect in what exists today" | art-capability-map.md |
+| art | `symmetry-mirror-stroke` (live symmetry/mandala drawing mode) is real and unwired | Procreate / Krita | ENGINEERING | "deferred rather than half-built under this pass's time budget" | art-capability-map.md |
+| artistry | No direct-messaging system between creators | Behance/ArtStation | ENGINEERING | "Flagged as a scoped future build... out of scope for a frontend rebuild" | artistry-capability-map.md |
+| artistry | No native image upload/blob-storage pipeline for project images (URL-only) | Behance/ArtStation | ENGINEERING | "GENUINELY MISSING (honest, unchanged)" | artistry-capability-map.md |
+| artistry | No creator analytics trends (point-in-time totals only) | Behance/ArtStation | ENGINEERING | "would need a views-over-time table" | artistry-capability-map.md |
+| artistry | No notification feed (new follower/comment/appreciation) | Behance/ArtStation | ENGINEERING | "a cross-cutting concern, not a lens-specific gap" | artistry-capability-map.md |
+| artistry | Shared DAW/marketplace/studio backend misfiled under `/api/artistry/*` namespace | none stated | ENGINEERING | "scoped future backend-scoped fix... out of scope for a frontend-only lens rebuild" | artistry-capability-map.md |
+| astronomy | No live weather-webcam / seeing-cam integration | Stellarium/SkySafari | DATA-SOURCING | "no free API identified with acceptable ToS" | astronomy-capability-map.md |
+| astronomy | No multi-observer shared/co-observing session | Stellarium/SkySafari | ENGINEERING | "would need a new realtime substrate" | astronomy-capability-map.md |
+| atlas | No edit-in-place UI for a saved place (`places-update` unsurfaced) | Google Maps | ENGINEERING | "small scoped build ~40 LOC" | atlas-capability-map.md |
+| atlas | No drag/reorder UI for trip stop sequence (`trips-reorder-stops` unsurfaced) | Google Maps | ENGINEERING | "scoped build ~30 LOC" | atlas-capability-map.md |
+| atlas | No 3D-volume viewer for signal-tomography data | InSAR ground-deformation platforms | DATA-SOURCING | "store is structurally empty, no mesh-network ingestion pipeline" | atlas-capability-map.md |
+| atlas | No material/subsurface classification UI for signal tomography | InSAR platforms | DATA-SOURCING | "empty substrate makes it low-value right now" | atlas-capability-map.md |
+| atlas | No displacement/change-over-time map (backend `change` macro is deliberately unwired sim-only) | InSAR platforms | ENGINEERING | "correct fix is a backend voxel-diff implementation, out of scope" | atlas-capability-map.md |
+| atlas | No ad-hoc spatial query UI (`query` macro) | InSAR platforms | ENGINEERING | "low priority given the empty substrate" | atlas-capability-map.md |
+| atlas | No manual signal-classification submission form | InSAR platforms | ENGINEERING | "highest-value future build... well under 150 LOC" | atlas-capability-map.md |
+| atlas | No privacy-zone map/verification UI | InSAR/RF-tomography platforms | ENGINEERING | "a full zone-map UI is a multi-panel build" | atlas-capability-map.md |
+| atlas | No business reviews/ratings on place-detail pages (no OSM data source) | Google Maps | DATA-SOURCING | "No OSM-sourced review data exists to surface; not fabricated" | atlas-capability-map.md |
+| automotive | No dashboard "upcoming renewals" widget (`renewals-upcoming` unsurfaced) | Drivvo/Fuelly/CARFAX Car Care | ENGINEERING | "documented, real, non-urgent gap" | automotive-capability-map.md |
+| aviation | NOTAM fetch gated behind paywalled `FAA_NOTAM_API_KEY` tier | ForeFlight/Garmin Pilot/Jeppesen | DATA-SOURCING | "explainable (paywalled tier), not a defect" | aviation-capability-map.md |
+| aviation | No edit form for an already-created aircraft profile (`aircraft-update` unsurfaced) | ForeFlight/Garmin Pilot/Jeppesen | ENGINEERING | "Minor, left for a future pass" | aviation-capability-map.md |
+| byo-keys | No per-key rate limiting (only monthly cap exists) | OpenRouter / LiteLLM / Vercel AI Gateway | ENGINEERING | "a token-bucket in the router, out of scope for a lens-UI pass" | byo-keys-capability-map.md |
+| byo-keys | No proactive spend alerts at a % budget threshold | OpenRouter / LiteLLM / Vercel AI Gateway | ENGINEERING | "would need a notification-dispatch hook" | byo-keys-capability-map.md |
+| calendar | Main event grid persists through a generic artifact-CRUD store, disconnected from the real scheduling engine | Google Calendar/Calendly | ENGINEERING | "a real seam worth unifying in a future pass" | calendar-capability-map.md |
+| board | Two independent, real kanban implementations remain unconsolidated | Trello | ENGINEERING | "recommendation for a future dedicated unit" | board-capability-map.md |
+| careers | No UI shows a track's full 10-tier wage/reputation ladder (`ladder` macro unsurfaced) | Stardew Valley / Upwork | ENGINEERING | "a ladder preview under the track select" | careers-capability-map.md |
+| careers | No way to originate a new contract offer to an NPC/employer | Stardew Valley / Upwork | ENGINEERING | "a larger scoped build" | careers-capability-map.md |
+| careers | Player's own reputation number/tier-gate consequence never rendered | Stardew Valley / Upwork | ENGINEERING | "surfacing gap only" | careers-capability-map.md |
+| chat | Server-backed conversation branch/fork has a fully-built, tested component that's never mounted | Claude.ai / ChatGPT | ENGINEERING | "deserves its own scoped pass, not a quick insert" | chat-capability-map.md |
+| civic-bonds | No way to view restricted per-scope spillover fund balance | Kickstarter / municipal bond portals | ENGINEERING | "deferred as a scoped future build" | civic-bonds-capability-map.md |
+| code | Three sub-systems each maintain independent "current project" picker state instead of one shared context | VS Code / Copilot Chat / Cursor | ENGINEERING | "thread a single shared `projectId`... no backend changes needed" | code-capability-map.md |
+| codex | No dedicated per-id lore-entry fetch/permalink | Destiny 2 Lore Book / Hades Codex | ENGINEERING | "only if a shareable-permalink feature is ever prioritized" | codex-capability-map.md |
+| collab | No read-only "who's viewing" observer roster surface | Discord/Teams-style session rooms | ENGINEERING | "scoped-deferred... not invented this pass" | collab-capability-map.md |
+| collab | No live participant join/leave with real roster sync | Discord/Teams-style session rooms | ENGINEERING | "scoped-deferred — flagged honestly here, not faked" | collab-capability-map.md |
+| collab | No producer for the Invitations tab (pairwise DM shape differs from open sessions) | Discord/Teams-style session rooms | ENGINEERING | "scoped-deferred, honestly labeled" | collab-capability-map.md |
+| command-center | No real on-call paging (SMS/phone/push) — `onCall` is a free-text note | PagerDuty | DATA-SOURCING | "would need an external connector (Twilio/webhook)... deliberately deferred" | command-center-capability-map.md |
+| command-center | No multi-user/team on-call rotation or shared incident visibility (per-operator by design) | PagerDuty | ENGINEERING | "Scoped future build if multi-operator visibility is ever wanted" | command-center-capability-map.md |
+| command-center | `saveDashboard` stores a panel-id list, not a live composable widget grid | Datadog / Grafana | ENGINEERING | "No fabrication to fix; flagged here so the checklist doesn't silently skip it" | command-center-capability-map.md |
+| consulting | Generic DTU artifact-library tier duplicates the "Engagement" concept alongside the real `EngagementTracker` | Bonsai / Harvest / Deltek | ENGINEERING | "future Wave-4 pass could consolidate or clearly re-label" | consulting-capability-map.md |
+| council | `council.simulate-budget` (variance-weighted budget projection) has zero frontend caller | Loomio + Convene/BoardEffect/OnBoard | ENGINEERING | "additive net-net UI... deferred to a future pass" | council-capability-map.md |
+| council | `council.audit`'s derived process-completeness trail is computed but never surfaced | Loomio + Convene/BoardEffect/OnBoard | ENGINEERING | "a future pass could add the derived trail as a secondary card" | council-capability-map.md |
+| courtship | No manual "end this marriage" action (only automatic estrangement path exists) | none stated | ENGINEERING | "a real, minor scope gap... flagging it for a future pass" | courtship-capability-map.md |
+| creator | Tier pricing on a marketplace listing is stored but never enforced at purchase time (no purchase route; 5 parallel listing stores exist platform-wide) | YouTube Studio + Buffer + Patreon | ENGINEERING | "touches money flow and multiple call sites... flagged for a dedicated follow-up" | creator-capability-map.md |
+| creatures | No creature portrait/thumbnail imagery (procedural body-plan system, no 2D art pipeline) | Spore's Creature Creator / Pokédex-style lab | ENGINEERING | "correctly left undone rather than faked with stock art or emoji" | creatures-capability-map.md |
+| creatures | No global keyboard-shortcut registration (`useLensCommand`) | none stated | ENGINEERING | "cross-lens follow-up, not a creatures-specific defect" | creatures-capability-map.md |
+| daily | Shared `generateWaveform()` used platform-wide is itself a synthetic waveform generator (unlike daily's own fixed real-PCM decode) | Day One / Reflectly | ENGINEERING | "a shared-infra change out of this unit's scope" | daily-capability-map.md |
+| deities | Full 200-row pilgrim log has no UI beyond the existing 50-row roster | none stated | ENGINEERING | "HONEST DISPOSITION (low-priority, not built)" | deities-capability-map.md |
+| desert | No wildlife tracking / species catalog — no backend macro exists | Rockd/Mindat-style field app | ENGINEERING | "a real build needs a new backend domain" | desert-capability-map.md |
+| desert | No infrastructure/hazard incident reporting | none stated | ENGINEERING | "no backing macro" | desert-capability-map.md |
+| desert | No offline map caching for no-signal fieldwork | none stated | ENGINEERING | "a client-side tile-cache layer Concord doesn't have" | desert-capability-map.md |
+| dtus | `dtu_portability` (export/validate/import corpus backup) has zero frontend callers | Obsidian/Roam (implicit) | ENGINEERING | "belongs to a future dedicated settings/backup surface" | dtus-capability-map.md |
+| dtus | Saved views + layer-edit overlays persist only to process-memory Maps, lost on restart | Obsidian/Roam | ENGINEERING | "flagged as a scoped future backend task... needs a new migration" | dtus-capability-map.md |
+| dx-platform | No native GitHub/GitLab PR-check integration | SonarQube/SonarCloud | ENGINEERING | "scoped future task" | dx-platform-capability-map.md |
+| dx-platform | No SARIF / standard interop export for findings | SonarQube/SonarCloud | ENGINEERING | "low-priority scoped future task" | dx-platform-capability-map.md |
+| dx-platform | No historical issue-trend / "new vs. existing" tracking (leak period) | SonarQube's "leak period" | ENGINEERING | "would need a findings-history table, a real schema change" | dx-platform-capability-map.md |
+| dx-platform | `dx.list_shadows` has no UI (blocked on plugin never calling `upsertShadow`) | none stated | ENGINEERING | "Revisit once concord-vscode actually calls upsertShadow" | dx-platform-capability-map.md |
+| dx-platform | `dx.get_weight`/`dx.weighted_findings` unsurfaced | none stated | ENGINEERING | "low priority" | dx-platform-capability-map.md |
+| eco | `sustainabilityScore` (corporate ESG scoring) has no fit in a personal ecology-tracker lens | none stated | ENGINEERING | "a future 'Eco for Organizations/Teams' surface" | eco-capability-map.md |
+| education | Courses/discussions/cohorts are per-user Maps, not a shared multi-tenant catalog | Khan Academy + Coursera | ENGINEERING | "a noted ceiling" | education-capability-map.md |
+| emergency-services | No multi-agency / mutual-aid interop | Tyler/CentralSquare CAD | ENGINEERING | "would need a cross-tenant substrate" | emergency-services-capability-map.md |
+| emergency-services | No licensed CAD-grade map tiles / AVL hardware integration | Tyler/CentralSquare CAD | DATA-SOURCING | "structural (needs a paid data source)" | emergency-services-capability-map.md |
+| emergency-services | No recorded 911 audio / CAD-to-RMS handoff | Tyler/CentralSquare CAD | DATA-SOURCING | "no free API identified with acceptable ToS" | emergency-services-capability-map.md |
+| energy | No direct hardware CT-clamp / smart-plug pairing | Sense/Emporia Vue | ENGINEERING | "software-only by design" | energy-capability-map.md |
+| energy | No automated device scheduling against live rates | Sense/Emporia Vue | ENGINEERING | "would need an automation substrate Concord doesn't have" | energy-capability-map.md |
+| engineering | `boltedConnection`/`transformerSizing` real AISC/ANSI math unreachable at the macro layer | MechaniCalc/Engineering ToolBox | ENGINEERING | "Out of scope for a frontend-audit pass" | engineering-capability-map.md |
+| entity | `entity.terminal_approve` (council-vote approval queue) has no listing mechanism/UI | none stated | ENGINEERING | "a distinct governance-console feature" | entity-capability-map.md |
+| event-timeline | No "on this day in your history" feature (retention capped at 30 days) | Timehop/Facebook Memories | ENGINEERING | "would require lifting the 30-day retention cap" | event-timeline-capability-map.md |
+| events | Primary 8-tab generic DTU-artifact CRUD system remains disconnected from the real production engine | Eventbrite/Cvent/Prism.fm | ENGINEERING | "a full information-architecture rewrite... out of scope" | events-capability-map.md |
+| experience | `surveyNext` branching-logic resolver has no branch-aware survey UI | Maze/UserTesting + Typeform | ENGINEERING | "build target for a future 'branching survey' UI pass" | experience-capability-map.md |
+| experience | True peer endorsement needs a public-portfolio directory that doesn't exist | LinkedIn Skills & Endorsements | ENGINEERING | "only self-endorsement is currently reachable" | experience-capability-map.md |
+| export | `decrypt-archive` has no UI caller (encrypt is wired) | Google Takeout/Airbyte-style export tool | ENGINEERING | "scoped future build, ~30 LOC panel" | export-capability-map.md |
+| export | Obsidian-vault-style multi-file export has no frontend (needs a zip library) | Obsidian vault export | ENGINEERING | "not done to avoid an unreviewed new dependency" | export-capability-map.md |
+| fashion | No retailer product-catalog integration (100M+-item DB) | Whering/Stylebook | DATA-SOURCING | "would need a licensed catalog API" | fashion-capability-map.md |
+| fashion | No visual drag-and-resize outfit collage canvas | Whering ("Dress Me") | ENGINEERING | "cosmetic-interaction gap only" | fashion-capability-map.md |
+| fashion | No wishlist (save desired external items) — no backend concept exists | Whering/Stylebook | ENGINEERING | "a small, well-understood lift, deliberately not attempted" | fashion-capability-map.md |
+| fashion | No moodboards (pin inspiration to a canvas) | Whering/Stylebook | ENGINEERING | "No backend concept exists" | fashion-capability-map.md |
+| fashion | Social feed is global, not friends-scoped; no "clone item from a friend's closet" | Whering/Stylebook | ENGINEERING | "piggybacking on Concord's existing friends graph" | fashion-capability-map.md |
+| fashion | No laundry/availability status (clean/dirty/at cleaner/lent out) | Stylebook | ENGINEERING | "Small, well-scoped future addition" | fashion-capability-map.md |
+| feed | `folder-add-item` needs a folder-picker UI on the main feed's bookmark action | X/Threads | ENGINEERING | "a genuinely separate piece of UX design work" | feed-capability-map.md |
+| fitness | `gps-track` (view one past route on the map) unsurfaced | Strava | ENGINEERING | "~40-60 LOC, no new dependency" | fitness-capability-map.md |
+| fitness | `beacon-list` (browse/persist active/followed Beacons) unsurfaced | Strava Beacon | ENGINEERING | "~30-40 LOC" | fitness-capability-map.md |
+| fitness | `plan-session-move` (reschedule one specific session) unsurfaced | TrainingPeaks-style plan calendar | ENGINEERING | "~20-30 LOC" | fitness-capability-map.md |
+| food | Floor Plan & Tables / Waste Log / Prep List are unpersisted `useState` scratch pads | (implicit B2B kitchen-ops tooling) | ENGINEERING | "would need new backend capability, out of scope for a macro-surfacing pass" | food-capability-map.md |
+| forecast | No automatic/pushed severe-event alert delivery (pull-only) | NOAA/Windy-class dashboard | ENGINEERING | "genuine new backend surface... out of scope for a lens-UI rebuild pass" | forecast-capability-map.md |
+| foundry | No player-facing runtime HUDs for the 4 Phase-7 systems in `/lenses/world` | Roblox Studio (playtest-in-world) | ENGINEERING | "a world-lens gap, not a foundry-builder gap" | foundry-capability-map.md |
+| game | No per-event XP activity log exists server-side (History tab's feed) | Habitica / Steam-style achievements | ENGINEERING | "an honest note" | game-capability-map.md |
+| goals | Agent-goal heartbeat uses `Math.random()`-driven progress nudges | CI/CD deployment-approval gate | ENGINEERING | "a future backend pass could wire real per-goal-type progress signals" | goals-capability-map.md |
+| graph | `graph.merge` operates on an ungrounded sandbox, not the real DTU graph | none stated | ENGINEERING | "a real 'merge two DTUs' feature needs backend work this pass didn't do" | graph-capability-map.md |
+| grounding | `aggregateEvidence` has no automatic multi-source story-discovery step | Ground News | DATA-SOURCING | "wire GDELT's coverage cluster... genuinely global, not US-centric" | grounding-capability-map.md |
+| healthcare | `protocolMatch` has no protocol library to match against | Epic/Cerner-style CDS | CURATION | "needs either a real curated protocol library... or a real external guideline-API integration" | healthcare-capability-map.md |
+| healthcare | `vision` (photo→LLaVA analysis) has no image-upload UI anywhere | Epic/Cerner-style CDS | ENGINEERING | "A genuine, moderate-scope new feature" | healthcare-capability-map.md |
+| history | No notable-person/biography tracking as a first-class analyzed entity | TimelineJS/Wikipedia | ENGINEERING | "would add a history.figure-* macro family" | history-capability-map.md |
+| hr | No ACH/direct-deposit payroll disbursement (`payroll-run` computes but never moves real money) | BambooHR/Rippling | ENGINEERING | "explicitly out of scope for a compute-and-record HRIS layer" (money-transmission policy) | hr-capability-map.md |
+| hr | No I-9/E-Verify employment-eligibility compliance tracking | BambooHR/Rippling | ENGINEERING | "~150-LOC addition" | hr-capability-map.md |
+| hr | No external job-board syndication (postings internal-only) | BambooHR/Rippling | DATA-SOURCING | "following the Gmail/Calendar connector pattern" | hr-capability-map.md |
+| hypothesis | `analysisHistory` has no natural single-click surface | none stated | ENGINEERING | "a future analytics/reports tab could adopt it, out of scope this wave" | hypothesis-capability-map.md |
+| ingest | No live connector execution (`runSync` needs caller-supplied records) | Airbyte/Fivetran | ENGINEERING + DATA-SOURCING | "each concrete source needs its own real credential/egress path" | ingest-capability-map.md |
+| ingest | No heartbeat drains due schedules into runs | Airbyte/Fivetran | ENGINEERING | "once live connector execution exists" | ingest-capability-map.md |
+| ingest | No schema auto-inference/column-type detection on preview | Airbyte | ENGINEERING | "promoting the no-schema branch to a first-class inference step" | ingest-capability-map.md |
+| dreams | "Featured"/highlight ranking across entries has no significance signal in the backend | Apple Photos "Memories" | ENGINEERING | "deliberately not built to avoid inventing a fabricated signal" | dreams-capability-map.md |
+| inheritance | No real-world probate/estate reference data (statutory intestacy shares, per-state timelines) | Trust & Will / FreeWill | DATA-SOURCING | "ingest a real open source... rather than fabricate share tables" | inheritance-capability-map.md |
+| insurance | No persisted client/CRM contact record | Applied Epic / EZLynx | ENGINEERING | "out of scope for a frontend-only pass" | insurance-capability-map.md |
+| insurance | No producer compliance tracking (CE credits, license renewal, E&O status) | Applied Epic / EZLynx | ENGINEERING | "out of scope for a frontend-only pass" | insurance-capability-map.md |
+| insurance | Real carrier quote comparison needs a paid, per-state-licensed broker API | Applied Epic / EZLynx | DATA-SOURCING (paid) | "intentional honest-failure documented in code, not silently faked" | insurance-capability-map.md |
+| integrations | Real OAuth connect flow for catalog connectors (only Gmail + Calendar are real today) | Zapier | ENGINEERING + DATA-SOURCING | "next thin adds on the connector-agnostic connectorFetch core" | integrations-capability-map.md |
+| integrations | `dueSchedules` (N-due-now indicator) not surfaced | Zapier | ENGINEERING | "Low value; deferred" | integrations-capability-map.md |
+| integrations | `verifyWebhookSignature` widget not surfaced | Zapier | ENGINEERING | "Deferred" | integrations-capability-map.md |
+| kingdoms | `revokeDecree` has no ruler-authorization check | none stated | ENGINEERING | "flagged for a future pass rather than touched now" | kingdoms-capability-map.md |
+| lab | No barcode/2D-barcode label printing for samples/reagents | Benchling / LabWare LIMS | ENGINEERING | "a new `lab.print-label` macro plus a physical-printer or PDF-label target" | lab-capability-map.md |
+| lab | No direct live instrument integration (CSV paste/upload only) | Benchling / LabWare LIMS | ENGINEERING | "a hardware-integration project, not a UI gap" | lab-capability-map.md |
+| lab | No multi-user lab roles/permissions (PI/tech/guest tiers) | Benchling / LabWare LIMS | ENGINEERING | "a new permissions layer, not a lens-page fix" | lab-capability-map.md |
+| landscaping | No job scheduling/dispatch macro | none stated | ENGINEERING | "real, buildable gap" | landscaping-capability-map.md |
+| landscaping | No permit/setback code-reference library | none stated | CURATION | "fabricating code text would be a honesty violation; deferred" | landscaping-capability-map.md |
+| landscaping | No browsable supplier materials catalog | none stated | CURATION | "needs sourced supplier/spec data this domain doesn't have" | landscaping-capability-map.md |
+| landscaping | No persisted Client/CRM entity (free-text field only) | none stated | ENGINEERING | "Out of scope for this surgical pass" | landscaping-capability-map.md |
+| landscaping | No proposal→invoice conversion / payment-tracking status machine | none stated | ENGINEERING | "Deferred to keep this pass surgical" | landscaping-capability-map.md |
+| landscaping | No inspection/walkthrough record model | none stated | ENGINEERING | "No existing capability to build on; deferred" | landscaping-capability-map.md |
+| landscaping | No crew certification record | none stated | ENGINEERING | "Deferred" | landscaping-capability-map.md |
+| law | Case-law search has no semantic/natural-language query mode | CourtListener | ENGINEERING | "add a semantic param + UI toggle" | law-capability-map.md |
+| law | No citation graph ("who cites this opinion") | CourtListener | ENGINEERING | "Flagged future" | law-capability-map.md |
+| law | No RECAP/PACER docket search (opinions only) | CourtListener | ENGINEERING | "a real, separately-scoped macro + UI" | law-capability-map.md |
+| law | No search/docket/citation alerts (no persistence/notification substrate) | CourtListener | ENGINEERING | "medium scope" | law-capability-map.md |
+| law | Patent search accepts one field at a time, no boolean multi-field query builder | USPTO Patent Public Search | ENGINEERING | "backend macro extension" | law-capability-map.md |
+| law | Patent search lacks full claims text / prosecution history fields | USPTO Patent Public Search | DATA-SOURCING | "not in the current field set" | law-capability-map.md |
+| law | Patent search lacks legal status (active/expired/litigated) | USPTO Patent Public Search | DATA-SOURCING | "not in the current field set" | law-capability-map.md |
+| law | Contract dashboard lacks deeper trend analytics | Ironclad | ENGINEERING | "flagged future" | law-capability-map.md |
+| law | `law.draft`/`law.cite` exist but need id-scoped UI wiring | Ironclad | ENGINEERING | "no backend work needed" | law-capability-map.md |
+| law | No real-time multi-party collaborative redlining | Ironclad | ENGINEERING | "large scope — flagged future" | law-capability-map.md |
+| law-enforcement | No persisted "Case" record type server-side | none stated | ENGINEERING | "a new macro group... out of scope for this pass" | law-enforcement-capability-map.md |
+| legal | No cross-jurisdiction, state-specific court procedural rules (FRCP-only) | Clio (implied) | DATA-SOURCING | "no honest free source found... an honest scope limit" | legal-capability-map.md |
+| literary | `crystallize` (resonance-salience passage ranking) has no UI | none stated | ENGINEERING | "real, cheap reads with no external dependency" | literary-capability-map.md |
+| lock | Sovereignty "invariants" are frozen-constant, not a live runtime-checked pass/fail history | none stated | ENGINEERING | "not fixed in this pass" | lock-capability-map.md |
+| logistics | `inventoryAudit` has no real inventory data source (WMS/Shopify feed) | none stated | DATA-SOURCING | "needs a real warehouse feed integration" | logistics-capability-map.md |
+| mail | No way to browse/search other users to pick a mail recipient (raw userId text only) | none stated | ENGINEERING | "recorded here as a deferred enhancement" | mail-capability-map.md |
+| marketing | No dedicated marketing-sending domain/deliverability infrastructure | HubSpot Marketing Hub / Mailchimp | ENGINEERING | "No UI claims a dedicated sending domain exists" | marketing-capability-map.md |
+| marketing | No external ad-platform integration (spend manually entered) | HubSpot Marketing Hub / Mailchimp | DATA-SOURCING | "Deferred, not faked" | marketing-capability-map.md |
+| marketplace | No public cross-seller browse for the e-commerce store (listings only visible in own shop) | Etsy-shape | ENGINEERING | "additive future work, not a regression" | marketplace-capability-map.md |
+| marketplace | "Plugin"-type Browse items have no real purchase path | Etsy-shape | ENGINEERING | "Left as an honest per-item checkout error" | marketplace-capability-map.md |
+| marketplace | Buyer "Download" button calls a nonexistent fulfillment route | Etsy-shape | ENGINEERING | "left as a known, honestly-failing gap" | marketplace-capability-map.md |
+| masonry | No Inspections or Certifications tabs | JobNimbus / Buildertrend | ENGINEERING | "Left as a named, scoped follow-up rather than faked" | masonry-capability-map.md |
+| materials | No periodic-table/element browser UI | MatWeb / Ansys Granta MI | DATA-SOURCING | "would need a new data source" | materials-capability-map.md |
+| materials | No failure-analysis/fractography workflow | MatWeb / Ansys Granta MI | ENGINEERING | "would need new domain logic" | materials-capability-map.md |
+| materials | No PLM/CAD integration | MatWeb / Ansys Granta MI | ENGINEERING | "Deferred as a connector-tier project" | materials-capability-map.md |
+| math | No general polynomial root-finder (deg>4) or fuller symbolic-integration table | Wolfram Alpha / Desmos / Mathematica | ENGINEERING | "real, scoped future engineering work" | math-capability-map.md |
+| math | Formulas tab uses hand-rolled Unicode LaTeX approximation, not real KaTeX/MathJax | Wolfram Alpha / Desmos / Mathematica | ENGINEERING | "cosmetic-only gap" | math-capability-map.md |
+| mentorship | No group-session support (strictly 1:1) | ADPList / MentorcliQ | ENGINEERING | "would need a new macro shape" | mentorship-capability-map.md |
+| mentorship | `review-list` star-histogram has no dedicated UI | ADPList / MentorcliQ | ENGINEERING | "one more panel section, no backend work" | mentorship-capability-map.md |
+| mesh | No UI lets a user send a DTU over the mesh (the lens's namesake capability) | Meshtastic / Briar | ENGINEERING | "Flagging for a future Wave 4 gap-closure pass" | mesh-capability-map.md |
+| message | External Slack/Sheets/GitHub/Notion OAuth connectors gated on operator-supplied client secrets | none stated | DATA-SOURCING-adjacent | "Out of scope for this pass; not a defect in the `message` lens" | message-capability-map.md |
+| meta | `POST /api/inventory/refresh` has no frontend caller | Backstage / Sourcegraph | ENGINEERING | "noted here rather than silently dropped" | meta-capability-map.md |
+| metacognition | `biasDetection` has no real data source (journal schema lacks per-option score/evidence fields) | none stated | ENGINEERING | "a decision-schema change... out of scope for this pass" | metacognition-capability-map.md |
+| metacognition | `select_strategy`/`adjust_confidence` have no designed UI entry point | none stated | ENGINEERING | "Deferred rather than bolted on as a generic button" | metacognition-capability-map.md |
+| mining | No environmental compliance/reclamation tracking | Deswik / Micromine (+ MSHA) | ENGINEERING | "out of scope" | mining-capability-map.md |
+| mining | No CAD-grade constraint-driven pit optimization (geotech limits) | Deswik / Micromine | ENGINEERING | "a substantial new backend engine, out of scope here" | mining-capability-map.md |
+| ml | No actual GPU-backed model training | Weights & Biases / Hugging Face Hub | ENGINEERING | "well beyond a UI-parity pass" | ml-capability-map.md |
+| news | Personalized reader (follows/topics/saves/history/alerts/digest/offline — ~34 macros) only reachable via generic strips | none stated | ENGINEERING | "ranked next-wave surfaces, not fabricated features hidden behind dead buttons" | news-capability-map.md |
+| offline | No filtered/scoped replication (per-collection/per-query sync) | PouchDB/CouchDB, Workbox | ENGINEERING | "a new macro parameter + backend filter evaluation" | offline-capability-map.md |
+| offline | No multi-device conflict provenance | PouchDB/CouchDB, Workbox | ENGINEERING | "a schema change to `offline.js`'s in-memory doc model" | offline-capability-map.md |
+| ops-telemetry | `/api/admin/liveness` uses `requireAuth()` only, inconsistent with the page's uniform gate | Datadog / Grafana | ENGINEERING | "deserves dedicated review outside a single-lens rebuild pass" | ops-telemetry-capability-map.md |
+| ops-telemetry | Inference-cost metering covers only 3 of ~36 LLM call sites | Datadog / Grafana | ENGINEERING | "a cross-cutting change to ~30+ files" | ops-telemetry-capability-map.md |
+| ops-telemetry | Two independent unjittered 5s polling timers on one page | Datadog / Grafana | ENGINEERING | "tracked separately as a Wave 4 item" | ops-telemetry-capability-map.md |
+| organ | Roster schema lacks role/demographics fields for team-composition analysis | ChartHop | ENGINEERING | "small, real, deferred out of this pass's scope" | organ-capability-map.md |
+| paper | `revisionDiff` has no version-snapshot substrate to diff against | Zotero / Semantic Scholar / arXiv Sanity | ENGINEERING | "out of scope for this pass" | paper-capability-map.md |
+| parenting | No paid-tier personalized AI sleep-coaching / real-time expert chat | Huckleberry / Cozi | ENGINEERING | "No dedicated sleep-coach backend exists" | parenting-capability-map.md |
+| parenting | No general shared family calendar (pediatric appointments only) | Huckleberry / Cozi | ENGINEERING | "out of scope for this rebuild, not silently dropped" | parenting-capability-map.md |
+| personas | Persona chat is a deterministic `composeReply`, not an LLM completion | Character.AI | ENGINEERING / DATA-SOURCING | "a backend behavioral addition beyond a frontend-rebuild scope" | personas-capability-map.md |
+| pharmacy | No doctor-appointment manager/calendar | Medisafe / GoodRx | ENGINEERING | "out of scope for a frontend rebuild" | pharmacy-capability-map.md |
+| pharmacy | No AI-powered adherence prediction | Medisafe / GoodRx | ENGINEERING | "clearly out of scope" | pharmacy-capability-map.md |
+| pharmacy | No live geocoded physical pharmacy locator | Medisafe / GoodRx | DATA-SOURCING | "a new integration (e.g. NPI registry or a commercial pharmacy-locator API)" | pharmacy-capability-map.md |
+| philosophy | No cross-cutting library search across the curation substrate | Are.na / Kialo / SEP-IEP | ENGINEERING | "deferred as a named future gap" | philosophy-capability-map.md |
+| photography | `photography.vision` macro has zero caller — button calls a generic chat endpoint instead | Lightroom (implied) | ENGINEERING | "outside a single-lens rebuild's scope" | photography-capability-map.md |
+| photos | `photos.get` (single-photo detail/lightbox view) has no UI caller | none stated | ENGINEERING | "a legitimate but low-priority follow-on" | photos-capability-map.md |
+| physics | Richer multi-body/Keplerian/grid-based engines are shadowed (dead) by simpler `server.js` re-registrations | none stated | ENGINEERING | "out of scope for a frontend-only pass" | physics-capability-map.md |
+| plumbing | No permit/setback code-reference library | ServiceTitan / Jobber | CURATION | "needs licensed/curated IPC/UPC text... deferred pending a real source" | plumbing-capability-map.md |
+| plumbing | No browsable materials/spec catalog | ServiceTitan / Jobber | CURATION | "needs sourced reference data this domain doesn't have" | plumbing-capability-map.md |
+| plumbing | No persisted Client/CRM entity | ServiceTitan / Jobber | ENGINEERING | "flagged for a future ENGINEERING unit" | plumbing-capability-map.md |
+| plumbing | No municipal inspection scheduling/pass-fail records | ServiceTitan / Jobber | ENGINEERING | "No macro, no table. Deferred" | plumbing-capability-map.md |
+| plumbing | No formal technician certification records | ServiceTitan / Jobber | ENGINEERING | "Deferred" | plumbing-capability-map.md |
+| plumbing | No job-site geocoding/map (address string only, no lat/lng) | ServiceTitan / Jobber | ENGINEERING (needs geocoding API) | "faking coordinates would be a direct honesty violation. Deferred" | plumbing-capability-map.md |
+| podcast | `trimSilence` preference stored but no real silence-detection engine backs it | Apple Podcasts / Spotify / Buzzsprout | ENGINEERING | "a real silence-detection would need a client-side Web Audio analysis pass" | podcast-capability-map.md |
+| poetry | Collection-tab search limited to titles (`poem-list` omits body for cost reasons) | none stated | DATA-SOURCING (small backend) | "a real, small backend change I did not make" | poetry-capability-map.md |
+| privacy | DSAR "deletion" request tracks status but doesn't execute a real cross-lens data purge | Google Data & Privacy / OneTrust | ENGINEERING | "touches the deletion/tombstone invariant... deserves its own careful pass" | privacy-capability-map.md |
+| privacy | Cookie-banner/retention-policy config stored but not enforced by a runtime consent-gate middleware | Google Data & Privacy / OneTrust | ENGINEERING | "a retention-sweep heartbeat + a consent-gate middleware would close it" | privacy-capability-map.md |
+| privacy | Access log breadth depends on more subsystems calling `recordAccess` | Google Data & Privacy / OneTrust | ENGINEERING | "Not faked — an empty log honestly shows 'No data accesses recorded yet.'" | privacy-capability-map.md |
+| productivity | No reminder delivery channel (on-demand check only) | Todoist / TickTick, Linear | ENGINEERING | "no fabrication in the interim" | productivity-capability-map.md |
+| productivity | Recurring-task natural-language editing not available in task detail view | Todoist / TickTick, Linear | ENGINEERING | "Small frontend build; deferred to Wave 4" | productivity-capability-map.md |
+| projects | `view-run` (execute a saved custom board view) has no UI | Linear / Asana / Jira | ENGINEERING | "low-priority Linear-parity edge, not a defect" | projects-capability-map.md |
+| projects | `integration-link` (attach external tracker item) unsurfaced | Linear / Asana / Jira | ENGINEERING | "deferred" | projects-capability-map.md |
+| projects | `label-update` unsurfaced | Linear / Asana / Jira | ENGINEERING | "deferred" | projects-capability-map.md |
+| quests | Authored main-arc/faction quest content may never reach players — two quest engines don't share row identity | none stated | ENGINEERING | "recommends a dedicated follow-up backend investigation" | quests-capability-map.md |
+| realestate | No `cma_generate` macro — Comparative Market Analysis engine entirely missing | Zillow / Redfin | ENGINEERING | "out of scope for a wiring-only pass" | realestate-capability-map.md |
+| realestate | `tick_rentals` has no heartbeat — rent never collected automatically | Zillow / Redfin | ENGINEERING | "genuine backend gap, left alone" | realestate-capability-map.md |
+| reasoning | `counterArgumentGen`'s critique quality is a fixed rule set, not a real argumentation-theory engine | Kialo | ENGINEERING | "not a blocking gap" | reasoning-capability-map.md |
+| reflection | 24 of 45 macros remain UNSURFACED (media/place/reminder/encryption/timeline/map/voice/year-in-review/export/sync layer) | Day One | ENGINEERING | "backend already supports all of it" | reflection-capability-map.md |
+| repos | `codeComplexity`'s heuristic is a regex count, not a real AST parse | GitHub | ENGINEERING | "not attempted this pass — out of scope" | repos-capability-map.md |
+| repos | `security-scan`'s vulnerability table is a hardcoded 5-entry CVE list, not a live feed | GitHub | DATA-SOURCING | "could wire a real free vulnerability feed (OSV.dev)" | repos-capability-map.md |
+| retail | No CRM/sales-pipeline macro | Shopify / Square / Lightspeed | ENGINEERING | "Genuinely missing, deferred" | retail-capability-map.md |
+| retail | No support-ticket queue macro | Shopify / Square / Lightspeed | ENGINEERING | "Genuinely missing, deferred" | retail-capability-map.md |
+| retail | No in-store marketing-display/endcap record macro | Shopify / Square / Lightspeed | ENGINEERING | "Genuinely missing, deferred" | retail-capability-map.md |
+| retail | Product schema lacks variants, price-change history, supplier fields, ABC-analysis forecasting | Shopify / Square / Lightspeed | ENGINEERING | "Genuinely missing, deferred" | retail-capability-map.md |
+| robotics | No 3D URDF/mesh robot viewer (Gazebo/rviz-style) | ROS + rviz/Gazebo, Foxglove Studio | ENGINEERING | "materially larger scope" | robotics-capability-map.md |
+| robotics | No simulated physics/collision environment | ROS + rviz/Gazebo, Foxglove Studio | ENGINEERING | "a physics sim is out of scope for a UI-parity pass" | robotics-capability-map.md |
+| sandbox | No visible frame-data overlay in TelemetryOverlay, though backend endpoint exists | Street Fighter 6 / Tekken Practice | ENGINEERING | "Left out of this pass to keep the fix surgical" | sandbox-capability-map.md |
+| security | Legacy "Domain Actions" buttons silently no-op with no feedback on a fresh account | Splunk / Sentinel / OpenCVE / PagerDuty | ENGINEERING | "cosmetic... Left as a backlog item" | security-capability-map.md |
+| self | Achievements tab has no unlock-timestamp tracking (bare `Set`, no `earned_at`) | Apple Health / Gyroscope | ENGINEERING | "Not changed this pass" | self-capability-map.md |
+| sentinel | `intel.research.*` governance-controlled research-access workflow completely unsurfaced | CrowdStrike Falcon | ENGINEERING | "deserves its own designed workflow" | sentinel-capability-map.md |
+| services | Card processing honestly gated to pay-on-site — no real Stripe Elements/Terminal client-confirmation flow | Square Appointments / Booksy / Vagaro | ENGINEERING | "deferred out of this pass's scope" | services-capability-map.md |
+| sim | `monteCarlo`'s RNG uses `Math.random()`, not seeded — results not reproducible | AnyLogic | ENGINEERING | "not urgent enough to bundle in" | sim-capability-map.md |
+| space | No live satellite catalog beyond ISS (needs authenticated account) | N2YO / Flightradar24-for-space / Go4Liftoff | DATA-SOURCING | "not a free/keyless API. Noted honestly rather than faked" | space-capability-map.md |
+| space | No ground-station pass scheduling for a player's own satellites | N2YO / Flightradar24-for-space / Go4Liftoff | ENGINEERING | "out of scope for a UI-polish batch" | space-capability-map.md |
+| spectate | Socket events carry no `worldId` — spectators of one world also see events from every other world | Twitch / Kalshi-Polymarket hybrid | ENGINEERING | "would require touching server.js combat/DTU/faction emit sites" | spectate-capability-map.md |
+| staking | Neither staking system ever calls `walletDebit`/`walletCredit` — no real CC moves; positions don't survive restart | Coinbase Earn / Lido | ENGINEERING | "deferred to human escalation" per CLAUDE.md's money-invariant rule | staking-capability-map.md |
+| studio | Real-time collaborators can join/see presence, but no mutating macro is collaborator-aware — guest edits silently fail | Ableton Live / Logic Pro | ENGINEERING | "Scoped out of this pass as larger than the unit" | studio-capability-map.md |
+| studio | `collab-edit` logging wired for only 6 of ~19 mutating panels | Ableton Live / Logic Pro | ENGINEERING | "extending it is mechanical, one call per mutation handler" | studio-capability-map.md |
+| studio | Project picker doesn't auto-refresh cross-panel (separate `PipingProvider` trees) | Ableton Live / Logic Pro | ENGINEERING | "manual refresh button is an honest, working substitute" | studio-capability-map.md |
+| sub-worlds | Spawned sub-world's mirrored `worlds` row is a bare-minimum shell (no presets/NPCs/biome/theme) | Roblox / Rec Room | ENGINEERING | "the next real increment" | sub-worlds-capability-map.md |
+| sub-worlds | Legacy `sub_world.spawn_from_forge` macro has the identical never-mirrors defect | Roblox / Rec Room | ENGINEERING | "flagged for a future backend-hygiene pass" | sub-worlds-capability-map.md |
+| supplychain | No role-based collaboration (planner/buyer/analyst views) — all macros scope only to the calling user | SAP Integrated Business Planning (IBP) | ENGINEERING | "out of scope for a frontend rebuild" | supplychain-capability-map.md |
+| sync | `sync.heartbeat` has zero frontend callers — no real client identity yet | Dropbox / iCloud Drive / Syncthing | ENGINEERING | "ships only if/when a real client exists to be honest about" | sync-capability-map.md |
+| sync | Real portable-pack export isn't wired into this lens's `sync_now` | Dropbox / iCloud Drive / Syncthing | ENGINEERING | "best done as its own reviewed change" | sync-capability-map.md |
+| thread | No cross-artifact "duplicate this thread" / whole-thread clone feature | Typefully | ENGINEERING | "no existing backend surface claimed to do this" | thread-capability-map.md |
+| timeline | `friends`-tier privacy not enforced on id-addressed macros (only `private` tier fixed this pass) | Facebook | ENGINEERING | "a genuine ENGINEERING-class gap per CLAUDE.md's 'closing the hard 20%' triage" | timeline-capability-map.md |
+| tournaments | `server/domains/tournaments.js` state is in-memory only — doesn't survive restart | Challonge / Battlefy | ENGINEERING/CURATION | "a durable DB-backed rewrite would be a much larger CURATION/ENGINEERING project" | tournaments-capability-map.md |
+| training-room | `combo_followups` metadata never authored — combo-followups UI strip always empty | Street Fighter 6 / Tekken training room | CURATION | "a CURATION-class gap in the skill-authoring system" | training-room-capability-map.md |
+| travel | No inbox auto-sync (Gmail/Outlook) for booking confirmations | TripIt / Hopper | ENGINEERING | "reuse the existing Gmail connector's read path" | travel-capability-map.md |
+| travel | No binary attachment support on travel documents | TripIt / Hopper | ENGINEERING | "a real (if modest) backend addition" | travel-capability-map.md |
+| travel | No loyalty-program/frequent-flyer points tracking | TripIt / Hopper | ENGINEERING | "would need a whole new loyalty-account substrate" | travel-capability-map.md |
+| travel | No airport terminal maps | TripIt / Hopper | DATA-SOURCING | "No data source; low value" | travel-capability-map.md |
+| travel | No live bookable flight/hotel search + pricing (inspiration-only today) | Google Flights / Kayak / Expedia | DATA-SOURCING | "a real, disclosed, paid-third-party-API-required gap" | travel-capability-map.md |
+| understanding | No spaced-repetition surface, no nested/outline note structure | Obsidian / RemNote | CURATION/ENGINEERING | "a CURATION/ENGINEERING triage for a future session, not a rebuild-loop defect" | understanding-capability-map.md |
+| urban-planning | No honest project/permit-status tracking (fake tab was removed outright) | Esri CityEngine / ArcGIS Urban, CommunityViz | ENGINEERING | "not scoped for this parity batch" | urban-planning-capability-map.md |
+| urban-planning | No live parcel/GIS basemap tiles | Esri CityEngine / ArcGIS Urban, CommunityViz | DATA-SOURCING | "needs a tile-provider integration decision (cost/ToS)" | urban-planning-capability-map.md |
+| urban-planning | No shadow/sun-path 3D massing study | Esri CityEngine / ArcGIS Urban, CommunityViz | ENGINEERING | "Deferred" | urban-planning-capability-map.md |
+| voice | `recording-auto-label-speakers` genuinely unreachable (no per-segment audio `.vector`) | none stated | ENGINEERING | "a genuine audio-pipeline feature... scoped out of this pass" | voice-capability-map.md |
+| vote | `fairnessCheck`'s Gallagher index needs a seat-share input the UI doesn't collect | Decidim / Snapshot / Polis | ENGINEERING | "would need its own bespoke editor" | vote-capability-map.md |
+| welding | Token-based client portal (`portal-view`/`approve`/`pay`) unsurfaced — no public route | Jobber / ServiceTitan | ENGINEERING | "a genuinely deferred build" | welding-capability-map.md |
+| whiteboard | `vision` macro (image-analysis of uploaded board image) unsurfaced | Miro / FigJam (implied) | ENGINEERING | "not a defining whiteboard-category feature" | whiteboard-capability-map.md |
+| whiteboard | `comments-delete` unsurfaced | Miro / FigJam (implied) | ENGINEERING | "reasonable for a future pass" | whiteboard-capability-map.md |
+| whiteboard | `frame-update` unsurfaced | Miro / FigJam (implied) | ENGINEERING | "not a defining feature" | whiteboard-capability-map.md |
+| whiteboard | `embed-update` unsurfaced | Miro / FigJam (implied) | ENGINEERING | "same low priority" | whiteboard-capability-map.md |
+| whiteboard | `workspace-summary` unsurfaced | Miro / FigJam (implied) | ENGINEERING | "Low priority, purely additive" | whiteboard-capability-map.md |
+| whiteboard | `shared-vote-cast`: vote-count badges render, but no click-to-vote handler exists | Miro / FigJam (implied) | ENGINEERING | "the most concrete near-term gap of the eight" | whiteboard-capability-map.md |
+| world-creator | `npc-place`'s `backstory`/`level` fields accepted server-side, UI only captures name via `window.prompt` | Tiled / RPG-Maker-style placer | ENGINEERING | "a small, scoped frontend addition, no backend change" | world-creator-capability-map.md |
+| world-creator | No `zone-move`/`spawn-move`/`npc-move` macros (delete+recreate required) | Tiled / RPG-Maker-style placer | ENGINEERING | "correctly deferred rather than invented mid-audit" | world-creator-capability-map.md |
+| world-creator | Zone/spawn-point names never user-set at creation | Tiled / RPG-Maker-style placer | ENGINEERING | "not fabricated, just always-default" | world-creator-capability-map.md |
+
+## Lenses with no deferred items (fully closed, per own doc)
+
+achievements, affect, agriculture, all, analytics, announcements, answers, app-maker,
+attention, auction, audit, bio, black-market, bounties, bridge, billing,
+carpentry, chem, classroom, code-quality, cognition, cognitive-replay, commonsense, construction,
+cooking, crafting, creative, creative-writing, cri, crisis-ops, crypto, custom, database,
+death-insurance, debate, debug,
+defense, detective, disputes, diy, docs, electrical, environment, ethics, expedition-journal,
+expert-mode, federation, film-studios, finance, fishing, forestry, forge, fork, forum, fractal,
+gallery, game-design, garage, genesis, geology, ghost-tracker, global, goddess, government,
+home-improvement, household, housing, hvac, import, inference,
+invariant, lattice, ledger, legacy, lfg, linguistics, maker, manufacturing, market, markets,
+meditation, mental-health, metalearning, move-builder, neuro, nonprofit, observe, ocean, ops, pets, platform,
+psyops, quantum, queue, repair-telemetry, research, resonance, saved, schema, science, sessions,
+settings, social, society, sponsorship, sports, srs, system, tick, telecommunications, temporal,
+tools, trades, transfer, translation, veterinary, wallet, wellness, worldmodel
+
+`world-capability-map.md` is a summary-level backfill doc (not an exhaustive audit) — it makes no
+gap claims either way and is excluded from both lists.
+
+## Notes on compound triage
+
+A handful of items span two classes and are marked accordingly in the Triage column:
+- **`ingest`** live connector execution and **`integrations`** real OAuth connect flow — both
+  ENGINEERING (the connectorFetch/OAuth plumbing) *and* DATA-SOURCING (each concrete connector
+  needs its own credential/egress path).
+- **`personas`** LLM-backed persona chat — ENGINEERING (wiring the chat path) with a DATA-SOURCING
+  flavor (needs a live brain call, not a deterministic composer).
+- **`tournaments`** durable persistence and **`understanding`** spaced-repetition/outline —
+  ENGINEERING/CURATION: the backend rebuild is engineering, but doing it well benefits from
+  curated reference patterns (Challonge-style bracket persistence; RemNote-style note graphs).
+
+## Next step
+
+This ledger is the input to Wave 4 execution, not the execution itself. Per CLAUDE.md's sixth
+hard invariant, each row still needs an actual disposition: DATA-SOURCING items need a real
+source identified (or an honest "no free source exists" writeup); ENGINEERING items need to
+actually be built; CURATION items need real reference material authored/ingested. Given the
+volume (259 items), the natural next move is to prioritize a subset — likely candidates are the
+CURATION items (small, bounded, well-scoped: healthcare protocol library, landscaping/plumbing
+code-reference libraries, training-room combo metadata) and the highest-value DATA-SOURCING items
+with a known free source already named in the doc (e.g. `repos` security-scan → OSV.dev,
+`grounding` → GDELT) — rather than attempting all 259 in one pass.

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send, Loader2, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, Pin, ListChecks, Mic, Square } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, Pin, ListChecks, Mic, Square, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ChannelIcon } from './SlackShell';
@@ -47,6 +47,13 @@ export function MessageStream({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState('');
   const [pinNonce, setPinNonce] = useState(0);
+  // Snooze: message.snooze/unsnooze existed backend-side (validated,
+  // tested) with no frontend caller at all — the Snoozed panel could only
+  // ever read an empty list. Per-message popover with common presets +
+  // a custom datetime, Gmail/Slack idiom.
+  const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
+  const [snoozeCustom, setSnoozeCustom] = useState('');
+  const [snoozeError, setSnoozeError] = useState<string | null>(null);
   // Realtime: who is typing + a live-delivery cursor that polls
   // channel-live-state so new messages land without a manual refresh.
   const [typers, setTypers] = useState<string[]>([]);
@@ -293,6 +300,27 @@ export function MessageStream({
     } catch (e) { console.error('[Stream] pin', e); }
   }
 
+  async function snoozeMsg(m: Message, until: string) {
+    setSnoozeError(null);
+    try {
+      const r = await lensRun({ domain: 'message', action: 'snooze', input: { messageId: m.id, until } });
+      if (r.data?.ok === false) { setSnoozeError(r.data?.error || 'Could not snooze this message.'); return; }
+      setSnoozeTargetId(null);
+      setSnoozeCustom('');
+      onMessageActivity?.();
+    } catch (e) { setSnoozeError(e instanceof Error ? e.message : String(e)); }
+  }
+
+  function snoozePreset(hours: number): string {
+    return new Date(Date.now() + hours * 3_600_000).toISOString();
+  }
+  function snoozeTomorrowMorning(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    return d.toISOString();
+  }
+
   if (!channel) {
     return <div className="flex-1 flex items-center justify-center text-xs text-gray-400">Pick a channel or DM from the list.</div>;
   }
@@ -371,12 +399,40 @@ export function MessageStream({
                     <Mic className="w-2.5 h-2.5" />{(voiceDurations[m.id] / 1000).toFixed(1)}s
                   </span>
                 )}
-                <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1">
+                <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1 relative">
                   <button onClick={() => onOpenThread(m.id)} className="p-1 text-gray-400 hover:text-white" title="Reply in thread"><MessageSquare className="w-3 h-3" /></button>
                   <button onClick={() => pinMsg(m)} className="p-1 text-gray-400 hover:text-amber-300" title="Pin to channel"><Pin className="w-3 h-3" /></button>
                   <button onClick={() => saveMessage(m)} className="p-1 text-gray-400 hover:text-white" title="Save"><Smile className="w-3 h-3" /></button>
+                  <button
+                    onClick={() => { setSnoozeError(null); setSnoozeTargetId(snoozeTargetId === m.id ? null : m.id); }}
+                    className={cn('p-1', snoozeTargetId === m.id ? 'text-amber-300' : 'text-gray-400 hover:text-amber-300')}
+                    title="Snooze"
+                  ><Clock className="w-3 h-3" /></button>
                   <button onClick={() => { setEditingId(m.id); setEditBody(m.body); }} className="p-1 text-gray-400 hover:text-white" title="Edit"><Edit3 className="w-3 h-3" /></button>
                   <button onClick={() => deleteMsg(m)} className="p-1 text-gray-400 hover:text-rose-300" title="Delete"><Trash2 className="w-3 h-3" /></button>
+
+                  {snoozeTargetId === m.id && (
+                    <div className="absolute right-0 top-6 z-20 w-56 rounded-md border border-amber-500/30 bg-zinc-900 shadow-xl p-2 space-y-1.5" role="menu" aria-label="Snooze options">
+                      <p className="text-[10px] text-gray-400 px-1">Snooze until…</p>
+                      <button role="menuitem" onClick={() => snoozeMsg(m, snoozePreset(1))} className="w-full text-left px-2 py-1 text-xs rounded text-gray-200 hover:bg-white/10">In 1 hour</button>
+                      <button role="menuitem" onClick={() => snoozeMsg(m, snoozeTomorrowMorning())} className="w-full text-left px-2 py-1 text-xs rounded text-gray-200 hover:bg-white/10">Tomorrow, 9am</button>
+                      <button role="menuitem" onClick={() => snoozeMsg(m, snoozePreset(24 * 7))} className="w-full text-left px-2 py-1 text-xs rounded text-gray-200 hover:bg-white/10">Next week</button>
+                      <div className="flex items-center gap-1 pt-1 border-t border-white/10">
+                        <input
+                          type="datetime-local"
+                          value={snoozeCustom}
+                          onChange={(e) => setSnoozeCustom(e.target.value)}
+                          className="flex-1 px-1.5 py-1 text-[10px] bg-black/40 border border-white/10 rounded text-gray-100 font-mono"
+                        />
+                        <button
+                          onClick={() => snoozeCustom && snoozeMsg(m, new Date(snoozeCustom).toISOString())}
+                          disabled={!snoozeCustom}
+                          className="px-2 py-1 text-[10px] rounded bg-amber-500 text-black font-bold hover:bg-amber-400 disabled:opacity-40"
+                        >Set</button>
+                      </div>
+                      {snoozeError && <p className="text-[10px] text-rose-300 px-1">{snoozeError}</p>}
+                    </div>
+                  )}
                 </div>
               </div>
               {editingId === m.id ? (

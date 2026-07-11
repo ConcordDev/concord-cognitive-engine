@@ -2,11 +2,14 @@
 //
 // The /lenses/repair-telemetry dashboard drives the `repair` domain
 // (server/domains/repair.js, registered as registerRepairMacros in server.js).
-// It calls exactly four macros:
+// It calls five macros:
 //   repair.health_log        — the Homeostasis ledger (health_check_log rows)
 //   repair.escalations        — the escalation inbox (initiatives, system_repair_escalation)
 //   repair.resolve_escalation — operator approve/dismiss of an escalation
 //   repair.memory             — in-memory Repair Memory learning stats
+//   repair.run_now             — operator-triggered on-demand Homeostasis pass (added
+//                                 2026-07-11 — wires the previously-unsurfaced
+//                                 runWorldHealthPass/escalator pair into the lens)
 //
 // This is NOT shape-only: every test asserts ACTUAL values + multi-step
 // round-trips (seed two findings → list both, newest-first → filter by
@@ -16,12 +19,19 @@
 // It pins the live-DB reality the contract overrides assert (reads `{}` →
 // ok:true with an array, NEVER no_db).
 //
+// Every macro is operator-gated (added 2026-07-11 — before this pass the
+// gate was decorative: `/api/lens/run` has no domain-level role check, so
+// ANY authenticated user could read other users' negative-balance findings
+// or approve/dismiss Sovereign escalations). The "authorization" describe
+// block below pins that every macro denies a non-admin actor and allows an
+// admin/owner/sovereign/founder one.
+//
 // Hermetic + fast: migrations run ONCE in before() on a single in-memory DB;
 // the two tables are cleared per-test. No server boot. The handlers delegate
 // to the real schema (migrations 304 health_check_log, 029 initiatives) and to
 // emergent/repair-cortex.js#getRepairMemoryStats (the real lib, no duplication).
 
-import { describe, it, before, beforeEach, after } from "node:test";
+import { describe, it, before, beforeEach, afterEach, after } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { runMigrations } from "../migrate.js";
@@ -64,7 +74,8 @@ function seedEscalation(db, id, { message, priority = "high", status = "pending"
 
 describe("repair.* domain macros (real migrated DB)", () => {
   let db, reg;
-  const ctx = { db: null, actor: { userId: "u1" } };
+  // Operator-role actor — every macro requires this since the 2026-07-11 authz fix.
+  const ctx = { db: null, actor: { userId: "u1", role: "admin" } };
 
   before(async () => {
     db = new Database(":memory:");
@@ -78,11 +89,49 @@ describe("repair.* domain macros (real migrated DB)", () => {
   });
   after(() => { try { db.close(); } catch { /* noop */ } });
 
-  it("registers exactly the four macros the lens drives", () => {
+  it("registers exactly the five macros the lens drives", () => {
     assert.deepEqual(
       reg.names.sort(),
-      ["escalations", "health_log", "memory", "resolve_escalation"],
+      ["escalations", "health_log", "memory", "resolve_escalation", "run_now"],
     );
+  });
+
+  // ── authorization — every macro is operator-only ──────────────────────────
+  describe("authorization", () => {
+    const macroCalls = [
+      ["health_log", {}],
+      ["escalations", {}],
+      ["resolve_escalation", { id: "nonexistent", resolution: "approved" }],
+      ["memory", {}],
+      ["run_now", {}],
+    ];
+
+    for (const [name, input] of macroCalls) {
+      it(`${name} denies a non-admin actor (admin_only)`, async () => {
+        const out = await reg.run(name, { db, actor: { userId: "u1", role: "member" } }, input);
+        assert.equal(out.ok, false);
+        assert.equal(out.error, "admin_only");
+      });
+
+      it(`${name} denies an actor with no role at all`, async () => {
+        const out = await reg.run(name, { db, actor: { userId: "u1" } }, input);
+        assert.equal(out.ok, false);
+        assert.equal(out.error, "admin_only");
+      });
+
+      it(`${name} denies a call with no actor object`, async () => {
+        const out = await reg.run(name, { db }, input);
+        assert.equal(out.ok, false);
+        assert.equal(out.error, "admin_only");
+      });
+    }
+
+    for (const role of ["admin", "owner", "sovereign", "founder"]) {
+      it(`health_log allows role=${role}`, async () => {
+        const out = await reg.run("health_log", { db, actor: { userId: "u1", role } }, {});
+        assert.equal(out.ok, true);
+      });
+    }
   });
 
   // ── repair.health_log — Homeostasis ledger ────────────────────────────────
@@ -136,7 +185,11 @@ describe("repair.* domain macros (real migrated DB)", () => {
     });
 
     it("fails closed with no_db when ctx has no db", async () => {
-      const out = await reg.run("health_log", { actor: { userId: "u1" } }, {});
+      // The operator-role gate runs FIRST in every repair.* macro (below), so
+      // this ctx needs an admin role to actually exercise the no_db path —
+      // a non-operator ctx short-circuits with "admin_only" before ever
+      // reaching the db check, which is a separate, already-covered case.
+      const out = await reg.run("health_log", { actor: { userId: "u1", role: "admin" } }, {});
       assert.equal(out.ok, false);
       assert.equal(out.reason, "no_db");
     });
@@ -222,8 +275,19 @@ describe("repair.* domain macros (real migrated DB)", () => {
       assert.equal(res.reason, "missing_id");
     });
 
-    it("requires an actor (operator-scoped write)", async () => {
+    it("requires an actor (operator-scoped write) — denied by the authz gate first", async () => {
+      // No actor at all fails the operator-role gate (admin_only) before the
+      // handler's own `no_actor` guard is ever reached — the authz gate below
+      // pins the (now-redundant, but still-correct as defense-in-depth)
+      // no_actor path directly with an admin actor missing only userId.
       const res = await reg.run("resolve_escalation", { db }, { id: "e1", resolution: "approved" });
+      assert.equal(res.ok, false);
+      assert.equal(res.error, "admin_only");
+    });
+
+    it("the handler's own no_actor guard still fires for an admin actor with no userId (defense-in-depth)", async () => {
+      seedEscalation(db, "e1", { message: "decide", created_at: "2026-01-01T00:00:00Z" });
+      const res = await reg.run("resolve_escalation", { db, actor: { role: "admin" } }, { id: "e1", resolution: "approved" });
       assert.equal(res.ok, false);
       assert.equal(res.reason, "no_actor");
     });
@@ -240,6 +304,79 @@ describe("repair.* domain macros (real migrated DB)", () => {
       assert.equal(typeof out.stats.avgSuccessRate, "number");
       assert.equal(typeof out.stats.deprecatedFixes, "number");
       assert.ok(out.stats.avgSuccessRate >= 0 && out.stats.avgSuccessRate <= 1);
+    });
+  });
+
+  // ── repair.run_now — operator-triggered on-demand Homeostasis pass ────────
+  // Reuses server/lib/world-health.js#runWorldHealthPass + the shared
+  // escalator from server/emergent/world-health-monitor.js — the SAME
+  // detect -> classify -> heal/escalate pipeline the ~4h heartbeat runs, not
+  // a parallel implementation. Cooldown is read fresh per call via
+  // CONCORD_REPAIR_RUN_NOW_COOLDOWN_MS so it's testable without real sleeps.
+  describe("run_now", () => {
+    const savedEnv = {};
+    beforeEach(() => {
+      savedEnv.cooldown = process.env.CONCORD_REPAIR_RUN_NOW_COOLDOWN_MS;
+      savedEnv.disabled = process.env.CONCORD_WORLD_HEALTH;
+      process.env.CONCORD_REPAIR_RUN_NOW_COOLDOWN_MS = "0"; // no throttling unless a test opts in
+      delete process.env.CONCORD_WORLD_HEALTH;
+    });
+    afterEach(() => {
+      if (savedEnv.cooldown === undefined) delete process.env.CONCORD_REPAIR_RUN_NOW_COOLDOWN_MS;
+      else process.env.CONCORD_REPAIR_RUN_NOW_COOLDOWN_MS = savedEnv.cooldown;
+      if (savedEnv.disabled === undefined) delete process.env.CONCORD_WORLD_HEALTH;
+      else process.env.CONCORD_WORLD_HEALTH = savedEnv.disabled;
+    });
+
+    it("runs the real detect->classify->heal/escalate pipeline and returns a summary", async () => {
+      // negative_balance is economy -> escalated (never auto-mutated).
+      db.prepare("UPDATE users SET concordia_credits = -50 WHERE id = 'u1'").run();
+      const out = await reg.run("run_now", ctx, {});
+      assert.equal(out.ok, true);
+      assert.ok(out.checked >= 1);
+      assert.ok(out.escalated >= 1);
+      assert.ok(Array.isArray(out.findings));
+
+      // the pass wrote a real health_check_log row...
+      const logged = db.prepare("SELECT * FROM health_check_log WHERE pathology='negative_balance'").get();
+      assert.ok(logged, "expected a negative_balance finding to be logged");
+      assert.equal(logged.disposition, "escalated");
+      assert.equal(logged.subject_id, "u1");
+
+      // ...and escalated it into the real Sovereign inbox via the SAME
+      // escalator the heartbeat uses (not a duplicated code path).
+      const via = await reg.run("escalations", ctx, {});
+      assert.ok(via.escalations.some((e) => e.message.includes("negative_balance") && e.message.includes("u1")));
+    });
+
+    it("is cooldown-gated on repeated calls", async () => {
+      // Prime the module-scoped `_lastRunNowAt` with a zero-cooldown call
+      // first (the cooldown clock is shared across the whole module, not
+      // per-test, so this makes the assertion below order-independent
+      // instead of relying on this being the very first run_now call in
+      // the file — elapsed < 0 is never true, so this always succeeds).
+      process.env.CONCORD_REPAIR_RUN_NOW_COOLDOWN_MS = "0";
+      const primed = await reg.run("run_now", ctx, {});
+      assert.equal(primed.ok, true);
+
+      process.env.CONCORD_REPAIR_RUN_NOW_COOLDOWN_MS = "60000";
+      const second = await reg.run("run_now", ctx, {});
+      assert.equal(second.ok, false);
+      assert.equal(second.reason, "cooldown");
+      assert.ok(second.retryInMs > 0 && second.retryInMs <= 60000);
+    });
+
+    it("respects the CONCORD_WORLD_HEALTH=0 kill switch", async () => {
+      process.env.CONCORD_WORLD_HEALTH = "0";
+      const out = await reg.run("run_now", ctx, {});
+      assert.equal(out.ok, false);
+      assert.equal(out.reason, "disabled");
+    });
+
+    it("fails closed with no_db when ctx has no db", async () => {
+      const out = await reg.run("run_now", { actor: { userId: "u1", role: "admin" } }, {});
+      assert.equal(out.ok, false);
+      assert.equal(out.reason, "no_db");
     });
   });
 });

@@ -70,6 +70,75 @@ interface DTUResult {
   creti?: Record<string, number>;
 }
 
+interface DeepResearchPhase {
+  phase: string;
+  error?: string;
+  dtuCount?: number;
+  domains?: string[];
+  hypotheses?: Array<{ statement?: string; machine?: { hypothesis?: { statement?: string } } }>;
+  connections?: Array<{ domain: string; dtuCount: number; avgScore: number; topTitles: string[] }>;
+  dtuId?: string | null;
+  content?: string | null;
+}
+
+interface DeepResearchExecution {
+  topic: string;
+  status: string;
+  phases: DeepResearchPhase[];
+}
+
+/**
+ * Renders the /api/research/conduct phase pipeline (substrate scan →
+ * hypothesis generation → cross-domain scan → synthesis) as readable
+ * markdown. Every line traces to a field the backend actually returned —
+ * a phase that failed/was skipped says so explicitly rather than being
+ * silently omitted or JSON-dumped.
+ */
+function formatDeepResearchPhases(research: DeepResearchExecution): string {
+  const lines: string[] = [`# Deep Research: ${research.topic}`, ''];
+  for (const p of research.phases || []) {
+    if (p.phase === 'substrate_scan') {
+      lines.push('## Substrate scan');
+      lines.push(
+        p.dtuCount
+          ? `Found ${p.dtuCount} existing DTU(s)${p.domains?.length ? ` across ${p.domains.join(', ')}` : ''}.`
+          : 'No existing DTUs matched this topic in your substrate.'
+      );
+    } else if (p.phase === 'hypothesis_generation') {
+      lines.push('## Hypotheses');
+      if (p.error || !p.hypotheses?.length) {
+        lines.push('_No hypotheses generated._');
+      } else {
+        for (const h of p.hypotheses) {
+          const statement = h.machine?.hypothesis?.statement || h.statement || 'Untitled hypothesis';
+          lines.push(`- ${statement}`);
+        }
+      }
+    } else if (p.phase === 'cross_domain_scan') {
+      lines.push('## Cross-domain connections');
+      if (p.error || !p.connections?.length) {
+        lines.push('_No cross-domain connections found._');
+      } else {
+        for (const c of p.connections) {
+          lines.push(
+            `- **${c.domain}** — ${c.dtuCount} related DTU(s), avg relevance ${(c.avgScore * 100).toFixed(0)}%${c.topTitles?.length ? `: ${c.topTitles.join('; ')}` : ''}`
+          );
+        }
+      }
+    } else if (p.phase === 'synthesis') {
+      lines.push('## Synthesis');
+      if (p.error || !p.content) {
+        lines.push('_No synthesis produced._');
+      } else {
+        lines.push(p.content);
+        if (p.dtuId) lines.push('', `_Saved as DTU \`${p.dtuId}\`._`);
+      }
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
 export default function ResearchLensPage() {
   // Persist 'view-event' artifact so cartograph counts this page as wired.
   const viewLog = useArtifacts<{ at: string }>('research', { type: 'view-event', limit: 5 });
@@ -165,15 +234,12 @@ export default function ResearchLensPage() {
       const data = await api
         .post('/api/research/conduct', { topic: hypothesis.trim() })
         .then((r) => r.data);
-      const content =
-        typeof data?.result === 'string'
-          ? data.result
-          : typeof data?.content === 'string'
-            ? data.content
-            : JSON.stringify(data, null, 2);
+      if (!data?.ok || !data?.research) {
+        throw new Error(data?.error || 'Deep research failed');
+      }
       setGenerateResult({
-        content,
-        title: data?.title || 'Deep Research Result',
+        content: formatDeepResearchPhases(data.research),
+        title: `Deep Research: ${data.research.topic || hypothesis.trim()}`,
       });
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : 'Deep research failed');

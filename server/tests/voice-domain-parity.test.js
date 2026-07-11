@@ -258,6 +258,39 @@ describe("voice.recording share + comments", () => {
     const r = newRecording();
     assert.equal(call("segment-comment-add", ctxB, { recordingId: r.id, segmentId: r.segments[0].id, body: "hi" }).ok, false);
   });
+
+  // IDOR regression — share-detail and segment-comments-list used to trust a
+  // caller-supplied recordingId with NO ownership/collaborator check, unlike
+  // segment-comment-add/-delete which already gated correctly. Any
+  // authenticated user who knew (or enumerated) another user's recordingId
+  // could read the full share record — collaborator list + every segment
+  // comment — via a raw voice.share-detail / voice.segment-comments-list
+  // call, even though the frontend only ever reaches share-detail after
+  // opening a recording it already owns. Fixed to match the established
+  // owner-or-collaborator gate; denial doesn't reveal whether the recording
+  // exists or is shared (same message segment-comment-add already used).
+  it("share-detail and segment-comments-list deny a caller who is neither owner nor collaborator", () => {
+    const r = newRecording(ctxA);
+    call("recording-share", ctxA, { id: r.id, collaborators: ["user_c"] });
+    call("segment-comment-add", ctxA, { recordingId: r.id, segmentId: r.segments[0].id, body: "owner note" });
+
+    // ctxB has no relationship to this recording (not owner, not collaborator).
+    const strangerShare = call("share-detail", ctxB, { recordingId: r.id });
+    assert.equal(strangerShare.ok, false);
+    assert.match(strangerShare.error, /not found or not shared/);
+    assert.equal(strangerShare.result, undefined, "must not leak the share/collaborator list");
+
+    const strangerComments = call("segment-comments-list", ctxB, { recordingId: r.id });
+    assert.equal(strangerComments.ok, false);
+    assert.match(strangerComments.error, /not found or not shared/);
+    assert.equal(strangerComments.result, undefined, "must not leak comments");
+
+    // The owner and the listed collaborator ("user_c") are unaffected.
+    assert.equal(call("share-detail", ctxA, { recordingId: r.id }).result.shared, true);
+    const ctxC = { actor: { userId: "user_c" }, userId: "user_c" };
+    assert.equal(call("share-detail", ctxC, { recordingId: r.id }).result.shared, true);
+    assert.equal(call("segment-comments-list", ctxC, { recordingId: r.id }).result.count, 1);
+  });
 });
 
 // ─── Backlog item 7 — multi-language translation ──────────────────────

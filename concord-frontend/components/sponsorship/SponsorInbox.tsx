@@ -35,7 +35,10 @@ export function SponsorInbox({ refreshKey }: { refreshKey: number }) {
       setForm({ toUserId: '', creatorId: '', body: '' });
       await load();
     } else {
-      setMsg(`Failed: ${r.data?.error || 'unknown'}`);
+      const reason = r.data?.error || 'unknown';
+      setMsg(reason === 'admin_only'
+        ? "Your account isn't an admin — sending as an NPC creator is admin-only."
+        : `Failed: ${reason}`);
     }
     window.setTimeout(() => setMsg(null), 4000);
   };
@@ -72,7 +75,7 @@ export function SponsorInbox({ refreshKey }: { refreshKey: number }) {
 
       <section className="bg-zinc-900/80 border border-emerald-800/50 rounded-xl p-3 space-y-2">
         <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider">Send a thank-you (creator)</h3>
-        <p className="text-[10px] text-zinc-400">As a sponsored NPC-mentor, thank one of your active sponsors.</p>
+        <p className="text-[10px] text-zinc-400">Admin-only: NPC creators have no linked player account, so sending on their behalf is restricted to operators.</p>
         {msg && <div className="bg-emerald-950/50 border border-emerald-700/50 text-emerald-200 px-2 py-1 rounded text-[11px]">{msg}</div>}
         <div className="flex flex-wrap gap-2">
           <input

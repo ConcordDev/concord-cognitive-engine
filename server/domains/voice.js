@@ -837,8 +837,20 @@ Only use information present in the transcript. Do not invent owners or decision
 
   registerLensAction("voice", "share-detail", (ctx, _a, params = {}) => {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = vcActor(ctx);
     const recId = vcClean(params.recordingId, 80);
+    // IDOR guard — matches segment-comment-add/-delete's established gate: the
+    // caller must own the recording OR be a listed collaborator on its share.
+    // Without this, any authenticated caller who knew (or enumerated) another
+    // user's recordingId could read the full share record — collaborator list
+    // + every segment comment on that recording — via a raw macro call, even
+    // though the frontend only ever calls this after opening a recording it
+    // already owns (recording-detail is itself owner-scoped).
+    const ownsIt = vcList(s, userId).some((r) => r.id === recId);
     const share = s.shares.get(recId);
+    if (!ownsIt && !(share && share.collaborators.includes(userId))) {
+      return { ok: false, error: "recording not found or not shared with you" };
+    }
     if (!share) return { ok: true, result: { shared: false, share: null } };
     return { ok: true, result: { shared: true, share } };
   });
@@ -875,8 +887,14 @@ Only use information present in the transcript. Do not invent owners or decision
 
   registerLensAction("voice", "segment-comments-list", (ctx, _a, params = {}) => {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = vcActor(ctx);
     const recId = vcClean(params.recordingId, 80);
+    // Same IDOR guard as share-detail above — owner or collaborator only.
+    const ownsIt = vcList(s, userId).some((r) => r.id === recId);
     const share = s.shares.get(recId);
+    if (!ownsIt && !(share && share.collaborators.includes(userId))) {
+      return { ok: false, error: "recording not found or not shared with you" };
+    }
     if (!share) return { ok: true, result: { comments: [], count: 0 } };
     let comments = share.comments;
     if (params.segmentId) {

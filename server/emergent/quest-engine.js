@@ -180,6 +180,12 @@ export function createQuest(title, config = {}) {
       // simply become no-op grants.
       rewards: (config.rewards && typeof config.rewards === "object") ? config.rewards : {},
       authoredId: typeof config.authoredId === "string" ? config.authoredId : null,
+      // Wave 4 — carries the authored moral_branch payload (description +
+      // options[], each with a reputation_change map) through to the
+      // engine's own quest object. See server/lib/quests/moral-branch.js for
+      // the runtime that applies a chosen option's reputation_change to the
+      // real faction/personal reputation substrate.
+      moralBranch: (config.moralBranch && typeof config.moralBranch === "object") ? config.moralBranch : null,
       progress: {
         userId: null,
         startedAt: null,

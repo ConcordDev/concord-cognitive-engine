@@ -6,7 +6,8 @@
 // submitted to /api/hidden-object/find/:runId; found targets accumulate.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Eye, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { Eye, X, CheckCircle2, Loader2, MapPin } from 'lucide-react';
+import { discoveryJuice, failureJuice, milestoneJuice } from '@/lib/concordia/juice';
 
 interface Result {
   ok: boolean;
@@ -18,6 +19,17 @@ interface Result {
   complete?: boolean;
 }
 
+interface FoundMarker {
+  id: string;
+  label?: string;
+  // Normalized [0,1] click position — the same coordinate space the
+  // click submitted to /api/hidden-object/find, so the marker lands
+  // exactly where the player clicked (which is guaranteed inside the
+  // matched target's bbox).
+  x: number;
+  y: number;
+}
+
 export function HiddenObjectScenePanel() {
   const [sceneId, setSceneId] = useState<string | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
@@ -25,6 +37,7 @@ export function HiddenObjectScenePanel() {
   const [title, setTitle] = useState('Hidden objects');
   const [progress, setProgress] = useState<{ found: number; total: number }>({ found: 0, total: 0 });
   const [lastResult, setLastResult] = useState<Result | null>(null);
+  const [markers, setMarkers] = useState<FoundMarker[]>([]);
   const [pending, setPending] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -32,6 +45,7 @@ export function HiddenObjectScenePanel() {
     setSceneId(id);
     setRunId(null);
     setLastResult(null);
+    setMarkers([]);
     setProgress({ found: 0, total: 0 });
     try {
       const playRes = await fetch(`/api/hidden-object/play/${id}`, {
@@ -76,11 +90,16 @@ export function HiddenObjectScenePanel() {
       setLastResult(j);
       if (j?.ok && j.found) {
         setProgress({ found: j.totalFound || 0, total: j.totalTargets || 0 });
+        setMarkers((prev) => [...prev, { id: j.foundId || `${x}:${y}`, label: j.label, x, y }]);
+        if (j.complete) milestoneJuice();
+        else discoveryJuice();
+      } else if (j?.ok && !j.found) {
+        failureJuice();
       }
     } finally { setPending(false); }
   }, [runId, pending]);
 
-  const close = () => { setSceneId(null); setRunId(null); setSceneDtuId(null); setLastResult(null); };
+  const close = () => { setSceneId(null); setRunId(null); setSceneDtuId(null); setLastResult(null); setMarkers([]); };
 
   if (!sceneId) return null;
 
@@ -128,6 +147,19 @@ export function HiddenObjectScenePanel() {
               <Loader2 className="animate-spin text-violet-400" size={20} />
             </div>
           )}
+          {/* Found-object markers — a persistent pin at each confirmed find so
+              the player sees what they've already cleared, not just a counter. */}
+          {markers.map((m) => (
+            <div
+              key={m.id}
+              data-testid="hidden-object-found-marker"
+              className="concordia-hud-fade pointer-events-none absolute -translate-x-1/2 -translate-y-full"
+              style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%` }}
+              title={m.label}
+            >
+              <MapPin size={20} className="text-amber-300 drop-shadow-[0_0_4px_rgba(0,0,0,0.8)]" fill="currentColor" />
+            </div>
+          ))}
           {pending && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
               <Loader2 className="animate-spin text-violet-300" size={20} />

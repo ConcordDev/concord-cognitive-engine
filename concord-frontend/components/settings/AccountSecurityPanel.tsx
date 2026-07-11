@@ -1,10 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import {
   Loader2, Shield, ShieldCheck, Monitor, LogOut, KeyRound, Link2, Unlink, Check,
 } from 'lucide-react';
+
+// Extracts the real backend error message from an axios rejection
+// (matches the `pickMessage` idiom used across other action panels —
+// e.g. components/bio/BioActionPanel.tsx).
+function pickMessage(e: unknown): string {
+  const ax = e as { response?: { data?: { error?: string } }; message?: string };
+  return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
+}
 
 interface Overview {
   twoFactorEnabled: boolean;
@@ -34,7 +42,10 @@ const PROVIDERS = ['github', 'google', 'discord', 'apple', 'steam'];
  * AccountSecurityPanel — the account / security surface: password change,
  * two-factor toggle (with recovery codes), active sessions with revoke, and
  * connected external accounts. Every value is from a real `settings.*`
- * macro; no value is fabricated.
+ * macro; no value is fabricated. Password change is two real steps: a
+ * `settings.changePassword` policy pre-check, then the actual credential
+ * rotation via `POST /api/auth/change-password` — success is only reported
+ * once the second (real) call succeeds.
  */
 export function AccountSecurityPanel() {
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -102,17 +113,29 @@ export function AccountSecurityPanel() {
     setError(null);
     setPwResult(null);
     try {
-      const r = await lensRun<{ note: string }>('settings', 'changePassword', {
+      // Step 1 — settings.changePassword is a fast in-lens policy
+      // pre-check ONLY (12+ chars, letters+numbers, differs from current).
+      // It does not touch the real credential — see server/domains/settings.js.
+      const pre = await lensRun<{ note: string }>('settings', 'changePassword', {
         currentPassword: currentPw, newPassword: newPw,
       });
-      if (r.data?.ok && r.data.result) {
-        setPwResult(r.data.result.note);
-        setCurrentPw('');
-        setNewPw('');
-        await load();
-      } else {
-        setError(r.data?.error || 'failed to change password');
+      if (!pre.data?.ok || !pre.data.result) {
+        setError(pre.data?.error || 'failed to change password');
+        return;
       }
+      // Step 2 — the REAL credential rotation. Only report success once
+      // this call actually succeeds; a prior version of this panel showed
+      // the step-1 pre-check's note as if it were a completed change,
+      // while the account's real password was never touched.
+      await api.post('/api/auth/change-password', {
+        currentPassword: currentPw, newPassword: newPw,
+      });
+      setPwResult('Password changed successfully.');
+      setCurrentPw('');
+      setNewPw('');
+      await load();
+    } catch (e) {
+      setError(pickMessage(e));
     } finally {
       setBusy(null);
     }
@@ -236,7 +259,7 @@ export function AccountSecurityPanel() {
             type="password"
             value={newPw}
             onChange={(e) => setNewPw(e.target.value)}
-            placeholder="New password (8+ chars, letters & numbers)"
+            placeholder="New password (12+ chars, letters & numbers)"
             aria-label="New password"
             className="w-full px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />

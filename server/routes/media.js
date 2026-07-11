@@ -65,6 +65,10 @@ function _mediaProviderConfigured() {
 const ALLOWED_UPLOAD_MIMES = new Set([
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
   'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac',
+  // audio/webm — the container MediaRecorder.getUserMedia produces in every
+  // Chromium/Firefox browser (e.g. the podcast lens's in-browser recorder).
+  // Same trusted container as the already-allowed video/webm, audio-only.
+  'audio/webm',
   'video/mp4', 'video/webm',
   'application/pdf',
   'text/plain', 'text/markdown', 'text/csv',
@@ -81,6 +85,7 @@ const MAGIC_BYTE_SIGNATURES = {
   'audio/ogg':   [[0x4F, 0x67, 0x67, 0x53]],
   'audio/flac':  [[0x66, 0x4C, 0x61, 0x43]],
   'video/mp4':   [[0x00, 0x00, 0x00], [0x66, 0x74, 0x79, 0x70]], // ftyp
+  'audio/webm':  [[0x1A, 0x45, 0xDF, 0xA3]], // EBML/Matroska container header
   'application/pdf': [[0x25, 0x50, 0x44, 0x46]],
 };
 

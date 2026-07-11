@@ -61,6 +61,15 @@ import { getTimeScale, getPlayerTimeScale } from '@/lib/concordia/use-time-scale
 import { useAvatarAnimator } from '@/hooks/useAvatarAnimator';
 import { useAvatarScars } from '@/hooks/useAvatarScars';
 import { serializableToGaitPose } from '@/lib/concordia/animator-protocol';
+// Wave 4 finding #8 — the live position broadcast that 9+ world-lens
+// satellite components read via window.__concordiaPlayerPos /
+// __concordiaNpcPositions. See the module doc comment for the full list
+// of consumers and the confirmed dead-global consequences this closes.
+import {
+  publishPlayerPosition,
+  publishNpcPositions,
+  clearPlayerPositionBroadcast,
+} from '@/lib/world-lens/player-position-broadcast';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -2777,7 +2786,12 @@ export default function AvatarSystem3D({
 
         // ── Interpolate NPCs (2Hz -> smooth) ────────────────
         const npcInterpFactor = Math.min(1, delta * NPC_UPDATE_RATE);
-        for (const [, data] of npcMeshes) {
+        // Wave 4 finding #8 — collected alongside the existing per-frame
+        // interpolation (no extra iteration) and published below so
+        // NPCSchemeOverhearTip's earshot gate has real NPC coordinates to
+        // compare against, not just the player's.
+        const npcPositionsOut: Record<string, { x: number; y: number; z: number }> = {};
+        for (const [id, data] of npcMeshes) {
           data.mesh.position.lerp(data.targetPos, npcInterpFactor);
           // Plant on the terrain surface (same reason as other players above).
           const gy = sampleGroundY(data.mesh.position.x, data.mesh.position.z);
@@ -2786,10 +2800,17 @@ export default function AvatarSystem3D({
           while (rd > Math.PI) rd -= Math.PI * 2;
           while (rd < -Math.PI) rd += Math.PI * 2;
           data.mesh.rotation.y += rd * npcInterpFactor;
+          npcPositionsOut[id] = { x: data.mesh.position.x, y: data.mesh.position.y, z: data.mesh.position.z };
         }
+        publishNpcPositions(npcPositionsOut);
 
         // ── LOD: distance-based visibility ───────────────────
         const playerPos = playerPositionRef.current;
+        // Wave 4 finding #8 — publish the live player position every frame.
+        // playerPos IS playerPositionRef.current (mutated in place by the
+        // physics loop above), so this is a plain property assignment with
+        // zero extra allocation — no throttling needed.
+        publishPlayerPosition(playerPos);
         const pVec = new THREE.Vector3(playerPos.x, playerPos.y, playerPos.z);
 
         avatarGroup.traverse((child) => {
@@ -2844,6 +2865,10 @@ export default function AvatarSystem3D({
         try { weaponTrailRef.current?.dispose(); } catch { /* ok */ }
         weaponTrailRef.current = null;
         physicsWorld.removeCharacter('player');
+        // Wave 4 finding #8 — stop broadcasting position once this avatar
+        // system unmounts, so a stale pointer doesn't leak into a lens
+        // where AvatarSystem3D isn't mounted.
+        clearPlayerPositionBroadcast();
       };
     }
 

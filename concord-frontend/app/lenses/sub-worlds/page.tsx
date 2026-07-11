@@ -11,7 +11,9 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useWorldTravel } from '@/hooks/useWorldTravel';
 import { Compass, Boxes, Star, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -19,6 +21,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { PortalLoadScreen } from '@/components/world/PortalLoadScreen';
 import { MetaverseRepos } from '@/components/sub-worlds/MetaverseRepos';
 import { WorldCard, type SubWorld } from '@/components/sub-worlds/WorldCard';
 import { WorldSettingsPanel } from '@/components/sub-worlds/WorldSettingsPanel';
@@ -36,12 +39,16 @@ export default function SubWorldsPage() {
     { id: 'sub-worlds-mine', keys: 'g m', description: 'My worlds', category: 'navigation', action: () => setTab('mine') },
   ], { lensId: 'sub-worlds' });
 
+  const router = useRouter();
+  const travelHook = useWorldTravel();
+
   const [tab, setTab] = useState<Tab>('discover');
   const [worlds, setWorlds] = useState<SubWorld[]>([]);
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [travelingWorldId, setTravelingWorldId] = useState<string | null>(null);
 
   // discovery filters
   const [query, setQuery] = useState('');
@@ -122,14 +129,30 @@ export default function SubWorldsPage() {
     }
   };
 
+  // Enter is a REAL cross-world jump, not a toast that pretends one
+  // happened. `sub_worlds.visit` first enforces the lens's own privacy/
+  // archived rules and bumps visit/visitor counters; only once that
+  // succeeds do we hand off to the actual world-travel system
+  // (`useWorldTravel`, the same hook `/lenses/world/travel` uses) and
+  // route the player into the 3D world lens where the destination
+  // renders. A travel failure (e.g. a world spawned before the backend
+  // learned to mirror it into the real `worlds` table) surfaces as an
+  // honest error — it never claims success it can't back up.
   const visit = async (w: SubWorld) => {
     const r = await lensRun('sub_worlds', 'visit', { worldId: w.world_id });
-    if (r.data?.ok) {
-      const dest = (r.data.result as any).travel?.destination_world_id;
-      flash(`Entering "${w.name}" — routing to world-travel (${dest}).`);
-      await refresh();
-    } else {
+    if (!r.data?.ok) {
       flash(`Cannot enter: ${r.data?.error || 'unknown'}`);
+      return;
+    }
+    await refresh();
+    setTravelingWorldId(w.world_id);
+    try {
+      await travelHook.travel(w.world_id);
+      router.push('/lenses/world');
+    } catch (e: any) {
+      flash(`Could not enter "${w.name}": ${e?.message || 'travel failed'}.`);
+    } finally {
+      setTravelingWorldId(null);
     }
   };
 
@@ -162,6 +185,12 @@ export default function SubWorldsPage() {
 
   return (
     <LensShell lensId="sub-worlds">
+      <PortalLoadScreen
+        phase={travelHook.phase}
+        targetWorldId={travelHook.targetWorldId}
+        error={travelHook.error}
+        onRetry={() => travelHook.targetWorldId && travelHook.travel(travelHook.targetWorldId).then(() => router.push('/lenses/world')).catch(() => {})}
+      />
       <FirstRunTour lensId="sub-worlds" />
       <DepthBadge lensId="sub-worlds" size="sm" className="ml-2" />
       <div className="p-6 sm:p-8 max-w-5xl mx-auto">
@@ -337,6 +366,7 @@ export default function SubWorldsPage() {
                 key={w.world_id}
                 world={w}
                 favorited={favIds.has(w.world_id)}
+                traveling={travelingWorldId === w.world_id}
                 onVisit={() => visit(w)}
                 onFavorite={() => toggleFavorite(w)}
                 onManage={w.is_owner ? () => manage(w) : undefined}

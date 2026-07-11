@@ -11,11 +11,11 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FormalVerificationRepos } from '@/components/invariant/FormalVerificationRepos';
 import { FormalVerificationWorkbench } from '@/components/invariant/FormalVerificationWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { Shield, Check, X, AlertTriangle, Lock, Eye, Zap, Loader2, Layers, ChevronDown, Gauge, Scale, ShieldOff, Activity, Ban, CheckCircle2, BarChart3, Play } from 'lucide-react';
+import { Shield, Check, X, AlertTriangle, Lock, Eye, Zap, Loader2, Layers, ChevronDown, Gauge, CheckCircle2, BarChart3, Play } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -53,6 +53,40 @@ export default function InvariantLensPage() {
   const runAction = useRunArtifact('invariant');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  // Live Verification Activity summary — real counts pulled from the same
+  // invariant.listMonitors / invariant.violationHistory macros the Formal
+  // Verification Workbench below uses (server/domains/invariant.js). Fetched
+  // once on mount; the workbench itself is the live, refreshable detail view.
+  const [wbSummary, setWbSummary] = useState<{ monitorsActive: number; monitorsTotal: number; violationsOpen: number; violationsCritHigh: number } | null>(null);
+  const [wbSummaryLoading, setWbSummaryLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [monRes, vioRes] = await Promise.all([
+          lensRun<{ summary?: { total: number; active: number; violating: number } }>('invariant', 'listMonitors', {}),
+          lensRun<{ summary?: { open: number; critical: number; high: number } }>('invariant', 'violationHistory', { resolved: false }),
+        ]);
+        if (cancelled) return;
+        const mon = monRes.data?.result?.summary;
+        const vio = vioRes.data?.result?.summary;
+        if (mon || vio) {
+          setWbSummary({
+            monitorsActive: mon?.active ?? 0,
+            monitorsTotal: mon?.total ?? 0,
+            violationsOpen: vio?.open ?? 0,
+            violationsCritHigh: (vio?.critical ?? 0) + (vio?.high ?? 0),
+          });
+        }
+      } catch (e) {
+        console.error('[Invariant] Failed to load verification activity summary:', e);
+      } finally {
+        if (!cancelled) setWbSummaryLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleAction = async (action: string) => {
     let targetId = invariantItems[0]?.id;
@@ -111,15 +145,24 @@ export default function InvariantLensPage() {
     };
   });
 
-  // Wire Action Invariant Tester to real backend via apiHelpers.lens.run
+  // Wire Action Invariant Tester to the real invariant.testAction macro
+  // (server/domains/invariant.js) — deterministic keyword matching against
+  // the caller's own authored invariants, called directly through the
+  // macro system (POST /api/lens/run), same path the Formal Verification
+  // Workbench below uses. Previously this hit apiHelpers.lens.run('invariant',
+  // 'test', ...) — the artifact-scoped endpoint (`/api/lens/invariant/test/run`)
+  // treating the literal string "test" as an artifact id, which always
+  // resolved to `{ ok:false, error:"not found" }` and — since that 200
+  // response never threw — silently rendered "Action was blocked" for every
+  // input regardless of what was typed. Fixed to call the real macro.
   const testMut = useMutation({
     mutationFn: async (text: string) => {
-      // Use a stable invariant ID — 'test' is the virtual runner ID for invariant checking
-      const { data } = await apiHelpers.lens.run('invariant', 'test', {
-        action: 'check',
-        params: { text },
-      });
-      return data as { ok: boolean; passed: boolean; message: string; violations?: string[] };
+      const invariantSpecs = invariants.map((inv) => ({ name: inv.name, description: inv.description }));
+      const { data } = await lensRun<{ passed: boolean; message: string; violations?: string[] }>(
+        'invariant', 'testAction', { text, invariants: invariantSpecs }
+      );
+      if (!data.ok || !data.result) throw new Error(data.error || 'Invariant test failed');
+      return data.result;
     },
     onError: (err) => console.error('testMut failed:', err instanceof Error ? err.message : err),
   });
@@ -132,34 +175,16 @@ export default function InvariantLensPage() {
 
     try {
       const result = await testMut.mutateAsync(testAction);
+      setTestResult({ passed: result.passed, message: result.message });
+    } catch (e) {
+      // Honest failure — never fabricate a passed/blocked verdict when the
+      // backend call itself failed.
       setTestResult({
-        passed: result.passed,
-        message: result.message || (result.passed ? 'Action passes all invariant checks' : 'Action was blocked'),
+        passed: false,
+        message: `Check failed: ${e instanceof Error ? e.message : 'backend error'}`,
       });
-    } catch {
-      // Fallback: local check if the backend endpoint is not yet deployed
-      const lowerAction = testAction.toLowerCase();
-      const violations = invariants.filter((inv) => {
-        if (inv.name === 'NO_TELEMETRY' && lowerAction.includes('track')) return true;
-        if (inv.name === 'NO_ADS' && lowerAction.includes('advertise')) return true;
-        if (inv.name === 'NO_RESALE' && lowerAction.includes('sell data')) return true;
-        if (inv.name === 'NO_DARK_PATTERNS' && lowerAction.includes('manipulate')) return true;
-        return false;
-      });
-
-      if (violations.length > 0) {
-        setTestResult({
-          passed: false,
-          message: `Blocked by: ${violations.map((v) => v.name).join(', ')}`,
-        });
-      } else {
-        setTestResult({
-          passed: true,
-          message: 'Action passes all invariant checks',
-        });
-      }
     }
-  }, [testAction, testMut, invariants]);
+  }, [testAction, testMut]);
 
   const enforcedCount = invariants.filter((i) => i.status === 'enforced').length;
   const isTesting = testMut.isPending;
@@ -480,9 +505,9 @@ export default function InvariantLensPage() {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-2xl font-bold text-neon-green">
-                    {invariants.length > 0 ? Math.round((enforcedCount / invariants.length) * 100) : 95}%
+                    {invariants.length > 0 ? `${Math.round((enforcedCount / invariants.length) * 100)}%` : '—'}
                   </span>
-                  <span className="text-[10px] text-gray-400">enforced</span>
+                  <span className="text-[10px] text-gray-400">{invariants.length > 0 ? 'enforced' : 'no invariants yet'}</span>
                 </div>
               </div>
             </div>
@@ -502,113 +527,69 @@ export default function InvariantLensPage() {
             </div>
           </div>
 
-          {/* Marketplace Fairness Score */}
+          {/* By Category — real counts derived from the caller's authored invariant set */}
           <div className="bg-lattice-deep rounded-lg p-4 border border-white/5">
             <div className="flex items-center gap-2 mb-3">
-              <Scale className="w-4 h-4 text-neon-purple" />
-              <h3 className="text-sm font-semibold">Marketplace Fairness</h3>
+              <Layers className="w-4 h-4 text-neon-purple" />
+              <h3 className="text-sm font-semibold">By Category</h3>
             </div>
-            <div className="space-y-3">
-              {[
-                { metric: 'Equal Access', score: 98, icon: Check },
-                { metric: 'Price Transparency', score: 96, icon: Eye },
-                { metric: 'No Preferential Treatment', score: 94, icon: Scale },
-                { metric: 'Open Competition', score: 91, icon: Activity },
-              ].map((item) => (
-                <div key={item.metric}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <item.icon className="w-3 h-3" />
-                      {item.metric}
-                    </span>
-                    <span className={`text-xs font-mono ${
-                      item.score >= 95 ? 'text-neon-green' :
-                      item.score >= 90 ? 'text-neon-cyan' : 'text-yellow-500'
-                    }`}>{item.score}%</span>
-                  </div>
-                  <div className="h-1 bg-lattice-void rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${
-                        item.score >= 95 ? 'bg-neon-green' :
-                        item.score >= 90 ? 'bg-neon-cyan' : 'bg-yellow-500'
-                      }`}
-                      style={{ width: `${item.score}%` }}
-                    />
-                  </div>
+            {invariants.length === 0 ? (
+              <p className="text-xs text-gray-400">No invariants authored yet — categories populate once one exists.</p>
+            ) : (
+              <div className="space-y-3">
+                {(['ethos', 'structural', 'capability'] as const).map((cat) => {
+                  const total = invariants.filter((i) => i.category === cat).length;
+                  const pct = Math.round((total / invariants.length) * 100);
+                  return (
+                    <div key={cat}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-400 capitalize">{cat}</span>
+                        <span className="text-xs font-mono text-gray-300">{total} ({pct}%)</span>
+                      </div>
+                      <div className="h-1 bg-lattice-void rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-neon-purple" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+                  <span className="text-gray-400">Frozen (locked)</span>
+                  <span className="font-mono text-gray-300">{invariants.filter((i) => i.frozen).length} / {invariants.length}</span>
                 </div>
-              ))}
-              <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                <span className="text-xs text-gray-400">Composite Score</span>
-                <span className="text-sm font-bold text-neon-purple">94.8%</span>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Data Selling Prevention */}
+          {/* Live Verification Activity — real counts from the Formal Verification
+              Workbench's monitor + violation-history macros (server/domains/invariant.js) */}
           <div className="bg-lattice-deep rounded-lg p-4 border border-white/5">
             <div className="flex items-center gap-2 mb-3">
-              <ShieldOff className="w-4 h-4 text-neon-cyan" />
-              <h3 className="text-sm font-semibold">Data Selling Prevention</h3>
+              <Gauge className="w-4 h-4 text-neon-cyan" />
+              <h3 className="text-sm font-semibold">Live Verification Activity</h3>
             </div>
-            <div className="space-y-3">
-              {[
-                { guard: 'Outbound Data Filter', status: 'active', blocked: 142 },
-                { guard: 'PII Scrubbing Engine', status: 'active', blocked: 89 },
-                { guard: 'Third-Party API Gate', status: 'active', blocked: 37 },
-                { guard: 'Data Broker Blacklist', status: 'active', blocked: 256 },
-              ].map((guard) => (
-                <div key={guard.guard} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
-                    <span className="text-xs">{guard.guard}</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-neon-cyan bg-neon-cyan/10 px-1.5 py-0.5 rounded">
-                    {guard.blocked} blocked
-                  </span>
+            {wbSummaryLoading ? (
+              <p className="text-xs text-gray-400 flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
+            ) : wbSummary ? (
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Continuous monitors</span>
+                  <span className="font-mono text-gray-200">{wbSummary.monitorsActive} active / {wbSummary.monitorsTotal} total</span>
                 </div>
-              ))}
-              <div className="pt-3 border-t border-white/5">
-                <div className="flex items-center gap-2 p-2 bg-neon-green/5 rounded-lg border border-neon-green/20">
-                  <Ban className="w-4 h-4 text-neon-green" />
-                  <div>
-                    <p className="text-xs font-semibold text-neon-green">NO_RESALE Invariant</p>
-                    <p className="text-[10px] text-gray-400">Zero data selling events detected. All egress monitored.</p>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Open violations</span>
+                  <span className={`font-mono ${wbSummary.violationsOpen > 0 ? 'text-neon-pink' : 'text-neon-green'}`}>{wbSummary.violationsOpen}</span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Critical / high</span>
+                  <span className={`font-mono ${wbSummary.violationsCritHigh > 0 ? 'text-red-400' : 'text-neon-green'}`}>{wbSummary.violationsCritHigh}</span>
+                </div>
+                <p className="pt-2 border-t border-white/5 text-[10px] text-gray-500">
+                  Register monitors + inspect history in the Formal Verification Workbench above.
+                </p>
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Total attempts blocked</span>
-                <span className="font-mono text-neon-green font-bold">524</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Invariant Health Timeline */}
-        <div className="bg-lattice-deep rounded-lg p-4 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <Activity className="w-4 h-4 text-neon-green" />
-            <h3 className="text-sm font-semibold">Invariant Health Timeline</h3>
-          </div>
-          <div className="flex items-center gap-1 h-8">
-            {Array.from({ length: 24 }).map((_, i) => {
-              const health = i === 14 ? 'warning' : i === 7 ? 'warning' : 'healthy';
-              return (
-                <div
-                  key={i}
-                  className={`flex-1 rounded-sm transition-colors ${
-                    health === 'healthy' ? 'bg-neon-green/30 hover:bg-neon-green/50' :
-                    health === 'warning' ? 'bg-yellow-500/30 hover:bg-yellow-500/50' : 'bg-neon-pink/30'
-                  }`}
-                  title={`${23 - i}h ago: ${health}`}
-                  style={{ height: health === 'healthy' ? '100%' : '70%' }}
-                />
-              );
-            })}
-          </div>
-          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-            <span>24h ago</span>
-            <span>Now</span>
+            ) : (
+              <p className="text-xs text-gray-400">No monitors registered yet — start one in the Formal Verification Workbench above.</p>
+            )}
           </div>
         </div>
       </div>

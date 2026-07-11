@@ -59,7 +59,10 @@ export function CreatorHub() {
       setForm({ title: '', body: '', minTier: 'public', kind: 'post' });
       await loadCreator(creatorId);
     } else {
-      flash(`Failed: ${r.data?.error || 'unknown'}`);
+      const reason = r.data?.error || 'unknown';
+      flash(reason === 'admin_only'
+        ? "Your account isn't an admin — publishing creator content is admin-only."
+        : `Failed: ${reason}`);
     }
   };
 
@@ -82,6 +85,7 @@ export function CreatorHub() {
 
       <section className="bg-zinc-900/80 border border-emerald-800/50 rounded-xl p-3 space-y-2">
         <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider">Publish sponsor-only content</h3>
+        <p className="text-[10px] text-zinc-400">Admin-only: NPC creators have no linked player account, so authoring their official dispatches is restricted to operators.</p>
         <input
           type="text" placeholder="Post title"
           value={form.title}

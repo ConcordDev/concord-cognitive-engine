@@ -1,5 +1,26 @@
 // server/domains/admin.js
 // Domain actions for system administration: audit log analysis, permission matrix, system health scoring.
+//
+// ADMIN GATE: this is an operator console — the frontend admin lens renders
+// <AdminRequiredState> on forbidden and the ops-console panels (audit log
+// analysis, permission-matrix analysis, system health scoring, the
+// Datadog/Grafana-parity backlog: metrics ingest, alert rules, tenant
+// suspend/role/quota actions, log search, distributed traces, feature
+// flags, incident timeline) all mutate or read operator-only state. Every
+// macro below enforces the gate IN-HANDLER off ctx.actor.role — same idiom
+// as domains/announcements.js's `announcements.post` and domains/psyops.js's
+// `requireOperatorRole`. A non-admin/owner/founder caller gets a denial
+// whose message matches the frontend's `isForbidden()` regex
+// (`/insufficient permission/i`) so the page correctly flips to the
+// friendly gate instead of silently granting any authenticated user the
+// ability to suspend tenants, escalate their own tenant role, open/resolve
+// incidents, or tamper with alert rules and feature flags.
+
+function requireAdminRole(ctx) {
+  const role = ctx?.actor?.role || "";
+  if (["owner", "admin", "founder"].includes(role)) return null;
+  return { ok: false, error: "Insufficient permissions: admin role required" };
+}
 
 export default function registerAdminActions(registerLensAction) {
   /**
@@ -12,6 +33,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "auditLog", (ctx, artifact, params) => {
   try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
     const entries = artifact.data.entries || [];
     if (entries.length === 0) {
       return { ok: true, result: { message: "No audit log entries to analyze." } };
@@ -188,6 +210,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "permissionMatrix", (ctx, artifact, params) => {
   try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
     const roles = artifact.data.roles || [];
     const users = artifact.data.users || [];
     const sodRules = artifact.data.sodRules || [];
@@ -326,6 +349,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "systemHealth", (ctx, artifact, params) => {
   try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
     const metrics = artifact.data.metrics || [];
     if (metrics.length === 0) {
       return { ok: true, result: { message: "No metrics data provided." } };
@@ -550,6 +574,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "recordMetric", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const metric = String((params && params.metric) || "").trim();
       if (!metric) return { ok: false, error: "metric is required" };
       const value = Number(params && params.value);
@@ -577,6 +602,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "metricHistory", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const metric = String((params && params.metric) || "").trim();
       const st = adminState();
       const rangeMinutes = clampNum(params && params.rangeMinutes, 5, 2880, 1440);
@@ -659,6 +685,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "alertRuleUpsert", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const input = (params && params.rule) || {};
       const name = String(input.name || "").trim();
       const metric = String(input.metric || "").trim();
@@ -698,6 +725,7 @@ export default function registerAdminActions(registerLensAction) {
   /** alertRuleDelete — remove an alert rule. params.ruleId */
   registerLensAction("admin", "alertRuleDelete", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const ruleId = String((params && params.ruleId) || "");
       const st = adminState();
       if (!st.alertRules.has(ruleId)) return { ok: false, error: "rule not found" };
@@ -714,6 +742,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "alertEvaluate", (ctx, artifact) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
       const rules = [...st.alertRules.values()];
       const evaluated = rules.map((rule) => {
@@ -793,6 +822,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "tenantAction", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const userId = String((params && params.userId) || "").trim();
       if (!userId) return { ok: false, error: "userId is required" };
       const action = String((params && params.action) || "").trim();
@@ -837,6 +867,7 @@ export default function registerAdminActions(registerLensAction) {
   /** tenantList — list all managed tenants. params.filter? ('suspended'|'all') */
   registerLensAction("admin", "tenantList", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
       const filter = String((params && params.filter) || "all");
       let tenants = [...st.tenants.values()];
@@ -875,6 +906,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "logAppend", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const level = LOG_LEVELS.includes(params && params.level) ? params.level : "info";
       const message = String((params && params.message) || "").trim();
       if (!message) return { ok: false, error: "message is required" };
@@ -905,6 +937,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "logSearch", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
       const minLevel = LOG_LEVELS.includes(params && params.minLevel) ? params.minLevel : "debug";
       const minRank = LOG_RANK[minLevel];
@@ -950,6 +983,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "traceRecord", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const input = (params && params.trace) || {};
       const endpoint = String(input.endpoint || "").trim();
       if (!endpoint) return { ok: false, error: "trace.endpoint is required" };
@@ -1012,6 +1046,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "traceList", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
       const minMs = clampNum(params && params.minMs, 0, 600000, 0);
       const endpoint = String((params && params.endpoint) || "").toLowerCase();
@@ -1061,6 +1096,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "featureFlagSet", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
       if (params && params.toggle) {
         const flag = st.featureFlags.get(String(params.toggle));
@@ -1098,6 +1134,7 @@ export default function registerAdminActions(registerLensAction) {
   /** featureFlagList — list all feature flags. */
   registerLensAction("admin", "featureFlagList", (ctx, artifact) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
       const flags = [...st.featureFlags.values()].sort((a, b) => a.key.localeCompare(b.key));
       return {
@@ -1130,6 +1167,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "incidentOpen", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const title = String((params && params.title) || "").trim();
       if (!title) return { ok: false, error: "title is required" };
       const severity = INCIDENT_SEVERITIES.includes(params && params.severity)
@@ -1165,6 +1203,7 @@ export default function registerAdminActions(registerLensAction) {
    */
   registerLensAction("admin", "incidentUpdate", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const incidentId = String((params && params.incidentId) || "");
       const st = adminState();
       const incident = st.incidents.get(incidentId);
@@ -1210,6 +1249,7 @@ export default function registerAdminActions(registerLensAction) {
   /** incidentList — list incidents with timelines. params.status? ('open'|'active'|'resolved'|'all') */
   registerLensAction("admin", "incidentList", (ctx, artifact, params) => {
     try {
+    const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
       const filter = String((params && params.status) || "all");
       let incidents = [...st.incidents.values()];

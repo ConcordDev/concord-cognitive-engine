@@ -15,23 +15,52 @@
 // system on a disconnected shadow post).
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun } from "./_harness.js";
+import { randomUUID } from "node:crypto";
+import { lensRun, load, depthCtx } from "./_harness.js";
 
 describe("feed — rank (real engagement/velocity/decay scoring, not fabricated)", () => {
   it("computes a higher score for a post with more engagement", async () => {
-    const low = await lensRun("feed", "rank", { data: { likes: 1, reposts: 0, bookmarked: false, commentCount: 0, createdAt: new Date().toISOString() } });
-    const high = await lensRun("feed", "rank", { data: { likes: 50, reposts: 10, bookmarked: true, commentCount: 20, createdAt: new Date().toISOString() } });
-    assert.equal(low.ok, true);
-    assert.equal(high.ok, true);
-    assert.ok(high.rank.score > low.rank.score, "more-engaged post ranks higher");
-    assert.equal(high.rank.factors.bookmarks, 1);
-    assert.equal(high.rank.factors.reposts, 10);
+    // feed.rank/feed.personalize both treat `reposts` as an ARRAY of repost
+    // events (`.length` in rank; `.some(r => r.reposterId)` in personalize —
+    // matching the real repost-action handler that appends objects to this
+    // field), not a plain count. A bare number here silently produces
+    // NaN/null scores (numbers have no `.length`) — this is the real,
+    // established contract for these two macros specifically (a separate,
+    // unrelated part of this file uses a numeric reposts counter for a
+    // different macro — not what's under test here).
+    const low = await lensRun("feed", "rank", { data: { likes: 1, reposts: [], bookmarked: false, commentCount: 0, createdAt: new Date().toISOString() } });
+    const high = await lensRun("feed", "rank", { data: { likes: 50, reposts: Array.from({ length: 10 }, (_, i) => ({ reposterId: `user${i}` })), bookmarked: true, commentCount: 20, createdAt: new Date().toISOString() } });
+    // lensRun wraps the handler's own return under `.result` (the handler's
+    // own `ok`/`rank` fields live one level down — `.result.ok`/`.result.rank`,
+    // not `.ok`/`.rank` directly on lensRun's return).
+    assert.equal(low.result.ok, true);
+    assert.equal(high.result.ok, true);
+    assert.ok(high.result.rank.score > low.result.rank.score, "more-engaged post ranks higher");
+    assert.equal(high.result.rank.factors.bookmarks, 1);
+    assert.equal(high.result.rank.factors.reposts, 10);
   });
 
   it("decays score for an older post at equal engagement", async () => {
-    const fresh = await lensRun("feed", "rank", { data: { likes: 10, reposts: 2, createdAt: new Date().toISOString() } });
-    const old = await lensRun("feed", "rank", { data: { likes: 10, reposts: 2, createdAt: new Date(Date.now() - 96 * 3600000).toISOString() } });
-    assert.ok(fresh.rank.factors.decayFactor > old.rank.factors.decayFactor, "older post has lower decay factor");
+    // feed.rank reads `artifact.createdAt` (the artifact's own timestamp),
+    // not `artifact.data.createdAt` — lensRun's generic artifact-creation
+    // helper doesn't set the former, so this behavior can only be exercised
+    // by constructing the artifact directly (matching what lensRun does
+    // internally) with an explicit createdAt override.
+    const { runMacro, STATE } = await load();
+    const ctx = await depthCtx("depth:feed:decay");
+    const freshId = `depth-feed-fresh-${randomUUID()}`;
+    STATE.lensArtifacts.set(freshId, {
+      id: freshId, domain: "feed", type: "feed", data: { likes: 10, reposts: [{ reposterId: "u1" }, { reposterId: "u2" }] },
+      ownerId: ctx.actor.userId, createdBy: ctx.actor.userId, createdAt: new Date().toISOString(),
+    });
+    const oldId = `depth-feed-old-${randomUUID()}`;
+    STATE.lensArtifacts.set(oldId, {
+      id: oldId, domain: "feed", type: "feed", data: { likes: 10, reposts: [{ reposterId: "u1" }, { reposterId: "u2" }] },
+      ownerId: ctx.actor.userId, createdBy: ctx.actor.userId, createdAt: new Date(Date.now() - 96 * 3600000).toISOString(),
+    });
+    const fresh = await runMacro("lens", "run", { id: freshId, action: "rank", params: {} }, ctx);
+    const old = await runMacro("lens", "run", { id: oldId, action: "rank", params: {} }, ctx);
+    assert.ok(fresh.result.rank.factors.decayFactor > old.result.rank.factors.decayFactor, "older post has lower decay factor");
   });
 });
 
@@ -39,31 +68,45 @@ describe("feed — personalize (real per-author affinity learned from interactio
   it("relevanceScore is an honest 0 for a cold-start user with no interaction history", async () => {
     // Build interaction history: same user likes a "music" post, then asks for a
     // personalize score on a new post that shares the "music" tag.
-    const { depthCtx } = await import("./_harness.js");
     const userCtx = await depthCtx("depth:feed:personalize");
     const liked = await lensRun("feed", "personalize", {
       data: { tags: ["music"], authorId: "alice", createdAt: new Date().toISOString() },
     }, userCtx);
-    assert.equal(liked.ok, true);
+    assert.equal(liked.result.ok, true);
     // With zero prior interactions, relevance is 0 (honest cold-start, not fabricated).
-    assert.equal(liked.personalized.relevanceScore, 0);
-    assert.equal(liked.personalized.totalInteractionsAnalyzed, 0);
+    assert.equal(liked.result.personalized.relevanceScore, 0);
+    assert.equal(liked.result.personalized.totalInteractionsAnalyzed, 0);
   });
 });
 
 describe("feed — cluster_topics (real tag co-occurrence, not invented topics)", () => {
   it("returns 0 topics when no tagged posts exist for this user's fresh artifacts", async () => {
     const r = await lensRun("feed", "cluster_topics", { data: {} });
-    assert.equal(r.ok, true);
-    assert.ok(Array.isArray(r.clusters));
-    assert.ok(typeof r.totalTopics === "number");
+    assert.equal(r.result.ok, true);
+    assert.ok(Array.isArray(r.result.clusters));
+    assert.ok(typeof r.result.totalTopics === "number");
   });
 
   it("clusters tags that co-occur on the same post", async () => {
-    await lensRun("feed", "cluster_topics", { data: { tags: ["jazz", "vinyl"] } });
-    const r = await lensRun("feed", "cluster_topics", { data: { tags: ["jazz", "vinyl"] } });
-    assert.equal(r.ok, true);
-    const jazzCluster = r.clusters.find((c) => c.topic === "jazz");
+    // cluster_topics scans STATE.lensDomainIndex (a domain → Set<artifactId>
+    // index lens.create normally populates), not STATE.lensArtifacts
+    // directly — lensRun's generic artifact-creation helper writes only to
+    // lensArtifacts, so an artifact created that way is invisible to this
+    // macro's scan. Register it in the index directly, matching what the
+    // real create path does (server.js's _lensDomainIndexAdd).
+    const { runMacro, STATE } = await load();
+    const ctx = await depthCtx("depth:feed:cluster");
+    const id = `depth-feed-cluster-${randomUUID()}`;
+    STATE.lensArtifacts.set(id, {
+      id, domain: "feed", type: "feed", data: { tags: ["jazz", "vinyl"] },
+      ownerId: ctx.actor.userId, createdBy: ctx.actor.userId,
+    });
+    if (!STATE.lensDomainIndex.has("feed")) STATE.lensDomainIndex.set("feed", new Set());
+    STATE.lensDomainIndex.get("feed").add(id);
+
+    const r = await runMacro("lens", "run", { id, action: "cluster_topics", params: {} }, ctx);
+    assert.equal(r.result.ok, true);
+    const jazzCluster = r.result.clusters.find((c) => c.topic === "jazz");
     assert.ok(jazzCluster, "jazz appears as a topic");
     assert.ok(jazzCluster.postCount >= 1);
     if (jazzCluster.related.length > 0) {

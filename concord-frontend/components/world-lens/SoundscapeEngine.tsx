@@ -212,6 +212,7 @@ const SFX_ALIASES: Record<string, string> = {
   ui_npc_menu_open: 'snap-click', ui_workbench_open: 'snap-click', ui_workbench_close: 'snap-click',
   // farming / restaurant
   ui_seed_plant: 'gather-tick', ui_crop_harvest: 'gather-success', ui_dish_serve: 'gather-success',
+  ui_water: 'footstep-water',
   // trivia
   ui_trivia_correct: 'gather-success', ui_trivia_wrong: 'gather-miss',
   // hacking / terminal
@@ -521,6 +522,7 @@ export default function SoundscapeEngine({
   const masterGainRef   = useRef<GainNode | null>(null);
   const droneOscRef     = useRef<OscillatorNode | null>(null);
   const droneGainRef    = useRef<GainNode | null>(null);
+  const noiseSourceRef  = useRef<AudioBufferSourceNode | null>(null);
   const noiseGainRef    = useRef<GainNode | null>(null);
   const musicElRef      = useRef<HTMLAudioElement | null>(null);
   const weatherSrcRef   = useRef<AudioBufferSourceNode | null>(null);
@@ -579,6 +581,14 @@ export default function SoundscapeEngine({
       if (droneGainRef.current) {
         droneGainRef.current.gain.setValueAtTime(0, audioCtxRef.current?.currentTime ?? 0);
       }
+      // Stop any existing noise layer — a silent district (e.g. transitioning
+      // into 'silent') must actually be silent, not just skip creating a new
+      // noise source while the previous looping one keeps playing.
+      try { noiseSourceRef.current?.stop(); } catch { /* already stopped */ }
+      noiseSourceRef.current = null;
+      if (noiseGainRef.current) {
+        noiseGainRef.current.gain.setValueAtTime(0, audioCtxRef.current?.currentTime ?? 0);
+      }
       return;
     }
 
@@ -613,6 +623,18 @@ export default function SoundscapeEngine({
       droneGainRef.current = gain;
     }
 
+    // Stop previous noise layer — mirrors the drone teardown above. A
+    // still-looping AudioBufferSourceNode with no JS references is NOT
+    // garbage-collected per the Web Audio spec (only a finished source is
+    // eligible), so an un-stopped source keeps playing and audibly layers
+    // with each new one built on district/time/interior change.
+    const prevNoiseSource = noiseSourceRef.current;
+    const prevNoiseGain   = noiseGainRef.current;
+    if (prevNoiseGain) {
+      prevNoiseGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+    }
+    setTimeout(() => { try { prevNoiseSource?.stop(); } catch { /* ok */ } }, 600);
+
     // Noise layer
     if (districtCfg.noise > 0) {
       const bufferSize = ctx.sampleRate * 2;
@@ -633,7 +655,10 @@ export default function SoundscapeEngine({
       filter.connect(noiseGain);
       noiseGain.connect(masterGainRef.current);
       noiseSource.start();
+      noiseSourceRef.current = noiseSource;
       noiseGainRef.current = noiseGain;
+    } else {
+      noiseSourceRef.current = null;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentDistrict, state.timeOfDay, state.isInterior]);
@@ -857,9 +882,33 @@ export default function SoundscapeEngine({
   useEffect(() => {
     return () => {
       try { droneOscRef.current?.stop(); } catch { /* ok */ }
+      try { noiseSourceRef.current?.stop(); } catch { /* ok */ }
       try { weatherSrcRef.current?.stop(); } catch { /* ok */ }
       try { weatherRumbleRef.current?.stop(); } catch { /* ok */ }
       musicElRef.current?.pause();
+      // Close the AudioContext itself. This is the actual fix for the
+      // stacking-context leak: the individual .stop() calls above only
+      // silence the source nodes THIS effect knows about — close() is
+      // the backstop that tears down every remaining connected node
+      // (weather filter/gain, master gain, any music-layer/horror-stem
+      // nodes not explicitly stopped elsewhere) and releases the context
+      // so a re-mount of this component (re-entering /lenses/world)
+      // doesn't stack a second live AudioContext on top of this one —
+      // browsers (Safari especially) cap concurrent contexts. Calling
+      // .stop() on a node whose context has already closed is a no-op,
+      // not a throw, but we close LAST so the explicit stops above still
+      // run against a live context first.
+      // audioCtxRef holds an AudioContext value, not a React-rendered DOM
+      // node; we want the LIVE ref read at unmount time (not a value
+      // captured at mount), since the context may not exist yet when this
+      // effect's setup phase runs (e.g. initialDistrict='silent' defers
+      // creation to a later user action) — capturing a stale mount-time
+      // value would make close() a permanent no-op for that path.
+      /* eslint-disable react-hooks/exhaustive-deps */
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        try { void audioCtxRef.current.close(); } catch { /* ok */ }
+      }
+      /* eslint-enable react-hooks/exhaustive-deps */
     };
   }, []);
 
@@ -1216,6 +1265,30 @@ export default function SoundscapeEngine({
       }, step.intervalMs);
     }
   }, [initAudio, playSpatialSFX]);
+
+  // Cleanup on unmount — the horror-tension stem oscillators, its footstep
+  // timer, and the procedural music layer's chord/arp/bass intervals aren't
+  // covered by the earlier unmount effect (those refs are declared below it
+  // in source order). ctx.close() above will silence the audio graph either
+  // way, but these still need their own stop()/clearTimeout()/clearInterval()
+  // so no dangling timer fires a callback into a closed context after unmount.
+  useEffect(() => {
+    return () => {
+      if (horrorStemRef.current) {
+        try { horrorStemRef.current.root.stop(); } catch { /* ok */ }
+        try { horrorStemRef.current.trit.stop(); } catch { /* ok */ }
+        horrorStemRef.current = null;
+      }
+      if (ghostStepTimerRef.current) { clearTimeout(ghostStepTimerRef.current); ghostStepTimerRef.current = null; }
+      const layer = musicLayerRef.current;
+      if (layer) {
+        if (layer.chordTimer) clearInterval(layer.chordTimer);
+        if (layer.arpTimer)   clearInterval(layer.arpTimer);
+        if (layer.bassTimer)  clearInterval(layer.bassTimer);
+        layer.chordTimer = layer.arpTimer = layer.bassTimer = null;
+      }
+    };
+  }, []);
 
   const api: SoundscapeAPI = {
     setDistrict, setTimeOfDay, setInterior, setWeather,

@@ -10,8 +10,16 @@ import { useClientConfig } from '@/hooks/useClientConfig';
 import { ChefHat, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
-import { successJuice } from '@/lib/concordia/juice';
+import { successJuice, failureJuice } from '@/lib/concordia/juice';
 import { playActionAtPlayer } from '@/lib/concordia/play-action';
+
+const MISS_REASON_LABEL: Record<string, string> = {
+  expired: 'order expired — too slow',
+  order_served: 'already served',
+  order_expired: 'order expired',
+  not_owner: 'not your restaurant',
+  no_order: 'order no longer exists',
+};
 
 interface Order {
   id: string;
@@ -39,6 +47,8 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
   const [pending, setPending] = useState(false);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [combo, setCombo] = useState(0); // E5 — batching-combo flash
+  const [tipPopup, setTipPopup] = useState<{ payment: number; tip: number } | null>(null);
+  const [missMsg, setMissMsg] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -75,6 +85,18 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
           setCombo(j.combo);
           setTimeout(() => setCombo(0), 1500);
         }
+        // Real per-serve tip amount (serveOrder returns payment/tip) — a
+        // transient popup instead of only moving the aggregate summary tally.
+        if (typeof j?.payment === 'number') {
+          setTipPopup({ payment: j.payment, tip: Number(j.tip) || 0 });
+          setTimeout(() => setTipPopup(null), 1800);
+        }
+      } else {
+        // Miss feedback — previously a serve() that raced an expiry sweep
+        // (or a stale double-click) failed completely silently.
+        failureJuice();
+        setMissMsg(MISS_REASON_LABEL[j?.error] || j?.error || 'serve failed');
+        setTimeout(() => setMissMsg(null), 2000);
       }
       refresh();
     } finally { setPending(false); }
@@ -125,6 +147,24 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
         {combo >= 2 && (
           <div className="concordia-hud-fade mb-2 rounded-md border border-orange-400/60 bg-orange-900/40 px-3 py-1 text-center text-sm font-bold text-orange-100">
             🔥 ×{combo} combo! bigger tips
+          </div>
+        )}
+
+        {tipPopup && (
+          <div
+            data-testid="restaurant-tip-popup"
+            className="concordia-hud-fade mb-2 rounded-md border border-emerald-400/60 bg-emerald-900/40 px-3 py-1 text-center text-sm font-bold text-emerald-100"
+          >
+            +{tipPopup.payment} cc{tipPopup.tip > 0 ? ` (+${tipPopup.tip} tip)` : ' (no tip — too slow)'}
+          </div>
+        )}
+
+        {missMsg && (
+          <div
+            data-testid="restaurant-miss-message"
+            className="concordia-hud-fade mb-2 rounded-md border border-red-500/50 bg-red-950/40 px-3 py-1 text-center text-xs text-red-200"
+          >
+            {missMsg}
           </div>
         )}
 

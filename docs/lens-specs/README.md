@@ -1,5 +1,22 @@
 # Lens Feature-Gap Index
 
+> **Superseded by the capability-map series (2026-07-11).** Everything below
+> this notice describes the *earlier* `docs/lens-specs/*.md` spec-file
+> convention (235 lenses, self-scored parity %, generated pre-Frontend-Rebuild-
+> Program). Since then, the Frontend Rebuild Program's Wave 0–3 sweep
+> individually re-audited essentially every lens against a named category
+> leader and replaced/superseded most of these with
+> `docs/lens-specs/<lens>-capability-map.md` files — **257 of them now
+> exist**, each written by reading the real lens page + backend macros, not
+> self-scored. Those docs are the current source of truth per lens.
+> `docs/WAVE4_INVENTORY.md` is the consolidated ledger of every item those
+> 257 docs themselves flag as genuinely missing/deferred (259 items across
+> 194 lenses, 63 lenses fully closed), triaged DATA-SOURCING / ENGINEERING /
+> CURATION per CLAUDE.md's "closing the hard 20%" invariant. **Read that
+> file for current state; treat the aggregate numbers below (91% parity,
+> 0-backlog) as historical, not current** — they predate the capability-map
+> convention and were never recomputed against it.
+
 Honest per-lens feature-parity audit against each category's top 2026 app.
 Generated from the individual `docs/lens-specs/*.md` files (each written by
 reading the actual lens page + backend code).

@@ -43,6 +43,49 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       }
     } catch (_e) { /* MACROS mirror is best-effort; LENS_ACTIONS is the canonical path */ }
   };
+  // ── Real-worlds mirror ──────────────────────────────────────────────
+  // The lens's own hand-off contract (`visit` returns `{ travel:
+  // {destination_world_id} }`) only works if `destination_world_id`
+  // resolves through the ACTUAL cross-world travel path
+  // (`POST /api/worlds/travel` → `travelToWorld` → `loadWorld`, which
+  // reads `SELECT * FROM worlds WHERE id = ? AND status = 'active'`).
+  // Without a mirrored row there, every "Enter" click was fabricated
+  // success — the toast said "routing to world-travel" but the
+  // destination could never actually be loaded (404 "Destination world
+  // not found"). The in-memory STATE record above stays the CANONICAL
+  // source for the creator-platform layer (settings/analytics/editor);
+  // this is a best-effort mirror so the real travel system can find the
+  // world at all. Never throws — a missing/minimal `worlds` table (unit
+  // tests, early boot) degrades to "lens works, 3D travel doesn't".
+  function mirrorWorldRow(ctx, w) {
+    const db = ctx?.db;
+    if (!db) return;
+    try {
+      db.prepare(`
+        INSERT INTO worlds (id, name, universe_type, description, created_by, status)
+        VALUES (?, ?, ?, ?, ?, 'active')
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          universe_type = excluded.universe_type,
+          description = excluded.description
+      `).run(w.world_id, w.name, w.kind, w.description || null, actor(ctx));
+    } catch (_e) { /* best-effort mirror; the lens record stays canonical */ }
+  }
+  function setWorldRowStatus(ctx, worldId, status) {
+    const db = ctx?.db;
+    if (!db) return;
+    try {
+      db.prepare(`UPDATE worlds SET status = ? WHERE id = ?`).run(status, worldId);
+    } catch (_e) { /* best-effort */ }
+  }
+  function deleteWorldRow(ctx, worldId) {
+    const db = ctx?.db;
+    if (!db) return;
+    try {
+      db.prepare(`DELETE FROM worlds WHERE id = ?`).run(worldId);
+    } catch (_e) { /* best-effort */ }
+  }
+
   function getState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
@@ -161,6 +204,7 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     };
     userWorlds(s, actor(ctx)).push(w);
     save();
+    mirrorWorldRow(ctx, w);
     return { ok: true, result: { world: publicView(w, actor(ctx)) } };
   });
 
@@ -239,6 +283,7 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     }
     w.updated_at = now();
     save();
+    mirrorWorldRow(ctx, w);
     return { ok: true, result: { world: publicView(w, me) } };
   });
 
@@ -271,11 +316,16 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       if (idx >= 0) list.splice(idx, 1);
       s.visitLog.delete(hit.world.world_id);
       save();
+      deleteWorldRow(ctx, hit.world.world_id);
       return { ok: true, result: { deleted: true, world_id: params.worldId } };
     }
     hit.world.status = "archived";
     hit.world.updated_at = now();
     save();
+    // Archiving must also close off the real travel path — `loadWorld`
+    // only resolves `status = 'active'` rows, matching the domain's own
+    // `visit` refusal for archived worlds.
+    setWorldRowStatus(ctx, hit.world.world_id, "archived");
     return { ok: true, result: { archived: true, world: publicView(hit.world, me) } };
   });
 

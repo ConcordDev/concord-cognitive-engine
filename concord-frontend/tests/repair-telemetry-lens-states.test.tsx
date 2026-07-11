@@ -35,6 +35,10 @@ vi.mock('@/components/common/EmptyState', () => ({
   AdminRequiredState: () =>
     React.createElement('div', { 'data-testid': 'admin-required' }, 'Admin required'),
 }));
+// The rebuilt page added discoverable keyboard shortcuts (fluidity invariant)
+// via useLensCommand, which needs a live KeyboardProvider context this
+// headless test doesn't mount — same mock pattern as mesh-lens-states.test.tsx.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
 // Import AFTER mocks are registered.
 import RepairTelemetryPage from '@/app/lenses/repair-telemetry/page';
@@ -114,17 +118,18 @@ describe('repair-telemetry lens — four UX states', () => {
       escalations: () => reply({ ok: true, escalations: [ESC] }),
       memory: () => reply({ ok: true, stats: STATS }),
     });
-    const { getByText } = render(<RepairTelemetryPage />);
+    const { getByText, getAllByText } = render(<RepairTelemetryPage />);
     await waitFor(() => expect(getByText('negative_balance')).toBeInTheDocument());
 
     // memory KPI strip
-    expect(getByText('Patterns learned')).toBeInTheDocument();
+    expect(getByText('patterns learned')).toBeInTheDocument();
     expect(getByText('75%')).toBeInTheDocument(); // avgSuccessRate 0.75 → 75%
     // escalation inbox
     expect(getByText(/Escalation inbox \(1\)/)).toBeInTheDocument();
     expect(getByText(/refused to retire an arc/)).toBeInTheDocument();
-    // ledger disposition
-    expect(getByText('healed')).toBeInTheDocument();
+    // ledger disposition — "healed" appears both in the findings-by-disposition
+    // stat strip and the ledger row's own disposition badge.
+    expect(getAllByText('healed').length).toBeGreaterThan(0);
   });
 
   it('OPERATOR: Approve fires resolve_escalation(approved) and re-refreshes', async () => {

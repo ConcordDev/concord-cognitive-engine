@@ -37,6 +37,24 @@ import {
 
 type TabKey = 'attention' | 'repair_network' | 'physical' | 'explore' | 'dtu';
 
+// The `attention_alloc` / `repair_network` / `physical` / `explore` macro
+// domains are operator-only (server-side gate: requireOpsSubstrateAdminRole
+// in server.js) — but POST /api/lens/run always answers HTTP 200 with
+// `{ ok: true, result }`, where `result` carries the macro's OWN
+// `{ ok: false, error }` on a denial. A plain `.data?.result` read would
+// silently treat that denial as data (undefined fields → a stuck spinner,
+// never the friendly gate below). Surface it as a thrown query error so
+// `isForbidden(query.error)` — which the `forbidden` check further down
+// relies on — can actually see it.
+async function runGatedDomain<T>(domain: string, action: string, input: Record<string, unknown> = {}): Promise<T> {
+  const r = await apiHelpers.lens.runDomain(domain, action, input);
+  const result = (r.data?.result ?? r.data) as ({ ok?: boolean; error?: string } & T) | undefined;
+  if (result && typeof result === 'object' && 'ok' in result && (result as { ok?: boolean }).ok === false) {
+    throw { ok: false, error: (result as { error?: string }).error || 'request failed' };
+  }
+  return result as T;
+}
+
 export default function OpsLensPage() {
   useLensNav('ops');
   const [activeTab, setActiveTab] = useState<TabKey>('attention');
@@ -54,10 +72,7 @@ export default function OpsLensPage() {
 
   const attention = useQuery({
     queryKey: ['ops-attention'],
-    queryFn: async () => {
-      const r = await apiHelpers.lens.runDomain('attention_alloc', 'status', {});
-      return (r.data?.result ?? r.data) as { allocations?: Record<string, number>; budget?: number };
-    },
+    queryFn: () => runGatedDomain<{ allocations?: Record<string, number>; budget?: number }>('attention_alloc', 'status', {}),
     refetchInterval: 30_000,
   });
   const runAttention = useMutation({
@@ -66,10 +81,7 @@ export default function OpsLensPage() {
 
   const repairNet = useQuery({
     queryKey: ['ops-repair-network'],
-    queryFn: async () => {
-      const r = await apiHelpers.lens.runDomain('repair_network', 'status', {});
-      return (r.data?.result ?? r.data) as { connected?: boolean; pendingFixes?: number; lastSync?: string };
-    },
+    queryFn: () => runGatedDomain<{ connected?: boolean; pendingFixes?: number; lastSync?: string }>('repair_network', 'status', {}),
     refetchInterval: 60_000,
   });
   const pushRepair = useMutation({
@@ -79,21 +91,15 @@ export default function OpsLensPage() {
   const physical = useQuery({
     queryKey: ['ops-physical'],
     queryFn: async () => {
-      const m = await apiHelpers.lens.runDomain('physical', 'metrics', {});
-      const t = await apiHelpers.lens.runDomain('physical', 'types', {});
-      return {
-        metrics: (m.data?.result ?? m.data) as Record<string, number>,
-        types: (t.data?.result ?? t.data) as { types?: string[] },
-      };
+      const metrics = await runGatedDomain<Record<string, number>>('physical', 'metrics', {});
+      const types = await runGatedDomain<{ types?: string[] }>('physical', 'types', {});
+      return { metrics, types };
     },
   });
 
   const explore = useQuery({
     queryKey: ['ops-explore'],
-    queryFn: async () => {
-      const r = await apiHelpers.lens.runDomain('explore', 'history', { limit: 20 });
-      return (r.data?.result ?? r.data) as { explorations?: Array<{ id: string; domain?: string; createdAt?: string }> };
-    },
+    queryFn: () => runGatedDomain<{ explorations?: Array<{ id: string; domain?: string; createdAt?: string }> }>('explore', 'history', { limit: 20 }),
   });
 
   const tabs: { key: TabKey; label: string; icon: LucideIcon; count?: number }[] = [

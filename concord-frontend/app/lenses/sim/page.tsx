@@ -17,7 +17,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   Play, Sliders, Clock, Plus, Trash2, Copy, Download,
@@ -31,7 +30,6 @@ import {
 import { ErrorState } from '@/components/common/EmptyState';
 import { useUIStore } from '@/store/ui';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -605,8 +603,6 @@ export default function SimLensPage() {
     update: updateRunArtifact,
   } = useLensData<SimRun>('sim', 'run', { noSeed: true });
 
-  const runArtifactAction = useRunArtifact('sim');
-
   // ── Derived data ───────────────────────────────────────────────────────────
   const scenarios: Scenario[] = useMemo(() =>
     scenarioArtifacts.map(a => ({
@@ -773,15 +769,19 @@ export default function SimLensPage() {
       useUIStore.getState().addToast({ type: 'error', message: 'Mark at least one parameter as sensitive in the Parameter Space Explorer to run sensitivity analysis.' });
       return;
     }
+    // Correlation-based sensitivity ranking is computed as a real byproduct of
+    // every Monte Carlo run (see runMonteCarloChunked below) — reuse that engine
+    // rather than the backend `sim.sensitivityAnalysis` macro, which expects a
+    // rules-based dynamical-system shape (`baseState` + growth/decay/add/cap/
+    // floor `rules`) that a Scenario's variables/assumptions model never
+    // produces. Users who want the deterministic ± perturbation elasticity
+    // technique instead can reach the real macro directly via the Studio's
+    // Analysis Toolkit → Elasticity tool.
     try {
-      await runArtifactAction.mutateAsync({
-        id: scenario.id,
-        action: 'sensitivityAnalysis',
-        params: { variables: sensitiveVars.map(v => v.name), iterations: scenario.iterations },
-      });
+      await handleRunSimulation(scenario);
       setActiveTab('results');
     } catch (e) { console.error('Sensitivity analysis failed:', e); useUIStore.getState().addToast({ type: 'error', message: `Sensitivity analysis failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-  }, [runArtifactAction]);
+  }, [handleRunSimulation]);
 
   const handleExportResults = useCallback((run: SimRun) => {
     if (!run.results) return;
@@ -919,28 +919,6 @@ export default function SimLensPage() {
       ],
     });
   }, [editingScenario]);
-
-  // ── Domain action state ────────────────────────────────────────────────────
-  const [simActionRunning, setSimActionRunning] = useState<string | null>(null);
-  const [scenarioRunResult, setScenarioRunResult] = useState<Record<string, unknown> | null>(null);
-  const [paramSweepResult, setParamSweepResult] = useState<Record<string, unknown> | null>(null);
-  const [monteCarloResult, setMonteCarloResult] = useState<Record<string, unknown> | null>(null);
-  const [sensitivityResult, setSensitivityResult] = useState<Record<string, unknown> | null>(null);
-
-  const handleSimAction = useCallback(async (
-    action: string,
-    setter: (val: Record<string, unknown> | null) => void
-  ) => {
-    setSimActionRunning(action);
-    try {
-      const artifactId = scenarioArtifacts[0]?.id || 'sim';
-      const res = await runArtifactAction.mutateAsync({ id: artifactId, action });
-      if (res.ok === false) { setter({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` } as Record<string, unknown>); } else { setter((res.result as Record<string, unknown>) || null); }
-    } catch (e) {
-      console.error(`Sim action ${action} failed:`, e);
-    }
-    setSimActionRunning(null);
-  }, [scenarioArtifacts, runArtifactAction]);
 
   // Use results from the selected run, or empty placeholder if no run selected
   const runResults: SimResults = useMemo(() => {
@@ -1562,260 +1540,6 @@ export default function SimLensPage() {
       )}
 
       <RealtimeDataPanel data={realtimeInsights} />
-
-      {/* ── Sim Domain Action Panel ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className={ds.panel + ' space-y-4'}>
-        <div className="flex items-center gap-2">
-          <FlaskConical className="w-4 h-4 text-neon-cyan" />
-          <h2 className="font-semibold text-sm">Simulation Analysis Engine</h2>
-          <span className={cn(ds.textMuted, 'ml-auto text-xs')}>Scenario · Sweep · Monte Carlo · Sensitivity</span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
-            { action: 'scenarioRun', label: 'Run Scenario', setter: setScenarioRunResult, icon: Play, color: 'text-neon-cyan' },
-            { action: 'parameterSweep', label: 'Param Sweep', setter: setParamSweepResult, icon: Sliders, color: 'text-violet-400' },
-            { action: 'monteCarlo', label: 'Monte Carlo', setter: setMonteCarloResult, icon: Shuffle, color: 'text-orange-400' },
-            { action: 'sensitivityAnalysis', label: 'Sensitivity', setter: setSensitivityResult, icon: Activity, color: 'text-green-400' },
-          ].map(({ action, label, setter, icon: Icon, color }) => (
-            <button
-              key={action}
-              onClick={() => handleSimAction(action, setter)}
-              disabled={simActionRunning !== null}
-              className={cn(ds.btnSecondary, 'flex items-center gap-1.5 justify-center disabled:opacity-40 disabled:cursor-not-allowed text-xs')}
-            >
-              {simActionRunning === action
-                ? <Sigma className="w-3.5 h-3.5 animate-spin" />
-                : <Icon className={cn('w-3.5 h-3.5', color)} />}
-              {simActionRunning === action ? 'Running…' : label}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          {/* Scenario Run Result */}
-          {scenarioRunResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-4 space-y-3">
-              <span className="text-xs font-semibold text-neon-cyan uppercase tracking-wider flex items-center gap-1.5">
-                <Play className="w-3.5 h-3.5" /> Scenario Run
-              </span>
-              {'message' in scenarioRunResult ? (
-                <p className="text-xs text-gray-400">{String(scenarioRunResult.message)}</p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className={cn(ds.panel, 'text-center')}>
-                      <p className="text-xs text-gray-400">Steps Run</p>
-                      <p className="text-lg font-bold text-neon-cyan">{String(scenarioRunResult.stepsRun ?? 0)}</p>
-                    </div>
-                    <div className={cn(ds.panel, 'text-center')}>
-                      <p className="text-xs text-gray-400">Variables</p>
-                      <p className="text-lg font-bold text-white">
-                        {scenarioRunResult.initialState && typeof scenarioRunResult.initialState === 'object'
-                          ? Object.keys(scenarioRunResult.initialState as object).length
-                          : 0}
-                      </p>
-                    </div>
-                  </div>
-                  {'deltas' in scenarioRunResult && typeof scenarioRunResult.deltas === 'object' && scenarioRunResult.deltas !== null && (
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-400 font-medium">State Changes</p>
-                      {Object.entries(scenarioRunResult.deltas as Record<string, Record<string, unknown>>).map(([key, delta]) => (
-                        <div key={key} className="flex items-center gap-2 text-xs">
-                          <span className="text-gray-400 flex-1 font-mono">{key}</span>
-                          <span className="text-gray-400">{String(delta.start)}</span>
-                          <span className="text-gray-600">→</span>
-                          <span className="text-white font-mono">{String(delta.end)}</span>
-                          <span className={`font-mono ${Number(delta.change) > 0 ? 'text-green-400' : Number(delta.change) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
-                            ({Number(delta.change) > 0 ? '+' : ''}{String(delta.change)})
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-
-          {/* Parameter Sweep Result */}
-          {paramSweepResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-4 space-y-3">
-              <span className="text-xs font-semibold text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5" /> Parameter Sweep
-              </span>
-              {'message' in paramSweepResult ? (
-                <p className="text-xs text-gray-400">{String(paramSweepResult.message)}</p>
-              ) : (
-                <>
-                  <div className="flex flex-wrap gap-2 text-xs text-gray-400">
-                    {'parameter' in paramSweepResult && <span>Param: <span className="text-white font-mono">{String(paramSweepResult.parameter)}</span></span>}
-                    {'runsCompleted' in paramSweepResult && <span>{String(paramSweepResult.runsCompleted)} runs</span>}
-                    {'stepsPerRun' in paramSweepResult && <span>{String(paramSweepResult.stepsPerRun)} steps/run</span>}
-                  </div>
-                  {Array.isArray(paramSweepResult.results) && (paramSweepResult.results as Array<Record<string, unknown>>).length > 0 && (() => {
-                    const results = paramSweepResult.results as Array<Record<string, unknown>>;
-                    const param = String(paramSweepResult.parameter);
-                    const outcomeKey = 'outcome';
-                    const maxOutcome = Math.max(...results.map(r => Number(r[outcomeKey]) || 0));
-                    return (
-                      <div className="space-y-1.5">
-                        <p className="text-xs text-gray-400 font-medium">Sweep Results</p>
-                        {results.slice(0, 10).map((r, i) => {
-                          const pct = maxOutcome > 0 ? (Number(r[outcomeKey]) / maxOutcome) * 100 : 0;
-                          return (
-                            <div key={i} className="space-y-0.5">
-                              <div className="flex justify-between text-xs text-gray-400">
-                                <span className="font-mono">{param}={String(r[param])}</span>
-                                <span className="font-mono text-white">{Number(r[outcomeKey]).toFixed(3)}</span>
-                              </div>
-                              <div className="h-1.5 bg-black/30 rounded-full overflow-hidden">
-                                <motion.div
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${pct}%` }}
-                                  transition={{ delay: i * 0.03, duration: 0.3 }}
-                                  className="h-full rounded-full bg-violet-500/70"
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-                </>
-              )}
-            </motion.div>
-          )}
-
-          {/* Monte Carlo Result */}
-          {monteCarloResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Shuffle className="w-3.5 h-3.5" /> Monte Carlo
-                </span>
-                {'trials' in monteCarloResult && (
-                  <span className="text-xs text-gray-400">{String(monteCarloResult.trials)} trials</span>
-                )}
-              </div>
-              {'message' in monteCarloResult ? (
-                <p className="text-xs text-gray-400">{String(monteCarloResult.message)}</p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: 'Mean', value: String(monteCarloResult.mean ?? '—'), color: 'text-orange-400' },
-                      { label: 'Std Dev', value: String(monteCarloResult.stddev ?? '—'), color: 'text-white' },
-                      { label: 'Formula', value: String(monteCarloResult.formula ?? '—'), color: 'text-gray-300' },
-                    ].map(({ label, value, color }) => (
-                      <div key={label} className={cn(ds.panel, 'text-center')}>
-                        <p className="text-xs text-gray-400">{label}</p>
-                        <p className={cn('text-sm font-bold font-mono', color)}>{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {'percentiles' in monteCarloResult && typeof monteCarloResult.percentiles === 'object' && monteCarloResult.percentiles !== null && (
-                    <div>
-                      <p className="text-xs text-gray-400 font-medium mb-2">Percentile Distribution</p>
-                      <div className="space-y-1.5">
-                        {[
-                          { key: 'p5', label: 'P5 (5%)', color: 'bg-red-500/60' },
-                          { key: 'p25', label: 'P25 (25%)', color: 'bg-orange-500/60' },
-                          { key: 'p50', label: 'P50 (median)', color: 'bg-yellow-500/60' },
-                          { key: 'p75', label: 'P75 (75%)', color: 'bg-green-500/60' },
-                          { key: 'p95', label: 'P95 (95%)', color: 'bg-emerald-500/60' },
-                        ].map(({ key, label, color }) => {
-                          const pcts = monteCarloResult.percentiles as Record<string, number>;
-                          const maxVal = Math.abs(pcts.p95 || 1);
-                          const barWidth = maxVal > 0 ? Math.min((Math.abs(pcts[key] || 0) / maxVal) * 100, 100) : 0;
-                          return (
-                            <div key={key} className="flex items-center gap-2">
-                              <span className="text-[10px] text-gray-400 w-24 shrink-0">{label}</span>
-                              <div className="flex-1 h-2 bg-black/30 rounded-full overflow-hidden">
-                                <motion.div initial={{ width: 0 }} animate={{ width: `${barWidth}%` }} transition={{ duration: 0.4 }} className={`h-full rounded-full ${color}`} />
-                              </div>
-                              <span className="text-xs font-mono text-gray-300 w-16 text-right">{String(pcts[key] ?? '—')}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  {'confidenceInterval90' in monteCarloResult && typeof monteCarloResult.confidenceInterval90 === 'object' && monteCarloResult.confidenceInterval90 !== null && (
-                    <div className="flex items-center gap-2 text-xs bg-black/20 rounded p-2">
-                      <span className="text-gray-400">90% CI:</span>
-                      <span className="font-mono text-orange-300">
-                        [{String((monteCarloResult.confidenceInterval90 as Record<string, unknown>).lower)} — {String((monteCarloResult.confidenceInterval90 as Record<string, unknown>).upper)}]
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-
-          {/* Sensitivity Analysis Result */}
-          {sensitivityResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-green-500/20 bg-green-500/5 p-4 space-y-3">
-              <span className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5" /> Sensitivity Analysis
-              </span>
-              {'message' in sensitivityResult ? (
-                <p className="text-xs text-gray-400">{String(sensitivityResult.message)}</p>
-              ) : (
-                <>
-                  <div className="flex flex-wrap gap-2 text-xs text-gray-400">
-                    {'outputField' in sensitivityResult && (
-                      <span>Output: <span className="text-white font-mono">{String(sensitivityResult.outputField)}</span></span>
-                    )}
-                    {'baselineOutput' in sensitivityResult && (
-                      <span>Baseline: <span className="text-white font-mono">{String(sensitivityResult.baselineOutput)}</span></span>
-                    )}
-                    {'mostSensitive' in sensitivityResult && (
-                      <span>Most Sensitive: <span className="text-green-400 font-mono">{String(sensitivityResult.mostSensitive)}</span></span>
-                    )}
-                  </div>
-                  {Array.isArray(sensitivityResult.sensitivity) && (
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-400 font-medium">Parameter Sensitivity Ranking</p>
-                      {(sensitivityResult.sensitivity as Array<Record<string, unknown>>).map((item, i) => {
-                        const maxSens = Math.max(...(sensitivityResult.sensitivity as Array<Record<string, unknown>>).map(x => Number(x.sensitivity) || 0), 1);
-                        const barPct = (Number(item.sensitivity) / maxSens) * 100;
-                        return (
-                          <div key={i} className="space-y-0.5">
-                            <div className="flex items-center gap-2 text-xs">
-                              <span className="w-4 text-gray-600 font-mono shrink-0">{i + 1}.</span>
-                              <span className="flex-1 text-gray-300 font-mono">{String(item.parameter)}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                                String(item.direction) === 'positive' ? 'bg-green-500/20 text-green-400' :
-                                String(item.direction) === 'negative' ? 'bg-red-500/20 text-red-400' :
-                                'bg-gray-500/20 text-gray-400'
-                              }`}>{String(item.direction)}</span>
-                              <span className="text-gray-400 font-mono w-10 text-right">{String(item.sensitivity)}</span>
-                            </div>
-                            <div className="h-1.5 bg-black/30 rounded-full overflow-hidden ml-5">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${barPct}%` }}
-                                transition={{ delay: i * 0.05, duration: 0.4 }}
-                                className={`h-full rounded-full ${i === 0 ? 'bg-green-500' : i === 1 ? 'bg-emerald-400' : 'bg-green-400/60'}`}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-        </div>
-      </motion.div>
-
-      <UniversalActions domain="sim" artifactId={null} compact />
 
       {/* ── Import Modal ──────────────────────────────────────────────────── */}
       {showImportModal && (
@@ -2708,7 +2432,7 @@ const STUDIO_MODES: Array<{ key: StudioMode; label: string; icon: React.ReactNod
   { key: 'system-dynamics', label: 'System Dynamics', icon: <TrendingUp className="w-4 h-4" />, blurb: 'Visual stock-and-flow model builder with Euler integration and feedback-loop detection.' },
   { key: 'agent-based', label: 'Agent-Based', icon: <Users className="w-4 h-4" />, blurb: 'SIR epidemic, Schelling segregation, and predator-prey agent runtimes on a spatial grid.' },
   { key: 'discrete-event', label: 'Discrete-Event', icon: <Boxes className="w-4 h-4" />, blurb: 'Event-driven M/M/c queue simulation with wait, utilization, and stability metrics.' },
-  { key: 'toolkit', label: 'Analysis Toolkit', icon: <Sigma className="w-4 h-4" />, blurb: 'Formula evaluator, goal-seek optimization, scenario diff, and historical calibration.' },
+  { key: 'toolkit', label: 'Analysis Toolkit', icon: <Sigma className="w-4 h-4" />, blurb: 'Formula evaluator, goal-seek, scenario diff, calibration, rule-based scenario run, parameter sweep, distribution Monte Carlo, and elasticity tornado charts.' },
 ];
 
 function StudioTab() {

@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { MessageSquare, Loader2, Send, ChevronUp, CheckCircle, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useLessonOptions } from './useLessonOptions';
 
 interface QAAnswer {
   id: string; text: string; author: string;
@@ -34,6 +35,8 @@ export function LessonQA() {
   const [askTime, setAskTime] = useState('0');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const { options: lessonOptions, loading: optionsLoading } = useLessonOptions();
+  const [manualEntry, setManualEntry] = useState(false);
 
   const load = useCallback(async (id: string) => {
     if (!id.trim()) return;
@@ -94,29 +97,51 @@ export function LessonQA() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2">
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-[10px] uppercase tracking-wider text-gray-400">Lesson ID</label>
-          <input
-            value={lessonId}
-            onChange={e => setLessonId(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') load(lessonId); }}
-            placeholder="Lesson ID for its Q&A thread"
-            className="w-full mt-1 px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-sm text-white"
-          />
+        <div className="flex-1 min-w-[240px]">
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Lesson</label>
+          {manualEntry ? (
+            <input
+              value={lessonId}
+              onChange={e => setLessonId(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') load(lessonId); }}
+              placeholder="Lesson ID for its Q&A thread"
+              className="w-full mt-1 px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-sm text-white"
+            />
+          ) : (
+            <select
+              value={lessonId}
+              onChange={e => { setLessonId(e.target.value); if (e.target.value) void load(e.target.value); }}
+              disabled={optionsLoading || lessonOptions.length === 0}
+              className="w-full mt-1 px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-sm text-white disabled:opacity-50"
+            >
+              <option value="">{optionsLoading ? 'Loading lessons…' : lessonOptions.length === 0 ? 'No lessons yet — add one in the catalog' : 'Choose a lesson…'}</option>
+              {lessonOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          )}
         </div>
+        {manualEntry ? (
+          <button
+            onClick={() => load(lessonId)}
+            disabled={!lessonId.trim() || loading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs rounded bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 font-bold disabled:opacity-40"
+          >
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+            Open Q&A
+          </button>
+        ) : null}
         <button
-          onClick={() => load(lessonId)}
-          disabled={!lessonId.trim() || loading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs rounded bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 font-bold disabled:opacity-40"
+          onClick={() => setManualEntry(m => !m)}
+          className="text-[10px] px-2 py-2 text-gray-400 hover:text-white underline decoration-dotted"
         >
-          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
-          Open Q&A
+          {manualEntry ? 'Pick from list' : 'Paste ID instead'}
         </button>
       </div>
 
       {!activeLesson && (
         <p className="text-sm text-gray-400 py-8 text-center">
-          Enter a lesson ID to view and post timestamp-anchored questions.
+          {lessonOptions.length === 0 && !optionsLoading
+            ? 'No lessons yet. Add a course + lesson in the Catalog tab first.'
+            : 'Pick a lesson above to view and post timestamp-anchored questions.'}
         </p>
       )}
 
