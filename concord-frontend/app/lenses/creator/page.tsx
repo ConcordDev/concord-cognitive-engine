@@ -14,9 +14,9 @@
 //   /api/creator/listings, /api/creator/withdrawal-status,
 //   /api/creator/cascade/:dtuId,
 //   /api/social/profile, /api/social/followers/:id, /api/social/following/:id,
-//   /api/lens/creator (useArtifacts).
+//   /api/lens/creator (useArtifacts), lensRun('dtu', 'list', { mine: true }).
 // Writes:
-//   /api/economy/withdraw,
+//   /api/economy/withdraw, /api/marketplace/submit (list a personal DTU),
 //   /api/marketplace/listings/:id (PATCH / withdraw / relist),
 //   /api/social/profile (upsert), /api/lens/creator (POST broadcast).
 
@@ -31,6 +31,7 @@ import { CreatorLeaderboard } from '@/components/creator/CreatorLeaderboard';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import KnowledgeEntrepreneurBadge from '@/components/creator/KnowledgeEntrepreneurBadge';
+import { lensRun } from '@/lib/api/client';
 import {
   useArtifacts,
   useCreateArtifact,
@@ -38,7 +39,7 @@ import {
 import {
   Coins, TrendingDown, Users, Trophy, RefreshCw,
   ListChecks, Settings, MessageSquare, Activity, GitBranch,
-  UserPlus, X, Save, Loader2, Sparkles,
+  UserPlus, X, Save, Loader2, Sparkles, Plus,
 } from 'lucide-react';
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ interface MyListing {
   listedAt: string;
   tierPrices?: { usage?: number; remix?: number; commercial?: number };
   totalEarnings?: number;
+  sourceDtuId?: string;
 }
 
 interface PendingWithdrawal {
@@ -524,6 +526,8 @@ function ListingsTab({
   }, [listings]);
 
   return (
+    <div className="space-y-4">
+      <NewListingForm existingListings={listings} onListed={onChanged} />
     <section className={PANEL}>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h2 className="text-amber-200 font-semibold inline-flex items-center gap-1.5">
@@ -601,6 +605,143 @@ function ListingsTab({
           ))}
         </div>
       )}
+    </section>
+    </div>
+  );
+}
+
+// List a personal DTU on the marketplace. Without this, `myListings` was
+// permanently empty for every real user — `/api/marketplace/submit` (the
+// only route that ever writes STATE.marketplaceListings) had no frontend
+// caller anywhere in the app, so the whole Listings tab (search / sort /
+// CSV export / edit / withdraw / relist) was fully built against a
+// listing type nobody could ever create. This form closes that loop.
+function NewListingForm({
+  existingListings, onListed,
+}: { existingListings: MyListing[]; onListed: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [dtus, setDtus] = useState<{ id: string; title: string }[]>([]);
+  const [loadingDtus, setLoadingDtus] = useState(false);
+  const [dtuId, setDtuId] = useState('');
+  const [price, setPrice] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const alreadyListedIds = useMemo(
+    () => new Set(
+      existingListings
+        .filter((l) => l.status === 'active' && l.sourceDtuId)
+        .map((l) => l.sourceDtuId as string)
+    ),
+    [existingListings]
+  );
+
+  const loadDtus = useCallback(async () => {
+    setLoadingDtus(true);
+    try {
+      const r = await lensRun<{ dtus?: { id: string; title: string; scope?: string }[] }>('dtu', 'list', { mine: true, limit: 200 });
+      const all = r.data?.result?.dtus ?? [];
+      const eligible = all
+        .filter((d) => (d.scope ?? 'personal') === 'personal' && !alreadyListedIds.has(d.id))
+        .map((d) => ({ id: d.id, title: d.title || d.id.slice(0, 16) }));
+      setDtus(eligible);
+      if (eligible.length > 0 && !dtuId) setDtuId(eligible[0].id);
+    } catch {
+      setDtus([]);
+    } finally {
+      setLoadingDtus(false);
+    }
+  }, [alreadyListedIds, dtuId]);
+
+  useEffect(() => { if (open) void loadDtus(); }, [open, loadDtus]);
+
+  const submit = useCallback(async () => {
+    setError(null);
+    if (!dtuId) { setError('Pick a DTU to list.'); return; }
+    const amount = Number(price);
+    if (!Number.isFinite(amount) || amount < 0) { setError('Enter a valid price (0 or more CC).'); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/marketplace/submit', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dtuId, price: amount }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || body?.ok === false) {
+        setError(body?.error || `Listing failed (${res.status}).`);
+        return;
+      }
+      setPrice('');
+      setDtuId('');
+      setOpen(false);
+      onListed();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Listing failed.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [dtuId, price, onListed]);
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-amber-600/90 hover:bg-amber-500 rounded text-white"
+      >
+        <Plus className="w-3.5 h-3.5" /> List a DTU for sale
+      </button>
+    );
+  }
+
+  return (
+    <section className={PANEL}>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-amber-200 font-semibold inline-flex items-center gap-1.5">
+          <Plus className="w-4 h-4" /> List a DTU for sale
+        </h2>
+        <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      {loadingDtus ? (
+        <div className="text-gray-400 italic text-sm inline-flex items-center gap-1.5">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading your DTUs…
+        </div>
+      ) : dtus.length === 0 ? (
+        <div className="text-gray-400 italic text-sm">
+          No personal DTUs available to list — everything you own is already listed, or you
+          haven&apos;t created a personal DTU yet.
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={dtuId}
+            onChange={(e) => setDtuId(e.target.value)}
+            className="flex-1 min-w-[220px] bg-black/60 border border-white/10 rounded px-3 py-2 text-sm text-gray-200"
+          >
+            {dtus.map((d) => (
+              <option key={d.id} value={d.id}>{d.title}</option>
+            ))}
+          </select>
+          <input
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            inputMode="decimal"
+            placeholder="Price (CC)"
+            className="w-32 bg-black/60 border border-white/10 rounded px-3 py-2 text-sm text-gray-200"
+          />
+          <button
+            onClick={submit}
+            disabled={submitting}
+            className="px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-500 disabled:bg-stone-800 disabled:text-gray-400 rounded text-white"
+          >
+            {submitting ? 'Listing…' : 'List it'}
+          </button>
+        </div>
+      )}
+      {error && <p role="alert" className="mt-2 text-xs text-rose-300">{error}</p>}
     </section>
   );
 }

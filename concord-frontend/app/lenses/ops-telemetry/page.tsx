@@ -21,6 +21,7 @@ import { AdminRequiredState } from '@/components/common/EmptyState';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LivenessPanel } from '@/components/admin/LivenessPanel';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { Activity, Cpu, Brain, Globe, RefreshCcw, AlertTriangle, Layers } from 'lucide-react';
 
 interface HeartbeatStatRow {
@@ -144,9 +145,23 @@ export default function OpsTelemetryPage() {
     }
   }, [refresh]);
 
+  // Discoverable keyboard shortcut: "r" forces an immediate refresh instead of
+  // waiting for the next 5s tick (Grafana/Datadog convention). Registers in the
+  // command palette + help modal via useLensCommand — not just a hidden handler.
+  useLensCommand(
+    [
+      { id: 'refresh', keys: 'r', description: 'Refresh telemetry now', category: 'actions', action: refresh },
+    ],
+    { lensId: 'ops-telemetry' }
+  );
+
   if (forbidden) return (
     <LensShell lensId="ops-telemetry" asMain={false}>
-      <AdminRequiredState roles={['admin', 'operator']} />
+      {/* requireRole gate on every /api/admin/* route this lens reads is
+          owner|admin|sovereign|founder (server.js) — "operator" is not a real
+          role in the backend's role enum, so naming it here as sufficient
+          access would send an operator chasing a role that can never work. */}
+      <AdminRequiredState roles={['owner', 'admin', 'sovereign', 'founder']} />
     </LensShell>
   );
 
@@ -210,6 +225,7 @@ export default function OpsTelemetryPage() {
             </div>
             <button onClick={refresh} disabled={loading} aria-label="Refresh telemetry" className="flex items-center gap-1.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-1 text-[11px] font-medium text-fuchsia-300 hover:bg-fuchsia-500/20 disabled:opacity-60">
               <RefreshCcw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'refreshing…' : 'refresh'}
+              <kbd className="ml-0.5 rounded border border-fuchsia-500/30 bg-black/30 px-1 text-[9px] font-mono text-fuchsia-300/80">R</kbd>
             </button>
             {loading && <span role="status" aria-live="polite" className="sr-only">Refreshing telemetry</span>}
           </div>
@@ -304,6 +320,11 @@ export default function OpsTelemetryPage() {
                   ))}
                 </tbody>
               </table>
+              {hbStats.length > 80 && (
+                <p className="mt-1 text-[10px] text-slate-500">
+                  showing the 80 slowest of {hbStats.length} modules by p99 — the rest are faster and less actionable
+                </p>
+              )}
             </div>
           </div>
 

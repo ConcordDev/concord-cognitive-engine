@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { lensRun } from '@/lib/api/client';
+import { runPersona } from './persona-envelope';
 
 interface Turn { role: string; text: string; at: number; basis?: string }
 
@@ -31,14 +31,14 @@ export function PersonaChat({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await lensRun('personas', 'chat_open', { personaId });
+      const r = await runPersona('chat_open', { personaId });
       if (cancelled) return;
-      if (r.data?.ok) {
-        const res = r.data.result as any;
+      if (r.ok) {
+        const res = r.data as any;
         setChatId(res.chatId);
         setTurns(res.turns || []);
       } else {
-        setErr(r.data?.error || 'chat_open_failed');
+        setErr(r.error || 'chat_open_failed');
       }
     })();
     return () => { cancelled = true; };
@@ -53,15 +53,21 @@ export function PersonaChat({
     if (!message || !chatId || busy) return;
     setBusy(true);
     setErr(null);
-    setTurns((t) => [...t, { role: 'user', text: message, at: Date.now() / 1000 }]);
+    // Optimistic: show the user's turn instantly (real fact — it was sent).
+    const optimistic: Turn = { role: 'user', text: message, at: Date.now() / 1000 };
+    setTurns((t) => [...t, optimistic]);
     setDraft('');
-    const r = await lensRun('personas', 'chat_send', { chatId, message });
+    const r = await runPersona('chat_send', { chatId, message });
     setBusy(false);
-    if (r.data?.ok) {
-      const res = r.data.result as any;
+    if (r.ok) {
+      const res = r.data as any;
       setTurns((t) => [...t, res.reply as Turn]);
     } else {
-      setErr(r.data?.error || 'send_failed');
+      // Honest rollback: the send genuinely failed, so remove the optimistic
+      // turn instead of leaving a message that never reached the persona.
+      setTurns((t) => t.filter((turn) => turn !== optimistic));
+      setDraft(message);
+      setErr(r.error || 'send_failed');
     }
   };
 

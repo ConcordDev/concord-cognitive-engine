@@ -67,7 +67,7 @@ describe('use70Lock', () => {
   describe('successful fetch', () => {
     it('returns sovereignty data when fetch succeeds with lock above 70%', async () => {
       const mockStatus = {
-        lockPercentage: 85,
+        sovereigntyPct: 85,
         invariants: [
           { id: 'no-telemetry', name: 'NO_TELEMETRY', status: 'enforced', description: 'No tracking', lastChecked: '2026-01-01' },
           { id: 'no-ads', name: 'NO_ADS', status: 'warning', description: 'No ads', lastChecked: '2026-01-01' },
@@ -101,7 +101,7 @@ describe('use70Lock', () => {
     it('sets isLocked=false when lockPercentage is below 70', async () => {
       mockedApi.get.mockResolvedValue({
         data: {
-          lockPercentage: 55,
+          sovereigntyPct: 55,
           invariants: [],
           lastAudit: '2026-01-01',
           isHealthy: false,
@@ -122,7 +122,7 @@ describe('use70Lock', () => {
     it('returns sovereignty-danger for lockPercentage below 50', async () => {
       mockedApi.get.mockResolvedValue({
         data: {
-          lockPercentage: 30,
+          sovereigntyPct: 30,
           invariants: [],
           lastAudit: '2026-01-01',
           isHealthy: false,
@@ -141,7 +141,7 @@ describe('use70Lock', () => {
     it('sets isLocked=true when lockPercentage is exactly 70', async () => {
       mockedApi.get.mockResolvedValue({
         data: {
-          lockPercentage: 70,
+          sovereigntyPct: 70,
           invariants: [],
           lastAudit: '2026-01-01',
           isHealthy: true,
@@ -178,7 +178,7 @@ describe('use70Lock', () => {
     it('calls POST /api/sovereignty/audit and invalidates query', async () => {
       mockedApi.get.mockResolvedValue({
         data: {
-          lockPercentage: 80,
+          sovereigntyPct: 80,
           invariants: [],
           lastAudit: '2026-01-01',
           isHealthy: true,
@@ -205,7 +205,7 @@ describe('use70Lock', () => {
   describe('getLockColor', () => {
     it('returns sovereignty-locked at boundary (70)', async () => {
       mockedApi.get.mockResolvedValue({
-        data: { lockPercentage: 70, invariants: [], lastAudit: '', isHealthy: true },
+        data: { sovereigntyPct: 70, invariants: [], lastAudit: '', isHealthy: true },
       });
 
       const { result } = renderHook(() => use70Lock(), {
@@ -218,7 +218,7 @@ describe('use70Lock', () => {
 
     it('returns sovereignty-warning at boundary (50)', async () => {
       mockedApi.get.mockResolvedValue({
-        data: { lockPercentage: 50, invariants: [], lastAudit: '', isHealthy: true },
+        data: { sovereigntyPct: 50, invariants: [], lastAudit: '', isHealthy: true },
       });
 
       const { result } = renderHook(() => use70Lock(), {
@@ -231,7 +231,7 @@ describe('use70Lock', () => {
 
     it('returns sovereignty-danger at 49', async () => {
       mockedApi.get.mockResolvedValue({
-        data: { lockPercentage: 49, invariants: [], lastAudit: '', isHealthy: true },
+        data: { sovereigntyPct: 49, invariants: [], lastAudit: '', isHealthy: true },
       });
 
       const { result } = renderHook(() => use70Lock(), {
