@@ -5,7 +5,10 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
 import registerTimelineActions from "../domains/timeline.js";
+import { up as upFriendships } from "../migrations/214_friendships.js";
+import { sendFriendRequest, acceptFriendRequest } from "../lib/friendships.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -22,8 +25,17 @@ beforeEach(() => {
   globalThis._concordSTATE = {};
 });
 
-const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
-const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+// Real, migrated friendships table backing every ctx's `db` field — the
+// same friend-graph checkPostAccess()/areFriends() reads in
+// server/domains/timeline.js. Shared across the whole file (like the
+// in-memory _concordSTATE) rather than one per test; individual tests use
+// dedicated userIds where friendship status matters so rows from one test
+// can never leak into another test's assertions.
+const friendshipsDb = new Database(":memory:");
+upFriendships(friendshipsDb);
+
+const ctxA = { actor: { userId: "user_a" }, userId: "user_a", db: friendshipsDb };
+const ctxB = { actor: { userId: "user_b" }, userId: "user_b", db: friendshipsDb };
 
 describe("timeline.post-create + privacy", () => {
   it("rejects an empty post", () => {
@@ -175,12 +187,94 @@ describe("timeline private-post access gate (id-addressed, not just feed-list)",
     assert.equal(r.ok, false);
   });
 
-  it("public and friends-scoped posts are unaffected — anyone can react/comment", () => {
+  it("public posts are unaffected — anyone can react/comment/list/breakdown", () => {
     const pub = call("post-create", ctxA, { content: "town crier", privacy: "public" }).result.post;
     assert.equal(call("react", ctxB, { postId: pub.id, kind: "like" }).ok, true);
     assert.equal(call("comment-add", ctxB, { postId: pub.id, text: "hi" }).ok, true);
     assert.equal(call("comment-list", ctxB, { postId: pub.id }).ok, true);
     assert.equal(call("reactions-breakdown", ctxB, { postId: pub.id }).ok, true);
+  });
+});
+
+describe("timeline friends-tier access gate (id-addressed, not just feed-list)", () => {
+  // Companion to the private-tier gate above: a "friends" post must be
+  // reachable only by its owner and their *confirmed* friends, verified
+  // against the real friend-graph (server/lib/friendships.js, migration
+  // 214's `friendships` table) — never by an unverified client claim.
+  // Dedicated userIds per test so friendship rows established here can
+  // never leak into (or be assumed by) an unrelated test.
+  const owner = { actor: { userId: "tl_owner" }, userId: "tl_owner", db: friendshipsDb };
+  const friend = { actor: { userId: "tl_friend" }, userId: "tl_friend", db: friendshipsDb };
+  const stranger = { actor: { userId: "tl_stranger" }, userId: "tl_stranger", db: friendshipsDb };
+
+  function makeFriends(aId, bId) {
+    const req = sendFriendRequest(friendshipsDb, aId, bId);
+    assert.equal(req.ok, true);
+    if (req.status !== "accepted") {
+      const acc = acceptFriendRequest(friendshipsDb, req.id, bId);
+      assert.equal(acc.ok, true);
+    }
+  }
+
+  it("react is refused on a friends-only post for a non-friend, non-author caller", () => {
+    const post = call("post-create", owner, { content: "friends only", privacy: "friends" }).result.post;
+    const r = call("react", stranger, { postId: post.id, kind: "like" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "Post not found.");
+  });
+
+  it("react succeeds for a confirmed friend of the author", () => {
+    makeFriends("tl_owner", "tl_friend");
+    const post = call("post-create", owner, { content: "friends only", privacy: "friends" }).result.post;
+    const r = call("react", friend, { postId: post.id, kind: "like" });
+    assert.equal(r.ok, true);
+  });
+
+  it("the author can always react to their own friends-only post", () => {
+    const post = call("post-create", owner, { content: "friends only", privacy: "friends" }).result.post;
+    const r = call("react", owner, { postId: post.id, kind: "like" });
+    assert.equal(r.ok, true);
+  });
+
+  it("comment-add is refused on a friends-only post for a non-friend caller, and succeeds for a friend", () => {
+    makeFriends("tl_owner", "tl_friend");
+    const post = call("post-create", owner, { content: "friends only", privacy: "friends" }).result.post;
+    const blocked = call("comment-add", stranger, { postId: post.id, text: "peeking" });
+    assert.equal(blocked.ok, false);
+    const allowed = call("comment-add", friend, { postId: post.id, text: "nice one" });
+    assert.equal(allowed.ok, true);
+  });
+
+  it("comment-list returns 'not found' for a non-friend but the real thread for a friend and the owner", () => {
+    makeFriends("tl_owner", "tl_friend");
+    const post = call("post-create", owner, { content: "friends only", privacy: "friends" }).result.post;
+    call("comment-add", owner, { postId: post.id, text: "only friends can see this" });
+    const asOwner = call("comment-list", owner, { postId: post.id });
+    assert.equal(asOwner.result.total, 1);
+    const asFriend = call("comment-list", friend, { postId: post.id });
+    assert.equal(asFriend.ok, true);
+    assert.equal(asFriend.result.total, 1);
+    const asStranger = call("comment-list", stranger, { postId: post.id });
+    assert.equal(asStranger.ok, false);
+  });
+
+  it("reactions-breakdown is refused for a non-friend but allowed for a friend", () => {
+    makeFriends("tl_owner", "tl_friend");
+    const post = call("post-create", owner, { content: "friends only", privacy: "friends" }).result.post;
+    call("react", owner, { postId: post.id, kind: "love" });
+    const blocked = call("reactions-breakdown", stranger, { postId: post.id });
+    assert.equal(blocked.ok, false);
+    const allowed = call("reactions-breakdown", friend, { postId: post.id });
+    assert.equal(allowed.ok, true);
+    assert.equal(allowed.result.total, 1);
+  });
+
+  it("fails closed when no db handle is available to verify friendship", () => {
+    const noDbOwner = { actor: { userId: "tl_nodb_owner" }, userId: "tl_nodb_owner" };
+    const noDbOther = { actor: { userId: "tl_nodb_other" }, userId: "tl_nodb_other" };
+    const post = call("post-create", noDbOwner, { content: "friends only", privacy: "friends" }).result.post;
+    const r = call("react", noDbOther, { postId: post.id, kind: "like" });
+    assert.equal(r.ok, false);
   });
 });
 
@@ -197,6 +291,29 @@ describe("timeline.share-post", () => {
     const post = call("post-create", ctxA, { content: "hush", privacy: "private" }).result.post;
     const r = call("share-post", ctxB, { postId: post.id });
     assert.equal(r.ok, false);
+  });
+
+  // share-post has its own inline privacy check (not routed through
+  // checkPostAccess), so it needed the friends-tier fix applied separately
+  // — same gap class as react/comment-add/comment-list/reactions-breakdown,
+  // verified against the real friend-graph.
+  it("refuses to share another user's friends-only post when the sharer is not a confirmed friend", () => {
+    const owner = { actor: { userId: "tl_share_owner" }, userId: "tl_share_owner", db: friendshipsDb };
+    const stranger = { actor: { userId: "tl_share_stranger" }, userId: "tl_share_stranger", db: friendshipsDb };
+    const post = call("post-create", owner, { content: "friends only", privacy: "friends" }).result.post;
+    const r = call("share-post", stranger, { postId: post.id });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "Cannot share a friends-only post.");
+  });
+
+  it("allows a confirmed friend to share a friends-only post", () => {
+    const owner = { actor: { userId: "tl_share_owner2" }, userId: "tl_share_owner2", db: friendshipsDb };
+    const friend = { actor: { userId: "tl_share_friend2" }, userId: "tl_share_friend2", db: friendshipsDb };
+    const req = sendFriendRequest(friendshipsDb, "tl_share_owner2", "tl_share_friend2");
+    if (req.status !== "accepted") acceptFriendRequest(friendshipsDb, req.id, "tl_share_friend2");
+    const post = call("post-create", owner, { content: "friends only", privacy: "friends" }).result.post;
+    const r = call("share-post", friend, { postId: post.id });
+    assert.equal(r.ok, true);
   });
 });
 
