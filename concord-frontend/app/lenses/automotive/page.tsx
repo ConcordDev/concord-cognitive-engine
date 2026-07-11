@@ -39,7 +39,7 @@ import { AutomotiveActionPanel } from '@/components/automotive/AutomotiveActionP
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { lensRun } from '@/lib/api/client';
-import { Car, Gauge, DollarSign, AlertTriangle } from 'lucide-react';
+import { Car, Gauge, DollarSign, AlertTriangle, Shield } from 'lucide-react';
 
 interface DashboardSummary {
   vehicleCount: number;
@@ -51,14 +51,48 @@ interface DashboardSummary {
   scheduleCount: number;
 }
 
+interface UpcomingRenewal {
+  id: string;
+  kind: string;
+  title: string;
+  provider: string;
+  renewalDate: string;
+  premium: number | null;
+  daysRemaining: number | null;
+  milesRemaining: number | null;
+  status: 'ok' | 'due_soon' | 'expired';
+  vehicleName: string | null;
+}
+
+const RENEWAL_STATUS_COLOUR: Record<UpcomingRenewal['status'], string> = {
+  expired: 'text-rose-300',
+  due_soon: 'text-amber-300',
+  ok: 'text-emerald-300',
+};
+
 export default function AutomotiveLensPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [upcomingRenewals, setUpcomingRenewals] = useState<UpcomingRenewal[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const r = await lensRun('automotive', 'automotive-dashboard-summary', {});
       if (!cancelled && r.data?.ok) setSummary(r.data.result as DashboardSummary);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // automotive.renewals-upcoming — status-ranked, withinDays-windowed view
+      // spanning every vehicle (unlike renewals-list, which needs a vehicleId).
+      const r = await lensRun('automotive', 'renewals-upcoming', { withinDays: 60 });
+      if (!cancelled && r.data?.ok) {
+        const result = r.data.result as { renewals?: UpcomingRenewal[] } | undefined;
+        setUpcomingRenewals(result?.renewals || []);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -109,6 +143,45 @@ export default function AutomotiveLensPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Dashboard "upcoming renewals" widget — automotive.renewals-upcoming */}
+        {upcomingRenewals && upcomingRenewals.length > 0 && (
+          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-4 h-4 text-neon-cyan" />
+              <h2 className="text-sm font-semibold text-white">Upcoming renewals</h2>
+              <span className="text-[10px] text-gray-500">next 60 days, across all vehicles</span>
+            </div>
+            <ul className="divide-y divide-white/5">
+              {upcomingRenewals.slice(0, 6).map((r) => (
+                <li key={r.id} className="py-2 flex items-center gap-3">
+                  <Shield className={`w-3.5 h-3.5 shrink-0 ${RENEWAL_STATUS_COLOUR[r.status]}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-white truncate">
+                      {r.title}
+                      <span className="text-[9px] uppercase text-gray-400 ml-1">{r.kind.replace(/_/g, ' ')}</span>
+                    </div>
+                    <div className="text-[10px] text-gray-400 truncate">
+                      {[r.vehicleName, r.provider, r.premium !== null ? `$${r.premium}` : ''].filter(Boolean).join(' · ') || '—'}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className={`text-[11px] font-mono ${RENEWAL_STATUS_COLOUR[r.status]}`}>
+                      {r.daysRemaining !== null
+                        ? (r.daysRemaining < 0 ? `${Math.abs(r.daysRemaining)}d overdue` : `${r.daysRemaining}d left`)
+                        : r.renewalDate}
+                    </div>
+                    {r.milesRemaining !== null && (
+                      <div className="text-[10px] text-gray-400">
+                        {r.milesRemaining < 0 ? `${Math.abs(r.milesRemaining).toLocaleString()} mi over` : `${r.milesRemaining.toLocaleString()} mi left`}
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         <GarageSection />

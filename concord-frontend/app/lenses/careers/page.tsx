@@ -25,11 +25,16 @@ import { LensShell } from '@/components/lens/LensShell';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Briefcase, RefreshCw, Hammer, AlertTriangle, Loader2, Check, X, ArrowLeftRight } from 'lucide-react';
+import { Briefcase, RefreshCw, Hammer, AlertTriangle, Loader2, Check, X, ArrowLeftRight, ListOrdered, Star, GitBranch } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 
 interface Track { id: string; category: string; activity: string; branch: string[] }
 interface WorkResult { ok: boolean; trackId?: string; tier?: number; performanceScore?: number; wage?: number; xp?: number; paid?: boolean; reason?: string }
+// server/lib/professions.js#tierInfo — one rung of a track's 10-tier ladder.
+interface TierInfo {
+  tier: number; title: string; skillGate: number; wageBase: number;
+  isBranchPoint: boolean; isMastery: boolean;
+}
 interface Contract {
   id: string; track_id: string; tier: number; role: string | null; base_wage_sparks: number;
   status: string; employer_id: string; worker_id: string; signing_bonus_sparks?: number;
@@ -55,6 +60,8 @@ export default function CareersLens() {
   const [working, setWorking] = useState(false);
   const [negBusy, setNegBusy] = useState<string | null>(null);
   const [counterWage, setCounterWage] = useState<Record<string, string>>({});
+  const [ladder, setLadder] = useState<TierInfo[]>([]);
+  const [ladderLoading, setLadderLoading] = useState(false);
   const addToast = useUIStore((s) => s.addToast);
 
   const refresh = useCallback(async () => {
@@ -76,6 +83,21 @@ export default function CareersLens() {
     }
   }, [addToast]);
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // careers.ladder — the selected track's full 10-tier wage/rank progression,
+  // so a player can see what they're committing to before they play a shift.
+  const loadLadder = useCallback(async (trackId: string) => {
+    setLadderLoading(true);
+    try {
+      const r = (await lensRun<{ ok: boolean; ladder?: TierInfo[] }>('careers', 'ladder', { trackId })).data.result;
+      setLadder(r?.ladder || []);
+    } catch {
+      setLadder([]);
+    } finally {
+      setLadderLoading(false);
+    }
+  }, []);
+  useEffect(() => { if (state === 'ready' && selected) void loadLadder(selected); }, [state, selected, loadLadder]);
 
   const work = useCallback(async () => {
     setNote(null);
@@ -191,6 +213,34 @@ export default function CareersLens() {
             </div>
             {last?.ok && (
               <p className="mt-2 text-xs text-gray-300">performance {(last.performanceScore ?? 0).toFixed(2)} → <span className="text-amber-200">{last.wage} sparks</span> · +{last.xp} XP</p>
+            )}
+          </section>
+
+          {/* Tier ladder — careers.ladder for the selected track */}
+          <section className="mb-6 rounded-lg border border-white/10 bg-black/40 p-4" aria-label="Tier ladder">
+            <h2 className="text-sm font-semibold text-amber-100 mb-2 flex items-center gap-1">
+              <ListOrdered className="w-4 h-4" aria-hidden="true" /> {selected} ladder
+            </h2>
+            {ladderLoading ? (
+              <div role="status" aria-live="polite" aria-busy="true" className="text-gray-400 text-xs flex items-center gap-2">
+                <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Loading ladder…
+              </div>
+            ) : ladder.length === 0 ? (
+              <p className="text-gray-500 text-xs">No ladder data for this track.</p>
+            ) : (
+              <ol className="space-y-1 text-xs">
+                {ladder.map((t) => (
+                  <li key={t.tier} className="flex items-center justify-between gap-2 bg-black/30 border border-white/5 rounded px-2 py-1">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-gray-500 tabular-nums w-5 shrink-0">{t.tier}.</span>
+                      <span className="text-gray-100 truncate">{t.title}</span>
+                      {t.isBranchPoint && <GitBranch className="w-3 h-3 text-sky-300 shrink-0" aria-label="Branch point" />}
+                      {t.isMastery && <Star className="w-3 h-3 text-amber-300 shrink-0" aria-label="Mastery tier" />}
+                    </span>
+                    <span className="text-gray-400 shrink-0 tabular-nums">gate {t.skillGate} · {t.wageBase} sparks/shift</span>
+                  </li>
+                ))}
+              </ol>
             )}
           </section>
 

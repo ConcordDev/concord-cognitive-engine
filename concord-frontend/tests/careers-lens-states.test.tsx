@@ -62,6 +62,12 @@ const CONTRACT = {
   id: 'ctr_abc', track_id: 'chef', tier: 3, role: 'Line Cook',
   base_wage_sparks: 40, status: 'active', employer_id: 'emp', worker_id: 'me',
 };
+// server/lib/professions.js#ladderFor('chef') shape — tierInfo per rung.
+const CHEF_LADDER = [
+  { tier: 1, title: 'Dishwasher', skillGate: 10, wageBase: 8, isBranchPoint: false, isMastery: false },
+  { tier: 5, title: 'Sous Chef', skillGate: 50, wageBase: 32, isBranchPoint: true, isMastery: true },
+  { tier: 10, title: 'Culinary Legend', skillGate: 100, wageBase: 62, isBranchPoint: false, isMastery: true },
+];
 
 beforeEach(() => { lensRun.mockReset(); addToast.mockReset(); });
 
@@ -198,5 +204,45 @@ describe('careers lens — five UX states', () => {
     const { queryByLabelText, getByText } = render(<CareersLens />);
     await waitFor(() => expect(getByText(/40 sparks · active/)).toBeInTheDocument());
     expect(queryByLabelText(`Accept contract ${CONTRACT.id}`)).toBeNull();
+  });
+
+  it('LADDER: fetches and renders the real 10-tier ladder for the selected track (careers.ladder)', async () => {
+    lensRun.mockImplementation((_d: string, name: string, input?: Record<string, unknown>) => {
+      if (name === 'tracks') return reply({ ok: true, tracks: TRACKS });
+      if (name === 'contracts') return reply({ ok: true, contracts: [] });
+      if (name === 'ladder') return reply({ ok: true, trackId: input?.trackId, ladder: CHEF_LADDER });
+      return reply({ ok: true });
+    });
+    const { getByText } = render(<CareersLens />);
+    await waitFor(() => expect(getByText('chef ladder')).toBeInTheDocument());
+
+    // requested the ladder for the default-selected track
+    await waitFor(() => expect(lensRun.mock.calls.some((c) => c[1] === 'ladder' && c[2]?.trackId === 'chef')).toBe(true));
+
+    // real tier titles + derived wage/skill-gate fields render, not fabricated
+    await waitFor(() => expect(getByText('Dishwasher')).toBeInTheDocument());
+    expect(getByText('Sous Chef')).toBeInTheDocument();
+    expect(getByText('Culinary Legend')).toBeInTheDocument();
+    expect(getByText(/gate 10 · 8 sparks\/shift/)).toBeInTheDocument();
+    expect(getByText(/gate 50 · 32 sparks\/shift/)).toBeInTheDocument();
+  });
+
+  it('LADDER: re-fetches the ladder when the selected track changes', async () => {
+    const SMITH_LADDER = [{ tier: 1, title: 'Hauler', skillGate: 10, wageBase: 8, isBranchPoint: false, isMastery: false }];
+    lensRun.mockImplementation((_d: string, name: string, input?: Record<string, unknown>) => {
+      if (name === 'tracks') return reply({ ok: true, tracks: TRACKS });
+      if (name === 'contracts') return reply({ ok: true, contracts: [] });
+      if (name === 'ladder') {
+        return reply({ ok: true, trackId: input?.trackId, ladder: input?.trackId === 'smith' ? SMITH_LADDER : CHEF_LADDER });
+      }
+      return reply({ ok: true });
+    });
+    const { getByText, getByLabelText } = render(<CareersLens />);
+    await waitFor(() => expect(getByText('chef ladder')).toBeInTheDocument());
+
+    fireEvent.change(getByLabelText('Profession track'), { target: { value: 'smith' } });
+    await waitFor(() => expect(getByText('smith ladder')).toBeInTheDocument());
+    await waitFor(() => expect(getByText('Hauler')).toBeInTheDocument());
+    expect(lensRun.mock.calls.some((c) => c[1] === 'ladder' && c[2]?.trackId === 'smith')).toBe(true);
   });
 });
