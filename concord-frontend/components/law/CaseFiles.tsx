@@ -13,14 +13,28 @@
  * the real moment a case is marked closed (`data.closedAt`, set inline by
  * `setStatus` when transitioning to `closed`) — never backfilled or
  * guessed.
+ *
+ * Each expanded case also carries a "Drafts & Citations" sub-panel wired
+ * id-scoped to `law.draft` / `law.cite` (`server.js:40502-40515`) via
+ * `useRunArtifact('law').mutateAsync({ id: item.id, action, params })` —
+ * these two macros mutate a real artifact's `data.drafts[]` /
+ * `data.citations[]` IN PLACE, but only when called against a specific
+ * artifact id; called generically they'd land on a throwaway artifact and
+ * be discarded. `item.id` is the same real case-file artifact id this
+ * component already reads/writes via `useLensData` above, so drafts and
+ * citations attach to the actual matter the user is looking at. See
+ * docs/lens-specs/law-capability-map.md's "Draft + citation logging per
+ * contract/matter" disposition.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, ChevronRight, Globe, Calendar, CheckCircle, Briefcase, Gavel, Check,
+  FileText, Quote, Loader2,
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
@@ -28,6 +42,10 @@ import type { CaseFileSummary, CaseOutcome, CaseStatus, CaseType, Jurisdiction }
 import { JURISDICTIONS, CASE_STATUSES, CASE_TYPES, CASE_OUTCOMES, STATUS_COLORS, JURISDICTION_COLORS, OUTCOME_COLORS } from './case-types';
 
 interface TimelineStep { label: string; date: string; done: boolean }
+/** Real shape returned by `law.draft` (server.js:40502) — appended to `artifact.data.drafts[]`. */
+interface CaseDraft { id: string; caseId: string; title: string; body: string; version: number; status: string; createdAt: string }
+/** Real shape returned by `law.cite` (server.js:40509) — appended to `artifact.data.citations[]`. */
+interface CaseCitation { id: string; source: string; text: string; relevance: number; addedAt: string }
 interface CaseData {
   jurisdiction: Jurisdiction;
   caseType: CaseType;
@@ -36,6 +54,8 @@ interface CaseData {
   judge: string | null;
   closedAt: string | null;
   timeline: TimelineStep[];
+  drafts?: CaseDraft[];
+  citations?: CaseCitation[];
 }
 
 function deadlineDays(deadlineStr: string): number | null {
@@ -54,11 +74,27 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
   const [statusFilter, setStatusFilter] = useState<CaseStatus | 'all'>('all');
   const [jurisdictionFilter, setJurisdictionFilter] = useState<Jurisdiction | 'all'>('all');
   const [editJudge, setEditJudge] = useState('');
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftBody, setDraftBody] = useState('');
+  const [citeSource, setCiteSource] = useState('');
+  const [citeText, setCiteText] = useState('');
+  const [lawActionBusy, setLawActionBusy] = useState<'draft' | 'cite' | null>(null);
+  const [lawActionError, setLawActionError] = useState<string | null>(null);
   const caseSearchInputRef = useRef<HTMLInputElement>(null);
   const newCaseInputRef = useRef<HTMLInputElement>(null);
 
   const { isLoading, isError, error, refetch, items: caseItems, create: createCase, update: updateCase } =
     useLensData<CaseData>('law', 'case', { noSeed: true });
+
+  // `law.draft` / `law.cite` (server.js:40502-40515) mutate a real, live
+  // artifact's `data.drafts[]` / `data.citations[]` in place — but ONLY
+  // when called id-scoped against a specific case-file artifact (POST
+  // /api/lens/law/:id/run). Called generically, the mutation would land on
+  // a throwaway `{id:null}` virtual artifact and be silently discarded —
+  // see docs/lens-specs/law-capability-map.md's "Draft + citation logging
+  // per contract/matter" disposition. `item.id` below is that real case's
+  // artifact id (the same id `useLensData` reads/writes above).
+  const runLawAction = useRunArtifact('law');
 
   const summaries: CaseFileSummary[] = useMemo(
     () =>
@@ -130,6 +166,54 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
   async function saveJudge(item: (typeof caseItems)[number]) {
     await updateCase(item.id, { data: { ...item.data, judge: editJudge.trim() || null } });
     setEditJudge('');
+  }
+
+  function resetLawActionForms() {
+    setDraftTitle('');
+    setDraftBody('');
+    setCiteSource('');
+    setCiteText('');
+    setLawActionError(null);
+  }
+
+  async function addDraft(item: (typeof caseItems)[number]) {
+    if (!draftTitle.trim()) return;
+    setLawActionBusy('draft');
+    setLawActionError(null);
+    try {
+      // law.draft params: { title, body } → { ok, draft:{id,caseId,title,body,version,status,createdAt} }
+      await runLawAction.mutateAsync({
+        id: item.id,
+        action: 'draft',
+        params: { title: draftTitle.trim(), body: draftBody.trim() },
+      });
+      setDraftTitle('');
+      setDraftBody('');
+    } catch (e) {
+      setLawActionError(e instanceof Error ? e.message : 'Could not save draft.');
+    } finally {
+      setLawActionBusy(null);
+    }
+  }
+
+  async function addCitation(item: (typeof caseItems)[number]) {
+    if (!citeSource.trim() || !citeText.trim()) return;
+    setLawActionBusy('cite');
+    setLawActionError(null);
+    try {
+      // law.cite params: { source, text, relevance } → { ok, citation:{id,source,text,relevance,addedAt} }
+      await runLawAction.mutateAsync({
+        id: item.id,
+        action: 'cite',
+        params: { source: citeSource.trim(), text: citeText.trim(), relevance: 0.8 },
+      });
+      setCiteSource('');
+      setCiteText('');
+    } catch (e) {
+      setLawActionError(e instanceof Error ? e.message : 'Could not save citation.');
+    } finally {
+      setLawActionBusy(null);
+    }
   }
 
   if (isLoading) {
@@ -263,7 +347,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
               <motion.div key={item.id} layout className="rounded-lg border border-lattice-border bg-lattice-surface overflow-hidden">
                 <div
                   className="flex items-center justify-between p-3 cursor-pointer hover:bg-white/5 transition-colors"
-                  onClick={() => { setExpandedCase(isExpanded ? null : item.id); setEditJudge(judge || ''); }}
+                  onClick={() => { setExpandedCase(isExpanded ? null : item.id); setEditJudge(judge || ''); resetLawActionForms(); }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -271,6 +355,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
                       e.preventDefault();
                       setExpandedCase(isExpanded ? null : item.id);
                       setEditJudge(judge || '');
+                      resetLawActionForms();
                     }
                   }}
                 >
@@ -404,6 +489,97 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
                           {item.data?.closedAt && <span> · closed {new Date(item.data.closedAt).toLocaleDateString()}</span>}
                         </p>
                       )}
+
+                      {/* Drafts & Citations — law.draft / law.cite, id-scoped to THIS case's real artifact */}
+                      <div className="pt-2 border-t border-white/10 space-y-2">
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                          <FileText className="w-3 h-3" /> Drafts &amp; Citations
+                        </p>
+
+                        {((item.data?.drafts?.length ?? 0) > 0 || (item.data?.citations?.length ?? 0) > 0) ? (
+                          <div className="space-y-1">
+                            {(item.data?.drafts || []).map((d) => (
+                              <div key={d.id} className="flex items-center justify-between gap-2 text-xs px-2 py-1 rounded bg-white/5 border border-white/10">
+                                <span className="flex items-center gap-1.5 min-w-0">
+                                  <FileText className="w-3 h-3 text-neon-purple shrink-0" />
+                                  <span className="truncate text-white">{d.title}</span>
+                                  <span className="text-[9px] text-gray-500 shrink-0">v{d.version}</span>
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-gray-400 shrink-0 capitalize">{d.status}</span>
+                              </div>
+                            ))}
+                            {(item.data?.citations || []).map((c) => (
+                              <div key={c.id} className="flex items-center justify-between gap-2 text-xs px-2 py-1 rounded bg-white/5 border border-white/10">
+                                <span className="flex items-center gap-1.5 min-w-0">
+                                  <Quote className="w-3 h-3 text-neon-cyan shrink-0" />
+                                  <span className="truncate text-white">{c.source}</span>
+                                  <span className="truncate text-gray-400">— {c.text}</span>
+                                </span>
+                                <span className="text-[9px] text-gray-500 shrink-0">{Math.round(c.relevance * 100)}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-gray-500">No drafts or citations logged for this case yet.</p>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div className="text-[10px] text-gray-400 flex flex-col gap-1">
+                            New draft
+                            <div className="flex gap-1">
+                              <input
+                                value={draftTitle}
+                                onChange={(e) => setDraftTitle(e.target.value)}
+                                placeholder="Draft title…"
+                                className={cn(ds.input, 'text-xs py-1 flex-1 min-w-0')}
+                              />
+                              <input
+                                value={draftBody}
+                                onChange={(e) => setDraftBody(e.target.value)}
+                                placeholder="Body (optional)…"
+                                className={cn(ds.input, 'text-xs py-1 flex-1 min-w-0')}
+                              />
+                              <button
+                                onClick={() => addDraft(item)}
+                                disabled={!draftTitle.trim() || lawActionBusy === 'draft'}
+                                aria-label="Add draft"
+                                className="px-1.5 rounded bg-neon-purple/15 text-neon-purple hover:bg-neon-purple/25 disabled:opacity-40 shrink-0"
+                              >
+                                {lawActionBusy === 'draft' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-gray-400 flex flex-col gap-1">
+                            New citation
+                            <div className="flex gap-1">
+                              <input
+                                value={citeSource}
+                                onChange={(e) => setCiteSource(e.target.value)}
+                                placeholder="Source (e.g. 347 U.S. 483)…"
+                                className={cn(ds.input, 'text-xs py-1 flex-1 min-w-0')}
+                              />
+                              <input
+                                value={citeText}
+                                onChange={(e) => setCiteText(e.target.value)}
+                                placeholder="Citation text…"
+                                className={cn(ds.input, 'text-xs py-1 flex-1 min-w-0')}
+                              />
+                              <button
+                                onClick={() => addCitation(item)}
+                                disabled={!citeSource.trim() || !citeText.trim() || lawActionBusy === 'cite'}
+                                aria-label="Add citation"
+                                className="px-1.5 rounded bg-neon-cyan/15 text-neon-cyan hover:bg-neon-cyan/25 disabled:opacity-40 shrink-0"
+                              >
+                                {lawActionBusy === 'cite' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {lawActionError && (
+                          <p className="text-[10px] text-red-400">{lawActionError}</p>
+                        )}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
