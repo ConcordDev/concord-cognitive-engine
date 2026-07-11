@@ -33929,7 +33929,7 @@ try { app.use("/api/social-extended", createSocialExtendedRouter({ STATE, requir
 // contributions, member-role admin, parties, recruitment board,
 // mentorships, org stats.
 import createWorldOrgsExtendedRouter from "./routes/world-orgs-extended.js";
-try { app.use("/api/world-orgs", createWorldOrgsExtendedRouter({ requireAuth })); } catch (e) { structuredLog("warn", "world_orgs_extended_routes_skip", { error: e.message }); }
+try { app.use("/api/world-orgs", createWorldOrgsExtendedRouter({ requireAuth, db })); } catch (e) { structuredLog("warn", "world_orgs_extended_routes_skip", { error: e.message }); }
 
 // Lattice (6th brain) consent infrastructure. Endpoints stage opt-in
 // flags on user-authored DTUs and expose corpus stats. The brain
