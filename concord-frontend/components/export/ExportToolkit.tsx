@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   CalendarClock, Cloud, FileDown, GitCompareArrows, History, Lock,
   Columns3, Loader2, Plus, Trash2, RefreshCw, Download, Power, X,
+  Unlock, Upload,
 } from 'lucide-react';
 import { lensRun, api } from '@/lib/api/client';
 
@@ -64,6 +65,7 @@ export function ExportToolkit() {
       <SelectiveFields dtus={dtus} />
       <PdfExport dtus={dtus} />
       <EncryptedArchive dtus={dtus} />
+      <DecryptedArchive />
       <CloudDestinations />
       <ExportHistory />
     </div>
@@ -389,6 +391,75 @@ function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Lock className="h-3 w-3" />} Encrypt + download
         </button>
       </div>
+      {info && <p className="mt-2 text-[10px] text-zinc-400">{info}</p>}
+    </Panel>
+  );
+}
+
+// ── [S] decrypt a previously-encrypted archive ───────────────────────
+// export.decrypt-archive was previously UNSURFACED (encrypt had a UI, the
+// symmetric decrypt path didn't). Mirrors EncryptedArchive's shape: same
+// panel style, same busy/info state pattern. Reads the self-describing
+// { algorithm, salt, plainChecksum, ciphertextBase64 } envelope EncryptedArchive
+// downloads, so a file this lens encrypted round-trips through this lens.
+function DecryptedArchive() {
+  const [password, setPassword] = useState('');
+  const [envelope, setEnvelope] = useState<{ salt: string; plainChecksum: string; ciphertextBase64: string } | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+
+  const onFile = async (file: File) => {
+    setInfo(null);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as { salt?: string; plainChecksum?: string; ciphertextBase64?: string };
+      if (!parsed.salt || !parsed.ciphertextBase64) { setInfo('Not a recognized .enc envelope (missing salt/ciphertext).'); return; }
+      setEnvelope({ salt: parsed.salt, plainChecksum: parsed.plainChecksum || '', ciphertextBase64: parsed.ciphertextBase64 });
+      setFileName(file.name);
+    } catch {
+      setInfo('Could not parse this file as a Concord .enc envelope.');
+    }
+  };
+
+  const decrypt = async () => {
+    if (!envelope) { setInfo('Choose a .enc archive first.'); return; }
+    if (!password) { setInfo('Password required.'); return; }
+    setBusy(true); setInfo(null);
+    try {
+      const r = await lensRun('export', 'decrypt-archive', {
+        password, salt: envelope.salt, ciphertextBase64: envelope.ciphertextBase64,
+        expectedChecksum: envelope.plainChecksum || undefined,
+      });
+      if (r.data?.ok && r.data.result) {
+        const res = r.data.result as { verified: boolean | null; checksum: string; byteLength: number; plaintext: string };
+        if (res.verified === false) { setInfo('Wrong password — checksum did not match.'); return; }
+        dl(`${(fileName || 'archive').replace(/\.enc$/, '')}.decrypted.json`, res.plaintext, 'application/json');
+        setInfo(`Decrypted ${fmtBytes(res.byteLength)}${res.verified ? ' — checksum verified' : ''}.`);
+      } else {
+        setInfo(r.data?.error || 'Decryption failed');
+      }
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Panel icon={Unlock} title="Decrypt an archive" tag="password-protected">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
+          .enc file
+          <input type="file" accept=".enc,application/octet-stream" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); }}
+            className="w-56 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white file:mr-2 file:rounded file:border-0 file:bg-zinc-800 file:px-2 file:py-0.5 file:text-zinc-300" />
+        </label>
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
+          Password
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="archive password"
+            className="w-56 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
+        </label>
+        <button onClick={decrypt} disabled={busy || !envelope} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} Decrypt + download
+        </button>
+      </div>
+      {fileName && <p className="mt-1 text-[10px] text-zinc-500">Loaded: {fileName}</p>}
       {info && <p className="mt-2 text-[10px] text-zinc-400">{info}</p>}
     </Panel>
   );
