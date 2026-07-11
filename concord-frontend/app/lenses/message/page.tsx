@@ -26,6 +26,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MessagingRepos } from '@/components/message/MessagingRepos';
 import { LabelManagerPanel } from '@/components/message/LabelManagerPanel';
 import { ThreadLabelBar } from '@/components/message/ThreadLabelBar';
+import { RecipientSearchInput } from '@/components/message/RecipientSearchInput';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -260,12 +261,7 @@ export default function MessageLensPage() {
           {composing ? (
             <article className="space-y-3">
               <h1 className="text-xl font-semibold">New message</h1>
-              <input
-                value={composeTo}
-                onChange={(e) => setComposeTo(e.target.value)}
-                placeholder="Recipient userId"
-                className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm font-mono"
-              />
+              <RecipientSearchInput value={composeTo} onChange={setComposeTo} />
               <textarea
                 value={composeBody}
                 onChange={(e) => setComposeBody(e.target.value)}
