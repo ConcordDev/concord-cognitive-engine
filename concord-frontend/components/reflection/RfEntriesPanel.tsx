@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Search, Trash2, BookMarked, MapPin, CloudSun } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { RfEntryDetailModal } from './RfEntryDetailModal';
 
 interface Journal { id: string; name: string; color: string; entryCount: number }
 interface Entry {
@@ -36,6 +37,7 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
   const [form, setForm] = useState({
     title: '', text: '', mood: '', tags: '', location: '', weather: '', photoCount: '',
   });
+  const [openEntryId, setOpenEntryId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -193,32 +195,50 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
         ) : (
           <ul className="space-y-2">
             {entries.map((e) => (
-              <li key={e.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+              <li key={e.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 transition-colors hover:border-indigo-700/50">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                  <div
+                    role="button" tabIndex={0}
+                    onClick={() => setOpenEntryId(e.id)}
+                    onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setOpenEntryId(e.id); } }}
+                    className="min-w-0 flex-1 cursor-pointer focus:outline-none"
+                    aria-label={`Open entry ${e.title || e.date}`}
+                  >
                     <p className="text-[10px] text-zinc-400">
                       {e.date}
                       {e.mood && <span className={cn('ml-2 uppercase', MOOD_COLOR[e.mood])}>{e.mood}</span>}
                     </p>
                     {e.title && <p className="text-sm font-semibold text-zinc-100 mt-0.5">{e.title}</p>}
+                    <p className="text-xs text-zinc-300 mt-1 whitespace-pre-wrap line-clamp-4">{e.text}</p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] text-zinc-400">
+                      <span>{e.wordCount} words</span>
+                      {e.location && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{e.location}</span>}
+                      {e.weather && <span className="flex items-center gap-0.5"><CloudSun className="w-3 h-3" />{e.weather}</span>}
+                      {e.photoCount > 0 && <span>{e.photoCount} photo{e.photoCount > 1 ? 's' : ''}</span>}
+                      {e.tags.map((t) => <span key={t} className="text-indigo-400">#{t}</span>)}
+                    </div>
                   </div>
-                  <button aria-label="Delete" type="button" onClick={() => delEntry(e.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                  <button
+                    aria-label="Delete" type="button"
+                    onClick={() => delEntry(e.id)}
+                    className="text-zinc-600 hover:text-rose-400 shrink-0"
+                  >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
-                </div>
-                <p className="text-xs text-zinc-300 mt-1 whitespace-pre-wrap line-clamp-4">{e.text}</p>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] text-zinc-400">
-                  <span>{e.wordCount} words</span>
-                  {e.location && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{e.location}</span>}
-                  {e.weather && <span className="flex items-center gap-0.5"><CloudSun className="w-3 h-3" />{e.weather}</span>}
-                  {e.photoCount > 0 && <span>{e.photoCount} photo{e.photoCount > 1 ? 's' : ''}</span>}
-                  {e.tags.map((t) => <span key={t} className="text-indigo-400">#{t}</span>)}
                 </div>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {openEntryId && (
+        <RfEntryDetailModal
+          entryId={openEntryId}
+          onClose={() => setOpenEntryId(null)}
+          onChange={refresh}
+        />
+      )}
     </div>
   );
 }
