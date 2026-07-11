@@ -9,11 +9,13 @@
  * here is backed by a `world-creator.*` macro.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { lensRun } from '@/lib/api/client';
 import { SceneCanvas, type SceneTool } from './SceneCanvas';
 import { BiomePreview } from './BiomePreview';
+
+const clampNum = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : lo));
 
 const PROP_KINDS = ['tree', 'rock', 'building', 'campfire', 'well', 'ruin', 'lamp', 'bridge', 'statue', 'fence', 'crystal', 'altar'];
 const ZONE_KINDS = ['safe', 'hazard', 'social', 'combat', 'quest', 'neutral'];
@@ -36,7 +38,7 @@ interface Draft {
   visibility: string;
   publishedWorldId: string | null;
 }
-interface Biome { id: string; label: string; }
+interface Biome { id: string; label: string; palette?: string[]; }
 
 export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: () => void }) {
   const router = useRouter();
@@ -45,6 +47,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
   const [tool, setTool] = useState<SceneTool>('select');
   const [propKind, setPropKind] = useState('tree');
   const [zoneKind, setZoneKind] = useState('safe');
+  const [zoneRadius, setZoneRadius] = useState(50);
   const [npcArch, setNpcArch] = useState('warrior');
   const [selected, setSelected] = useState<{ kind: string; id: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -78,17 +81,36 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
     if (!draft) return;
     if (tool === 'prop') await run('prop-place', { draftId, kind: propKind, x, z });
     else if (tool === 'spawn') await run('spawn-add', { draftId, name: '', x, z });
-    else if (tool === 'zone') await run('zone-add', { draftId, kind: zoneKind, x, z, radius: 50 });
+    else if (tool === 'zone') await run('zone-add', { draftId, kind: zoneKind, x, z, radius: zoneRadius });
     else if (tool === 'npc') {
       const nm = window.prompt('NPC name?');
       if (nm) await run('npc-place', { draftId, name: nm, archetype: npcArch, x, z });
     }
-  }, [draft, tool, propKind, zoneKind, npcArch, draftId, run]);
+  }, [draft, tool, propKind, zoneKind, zoneRadius, npcArch, draftId, run]);
 
-  const onMove = useCallback((kind: 'prop', id: string, x: number, z: number) => {
-    setDraft(d => d ? { ...d, props: d.props.map(p => p.id === id ? { ...p, x, z } : p) } : d);
-    void lensRun('world-creator', 'prop-move', { draftId, propId: id, x, z });
-  }, [draftId]);
+  // updateProp is the single write path for a prop's position/rotation/scale
+  // (drag-move AND the inspector's rotate/scale fields both funnel through
+  // it) — optimistic update immediately, then reconcile against the real
+  // `prop-move` response: a rejected/failed write re-pulls the draft rather
+  // than silently leaving the client's optimistic state disagreeing with
+  // the server's, and a failure surfaces via `err` instead of vanishing.
+  const updateProp = useCallback((id: string, patch: Partial<{ x: number; z: number; rotation: number; scale: number }>) => {
+    setDraft(d => d ? { ...d, props: d.props.map(p => p.id === id ? { ...p, ...patch } : p) } : d);
+    lensRun('world-creator', 'prop-move', { draftId, propId: id, ...patch }).then(r => {
+      if (!r.data?.ok) { setErr(r.data?.error || 'failed to update prop'); refresh(); }
+    });
+  }, [draftId, refresh]);
+
+  // Dragging fires onMove on every mousemove tick; dedupe against the last
+  // committed cell so a single drag gesture doesn't fire a `prop-move`
+  // network call per pixel.
+  const lastMoveRef = useRef<{ id: string; x: number; z: number } | null>(null);
+  const onMove = useCallback((_kind: 'prop', id: string, x: number, z: number) => {
+    const last = lastMoveRef.current;
+    if (last && last.id === id && last.x === x && last.z === z) return;
+    lastMoveRef.current = { id, x, z };
+    updateProp(id, { x, z });
+  }, [updateProp]);
 
   const removeSelected = useCallback(async () => {
     if (!selected) return;
@@ -198,10 +220,20 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
               </select>
             )}
             {tool === 'zone' && (
-              <select value={zoneKind} onChange={e => setZoneKind(e.target.value)}
-                className="rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-200">
-                {ZONE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
-              </select>
+              <div className="flex items-center gap-1.5">
+                <select value={zoneKind} onChange={e => setZoneKind(e.target.value)}
+                  className="rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-200">
+                  {ZONE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+                <label className="flex items-center gap-1 text-xs text-stone-400">
+                  Radius
+                  <input type="number" min={5} max={250} step={5} value={zoneRadius}
+                    aria-label="Zone radius in meters"
+                    onChange={e => setZoneRadius(clampNum(Number(e.target.value), 5, 250))}
+                    className="w-16 rounded border border-stone-700 bg-stone-900 px-1.5 py-1 text-stone-100" />
+                  m
+                </label>
+              </div>
             )}
             {tool === 'npc' && (
               <select value={npcArch} onChange={e => setNpcArch(e.target.value)}
@@ -212,6 +244,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
             <SceneCanvas
               props={draft.props} spawns={draft.spawnPoints} zones={draft.zones} npcs={draft.npcs}
               tool={tool} selectedId={selected?.id || null}
+              biomePalette={biomes.find(b => b.id === draft.biome)?.palette}
               onCanvasClick={onCanvasClick}
               onSelect={(kind, id) => setSelected({ kind, id })}
               onMove={onMove}
@@ -232,7 +265,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                     Delete
                   </button>
                 </div>
-                <InspectorBody draft={draft} selected={selected} />
+                <InspectorBody draft={draft} selected={selected} onUpdateProp={updateProp} />
               </div>
             ) : (
               <div className="rounded-lg border border-stone-800 bg-stone-950 p-3 text-xs text-stone-500">
@@ -367,13 +400,35 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
   );
 }
 
-function InspectorBody({ draft, selected }: { draft: Draft; selected: { kind: string; id: string } }) {
+function InspectorBody({ draft, selected, onUpdateProp }: {
+  draft: Draft; selected: { kind: string; id: string };
+  onUpdateProp: (id: string, patch: Partial<{ x: number; z: number; rotation: number; scale: number }>) => void;
+}) {
   if (selected.kind === 'prop') {
     const p = draft.props.find(x => x.id === selected.id);
     if (!p) return null;
-    return <dl className="space-y-1 text-xs text-stone-300">
+    return <dl className="space-y-1.5 text-xs text-stone-300">
       <Row k="Kind" v={p.kind} /><Row k="Position" v={`(${p.x}, ${p.z})`} />
-      <Row k="Rotation" v={`${p.rotation}°`} /><Row k="Scale" v={`${p.scale}×`} />
+      <div className="flex items-center justify-between gap-2">
+        <dt className="text-stone-500">Rotation</dt>
+        <dd className="flex items-center gap-1">
+          <input type="number" min={0} max={360} step={5} value={p.rotation}
+            aria-label="Prop rotation in degrees"
+            onChange={e => onUpdateProp(p.id, { rotation: Math.min(360, Math.max(0, Number(e.target.value) || 0)) })}
+            className="w-14 rounded border border-stone-700 bg-stone-900 px-1.5 py-0.5 text-right text-stone-100" />
+          <span className="text-stone-500">°</span>
+        </dd>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <dt className="text-stone-500">Scale</dt>
+        <dd className="flex items-center gap-1">
+          <input type="number" min={0.25} max={4} step={0.25} value={p.scale}
+            aria-label="Prop scale multiplier"
+            onChange={e => onUpdateProp(p.id, { scale: Math.min(4, Math.max(0.25, Number(e.target.value) || 1)) })}
+            className="w-14 rounded border border-stone-700 bg-stone-900 px-1.5 py-0.5 text-right text-stone-100" />
+          <span className="text-stone-500">×</span>
+        </dd>
+      </div>
     </dl>;
   }
   if (selected.kind === 'spawn') {
