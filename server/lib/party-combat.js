@@ -29,6 +29,52 @@ const DAMAGE_CAP_HARD = 500;
 const MAX_PARTY_SIZE = 4;
 const VALID_ACTION_KINDS = new Set(["attack", "move", "ability", "wait"]);
 
+// ── Server-side ability catalog ─────────────────────────────────────────────
+//
+// Security fix (Wave 4 backlog, runmodes-endgame-social-capability-map.md
+// §2.8): the `ability` action used to trust `payload.damage` /
+// `payload.cooldownMs` from the client outright, clamped only by the blunt
+// DAMAGE_CAP_HARD ceiling (500 — ~33x the intended default of 15) with no
+// lower bound on cooldown beyond a 200ms floor. A modified client could
+// queue `damage: 500` on every ability with a 200ms cooldown, dealing
+// ~2500 dmg/s instead of the intended ~15 dmg per ~1.4s. This mirrors the
+// exact "trust the client damage field" anti-pattern CLAUDE.md warns
+// against for the main action-combat path (`_validateCombatReach` /
+// `_validateDamageCap` in routes/worlds.js).
+//
+// This catalog is the ability-kind analogue of that fix: one signature
+// move per combat profile (see `combat-polish.js#COMBAT_PROFILES` for the
+// profile flavor text this is grounded in), keyed by `profile_name` on the
+// combatant row. Damage, cooldown, range, and element are ALL
+// server-authoritative here — the client selects nothing but the target(s);
+// `payload.damage` / `payload.cooldownMs` / `payload.range` are ignored for
+// the `ability` kind. `DAMAGE_CAP_HARD` stays applied underneath as
+// defense-in-depth in case a future catalog entry is misconfigured.
+//
+// Deliberately minimal (one ability per profile, not a full per-class
+// roster) — the frontend (`PartyCombatHUD.tsx`) only exposes a single
+// generic "ability" button today, so a bigger roster has no UI to reach it
+// yet. Extending this table is the natural next step once the HUD grows an
+// ability picker; each new entry is additive and doesn't touch the
+// enforcement path below.
+const PARTY_ABILITY_CATALOG = Object.freeze({
+  ufc_groundgame:  { abilityId: "ground_pound",    damage: 30, cooldownMs: 2400, range: 2,   element: "physical" },
+  sifu_brawler:    { abilityId: "flowing_palm",    damage: 20, cooldownMs: 1400, range: 2.5, element: "physical" },
+  street_freeroam: { abilityId: "haymaker",        damage: 22, cooldownMs: 1300, range: 2,   element: "physical" },
+  chrome_blade:    { abilityId: "mantis_slash",    damage: 24, cooldownMs: 1200, range: 2.5, element: "physical" },
+  caped_aerial:    { abilityId: "aerial_finisher", damage: 26, cooldownMs: 1800, range: 3,   element: "physical" },
+  default:         { abilityId: "strike",          damage: 15, cooldownMs: DEFAULT_COOLDOWN_MS, range: 2, element: "physical" },
+});
+
+/**
+ * Resolve the server-authoritative ability record for a combatant's
+ * profile. Unknown/missing profile names fall back to the generic
+ * `default` entry — never to caller-supplied values.
+ */
+function _resolveAbility(profileName) {
+  return PARTY_ABILITY_CATALOG[profileName] || PARTY_ABILITY_CATALOG.default;
+}
+
 function _now() { return Date.now(); }
 
 export function startCombat(db, opts = {}) {
@@ -183,7 +229,10 @@ export function resolveTick(db, sessionId, nowMs = _now()) {
 }
 
 function _applyAction(db, sessionId, actor, payload, nowMs) {
-  const cooldownMs = Math.max(200, Number(payload.cooldownMs) || DEFAULT_COOLDOWN_MS);
+  // `ability` cooldown comes from the server-side catalog below, not the
+  // client — set once the ability is resolved. Every other kind keeps the
+  // existing client-supplied-but-clamped cooldown.
+  let cooldownMs = Math.max(200, Number(payload.cooldownMs) || DEFAULT_COOLDOWN_MS);
 
   // Clear the queued action — fired now.
   db.prepare(`
@@ -225,22 +274,32 @@ function _applyAction(db, sessionId, actor, payload, nowMs) {
     _logAction(db, sessionId, actor.entity_id, "move", null, 0, nowMs);
     result = { ...result, x: payload.x, z: payload.z };
   } else if (payload.kind === "ability") {
-    // Ability is a damage + effect. Apply to multiple targets if AoE.
+    // Server-authoritative: damage + cooldown come from PARTY_ABILITY_CATALOG
+    // keyed by the actor's profile — never from `payload`. The client
+    // supplies only which target(s) to hit. (`range`/`element` are also
+    // catalogued for a future positioning pass — an AoE ability isn't
+    // straight-line range-gated the way single-target `attack` is, matching
+    // the existing AoE-hits-multiple-enemies contract; not part of this
+    // damage-exploit fix's scope.)
+    const ability = _resolveAbility(actor.profile_name);
+    cooldownMs = ability.cooldownMs;
     const targets = Array.isArray(payload.targetIds) ? payload.targetIds : [];
     const hits = [];
     const selTarget = db.prepare(`SELECT hp, team FROM party_combatants WHERE session_id = ? AND entity_id = ?`);
     const setTargetHp = db.prepare(`UPDATE party_combatants SET hp = ? WHERE session_id = ? AND entity_id = ?`);
     for (const tid of targets) {
       const t = selTarget.get(sessionId, tid);
-      if (t && t.team !== actor.team && t.hp > 0) {
-        const damage = Math.min(Math.max(1, Number(payload.damage) || 15), DAMAGE_CAP_HARD);
-        const newHp = Math.max(0, t.hp - damage);
-        setTargetHp.run(newHp, sessionId, tid);
-        _logAction(db, sessionId, actor.entity_id, "ability", tid, damage, nowMs);
-        hits.push({ targetId: tid, damage, newHp });
-      }
+      if (!t || t.team === actor.team || t.hp <= 0) continue;
+      // DAMAGE_CAP_HARD stays applied underneath the catalog value as
+      // defense-in-depth (never trust a single source of truth for a
+      // security-relevant clamp).
+      const damage = Math.min(ability.damage, DAMAGE_CAP_HARD);
+      const newHp = Math.max(0, t.hp - damage);
+      setTargetHp.run(newHp, sessionId, tid);
+      _logAction(db, sessionId, actor.entity_id, "ability", tid, damage, nowMs);
+      hits.push({ targetId: tid, damage, newHp });
     }
-    result = { ...result, hits };
+    result = { ...result, abilityId: ability.abilityId, element: ability.element, hits };
   } else {
     _logAction(db, sessionId, actor.entity_id, "wait", null, 0, nowMs);
   }
@@ -312,4 +371,4 @@ export function listActionLog(db, sessionId, limit = 100) {
   } catch { return []; }
 }
 
-export { DEFAULT_COOLDOWN_MS, DAMAGE_CAP_HARD, MAX_PARTY_SIZE, VALID_ACTION_KINDS };
+export { DEFAULT_COOLDOWN_MS, DAMAGE_CAP_HARD, MAX_PARTY_SIZE, VALID_ACTION_KINDS, PARTY_ABILITY_CATALOG };

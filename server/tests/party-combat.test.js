@@ -6,6 +6,7 @@ import Database from "better-sqlite3";
 import {
   startCombat, setTimeScale, queueAction, resolveTick,
   getCombatState, listActionLog, DEFAULT_COOLDOWN_MS, DAMAGE_CAP_HARD,
+  PARTY_ABILITY_CATALOG,
 } from "../lib/party-combat.js";
 import { up as upParty } from "../migrations/259_fluid_party_combat.js";
 
@@ -159,5 +160,57 @@ describe("Phase CC1 (rework) — fluid party combat", () => {
     const r = startCombat(db, { worldId: "tunya", participants: [TWO[0]] });
     assert.equal(r.ok, false);
     assert.equal(r.error, "need_two_combatants");
+  });
+
+  // ── Security regression: ability damage is server-catalog-authoritative ──
+  // (Wave 4 backlog, runmodes-endgame-social-capability-map.md §2.8) —
+  // a client used to be able to supply an arbitrary `damage` on an `ability`
+  // action, bounded only by the blunt 500 hard cap. These tests pin that
+  // the applied damage now comes ONLY from PARTY_ABILITY_CATALOG, keyed by
+  // the actor's profile, regardless of what the client claims.
+
+  it("ability damage ignores an absurd client-supplied value (999999)", () => {
+    const r = startCombat(db, { worldId: "tunya", participants: TWO, profileName: "sifu_brawler" });
+    queueAction(db, r.sessionId, "alice", {
+      kind: "ability",
+      payload: { kind: "ability", targetIds: ["bob"], damage: 999999, cooldownMs: 1 },
+    });
+    const t = resolveTick(db, r.sessionId, Date.now());
+    const hit = t.resolutions[0].hits[0];
+    const expected = PARTY_ABILITY_CATALOG.sifu_brawler.damage;
+    assert.equal(hit.damage, expected, "damage must come from the catalog, not the client");
+    assert.ok(hit.damage < 999999);
+    assert.ok(hit.damage <= DAMAGE_CAP_HARD);
+    const bob = getCombatState(db, r.sessionId).combatants.find(c => c.entity_id === "bob");
+    assert.equal(bob.hp, 100 - expected);
+  });
+
+  it("ability cooldown ignores a client-supplied near-zero cooldownMs", () => {
+    const r = startCombat(db, { worldId: "tunya", participants: TWO, profileName: "sifu_brawler" });
+    const now = Date.now();
+    queueAction(db, r.sessionId, "alice", {
+      kind: "ability",
+      payload: { kind: "ability", targetIds: ["bob"], damage: 999999, cooldownMs: 1 },
+    });
+    resolveTick(db, r.sessionId, now);
+    const alice = getCombatState(db, r.sessionId).combatants.find(c => c.entity_id === "alice");
+    // Actor's next_action_at_ms must reflect the catalog cooldown, not the
+    // attacker-claimed 1ms — otherwise a modified client can rapid-fire
+    // max-damage abilities and bypass the intended cadence entirely.
+    assert.equal(alice.next_action_at_ms, now + PARTY_ABILITY_CATALOG.sifu_brawler.cooldownMs);
+  });
+
+  it("unknown profile falls back to the generic default ability, never client values", () => {
+    const weird = [
+      { entityId: "alice", team: "blue", hp: 100, maxHp: 100, x: 0, z: 0, profileName: "totally_not_a_real_profile" },
+      { entityId: "bob",   team: "red",  hp: 100, maxHp: 100, x: 2, z: 0 },
+    ];
+    const r = startCombat(db, { worldId: "tunya", participants: weird });
+    queueAction(db, r.sessionId, "alice", {
+      kind: "ability",
+      payload: { kind: "ability", targetIds: ["bob"], damage: 123456 },
+    });
+    const t = resolveTick(db, r.sessionId, Date.now());
+    assert.equal(t.resolutions[0].hits[0].damage, PARTY_ABILITY_CATALOG.default.damage);
   });
 });
