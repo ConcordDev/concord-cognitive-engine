@@ -21,8 +21,15 @@ interface Poem {
 
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
+    // /api/lens/run always wraps the macro's own return value in
+    // `{ ok: true, result: <macro return> }` — the macro's `ok`/`poems`
+    // fields live one level down at `r.data.result`, not on `r.data`
+    // itself. Reading `r.data` directly (the prior bug here) made `ok`
+    // permanently true (the outer dispatch envelope) and `poems`
+    // permanently undefined, so this panel silently rendered zero
+    // poems on every load regardless of the real macro result.
     const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
+    return (r?.data as { result?: T })?.result ?? null;
   } catch {
     return null;
   }

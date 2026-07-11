@@ -31,7 +31,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Globe2, Users, Bell, BarChart3,
   Sparkles, Activity, Loader2, Bookmark, Play, Radio,
-  MessageSquare,
+  MessageSquare, Shield,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -56,12 +56,13 @@ import { StreakIndicator } from '@/components/social/StreakIndicator';
 import { CreatorAnalytics } from '@/components/social/CreatorAnalytics';
 import { UserLink } from '@/components/social/UserLink';
 import { BookmarksList } from '@/components/social/BookmarksList';
+import { ModerationPanel } from '@/components/social/ModerationPanel';
 import { ReelsFeed } from '@/components/reels/ReelsFeed';
 import { RoomList } from '@/components/audio-rooms/RoomList';
 import RoomStage from '@/components/audio-rooms/RoomStage';
 import { FeedView } from '@/components/social/feed/FeedView';
 
-type TabId = 'feed' | 'discover' | 'reels' | 'spaces' | 'following' | 'notifications' | 'analytics' | 'saved';
+type TabId = 'feed' | 'discover' | 'reels' | 'spaces' | 'following' | 'notifications' | 'analytics' | 'saved' | 'moderation';
 
 interface MeResponse {
   ok: boolean;
@@ -111,6 +112,7 @@ export default function SocialHubPage() {
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'saved',         label: 'Saved',         icon: Bookmark },
     { id: 'analytics',     label: 'Analytics',     icon: BarChart3 },
+    { id: 'moderation',    label: 'Moderation',    icon: Shield },
   ];
 
   return (
@@ -221,6 +223,10 @@ export default function SocialHubPage() {
 
             {activeTab === 'analytics' && (
               <CreatorAnalytics userId={currentUserId} />
+            )}
+
+            {activeTab === 'moderation' && (
+              <ModerationPanel />
             )}
 
             {/* Cross-lens narrative — DTUs surfaced INTO social from elsewhere */}

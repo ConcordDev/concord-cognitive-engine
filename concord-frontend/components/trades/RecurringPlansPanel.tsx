@@ -6,9 +6,11 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Plan { id: string; customerId: string; serviceType: string; cadence: 'weekly' | 'monthly' | 'quarterly' | 'annual'; priceEach: number; status: 'active' | 'cancelled'; nextServiceDate: string | null; jobsCompleted: number; totalRevenue: number }
+interface Customer { id: string; name: string }
 
 export function RecurringPlansPanel() {
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ customerId: '', serviceType: '', cadence: 'monthly' as Plan['cadence'], priceEach: '' });
 
@@ -17,10 +19,18 @@ export function RecurringPlansPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await lensRun({ domain: 'trades', action: 'recurring-plans-list', input: {} });
+      const [res, custRes] = await Promise.all([
+        lensRun({ domain: 'trades', action: 'recurring-plans-list', input: {} }),
+        lensRun({ domain: 'trades', action: 'customer-list', input: {} }),
+      ]);
       setPlans((res.data?.result?.plans || []) as Plan[]);
+      setCustomers((custRes.data?.result?.customers || []) as Customer[]);
     } catch (e) { console.error('[Recurring] failed', e); }
     finally { setLoading(false); }
+  }
+
+  function customerName(id: string): string {
+    return customers.find(c => c.id === id)?.name || id.slice(0, 10);
   }
 
   async function create() {
@@ -63,13 +73,17 @@ export function RecurringPlansPanel() {
         <span className="ml-auto text-[10px] text-gray-400">{active.length} active · ~${monthlyRecurring.toFixed(0)}/mo MRR</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
-        <input value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} placeholder="Customer ID" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <select value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="">— select customer —</option>
+          {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
         <input value={form.serviceType} onChange={e => setForm({ ...form, serviceType: e.target.value })} placeholder="Service type" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <select value={form.cadence} onChange={e => setForm({ ...form, cadence: e.target.value as Plan['cadence'] })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annual">Annual</option>
         </select>
         <input type="number" value={form.priceEach} onChange={e => setForm({ ...form, priceEach: e.target.value })} placeholder="Price each" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={create} className="col-span-5 px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Add plan</button>
+        {customers.length === 0 && <p className="col-span-5 text-[10px] text-amber-300/80">Add a customer first (Trades Workbench → Customers) to create a plan.</p>}
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
@@ -83,7 +97,7 @@ export function RecurringPlansPanel() {
                 <Repeat className="w-3.5 h-3.5 text-violet-400" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white">{p.serviceType}</div>
-                  <div className="text-[10px] text-gray-400">{p.customerId.slice(0, 12)} · {p.cadence} · {p.jobsCompleted} jobs done{p.nextServiceDate ? ` · next ${p.nextServiceDate}` : ''}</div>
+                  <div className="text-[10px] text-gray-400">{customerName(p.customerId)} · {p.cadence} · {p.jobsCompleted} jobs done{p.nextServiceDate ? ` · next ${p.nextServiceDate}` : ''}</div>
                 </div>
                 <span className="font-mono text-sm tabular-nums text-violet-300">${p.priceEach.toFixed(0)}</span>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', p.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{p.status}</span>
