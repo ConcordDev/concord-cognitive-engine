@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Video, Loader2, FileText, Save, Play, Pause } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useLessonOptions } from './useLessonOptions';
 
 interface TranscriptCue { sec: number; text: string }
 interface VideoProgress {
@@ -37,6 +38,8 @@ export function VideoLessonPlayer() {
   const [saved, setSaved] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSaveRef = useRef(0);
+  const { options: lessonOptions, loading: optionsLoading } = useLessonOptions();
+  const [manualEntry, setManualEntry] = useState(false);
 
   const load = useCallback(async (id: string) => {
     if (!id.trim()) return;
@@ -120,29 +123,51 @@ export function VideoLessonPlayer() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2">
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-[10px] uppercase tracking-wider text-gray-400">Lesson ID</label>
-          <input
-            value={lessonId}
-            onChange={e => setLessonId(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') load(lessonId); }}
-            placeholder="Paste a lesson ID (less_…)"
-            className="w-full mt-1 px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-sm text-white"
-          />
+        <div className="flex-1 min-w-[240px]">
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Lesson</label>
+          {manualEntry ? (
+            <input
+              value={lessonId}
+              onChange={e => setLessonId(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') load(lessonId); }}
+              placeholder="Paste a lesson ID (less_…)"
+              className="w-full mt-1 px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-sm text-white"
+            />
+          ) : (
+            <select
+              value={lessonId}
+              onChange={e => { setLessonId(e.target.value); if (e.target.value) void load(e.target.value); }}
+              disabled={optionsLoading || lessonOptions.length === 0}
+              className="w-full mt-1 px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-sm text-white disabled:opacity-50"
+            >
+              <option value="">{optionsLoading ? 'Loading lessons…' : lessonOptions.length === 0 ? 'No lessons yet — add one in the catalog' : 'Choose a lesson…'}</option>
+              {lessonOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          )}
         </div>
+        {manualEntry ? (
+          <button
+            onClick={() => load(lessonId)}
+            disabled={!lessonId.trim() || loading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs rounded bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 font-bold disabled:opacity-40"
+          >
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Video className="w-3.5 h-3.5" />}
+            Load lesson
+          </button>
+        ) : null}
         <button
-          onClick={() => load(lessonId)}
-          disabled={!lessonId.trim() || loading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs rounded bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 font-bold disabled:opacity-40"
+          onClick={() => setManualEntry(m => !m)}
+          className="text-[10px] px-2 py-2 text-gray-400 hover:text-white underline decoration-dotted"
         >
-          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Video className="w-3.5 h-3.5" />}
-          Load lesson
+          {manualEntry ? 'Pick from list' : 'Paste ID instead'}
         </button>
       </div>
 
       {!activeLesson && (
         <div className="text-center py-12 text-sm text-gray-400">
-          No lesson loaded yet. Enter a lesson ID to play and track video progress.
+          {lessonOptions.length === 0 && !optionsLoading
+            ? 'No lessons yet. Add a course + lesson in the Catalog tab first.'
+            : 'No lesson loaded yet. Pick one above to play and track video progress.'}
         </div>
       )}
 

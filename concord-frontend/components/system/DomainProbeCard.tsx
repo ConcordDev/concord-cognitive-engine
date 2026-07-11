@@ -39,20 +39,31 @@ export function DomainProbeCard({ probe, className }: DomainProbeCardProps) {
   const { data, error, isFetching, refetch } = useQuery({
     queryKey: ['domain-probe', probe.domain, probe.macro, JSON.stringify(probe.input ?? {})],
     queryFn: async () => {
-      return apiHelpers.lens.runDomain(probe.domain, probe.macro, probe.input ?? {});
+      // `runDomain` resolves to the raw axios response — the envelope
+      // `/api/lens/run` always sends is `{ ok, result }` (or `{ ok:false,
+      // error:'unknown_macro' }` for an unregistered domain/macro pair).
+      // Unwrap to `.data` here so `probe.summarise` receives the macro's
+      // OWN return value, not the axios Response wrapper (which was the
+      // bug: every card fell through to the `Object.keys(o).length`
+      // branch and showed a fixed "N fields" for every probe regardless
+      // of what the backend actually returned).
+      const r = await apiHelpers.lens.runDomain(probe.domain, probe.macro, probe.input ?? {});
+      return r.data as { ok?: boolean; result?: unknown; error?: string; reason?: string } | undefined;
     },
     staleTime: 30_000,
     gcTime: 60_000,
     retry: 1,
   });
 
+  const envelopeFailed = !!data && data.ok === false;
   let summary: string;
   if (isFetching && !data) summary = 'probing…';
   else if (error) summary = error instanceof Error ? error.message : 'unreachable';
-  else if (probe.summarise) summary = probe.summarise(data);
+  else if (envelopeFailed) summary = data?.error || data?.reason || 'unreachable';
+  else if (probe.summarise) summary = probe.summarise(data?.result);
   else summary = 'ok';
 
-  const status: 'pending' | 'ok' | 'error' = error ? 'error' : isFetching && !data ? 'pending' : 'ok';
+  const status: 'pending' | 'ok' | 'error' = (error || envelopeFailed) ? 'error' : isFetching && !data ? 'pending' : 'ok';
   const statusDot = status === 'error'
     ? 'bg-red-400'
     : status === 'pending'
