@@ -304,4 +304,24 @@ export function listActiveWars(db) {
   });
 }
 
+/**
+ * Find an already-active war between two factions (either side order).
+ * Used by callers that want to spawn a war as a *consequence* of some other
+ * event (e.g. the faction-strategy DECLARE_WAR/RAID moves) without ever
+ * creating a duplicate encounter for the same rivalry while one is already
+ * live. DB-backed (not the in-memory `_wars` map) so the check is correct
+ * even across a process restart, where `_wars` resets but `faction_wars`
+ * rows persist.
+ */
+export function findActiveWarBetween(db, factionA, factionB) {
+  if (!db || !factionA || !factionB) return null;
+  ensureSchema(db);
+  return db.prepare(`
+    SELECT * FROM faction_wars
+     WHERE status = 'active'
+       AND ((side_a = ? AND side_b = ?) OR (side_a = ? AND side_b = ?))
+     ORDER BY started_at DESC LIMIT 1
+  `).get(factionA, factionB, factionB, factionA) ?? null;
+}
+
 export const _internal = { FACTION_DEFAULT_STYLES };
