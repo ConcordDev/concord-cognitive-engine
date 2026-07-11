@@ -65,53 +65,72 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
+// NOTE ON SHAPES: these mirror the real response shapes from
+// server/lib/codebase-inventory.js (via server/routes/inventory.js), verified
+// against the live handlers — not aspirational. Field names below (lineCount,
+// mostImportedComponents/usedByCount, isOrphaned, serverRoutes, etc.) are the
+// server's actual keys; a prior version of this file guessed different names
+// (lines/mostImported/wired/routes) which silently rendered blank or crashed
+// on interaction (Wave 3 audit, 2026-07-11) — don't reintroduce the guessed names.
+
 interface InventoryOverview {
   totalComponents: number;
   totalLenses: number;
   totalServerLibs: number;
   totalRoutes: number;
   orphanedCount: number;
-  largestFiles: { path: string; lines: number }[];
-  mostImported: { name: string; importCount: number }[];
+  largestFiles: { path: string; lineCount: number }[];
+  mostImportedComponents: { path: string; usedByCount: number }[];
 }
 
 interface ComponentEntry {
-  name: string;
+  path: string;
   directory: string;
   lineCount: number;
-  wired: boolean;
+  isOrphaned: boolean;
   exports: string[];
-  importedBy: string[];
+  usedByLenses: string[];
 }
 
 interface LensEntry {
   name: string;
-  path: string;
   lineCount: number;
-  importCount: number;
   imports: string[];
-  routes: string[];
+  serverRoutes: string[];
 }
 
 interface OrphanEntry {
-  name: string;
   path: string;
   directory: string;
   exports: string[];
   lineCount: number;
 }
 
-interface WiringEntry {
-  lens: string;
-  domain: string;
+interface LensWiringInfo {
   components: string[];
+  serverRoutes: string[];
+  lineCount: number;
+  lastModified: string | null;
+}
+
+interface WiringMapResult {
+  lenses: Record<string, LensWiringInfo>;
+  components: Record<string, { exports: string[]; usedByLenses: string[]; lineCount: number; lastModified: string | null }>;
+  serverLibs: Record<string, { type: string; exports: string[]; lineCount: number; lastModified: string | null }>;
 }
 
 interface SearchResult {
-  type: 'component' | 'lens' | 'server-lib';
+  type: 'component' | 'lens' | 'serverLib' | 'route';
   name: string;
   path: string;
   matchContext?: string;
+}
+
+/** Basename without a .ts/.tsx extension — used to render a short label for
+ *  entries that only carry a full repo-relative `path` from the scanner. */
+function baseName(p: string): string {
+  const last = p.split('/').pop() || p;
+  return last.replace(/\.(tsx?|jsx?)$/, '');
 }
 
 // ---------------------------------------------------------------------------
@@ -132,27 +151,6 @@ const tabContentVariants = {
   animate: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: 20 },
 };
-
-// ---------------------------------------------------------------------------
-// Domain color map for wiring view
-// ---------------------------------------------------------------------------
-
-const DOMAIN_COLORS: Record<string, string> = {
-  admin: 'text-red-400 bg-red-400/10 border-red-400/30',
-  common: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
-  lens: 'text-neon-purple bg-neon-purple/10 border-neon-purple/30',
-  nervous: 'text-neon-pink bg-neon-pink/10 border-neon-pink/30',
-  chat: 'text-neon-cyan bg-neon-cyan/10 border-neon-cyan/30',
-  graph: 'text-neon-green bg-neon-green/10 border-neon-green/30',
-  dtu: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
-  home: 'text-orange-400 bg-orange-400/10 border-orange-400/30',
-  market: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
-};
-
-function domainColor(domain: string): string {
-  const key = Object.keys(DOMAIN_COLORS).find((k) => domain.toLowerCase().includes(k));
-  return key ? DOMAIN_COLORS[key] : 'text-gray-400 bg-gray-400/10 border-gray-400/30';
-}
 
 // ---------------------------------------------------------------------------
 // Small helper components
@@ -293,7 +291,7 @@ function OverviewTab() {
               className="flex items-center justify-between p-2 bg-lattice-deep rounded-lg"
             >
               <span className="text-sm text-gray-300 font-mono truncate max-w-[70%]">{f.path}</span>
-              <span className="text-xs text-gray-400 font-mono">{f.lines.toLocaleString()} lines</span>
+              <span className="text-xs text-gray-400 font-mono">{(f.lineCount ?? 0).toLocaleString()} lines</span>
             </motion.div>
           ))}
           {(!data.largestFiles || data.largestFiles.length === 0) && (
@@ -309,22 +307,22 @@ function OverviewTab() {
           Most-Imported Components (Top 10)
         </h2>
         <div className="space-y-2">
-          {(data.mostImported ?? []).map((c, i) => (
+          {(data.mostImportedComponents ?? []).map((c, i) => (
             <motion.div
-              key={c.name}
+              key={c.path}
               custom={i}
               variants={cardVariants}
               initial="hidden"
               animate="visible"
               className="flex items-center justify-between p-2 bg-lattice-deep rounded-lg"
             >
-              <span className="text-sm text-gray-300">{c.name}</span>
+              <span className="text-sm text-gray-300 font-mono truncate max-w-[70%]" title={c.path}>{baseName(c.path)}</span>
               <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple font-mono">
-                {c.importCount} imports
+                {c.usedByCount} lens{c.usedByCount === 1 ? '' : 'es'}
               </span>
             </motion.div>
           ))}
-          {(!data.mostImported || data.mostImported.length === 0) && (
+          {(!data.mostImportedComponents || data.mostImportedComponents.length === 0) && (
             <EmptyState message="No import data available." />
           )}
         </div>
@@ -351,7 +349,7 @@ function ComponentsTab() {
     if (!search) return data;
     const q = search.toLowerCase();
     return data.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.directory.toLowerCase().includes(q),
+      (c) => baseName(c.path).toLowerCase().includes(q) || c.directory.toLowerCase().includes(q),
     );
   }, [data, search]);
 
@@ -368,7 +366,7 @@ function ComponentsTab() {
 
       <div className="space-y-1 max-h-[70vh] overflow-y-auto pr-1">
         {filtered.map((comp, i) => {
-          const key = `${comp.directory}/${comp.name}`;
+          const key = comp.path;
           const expanded = expandedId === key;
           return (
             <motion.div key={key} custom={i} variants={cardVariants} initial="hidden" animate="visible">
@@ -382,12 +380,12 @@ function ComponentsTab() {
                   ) : (
                     <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                   )}
-                  <span className="text-sm font-medium truncate">{comp.name}</span>
+                  <span className="text-sm font-medium truncate">{baseName(comp.path)}</span>
                   <span className="text-xs text-gray-400 truncate hidden md:inline">{comp.directory}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-xs text-gray-400 font-mono">{comp.lineCount} lines</span>
-                  <WiredBadge wired={comp.wired} />
+                  <WiredBadge wired={!comp.isOrphaned} />
                 </div>
               </button>
               <AnimatePresence>
@@ -419,11 +417,11 @@ function ComponentsTab() {
                           </div>
                         </div>
                       )}
-                      {comp.importedBy.length > 0 && (
+                      {comp.usedByLenses.length > 0 && (
                         <div>
                           <p className="text-xs text-gray-400 mb-1">Imported by</p>
                           <div className="flex flex-wrap gap-1">
-                            {comp.importedBy.map((l) => (
+                            {comp.usedByLenses.map((l) => (
                               <span
                                 key={l}
                                 className="text-xs px-1.5 py-0.5 bg-neon-purple/10 text-neon-purple rounded"
@@ -434,7 +432,7 @@ function ComponentsTab() {
                           </div>
                         </div>
                       )}
-                      {comp.importedBy.length === 0 && (
+                      {comp.usedByLenses.length === 0 && (
                         <p className="text-xs text-yellow-400">Not imported by any lens.</p>
                       )}
                     </div>
@@ -471,6 +469,7 @@ function LensesTab() {
       <div className="space-y-1 max-h-[70vh] overflow-y-auto pr-1">
         {(data ?? []).map((lens, i) => {
           const expanded = expandedId === lens.name;
+          const lensPath = `concord-frontend/app/lenses/${lens.name}/page.tsx`;
           return (
             <motion.div key={lens.name} custom={i} variants={cardVariants} initial="hidden" animate="visible">
               <button
@@ -488,7 +487,7 @@ function LensesTab() {
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-xs text-gray-400 font-mono">{lens.lineCount} lines</span>
                   <span className="text-xs px-2 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan font-mono">
-                    {lens.importCount} imports
+                    {lens.imports.length} imports
                   </span>
                 </div>
               </button>
@@ -504,7 +503,7 @@ function LensesTab() {
                     <div className="p-4 ml-7 border-l border-white/5 space-y-3">
                       <div>
                         <p className="text-xs text-gray-400 mb-1">Path</p>
-                        <p className="text-sm text-gray-300 font-mono">{lens.path}</p>
+                        <p className="text-sm text-gray-300 font-mono">{lensPath}</p>
                       </div>
                       {lens.imports.length > 0 && (
                         <div>
@@ -521,11 +520,11 @@ function LensesTab() {
                           </div>
                         </div>
                       )}
-                      {lens.routes.length > 0 && (
+                      {lens.serverRoutes.length > 0 && (
                         <div>
                           <p className="text-xs text-gray-400 mb-1">Server Routes</p>
                           <div className="flex flex-wrap gap-1">
-                            {lens.routes.map((r) => (
+                            {lens.serverRoutes.map((r) => (
                               <span
                                 key={r}
                                 className="text-xs px-1.5 py-0.5 bg-neon-green/10 text-neon-green rounded font-mono"
@@ -535,6 +534,9 @@ function LensesTab() {
                             ))}
                           </div>
                         </div>
+                      )}
+                      {lens.serverRoutes.length === 0 && (
+                        <p className="text-xs text-yellow-400">No direct /api/ calls detected in this page.</p>
                       )}
                     </div>
                   </motion.div>
@@ -577,18 +579,20 @@ function OrphansTab() {
       const importPath = entry.path
         .replace(/\.tsx?$/, '')
         .replace(/\/index$/, '');
-      const defaultExport = entry.exports.find((e) => e === 'default');
+      // The scanner (server/lib/codebase-inventory.js#extractExports) records
+      // real identifier names for `export default function X` too (X, not the
+      // literal string "default"), so we can't reliably tell default vs. named
+      // apart from this list alone — fall back to the file's own base name for
+      // the no-named-exports case, which is what a default import is almost
+      // always written as by convention in this codebase.
       const namedExports = entry.exports.filter((e) => e !== 'default');
+      const fallbackName = baseName(entry.path);
 
       let importStatement = '';
-      if (defaultExport && namedExports.length > 0) {
-        importStatement = `import ${entry.name}, { ${namedExports.join(', ')} } from '${importPath}';`;
-      } else if (defaultExport) {
-        importStatement = `import ${entry.name} from '${importPath}';`;
-      } else if (namedExports.length > 0) {
+      if (namedExports.length > 0) {
         importStatement = `import { ${namedExports.join(', ')} } from '${importPath}';`;
       } else {
-        importStatement = `import ${entry.name} from '${importPath}';`;
+        importStatement = `import ${fallbackName} from '${importPath}';`;
       }
 
       copyToClipboard(importStatement);
@@ -629,7 +633,7 @@ function OrphansTab() {
                 className="flex items-center justify-between p-3 bg-lattice-deep rounded-lg"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{entry.name}</p>
+                  <p className="text-sm font-medium truncate">{baseName(entry.path)}</p>
                   <p className="text-xs text-gray-400 font-mono truncate">{entry.path}</p>
                   {entry.exports.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -678,53 +682,67 @@ function OrphansTab() {
 // ---------------------------------------------------------------------------
 
 function WiringTab() {
-  const { data, isLoading } = useQuery<WiringEntry[]>({
+  const { data, isLoading } = useQuery<WiringMapResult>({
     queryKey: ['inventory-wiring'],
     queryFn: () => api.get('/api/inventory/wiring').then((r) => r.data),
   });
+
+  const lensEntries = useMemo(
+    () => Object.entries(data?.lenses ?? {}).sort((a, b) => a[0].localeCompare(b[0])),
+    [data],
+  );
 
   if (isLoading) return <LoadingSpinner message="Loading wiring map..." />;
 
   return (
     <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-3">
-      <p className="text-xs text-gray-400">{data?.length ?? 0} lens wiring entries</p>
+      <p className="text-xs text-gray-400">{lensEntries.length} lens wiring entries</p>
 
       <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
-        {(data ?? []).map((entry, i) => {
-          const dc = domainColor(entry.domain);
-          return (
-            <motion.div
-              key={entry.lens}
-              custom={i}
-              variants={cardVariants}
-              initial="hidden"
-              animate="visible"
-              className="p-3 bg-lattice-deep rounded-lg"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <span className={cn('text-xs px-2 py-0.5 rounded border font-semibold', dc)}>
-                  {entry.lens}
+        {lensEntries.map(([lensName, info], i) => (
+          <motion.div
+            key={lensName}
+            custom={i}
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            className="p-3 bg-lattice-deep rounded-lg"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs px-2 py-0.5 rounded border font-semibold text-neon-purple bg-neon-purple/10 border-neon-purple/30">
+                {lensName}
+              </span>
+              <ArrowRight className="w-3 h-3 text-gray-600" />
+              <span className="text-xs text-gray-400">
+                {info.components.length} component{info.components.length === 1 ? '' : 's'} &middot;{' '}
+                {info.serverRoutes.length} route{info.serverRoutes.length === 1 ? '' : 's'}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {info.components.map((c) => (
+                <span
+                  key={c}
+                  className="text-xs px-1.5 py-0.5 bg-lattice-surface rounded text-gray-300 font-mono"
+                  title={c}
+                >
+                  {baseName(c)}
                 </span>
-                <ArrowRight className="w-3 h-3 text-gray-600" />
-                <span className="text-xs text-gray-400">{entry.domain}</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {entry.components.map((c) => (
-                  <span
-                    key={c}
-                    className="text-xs px-1.5 py-0.5 bg-lattice-surface rounded text-gray-300"
-                  >
-                    {c}
-                  </span>
-                ))}
-                {entry.components.length === 0 && (
-                  <span className="text-xs text-gray-400 italic">No component imports</span>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-        {(!data || data.length === 0) && <EmptyState message="No wiring data available." />}
+              ))}
+              {info.serverRoutes.map((r) => (
+                <span
+                  key={r}
+                  className="text-xs px-1.5 py-0.5 bg-neon-green/10 text-neon-green rounded font-mono"
+                >
+                  {r}
+                </span>
+              ))}
+              {info.components.length === 0 && info.serverRoutes.length === 0 && (
+                <span className="text-xs text-gray-400 italic">No component imports or detected /api/ calls.</span>
+              )}
+            </div>
+          </motion.div>
+        ))}
+        {lensEntries.length === 0 && <EmptyState message="No wiring data available." />}
       </div>
     </motion.div>
   );
@@ -745,12 +763,13 @@ function SearchTab() {
     return () => clearTimeout(timer);
   }, []);
 
-  const { data, isLoading, isFetching } = useQuery<SearchResult[]>({
+  const { data: searchResponse, isLoading, isFetching } = useQuery<{ ok: boolean; query: string; count: number; results: SearchResult[] }>({
     queryKey: ['inventory-search', debouncedQuery],
     queryFn: () =>
       api.get('/api/inventory/search', { params: { q: debouncedQuery } }).then((r) => r.data),
     enabled: debouncedQuery.length >= 2,
   });
+  const data = searchResponse?.results;
 
   const typeBadge = (type: string) => {
     switch (type) {
@@ -766,10 +785,16 @@ function SearchTab() {
             Lens
           </span>
         );
-      case 'server-lib':
+      case 'serverLib':
         return (
           <span className="text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green border border-neon-green/30">
             Server Lib
+          </span>
+        );
+      case 'route':
+        return (
+          <span className="text-xs px-2 py-0.5 rounded bg-orange-400/20 text-orange-400 border border-orange-400/30">
+            Route
           </span>
         );
       default:

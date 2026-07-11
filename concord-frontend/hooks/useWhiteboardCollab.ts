@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api/client';
 import { onEvent } from '@/lib/realtime/event-bus';
+import { joinRoom, leaveRoom, onReconnected } from '@/lib/realtime/socket';
 
 export interface PeerCursor {
   userId: string;
@@ -108,6 +109,28 @@ export function useWhiteboardCollab({
       api.post('/api/lens/run', {
         domain: 'whiteboard', action: 'leave-shared', input: { id: boardId },
       }).catch(() => { /* leave is best-effort */ });
+    };
+  }, [boardId, enabled]);
+
+  // Join the board's socket.io room so the server's io.to(`whiteboard:${boardId}`)
+  // broadcasts (scene-update/cursor/vote-cast/reaction/presence — all emitted from
+  // server/domains/whiteboard.js) actually reach this client. This was previously
+  // missing entirely: the `join-shared` call above is a plain HTTP macro (it runs
+  // over POST /api/lens/run and has no socket to join with), and nothing else in
+  // this hook ever called `room:join`. Every server-side broadcast to the room was
+  // reaching zero listeners — the collaboration UI subscribed correctly (see the
+  // event-bus listeners below) but the underlying socket was never actually in the
+  // room, so live multiplayer was cosmetically wired but functionally dead.
+  // Socket.io room membership is per-connection, so re-join on every reconnect
+  // (mirrors the wire protocol `useYjsDoc.ts` documents for Code Live Share).
+  useEffect(() => {
+    if (!enabled || !boardId) return;
+    const room = `whiteboard:${boardId}`;
+    joinRoom(room);
+    const offReconnected = onReconnected(() => joinRoom(room));
+    return () => {
+      offReconnected();
+      leaveRoom(room);
     };
   }, [boardId, enabled]);
 

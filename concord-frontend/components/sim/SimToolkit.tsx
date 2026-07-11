@@ -1,11 +1,21 @@
 'use client';
 
 /**
- * SimToolkit — four analysis tools backed by the sim domain:
+ * SimToolkit — eight analysis tools backed by the sim domain:
  *   • Formula     — safe arithmetic expression evaluator (`sim.evaluateFormula`)
  *   • Goal Seek   — find a parameter value hitting a target (`sim.goalSeek`)
  *   • Compare     — Welch t-test scenario diff (`sim.scenarioDiff`)
  *   • Calibrate   — fit a system-dynamics model to data (`sim.calibrate`)
+ *   • Scenario    — rule-based state projection (`sim.scenarioRun`)
+ *   • Sweep       — single-parameter what-if sweep (`sim.parameterSweep`)
+ *   • Monte Carlo — uniform/normal sampling + percentiles (`sim.monteCarlo`)
+ *   • Elasticity  — deterministic ± perturbation tornado chart (`sim.sensitivityAnalysis`)
+ *
+ * The last four call their macros directly via `lensRun` with a real params
+ * object — NOT through the artifact-run path (`/api/lens/:domain/:id/run`),
+ * because those four macro handlers read only from `artifact.data` and
+ * ignore `params`. `lensRun` builds a virtual artifact whose `.data` IS the
+ * input object, so this is the correct dispatch for them (see sim.js).
  */
 
 import { useCallback, useState } from 'react';
@@ -15,16 +25,20 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
   Calculator, Target, GitCompare, Crosshair, Play, RefreshCw,
-  AlertCircle, CheckCircle2,
+  AlertCircle, CheckCircle2, FlaskConical, Sliders, Shuffle, Activity,
 } from 'lucide-react';
 
-type Tool = 'formula' | 'goalseek' | 'compare' | 'calibrate';
+type Tool = 'formula' | 'goalseek' | 'compare' | 'calibrate' | 'scenario' | 'sweep' | 'montecarlo' | 'elasticity';
 
 const TOOLS: Array<{ key: Tool; label: string; icon: React.ReactNode }> = [
   { key: 'formula', label: 'Formula', icon: <Calculator className="w-4 h-4" /> },
   { key: 'goalseek', label: 'Goal Seek', icon: <Target className="w-4 h-4" /> },
   { key: 'compare', label: 'Compare', icon: <GitCompare className="w-4 h-4" /> },
   { key: 'calibrate', label: 'Calibrate', icon: <Crosshair className="w-4 h-4" /> },
+  { key: 'scenario', label: 'Scenario Run', icon: <FlaskConical className="w-4 h-4" /> },
+  { key: 'sweep', label: 'Param Sweep', icon: <Sliders className="w-4 h-4" /> },
+  { key: 'montecarlo', label: 'Monte Carlo', icon: <Shuffle className="w-4 h-4" /> },
+  { key: 'elasticity', label: 'Elasticity', icon: <Activity className="w-4 h-4" /> },
 ];
 
 export function SimToolkit() {
@@ -46,9 +60,54 @@ export function SimToolkit() {
       {tool === 'goalseek' && <GoalSeekTool />}
       {tool === 'compare' && <CompareTool />}
       {tool === 'calibrate' && <CalibrateTool />}
+      {tool === 'scenario' && <ScenarioRunTool />}
+      {tool === 'sweep' && <ParameterSweepTool />}
+      {tool === 'montecarlo' && <MonteCarloBackendTool />}
+      {tool === 'elasticity' && <ElasticityTool />}
     </div>
   );
 }
+
+// ─── Shared parsing helpers for rule-based tools ─────────────────────────────
+// A "rule" is a field-transition applied every step: growth/decay multiply the
+// field by (1 ± rate), add adds a fixed value, cap/floor clamp the field.
+// Text format (one per line): `<field> <type> <amount>`, e.g. `population growth 0.05`.
+
+interface SimRule {
+  field: string;
+  type: 'growth' | 'decay' | 'add' | 'cap' | 'floor';
+  rate?: number;
+  value?: number;
+  max?: number;
+  min?: number;
+}
+
+function parseStateLines(text: string): Record<string, number> {
+  const state: Record<string, number> = {};
+  for (const line of text.split('\n')) {
+    const [k, v] = line.split('=').map((s) => s.trim());
+    if (k && v !== undefined && Number.isFinite(Number(v))) state[k] = Number(v);
+  }
+  return state;
+}
+
+function parseRuleLines(text: string): SimRule[] {
+  const rules: SimRule[] = [];
+  for (const line of text.split('\n')) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length < 3) continue;
+    const [field, type, amountRaw] = parts;
+    const n = Number(amountRaw);
+    if (!field || !Number.isFinite(n)) continue;
+    if (type === 'growth' || type === 'decay') rules.push({ field, type, rate: n });
+    else if (type === 'add') rules.push({ field, type, value: n });
+    else if (type === 'cap') rules.push({ field, type, max: n });
+    else if (type === 'floor') rules.push({ field, type, min: n });
+  }
+  return rules;
+}
+
+const RULE_HELP = 'One rule per line: <field> <growth|decay|add|cap|floor> <amount>. Growth/decay amount is a fractional rate (0.05 = 5%); add/cap/floor amounts are absolute.';
 
 // ─── Formula evaluator ───────────────────────────────────────────────────────
 
@@ -468,6 +527,407 @@ function CalibrateTool() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Scenario run (rule-based state projection) ──────────────────────────────
+
+interface ScenarioRunResult {
+  message?: string;
+  stepsRun: number;
+  initialState: Record<string, number>;
+  finalState: Record<string, number>;
+  deltas: Record<string, { start: number; end: number; change: number }>;
+}
+
+function ScenarioRunTool() {
+  const [stateText, setStateText] = useState('population=1000\nbudget=50000');
+  const [rulesText, setRulesText] = useState('population growth 0.03\nbudget decay 0.05');
+  const [steps, setSteps] = useState(10);
+  const [res, setRes] = useState<ScenarioRunResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    const initialState = parseStateLines(stateText);
+    const rules = parseRuleLines(rulesText);
+    const r = await lensRun<ScenarioRunResult>('sim', 'scenarioRun', { initialState, rules, steps });
+    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    else { setRes(null); setError(r.data.error || 'Scenario run failed'); }
+    setBusy(false);
+  }, [stateText, rulesText, steps]);
+
+  return (
+    <div className={cn(ds.panel, 'space-y-3')}>
+      <p className={ds.textMuted}>
+        Step a set of named fields forward through simple transition rules — a
+        lightweight alternative to full system dynamics for quick what-ifs.
+      </p>
+      <div className={ds.grid2}>
+        <div>
+          <label className={ds.label}>Initial State (name=value)</label>
+          <textarea className={cn(ds.textarea, 'h-24 font-mono text-xs')} value={stateText}
+            onChange={(e) => setStateText(e.target.value)} />
+        </div>
+        <div>
+          <label className={ds.label}>Rules</label>
+          <textarea className={cn(ds.textarea, 'h-24 font-mono text-xs')} value={rulesText}
+            onChange={(e) => setRulesText(e.target.value)} />
+          <p className="text-[10px] text-gray-500 mt-1">{RULE_HELP}</p>
+        </div>
+      </div>
+      <div>
+        <label className={ds.label}>Steps</label>
+        <input type="number" className={cn(ds.input, 'w-32')} value={steps}
+          onChange={(e) => setSteps(parseInt(e.target.value) || 1)} />
+      </div>
+      <button onClick={run} disabled={busy} className={ds.btnPrimary}>
+        {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} Run
+      </button>
+      {error && <ErrBox msg={error} />}
+      {res && (res.message ? (
+        <p className="text-sm text-gray-400">{res.message}</p>
+      ) : (
+        <div className="space-y-2">
+          <p className={cn(ds.textMuted, 'font-medium')}>State Changes ({res.stepsRun} steps)</p>
+          {Object.entries(res.deltas).map(([key, delta]) => (
+            <div key={key} className="flex items-center gap-2 text-xs bg-lattice-surface/50 rounded-lg p-2">
+              <span className="text-gray-400 flex-1 font-mono">{key}</span>
+              <span className="text-gray-400 font-mono">{delta.start}</span>
+              <span className="text-gray-600">→</span>
+              <span className="text-white font-mono">{delta.end}</span>
+              <span className={cn('font-mono', delta.change > 0 ? 'text-green-400' : delta.change < 0 ? 'text-red-400' : 'text-gray-400')}>
+                ({delta.change > 0 ? '+' : ''}{delta.change})
+              </span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Parameter sweep (single-parameter what-if) ──────────────────────────────
+
+interface SweepResult {
+  message?: string;
+  parameter: string;
+  runsCompleted: number;
+  stepsPerRun: number;
+  results: Array<Record<string, number>>;
+  bestOutcome: Record<string, unknown>;
+}
+
+function ParameterSweepTool() {
+  const [baseText, setBaseText] = useState('inventory=100\nprice=20');
+  const [param, setParam] = useState('price');
+  const [min, setMin] = useState(10);
+  const [max, setMax] = useState(50);
+  const [step, setStep] = useState(5);
+  const [rulesText, setRulesText] = useState('inventory decay 0.1');
+  const [steps, setSteps] = useState(10);
+  const [res, setRes] = useState<SweepResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    const baseState = parseStateLines(baseText);
+    const rules = parseRuleLines(rulesText);
+    const r = await lensRun<SweepResult>('sim', 'parameterSweep', {
+      baseState, parameter: param, range: { min, max, step }, rules, steps,
+    });
+    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    else { setRes(null); setError(r.data.error || 'Parameter sweep failed'); }
+    setBusy(false);
+  }, [baseText, param, min, max, step, rulesText, steps]);
+
+  return (
+    <div className={cn(ds.panel, 'space-y-3')}>
+      <p className={ds.textMuted}>
+        Sweep one parameter across a range and project the outcome field at
+        each value — quick sensitivity scan before a full simulation.
+      </p>
+      <div className={ds.grid2}>
+        <div>
+          <label className={ds.label}>Base State (name=value)</label>
+          <textarea className={cn(ds.textarea, 'h-20 font-mono text-xs')} value={baseText}
+            onChange={(e) => setBaseText(e.target.value)} />
+        </div>
+        <div>
+          <label className={ds.label}>Rules</label>
+          <textarea className={cn(ds.textarea, 'h-20 font-mono text-xs')} value={rulesText}
+            onChange={(e) => setRulesText(e.target.value)} />
+          <p className="text-[10px] text-gray-500 mt-1">{RULE_HELP}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div>
+          <label className={ds.label}>Parameter</label>
+          <input className={cn(ds.input, 'font-mono')} value={param} onChange={(e) => setParam(e.target.value)} />
+        </div>
+        <div>
+          <label className={ds.label}>Min</label>
+          <input type="number" className={ds.input} value={min} onChange={(e) => setMin(parseFloat(e.target.value) || 0)} />
+        </div>
+        <div>
+          <label className={ds.label}>Max</label>
+          <input type="number" className={ds.input} value={max} onChange={(e) => setMax(parseFloat(e.target.value) || 0)} />
+        </div>
+        <div>
+          <label className={ds.label}>Step</label>
+          <input type="number" className={ds.input} value={step} onChange={(e) => setStep(parseFloat(e.target.value) || 1)} />
+        </div>
+        <div>
+          <label className={ds.label}>Steps/Run</label>
+          <input type="number" className={ds.input} value={steps} onChange={(e) => setSteps(parseInt(e.target.value) || 1)} />
+        </div>
+      </div>
+      <button onClick={run} disabled={busy} className={ds.btnPrimary}>
+        {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sliders className="w-4 h-4" />} Sweep
+      </button>
+      {error && <ErrBox msg={error} />}
+      {res && (res.message ? (
+        <p className="text-sm text-gray-400">{res.message}</p>
+      ) : (
+        <div className="space-y-1.5">
+          <p className={cn(ds.textMuted, 'font-medium')}>{res.runsCompleted} runs · {res.stepsPerRun} steps each</p>
+          {res.results.map((r, i) => {
+            const outcome = Number(r.outcome) || 0;
+            const maxOutcome = Math.max(...res.results.map((x) => Number(x.outcome) || 0), 1e-9);
+            const pct = maxOutcome !== 0 ? (outcome / maxOutcome) * 100 : 0;
+            return (
+              <div key={i} className="space-y-0.5">
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span className="font-mono">{param}={String(r[param])}</span>
+                  <span className="font-mono text-white">{outcome.toFixed(3)}</span>
+                </div>
+                <div className="h-1.5 bg-black/30 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-violet-500/70" style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Monte Carlo (backend distribution engine) ───────────────────────────────
+
+interface MonteCarloBackendResult {
+  message?: string;
+  trials: number;
+  formula: string;
+  mean: number;
+  stddev: number;
+  min: number;
+  max: number;
+  percentiles: { p5: number; p25: number; p50: number; p75: number; p95: number };
+  confidenceInterval90: { lower: number; upper: number };
+}
+
+function MonteCarloBackendTool() {
+  const [trials, setTrials] = useState(2000);
+  const [formula, setFormula] = useState<'sum' | 'product' | 'max' | 'min'>('sum');
+  const [varsText, setVarsText] = useState('revenue 80000 120000\ncost 40000 70000');
+  const [res, setRes] = useState<MonteCarloBackendResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    const variables: Array<{ name: string; min?: number; max?: number; mean?: number; stddev?: number }> = [];
+    for (const line of varsText.split('\n')) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 3) continue;
+      const [name, a, b, kind] = parts;
+      if (!Number.isFinite(Number(a)) || !Number.isFinite(Number(b))) continue;
+      if (kind === 'normal') variables.push({ name, mean: Number(a), stddev: Number(b) });
+      else variables.push({ name, min: Number(a), max: Number(b) });
+    }
+    const r = await lensRun<MonteCarloBackendResult>('sim', 'monteCarlo', { trials, variables, formula });
+    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    else { setRes(null); setError(r.data.error || 'Monte Carlo failed'); }
+    setBusy(false);
+  }, [trials, varsText, formula]);
+
+  return (
+    <div className={cn(ds.panel, 'space-y-3')}>
+      <p className={ds.textMuted}>
+        Backend uniform/normal sampling engine with exact percentiles and a 90%
+        confidence interval — aggregates variables via the chosen formula.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={ds.label}>Trials</label>
+          <input type="number" className={ds.input} value={trials}
+            onChange={(e) => setTrials(Math.min(10000, parseInt(e.target.value) || 100))} />
+        </div>
+        <div>
+          <label className={ds.label}>Aggregate Formula</label>
+          <select className={ds.select} value={formula} onChange={(e) => setFormula(e.target.value as typeof formula)}>
+            <option value="sum">Sum</option>
+            <option value="product">Product</option>
+            <option value="max">Max</option>
+            <option value="min">Min</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className={ds.label}>Variables (one per line)</label>
+        <textarea className={cn(ds.textarea, 'h-24 font-mono text-xs')} value={varsText}
+          onChange={(e) => setVarsText(e.target.value)} />
+        <p className="text-[10px] text-gray-500 mt-1">
+          {'<name> <min> <max>'} for uniform, or {'<name> <mean> <stddev> normal'} for a normal draw.
+        </p>
+      </div>
+      <button onClick={run} disabled={busy} className={ds.btnPrimary}>
+        {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shuffle className="w-4 h-4" />} Run
+      </button>
+      {error && <ErrBox msg={error} />}
+      {res && (res.message ? (
+        <p className="text-sm text-gray-400">{res.message}</p>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <CmpStat label="Mean" value={res.mean} />
+            <CmpStat label="Std Dev" value={res.stddev} />
+            <CmpStat label="Trials" value={res.trials} />
+          </div>
+          <div className="space-y-1.5">
+            {(['p5', 'p25', 'p50', 'p75', 'p95'] as const).map((key) => {
+              const maxVal = Math.abs(res.percentiles.p95 || 1);
+              const barWidth = maxVal > 0 ? Math.min((Math.abs(res.percentiles[key] || 0) / maxVal) * 100, 100) : 0;
+              return (
+                <div key={key} className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-400 w-16 shrink-0 uppercase">{key}</span>
+                  <div className="flex-1 h-2 bg-black/30 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-orange-500/60" style={{ width: `${barWidth}%` }} />
+                  </div>
+                  <span className="text-xs font-mono text-gray-300 w-16 text-right">{res.percentiles[key]}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2 text-xs bg-black/20 rounded p-2">
+            <span className="text-gray-400">90% CI:</span>
+            <span className="font-mono text-orange-300">[{res.confidenceInterval90.lower} — {res.confidenceInterval90.upper}]</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Elasticity (deterministic ± perturbation tornado chart) ────────────────
+
+interface ElasticityResult {
+  message?: string;
+  outputField: string;
+  baselineOutput: number;
+  mostSensitive: string;
+  leastSensitive: string;
+  sensitivity: Array<{ parameter: string; sensitivity: number; direction: string }>;
+}
+
+function ElasticityTool() {
+  const [stateText, setStateText] = useState('units=500\nprice=25\nfixedCost=3000');
+  const [rulesText, setRulesText] = useState('units growth 0.02\nprice decay 0.01\nfixedCost add 50');
+  const [perturbation, setPerturbation] = useState(10);
+  const [steps, setSteps] = useState(10);
+  const [res, setRes] = useState<ElasticityResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    const baseState = parseStateLines(stateText);
+    const rules = parseRuleLines(rulesText);
+    const r = await lensRun<ElasticityResult>('sim', 'sensitivityAnalysis', { baseState, rules, perturbation, steps });
+    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    else { setRes(null); setError(r.data.error || 'Elasticity analysis failed'); }
+    setBusy(false);
+  }, [stateText, rulesText, perturbation, steps]);
+
+  return (
+    <div className={cn(ds.panel, 'space-y-3')}>
+      <p className={ds.textMuted}>
+        Deterministic ± perturbation elasticity: nudges each numeric field up
+        and down by a percentage and ranks which one moves the outcome most —
+        a tornado chart, not a Monte Carlo correlation.
+      </p>
+      <div className={ds.grid2}>
+        <div>
+          <label className={ds.label}>Base State (name=value)</label>
+          <textarea className={cn(ds.textarea, 'h-24 font-mono text-xs')} value={stateText}
+            onChange={(e) => setStateText(e.target.value)} />
+        </div>
+        <div>
+          <label className={ds.label}>Rules</label>
+          <textarea className={cn(ds.textarea, 'h-24 font-mono text-xs')} value={rulesText}
+            onChange={(e) => setRulesText(e.target.value)} />
+          <p className="text-[10px] text-gray-500 mt-1">{RULE_HELP}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={ds.label}>Perturbation %</label>
+          <input type="number" className={ds.input} value={perturbation}
+            onChange={(e) => setPerturbation(parseFloat(e.target.value) || 1)} />
+        </div>
+        <div>
+          <label className={ds.label}>Steps</label>
+          <input type="number" className={ds.input} value={steps}
+            onChange={(e) => setSteps(parseInt(e.target.value) || 1)} />
+        </div>
+      </div>
+      <button onClick={run} disabled={busy} className={ds.btnPrimary}>
+        {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />} Analyze
+      </button>
+      {error && <ErrBox msg={error} />}
+      {res && (res.message ? (
+        <p className="text-sm text-gray-400">{res.message}</p>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2 text-xs text-gray-400">
+            <span>Output: <span className="text-white font-mono">{res.outputField}</span></span>
+            <span>Baseline: <span className="text-white font-mono">{res.baselineOutput}</span></span>
+            <span>Most Sensitive: <span className="text-green-400 font-mono">{res.mostSensitive}</span></span>
+          </div>
+          <div className="space-y-2">
+            {res.sensitivity.map((item, i) => {
+              const maxSens = Math.max(...res.sensitivity.map((x) => x.sensitivity), 1);
+              const barPct = (item.sensitivity / maxSens) * 100;
+              return (
+                <div key={i} className="space-y-0.5">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="w-4 text-gray-600 font-mono shrink-0">{i + 1}.</span>
+                    <span className="flex-1 text-gray-300 font-mono">{item.parameter}</span>
+                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full',
+                      item.direction === 'positive' ? 'bg-green-500/20 text-green-400' :
+                      item.direction === 'negative' ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400')}>
+                      {item.direction}
+                    </span>
+                    <span className="text-gray-400 font-mono w-10 text-right">{item.sensitivity}</span>
+                  </div>
+                  <div className="h-1.5 bg-black/30 rounded-full overflow-hidden ml-5">
+                    <div className={cn('h-full rounded-full', i === 0 ? 'bg-green-500' : i === 1 ? 'bg-emerald-400' : 'bg-green-400/60')}
+                      style={{ width: `${barPct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
