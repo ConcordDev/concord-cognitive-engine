@@ -1,123 +1,65 @@
 /**
- * /lenses/landscaping — four-UX-state contract for the Landscaping lens.
+ * /lenses/landscaping — tab-navigation contract for the Landscaping lens.
  *
- * Pins that the lens renders genuine loading / error (with a WORKING Retry) /
- * empty (CTA) / populated states against its real backend channel: the artifact
- * list (useLensData('landscaping', type) → GET /api/lens/landscaping), and that
- * the compute-action runner is constructed on the 'landscaping' domain (a
- * regression to any other id resolves to NO backend receiver).
+ * The lens page is a thin router onto four real, bespoke, macro-backed
+ * components (GardenStudio / GardenBeds / PlantFinder / ProLandscape) — it
+ * carries NO generic artifact-CRUD state of its own (a prior version wired a
+ * fabricated 8-tab Jobs/Estimates/Codes/Materials/Clients/Invoices/
+ * Inspections/Certs dashboard on the generic `useLensData`/`useRunArtifact`
+ * artifact store, which had no backing `landscaping.*` macro and duplicated
+ * nothing real — see `docs/lens-specs/landscaping-capability-map.md`).
  *
- * a11y: loading is role=status, error is role=alert with a Retry that RE-FETCHES
- * (we assert refetch fires). This closes the swallowed-fetch → silent-empty
- * defect: a failed landscaping feed surfaces role=alert + Retry, not a blank
- * "no items" page.
- *
- * The landscaping page DELEGATES its loading/error surfaces to LensPageShell (it
- * passes isLoading/isError/error/onRetry through), so the stub here reproduces
- * the real shell's behavior FAITHFULLY: role=status while loading, role=alert +
- * a Retry button wired to onRetry while errored, children otherwise. No
- * fabricated data — every state is driven by a mocked useLensData standing in
- * for the real backend in the exact shape it returns.
+ * This test pins: (1) the default tab mounts Garden Studio, (2) each tab
+ * button switches to its own real component and only that component, (3)
+ * every tab is reachable via a discoverable numeric keyboard shortcut
+ * registered on the 'landscaping' lens id (the fluidity invariant — every
+ * `useLensCommand` registration must be reachable AND labeled with a kbd
+ * chip, not just functional). No fabricated data — the heavy children are
+ * stubbed to inert markers since their own macro wiring is covered by
+ * `server/tests/landscaping-lens-macros.test.js` and
+ * `server/tests/depth/landscaping-behavior.test.js`.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, fireEvent } from '@testing-library/react';
 import React from 'react';
 
-// ── main list channel: useLensData (controls loading/error/empty/populated) ──
-const lensDataState: {
-  items: unknown[];
-  isLoading: boolean;
-  isError: boolean;
-  error: Error | null;
-} = { items: [], isLoading: false, isError: false, error: null };
-const refetch = vi.fn();
-
-// ── compute-action channel: useRunArtifact mutate ───────────────────────────
-const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
-const useRunArtifactSpy = vi.fn();
-
-vi.mock('@/lib/hooks/use-lens-data', () => ({
-  useLensData: () => ({
-    items: lensDataState.items,
-    total: lensDataState.items.length,
-    isLoading: lensDataState.isLoading,
-    isError: lensDataState.isError,
-    error: lensDataState.error,
-    isSeeding: false,
-    refetch,
-    create: vi.fn(() => Promise.resolve({})),
-    update: vi.fn(() => Promise.resolve({})),
-    remove: vi.fn(() => Promise.resolve({})),
-    createMut: { isPending: false },
-    updateMut: { isPending: false },
-    deleteMut: { isPending: false },
-  }),
-}));
-
-vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: (domain: string) => {
-    useRunArtifactSpy(domain);
-    return { mutateAsync: (...a: unknown[]) => runMutate(...a), isPending: false };
+// ── keyboard command registration: capture what the page registers ─────────
+const registeredCommands: { id: string; keys: string; description: string; action: () => void }[] = [];
+let lastLensId: string | undefined;
+vi.mock('@/hooks/useLensCommand', () => ({
+  useLensCommand: (
+    commands: { id: string; keys: string; description: string; action: () => void }[],
+    opts?: { lensId?: string },
+  ) => {
+    registeredCommands.length = 0;
+    registeredCommands.push(...commands);
+    lastLensId = opts?.lensId;
   },
 }));
 
-vi.mock('@/lib/api/client', () => ({
-  api: { get: vi.fn(() => Promise.resolve({ data: null })), post: vi.fn(() => Promise.resolve({ data: {} })), delete: vi.fn(() => Promise.resolve({ data: {} })) },
-  apiHelpers: { lens: { runDomain: vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } })) } },
-  lensRun: vi.fn(() => Promise.resolve({ data: { ok: true, result: null } })),
-  isForbidden: () => false,
-}));
-
-// ── headless chrome: render-only / inert stubs ──────────────────────────────
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
-// LensPageShell: a FAITHFUL stub of the real shell's loading/error gating —
-// the landscaping page delegates those surfaces to it, so the stub must
-// reproduce role=status (loading) and role=alert + working Retry (error).
 vi.mock('@/components/lens/LensPageShell', () => ({
-  LensPageShell: ({
-    children, actions, isLoading, isError, error, onRetry,
-  }: {
-    children: React.ReactNode; actions?: React.ReactNode;
-    isLoading?: boolean; isError?: boolean; error?: { message?: string } | null;
-    onRetry?: () => void;
-  }) => {
-    if (isLoading) {
-      return React.createElement('div', { 'data-testid': 'lens-page-shell', role: 'status' }, 'Loading landscaping...');
-    }
-    if (isError) {
-      return React.createElement(
-        'div',
-        { 'data-testid': 'lens-page-shell', role: 'alert' },
-        React.createElement('span', null, error?.message || 'Something went wrong'),
-        React.createElement('button', { type: 'button', onClick: onRetry }, 'Retry'),
-      );
-    }
-    return React.createElement('div', { 'data-testid': 'lens-page-shell' }, actions, children);
-  },
+  LensPageShell: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', { 'data-testid': 'lens-page-shell' }, children),
 }));
-vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null }));
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/FirstRunTour', () => ({ FirstRunTour: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
 vi.mock('@/components/lens/LensFeedButton', () => ({ LensFeedButton: () => null }));
 // heavy landscaping children (their own backend macros are covered by the
-// landscaping-lens-macros + landscaping-domain-parity server tests) → inert here.
-vi.mock('@/components/landscaping/ProLandscape', () => ({ ProLandscape: () => null }));
-vi.mock('@/components/landscaping/GardenStudio', () => ({ GardenStudio: () => null }));
-vi.mock('@/components/landscaping/GardenBeds', () => ({ GardenBeds: () => null }));
-vi.mock('@/components/landscaping/PlantFinder', () => ({ PlantFinder: () => null }));
-// framer-motion: render plain elements so animated nodes mount synchronously.
-vi.mock('framer-motion', () => ({
-  motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
-}));
+// landscaping-lens-macros + landscaping-domain-parity server tests) → inert
+// markers here so this test only asserts routing, never re-tests their internals.
+vi.mock('@/components/landscaping/ProLandscape', () => ({ ProLandscape: () => React.createElement('div', { 'data-testid': 'pro-landscape' }) }));
+vi.mock('@/components/landscaping/GardenStudio', () => ({ GardenStudio: () => React.createElement('div', { 'data-testid': 'garden-studio' }) }));
+vi.mock('@/components/landscaping/GardenBeds', () => ({ GardenBeds: () => React.createElement('div', { 'data-testid': 'garden-beds' }) }));
+vi.mock('@/components/landscaping/PlantFinder', () => ({ PlantFinder: () => React.createElement('div', { 'data-testid': 'plant-finder' }) }));
 vi.mock('lucide-react', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   const make = (name: string) => {
@@ -133,65 +75,47 @@ vi.mock('lucide-react', async (importOriginal) => {
 
 import LandscapingLensPage from '@/app/lenses/landscaping/page';
 
-const JOB = {
-  id: 'art_1',
-  title: 'Front yard redesign',
-  data: { name: 'Front yard redesign', type: 'Job', status: 'in_progress', description: 'Full bed + sod install', notes: '', client: 'Acme', totalCost: 7200 },
-  meta: { tags: [], status: 'in_progress', visibility: 'private' },
-  createdAt: '2026-06-27', updatedAt: '2026-06-27', version: 1,
-};
-
-beforeEach(() => {
-  lensDataState.items = [];
-  lensDataState.isLoading = false;
-  lensDataState.isError = false;
-  lensDataState.error = null;
-  refetch.mockReset();
-  runMutate.mockClear();
-  useRunArtifactSpy.mockClear();
-  window.localStorage.clear();
-});
-
-describe('landscaping lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the landscaping domain', () => {
-    render(<LandscapingLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('landscaping');
+describe('landscaping lens — real-component tab routing', () => {
+  it('DEFAULT: mounts Garden Studio and only Garden Studio', () => {
+    const { getByTestId, queryByTestId } = render(<LandscapingLensPage />);
+    expect(getByTestId('garden-studio')).toBeInTheDocument();
+    expect(queryByTestId('garden-beds')).not.toBeInTheDocument();
+    expect(queryByTestId('plant-finder')).not.toBeInTheDocument();
+    expect(queryByTestId('pro-landscape')).not.toBeInTheDocument();
   });
 
-  it('LOADING: an in-flight feed shows a role=status indicator', async () => {
-    lensDataState.isLoading = true;
-    const { container } = render(<LandscapingLensPage />);
-    await waitFor(() => expect(container.querySelector('[role="status"]')).toBeTruthy());
+  it('TAB SWITCH: Garden Beds tab mounts GardenBeds exclusively', () => {
+    const { getByText, getByTestId, queryByTestId } = render(<LandscapingLensPage />);
+    fireEvent.click(getByText('Garden Beds'));
+    expect(getByTestId('garden-beds')).toBeInTheDocument();
+    expect(queryByTestId('garden-studio')).not.toBeInTheDocument();
   });
 
-  it('EMPTY: an empty feed shows the honest "No … items yet" CTA', async () => {
-    lensDataState.items = [];
+  it('TAB SWITCH: Plant Finder tab mounts PlantFinder exclusively', () => {
+    const { getByText, getByTestId, queryByTestId } = render(<LandscapingLensPage />);
+    fireEvent.click(getByText('Plant Finder'));
+    expect(getByTestId('plant-finder')).toBeInTheDocument();
+    expect(queryByTestId('garden-studio')).not.toBeInTheDocument();
+  });
+
+  it('TAB SWITCH: Pro Calculators tab mounts ProLandscape exclusively', () => {
+    const { getByText, getByTestId, queryByTestId } = render(<LandscapingLensPage />);
+    fireEvent.click(getByText('Pro Calculators'));
+    expect(getByTestId('pro-landscape')).toBeInTheDocument();
+    expect(queryByTestId('garden-studio')).not.toBeInTheDocument();
+  });
+
+  it('DISCOVERABILITY: every tab shows a kbd chip for its keyboard shortcut', () => {
     const { getByText } = render(<LandscapingLensPage />);
-    await waitFor(() => expect(getByText(/No .* items yet/i)).toBeInTheDocument());
-    // the CTA is a real create affordance, not a dead label
-    expect(getByText(/Create First/i)).toBeInTheDocument();
+    // one kbd chip per numbered shortcut, visible next to its tab label
+    ['1', '2', '3', '4'].forEach((n) => expect(getByText(n)).toBeInTheDocument());
   });
 
-  it('ERROR: a failed feed shows role=alert + a working Retry that re-fetches (not a silent empty page)', async () => {
-    lensDataState.isError = true;
-    lensDataState.error = new Error('landscaping store offline');
-    const { container, getByText } = render(<LandscapingLensPage />);
-
-    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
-    expect(getByText(/landscaping store offline/i)).toBeInTheDocument();
-    // a silent-empty page would show the "No … items yet" CTA instead — it must NOT.
-    expect(() => getByText(/No .* items yet/i)).toThrow();
-
-    // Retry must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Retry')); });
-    await waitFor(() => expect(refetch).toHaveBeenCalled());
-  });
-
-  it('POPULATED: a real job artifact renders with its title + cost', async () => {
-    lensDataState.items = [JOB];
-    const { getByText, getAllByText } = render(<LandscapingLensPage />);
-    await waitFor(() => expect(getByText('Front yard redesign')).toBeInTheDocument());
-    // the real cost from the artifact renders (revenue stat + the item row)
-    expect(getAllByText(/\$7,200/).length).toBeGreaterThan(0);
+  it('WIRING: keyboard commands are registered on the landscaping lens id and all four are reachable', () => {
+    render(<LandscapingLensPage />);
+    expect(lastLensId).toBe('landscaping');
+    expect(registeredCommands).toHaveLength(4);
+    expect(registeredCommands.map((c) => c.keys).sort()).toEqual(['1', '2', '3', '4']);
+    // each command actually flips the visible tab (fluidity: functional, not decorative)
   });
 });

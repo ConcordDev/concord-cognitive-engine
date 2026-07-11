@@ -17,15 +17,30 @@ export function PaperSummarizer() {
   const [text, setText] = useState('');
   const [summary, setSummary] = useState<PaperSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function summarize() {
     if (!text.trim() || text.length < 300) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await api.post('/api/lens/run', { domain: 'paper', action: 'summarize', input: { text } });
-      setSummary(res.data?.result as PaperSummary || null);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+      // register("lens","run") wraps ok:true at the transport layer even when
+      // the macro itself failed (LLM parse failure, LLM down) — that failure
+      // shape ({ ok:false, error }) then lands at res.data.result with no
+      // problem/approach/etc fields. Treat that as a real failure instead of
+      // rendering an undefined summary (summary.keyTerms.length would throw).
+      const result = res.data?.result as (PaperSummary & { ok?: boolean; error?: string }) | undefined;
+      if (!result || result.ok === false) {
+        setError(result?.error || 'Summarization failed.');
+        setSummary(null);
+      } else {
+        setSummary(result);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Summarization failed.');
+      console.error(e);
+    } finally { setLoading(false); }
   }
 
   return (
@@ -43,7 +58,9 @@ export function PaperSummarizer() {
           </button>
         </div>
         <div>
-          {!summary ? (
+          {error ? (
+            <div className="text-xs text-rose-300 bg-rose-950/30 border border-rose-900/50 rounded p-3">{error}</div>
+          ) : !summary ? (
             <div className="text-xs text-gray-400 italic text-center py-10">Paste a paper to get a structured summary.</div>
           ) : (
             <div className="space-y-3 text-xs">
