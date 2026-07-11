@@ -6561,6 +6561,20 @@ function authMiddleware(req, res, next) {
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
   if (req.method === "POST" && req.path === "/api/quality-pipeline/preview") return next();
+  // Welding client portal (Wave 4 gap closure) — a customer with NO Concord
+  // account opens a link a welder sent them (`welding.estimate-send` /
+  // `invoice-from-job`) to view/approve an estimate or view an invoice.
+  // The `portalToken` in the URL IS the authentication (unguessable
+  // crypto.randomBytes(24) base64url, minted server-side, scoped to
+  // exactly one estimate/invoice — see `wPortalToken()` in
+  // server/domains/welding.js and the route handlers below near
+  // `/api/shared/:token`). These routes never go through `/api/lens/run` —
+  // they call the LENS_ACTIONS handler directly with the token as the only
+  // caller-supplied identifier, so there is no domain/macro passthrough an
+  // anonymous caller could widen. Payment capture (`/pay`) is intentionally
+  // NOT bypassed into a real charge here — see that route's own comment.
+  if (req.method === "GET" && /^\/api\/welding\/portal\/[^/]+$/.test(req.path)) return next();
+  if (req.method === "POST" && /^\/api\/welding\/portal\/[^/]+\/(approve|pay)$/.test(req.path)) return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
@@ -6700,7 +6714,12 @@ function requireRole(...roles) {
 // /api/stripe/webhook is signature-authenticated by Stripe (no cookie/JWT), so
 // it must bypass the production write-auth gate or every webhook 401s and paid
 // coins never mint. handleWebhook verifies the Stripe signature before any write.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook"];
+// /api/welding/portal/:token/{approve,pay} — anonymous customer using an
+// unguessable, single-purpose portal token (see the welding client-portal
+// comment on the Gate-1 bypass above). No Concord account exists to
+// authenticate, and the token itself is the access control, scoped
+// server-side to exactly one estimate/invoice.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/"];
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -49236,6 +49255,95 @@ app.get("/api/shared/:token", (req, res) => {
   const result = accessShareLink(req.params.token);
   if (!result.ok) return res.status(404).json(result);
   res.json(result);
+});
+
+// ── Welding client portal (Wave 4 gap closure) ──────────────────────────
+// `docs/lens-specs/welding-capability-map.md` "Investigated and honestly
+// deferred": the `welding.portal-view` / `portal-approve` / `portal-pay`
+// macros (server/domains/welding.js) already implement a token-based
+// client portal — a welder sends a customer a `portalToken` when they send
+// an estimate (`estimate-send`) or generate an invoice (`invoice-from-job`)
+// — but nothing exposed it publicly: the only way to reach a
+// `registerLensAction` handler is `lens.run`, which requires a real
+// `STATE.lensArtifacts` id + ownership check + (in production) a real
+// authenticated actor (`_lensActionForbiddenForAnon` above) — exactly
+// backwards for a customer who has no Concord account. These three routes
+// are the dedicated, narrowly-scoped public surface the doc's
+// recommendation asked for.
+//
+// Security shape: the LENS_ACTIONS handler is invoked DIRECTLY (same
+// technique as `runMcpTool`/`_dispatchLensRunForTest` above), never via
+// `runMacro`/`lens.run` — so there is no generic domain/macro passthrough
+// an anonymous caller could widen to reach anything else. The only
+// caller-supplied identifier is the token itself; the handler resolves
+// `ownerId`/`refId` from the server-side `s.portal` Map (see
+// `wPortalToken()` in welding.js — crypto.randomBytes(24) base64url, not
+// enumerable/guessable), so a valid token for job A can only ever resolve
+// job A's estimate/invoice, never job B's.
+function _weldingPortalCtx() {
+  return { db: STATE?.db || globalThis._concordDB, actor: null, state: STATE };
+}
+async function _runWeldingPortalAction(action, token, extraParams = {}) {
+  const handler = LENS_ACTIONS.get(`welding.${action}`);
+  if (!handler) return { ok: false, error: "portal_unavailable" };
+  const data = { token: String(token == null ? "" : token).slice(0, 120), ...extraParams };
+  const virtualArtifact = { id: null, domain: "welding", type: "domain_action", data, meta: {} };
+  return await handler(_weldingPortalCtx(), virtualArtifact, data);
+}
+
+// GET — customer opens their emailed/texted link. Public, no auth.
+app.get("/api/welding/portal/:token", async (req, res) => {
+  try {
+    const result = await _runWeldingPortalAction("portal-view", req.params.token);
+    if (!result?.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// POST — customer accepts or rejects an estimate. Public, no auth; the
+// underlying macro re-validates the token and only ever mutates the one
+// estimate it resolves to (`portal-approve` in welding.js).
+app.post("/api/welding/portal/:token/approve", async (req, res) => {
+  try {
+    const decision = req.body?.decision === "reject" ? "reject" : "accept";
+    const signature = typeof req.body?.signature === "string" ? req.body.signature.slice(0, 160) : "";
+    const result = await _runWeldingPortalAction("portal-approve", req.params.token, { decision, signature });
+    if (!result?.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// POST — invoice payment. Deliberately NOT wired to the `welding.portal-pay`
+// macro. That macro only RECORDS a self-reported {amount, method,
+// reference} onto the invoice — there is no real card/ACH charge behind it
+// (no Stripe PaymentIntent, no gateway call of any kind). Exposing that as
+// a public, unauthenticated action would let anyone holding a portal link
+// mark their own invoice "paid" with zero money changing hands — an
+// invoice-fraud vector, not an honest payment flow, and squarely the kind
+// of fabricated-success path CLAUDE.md's honest-by-construction + money
+// invariants rule out. This route still validates the token (so it 404s
+// instead of leaking on a bad token) and returns an explicit "not yet
+// wired" state rather than a fabricated success. `portal-pay` remains
+// reachable through the authenticated `/api/lens/run` path for a
+// logged-in welder to log a payment they received by another channel
+// (cash/check/in-person card reader) — that use is unaffected.
+app.post("/api/welding/portal/:token/pay", async (req, res) => {
+  try {
+    const view = await _runWeldingPortalAction("portal-view", req.params.token);
+    if (!view?.ok) return res.status(404).json(view);
+    if (view.result?.kind !== "invoice") return res.status(400).json({ ok: false, error: "not_an_invoice" });
+    res.status(501).json({
+      ok: false,
+      reason: "payment_capture_not_wired",
+      message: "Online payment isn't available yet for this invoice. Please contact the business directly to arrange payment.",
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 // ---- Wave 4: Activity Log ----

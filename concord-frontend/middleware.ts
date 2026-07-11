@@ -39,6 +39,12 @@ const PUBLIC_PREFIXES = [
   '/robots.txt',
   '/favicon.ico',
   '/favicon.svg',
+  // Welding client portal — a customer with no Concord account opens a
+  // token link a welder sent them (`/api/welding/portal/:token`, itself
+  // public). Without this prefix the middleware would 307 an anonymous
+  // customer to /login before the page ever renders, defeating the whole
+  // point of a no-account customer portal.
+  '/welding-portal/',
   // PWA service worker + its scope assets must serve unauthenticated, or the SW
   // script is fetched via a 307→/login redirect and the browser refuses to register
   // it ("The script resource is behind a redirect, which is disallowed").

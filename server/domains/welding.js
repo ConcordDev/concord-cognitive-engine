@@ -1,4 +1,5 @@
 // server/domains/welding.js
+import crypto from "node:crypto";
 export default function registerWeldingActions(registerLensAction) {
   // Fail-closed numeric coercion for the pure calculators: a non-finite input
   // (NaN / Infinity / "abc") falls back to `dflt` so a poisoned field can never
@@ -134,6 +135,18 @@ export default function registerWeldingActions(registerLensAction) {
     }
   }
   const wId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  // Portal tokens are handed to an anonymous customer (no Concord account,
+  // no session — see the public `/api/welding/portal/:token` routes in
+  // server.js) and are the ONLY gate on read/write access to their
+  // estimate/invoice. Unlike wId()'s ids (which only need to be unique,
+  // not unguessable), a portal token MUST be cryptographically
+  // unpredictable — wId()'s 6-char Math.random() base36 suffix (~31 bits,
+  // further narrowed by its own timestamp prefix telling an attacker
+  // roughly when it was minted) is not strong enough for a value that
+  // alone authorizes viewing/approving/paying an invoice. Same technique
+  // as the existing DTU share-link token (server.js `createShareLink`):
+  // crypto.randomBytes(24) base64url, no timestamp prefix.
+  const wPortalToken = () => crypto.randomBytes(24).toString("base64url");
   const wActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const wClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const wNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
@@ -277,7 +290,7 @@ export default function registerWeldingActions(registerLensAction) {
       const est = wList(s, "estimates", userId).find((e) => e.id === params.estimateId);
       if (!est) return { ok: false, error: "estimate_not_found" };
       est.status = "sent";
-      const token = wId("pt");
+      const token = wPortalToken();
       s.portal.set(token, { ownerId: userId, kind: "estimate", refId: est.id });
       est.portalToken = token;
       saveWeld();
@@ -327,7 +340,7 @@ export default function registerWeldingActions(registerLensAction) {
       const invoices = wList(s, "invoices", userId);
       const amount = est ? est.total : Math.max(0, wNum(params.amount));
       const seq = invoices.length + 1;
-      const token = wId("pt");
+      const token = wPortalToken();
       const inv = {
         id: wId("inv"),
         invoiceNumber: `INV-${String(seq).padStart(4, "0")}`,
