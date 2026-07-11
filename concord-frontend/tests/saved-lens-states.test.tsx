@@ -32,6 +32,7 @@ vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/social/BookmarksList', () => ({ BookmarksList: () => null }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
 import SavedLensPage from '@/app/lenses/saved/page';
 

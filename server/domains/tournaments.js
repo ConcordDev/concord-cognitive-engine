@@ -611,6 +611,16 @@ export default function registerTournamentsActions(registerLensAction) {
       return {
         ok: true,
         result: {
+          // `tournament` is included alongside the summary fields below so
+          // this macro's result shape matches every other tournaments.*
+          // macro (create/addEntrant/seed/start/reportMatch/cancel all
+          // return `{ tournament: publicView(t) }`). The frontend's
+          // generic `run()` helper in app/lenses/tournaments/page.tsx reads
+          // `result.tournament` to refresh local state after any mutating
+          // action — without this field, clicking "Re-split" silently
+          // updated the in-memory tournament server-side but never
+          // refreshed the UI, making the button appear to do nothing.
+          tournament: publicView(t),
           prizePoolCc: t.prizePoolCc,
           payoutSplit: t.payoutSplit,
           payouts: t.payouts,

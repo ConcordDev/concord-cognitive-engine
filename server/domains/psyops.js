@@ -19,6 +19,21 @@
 // throws. No mock/seed data — anomalies are computed from real
 // numeric inputs the caller supplies (signal samples), and the
 // statistical scan is genuine (mean / stddev / z-score).
+//
+// ADMIN GATE: this is an operator console (frontend renders
+// <AdminRequiredState> on forbidden and `tests/e2e/admin-gated-lenses.spec.ts`
+// lists `psyops` among the operator lenses), so every macro below enforces
+// the gate IN-HANDLER off ctx.actor.role — same idiom as
+// domains/announcements.js's `announcements.post`. A non-admin/owner/founder
+// caller gets a denial whose message matches the frontend's `isForbidden()`
+// regex (`/insufficient permission/i`) so the page correctly flips to the
+// friendly gate instead of silently rendering an empty console.
+
+function requireOperatorRole(ctx) {
+  const role = ctx?.actor?.role || "";
+  if (["owner", "admin", "founder"].includes(role)) return null;
+  return { ok: false, error: "Insufficient permissions: admin role required" };
+}
 
 function getState() {
   const STATE = globalThis._concordSTATE;
@@ -77,6 +92,8 @@ export default function registerPsyopsActions(registerLensAction) {
 
   registerLensAction("psyops", "rules_list", (ctx, _artifact, _params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       return { ok: true, result: { rules: userRules(s, actorId(ctx)) } };
@@ -85,6 +102,8 @@ export default function registerPsyopsActions(registerLensAction) {
 
   registerLensAction("psyops", "rules_update", (ctx, _artifact, params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const signal = String(params.signal || "");
@@ -114,6 +133,8 @@ export default function registerPsyopsActions(registerLensAction) {
   // alerts on any entity exceeding the rule's sigma threshold.
   registerLensAction("psyops", "scan_signal", (ctx, _artifact, params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actorId(ctx);
@@ -188,6 +209,8 @@ export default function registerPsyopsActions(registerLensAction) {
   // ─── Alert list (this module's per-user alerts) ──────────────────
   registerLensAction("psyops", "alerts_list", (ctx, _artifact, params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       let list = (s.alerts.get(actorId(ctx)) || []).slice();
@@ -211,6 +234,8 @@ export default function registerPsyopsActions(registerLensAction) {
   // ─── Alert detail + evidence drill-down ──────────────────────────
   registerLensAction("psyops", "alert_detail", (ctx, _artifact, params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actorId(ctx);
@@ -231,6 +256,8 @@ export default function registerPsyopsActions(registerLensAction) {
   // ─── Alert triage workflow ───────────────────────────────────────
   registerLensAction("psyops", "alert_triage", (ctx, _artifact, params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actorId(ctx);
@@ -266,6 +293,8 @@ export default function registerPsyopsActions(registerLensAction) {
   // ─── Incident timeline correlation ───────────────────────────────
   registerLensAction("psyops", "incident_create", (ctx, _artifact, params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actorId(ctx);
@@ -297,6 +326,8 @@ export default function registerPsyopsActions(registerLensAction) {
 
   registerLensAction("psyops", "incident_list", (ctx, _artifact, _params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actorId(ctx);
@@ -318,6 +349,8 @@ export default function registerPsyopsActions(registerLensAction) {
 
   registerLensAction("psyops", "incident_close", (ctx, _artifact, params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actorId(ctx);
@@ -334,6 +367,8 @@ export default function registerPsyopsActions(registerLensAction) {
   // ─── Quarantine + audited release ────────────────────────────────
   registerLensAction("psyops", "quarantine_entity", (ctx, _artifact, params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actorId(ctx);
@@ -355,6 +390,8 @@ export default function registerPsyopsActions(registerLensAction) {
 
   registerLensAction("psyops", "quarantine_release", (ctx, _artifact, params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actorId(ctx);
@@ -377,6 +414,8 @@ export default function registerPsyopsActions(registerLensAction) {
 
   registerLensAction("psyops", "quarantine_log", (ctx, _artifact, _params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       return { ok: true, result: { log: s.quarantineLog.get(actorId(ctx)) || [] } };
@@ -386,6 +425,8 @@ export default function registerPsyopsActions(registerLensAction) {
   // ─── Critical-alert notifications ────────────────────────────────
   registerLensAction("psyops", "notifications_list", (ctx, _artifact, _params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const list = s.notifications.get(actorId(ctx)) || [];
@@ -398,6 +439,8 @@ export default function registerPsyopsActions(registerLensAction) {
 
   registerLensAction("psyops", "notification_ack", (ctx, _artifact, params = {}) => {
     try {
+      const denied = requireOperatorRole(ctx);
+      if (denied) return denied;
       const s = getState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actorId(ctx);

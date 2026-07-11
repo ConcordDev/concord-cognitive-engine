@@ -8,8 +8,24 @@
  */
 
 import { useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Clock } from 'lucide-react';
 import type { SavedKind, SavedFolder } from './types';
+
+// mm:ss or h:mm:ss -> milliseconds. Returns null for blank/invalid input so
+// the caller can fail-open (field just omitted) rather than fail-closed on
+// a typo — the backend still validates/rejects a genuinely bad value.
+function timecodeToMs(raw: string): number | null {
+  const t = raw.trim();
+  if (!t) return null;
+  const parts = t.split(':').map((p) => Number(p));
+  if (parts.some((p) => !Number.isFinite(p) || p < 0)) return null;
+  let seconds = 0;
+  if (parts.length === 1) seconds = parts[0];
+  else if (parts.length === 2) seconds = parts[0] * 60 + parts[1];
+  else if (parts.length === 3) seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+  else return null;
+  return Math.round(seconds * 1000);
+}
 
 const KINDS: { value: SavedKind; label: string }[] = [
   { value: 'link', label: 'Link' },
@@ -23,10 +39,16 @@ const KINDS: { value: SavedKind; label: string }[] = [
 export interface SaveItemFormProps {
   folders: SavedFolder[];
   onSave: (payload: Record<string, unknown>) => void;
+  /** Controlled open state (e.g. driven by a keyboard shortcut). Falls back
+   *  to internal state when omitted so existing callers are unaffected. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function SaveItemForm({ folders, onSave }: SaveItemFormProps) {
-  const [open, setOpen] = useState(false);
+export function SaveItemForm({ folders, onSave, open: openProp, onOpenChange }: SaveItemFormProps) {
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = onOpenChange ?? setOpenState;
   const [kind, setKind] = useState<SavedKind>('link');
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
@@ -34,17 +56,32 @@ export function SaveItemForm({ folders, onSave }: SaveItemFormProps) {
   const [excerpt, setExcerpt] = useState('');
   const [tags, setTags] = useState('');
   const [folderId, setFolderId] = useState('');
+  const [showClip, setShowClip] = useState(false);
+  const [clipStart, setClipStart] = useState('');
+  const [clipEnd, setClipEnd] = useState('');
   const [err, setErr] = useState('');
 
   function reset() {
     setKind('link'); setTitle(''); setUrl(''); setAuthor('');
     setExcerpt(''); setTags(''); setFolderId(''); setErr('');
+    setShowClip(false); setClipStart(''); setClipEnd('');
   }
 
   function submit() {
     if (!title.trim() && !url.trim()) {
       setErr('Add a title or a URL.');
       return;
+    }
+    let clipStartMs: number | undefined;
+    let clipEndMs: number | undefined;
+    if (showClip) {
+      const s = timecodeToMs(clipStart);
+      const e = timecodeToMs(clipEnd);
+      if (clipStart.trim() && s === null) { setErr('Clip start must look like 1:05 or 65.'); return; }
+      if (clipEnd.trim() && e === null) { setErr('Clip end must look like 1:32 or 92.'); return; }
+      if (s != null && e != null && e <= s) { setErr('Clip end must be after clip start.'); return; }
+      clipStartMs = s ?? undefined;
+      clipEndMs = e ?? undefined;
     }
     onSave({
       kind,
@@ -56,6 +93,8 @@ export function SaveItemForm({ folders, onSave }: SaveItemFormProps) {
       folderId: folderId || undefined,
       refId: url.trim() || undefined,
       sourceLens: 'saved',
+      clipStartMs,
+      clipEndMs,
     });
     reset();
     setOpen(false);
@@ -68,7 +107,7 @@ export function SaveItemForm({ folders, onSave }: SaveItemFormProps) {
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md bg-amber-500/15 text-amber-200 border border-amber-500/30 hover:bg-amber-500/25"
       >
-        <Plus className="w-4 h-4" /> Save something
+        <Plus className="w-4 h-4" /> Save something <kbd className="ml-1 text-[9px] px-1 py-0.5 rounded border border-amber-500/30 text-amber-300/70">N</kbd>
       </button>
     );
   }
@@ -134,6 +173,51 @@ export function SaveItemForm({ folders, onSave }: SaveItemFormProps) {
         rows={2}
         className="w-full text-xs bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100"
       />
+
+      {!showClip ? (
+        <button
+          type="button"
+          onClick={() => setShowClip(true)}
+          className="inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-amber-300"
+        >
+          <Clock className="w-3 h-3" /> Add a clip timecode (optional)
+        </button>
+      ) : (
+        <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase text-zinc-400 flex items-center gap-1">
+              <Clock className="w-3 h-3" /> Clip timecode
+            </span>
+            <button
+              type="button"
+              onClick={() => { setShowClip(false); setClipStart(''); setClipEnd(''); }}
+              aria-label="Remove clip timecode"
+              className="text-zinc-500 hover:text-zinc-300"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              value={clipStart}
+              onChange={(e) => setClipStart(e.target.value)}
+              placeholder="Start (m:ss)"
+              aria-label="Clip start timecode"
+              className="text-xs bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100"
+            />
+            <input
+              value={clipEnd}
+              onChange={(e) => setClipEnd(e.target.value)}
+              placeholder="End (m:ss, optional)"
+              aria-label="Clip end timecode"
+              className="text-xs bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100"
+            />
+          </div>
+          <p className="text-[10px] text-zinc-500">
+            For a clip from a video/podcast/audio source. Leave end blank for a &quot;starts at&quot; marker.
+          </p>
+        </div>
+      )}
 
       {err && <p className="text-xs text-rose-300">{err}</p>}
 
