@@ -12,7 +12,7 @@
 // Horror (CC6 — ghost OR investigator), Time Loop (CC5), Brawl
 // matchmaker (CA7 alt path).
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Dice5, Zap, Crosshair, Ghost, Hourglass, Swords, X } from 'lucide-react';
 import type { LucideIcon } from "lucide-react";
 
@@ -127,7 +127,7 @@ export function GameModesHotbarGroup({ worldId }: Props) {
 
   // Listen for command-palette-driven mode starts (DA3).
   // The palette dispatches concordia:start-mode with { mode }.
-  useState(() => {
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     function onPaletteStart(e: Event) {
       const detail = (e as CustomEvent<{ mode: string }>).detail;
@@ -136,7 +136,7 @@ export function GameModesHotbarGroup({ worldId }: Props) {
     }
     window.addEventListener('concordia:start-mode', onPaletteStart);
     return () => window.removeEventListener('concordia:start-mode', onPaletteStart);
-  });
+  }, []);
 
   const launch = useCallback(async () => {
     if (!confirm) return;
