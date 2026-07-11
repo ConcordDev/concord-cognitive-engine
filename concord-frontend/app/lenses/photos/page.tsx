@@ -12,12 +12,19 @@
  * (role=alert + Retry), empty, and populated (reduced-motion-aware
  * entrance animation). Share/delete fire success/error toasts.
  * Pinned by tests/photos-lens-states.test.tsx.
+ *
+ * Clicking a thumbnail opens `PhotoLightboxModal` (components/photos/
+ * PhotoLightboxModal.tsx), which calls the real `photos.get` macro for
+ * single-photo detail — closing the last documented gap in
+ * docs/lens-specs/photos-capability-map.md (`photos.get` was previously
+ * UNSURFACED). Pinned by tests/photos-lightbox.test.tsx.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { Camera, Share2, Trash2, RefreshCcw, Globe2, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { PhotoLightboxModal } from '@/components/photos/PhotoLightboxModal';
 import { useUIStore } from '@/store/ui';
 
 interface PhotoRow {
@@ -47,6 +54,7 @@ export default function PhotosLensPage() {
   const [worldId, setWorldId] = useState('tunya');
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [lightboxId, setLightboxId] = useState<string | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
   const refreshMine = useCallback(async () => {
@@ -183,7 +191,12 @@ export default function PhotosLensPage() {
             <ul data-testid="photos-list" className="grid grid-cols-1 gap-3 animate-in fade-in duration-200 motion-reduce:animate-none sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {rows.map((p) => (
                 <li key={p.id} className="rounded-xl border border-sky-500/20 bg-zinc-950/60 p-3">
-                  <div className="mb-2 aspect-video w-full overflow-hidden rounded-lg bg-slate-900/70">
+                  <button
+                    type="button"
+                    onClick={() => setLightboxId(p.id)}
+                    aria-label={`View photo ${p.caption || 'Untitled'}`}
+                    className="mb-2 block aspect-video w-full overflow-hidden rounded-lg bg-slate-900/70 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/photos/${p.id}/image`}
@@ -197,7 +210,7 @@ export default function PhotosLensPage() {
                         (e.currentTarget as HTMLImageElement).style.display = 'none';
                       }}
                     />
-                  </div>
+                  </button>
                   <h3 className="truncate text-[12px] font-medium text-sky-100">{p.caption || 'Untitled'}</h3>
                   <p className="mt-0.5 text-[10px] text-slate-500">
                     {p.world_id && `${p.world_id} · `}{timeAgo(p.taken_at)}
@@ -228,6 +241,7 @@ export default function PhotosLensPage() {
           )}
         </section>
       </main>
+      <PhotoLightboxModal photoId={lightboxId} onClose={() => setLightboxId(null)} />
     </LensShell>
   );
 }
