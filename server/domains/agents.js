@@ -6,8 +6,21 @@
 // cost/token budgets with enforcement, and template marketplace import.
 
 export default function registerAgentsActions(registerLensAction) {
-  registerLensAction("agents", "evaluateCapability", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
+  // NOTE (Wave 3 audit fix): these four diagnostic handlers used to read ONLY
+  // `artifact.data` and ignore `params` entirely (`_params` was a discarded
+  // arg). The frontend Agent Control Center never persists `skills` /
+  // `taskHistory` / `metrics` / `task` / `agents` onto its artifacts — those
+  // fields belong to live, derived state (tool list, run history, roster
+  // snapshot), not to what the UI stores for a single agent record. With the
+  // old signature every call therefore read empty defaults and produced a
+  // constant, near-meaningless result (0% success, "No agents available for
+  // routing.", etc.) regardless of real agent activity. Merging `params` over
+  // `artifact.data` lets a caller pass live-computed values (see
+  // app/lenses/agents/page.tsx#buildActionParams) without requiring a
+  // persisted-artifact round trip first; when no params are given, behavior
+  // is unchanged (data === artifact.data), so existing callers are unaffected.
+  registerLensAction("agents", "evaluateCapability", (ctx, artifact, params) => {
+    const data = { ...(artifact.data || {}), ...(params || {}) };
     const skills = data.skills || [];
     const taskHistory = data.taskHistory || [];
     const successRate = taskHistory.length > 0
@@ -35,8 +48,8 @@ export default function registerAgentsActions(registerLensAction) {
     };
   });
 
-  registerLensAction("agents", "routeTask", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
+  registerLensAction("agents", "routeTask", (ctx, artifact, params) => {
+    const data = { ...(artifact.data || {}), ...(params || {}) };
     const task = data.task || {};
     const agents = data.agents || [];
     if (agents.length === 0) return { ok: true, result: { message: "No agents available for routing." } };
@@ -53,8 +66,8 @@ export default function registerAgentsActions(registerLensAction) {
     return { ok: true, result: { task: task.name || "Unnamed task", bestAgent: scored[0]?.name, rankings: scored.slice(0, 5), totalAgents: agents.length } };
   });
 
-  registerLensAction("agents", "swarmStatus", (ctx, artifact, _params) => {
-    const agents = artifact.data?.agents || [];
+  registerLensAction("agents", "swarmStatus", (ctx, artifact, params) => {
+    const agents = params?.agents || artifact.data?.agents || [];
     const active = agents.filter(a => a.status === "active" || a.status === "running");
     const idle = agents.filter(a => a.status === "idle");
     const errored = agents.filter(a => a.status === "error" || a.status === "failed");
@@ -70,8 +83,8 @@ export default function registerAgentsActions(registerLensAction) {
     };
   });
 
-  registerLensAction("agents", "benchmarkAgent", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
+  registerLensAction("agents", "benchmarkAgent", (ctx, artifact, params) => {
+    const data = { ...(artifact.data || {}), ...(params || {}) };
     const metrics = data.metrics || {};
     const throughput = parseFloat(metrics.tasksPerMinute) || 0;
     const accuracy = parseFloat(metrics.accuracy) || 0;
