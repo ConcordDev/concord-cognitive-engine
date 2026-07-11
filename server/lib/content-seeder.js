@@ -1131,6 +1131,43 @@ export async function seedContent({ db = null } = {}) {
     } catch (err) {
       logger.warn("content_seeder", "hidden_object_seed_failed", { err: err?.message });
     }
+
+    // Wave 4 backlog — multi-step craft chains (docs/concordia-specs/
+    // crafting-economy-housing-capability-map.md). server/lib/craft-chains.js
+    // has been a fully working engine (registerChain/startChain/advanceStep)
+    // since Phase 11 — migration 180's own header comment says the seeder was
+    // deferred to "Phase 14 territory" and nothing ever picked it up. The 4
+    // authored chains under content/world/<world>/recipes/chains.json (Cactem
+    // Textile, Foodstuffs Annual Cycle, Herbalist Tonic, Forged Blade) sat as
+    // dead JSON the engine could run but never saw. registerChain's own
+    // INSERT ... ON CONFLICT(id) DO UPDATE is already idempotent, so this
+    // walk just needs to find the files and call it — no separate
+    // check-before-insert needed. Walks every world dir (not just
+    // concordia-hub) so a future world's recipes/chains.json is picked up
+    // without touching this file again, mirroring the H1 per-world quest walk
+    // above.
+    try {
+      const { registerChain } = await import("./craft-chains.js");
+      const worldRoot = join(CONTENT_ROOT, "world");
+      let craftChainsSeeded = 0;
+      for (const worldName of readdirSync(worldRoot)) {
+        if (worldName.startsWith("_")) continue;
+        const chainsFile = readJSON(`world/${worldName}/recipes/chains.json`);
+        const chains = Array.isArray(chainsFile?.chains) ? chainsFile.chains : null;
+        if (!chains) continue;
+        for (const chain of chains) {
+          try {
+            // world_id defaults to the owning world directory; an explicit
+            // world_id on the authored chain (if ever added) wins.
+            const r = registerChain(db, { world_id: worldName, ...chain });
+            if (r?.ok) craftChainsSeeded++;
+          } catch { /* per-chain best-effort */ }
+        }
+      }
+      results.craftChainsSeeded = craftChainsSeeded;
+    } catch (err) {
+      logger.warn("content_seeder", "craft_chains_seed_failed", { err: err?.message });
+    }
   }
 
   // #S1 — dangling faction-reference audit. Every authored NPC that names a
