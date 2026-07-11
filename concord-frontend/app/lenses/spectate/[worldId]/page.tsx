@@ -18,6 +18,7 @@ import { Eye, Users, ArrowLeft, TrendingUp, Loader2, AlertTriangle } from 'lucid
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
 import { lensRun } from '@/lib/api/client';
+import { subscribe, joinRoom, leaveRoom } from '@/lib/realtime/socket';
 
 interface FlavorBlock {
   description?: string;
@@ -97,23 +98,12 @@ export default function SpectatorWorldPage() {
   }, [refreshSpectacle]);
 
   // Open a read-only spectator session on mount (spectate.watch → persists a
-  // spectator_sessions row + hands back the WS hint the live view streams from).
+  // real spectator_sessions row, surfaced by /api/admin telemetry and the
+  // `spectator.list_for_world` macro). Best-effort — the read views work
+  // without it.
   useEffect(() => {
     if (!worldId) return;
-    let cancelled = false;
-    lensRun('spectate', 'watch', { worldId })
-      .then((res) => {
-        if (cancelled) return;
-        const hint = res?.data?.result?.wsHint;
-        if (typeof hint === 'string') {
-          // Stash the WS hint for the scene/event-stream layer to connect to.
-          if (typeof window !== 'undefined') {
-            (window as unknown as Record<string, unknown>).__spectateWsHint = hint;
-          }
-        }
-      })
-      .catch(() => { /* watching is best-effort; the read views still work */ });
-    return () => { cancelled = true; };
+    lensRun('spectate', 'watch', { worldId }).catch(() => { /* watching is best-effort */ });
   }, [worldId]);
 
   // Flavor block for the header chips.
@@ -125,21 +115,57 @@ export default function SpectatorWorldPage() {
       .catch(() => setFlavor(null));
   }, [worldId]);
 
-  // Live event ticker — rolling buffer of the world's public socket/window
-  // events (combat, faction wars, DTU promotions, NPC openers).
+  // Live event ticker — real socket.io events, not decorative. `npc:conversation-bid`
+  // is emitted room-scoped to `world:${worldId}` (npc-conversation-initiator.js), so we
+  // join that room via the same `room:join` socket handler every other lens uses
+  // (useLensRealtime's `rooms` option) to actually receive it. combat:hit / dtu:promoted /
+  // world:event:scheduled / faction:war-declared / faction:alliance-formed are today
+  // emitted as platform-wide broadcasts with no worldId field (a real gap in the
+  // upstream emit sites, not something this lens can fix) — we still surface them
+  // since they're honest signal, and filter to this world whenever a payload does
+  // carry a worldId.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const onEvent = (ev: Event) => {
-      const detail = (ev as CustomEvent).detail || {};
-      if (detail.worldId && detail.worldId !== worldId) return;
-      setTickerEvents((prev) => {
-        const next = [{ ts: Date.now(), event: ev.type, summary: detail.summary || JSON.stringify(detail).slice(0, 80) }, ...prev];
-        return next.slice(0, 30);
-      });
+    if (!worldId) return;
+    joinRoom(`world:${worldId}`);
+
+    const push = (event: string, summary: string, eventWorldId?: string | null) => {
+      if (eventWorldId && eventWorldId !== worldId) return;
+      setTickerEvents((prev) => [{ ts: Date.now(), event, summary: summary.slice(0, 80) }, ...prev].slice(0, 30));
     };
-    const evts = ['npc:conversation-bid', 'combat:hit', 'faction-war:started', 'dtu:promoted', 'world:event:scheduled'];
-    for (const evt of evts) window.addEventListener(evt, onEvent as EventListener);
-    return () => { for (const evt of evts) window.removeEventListener(evt, onEvent as EventListener); };
+
+    const unsubs = [
+      subscribe<{ worldId?: string; npcA?: string; npcB?: string; opener?: string }>(
+        'npc:conversation-bid',
+        (d) => push('npc:conversation-bid', d.opener || `${d.npcA ?? 'an NPC'} and ${d.npcB ?? 'an NPC'} start talking`, d.worldId),
+      ),
+      subscribe<{ attackerId?: string; targetId?: string; damage?: number; targetKilled?: boolean }>(
+        'combat:hit',
+        (d) => push('combat:hit', d.targetKilled
+          ? `${d.attackerId ?? '?'} defeated ${d.targetId ?? '?'}`
+          : `${d.attackerId ?? '?'} hit ${d.targetId ?? '?'} for ${d.damage ?? '?'}`),
+      ),
+      subscribe<{ dtuId?: string; dtu?: { id?: string; tier?: string } }>(
+        'dtu:promoted',
+        (d) => push('dtu:promoted', `DTU ${d.dtuId ?? d.dtu?.id ?? ''} promoted`),
+      ),
+      subscribe<{ worldId?: string; type?: string; districtId?: string }>(
+        'world:event:scheduled',
+        (d) => push('world:event:scheduled', `${d.type ?? 'event'} scheduled${d.districtId ? ` in ${d.districtId}` : ''}`, d.worldId),
+      ),
+      subscribe<{ factionId?: string; targetFactionId?: string; summary?: string }>(
+        'faction:war-declared',
+        (d) => push('faction:war-declared', d.summary || `${d.factionId ?? '?'} declared war on ${d.targetFactionId ?? '?'}`),
+      ),
+      subscribe<{ factionId?: string; targetFactionId?: string; summary?: string }>(
+        'faction:alliance-formed',
+        (d) => push('faction:alliance-formed', d.summary || `${d.factionId ?? '?'} allied with ${d.targetFactionId ?? '?'}`),
+      ),
+    ];
+
+    return () => {
+      leaveRoom(`world:${worldId}`);
+      for (const unsub of unsubs) unsub();
+    };
   }, [worldId]);
 
   const climateChip = useMemo(() => {
