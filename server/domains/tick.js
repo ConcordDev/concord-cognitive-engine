@@ -810,14 +810,30 @@ export default function registerTickActions(registerLensAction) {
   });
 
   /**
-   * heartbeatControl — Pause / resume / manual-trigger controls (#6).
-   * Records the operator's intent per heartbeat module. The intent is
-   * surfaced back via heartbeatList (enabled flag) and exposed for the
-   * server-side dispatcher to honour.
+   * heartbeatControl — Pause / resume / manual-trigger controls (#6). ADMIN ONLY.
+   *
+   * A heartbeat module is a single server-wide singleton (not per-user), so
+   * pause/resume/trigger have real, global effect on the governor tick —
+   * gated the same way `announcements.post` gates its admin-only write, off
+   * `ctx.actor.role` (in-handler, so the macro path carries the same
+   * authority a dedicated admin route would).
+   *
+   * pause/resume actually mutate `STATE.settings.disabledHeartbeats`, the
+   * exact array `tickAllRegistered` (server/emergent/heartbeat-registry.js)
+   * reads to decide whether to skip a module — so this is a real kill
+   * switch, not cosmetic state. `neverDisable` modules refuse pause, same
+   * as the dispatcher itself refuses to honour a disable for them. trigger
+   * invokes the module immediately via `runHeartbeatModuleNow` instead of
+   * only recording a request nobody ever consumed (the pre-fix behavior:
+   * `triggerRequests` incremented forever with no dispatcher-side reader).
    * params: { moduleId, op: 'pause'|'resume'|'trigger' }
    */
-  registerLensAction("tick", "heartbeatControl", (ctx, _a, params = {}) => {
+  registerLensAction("tick", "heartbeatControl", async (ctx, _a, params = {}) => {
     try {
+      const role = ctx?.actor?.role || "";
+      if (!["admin", "owner", "founder"].includes(role)) {
+        return { ok: false, error: "admin_only" };
+      }
       const s = getTickState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const uid = tkAid(ctx);
@@ -827,14 +843,43 @@ export default function registerTickActions(registerLensAction) {
       if (!["pause", "resume", "trigger"].includes(op)) {
         return { ok: false, error: "op must be pause|resume|trigger" };
       }
+
+      let hbMod;
+      try {
+        hbMod = await import("../emergent/heartbeat-registry.js");
+      } catch (_e) {
+        return { ok: false, error: "heartbeat-registry unavailable" };
+      }
+      const registered = (typeof hbMod.listHeartbeatModules === "function" ? hbMod.listHeartbeatModules() : [])
+        .find((m) => m.id === moduleId);
+      if (!registered) return { ok: false, error: "unknown_heartbeat_module" };
+      if ((op === "pause") && registered.neverDisable) {
+        return { ok: false, error: "module_never_disable" };
+      }
+
       const now = Date.now();
       const controls = s.controls;
       const entry = controls.get(moduleId) || { moduleId, enabled: true, triggerRequests: 0, history: [] };
-      if (op === "pause") entry.enabled = false;
-      if (op === "resume") entry.enabled = true;
+
+      const STATE = globalThis._concordSTATE;
+      if (op === "pause" || op === "resume") {
+        entry.enabled = op === "resume";
+        // Write through to the real dispatcher's disable set — this is
+        // what actually stops/resumes the module on the next governor tick,
+        // not just what the monitor UI displays.
+        if (STATE) {
+          if (!STATE.settings) STATE.settings = {};
+          if (!Array.isArray(STATE.settings.disabledHeartbeats)) STATE.settings.disabledHeartbeats = [];
+          const set = new Set(STATE.settings.disabledHeartbeats);
+          if (op === "pause") set.add(moduleId); else set.delete(moduleId);
+          STATE.settings.disabledHeartbeats = [...set];
+        }
+      }
       if (op === "trigger") {
         entry.triggerRequests = (entry.triggerRequests || 0) + 1;
         entry.lastTriggerAt = now;
+        const r = await hbMod.runHeartbeatModuleNow(moduleId, { state: STATE, db: ctx?.db, reason: "manual-trigger" });
+        if (!r.ok) return { ok: false, error: r.error || "trigger_failed" };
       }
       entry.history = [...(entry.history || []), { at: now, op, by: uid }].slice(-50);
       controls.set(moduleId, entry);

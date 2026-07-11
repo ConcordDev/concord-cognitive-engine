@@ -40,6 +40,10 @@ vi.mock('@/components/lens/ManifestActionBar', () => ({
 vi.mock('@/components/lens/DepthBadge', () => ({
   DepthBadge: () => null,
 }));
+// useLensCommand needs a KeyboardProvider ancestor (app-wide, via Providers.tsx)
+// that this focused state-machine test doesn't mount — stub it like every
+// other *-lens-states test does (see tests/retail-lens-states.test.tsx).
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
 // Import AFTER mocks are registered.
 import OpsTelemetryPage from '@/app/lenses/ops-telemetry/page';

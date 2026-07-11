@@ -28,6 +28,7 @@ vi.mock('@/components/sessions/SessionDetail', () => ({
   SessionDetail: ({ sessionId }: { sessionId: string }) => <div data-testid="session-detail">{sessionId}</div>,
 }));
 vi.mock('@/components/sessions/StaleReminder', () => ({ StaleReminder: () => null }));
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
 import SessionsLensPage from './page';
 
