@@ -3,6 +3,18 @@
 export type SavedKind = 'post' | 'dtu' | 'article' | 'artifact' | 'link' | 'other';
 export type SavedState = 'unread' | 'read' | 'archived';
 
+// Provenance stamp shape from server/lib/dtu-protocol.js#stampProvenance —
+// proves where a quote/clip actually came from. Optional; a plain bookmark
+// has none. Passed through byte-identical, never fabricated client-side.
+export interface SavedProvenance {
+  sourceUrl: string | null;
+  sourceId: string | null;
+  contentSha256: string;
+  timecode: string | null;
+  fetchedAt: string;
+  signer: string | null;
+}
+
 export interface SavedItem {
   id: string;
   kind: SavedKind;
@@ -17,6 +29,12 @@ export interface SavedItem {
   note: string;
   state: SavedState;
   sourceLens: string | null;
+  // Additive "Clip DB" fields (migration 356) — nullable A/V timecodes in
+  // milliseconds. A plain bookmark has neither; clipStartMs alone marks a
+  // "starts-at" point, both together mark a range.
+  clipStartMs: number | null;
+  clipEndMs: number | null;
+  provenance: SavedProvenance | null;
   savedAt: string;
   updatedAt: string;
   readAt: string | null;

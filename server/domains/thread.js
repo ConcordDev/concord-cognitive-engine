@@ -1,7 +1,22 @@
 // server/domains/thread.js
 export default function registerThreadActions(registerLensAction) {
+  // The lineage/branching tree (thread.branch / thread.merge, registered in
+  // server.js) stores conversation turns as `data.nodes` — {id, parentNodeId,
+  // content, authorId, createdAt}. These four analysis macros were written
+  // against an older `data.messages`/`data.posts` shape and silently no-op'd
+  // ("Provide messages to analyze the thread.") for every real thread built
+  // via branch/merge, since no caller ever populated `.messages`. Fall back
+  // to deriving a messages array from the real node shape so a single
+  // artifact backs both the tree view AND these analyzers.
+  function messagesFromArtifact(artifact) {
+    if (Array.isArray(artifact.data?.messages)) return artifact.data.messages;
+    if (Array.isArray(artifact.data?.posts)) return artifact.data.posts;
+    const nodes = Array.isArray(artifact.data?.nodes) ? artifact.data.nodes : [];
+    return nodes.map((n) => ({ author: n.authorId || "anon", content: n.content || "", timestamp: n.createdAt || null }));
+  }
+
   registerLensAction("thread", "threadAnalyze", (ctx, artifact, _params) => {
-    const messages = artifact.data?.messages || artifact.data?.posts || [];
+    const messages = messagesFromArtifact(artifact);
     if (messages.length === 0) return { ok: true, result: { message: "Provide messages to analyze the thread." } };
     const totalChars = messages.reduce((s, m) => s + (m.text || m.content || "").length, 0);
     const avgLength = Math.round(totalChars / messages.length);
@@ -23,7 +38,7 @@ export default function registerThreadActions(registerLensAction) {
   });
 
   registerLensAction("thread", "sentimentMap", (ctx, artifact, _params) => {
-    const messages = artifact.data?.messages || [];
+    const messages = messagesFromArtifact(artifact);
     if (messages.length === 0) return { ok: true, result: { message: "Provide messages to map sentiment." } };
     const positive = ["good", "great", "love", "excellent", "amazing", "awesome", "fantastic", "wonderful", "happy", "perfect", "beautiful", "brilliant", "outstanding", "superb", "agree", "thanks", "thank", "helpful", "nice", "best"];
     const negative = ["bad", "terrible", "hate", "awful", "horrible", "disgusting", "annoyed", "angry", "frustrated", "disappointed", "wrong", "worst", "fail", "broken", "useless", "stupid", "disagree", "never", "problem", "issue"];
@@ -40,7 +55,7 @@ export default function registerThreadActions(registerLensAction) {
   });
 
   registerLensAction("thread", "participantStats", (ctx, artifact, _params) => {
-    const messages = artifact.data?.messages || [];
+    const messages = messagesFromArtifact(artifact);
     if (messages.length === 0) return { ok: true, result: { message: "Provide messages to compute participant stats." } };
     const stats = {};
     messages.forEach((m, i) => {
@@ -68,7 +83,7 @@ export default function registerThreadActions(registerLensAction) {
   });
 
   registerLensAction("thread", "topicExtract", (ctx, artifact, _params) => {
-    const messages = artifact.data?.messages || [];
+    const messages = messagesFromArtifact(artifact);
     if (messages.length === 0) return { ok: true, result: { message: "Provide messages to extract topics." } };
     const stopWords = new Set(["the", "a", "an", "is", "are", "was", "were", "be", "been", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "may", "might", "can", "to", "of", "in", "for", "on", "with", "at", "by", "from", "as", "and", "but", "or", "not", "so", "yet", "if", "when", "which", "who", "this", "that", "these", "those", "it", "its", "we", "our", "they", "their", "he", "she", "his", "her", "i", "me", "my", "you", "your", "just", "also", "very", "really", "too", "about", "up", "out", "all", "one", "two", "been", "some", "than", "them", "then", "what", "how", "more", "into", "only", "no", "yes"]);
     const wordFreq = {};

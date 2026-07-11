@@ -25,6 +25,7 @@ import { CharacterStudio } from '@/components/personas/CharacterStudio';
 import { PersonaEditor, type PersonaDetail } from '@/components/personas/PersonaEditor';
 import { PersonaMarketplace } from '@/components/personas/PersonaMarketplace';
 import { PersonaDetailPanel } from '@/components/personas/PersonaDetailPanel';
+import { runPersona, readEnvelope } from '@/components/personas/persona-envelope';
 import { lensRun } from '@/lib/api/client';
 
 interface PersonaPackage {
@@ -38,10 +39,6 @@ interface PersonaPackage {
 type Tab = 'mine' | 'browse' | 'create' | 'npc';
 
 export default function PersonasPage() {
-  useLensCommand([
-    { id: 'personas-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
-  ], { lensId: 'personas' });
-
   const [tab, setTab] = useState<Tab>('mine');
   const [mine, setMine] = useState<PersonaDetail[]>([]);
   const [loadingMine, setLoadingMine] = useState(true);
@@ -60,14 +57,13 @@ export default function PersonasPage() {
     setLoadingMine(true);
     setErrMine(null);
     try {
-      const r = await lensRun('personas', 'mine', {});
-      if (r.data?.ok) {
-        setMine(((r.data.result as any)?.personas || []) as PersonaDetail[]);
+      const r = await runPersona('mine', {});
+      if (r.ok) {
+        setMine(((r.data as any)?.personas || []) as PersonaDetail[]);
       } else {
-        // Fail closed: surface the backend error instead of masking it as an
-        // empty library (a phantom/unregistered macro must be visible, not
-        // silently rendered as "no personas yet").
-        setErrMine(r.data?.error || 'Could not load your personas.');
+        // Fail closed: surface the backend error (transport OR the wrapped
+        // macro's own {ok:false}) instead of masking it as an empty library.
+        setErrMine(r.error || 'Could not load your personas.');
       }
     } catch (e) {
       setErrMine(e instanceof Error ? e.message : 'Could not load your personas.');
@@ -77,8 +73,8 @@ export default function PersonasPage() {
   }, []);
 
   const refreshPackages = useCallback(async () => {
-    const r = await lensRun('npc_persona', 'list_for_user', {});
-    if (r.data?.ok) setPackages(((r.data.result as any)?.packages || []) as PersonaPackage[]);
+    const r = readEnvelope(await lensRun('npc_persona', 'list_for_user', {}));
+    if (r.ok) setPackages(((r.data as any)?.packages || []) as PersonaPackage[]);
   }, []);
 
   useEffect(() => {
@@ -90,43 +86,61 @@ export default function PersonasPage() {
   const flash = (t: string) => { setStatus(t); window.setTimeout(() => setStatus(null), 4000); };
 
   const deletePersona = async (id: string) => {
-    const r = await lensRun('personas', 'delete', { personaId: id });
-    if (r.data?.ok) {
+    // Optimistic: drop the card instantly (sub-100ms perceived response); the
+    // real macro reconciles — on failure we restore the row and surface why.
+    const prior = mine;
+    setMine((m) => m.filter((p) => p.id !== id));
+    if (selectedId === id) setSelectedId(null);
+    const r = await runPersona('delete', { personaId: id });
+    if (r.ok) {
       flash('Persona deleted');
-      if (selectedId === id) setSelectedId(null);
       await refreshMine();
-    } else flash(`Failed: ${r.data?.error}`);
+    } else {
+      setMine(prior);
+      flash(`Failed: ${r.error}`);
+    }
   };
 
   const packNpc = async () => {
     if (!packForm.npcId) return;
     flash('Packaging…');
-    const r = await lensRun('npc_persona', 'package', packForm);
-    const payload = r.data?.result as any;
-    if (r.data?.ok) {
+    const r = readEnvelope(await lensRun('npc_persona', 'package', packForm));
+    const payload = r.data as any;
+    if (r.ok) {
       flash(`Packaged as ${payload?.dtuId}`);
       setPackForm({ npcId: '', summary: '' });
       await refreshPackages();
-    } else flash(`Failed: ${r.data?.error || payload?.reason || 'unknown'}`);
+    } else flash(`Failed: ${r.error || 'unknown'}`);
   };
 
   const installNpc = async () => {
     if (!installForm.dtuId) return;
     flash('Installing…');
-    const r = await lensRun('npc_persona', 'install', installForm);
-    const payload = r.data?.result as any;
-    if (r.data?.ok) {
+    const r = readEnvelope(await lensRun('npc_persona', 'install', installForm));
+    const payload = r.data as any;
+    if (r.ok) {
       flash(`Installed as ${payload?.importedNpcId} (${payload?.importedRows} rows)`);
       setInstallForm({ dtuId: '', worldId: 'concordia-hub' });
-    } else flash(`Failed: ${r.data?.error || payload?.reason || 'unknown'}`);
+    } else flash(`Failed: ${r.error || 'unknown'}`);
   };
 
-  const TABS: Array<{ id: Tab; label: string }> = [
-    { id: 'mine', label: 'My Personas' },
-    { id: 'browse', label: 'Marketplace' },
-    { id: 'create', label: 'Create' },
-    { id: 'npc', label: 'NPC Packaging' },
+  const TABS: Array<{ id: Tab; label: string; hint: string }> = [
+    { id: 'mine', label: 'My Personas', hint: 'g m' },
+    { id: 'browse', label: 'Marketplace', hint: 'g b' },
+    { id: 'create', label: 'Create', hint: 'g c' },
+    { id: 'npc', label: 'NPC Packaging', hint: 'g n' },
   ];
+
+  // Discoverable, keyboard-first navigation (Linear-style). Registered in the
+  // lens command registry so they also appear in the ⌘K palette + help modal;
+  // a kbd chip on each tab surfaces the same binding without reading source.
+  const goTab = (t: Tab) => { setTab(t); setSelectedId(null); setEditing(null); setCreating(false); };
+  useLensCommand([
+    { id: 'tab-mine', keys: 'g m', description: 'Go to My Personas', category: 'navigation', action: () => goTab('mine') },
+    { id: 'tab-browse', keys: 'g b', description: 'Go to Marketplace', category: 'navigation', action: () => goTab('browse') },
+    { id: 'tab-create', keys: 'g c', description: 'Author a new persona', category: 'navigation', action: () => { goTab('create'); setCreating(true); } },
+    { id: 'tab-npc', keys: 'g n', description: 'Go to NPC Packaging', category: 'navigation', action: () => goTab('npc') },
+  ], { lensId: 'personas' });
 
   return (
     <LensShell lensId="personas">
@@ -151,13 +165,17 @@ export default function PersonasPage() {
           {TABS.map((t) => (
             <button
               key={t.id} type="button"
-              onClick={() => { setTab(t.id); setSelectedId(null); setEditing(null); setCreating(false); }}
-              className={`px-3 py-2 text-sm ${
+              onClick={() => goTab(t.id)}
+              title={`Shortcut: ${t.hint}`}
+              className={`group px-3 py-2 text-sm inline-flex items-center gap-1.5 ${
                 tab === t.id
                   ? 'border-b-2 border-purple-500 text-purple-200'
                   : 'text-zinc-400 hover:text-zinc-300'
               }`}
-            >{t.label}</button>
+            >
+              {t.label}
+              <kbd className="hidden sm:inline rounded border border-zinc-700 bg-zinc-900 px-1 text-[9px] font-mono uppercase text-zinc-500 group-hover:text-zinc-300">{t.hint}</kbd>
+            </button>
           ))}
         </div>
 

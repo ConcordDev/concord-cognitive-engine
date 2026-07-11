@@ -13,8 +13,20 @@ import { useState } from 'react';
 import {
   FileText, Link2, Box, Newspaper, MessageSquare, Bookmark,
   Trash2, FolderInput, Tag, Check, Archive, BookOpen, ExternalLink,
+  Clock, ShieldCheck,
 } from 'lucide-react';
 import type { SavedItem, SavedFolder, SavedKind, SavedState } from './types';
+
+// milliseconds -> m:ss (or h:mm:ss past an hour), for the clip-timecode badge.
+function formatMs(ms: number): string {
+  const totalSec = Math.round(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
 
 const KIND_ICON: Record<SavedKind, typeof FileText> = {
   post: MessageSquare,
@@ -79,6 +91,29 @@ export function SavedItemCard({ item, folders, onRemove, onUpdate }: SavedItemCa
             {item.mediaType && item.mediaType !== 'text' && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
                 {item.mediaType}
+              </span>
+            )}
+            {(item.clipStartMs != null) && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/30"
+                title={item.clipEndMs != null ? 'Clip range' : 'Starts-at marker'}
+              >
+                <Clock className="w-2.5 h-2.5" />
+                {item.clipEndMs != null
+                  ? `${formatMs(item.clipStartMs)}–${formatMs(item.clipEndMs)}`
+                  : `starts ${formatMs(item.clipStartMs)}`}
+              </span>
+            )}
+            {item.provenance && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                title={[
+                  item.provenance.sourceUrl ? `Source: ${item.provenance.sourceUrl}` : null,
+                  `Fetched ${new Date(item.provenance.fetchedAt).toLocaleString()}`,
+                  `sha256:${item.provenance.contentSha256.slice(0, 12)}…`,
+                ].filter(Boolean).join(' · ')}
+              >
+                <ShieldCheck className="w-2.5 h-2.5" /> Provenance
               </span>
             )}
           </div>
