@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -29,9 +30,20 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 interface Project { id: string; name: string; bpm?: number; trackCount?: number }
 interface RenderResult { estimatedMinutes?: number; sizeMb?: number; format?: string; rationale?: string }
 interface TimelineResult { milestones?: Array<{ name: string; targetDate: string; status: string }>; criticalPath?: string[] }
+interface TrackEffect { id: string; kind: string }
+interface Track { id: string; name: string; kind: string; effects?: TrackEffect[] }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'create' | 'addTrack' | 'addEffect' | 'render' | 'timeline' | 'mint' | 'dm' | 'publish' | 'agent';
+
+// Must match the real accepted values in server/domains/studio.js —
+// track-add's `kind` allowlist and effect-add's `kind` allowlist. The UI
+// options are kept in exact sync with the backend enum instead of offering
+// choices the macro would silently reject or ignore.
+const TRACK_KINDS = ['audio', 'midi', 'drum', 'synth', 'sample'] as const;
+const EFFECT_KINDS = ['delay', 'reverb', 'eq3', 'compressor', 'distortion'] as const;
+type TrackKind = typeof TRACK_KINDS[number];
+type EffectKind = typeof EFFECT_KINDS[number];
 
 function pickMessage(e: unknown): string {
   const ax = e as { response?: { data?: { error?: string } }; message?: string };
@@ -44,8 +56,10 @@ export function StudioActionPanel() {
   const [projectBpm, setProjectBpm] = useState('');
   const [currentProjectId, setCurrentProjectId] = useState('');
   const [trackName, setTrackName] = useState('');
-  const [trackType, setTrackType] = useState<'audio' | 'midi' | 'instrument' | 'return'>('audio');
-  const [effectName, setEffectName] = useState('');
+  const [trackType, setTrackType] = useState<TrackKind>('audio');
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [currentTrackId, setCurrentTrackId] = useState('');
+  const [effectKind, setEffectKind] = useState<EffectKind>('reverb');
   const [renderFormat, setRenderFormat] = useState<'wav' | 'mp3' | 'flac' | 'stems'>('wav');
   const [recipient, setRecipient] = useState('');
 
@@ -85,6 +99,22 @@ export function StudioActionPanel() {
     })();
   }, []);
 
+  // Real track list (with each track's real effects chain) for the current
+  // project — sourced from project-get, not fabricated from the create
+  // response alone, so switching to a pre-existing project shows its
+  // actual tracks/effects.
+  async function loadTracks(projectId: string) {
+    if (!projectId) { setTracks([]); setCurrentTrackId(''); return; }
+    try {
+      const r = await callMacro<{ project?: { tracks?: Track[] } }>('project-get', { id: projectId });
+      const t = r.ok ? (r.result?.project?.tracks ?? []) : [];
+      setTracks(t);
+      setCurrentTrackId(t[0]?.id ?? '');
+    } catch {
+      setTracks([]); setCurrentTrackId('');
+    }
+  }
+
   async function actCreate() {
     if (!projectName.trim()) { err('Project name required.'); return; }
     setBusy('create'); setFeedback(null);
@@ -93,6 +123,7 @@ export function StudioActionPanel() {
       if (r.ok && r.result?.project) {
         setCurrentProjectId(r.result.project.id);
         setProjects(prev => [...prev, r.result!.project]);
+        setTracks([]); setCurrentTrackId('');
         pipe.publish('studio.project', r.result.project, { label: r.result.project.name });
         ok(`Project created: ${r.result.project.id.slice(0, 8)}…`);
       } else err(r.error ?? 'create failed');
@@ -103,21 +134,44 @@ export function StudioActionPanel() {
     if (!currentProjectId || !trackName.trim()) { err('Project + track name required.'); return; }
     setBusy('addTrack'); setFeedback(null);
     try {
-      const r = await callMacro<{ track?: { id: string } }>('track-add', { projectId: currentProjectId, name: trackName.trim(), type: trackType });
-      if (r.ok && r.result?.track) { pipe.publish('studio.track', r.result.track, { label: `track ${r.result.track.id.slice(0, 6)}` }); ok(`Track added: ${r.result.track.id.slice(0, 8)}.`); setTrackName(''); }
-      else err(r.error ?? 'track add failed');
+      const r = await callMacro<{ track?: Track }>('track-add', { projectId: currentProjectId, name: trackName.trim(), kind: trackType });
+      if (r.ok && r.result?.track) {
+        const track = { ...r.result.track, effects: r.result.track.effects ?? [] };
+        setTracks(prev => [...prev, track]);
+        setCurrentTrackId(track.id);
+        pipe.publish('studio.track', track, { label: `track ${track.id.slice(0, 6)}` });
+        logStudioCollabEdit(currentProjectId, 'track-add', track.id, { name: track.name, kind: track.kind });
+        ok(`Track added: ${track.id.slice(0, 8)} (${track.kind}).`);
+        setTrackName('');
+      } else err(r.error ?? 'track add failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
   async function actAddEffect() {
-    if (!currentProjectId || !effectName.trim()) { err('Project + effect name required.'); return; }
+    if (!currentProjectId || !currentTrackId) { err('Select a project and a track first.'); return; }
     setBusy('addEffect'); setFeedback(null);
     try {
-      const r = await callMacro<{ effect?: { id: string } }>('effect-add', { projectId: currentProjectId, effectName: effectName.trim() });
-      if (r.ok && r.result) { pipe.publish('studio.effect', { name: effectName.trim() }, { label: effectName.trim() }); ok(`Effect added: ${effectName.trim()}.`); }
-      else err(r.error ?? 'effect add failed');
+      const r = await callMacro<{ effect?: TrackEffect }>('effect-add', { projectId: currentProjectId, trackId: currentTrackId, kind: effectKind });
+      if (r.ok && r.result?.effect) {
+        const effect = r.result.effect;
+        setTracks(prev => prev.map(t => t.id === currentTrackId ? { ...t, effects: [...(t.effects ?? []), effect] } : t));
+        pipe.publish('studio.effect', effect, { label: effect.kind });
+        logStudioCollabEdit(currentProjectId, 'effect-add', currentTrackId, { effectId: effect.id, kind: effect.kind });
+        ok(`Effect added: ${effect.kind}.`);
+      } else err(r.error ?? 'effect add failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
+  }
+  async function actRemoveEffect(effectId: string) {
+    if (!currentProjectId || !currentTrackId) return;
+    try {
+      const r = await callMacro<{ deleted?: string }>('effect-remove', { projectId: currentProjectId, trackId: currentTrackId, effectId });
+      if (r.ok) {
+        setTracks(prev => prev.map(t => t.id === currentTrackId ? { ...t, effects: (t.effects ?? []).filter(e => e.id !== effectId) } : t));
+        logStudioCollabEdit(currentProjectId, 'effect-remove', currentTrackId, { effectId });
+        ok('Effect removed.');
+      } else err(r.error ?? 'effect remove failed');
+    } catch (e) { err(pickMessage(e)); }
   }
   async function actRender() {
     if (!currentProjectId) { err('Select a project.'); return; }
@@ -225,7 +279,7 @@ export function StudioActionPanel() {
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
     { id: 'create',    label: currentProjectId ? 'Created' : 'Create',    desc: currentProjectId ? `id ${currentProjectId.slice(0, 8)}…` : 'project-create new session',                          icon: Disc,        accent: '#22c55e', handler: actCreate },
     { id: 'addTrack',  label: '+ Track',    desc: 'track-add to current project',                  icon: Plus,        accent: '#06b6d4', handler: actAddTrack,    disabled: !currentProjectId },
-    { id: 'addEffect', label: '+ Effect',   desc: 'effect-add to current project',                 icon: Sliders,     accent: '#8b5cf6', handler: actAddEffect,   disabled: !currentProjectId },
+    { id: 'addEffect', label: '+ Effect',   desc: 'effect-add to selected track',                  icon: Sliders,     accent: '#8b5cf6', handler: actAddEffect,   disabled: !currentProjectId || !currentTrackId },
     { id: 'render',    label: 'Render',     desc: 'renderEstimate size + minutes',                 icon: Headphones,  accent: '#eab308', handler: actRender,      disabled: !currentProjectId },
     { id: 'timeline',  label: 'Timeline',   desc: 'projectTimeline milestones',                    icon: Clock,       accent: '#f97316', handler: actTimeline,    disabled: !currentProjectId },
     { id: 'mint',      label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private project DTU',                                  icon: Sparkles,    accent: '#3b82f6', handler: actMint },
@@ -246,19 +300,67 @@ export function StudioActionPanel() {
         <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Project name" />
         <input type="text" value={projectBpm} onChange={(e) => setProjectBpm(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="BPM" />
         <input type="text" value={trackName} onChange={(e) => setTrackName(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Track name" />
-        <select value={trackType} onChange={(e) => setTrackType(e.target.value as typeof trackType)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
-          {(['audio', 'midi', 'instrument', 'return'] as const).map(t => <option key={t} value={t}>{t}</option>)}
+        <select value={trackType} onChange={(e) => setTrackType(e.target.value as TrackKind)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+          {TRACK_KINDS.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <input type="text" value={effectName} onChange={(e) => setEffectName(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Effect name" />
+        <select value={effectKind} onChange={(e) => setEffectKind(e.target.value as EffectKind)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" title="Effect kind to add to the selected track">
+          {EFFECT_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+        </select>
         <select value={renderFormat} onChange={(e) => setRenderFormat(e.target.value as typeof renderFormat)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
           {(['wav', 'mp3', 'flac', 'stems'] as const).map(f => <option key={f} value={f}>{f}</option>)}
         </select>
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
-        <select value={currentProjectId} onChange={(e) => { setCurrentProjectId(e.target.value); const p = projects.find(x => x.id === e.target.value); if (p) { setProjectName(p.name); if (p.bpm) setProjectBpm(String(p.bpm)); } }} className="md:col-span-3 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+        <select
+          value={currentProjectId}
+          onChange={(e) => {
+            const id = e.target.value;
+            setCurrentProjectId(id);
+            const p = projects.find(x => x.id === id);
+            if (p) { setProjectName(p.name); if (p.bpm) setProjectBpm(String(p.bpm)); }
+            void loadTracks(id);
+          }}
+          className="md:col-span-3 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white"
+        >
           <option value="">— pick a project ({projects.length}) —</option>
           {projects.map(p => <option key={p.id} value={p.id}>{p.name} ({p.bpm ?? '?'} BPM)</option>)}
         </select>
       </div>
+
+      {currentProjectId && (
+        <div className="rounded-md border border-cyan-500/20 bg-cyan-500/5 p-2.5 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Track</span>
+            <select
+              value={currentTrackId}
+              onChange={(e) => setCurrentTrackId(e.target.value)}
+              className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white"
+            >
+              <option value="">— pick a track ({tracks.length}) —</option>
+              {tracks.map(t => <option key={t.id} value={t.id}>{t.name} · {t.kind}</option>)}
+            </select>
+            <span className="text-[10px] text-zinc-500">effect-add / effect-remove act on this track</span>
+          </div>
+          {currentTrackId && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(tracks.find(t => t.id === currentTrackId)?.effects ?? []).length === 0 ? (
+                <span className="text-[10px] text-zinc-500 italic">No effects on this track yet.</span>
+              ) : (tracks.find(t => t.id === currentTrackId)?.effects ?? []).map(fx => (
+                <span key={fx.id} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-purple-500/15 text-purple-300 text-[10px]">
+                  {fx.kind}
+                  <button
+                    type="button"
+                    onClick={() => actRemoveEffect(fx.id)}
+                    className="hover:text-red-300 px-1"
+                    title="Remove effect (effect-remove)"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 flex-wrap">
         <RecallSlot ctl={dmRecall} />

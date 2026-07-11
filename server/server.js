@@ -40407,116 +40407,25 @@ registerLensAction("sim", "archive", (ctx, artifact, _params) => {
 });
 
 // === Studio (Creative) ===
-registerLensAction("studio", "mix", (ctx, artifact, params) => {
-  const tracks = artifact.data?.tracks || [];
-  const mixSettings = params.settings || artifact.data?.mixSettings || {};
-
-  // Real audio analysis: per-track RMS, peak detection, frequency balance, stereo width
-  const trackAnalysis = tracks.map(t => {
-    const vol = t.volume != null ? t.volume : 0.8;
-    const pan = t.pan != null ? t.pan : 0;
-    const rms = vol * (t.rms || 0.707); // RMS = volume * source RMS (default -3dBFS)
-    const peakDb = 20 * Math.log10(Math.max(vol * (t.peak || 1), 1e-10));
-    const rmsDb = 20 * Math.log10(Math.max(rms, 1e-10));
-    const crestFactor = peakDb - rmsDb; // Dynamic range indicator
-    // Frequency balance from track type heuristic
-    const freq = t.frequency || t.type || "mid";
-    const freqBand = freq === "bass" || freq === "kick" || freq === "sub" ? "low"
-      : freq === "vocal" || freq === "guitar" || freq === "mid" ? "mid"
-      : freq === "cymbal" || freq === "hi-hat" || freq === "high" ? "high" : "mid";
-    return {
-      name: t.name || t.label || "untitled",
-      volume: vol, pan, muted: !!t.muted, solo: !!t.solo,
-      effects: (t.effects || []).length,
-      rms: Math.round(rms * 1000) / 1000,
-      peakDb: Math.round(peakDb * 10) / 10,
-      rmsDb: Math.round(rmsDb * 10) / 10,
-      crestFactor: Math.round(crestFactor * 10) / 10,
-      freqBand,
-    };
-  });
-
-  const activeTracks = trackAnalysis.filter(t => !t.muted);
-  const soloTracks = trackAnalysis.filter(t => t.solo);
-  const effective = soloTracks.length > 0 ? soloTracks : activeTracks;
-
-  // Sum-of-squares RMS for combined signal estimation
-  const combinedRms = effective.length > 0
-    ? Math.sqrt(effective.reduce((s, t) => s + t.rms * t.rms, 0))
-    : 0;
-  const combinedPeakDb = effective.length > 0
-    ? Math.max(...effective.map(t => t.peakDb))
-    : -Infinity;
-
-  // Frequency balance check
-  const freqDist = { low: 0, mid: 0, high: 0 };
-  for (const t of effective) freqDist[t.freqBand] = (freqDist[t.freqBand] || 0) + 1;
-  const freqTotal = effective.length || 1;
-  const freqBalance = {
-    low: Math.round((freqDist.low / freqTotal) * 100),
-    mid: Math.round((freqDist.mid / freqTotal) * 100),
-    high: Math.round((freqDist.high / freqTotal) * 100),
-  };
-
-  // Stereo width from pan spread
-  const panValues = effective.map(t => t.pan);
-  const stereoWidth = panValues.length > 1
-    ? Math.round((Math.max(...panValues) - Math.min(...panValues)) * 100)
-    : 0;
-
-  // Mix warnings
-  const warnings = [];
-  if (combinedPeakDb > -0.5) warnings.push("clipping_risk");
-  if (combinedRms > 0.9) warnings.push("sum_too_hot");
-  if (freqBalance.low > 60) warnings.push("bass_heavy");
-  if (freqBalance.high > 60) warnings.push("treble_heavy");
-  if (stereoWidth < 20 && effective.length > 2) warnings.push("narrow_stereo");
-
-  const mixResult = {
-    tracks: trackAnalysis, activeCount: effective.length,
-    combinedRms: Math.round(combinedRms * 1000) / 1000,
-    combinedPeakDb: Math.round(combinedPeakDb * 10) / 10,
-    freqBalance, stereoWidth, warnings,
-    settings: mixSettings, mixedAt: nowISO(),
-  };
-
-  artifact.data = { ...artifact.data, mixStatus: "mixed", lastMix: mixResult };
-  artifact.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, mix: { projectId: artifact.id, trackCount: tracks.length, activeCount: effective.length, combinedRms: mixResult.combinedRms, combinedPeakDb: mixResult.combinedPeakDb, freqBalance, stereoWidth, warnings, mixedAt: nowISO() } };
-});
-registerLensAction("studio", "master", (ctx, artifact, params) => {
-  const mix = artifact.data?.lastMix || {};
-  const targetLoudness = params.targetLUFS || -14;
-  const avgVolume = mix.avgVolume || 0.7;
-  const gainAdjustment = Math.round((1 - avgVolume) * 6 * 100) / 100;
-  const limiterThreshold = Math.round(Math.min(-0.3, targetLoudness + 14 - 1) * 100) / 100;
-  const masterSettings = { targetLoudness, gainAdjustment, limiterThreshold, peakCeiling: -0.1, format: params.format || "wav", sampleRate: params.sampleRate || 44100, bitDepth: params.bitDepth || 24 };
-  artifact.data = { ...artifact.data, masterStatus: "mastered", lastMaster: { ...masterSettings, masteredAt: nowISO() } };
-  artifact.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, master: { projectId: artifact.id, ...masterSettings, masteredAt: nowISO() } };
-});
-registerLensAction("studio", "bounce", (ctx, artifact, params) => {
-  const format = params.format || "wav";
-  const master = artifact.data?.lastMaster || {};
-  const tracks = artifact.data?.tracks || [];
-  const duration = artifact.data?.duration || tracks.reduce((max, t) => Math.max(max, t.duration || 0), 0);
-  const sampleRate = master.sampleRate || params.sampleRate || 44100;
-  const bitDepth = master.bitDepth || params.bitDepth || (format === "mp3" ? 16 : 24);
-  const estimatedSizeKB = Math.round(duration * sampleRate * bitDepth / 8 / 1024 * (format === "mp3" ? 0.1 : 1));
-  artifact.data = { ...artifact.data, lastBounce: { format, sampleRate, bitDepth, duration, estimatedSizeKB, bouncedAt: nowISO() } };
-  artifact.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, bounce: { projectId: artifact.id, format, duration, sampleRate, bitDepth, estimatedSizeKB, bouncedAt: nowISO() } };
-});
-registerLensAction("studio", "render", (ctx, artifact, params) => {
-  const render = { id: uid("render"), projectId: artifact.id, format: params.format || "wav", status: "complete", renderedAt: nowISO() };
-  artifact.data = { ...artifact.data, lastRender: render };
-  artifact.updatedAt = nowISO();
-  saveStateDebounced();
-  return { ok: true, render };
-});
+// The legacy generic-artifact "mix" / "master" / "bounce" / "render" macros
+// that used to live here (operating on `artifact.data.tracks`) were removed
+// 2026-07-11 (Wave-3 studio audit). `bounce` was provably dead — the real
+// per-user-project implementation registered later via
+// `domainModules.forEach` in server/domains/studio.js:574 always won the
+// LENS_ACTIONS Map's last-writer-wins registration, so this stub never ran.
+// `mix`/`master`/`render` were reachable but had zero frontend callers
+// (confirmed via a full grep of concord-frontend for
+// `action: 'mix'|'master'|'render'` against the `studio` domain) and
+// operated on the old generic `artifact.data` shape that neither of
+// studio's two real project models (the local-first DAWProject persisted
+// as a `lens.*` artifact, and domains/studio.js's own per-user
+// `s.projects` parity backend) ever populate — `master`'s
+// `mix.avgVolume` read was dead on arrival since `mix` never wrote an
+// `avgVolume` field. Real, exercised equivalents already exist: live
+// master-bus analysis is `MasteringPanel`'s Web-Audio AnalyserNode capture
+// (`concord-frontend/app/lenses/studio/page.tsx#handleAnalyze`), and
+// mixdown/bounce is `studio.bounce` + `studio.export-stems` in
+// server/domains/studio.js. See docs/lens-specs/studio-capability-map.md.
 
 // === Law (Legal) ===
 registerLensAction("law", "check-compliance", (ctx, artifact, params) => {

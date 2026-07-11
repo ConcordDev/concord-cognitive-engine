@@ -339,6 +339,12 @@ export interface AudioBuffer {
   key?: string;
   waveformPeaks: number[]; // downsampled for display
   spectralProfile?: SpectralProfile;
+  /** Real decoded PCM, one Float32Array per channel — present once a
+   *  recording/import has been decoded via decodeBlobToDAWBuffer (see
+   *  lib/daw/audio-buffer-edit.ts). Absent for buffers that only ever
+   *  carry display metadata. Editing operations (cut/paste/fade/
+   *  normalize/reverse) require this to do real DSP, not fabricate it. */
+  channelData?: Float32Array[];
 }
 
 export interface SpectralProfile {

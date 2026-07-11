@@ -36,7 +36,11 @@ export function AudioEditor({
   const [dragStart, setDragStart] = useState(0);
   const [zoom, _setZoom] = useState(1);
 
-  const peaks = waveformPeaks.length > 0 ? waveformPeaks : Array.from({ length: 200 }, () => Math.random() * 0.5);
+  // Real peaks come from decodeBlobToDAWBuffer (lib/daw/audio-buffer-edit.ts),
+  // which always populates waveformPeaks whenever a buffer has any samples.
+  // If a buffer is somehow passed with empty peaks, draw a flat silent line
+  // — never fabricate noise that looks like a waveform that isn't there.
+  const peaks = waveformPeaks.length > 0 ? waveformPeaks : new Array(200).fill(0);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current) return;
