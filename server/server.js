@@ -77181,7 +77181,25 @@ register("bounty", "resolve", (_ctx, input = {}) => {
 
 // #22 NPC psyops detector — flag NPCs whose skill_revisions diverge
 // suspiciously fast from cohort baseline.
-register("psyops", "scan_skill_divergence", (_ctx, input = {}) => {
+//
+// ADMIN GATE: psyops is an operator console end-to-end — the frontend
+// renders <AdminRequiredState> on a forbidden response and
+// `tests/e2e/admin-gated-lenses.spec.ts` lists it among the 6 operator
+// lenses. These three legacy macros read/mutate a SHARED table
+// (skill_divergence_alerts, not per-user), so they need the same
+// in-handler role gate as server/domains/psyops.js's requireOperatorRole
+// — every psyops.* macro on both surfaces is now admin-gated. The error
+// text matches isForbidden()'s `/insufficient permission/i` regex in
+// concord-frontend/lib/api/client.ts so the page correctly flips to the
+// friendly gate instead of silently rendering an empty console for a
+// non-admin caller.
+function _psyopsRequireOperatorRole(ctx) {
+  const role = ctx?.actor?.role || "";
+  if (["owner", "admin", "founder"].includes(role)) return null;
+  return { ok: false, error: "Insufficient permissions: admin role required" };
+}
+register("psyops", "scan_skill_divergence", (ctx, input = {}) => {
+  const denied = _psyopsRequireOperatorRole(ctx); if (denied) return denied;
   if (!db) return { ok: false, reason: "no_db" };
   const { sigmaThreshold = 2.5, windowHours = 168 } = input || {};
   try {
@@ -77225,7 +77243,8 @@ register("psyops", "scan_skill_divergence", (_ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Scan recent NPC skill_revisions for outliers. Files alerts on N-sigma divergence." });
 
-register("psyops", "list_alerts", (_ctx, input = {}) => {
+register("psyops", "list_alerts", (ctx, input = {}) => {
+  const denied = _psyopsRequireOperatorRole(ctx); if (denied) return denied;
   if (!db) return { ok: false, reason: "no_db" };
   const { limit = 50, includeQuarantined = false } = input || {};
   try {
@@ -77240,7 +77259,8 @@ register("psyops", "list_alerts", (_ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Recent skill-divergence alerts." });
 
-register("psyops", "quarantine", (_ctx, input = {}) => {
+register("psyops", "quarantine", (ctx, input = {}) => {
+  const denied = _psyopsRequireOperatorRole(ctx); if (denied) return denied;
   if (!db) return { ok: false, reason: "no_db" };
   const { alertId } = input || {};
   if (!alertId) return { ok: false, reason: "missing_id" };
