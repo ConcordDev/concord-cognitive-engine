@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSoundscape } from '@/components/world-lens/SoundscapeEngine';
+import { useCancelableCompletion } from '@/hooks/useCancelableCompletion';
 
 interface CraftingMinigameProps {
   skillLevel: number;     // 1-500+ — determines sweet spot width
@@ -38,6 +39,7 @@ export function CraftingMinigame({ skillLevel, itemName, onComplete, onCancel }:
   const [released, setReleased] = useState(false);
   const [multiplier, setMultiplier] = useState<number | null>(null);
   const { triggerSFX } = useSoundscape();
+  const { scheduleComplete, cancelPendingComplete } = useCancelableCompletion(onComplete);
 
   const fillRef = useRef(0);
   const holdingRef = useRef(false);
@@ -79,8 +81,13 @@ export function CraftingMinigame({ skillLevel, itemName, onComplete, onCancel }:
     const m = Math.round(computeMultiplier(fillRef.current, spotTop, spotHeight) * 10) / 10;
     setMultiplier(m);
     triggerSFX(m >= 1.0 ? 'craft-release-good' : 'craft-release-bad');
-    setTimeout(() => onComplete(m), 900);
-  }, [released, spotTop, spotHeight, onComplete, triggerSFX]);
+    scheduleComplete(m, 900);
+  }, [released, spotTop, spotHeight, scheduleComplete, triggerSFX]);
+
+  const handleCancel = useCallback(() => {
+    cancelPendingComplete();
+    onCancel();
+  }, [cancelPendingComplete, onCancel]);
 
   const qualityLabel = multiplier === null ? '' :
     multiplier >= 1.4 ? 'Masterwork!' :
@@ -92,7 +99,7 @@ export function CraftingMinigame({ skillLevel, itemName, onComplete, onCancel }:
       <div className="bg-black/90 border border-white/10 rounded-2xl p-6 w-full max-w-xs mx-4 flex flex-col gap-4 items-center">
         <div className="flex items-center justify-between w-full">
           <h3 className="text-white font-bold text-base">Crafting: {itemName}</h3>
-          <button onClick={onCancel} className="text-white/30 hover:text-white text-lg">✕</button>
+          <button onClick={handleCancel} className="text-white/30 hover:text-white text-lg">✕</button>
         </div>
 
         <p className="text-white/50 text-xs text-center">
