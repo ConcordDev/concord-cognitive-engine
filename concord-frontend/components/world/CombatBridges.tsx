@@ -653,13 +653,17 @@ function removeCollapsedBuildingFromWorld(scene: ConcordiaSceneLike | null, buil
   // parent, mirroring removeBuilding()'s own mesh-removal step.
   try {
     if (scene?.traverse) {
-      let target: ConcordiaSceneLike | null = null;
+      // An object wrapper (rather than a bare `let`) sidesteps a TypeScript
+      // control-flow-narrowing limitation where a variable only ever
+      // reassigned inside a callback gets narrowed to `never` at its
+      // post-call read site.
+      const found: { target: ConcordiaSceneLike | null } = { target: null };
       scene.traverse((child) => {
-        if (target) return;
-        if (child.userData?.buildingId === buildingId) target = child;
+        if (found.target) return;
+        if (child.userData?.buildingId === buildingId) found.target = child;
       });
-      if (target?.parent) {
-        target.parent.remove(target);
+      if (found.target?.parent) {
+        found.target.parent.remove(found.target);
       }
     }
   } catch {

@@ -26,18 +26,18 @@ describe('GameModesHotbarGroup — concordia:start-mode listener lifecycle', () 
     for (let i = 0; i < CYCLES; i++) {
       const { unmount } = render(<GameModesHotbarGroup worldId="concordia-hub" />);
 
-      const addedSoFar = addSpy.mock.calls.filter(([type]) => type === 'concordia:start-mode').length;
+      const addedSoFar = addSpy.mock.calls.filter(([type]) => (type as string) === 'concordia:start-mode').length;
       expect(addedSoFar).toBe(i + 1);
 
       unmount();
 
-      const removedSoFar = removeSpy.mock.calls.filter(([type]) => type === 'concordia:start-mode').length;
+      const removedSoFar = removeSpy.mock.calls.filter(([type]) => (type as string) === 'concordia:start-mode').length;
       expect(removedSoFar).toBe(i + 1);
     }
 
     // After N mount/unmount cycles, adds and removes are equal — no leak.
-    const totalAdded = addSpy.mock.calls.filter(([type]) => type === 'concordia:start-mode').length;
-    const totalRemoved = removeSpy.mock.calls.filter(([type]) => type === 'concordia:start-mode').length;
+    const totalAdded = addSpy.mock.calls.filter(([type]) => (type as string) === 'concordia:start-mode').length;
+    const totalRemoved = removeSpy.mock.calls.filter(([type]) => (type as string) === 'concordia:start-mode').length;
     expect(totalAdded).toBe(CYCLES);
     expect(totalRemoved).toBe(CYCLES);
 
