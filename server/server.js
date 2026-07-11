@@ -2862,6 +2862,36 @@ const ETHOS_INVARIANTS = Object.freeze({
   FOUNDER_INTENT_STRUCTURAL: true
 });
 
+// Human-readable descriptions for ETHOS_INVARIANTS, surfaced by
+// /api/sovereignty/status so the lock lens's "Active Invariants" panel
+// shows the real constitutional invariants instead of an empty list.
+const ETHOS_INVARIANT_DESCRIPTIONS = Object.freeze({
+  LOCAL_FIRST_DEFAULT: "Local processing is the default; cloud requires explicit opt-in",
+  NO_TELEMETRY: "No external analytics or tracking (enforced on every tool action)",
+  NO_ADS: "No advertisements or sponsored content (enforced on every tool action)",
+  NO_SECRET_MONITORING: "No hidden monitoring or tracking of user activity (enforced on every tool action)",
+  NO_USER_PROFILING: "No fingerprinting or behavioral profiling (enforced on every tool action)",
+  CLOUD_LLM_OPT_IN_ONLY: "Cloud LLM use requires both an env flag and per-session consent",
+  PERSONA_SOVEREIGNTY: "User-authored personas remain under user control",
+  ALIGNMENT_PHYSICS_BASED: "Alignment mechanics are physics-based, not arbitrary policy",
+  FOUNDER_INTENT_STRUCTURAL: "Founder intent is encoded structurally in code, not just stated as policy",
+});
+
+// Returns the frozen ETHOS_INVARIANTS as a list shape the lock lens's
+// Invariant type expects: { id, name, status, description, lastChecked }.
+// Every entry is 'enforced' by construction (the object is Object.freeze'd
+// true/true) -- there is no partial/violated runtime state to report here.
+function ethosInvariantsList() {
+  const checkedAt = new Date().toISOString();
+  return Object.entries(ETHOS_INVARIANTS).map(([key, value]) => ({
+    id: key.toLowerCase().replace(/_/g, "-"),
+    name: key,
+    status: value ? "enforced" : "violated",
+    description: ETHOS_INVARIANT_DESCRIPTIONS[key] || key,
+    lastChecked: checkedAt,
+  }));
+}
+
 // Guard: call before any external/persistent/monitoring-like action
 //
 // Token-boundary matching (2026-07-10 Wave 3 fix), not raw substring
@@ -44343,6 +44373,7 @@ app.get("/api/sovereignty/status", requireAuth(), async (req, res) => {
   )];
   const entityCount = Array.from(STATE.entities?.values() || [])
     .filter(e => e.ownerId === userId).length;
+  const invariants = ethosInvariantsList();
 
   res.json({
     ok: true,
@@ -44355,6 +44386,8 @@ app.get("/api/sovereignty/status", requireAuth(), async (req, res) => {
     entities: entityCount,
     sovereigntyPct: (personalCount + syncedCount) > 0
       ? Math.round(personalCount / (personalCount + syncedCount) * 100) : 100,
+    invariants,
+    isHealthy: invariants.every(inv => inv.status === "enforced"),
   });
 });
 
