@@ -1385,7 +1385,7 @@ function FrameworkAnalysisPanel() {
                       </span>
                     ))}
                 </div>
-                {key === 'virtue' && f.details.virtueScores && typeof f.details.virtueScores === 'object' && (
+                {key === 'virtue' && !!f.details.virtueScores && typeof f.details.virtueScores === 'object' && (
                   <div className="flex flex-wrap gap-1">
                     {Object.entries(f.details.virtueScores as Record<string, number>)
                       .filter(([, v]) => v > 0)

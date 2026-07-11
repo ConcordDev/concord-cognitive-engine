@@ -527,7 +527,7 @@ export function EventOps() {
       riderRequirements: riderReqs.map((x) => ({ name: x.name, quantity: Number(x.quantity) || 1 })),
       venueEquipment: venueGear,
     });
-    setRiderMatchResult(r as RiderMatchResult);
+    setRiderMatchResult(r as unknown as RiderMatchResult);
   });
 
   const calcSettlement = () => guard(async () => {
@@ -538,7 +538,7 @@ export function EventOps() {
       ticketsSold: settleForm.ticketsSold ? Number(settleForm.ticketsSold) : tierTotals.totalSold,
       ticketPrice: settleForm.ticketPrice ? Number(settleForm.ticketPrice) : fallbackPrice,
     });
-    setSettlementResult(r as SettlementResult);
+    setSettlementResult(r as unknown as SettlementResult);
   });
 
   const addExpenseLine = () => {
@@ -559,7 +559,7 @@ export function EventOps() {
       expenses: reconcileExpenses.map((e) => ({ category: e.category, amount: Number(e.amount) || 0 })),
       revenue: reconcileRevenue.map((e) => ({ category: e.category, amount: Number(e.amount) || 0 })),
     });
-    setReconcileResult(r as ReconcileResult);
+    setReconcileResult(r as unknown as ReconcileResult);
   });
 
   // -------------------------------------------------------------------------
