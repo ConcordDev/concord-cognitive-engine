@@ -22,7 +22,56 @@ This inventory is the input to gap-closure work, not the closure itself — each
 candidate unit of future work, not yet actioned. `docs/lens-specs/README.md` should link here
 once this lands.
 
-## Full ledger
+## Concordia (3D world) findings — added 2026-07-11, second-half of this Wave
+
+The flat-lens sweep above covers 260 lens directories but explicitly excluded Concordia's own
+world-simulator, per `docs/lens-specs/world-capability-map.md`'s own admission that it's a
+"summary-level backfill, not an exhaustive audit." A dedicated 8-subsystem pass closed that gap:
+`docs/concordia-specs/{lore-worldbuilding,quests-dialogue,factions-politics,combat-feel-residuals,
+crafting-economy-housing,minigames,runmodes-endgame-social,runtime-health}-capability-map.md`,
+each benchmarked against a named genre leader (CK3, Witcher 3, WoW, Hades, etc.) with the same
+re-verify-against-live-code discipline. Three small, safe residuals were fixed inline during that
+pass (kingdom-decrees ruler-authorization gap, hidden-object/farming/restaurant minigame juice —
+see `docs/FRONTEND_REBUILD_PROGRAM.md`'s ledger). Below is the prioritized remainder, worst-first;
+full detail and file:line evidence lives in the source docs.
+
+| Priority | Item | Triage | Source doc |
+|---|---|---|---|
+| 🔴 Live-broken | Time-loop mode: 3 of 5 HTTP routes 404 (missing `/` before path params, verified live) — HUD never renders, loops can't be ended from the UI | ENGINEERING | runmodes-endgame-social |
+| 🔴 Live-broken | `getRelationScore()` hardcoded to `return 0` — silently breaks `PROPOSE_ALLIANCE` and relation-gated `DECLARE_WAR` targeting fleet-wide | ENGINEERING | factions-politics |
+| 🔴 Live-broken | `moral_branch`/`reputation_change` authored across 11 quest files, read by zero lines of code anywhere — the "meaningful choice" mechanic never fires for a player | ENGINEERING | quests-dialogue |
+| 🔴 Live-broken | AvatarSystem3D + ConcordiaScene effect-thrash — both heaviest 3D components fully teardown/rebuild on nearly every render during ordinary movement/combat; root cause of any world-lens jank | ENGINEERING | runtime-health |
+| 🔴 Live-broken | `window.__concordiaPlayerPos` read by 9+ production files, written by none — Extract button can never enable via ExtractionRunHUD, scheme-overhear earshot gate bypasses itself | ENGINEERING | runtime-health |
+| 🔴 Live-broken | SoundscapeEngine ambient noise layer leaks a new infinite audio loop on every district/time/interior change — directly audible (hiss compounds over a session) | ENGINEERING | runtime-health |
+| 🟠 Real, unreachable-but-built | Guild substrate — complete DB-backed bank/XP/hall system, 100% unreachable (zero callers outside its own tests) | ENGINEERING | runmodes-endgame-social |
+| 🟠 Real, unreachable-but-built | World bosses never spawn in production (scheduler has zero callers outside tests) | ENGINEERING | runmodes-endgame-social |
+| 🟠 Real, unreachable-but-built | `spawnFactionWar` (real combat pipeline) only reachable via admin/test endpoint, never triggered by autonomous war/raid moves | ENGINEERING | factions-politics |
+| 🟠 Real, unreachable-but-built | Roguelite shop catalog and effect-engine catalog share zero item IDs (purchases do nothing); price is client-supplied — security-adjacent | ENGINEERING | runmodes-endgame-social |
+| 🟠 Real, unreachable-but-built | Party-combat "ability" action has no server-side ability catalog — damage is a caller-supplied number — security-adjacent | ENGINEERING | runmodes-endgame-social |
+| 🟠 Real bug | Ragdoll physics bodies never freed (`despawnRagdoll` called but doesn't exist; real method is `removeRagdoll`) — every kill leaks 7 bodies, compounded by duplicate listeners per world switch | ENGINEERING | runtime-health |
+| 🟠 Real bug | Building collapse has full visual/audio wiring, zero physics-side consumer — player walks into an invisible wall where a collapsed building stood | ENGINEERING | runtime-health |
+| 🟠 Real bug | Procedural building materials/textures leak unbounded at module scope — the path most real buildings render through | ENGINEERING | runtime-health |
+| 🟠 Real bug | `AudioContext.close()` never called on unmount — repeated world-lens navigation stacks contexts, hits browser caps | ENGINEERING | runtime-health |
+| 🟠 Real bug | 6 polling HUDs cache `activeWorldId` once at mount, go stale on same-tab world travel (fix already exists in-repo as `useActiveWorldId()` — just needs migrating) | ENGINEERING | runtime-health |
+| 🟡 Content depth | Procedural NPC personality: only 10 traits/~31 secrets recycled across 74 NPCs; every one shares an identical closing backstory line | CURATION | lore-worldbuilding |
+| 🟡 Content depth | 29% (26/90) of cross-world "resonance" links point at NPCs that were never written | CURATION | lore-worldbuilding |
+| 🟡 Content depth | Only 15 of 136+ authored NPCs have bespoke dialogue trees (main arc's own named NPCs aren't among them) | CURATION | quests-dialogue |
+| 🟡 Content depth | `content/world/sere/` — the best-written content in the game — is undocumented, not in CLAUDE.md's "9 sub-worlds" claim | ENGINEERING (docs) | lore-worldbuilding |
+| 🟡 Content depth | `tunya/factions.json` names a fictional faction "Cree" — collides with a real living Indigenous nation | CURATION | lore-worldbuilding |
+| 🟡 Content depth | Mahjong: no chi/pon/kan/riichi (real engine, genuinely deepest minigame, but incomplete ruleset) | ENGINEERING | minigames |
+| 🟡 Content depth | Trivia bank is exactly 30 questions across 45 mostly-singleton tags — too small for repeat play | CURATION | minigames |
+| 🟡 Content depth | Romance/marriage (deepest mechanical system found — courtship→marriage→pregnancy→heir inheritance) has only 3 generic heart-event scenes for the entire cast | CURATION | runmodes-endgame-social |
+| 🟢 Small | 4 authored multi-step craft chains never loaded by any seeder (dead content) | ENGINEERING | crafting-economy-housing |
+| 🟢 Small | Resource-catalog/market-catalog ID mismatch — only 3 of ~30 IDs overlap, most traded materials fall back to generic properties | ENGINEERING | crafting-economy-housing |
+| 🟢 Small | Hacking's free unlimited hints can make the authored terminal tree trivially skippable | ENGINEERING | minigames |
+| 🟢 Small | Karaoke scores pitch-consistency not melody accuracy (songs already carry an unused `key` field — cheap fix) | ENGINEERING | minigames |
+| 🟢 Small | Mahjong legacy checkbox resolver route still reachable (non-exploitable, but an unverified-success path) | ENGINEERING/CURATION | combat-feel-residuals |
+| 🟢 Small | ~9 more lower-severity runtime findings (vehicle-renderer no per-despawn dispose, WaterRenderer texture leak, duplicate socket connection, crafting-minigame cancel-doesn't-cancel, etc.) | ENGINEERING | runtime-health |
+
+Not repeated here: the ~15 LOW-severity/cosmetic runtime findings and the several items each
+subsystem doc confirmed already fixed or false-positive — see the source docs for full detail.
+
+## Full ledger — flat lenses
 
 | Lens | Item | Reference Benchmark | Triage | Doc Disposition (source quote) | Source Doc |
 |---|---|---|---|---|---|
