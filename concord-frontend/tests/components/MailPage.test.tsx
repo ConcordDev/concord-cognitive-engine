@@ -12,6 +12,14 @@ vi.mock('@/components/lens/ManifestActionBar', () => ({
   ManifestActionBar: () => null,
 }));
 
+// The compose tab's RecipientSearchInput hits `api.get('/api/social/users/search', ...)`
+// via axios (not the raw `fetch` this file already stubs) — mock it separately
+// so the recipient-search test can drive it deterministically.
+const apiGetMock = vi.fn();
+vi.mock('@/lib/api/client', () => ({
+  api: { get: (...args: unknown[]) => apiGetMock(...args) },
+}));
+
 // Capturing socket mock — lets a test fire the real server event name and
 // assert the page's `subscribe('mail:received', ...)` handler (not a dead
 // `window.addEventListener`) actually re-fetches.
@@ -61,6 +69,7 @@ describe('Mail lens page — four UX states', () => {
   beforeEach(() => {
     fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
+    apiGetMock.mockReset();
     // jsdom has no window.location.search params to prefill; default is fine.
   });
   afterEach(() => {
@@ -150,5 +159,37 @@ describe('Mail lens page — four UX states', () => {
     });
 
     await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterMount));
+  });
+
+  it('compose: recipient is picked from a real user search, not typed as a raw id', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/inbox') || url.includes('/sent')) return jsonResponse({ ok: true, mail: [] });
+      return jsonResponse({ ok: true });
+    });
+    apiGetMock.mockResolvedValue({
+      data: {
+        ok: true,
+        users: [{ id: 'user_real_42', username: 'zara', displayName: 'Zara' }],
+      },
+    });
+
+    render(<MailLensPage />);
+    await waitFor(() => expect(screen.getByRole('tab', { name: /compose/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('tab', { name: /compose/i }));
+
+    const recipientInput = await screen.findByPlaceholderText(/search by username or paste a userid/i);
+    fireEvent.change(recipientInput, { target: { value: 'za' } });
+
+    // Debounced (300ms) — wait for the search to resolve and render a result.
+    const resultButton = await screen.findByRole('button', { name: /zara/i }, { timeout: 2000 });
+    expect(apiGetMock).toHaveBeenCalledWith('/api/social/users/search', { params: { q: 'za' } });
+
+    fireEvent.click(resultButton);
+
+    // Selecting a result fills the recipient field with the REAL id, not free text.
+    expect((recipientInput as HTMLInputElement).value).toBe('user_real_42');
+
+    // Result list closes after selection — no leftover autocomplete row.
+    expect(screen.queryByRole('button', { name: /zara/i })).not.toBeInTheDocument();
   });
 });

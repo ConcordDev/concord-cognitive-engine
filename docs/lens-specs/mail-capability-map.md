@@ -188,15 +188,24 @@ following were already genuinely real and are unchanged:
   named in `CLAUDE.md` ("Mail attachments transfer is single-transaction")
   and this pass is a pure frontend wiring fix with zero backend edits.
 
-## Genuinely missing (deferred, not faked)
+## Genuinely missing (deferred, not faked) — CLOSED (Wave 4 gap-closure, 2026-07-11)
 
-- **No way to browse/search *other users* to pick a recipient.** Compose
-  requires typing a raw user id, same as before this pass. The only
-  in-product path to a valid id is the Friends panel's deep-link. A
-  friends/recently-mailed-to autocomplete would be a real improvement but
-  needs either a new backend lookup (a public username→id search) or
-  wiring against the existing friends-list endpoint from within the mail
-  page — out of scope for a same-file, no-backend-change pass, and not
-  fixable by only touching `player-mail.js`/`mail.js` without adding new
-  surface area beyond what was asked. Recorded here as a deferred
-  enhancement, not faked with a fabricated contact list.
+- ~~**No way to browse/search *other users* to pick a recipient.**~~ **Fixed —
+  ENGINEERING-class, no new backend surface needed.** The real endpoint
+  already existed: `GET /api/social/users/search?q=` (`server/routes/social-groups.js`,
+  a genuine `SELECT id, username, email FROM users WHERE is_active = 1 AND
+  (username LIKE ? OR email LIKE ?)` query, mounted at `/api/social`) — and a
+  frontend consumer of it already existed too:
+  `concord-frontend/components/message/RecipientSearchInput.tsx`, built for
+  the message lens's own identical gap and left unreused until now. The mail
+  compose tab (`concord-frontend/app/lenses/mail/page.tsx`) now mounts that
+  same component for its recipient field: type-ahead search-and-pick, debounced
+  300ms, resolves to the user's real `id` (never free text once a result is
+  picked), degrades honestly to manual-id-entry (unchanged `composeTo` state)
+  if the search API errors. No backend files touched. Manual paste of a known
+  id still works — the component doesn't remove that path, only adds search on
+  top of it. Pinned by `concord-frontend/tests/components/MailPage.test.tsx`'s
+  `compose: recipient is picked from a real user search, not typed as a raw
+  id` test (asserts the exact `api.get('/api/social/users/search', { params:
+  { q } })` call and that selecting a result sets `composeTo` to the returned
+  `id`, not the typed query text).
