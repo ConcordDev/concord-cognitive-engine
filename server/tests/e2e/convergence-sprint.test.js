@@ -82,8 +82,8 @@ describe("Phase CA-CF — Convergence Sprint end-to-end", () => {
 
     // ── CB1 roguelite ─────────────────────────────────────────────────
     const rg = rgStart(db, "u1", { worldId: "tunya", regionId: "reg-1" });
-    rgEnd(db, rg.runId, { reason: "extract", depthReached: 20 });
-    const purch = purchaseUnlock(db, "u1", "extra_slot", 50);
+    rgEnd(db, rg.runId, { reason: "extract", depthReached: 40 }); // earns 250
+    const purch = purchaseUnlock(db, "u1", "veteran_vigor"); // catalog cost 150
     assert.equal(purch.ok, true);
 
     // ── CB2 horde ─────────────────────────────────────────────────────

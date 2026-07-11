@@ -166,13 +166,22 @@ export function getBalance(db, userId) {
 /**
  * Spend meta-currency on a permanent unlock. Idempotent on
  * (user, unlock_id) — re-purchase rejected.
+ *
+ * Security fix (Wave 4 catalog-reconciliation pass): price is ALWAYS looked
+ * up server-side from META_UNLOCK_CATALOG — there is no client-suppliable
+ * cost anymore. The prior code fell back to `costCc` (a request-body value)
+ * for any unlockId not present in the catalog; since the shop-visible
+ * catalog (`content/roguelite-unlocks.json`) used a disjoint set of ids from
+ * `META_UNLOCK_CATALOG`, EVERY real purchase went through that fallback and
+ * was fully self-priced by the client (including cost 0). A 4th positional
+ * arg is still accepted so existing call sites don't need updating, but it
+ * is intentionally ignored — do not resurrect any use of it for pricing.
  */
-export function purchaseUnlock(db, userId, unlockId, costCc) {
+export function purchaseUnlock(db, userId, unlockId, _clientSuppliedCostIgnored) {
   if (!db || !userId || !unlockId) return { ok: false, error: "missing_inputs" };
-  // C1 — catalog-priced: a known unlock uses its server cost (client can't
-  // self-price); unknown ids fall back to the passed cost for back-compat.
   const catalogEntry = META_UNLOCK_CATALOG[unlockId];
-  const cost = catalogEntry ? catalogEntry.costCc : Math.max(0, Number(costCc) || 0);
+  if (!catalogEntry) return { ok: false, error: "unknown_unlock" };
+  const cost = catalogEntry.costCc;
   try {
     const existing = db.prepare(`
       SELECT 1 FROM roguelite_unlocks WHERE user_id = ? AND unlock_id = ?

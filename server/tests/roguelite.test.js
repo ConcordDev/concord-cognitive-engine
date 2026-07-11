@@ -57,18 +57,18 @@ describe("Phase CB1 — roguelite runs", () => {
 
   it("purchaseUnlock deducts balance + records ownership", () => {
     const r = startRun(db, "u1", { worldId: "tunya", regionId: "reg-1" });
-    endRun(db, r.runId, { reason: "extract", depthReached: 20 }); // earns 125
-    const p = purchaseUnlock(db, "u1", "extra_slot", 50);
+    endRun(db, r.runId, { reason: "extract", depthReached: 40 }); // earns 250
+    const p = purchaseUnlock(db, "u1", "veteran_vigor"); // catalog cost 150
     assert.equal(p.ok, true);
-    assert.equal(p.balanceRemaining, 75);
-    assert.equal(hasUnlock(db, "u1", "extra_slot"), true);
+    assert.equal(p.balanceRemaining, 100);
+    assert.equal(hasUnlock(db, "u1", "veteran_vigor"), true);
   });
 
   it("re-purchase of same unlock rejected", () => {
     const r = startRun(db, "u1", { worldId: "tunya", regionId: "reg-1" });
-    endRun(db, r.runId, { reason: "extract", depthReached: 20 });
-    purchaseUnlock(db, "u1", "extra_slot", 50);
-    const p2 = purchaseUnlock(db, "u1", "extra_slot", 50);
+    endRun(db, r.runId, { reason: "extract", depthReached: 40 });
+    purchaseUnlock(db, "u1", "veteran_vigor");
+    const p2 = purchaseUnlock(db, "u1", "veteran_vigor");
     assert.equal(p2.ok, false);
     assert.equal(p2.error, "already_unlocked");
   });
@@ -76,9 +76,29 @@ describe("Phase CB1 — roguelite runs", () => {
   it("insufficient funds rejected", () => {
     const r = startRun(db, "u1", { worldId: "tunya", regionId: "reg-1" });
     endRun(db, r.runId, { reason: "death", depthReached: 1 }); // earns 2
-    const p = purchaseUnlock(db, "u1", "extra_slot", 50);
+    const p = purchaseUnlock(db, "u1", "veteran_vigor");
     assert.equal(p.ok, false);
     assert.equal(p.error, "insufficient_funds");
+  });
+
+  it("unknown unlock id is rejected, not priced from a client-supplied cost", () => {
+    const r = startRun(db, "u1", { worldId: "tunya", regionId: "reg-1" });
+    endRun(db, r.runId, { reason: "extract", depthReached: 40 });
+    // A client-supplied costCc for a non-catalog id must never buy anything.
+    const p = purchaseUnlock(db, "u1", "not_a_real_unlock", 0);
+    assert.equal(p.ok, false);
+    assert.equal(p.error, "unknown_unlock");
+    assert.equal(hasUnlock(db, "u1", "not_a_real_unlock"), false);
+  });
+
+  it("a client-supplied cost is ignored for a real catalog unlock (server price wins)", () => {
+    const r = startRun(db, "u1", { worldId: "tunya", regionId: "reg-1" });
+    endRun(db, r.runId, { reason: "extract", depthReached: 40 }); // earns 250
+    // Client tries to pay 1 CC for a 150-cost unlock.
+    const p = purchaseUnlock(db, "u1", "veteran_vigor", 1);
+    assert.equal(p.ok, true);
+    assert.equal(p.balanceRemaining, 100); // 250 - 150, NOT 250 - 1
+    assert.equal(getBalance(db, "u1").balance, 100);
   });
 
   it("getActiveRun returns null after end", () => {

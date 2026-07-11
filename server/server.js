@@ -52518,7 +52518,10 @@ app.get("/api/roguelite/balance", requireAuth(), asyncHandler(async (req, res) =
 app.post("/api/roguelite/unlock", requireAuth(), asyncHandler(async (req, res) => {
   const { purchaseUnlock } = await import("./lib/roguelite.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(purchaseUnlock(db, userId, req.body?.unlockId, req.body?.costCc));
+  // Security fix — the price is looked up server-side from
+  // META_UNLOCK_CATALOG inside purchaseUnlock; a client-supplied cost is
+  // never read or forwarded here (see roguelite.js#purchaseUnlock).
+  res.json(purchaseUnlock(db, userId, req.body?.unlockId));
 }));
 
 app.get("/api/roguelite/unlocks", requireAuth(), asyncHandler(async (req, res) => {

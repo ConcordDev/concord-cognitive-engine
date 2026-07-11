@@ -1,8 +1,7 @@
 [
-  { "id": "extra_slot", "name": "Extra Equipment Slot", "cost": 50, "description": "Permanent +1 inventory slot." },
-  { "id": "starter_potion", "name": "Starter Potion", "cost": 30, "description": "Begin every run with one healing potion." },
-  { "id": "damage_bump", "name": "Sharper Edge", "cost": 100, "description": "+5% damage on all weapons, persists across runs." },
-  { "id": "extra_life", "name": "Phylactery", "cost": 200, "description": "Once per run, resurrect with 25% HP after death." },
-  { "id": "deeper_drift", "name": "Drift Conductor", "cost": 75, "description": "Enter procgen regions that match higher drift severities." },
-  { "id": "currency_boost", "name": "Soul Tithe", "cost": 150, "description": "+25% meta-currency earned per run." }
+  { "id": "veteran_vigor", "name": "Veteran's Vigor", "cost": 150, "description": "Begin every run with +25 max HP." },
+  { "id": "sharp_start", "name": "Sharp Start", "cost": 200, "description": "+10% damage on all attacks, persists across runs." },
+  { "id": "extra_pick", "name": "Extra Boon", "cost": 300, "description": "+1 extra draft pick each run." },
+  { "id": "fortune_finder", "name": "Fortune Finder", "cost": 250, "description": "+25% meta-currency earned per run." },
+  { "id": "second_chance", "name": "Second Chance", "cost": 500, "description": "Revive once per run after death, instead of ending it." }
 ]
