@@ -9,6 +9,13 @@
  *   - detach removes the listener and clears timers
  *   - active-ragdoll cap evicts oldest
  *   - dispatchLethalHit fires the matching event
+ *
+ * Runtime-health finding #6 (docs/concordia-specs/runtime-health-capability-map.md
+ * §6) — the bridge used to call a nonexistent `physicsWorld.despawnRagdoll`
+ * (optional-chained, so it silently no-op'd forever and leaked 7 RigidBodies
+ * + 6 joints per lethal hit). The real method on PhysicsWorld is
+ * `removeRagdoll`. The decay-timeout and cap-eviction tests below assert the
+ * REAL method name is called, not just that "some despawn callback fired."
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -26,15 +33,18 @@ interface SpawnCall {
 
 function makePhysicsWorldShim() {
   const spawnCalls: SpawnCall[] = [];
-  const despawnCalls: string[] = [];
+  // Named to match the REAL PhysicsWorld method (`removeRagdoll`) the bridge
+  // must call — a shim keyed on the old nonexistent `despawnRagdoll` name
+  // would silently pass even if the bridge regressed back to the bug.
+  const removeRagdollCalls: string[] = [];
   return {
     spawnCalls,
-    despawnCalls,
+    removeRagdollCalls,
     spawnRagdoll: (id: string, position: SpawnCall['position'], impulse?: SpawnCall['impulse']) => {
       spawnCalls.push({ id, position, impulse });
       return { id };
     },
-    despawnRagdoll: (id: string) => { despawnCalls.push(id); },
+    removeRagdoll: (id: string) => { removeRagdollCalls.push(id); },
   };
 }
 
@@ -121,13 +131,13 @@ describe('ragdoll-bridge — decay', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
-  it('despawn called after DECAY_MS', () => {
+  it('removeRagdoll (the real method) is called after DECAY_MS', () => {
     const shim = makePhysicsWorldShim();
     const detach = attachRagdollBridge(shim);
     dispatchLethalHit({ targetId: 'npc_decay', position: { x: 1, y: 0, z: 1 } });
-    expect(shim.despawnCalls.length).toBe(0);
+    expect(shim.removeRagdollCalls.length).toBe(0);
     vi.advanceTimersByTime(RAGDOLL_BRIDGE_CONSTANTS.DECAY_MS + 100);
-    expect(shim.despawnCalls).toContain('npc_decay');
+    expect(shim.removeRagdollCalls).toContain('npc_decay');
     detach();
   });
 
@@ -138,9 +148,30 @@ describe('ragdoll-bridge — decay', () => {
     vi.advanceTimersByTime(RAGDOLL_BRIDGE_CONSTANTS.DECAY_MS - 1000);
     dispatchLethalHit({ targetId: 'npc_x', position: { x: 2, y: 0, z: 2 } });
     vi.advanceTimersByTime(2000); // would have despawned the first one
-    expect(shim.despawnCalls.length).toBe(0);
+    expect(shim.removeRagdollCalls.length).toBe(0);
     vi.advanceTimersByTime(RAGDOLL_BRIDGE_CONSTANTS.DECAY_MS);
-    expect(shim.despawnCalls).toContain('npc_x');
+    expect(shim.removeRagdollCalls).toContain('npc_x');
+    detach();
+  });
+});
+
+describe('ragdoll-bridge — active-ragdoll cap eviction', () => {
+  it('evicting the oldest ragdoll at MAX_ACTIVE_RAGDOLLS calls the real removeRagdoll method', () => {
+    const shim = makePhysicsWorldShim();
+    const detach = attachRagdollBridge(shim);
+    const { MAX_ACTIVE_RAGDOLLS } = RAGDOLL_BRIDGE_CONSTANTS;
+
+    for (let i = 0; i < MAX_ACTIVE_RAGDOLLS; i++) {
+      dispatchLethalHit({ targetId: `npc_${i}`, position: { x: i, y: 0, z: i } });
+    }
+    expect(shim.removeRagdollCalls.length).toBe(0);
+
+    // One more push should evict the oldest tracked ragdoll (npc_0) via
+    // the real removeRagdoll method, not the nonexistent despawnRagdoll.
+    dispatchLethalHit({ targetId: 'npc_overflow', position: { x: 99, y: 0, z: 99 } });
+
+    expect(shim.removeRagdollCalls).toContain('npc_0');
+    expect(shim.spawnCalls.length).toBe(MAX_ACTIVE_RAGDOLLS + 1);
     detach();
   });
 });

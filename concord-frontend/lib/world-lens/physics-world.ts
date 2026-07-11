@@ -143,6 +143,18 @@ class PhysicsWorld {
     finally { this._inOp = false; }
   }
 
+  /**
+   * Public readiness check. Consumers that need to gate a one-shot,
+   * WASM-touching call (e.g. AvatarSystem3D's character-controller
+   * registration — runtime-health-capability-map.md finding #9) should use
+   * this instead of reaching into private fields via a cast; it mirrors the
+   * exact gate `_guard` itself checks, so "isReady() === true" really does
+   * mean the next call will run rather than silently no-op.
+   */
+  isReady(): boolean {
+    return this._ready;
+  }
+
   /** Load Rapier WASM and create the physics world. Call once at scene startup. */
   async init(): Promise<void> {
     if (this.world && this._ready) return;
@@ -164,6 +176,17 @@ class PhysicsWorld {
     // RAPIER.init() await and THREE.import() await, exercising a
     // half-initialised world and tripping wasm-bindgen's borrow check.
     this._ready = true;
+    // Finding #9 fix: broadcast readiness so late-attaching consumers (e.g.
+    // AvatarSystem3D's player character-controller registration, which runs
+    // in a sibling component's own effect and may mount before OR after this
+    // resolves) can retry instead of silently losing the race forever. Mirrors
+    // the existing concordia:scene-ready / concordia:scene-request-ready
+    // pattern in ConcordiaScene.tsx. One-shot per init(); a re-init after
+    // destroy() fires it again, which is correct — consumers re-check
+    // isReady() on receipt so a duplicate/late event is harmless.
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('concordia:physics-ready'));
+    }
   }
 
   /** Advance physics simulation by dt seconds. Call every game-loop frame. */
@@ -1111,6 +1134,13 @@ class PhysicsWorld {
   spawnRagdoll(id: string, position: { x: number; y: number; z: number }, impulse?: { x: number; y: number; z: number }): RagdollHandle | null {
     if (!this.RAPIER || !this.world) return null;
     const RAPIER = this.RAPIER;
+
+    // A reused id (e.g. an NPC dies again after respawning) must not
+    // orphan the previous ragdoll's bodies/joints — free the existing
+    // tracked entry before creating a new one.
+    if (this.ragdolls.has(id)) {
+      this.removeRagdoll(id);
+    }
 
     // Free the kinematic character if present.
     this.removeCharacter(id);

@@ -32,7 +32,8 @@ export interface LethalHitDetail {
 
 interface PhysicsWorldShim {
   spawnRagdoll(id: string, position: { x: number; y: number; z: number }, impulse?: RagdollImpulse): unknown;
-  despawnRagdoll?(id: string): void;
+  /** Frees a ragdoll's bodies + joints (see PhysicsWorld#removeRagdoll). */
+  removeRagdoll?(id: string): void;
   removeCharacter?(id: string): void;
 }
 
@@ -75,7 +76,7 @@ export function attachRagdollBridge(physicsWorld: PhysicsWorldShim): () => void 
         const t = activeTimers.get(oldest);
         if (t) window.clearTimeout(t);
         activeTimers.delete(oldest);
-        try { physicsWorld.despawnRagdoll?.(oldest); } catch { /* noop */ }
+        try { physicsWorld.removeRagdoll?.(oldest); } catch { /* noop */ }
       }
     }
 
@@ -95,7 +96,7 @@ export function attachRagdollBridge(physicsWorld: PhysicsWorldShim): () => void 
     if (prev) window.clearTimeout(prev);
     const timer = window.setTimeout(() => {
       activeTimers.delete(detail.targetId);
-      try { physicsWorld.despawnRagdoll?.(detail.targetId); } catch { /* noop */ }
+      try { physicsWorld.removeRagdoll?.(detail.targetId); } catch { /* noop */ }
     }, DECAY_MS);
     activeTimers.set(detail.targetId, timer);
   }

@@ -2165,9 +2165,28 @@ export default function AvatarSystem3D({
       window.addEventListener('keydown', handleKeyDown);
       window.addEventListener('keyup', handleKeyUp);
 
-      // Register player character controller with Rapier (guard: only if world is ready)
-      if ((physicsWorld as unknown as Record<string, unknown>)['world'] != null) {
+      // Retry handler for the physics-not-ready-yet branch below. Guarded
+      // by `disposed` so a stale retry can't fire a registration after this
+      // effect has already torn down (unmount / dep-driven rebuild).
+      function onPhysicsReady() {
+        if (disposed) return;
         physicsWorld.createCharacterController('player');
+      }
+
+      // Register player character controller with Rapier. Finding #9
+      // (runtime-health-capability-map.md): this used to be a one-shot
+      // synchronous check with no retry — if Rapier's async WASM init
+      // hadn't finished yet, the controller was never registered and the
+      // player fell through terrain/buildings for the rest of the session.
+      // Fix: register immediately if physics is already ready (unchanged
+      // happy path), otherwise listen for the concordia:physics-ready
+      // event physics-world.ts now dispatches once init() resolves and
+      // retry then — same request/response-ready shape ConcordiaScene
+      // already uses for concordia:scene-request-ready.
+      if (physicsWorld.isReady()) {
+        physicsWorld.createCharacterController('player');
+      } else {
+        window.addEventListener('concordia:physics-ready', onPhysicsReady, { once: true });
       }
 
       // Per-NPC stride phases — keyed by NPC id, captured in closure.
@@ -2847,6 +2866,10 @@ export default function AvatarSystem3D({
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
+        // Finding #9: drop the retry listener on unmount if physics never
+        // became ready in this component's lifetime — `{ once: true }`
+        // only auto-removes it once it FIRES, not on unmount.
+        window.removeEventListener('concordia:physics-ready', onPhysicsReady);
         window.removeEventListener('concordia:hit-reaction', handleHitReaction);
         window.removeEventListener('concordia:hit-pause', handleHitPause);
         window.removeEventListener('concordia:knockback', handleKnockback);
