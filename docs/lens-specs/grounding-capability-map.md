@@ -103,3 +103,28 @@ that's a reasonable follow-up, not a blocking gap for this rebuild).
 - `npx tsc --noEmit -p .` — 0 errors project-wide (post-restart, no concurrent load).
 - No existing grounding-lens test file (confirmed by grep) — nothing to update.
 - Manual grep confirms 0 `<div onClick>` without `role`/`tabIndex`/`onKeyDown` in the touched files.
+
+## Genuinely missing (deferred to Wave 4) — 2026-07-11
+
+**`aggregateEvidence` has no automatic multi-source discovery step —
+DATA-SOURCING, real free source identified.** The Fact-Check Workbench's
+bias-weighting math (`sourceBias` + `aggregateEvidence`, both DESIGNED) is
+real, but `aggregateEvidence` only rates evidence the *caller* already
+supplies (`params.evidence: [{text, sourceUrl, sourceName, stance}]`) — it
+has no step that finds how a claim's underlying story was actually covered
+across a spread of outlets. That's the gap between "has a source-bias
+rater" and "is Ground News": Ground News's core loop is auto-clustering the
+same real-world story across dozens of outlets spanning the bias spectrum,
+not just scoring sources you hand it.
+
+**Proposed close:** GDELT (already confirmed real and live-wired for the
+`news`/intelligence lens's 39-macro audit) monitors global news across
+100+ languages and its Global Knowledge Graph links related coverage of
+the same event — genuinely global, not US-centric, which matters here
+since a real Ground-News-shape spread needs international outlets, not
+just domestic ones. Wire a new step that, given a claim/story, pulls
+GDELT's coverage cluster for the matching event and auto-populates
+`aggregateEvidence`'s `evidence[]` array from those real articles (title,
+outlet, URL, stance inferred same as today) instead of requiring hand
+entry. The existing bias-weighting/confidence math is unchanged — this
+only replaces the manual evidence-entry step with a real automatic one.

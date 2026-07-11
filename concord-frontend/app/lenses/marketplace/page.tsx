@@ -16,7 +16,7 @@ import { ShopfrontSection } from '@/components/marketplace/ShopfrontSection';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -299,6 +299,51 @@ function normalizePrices(licenses: Record<string, unknown> | null | undefined): 
     premium: get('premium'),
     unlimited: get('unlimited'),
     exclusive: get('exclusive'),
+  };
+}
+
+// Reverse of the buy-side typeMap in handleCheckout — the backend's
+// purchase-history row carries the raw store key (beat/stems/sample-pack/
+// artwork); this maps it back to the frontend's display `type`.
+const LISTING_TYPE_TO_ITEM_TYPE: Record<string, MarketplaceItem['type']> = {
+  beat: 'template',
+  stems: 'component',
+  'sample-pack': 'dataset',
+  artwork: 'artwork',
+};
+
+interface ServerPurchaseRow {
+  id: string;
+  status: string;
+  listingId: string;
+  listingType: string;
+  licenseType?: string;
+  price: number;
+  purchasedAt: string;
+  listing: { id: string; title: string; ownerId?: string; genre?: string; artType?: string } | null;
+}
+
+function normalizeServerPurchase(row: ServerPurchaseRow): Purchase {
+  const type = LISTING_TYPE_TO_ITEM_TYPE[row.listingType] || 'template';
+  return {
+    id: row.id,
+    license: row.licenseType || 'basic',
+    price: row.price,
+    purchasedAt: row.purchasedAt,
+    item: {
+      id: row.listingId,
+      title: row.listing?.title || 'Untitled',
+      description: '',
+      type,
+      genre: row.listing?.genre,
+      creator: { name: row.listing?.ownerId ? row.listing.ownerId : 'Unknown seller' },
+      prices: { basic: row.price, premium: row.price, unlimited: row.price, exclusive: row.price },
+      rating: 0,
+      ratingCount: 0,
+      sales: 0,
+      tags: [],
+      createdAt: row.purchasedAt,
+    },
   };
 }
 
@@ -699,7 +744,10 @@ export default function MarketplaceLensPage() {
   const [sortBy, setSortBy] = useState<SortOption>('popular');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  // Optimistic purchases from the current session — shown immediately on
+  // checkout, then reconciled against `myPurchasesData` (the real,
+  // reload-durable server history) once that query settles/refetches.
+  const [optimisticPurchases, setOptimisticPurchases] = useState<Purchase[]>([]);
   const [previewItem, setPreviewItem] = useState<MarketplaceItem | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [featuredIdx, setFeaturedIdx] = useState(0);
@@ -943,6 +991,18 @@ export default function MarketplaceLensPage() {
         .catch(() => ({ artworks: [] })),
   });
 
+  // Buyer's real purchase history — persists across reload, unlike the
+  // ephemeral optimistic entries pushed onto `optimisticPurchases` below.
+  const { data: myPurchasesData } = useQuery({
+    queryKey: ['artistry-purchases'],
+    enabled: Boolean(user?.id),
+    queryFn: () =>
+      apiHelpers.artistry.marketplace
+        .purchases()
+        .then((r) => r.data)
+        .catch(() => ({ purchases: [] })),
+  });
+
   // Economy balance
   const { data: balanceData } = useQuery({
     queryKey: ['economy-balance'],
@@ -1081,41 +1141,39 @@ export default function MarketplaceLensPage() {
   }, []);
 
   // Publish new listing to backend
+  // Publishes into the real seller e-commerce domain (marketplace.listings-*,
+  // the same store the "My Shop" tab's ListingsPanel reads/writes). This used
+  // to POST a {title,type,description,genre,tags,licenses} payload to
+  // /api/marketplace/submit, a REST route that actually expects {dtuId,price}
+  // for an *existing* personal DTU — every submission 404'd with "DTU not
+  // found" because dtuId/price were never in the payload. listings-create
+  // matches this form's shape (title/description/priceUsd/tags) and is a
+  // real, already-wired macro (ListingsPanel uses it for its own "Add
+  // Listing" flow) — no fabricated success, no shape mismatch. Note: the
+  // e-commerce listing model has a single priceUsd, not the 4-tier license
+  // schema this form collects, so only the basic-tier price carries over.
   const handlePublishListing = useCallback(async () => {
     if (!newListingForm.title.trim() || listingSubmitting) return;
     setListingSubmitting(true);
     setListingError(null);
     try {
-      const typeMap: Record<string, string> = {
-        Template: 'template',
-        Component: 'component',
-        Dataset: 'dataset',
-        Artwork: 'artwork',
-        Plugin: 'plugin',
-        Preset: 'preset',
-        template: 'template',
-        component: 'component',
-        dataset: 'dataset',
-        artwork: 'artwork',
-        plugin: 'plugin',
-        preset: 'preset',
-      };
-      await apiHelpers.marketplace.submit({
+      const created = await lensRun<{ listing: { id: string } }>('marketplace', 'listings-create', {
         title: newListingForm.title.trim(),
-        type: typeMap[newListingForm.type] || 'template',
         description: newListingForm.description.trim(),
-        genre: newListingForm.genre.trim() || undefined,
+        priceUsd: Number(newListingForm.basicPrice) || 0,
         tags: newListingForm.tags
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean),
-        licenses: {
-          basic: { price: Number(newListingForm.basicPrice) || 0 },
-          premium: { price: Number(newListingForm.premiumPrice) || 0 },
-          unlimited: { price: Number(newListingForm.unlimitedPrice) || 0 },
-          exclusive: { price: Number(newListingForm.exclusivePrice) || 0 },
-        },
-      } as unknown as { name: string; githubUrl: string; description?: string; category?: string });
+      });
+      if (!created.data.ok || !created.data.result?.listing?.id) {
+        throw new Error(created.data.error || 'Failed to create listing');
+      }
+      const listingId = created.data.result.listing.id;
+      const published = await lensRun('marketplace', 'listings-publish', { id: listingId });
+      if (!published.data.ok) {
+        throw new Error(published.data.error || 'Listing created but publish failed — find it under My Shop to publish manually');
+      }
       setShowNewListing(false);
       setNewListingForm({
         title: '',
@@ -1128,16 +1186,17 @@ export default function MarketplaceLensPage() {
         unlimitedPrice: '',
         exclusivePrice: '',
       });
-      queryClient.invalidateQueries({ queryKey: ['marketplace-templates'] });
-      queryClient.invalidateQueries({ queryKey: ['marketplace-components'] });
-      queryClient.invalidateQueries({ queryKey: ['marketplace-datasets'] });
-      queryClient.invalidateQueries({ queryKey: ['artistry-art'] });
+      useUIStore.getState().addToast({
+        type: 'success',
+        message: 'Listing published — find it under My Shop.',
+      });
+      setTab('myshop');
     } catch (err) {
       setListingError(err instanceof Error ? err.message : 'Failed to publish listing');
     } finally {
       setListingSubmitting(false);
     }
-  }, [newListingForm, listingSubmitting, queryClient]);
+  }, [newListingForm, listingSubmitting]);
 
   // Create Knowledge Pack — bundles selected DTUs into a marketplace listing
   const handleCreatePack = useCallback(async () => {
@@ -1169,6 +1228,10 @@ export default function MarketplaceLensPage() {
   // Checkout — settles each cart item through the economy ledger
   const handleCheckout = useCallback(async () => {
     if (cart.length === 0 || checkoutLoading) return;
+    if (!user?.id) {
+      setCheckoutError('You must be signed in to complete checkout.');
+      return;
+    }
     setCheckoutLoading(true);
     setCheckoutError(null);
 
@@ -1177,18 +1240,30 @@ export default function MarketplaceLensPage() {
 
     for (const ci of cart) {
       try {
+        // Maps the frontend's display `type` onto the *actual* backend
+        // store keys the /api/artistry/marketplace/purchase route looks
+        // listings up in (server.js: `{ beat, stems, 'sample-pack', artwork }`).
+        // This used to be an identity map (template->'template' etc.), which
+        // meant every beat/stem/sample purchase 404'd with "Listing not
+        // found" — only 'artwork' happened to line up by coincidence.
+        // 'plugin'/'preset' items come from the separate plugin-marketplace
+        // browse pool and have no backing store here; they honestly fail
+        // with a per-item error below rather than silently succeeding.
         const typeMap: Record<string, string> = {
-          template: 'template',
-          component: 'component',
-          dataset: 'dataset',
+          template: 'beat',
+          component: 'stems',
+          dataset: 'sample-pack',
           artwork: 'artwork',
-          plugin: 'plugin',
-          preset: 'preset',
         };
+        const listingType = typeMap[ci.item.type];
+        if (!listingType) {
+          errors.push(`${ci.item.title}: this listing type isn't purchasable yet`);
+          continue;
+        }
         const resp = await apiHelpers.artistry.marketplace.purchase({
-          buyerId: 'current',
+          buyerId: user.id,
           listingId: ci.item.id,
-          listingType: typeMap[ci.item.type] || 'template',
+          listingType,
           licenseType: ci.license,
         });
         const data = resp.data;
@@ -1210,7 +1285,7 @@ export default function MarketplaceLensPage() {
     }
 
     if (completed.length > 0) {
-      setPurchases((prev) => [...completed, ...prev]);
+      setOptimisticPurchases((prev) => [...completed, ...prev]);
       setCart((prev) => prev.filter((c) => !completed.some((p) => p.item.id === c.item.id)));
       // Refresh balance, listings, and purchase data after successful checkout
       queryClient.invalidateQueries({ queryKey: ['economy-balance'] });
@@ -1228,7 +1303,17 @@ export default function MarketplaceLensPage() {
       setTab('purchases');
     }
     setCheckoutLoading(false);
-  }, [cart, checkoutLoading, queryClient]);
+  }, [cart, checkoutLoading, queryClient, user?.id]);
+
+  // Real purchase history (survives reload) unioned with this-session
+  // optimistic entries not yet reflected in the fetched data (e.g. the
+  // fetch hasn't refetched yet after a just-completed checkout).
+  const purchases = useMemo<Purchase[]>(() => {
+    const fetched = (myPurchasesData?.purchases ?? []).map(normalizeServerPurchase);
+    const fetchedItemIds = new Set(fetched.map((p) => p.item.id));
+    const extra = optimisticPurchases.filter((p) => !fetchedItemIds.has(p.item.id));
+    return [...extra, ...fetched];
+  }, [myPurchasesData, optimisticPurchases]);
 
   // Clamp carousel index when featured items change
   useEffect(() => {
