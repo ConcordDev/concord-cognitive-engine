@@ -139,9 +139,19 @@ export default function LockLensPage() {
       return data;
     },
     onSuccess: (data) => {
+      // POST /api/sovereignty/audit always returns the outer { ok: true, audit: {...} }
+      // envelope (server.js's route wraps its fallback-checks branch in ok:true too) --
+      // `data.ok` is never false, so it can't be read as the pass/fail signal. The real
+      // result is `data.audit.passed`, derived from the per-invariant `data.audit.checks`.
+      const audit = (data as { audit?: { passed?: boolean; checks?: { name: string; passed: boolean }[] } })?.audit;
+      const passed = audit?.passed ?? false;
+      const failedChecks = (audit?.checks || []).filter((c) => !c.passed).map((c) => c.name);
+      const event = passed
+        ? 'Audit passed'
+        : `Audit failed (${failedChecks.length ? failedChecks.join(', ') : 'no result'})`;
       addEvent({
         title: new Date().toISOString().split('T')[0],
-        data: { event: `Audit ${data?.ok ? 'passed' : 'failed'}`, level: lockPercentage },
+        data: { event, level: lockPercentage },
       }).catch((err) =>
         console.error('Failed to save audit event:', err instanceof Error ? err.message : err)
       );

@@ -31,8 +31,8 @@ import {
   CalendarDays, Send, Mail,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '@/lib/api/client';
-import { useRunArtifact, useCreateArtifact, useUpdateArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { api, lensRun } from '@/lib/api/client';
+import { useCreateArtifact, useUpdateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 
 interface AppointmentDataLite {
@@ -353,8 +353,14 @@ export function BookingActionDock({ appointment, onClose }: DockProps) {
 /* ============================================================== */
 
 interface CloseProps {
-  /** A representative artifact id to run dailyCloseReport on (any of today's appointments). */
-  representativeAppointmentId: string | null;
+  /**
+   * ALL appointments currently loaded (any status/date) — dailyCloseReport
+   * itself filters to today's date server-side. Must be the full collection,
+   * not one representative record: the macro reads `artifact.data.appointments`
+   * as a plural array, so passing a single appointment's data (which has no
+   * `.appointments` key) silently computes over zero rows.
+   */
+  allAppointments: AppointmentLite[];
   /** Tomorrow's booked appointments (so the close can DM each client a reminder). */
   tomorrowAppointments: AppointmentLite[];
   onClose: () => void;
@@ -372,7 +378,7 @@ interface CloseReport {
   byProvider: Array<{ provider: string; appointments: number; revenue: number }>;
 }
 
-export function EndOfDayClose({ representativeAppointmentId, tomorrowAppointments, onClose }: CloseProps) {
+export function EndOfDayClose({ allAppointments, tomorrowAppointments, onClose }: CloseProps) {
   const [step, setStep] = useState<'idle' | 'running' | 'reviewing'>('idle');
   const [report, setReport] = useState<CloseReport | null>(null);
   const [closeDtuId, setCloseDtuId] = useState<string | null>(null);
@@ -383,24 +389,33 @@ export function EndOfDayClose({ representativeAppointmentId, tomorrowAppointment
 
   const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
-  const runAction = useRunArtifact('services');
 
   async function runClose() {
-    if (!representativeAppointmentId) {
+    if (allAppointments.length === 0) {
       err('No appointment data to close against today.');
       return;
     }
     setBusy('close'); setFeedback(null); setStep('running');
     try {
-      const r = await runAction.mutateAsync({
-        id: representativeAppointmentId,
-        action: 'dailyCloseReport',
-        params: { date: new Date().toISOString().slice(0, 10) },
+      // dailyCloseReport reads a PLURAL `artifact.data.appointments` array and
+      // filters it to `params.date` itself — pass the full book (not one
+      // representative appointment) through /api/lens/run's peel-envelope
+      // so both `artifact.data.appointments` and `params.date` resolve.
+      const apptPayload = allAppointments.map(a => ({
+        date: a.data.date,
+        completedAt: a.data.date,
+        status: a.meta.status,
+        price: a.data.price ?? 0,
+        provider: a.data.provider || 'Unknown',
+      }));
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const r = await lensRun<Partial<CloseReport>>('services', 'dailyCloseReport', {
+        artifact: { data: { appointments: apptPayload, productsSold: [], date: dateStr } },
       });
-      const result = (r?.result ?? {}) as Partial<CloseReport>;
-      if (!result.date) { err('No close report returned.'); setStep('idle'); return; }
+      if (!r.data.ok || !r.data.result) { err(r.data.error || 'No close report returned.'); setStep('idle'); return; }
+      const result = r.data.result;
       setReport({
-        date: result.date,
+        date: result.date ?? dateStr,
         totalAppointments: result.totalAppointments ?? 0,
         completedCount: result.completedCount ?? 0,
         noShowCount: result.noShowCount ?? 0,
@@ -411,7 +426,7 @@ export function EndOfDayClose({ representativeAppointmentId, tomorrowAppointment
         byProvider: result.byProvider ?? [],
       });
       setStep('reviewing');
-      ok(`Close pulled for ${result.date}.`);
+      ok(`Close pulled for ${result.date ?? dateStr}.`);
     } catch (e) { err(pickMessage(e)); setStep('idle'); }
     finally { setBusy(null); }
   }
@@ -511,13 +526,13 @@ export function EndOfDayClose({ representativeAppointmentId, tomorrowAppointment
           <div className="text-center py-8">
             <button
               onClick={runClose}
-              disabled={busy === 'close' || !representativeAppointmentId}
+              disabled={busy === 'close' || allAppointments.length === 0}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {busy === 'close' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Receipt className="w-5 h-5" />}
               Pull today&apos;s close report
             </button>
-            {!representativeAppointmentId && (
+            {allAppointments.length === 0 && (
               <p className="text-xs text-gray-400 mt-3">No appointments to close against today.</p>
             )}
           </div>
