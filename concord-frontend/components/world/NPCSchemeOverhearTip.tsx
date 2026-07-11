@@ -57,13 +57,22 @@ export function NPCSchemeOverhearTip() {
     if (seen.current.has(scheme.schemeId)) return;
     seen.current.add(scheme.schemeId);
 
-    // Proximity gate. window.__concordiaPlayerPos is set by AvatarSystem3D.
+    // Proximity gate. window.__concordiaPlayerPos / __concordiaNpcPositions
+    // are set by AvatarSystem3D (lib/world-lens/player-position-broadcast).
     // If the player isn't placed yet, we still show the toast (player
-    // could be in a non-world surface). The 30m gate matters only when
-    // a position is available.
+    // could be in a non-world surface, where "earshot" doesn't apply). The
+    // 30m gate matters only when a player position is available.
     const playerPos = (typeof window !== 'undefined' && (window as { __concordiaPlayerPos?: { x: number; z: number } }).__concordiaPlayerPos) || null;
     const npcPos = (typeof window !== 'undefined' && (window as { __concordiaNpcPositions?: Record<string, { x: number; z: number }> }).__concordiaNpcPositions?.[scheme.plotterId]) || null;
-    if (playerPos && npcPos) {
+    if (playerPos) {
+      // Fail CLOSED, not open: once we know where the player is, an NPC
+      // whose position we can't verify (despawned / out of tracked range —
+      // and therefore almost certainly not within 30m) suppresses the
+      // toast instead of silently skipping the whole gate. The pre-fix
+      // code only gated `if (playerPos && npcPos)`, so a permanently-null
+      // playerPos meant this block never ran at all and every toast fired
+      // regardless of distance.
+      if (!npcPos) return;
       const d = Math.hypot(playerPos.x - npcPos.x, playerPos.z - npcPos.z);
       if (d > PROXIMITY_M) return; // out of earshot
     }
