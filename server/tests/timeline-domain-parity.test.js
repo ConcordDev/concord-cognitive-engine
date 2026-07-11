@@ -88,13 +88,16 @@ describe("timeline comments + nested replies", () => {
   });
 
   it("rejects a reply to a missing parent", () => {
-    const post = call("post-create", ctxA, { content: "p" }).result.post;
+    // privacy: "public" — the post must be visible to ctxB, or comment-add's
+    // privacy gate (checkPostAccess) would reject it before ever reaching the
+    // "missing parent" check this test is actually exercising.
+    const post = call("post-create", ctxA, { content: "p", privacy: "public" }).result.post;
     const r = call("comment-add", ctxB, { postId: post.id, text: "x", parentId: "nope" });
     assert.equal(r.ok, false);
   });
 
   it("comment-delete removes the comment and its replies", () => {
-    const post = call("post-create", ctxA, { content: "p" }).result.post;
+    const post = call("post-create", ctxA, { content: "p", privacy: "public" }).result.post;
     const c = call("comment-add", ctxA, { postId: post.id, text: "root" });
     call("comment-add", ctxB, { postId: post.id, text: "child", parentId: c.result.comment.id });
     const del = call("comment-delete", ctxA, { postId: post.id, commentId: c.result.comment.id });
@@ -105,7 +108,10 @@ describe("timeline comments + nested replies", () => {
 
 describe("timeline reactions + breakdown", () => {
   it("adds, changes, and toggles a reaction", () => {
-    const post = call("post-create", ctxA, { content: "p" }).result.post;
+    // privacy: "public" — a private post (the post-create default) is only
+    // reactable by its own author; ctxB reacting to it is the cross-user
+    // path this test means to cover.
+    const post = call("post-create", ctxA, { content: "p", privacy: "public" }).result.post;
     const add = call("react", ctxB, { postId: post.id, kind: "like" });
     assert.equal(add.result.action, "added");
     const change = call("react", ctxB, { postId: post.id, kind: "love" });
@@ -116,7 +122,7 @@ describe("timeline reactions + breakdown", () => {
   });
 
   it("reactions-breakdown reports who reacted per kind", () => {
-    const post = call("post-create", ctxA, { content: "p" }).result.post;
+    const post = call("post-create", ctxA, { content: "p", privacy: "public" }).result.post;
     call("react", ctxA, { postId: post.id, kind: "haha" });
     call("react", ctxB, { postId: post.id, kind: "haha" });
     const r = call("reactions-breakdown", ctxA, { postId: post.id });
@@ -124,6 +130,57 @@ describe("timeline reactions + breakdown", () => {
     assert.equal(r.result.total, 2);
     assert.equal(r.result.counts.haha, 2);
     assert.equal(r.result.byKind.haha.length, 2);
+  });
+});
+
+describe("timeline private-post access gate (id-addressed, not just feed-list)", () => {
+  // feed-list's privacy filter only gates *listing* a post — a caller who
+  // already has a private post's id (e.g. from a stale share, a leaked
+  // notification payload, or a guessed base36 id) must still be blocked by
+  // every macro that reads/writes that post directly by id. share-post
+  // already enforced this; react / comment-add / comment-list /
+  // reactions-breakdown did not until this fix.
+  it("react is refused on someone else's private post", () => {
+    const post = call("post-create", ctxA, { content: "diary", privacy: "private" }).result.post;
+    const r = call("react", ctxB, { postId: post.id, kind: "like" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "Post not found.");
+  });
+
+  it("the post owner can still react to their own private post", () => {
+    const post = call("post-create", ctxA, { content: "diary", privacy: "private" }).result.post;
+    const r = call("react", ctxA, { postId: post.id, kind: "like" });
+    assert.equal(r.ok, true);
+  });
+
+  it("comment-add is refused on someone else's private post", () => {
+    const post = call("post-create", ctxA, { content: "diary", privacy: "private" }).result.post;
+    const r = call("comment-add", ctxB, { postId: post.id, text: "peeking" });
+    assert.equal(r.ok, false);
+  });
+
+  it("comment-list returns 'not found' for someone else's private post", () => {
+    const post = call("post-create", ctxA, { content: "diary", privacy: "private" }).result.post;
+    call("comment-add", ctxA, { postId: post.id, text: "only I can see this" });
+    const asOwner = call("comment-list", ctxA, { postId: post.id });
+    assert.equal(asOwner.result.total, 1);
+    const asStranger = call("comment-list", ctxB, { postId: post.id });
+    assert.equal(asStranger.ok, false);
+  });
+
+  it("reactions-breakdown is refused on someone else's private post", () => {
+    const post = call("post-create", ctxA, { content: "diary", privacy: "private" }).result.post;
+    call("react", ctxA, { postId: post.id, kind: "love" });
+    const r = call("reactions-breakdown", ctxB, { postId: post.id });
+    assert.equal(r.ok, false);
+  });
+
+  it("public and friends-scoped posts are unaffected — anyone can react/comment", () => {
+    const pub = call("post-create", ctxA, { content: "town crier", privacy: "public" }).result.post;
+    assert.equal(call("react", ctxB, { postId: pub.id, kind: "like" }).ok, true);
+    assert.equal(call("comment-add", ctxB, { postId: pub.id, text: "hi" }).ok, true);
+    assert.equal(call("comment-list", ctxB, { postId: pub.id }).ok, true);
+    assert.equal(call("reactions-breakdown", ctxB, { postId: pub.id }).ok, true);
   });
 });
 
@@ -206,7 +263,7 @@ describe("timeline.memories (on this day)", () => {
 
 describe("timeline notifications", () => {
   it("a reaction on your post generates a notification", () => {
-    const post = call("post-create", ctxA, { content: "p" }).result.post;
+    const post = call("post-create", ctxA, { content: "p", privacy: "public" }).result.post;
     call("react", ctxB, { postId: post.id, kind: "like" });
     const n = call("notifications-list", ctxA, {});
     assert.equal(n.ok, true);
@@ -215,7 +272,7 @@ describe("timeline notifications", () => {
   });
 
   it("a comment generates a notification, and mark-read clears it", () => {
-    const post = call("post-create", ctxA, { content: "p" }).result.post;
+    const post = call("post-create", ctxA, { content: "p", privacy: "public" }).result.post;
     call("comment-add", ctxB, { postId: post.id, text: "hi" });
     let n = call("notifications-list", ctxA, {});
     assert.equal(n.result.unread, 1);
@@ -235,7 +292,7 @@ describe("timeline notifications", () => {
 
 describe("timeline.post-delete cascade", () => {
   it("deletes a post and its comments + reactions", () => {
-    const post = call("post-create", ctxA, { content: "p" }).result.post;
+    const post = call("post-create", ctxA, { content: "p", privacy: "public" }).result.post;
     call("comment-add", ctxB, { postId: post.id, text: "c" });
     call("react", ctxB, { postId: post.id, kind: "like" });
     const del = call("post-delete", ctxA, { postId: post.id });

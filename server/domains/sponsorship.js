@@ -7,7 +7,28 @@
 //
 // All persistent per-user data lives in globalThis._concordSTATE Maps keyed by
 // userId. Handlers return { ok, result?, error? } and never throw.
-
+//
+// Authz note (Wave-3 audit fix): every macro that reads/mutates a CALLING
+// user's own records (subscribe/list_for_user/pause/resume/change_tier/
+// cancel/billing/list_messages/mark_message_read) is scoped by construction
+// — the record is looked up inside `s.<map>.get(actor(ctx))`, so a
+// client-supplied sponsorshipId/messageId can never resolve into another
+// real user's data (ids are globally unique, and the lookup array is keyed
+// by the CALLER's own userId, never the caller-supplied id alone).
+//
+// `publish_post` and `send_thanks`, however, act on behalf of a `creatorId`
+// — and every creatorId in this lens is a fixed seeded NPC (CATALOG below),
+// not a real user account. There is no ownership binding anywhere between a
+// real userId and a creatorId, so before this fix ANY authenticated caller
+// could pass ANY creatorId and (a) publish sponsor-gated content that every
+// real sponsor of that creator would see as if from the creator's official
+// channel, or (b) inject an arbitrary message into ANY other specific real
+// user's private inbox (`send_thanks`'s `toUserId`) that reads exactly like
+// a genuine creator thank-you. That's the client-supplied-ownerId pattern
+// this codebase's authz sweep flags elsewhere — closed the same way
+// `announcements.post` is (see server/domains/announcements.js:70-90):
+// admin-gated in-handler off `ctx.actor.role`, honest `admin_only` failure
+// for everyone else, never a silent hide or a fabricated success.
 export default function registerSponsorshipActions(registerLensAction) {
   function getState() {
     const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
@@ -25,6 +46,7 @@ export default function registerSponsorshipActions(registerLensAction) {
   }
 
   function actor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function isAdmin(ctx) { return (ctx?.actor?.role || "") === "admin"; }
   function nextId(s, prefix) { return `${prefix}_${s.seq++}`; }
   function nowS() { return Math.floor(Date.now() / 1000); }
   function arr(map, key) { if (!map.has(key)) map.set(key, []); return map.get(key); }
@@ -208,8 +230,12 @@ export default function registerSponsorshipActions(registerLensAction) {
   });
 
   // ── Sponsor-only content: creator publishes a post ─────────────────────
+  // ADMIN ONLY — see the authz note at the top of this file. `creatorId` is
+  // a fixed seeded NPC with no real-account ownership, so an unrestricted
+  // caller could broadcast content into any creator's sponsor-gated feed.
   registerLensAction("sponsorship", "publish_post", (ctx, artifact, params = {}) => {
     try {
+      if (!isAdmin(ctx)) return { ok: false, error: "admin_only" };
       const s = getState();
       const creatorId = String(params.creatorId || "");
       const title = String(params.title || "").trim();
@@ -343,8 +369,13 @@ export default function registerSponsorshipActions(registerLensAction) {
   });
 
   // ── Direct thank-you message from creator to sponsor ───────────────────
+  // ADMIN ONLY — see the authz note at the top of this file. `toUserId` is a
+  // real user's inbox; without this gate any caller could inject an
+  // arbitrary message into any other real sponsor's inbox indistinguishable
+  // from a genuine creator thank-you.
   registerLensAction("sponsorship", "send_thanks", (ctx, artifact, params = {}) => {
     try {
+      if (!isAdmin(ctx)) return { ok: false, error: "admin_only" };
       const s = getState();
       const toUserId = String(params.toUserId || "");
       const creatorId = String(params.creatorId || "");

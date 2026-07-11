@@ -180,10 +180,13 @@ describe("settings account & security", () => {
   });
 
   it("changePassword enforces policy", () => {
-    assert.equal(call("changePassword", ctxA, { currentPassword: "", newPassword: "abc12345" }).ok, false);
+    assert.equal(call("changePassword", ctxA, { currentPassword: "", newPassword: "abc123456789" }).ok, false);
     assert.equal(call("changePassword", ctxA, { currentPassword: "old", newPassword: "short" }).ok, false);
-    assert.equal(call("changePassword", ctxA, { currentPassword: "old", newPassword: "alllettersx" }).ok, false);
-    const ok = call("changePassword", ctxA, { currentPassword: "oldpass1", newPassword: "newpass99" });
+    // 9 chars — has letters+numbers but is below the 12-char floor that
+    // mirrors server.js's real `/api/auth/change-password` policy.
+    assert.equal(call("changePassword", ctxA, { currentPassword: "old", newPassword: "newpass99" }).ok, false);
+    assert.equal(call("changePassword", ctxA, { currentPassword: "old", newPassword: "alllettersonlyx" }).ok, false);
+    const ok = call("changePassword", ctxA, { currentPassword: "oldpass1", newPassword: "newpass123456" });
     assert.equal(ok.ok, true);
     assert.equal(ok.result.accepted, true);
   });

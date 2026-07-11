@@ -17,7 +17,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Eye, Users, Sparkles, AlertTriangle, Loader2, TrendingUp } from 'lucide-react';
+import { Eye, Users, Sparkles, AlertTriangle, Loader2, TrendingUp, History } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { lensRun } from '@/lib/api/client';
@@ -43,12 +43,30 @@ interface Spectacle {
   authored: boolean;
 }
 
+// Real spectate.my_positions macro shape (server/domains/spectate.js →
+// lib/betting-markets.js#userPositions) — a caller's SPARKS wager history,
+// open + resolved. Registered but never surfaced on the frontend until this
+// pass; wiring it here instead of leaving it dead backend capability.
+interface Position {
+  id: number;
+  market_id: string;
+  side: 'yes' | 'no';
+  stake_sparks: number;
+  payout_sparks: number | null;
+  placed_at: number;
+  paid_at: number | null;
+  question: string;
+  status: 'open' | 'resolved';
+  resolved_outcome: 'yes' | 'no' | null;
+}
+
 type LoadState = 'loading' | 'error' | 'ready';
 
 export default function SpectateIndexPage() {
   const [spectacles, setSpectacles] = useState<Spectacle[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [positions, setPositions] = useState<Position[]>([]);
 
   const refresh = useCallback(async (isInitial: boolean) => {
     if (isInitial) setState('loading');
@@ -98,6 +116,28 @@ export default function SpectateIndexPage() {
     return () => { cancelled = true; clearInterval(id); };
   }, [refresh]);
 
+  // My positions — real spectate.my_positions macro (actor-gated). Anonymous
+  // browsing is legitimate for this lens, so a `no_actor` failure is silent
+  // (no error state, no empty-state placeholder) — the section just doesn't
+  // render. Refreshed alongside the spectacle grid so a bet placed on a
+  // world page shows up here without a manual reload.
+  const refreshPositions = useCallback(async () => {
+    try {
+      const res = await lensRun<{ positions?: Position[] }>('spectate', 'my_positions', {});
+      const node = res?.data;
+      if (node?.ok && Array.isArray(node.result?.positions)) {
+        setPositions(node.result.positions);
+      }
+    } catch { /* best-effort; anonymous visitors have no positions to show */ }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    refreshPositions();
+    const id = setInterval(() => { if (!cancelled) refreshPositions(); }, 15_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [refreshPositions]);
+
   // Order: live spectacles first, then by watchers, then named worlds.
   const ordered = [...spectacles].sort((a, b) =>
     Number(b.live) - Number(a.live) ||
@@ -138,6 +178,35 @@ export default function SpectateIndexPage() {
           aria-live="polite"
           aria-busy={state === 'loading'}
         >
+          {/* ── My positions (spectate.my_positions) ───────────────────
+              Only rendered when the caller has real wager history — an
+              anonymous visitor or a signed-in user with no bets sees no
+              placeholder at all, per the honest-empty-state rule. */}
+          {positions.length > 0 && (
+            <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+              <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-amber-300">
+                <History className="h-3.5 w-3.5" aria-hidden="true" /> My positions
+              </h2>
+              <ul className="space-y-1.5">
+                {positions.slice(0, 6).map((p) => {
+                  const won = p.status === 'resolved' && p.resolved_outcome === p.side;
+                  const lost = p.status === 'resolved' && p.resolved_outcome !== null && p.resolved_outcome !== p.side;
+                  return (
+                    <li key={p.id} className="flex items-center justify-between gap-2 text-[11px]">
+                      <span className="min-w-0 flex-1 truncate text-amber-100">{p.question}</span>
+                      <span className={`shrink-0 rounded-full px-1.5 py-0.5 font-medium ${p.side === 'yes' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                        {p.side.toUpperCase()} · {p.stake_sparks.toLocaleString()}
+                      </span>
+                      <span className={`shrink-0 text-[10px] ${won ? 'text-emerald-300/80' : lost ? 'text-rose-300/70' : 'text-amber-300/60'}`}>
+                        {p.status === 'open' ? 'open' : won ? `+${(p.payout_sparks ?? 0).toLocaleString()}` : lost ? 'lost' : 'resolved'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
           {/* ── Loading ─────────────────────────────────────────────── */}
           {state === 'loading' && (
             <div

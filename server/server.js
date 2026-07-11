@@ -51385,7 +51385,11 @@ app.post("/api/sports/match/schedule", requireAuth(), asyncHandler(async (req, r
 
 app.post("/api/sports/match/:matchId/play", requireAuth(), asyncHandler(async (req, res) => {
   const { playMatch } = await import("./lib/sports-league-engine.js");
-  res.json(playMatch(db, req.params.matchId, req.body || {}));
+  // Never forward the request body into playMatch: opts.rollOverride is a
+  // test-only determinism hook (see sports-league-engine.js), and forwarding
+  // req.body let any authenticated caller pin rollOverride to rig the score
+  // of ANY match by id, regardless of which teams/league they belong to.
+  res.json(playMatch(db, req.params.matchId, {}));
 }));
 
 app.get("/api/sports/league/:leagueId/teams", asyncHandler(async (req, res) => {

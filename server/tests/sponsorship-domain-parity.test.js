@@ -23,6 +23,11 @@ beforeEach(() => {
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+// publish_post / send_thanks act on behalf of a seeded NPC creator with no
+// real-account ownership — admin-gated (see the authz note atop
+// domains/sponsorship.js). ctxAdmin exercises that legitimate operator path;
+// the "admin-gated" describe block below pins the non-admin rejection.
+const ctxAdmin = { actor: { userId: "user_a", role: "admin" }, userId: "user_a" };
 
 describe("sponsorship — discovery", () => {
   it("lists the seeded creator catalog", () => {
@@ -107,8 +112,8 @@ describe("sponsorship — pause / resume / change_tier", () => {
 
 describe("sponsorship — sponsor-only content gating", () => {
   it("locks posts above the sponsor's tier", () => {
-    call("publish_post", ctxA, { creatorId: "npc_juno", title: "Public note", minTier: "public" });
-    call("publish_post", ctxA, { creatorId: "npc_juno", title: "Gold secret", body: "hidden", minTier: "gold" });
+    call("publish_post", ctxAdmin, { creatorId: "npc_juno", title: "Public note", minTier: "public" });
+    call("publish_post", ctxAdmin, { creatorId: "npc_juno", title: "Gold secret", body: "hidden", minTier: "gold" });
     const tiers = call("list_tiers", ctxB, { creatorId: "npc_juno" }).result.tiers;
     call("subscribe", ctxB, { creatorId: "npc_juno", tierId: tiers[0].tierId }); // bronze
     const feed = call("feed", ctxB, { creatorId: "npc_juno" }).result.posts;
@@ -124,7 +129,7 @@ describe("sponsorship — dispatch history", () => {
   it("returns dispatch posts published after the sponsorship started", () => {
     const tiers = call("list_tiers", ctxA, { creatorId: "npc_torian" }).result.tiers;
     const sp = call("subscribe", ctxA, { creatorId: "npc_torian", tierId: tiers[0].tierId }).result.sponsorship;
-    call("publish_post", ctxA, { creatorId: "npc_torian", title: "Blueprint dispatch", body: "x", kind: "dispatch" });
+    call("publish_post", ctxAdmin, { creatorId: "npc_torian", title: "Blueprint dispatch", body: "x", kind: "dispatch" });
     const r = call("dispatch_history", ctxA, { sponsorshipId: sp.id });
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 1);
@@ -163,7 +168,7 @@ describe("sponsorship — thank-you messaging", () => {
   it("creator sends a thank-you to an active sponsor, who can read it", () => {
     const tiers = call("list_tiers", ctxB, { creatorId: "npc_arden" }).result.tiers;
     call("subscribe", ctxB, { creatorId: "npc_arden", tierId: tiers[2].tierId });
-    const s = call("send_thanks", ctxA, { toUserId: "user_b", creatorId: "npc_arden", body: "Thank you!" });
+    const s = call("send_thanks", ctxAdmin, { toUserId: "user_b", creatorId: "npc_arden", body: "Thank you!" });
     assert.equal(s.ok, true);
     const list = call("list_messages", ctxB);
     assert.equal(list.result.count, 1);
@@ -174,8 +179,27 @@ describe("sponsorship — thank-you messaging", () => {
   });
 
   it("rejects a thank-you to a non-sponsor", () => {
-    const r = call("send_thanks", ctxA, { toUserId: "user_b", creatorId: "npc_arden", body: "hi" });
+    const r = call("send_thanks", ctxAdmin, { toUserId: "user_b", creatorId: "npc_arden", body: "hi" });
     assert.equal(r.ok, false);
     assert.match(r.error, /not an active sponsor/);
+  });
+});
+
+describe("sponsorship — creator-content macros are admin-gated (Wave-3 authz fix)", () => {
+  it("publish_post rejects a non-admin caller and never writes the post", () => {
+    const r = call("publish_post", ctxA, { creatorId: "npc_arden", title: "Impersonated dispatch" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "admin_only");
+    // Nothing was written — the creator's feed for a subscriber stays empty.
+    assert.equal(call("feed", ctxA, { creatorId: "npc_arden" }).result.count, 0);
+  });
+
+  it("send_thanks rejects a non-admin caller and injects nothing into the target inbox", () => {
+    const tiers = call("list_tiers", ctxB, { creatorId: "npc_arden" }).result.tiers;
+    call("subscribe", ctxB, { creatorId: "npc_arden", tierId: tiers[0].tierId });
+    const r = call("send_thanks", ctxA, { toUserId: "user_b", creatorId: "npc_arden", body: "spoofed" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "admin_only");
+    assert.equal(call("list_messages", ctxB).result.count, 0);
   });
 });
