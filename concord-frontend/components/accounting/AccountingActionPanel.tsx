@@ -29,13 +29,29 @@ type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'tb' | 'pl' | 'aging' | 'var' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
-interface TbEntry { account: string; debit: number; credit: number }
-interface TbResult { balanced?: boolean; totalDebits?: number; totalCredits?: number; difference?: number; entries?: TbEntry[]; accountCount?: number }
-interface PlResult { period?: string; revenue: number; expenses: number; netIncome: number; grossMargin?: number; categories?: { name: string; revenue?: number; expenses?: number; net?: number }[] }
+// Result shapes below are pinned to the REAL registerLensAction handlers in
+// server/domains/accounting.js (trialBalance / profitLoss / invoiceAging /
+// budgetVariance) — not guessed. A prior version of this file used field
+// names the macros never emit (`balanced` vs the real `isBalanced`, `lines`
+// vs the real `lineItems`, `revenue`/`expenses` as bare numbers vs the real
+// `{ lines, total }` objects) — every action rendered a result, so it read
+// as working, but the numbers on screen were either always-empty defaults
+// or `undefined`/`[object Object]`. Fixed by reading the actual macro output.
+interface TbAccountRow { accountNumber?: string; name?: string; type?: string; debit: number; credit: number }
+interface TbResult { generatedAt?: string; asOfDate?: string; accounts: TbAccountRow[]; totalDebits: number; totalCredits: number; difference: number; isBalanced: boolean }
+interface PlLine { accountNumber?: string; name?: string; amount: number }
+interface PlResult {
+  period?: { start: string; end: string };
+  revenue: { lines: PlLine[]; total: number };
+  costOfGoodsSold: { lines: PlLine[]; total: number };
+  grossProfit: number; grossMarginPct: number;
+  operatingExpenses: { lines: PlLine[]; total: number };
+  netIncome: number; netMarginPct: number;
+}
 interface AgingBucket { invoices: { invoiceId?: string; customer?: string; amount: number; daysOverdue: number }[]; total: number }
 interface AgingResult { totalInvoices: number; unpaidCount: number; totalOutstanding: number; totalOverdue: number; avgDaysOutstanding: number; buckets: Record<string, AgingBucket> }
-interface VarLine { category?: string; planned: number; actual: number; variance: number; variancePercent: number; status: string }
-interface VarResult { lines: VarLine[]; totalPlanned: number; totalActual: number; totalVariance: number; status: string }
+interface VarLine { category?: string; planned: number; actual: number; variance: number; variancePct: number; status: string }
+interface VarResult { period?: string; lineItems: VarLine[]; totalPlanned: number; totalActual: number; totalVariance: number; totalVariancePct: number; overBudgetCount: number; largestOverrun: VarLine | null }
 
 export function AccountingActionPanel() {
   const [tbText, setTbText] = useState('');
@@ -65,7 +81,7 @@ export function AccountingActionPanel() {
     if (!tbText.trim()) { err('Paste TB JSON first.'); return; }
     try { const parsed = JSON.parse(tbText); setBusy('tb'); setFeedback(null);
       const r = await callMacro<TbResult>('trialBalance', { artifact: { data: parsed } });
-      if (r.ok && r.result) { setTbResult(r.result); pipe.publish('accounting.tb', r.result, { label: `TB ${r.result.balanced ? '✓' : '⚠'}` }); ok(`${r.result.balanced ? '✓ balanced' : '⚠ off by ' + r.result.difference}.`); } else err(r.error ?? 'tb failed');
+      if (r.ok && r.result) { setTbResult(r.result); pipe.publish('accounting.tb', r.result, { label: `TB ${r.result.isBalanced ? '✓' : '⚠'}` }); ok(`${r.result.isBalanced ? '✓ balanced' : '⚠ off by ' + r.result.difference}.`); } else err(r.error ?? 'tb failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid TB JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPl() {
@@ -89,10 +105,14 @@ export function AccountingActionPanel() {
       if (r.ok && r.result) { setVarResult(r.result); pipe.publish('accounting.var', r.result, { label: `Variance ${r.result.totalVariance >= 0 ? '+' : ''}$${r.result.totalVariance.toLocaleString()}` }); ok(`Variance ${r.result.totalVariance >= 0 ? '+' : ''}$${r.result.totalVariance.toLocaleString()}.`); } else err(r.error ?? 'var failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid variance JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
+  const plPeriodLabel = (pl: PlResult | null) => pl?.period ? `${pl.period.start} → ${pl.period.end}` : 'period';
+  const varOverallStatus = (v: VarResult) => v.totalVariance > 0 ? 'over-budget' : v.totalVariance < 0 ? 'under-budget' : 'on-budget';
+
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Books — ${plResult?.period ?? 'period'}`, tags: ['accounting', 'books', plResult?.period].filter((t): t is string => !!t), source: 'accounting:books:mint', meta: { visibility: 'private', consent: { allowCitations: false }, books: { tb: tbResult, pl: plResult, aging: agingResult, var: varResult } } } });
+      const periodLabel = plPeriodLabel(plResult);
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Books — ${periodLabel}`, tags: ['accounting', 'books', periodLabel].filter((t): t is string => !!t), source: 'accounting:books:mint', meta: { visibility: 'private', consent: { allowCitations: false }, books: { tb: tbResult, pl: plResult, aging: agingResult, var: varResult } } } });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('accounting.mintedDtuId', id, { label: `Books DTU ${id.slice(0, 8)}…` }); ok(`Books DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -101,10 +121,10 @@ export function AccountingActionPanel() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`📊 Books`, '',
-      tbResult ? `TB: ${tbResult.balanced ? '✓ balanced' : `⚠ off by $${tbResult.difference}`} · D $${tbResult.totalDebits?.toLocaleString()} / C $${tbResult.totalCredits?.toLocaleString()}` : '',
-      plResult ? `P&L ${plResult.period}: rev $${plResult.revenue.toLocaleString()} - exp $${plResult.expenses.toLocaleString()} = net $${plResult.netIncome.toLocaleString()}${plResult.grossMargin != null ? ` (margin ${plResult.grossMargin}%)` : ''}` : '',
+      tbResult ? `TB: ${tbResult.isBalanced ? '✓ balanced' : `⚠ off by $${tbResult.difference}`} · D $${tbResult.totalDebits?.toLocaleString()} / C $${tbResult.totalCredits?.toLocaleString()}` : '',
+      plResult ? `P&L ${plPeriodLabel(plResult)}: rev $${plResult.revenue.total.toLocaleString()} - exp $${plResult.operatingExpenses.total.toLocaleString()} = net $${plResult.netIncome.toLocaleString()} (margin ${plResult.netMarginPct}%)` : '',
       agingResult ? `AR aging: $${agingResult.totalOutstanding.toLocaleString()} out · $${agingResult.totalOverdue.toLocaleString()} overdue · ${agingResult.avgDaysOutstanding}d avg` : '',
-      varResult ? `Budget variance: ${varResult.totalVariance >= 0 ? '+' : ''}$${varResult.totalVariance.toLocaleString()} (${varResult.status})` : '',
+      varResult ? `Budget variance: ${varResult.totalVariance >= 0 ? '+' : ''}$${varResult.totalVariance.toLocaleString()} (${varOverallStatus(varResult)})` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -120,8 +140,9 @@ export function AccountingActionPanel() {
     if (!plResult) { err('Run P&L first.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
+      const periodLabel = plPeriodLabel(plResult);
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `P&L summary — ${plResult.period}`, tags: ['accounting', 'pl', 'public'], source: 'accounting:pl:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, pl: plResult } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `P&L summary — ${periodLabel}`, tags: ['accounting', 'pl', 'public'], source: 'accounting:pl:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, pl: plResult } } });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -134,7 +155,7 @@ export function AccountingActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `CFO brief. ${plResult ? `Net income $${plResult.netIncome.toLocaleString()} on $${plResult.revenue.toLocaleString()} revenue${plResult.grossMargin != null ? ` (${plResult.grossMargin}% margin)` : ''}.` : ''} ${agingResult ? `AR outstanding $${agingResult.totalOutstanding.toLocaleString()}, overdue $${agingResult.totalOverdue.toLocaleString()}, ${agingResult.avgDaysOutstanding}d avg.` : ''} ${varResult ? `Budget variance ${varResult.totalVariance >= 0 ? '+' : ''}$${varResult.totalVariance.toLocaleString()} (${varResult.status}).` : ''} Identify single biggest cash-flow lever this month + one cost to address. Plain text, 3 sentences max.`;
+      const task = `CFO brief. ${plResult ? `Net income $${plResult.netIncome.toLocaleString()} on $${plResult.revenue.total.toLocaleString()} revenue (${plResult.netMarginPct}% margin).` : ''} ${agingResult ? `AR outstanding $${agingResult.totalOutstanding.toLocaleString()}, overdue $${agingResult.totalOverdue.toLocaleString()}, ${agingResult.avgDaysOutstanding}d avg.` : ''} ${varResult ? `Budget variance ${varResult.totalVariance >= 0 ? '+' : ''}$${varResult.totalVariance.toLocaleString()} (${varOverallStatus(varResult)}).` : ''} Identify single biggest cash-flow lever this month + one cost to address. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
@@ -167,11 +188,11 @@ export function AccountingActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">TB JSON</label>
-          <textarea value={tbText} onChange={(e) => setTbText(e.target.value)} rows={5} placeholder='{"entries":[{"account":"Cash","debit":45000,"credit":0}, ...]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={tbText} onChange={(e) => setTbText(e.target.value)} rows={5} placeholder='{"accounts":[{"accountNumber":"1000","name":"Cash","type":"asset","entries":[{"date":"2026-01-01","debit":45000,"credit":0}]}]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">P&L JSON</label>
-          <textarea value={plText} onChange={(e) => setPlText(e.target.value)} rows={5} placeholder='{"period":"Q1 2026","transactions":[{"category":"...","type":"revenue|expense","amount":N}, ...]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={plText} onChange={(e) => setPlText(e.target.value)} rows={5} placeholder='{"accounts":[{"accountNumber":"4000","name":"Sales","type":"revenue","entries":[{"date":"2026-01-01","debit":0,"credit":5000}]}]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">AR aging JSON</label>
@@ -179,7 +200,7 @@ export function AccountingActionPanel() {
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Variance JSON</label>
-          <textarea value={varText} onChange={(e) => setVarText(e.target.value)} rows={5} placeholder='{"lines":[{"category":"...","planned":N,"actual":N}, ...]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={varText} onChange={(e) => setVarText(e.target.value)} rows={5} placeholder='{"budget":[{"category":"Marketing","planned":N,"actual":N}, ...]}' className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
@@ -206,19 +227,19 @@ export function AccountingActionPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {tbResult && (
-          <div className={cn('rounded-md border p-2.5', tbResult.balanced ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
+          <div className={cn('rounded-md border p-2.5', tbResult.isBalanced ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Trial balance</div>
-            <div className={cn('text-2xl font-bold', tbResult.balanced ? 'text-emerald-300' : 'text-red-300')}>{tbResult.balanced ? '✓' : '⚠'}<span className="text-xs text-zinc-400"> {tbResult.balanced ? 'balanced' : 'off by $' + tbResult.difference}</span></div>
+            <div className={cn('text-2xl font-bold', tbResult.isBalanced ? 'text-emerald-300' : 'text-red-300')}>{tbResult.isBalanced ? '✓' : '⚠'}<span className="text-xs text-zinc-400"> {tbResult.isBalanced ? 'balanced' : 'off by $' + tbResult.difference}</span></div>
             <div className="text-[10px] text-zinc-400">D ${tbResult.totalDebits?.toLocaleString()} · C ${tbResult.totalCredits?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-400">{tbResult.accountCount} accounts</div>
+            <div className="text-[10px] text-zinc-400">{tbResult.accounts?.length ?? 0} accounts</div>
           </div>
         )}
         {plResult && (
           <div className={cn('rounded-md border p-2.5', plResult.netIncome >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
-            <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">P&L · {plResult.period}</div>
+            <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">P&L · {plPeriodLabel(plResult)}</div>
             <div className={cn('text-2xl font-bold', plResult.netIncome >= 0 ? 'text-emerald-300' : 'text-red-300')}>${plResult.netIncome.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-400">rev ${plResult.revenue.toLocaleString()} - exp ${plResult.expenses.toLocaleString()}</div>
-            {plResult.grossMargin != null && <div className="text-[10px] text-zinc-400">margin {plResult.grossMargin}%</div>}
+            <div className="text-[10px] text-zinc-400">rev ${plResult.revenue.total.toLocaleString()} - exp ${plResult.operatingExpenses.total.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">margin {plResult.netMarginPct}%</div>
           </div>
         )}
         {agingResult && (
@@ -231,10 +252,10 @@ export function AccountingActionPanel() {
         )}
         {varResult && (
           <div className={cn('rounded-md border p-2.5 max-h-44 overflow-y-auto', varResult.totalVariance >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
-            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Variance · {varResult.status}</div>
+            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Variance · {varOverallStatus(varResult)}</div>
             <div className={cn('text-2xl font-bold', varResult.totalVariance >= 0 ? 'text-emerald-300' : 'text-red-300')}>{varResult.totalVariance >= 0 ? '+' : ''}${varResult.totalVariance.toLocaleString()}</div>
             <div className="text-[10px] text-zinc-400">${varResult.totalActual.toLocaleString()} / ${varResult.totalPlanned.toLocaleString()}</div>
-            {varResult.lines.slice(0, 4).map((l, i) => <div key={i} className={cn('text-[10px] mt-0.5', l.variance < 0 ? 'text-red-300' : 'text-emerald-300')}><span className="font-mono">{l.category}</span> {l.variancePercent >= 0 ? '+' : ''}{l.variancePercent}%</div>)}
+            {varResult.lineItems.slice(0, 4).map((l, i) => <div key={i} className={cn('text-[10px] mt-0.5', l.variance < 0 ? 'text-red-300' : 'text-emerald-300')}><span className="font-mono">{l.category}</span> {l.variancePct >= 0 ? '+' : ''}{l.variancePct}%</div>)}
           </div>
         )}
       </div>
