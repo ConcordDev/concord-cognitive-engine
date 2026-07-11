@@ -7,7 +7,7 @@
 // markdown / DTU-pack export. All data is real user input persisted
 // via the understanding domain macros — no seed/demo data.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import {
   Plus, Search, Loader2, X, Save, Trash2, Tag as TagIcon,
@@ -67,6 +67,19 @@ interface DiffResult {
   added: number;
   removed: number;
   unchanged: number;
+}
+
+// Mirrors server/domains/understanding.js#cleanTags — used only to render an
+// optimistic tag list the instant a save is dispatched; the server's own
+// cleaning is still authoritative and is what actually lands in `note.tags`
+// once the background round-trip reconciles.
+function cleanTagsClient(input: string): string[] {
+  const out: string[] = [];
+  for (const raw of input.split(/[,\s]+/)) {
+    const tag = raw.trim().toLowerCase().replace(/^#/, '').slice(0, 24);
+    if (tag && !out.includes(tag)) out.push(tag);
+  }
+  return out.slice(0, 32);
 }
 
 // ── Component ───────────────────────────────────────────────────────
@@ -367,7 +380,15 @@ function NoteEditor({
   const [linkTarget, setLinkTarget] = useState('');
   const [linkRelation, setLinkRelation] = useState('relates-to');
 
-  const loadNote = useCallback(async () => {
+  // Bumped on every keystroke in title/body/tags. Lets an in-flight save's
+  // background reconcile detect "the user kept typing while I was saving"
+  // and skip overwriting the live editor fields with the (now-stale)
+  // server snapshot — it still refreshes the read-only meta (word/revision
+  // count, backlinks) either way.
+  const editSeqRef = useRef(0);
+
+  const loadNote = useCallback(async (opts: { syncEditorFields?: boolean } = {}) => {
+    const { syncEditorFields = true } = opts;
     setError(null);
     try {
       const [g, bl] = await Promise.all([
@@ -377,13 +398,15 @@ function NoteEditor({
       if (g.data?.ok && g.data.result) {
         const n = g.data.result.note;
         setNote(n);
-        setTitle(n.title);
-        setBody(n.body);
-        setTags(n.tags.join(', '));
+        if (syncEditorFields) {
+          setTitle(n.title);
+          setBody(n.body);
+          setTags(n.tags.join(', '));
+          setDirty(false);
+        }
         setRevisions(g.data.result.revisions);
         setDiffTo(Math.max(0, g.data.result.revisions.length - 1));
         setDiffFrom(Math.max(0, g.data.result.revisions.length - 2));
-        setDirty(false);
       } else {
         setError(g.data?.error || 'note not found');
       }
@@ -395,25 +418,53 @@ function NoteEditor({
 
   useEffect(() => { loadNote(); }, [loadNote]);
 
+  // Optimistic save: the perceived response is instant (sub-100ms) — the
+  // "saved" state, word count, and tag chips flip the moment save() is
+  // called, off the same values already on screen, not off a round-trip.
+  // The real `edit` macro call still runs in the background and is what
+  // actually persists the note; a failure is a visible, honest rollback
+  // (dirty flips back true, the saved timestamp is retracted, the error
+  // banner explains why) rather than a silently-swallowed optimistic lie.
+  // If the user keeps typing while the save is in flight, the later
+  // background reconcile skips overwriting title/body/tags so it can't
+  // clobber newer, unsaved keystrokes — but it still refreshes revision
+  // count / backlinks either way.
   async function save() {
-    setBusy(true);
+    if (!dirty || !title.trim() || busy) return;
     setError(null);
+    const seqAtSave = editSeqRef.current;
+    const snapshotTitle = title.trim();
+    const snapshotBody = body;
+    const snapshotTags = tags;
+
+    setDirty(false);
+    setSavedAt(new Date().toLocaleTimeString());
+    setNote((n) => (n
+      ? {
+          ...n,
+          title: snapshotTitle,
+          body: snapshotBody,
+          tags: cleanTagsClient(snapshotTags),
+          wordCount: snapshotBody.trim() ? snapshotBody.trim().split(/\s+/).length : 0,
+        }
+      : n));
+
     try {
       const r = await lensRun<{ note: Note; changed: boolean }>('understanding', 'edit', {
-        id: noteId, title: title.trim(), body, tags,
+        id: noteId, title: snapshotTitle, body: snapshotBody, tags: snapshotTags,
       });
       if (r.data?.ok) {
-        setSavedAt(new Date().toLocaleTimeString());
-        setDirty(false);
-        await loadNote();
+        await loadNote({ syncEditorFields: seqAtSave === editSeqRef.current });
         onSaved();
       } else {
         setError(r.data?.error || 'save failed');
+        setSavedAt(null);
+        setDirty(true);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'save failed');
-    } finally {
-      setBusy(false);
+      setSavedAt(null);
+      setDirty(true);
     }
   }
 
@@ -516,30 +567,34 @@ function NoteEditor({
       <div className="rounded-lg border border-violet-500/30 bg-black/60 p-4">
         <input
           value={title}
-          onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
+          onChange={(e) => { setTitle(e.target.value); setDirty(true); editSeqRef.current += 1; }}
+          onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save(); } }}
           className="w-full bg-transparent text-lg font-semibold text-violet-200 outline-none border-b border-white/10 pb-1.5 mb-2"
         />
         <textarea
           value={body}
-          onChange={(e) => { setBody(e.target.value); setDirty(true); }}
+          onChange={(e) => { setBody(e.target.value); setDirty(true); editSeqRef.current += 1; }}
+          onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save(); } }}
           rows={14}
           placeholder="Body — use [[Note Title]] to link other notes."
           className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm font-mono mb-2"
         />
         <input
           value={tags}
-          onChange={(e) => { setTags(e.target.value); setDirty(true); }}
+          onChange={(e) => { setTags(e.target.value); setDirty(true); editSeqRef.current += 1; }}
           placeholder="Tags (comma separated)"
           className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm mb-3"
         />
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={save}
-            disabled={busy || !dirty || !title.trim()}
+            disabled={!dirty || !title.trim()}
+            title="Save (Cmd/Ctrl+S)"
             className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1"
           >
-            {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+            <Save className="w-3 h-3" />
             Save changes
+            <kbd className="ml-1 text-[9px] text-white/40 border border-white/20 rounded px-1">⌘S</kbd>
           </button>
           <button
             onClick={() => exportNote('markdown')}
