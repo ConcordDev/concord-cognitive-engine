@@ -15,6 +15,8 @@
 // surfaced cross-user by the discovery gallery; private worlds never are.
 // Handlers never throw — they return { ok, result?, error? }.
 
+import { seedSubWorldStarterContent } from "../lib/sub-world-starter-content.js";
+
 export default function registerSubWorldsActions(registerLensActionRaw) {
   // Dual-bus registration. The frontend reaches these handlers through
   // /api/lens/run → LENS_ACTIONS (the registerLensAction registry). But the
@@ -205,6 +207,13 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     userWorlds(s, actor(ctx)).push(w);
     save();
     mirrorWorldRow(ctx, w);
+    // Wave 4 gap-closure — a freshly-mirrored `worlds` row previously stayed
+    // a bare-minimum shell (default-empty modulators, zero NPCs). Apply
+    // kind-appropriate physics/rule-modulator presets + a small deterministic
+    // starter NPC roster through the same world_npcs write path real
+    // authored worlds use. Best-effort — never blocks the in-memory STATE
+    // record, which stays canonical for the lens itself.
+    seedSubWorldStarterContent(ctx?.db, { worldId: w.world_id, kind: w.kind });
     return { ok: true, result: { world: publicView(w, actor(ctx)) } };
   });
 

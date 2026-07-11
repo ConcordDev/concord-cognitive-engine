@@ -32337,6 +32337,7 @@ import { seedWorlds } from "./lib/world-seed.js";
 import { seedToolRecipes } from "./lib/tool-tree.js";
 import { seedLensPortals } from "./lib/lens-portal-registry.js";
 import { seedContent } from "./lib/content-seeder.js";
+import { seedSubWorldStarterContent } from "./lib/sub-world-starter-content.js";
 import { initWorldFlavors, getWorldFlavor, listAllFlavors, getSkillCeiling as getWorldSkillCeiling } from "./lib/world-flavor.js";
 import { initAchievementCatalog, listEarned as listEarnedAchievements, listRecent as listRecentAchievements, listCatalog as listAchievementCatalog } from "./lib/achievement-engine.js";
 import { initAchievementBridge, bridgeRealtimeEvent } from "./lib/achievement-bridge.js";
@@ -77879,6 +77880,24 @@ register("sub_world", "spawn_from_forge", (ctx, input = {}) => {
       INSERT INTO sub_worlds (world_id, forge_app_dtu_id, name, kind, spawned_by_user_id)
       VALUES (?, ?, ?, ?, ?)
     `).run(worldId, forgeAppDtuId, name, kind, userId);
+    // Backend-hygiene fix (docs/lens-specs/sub-worlds-capability-map.md —
+    // this legacy macro had the identical "never mirrors to the real
+    // `worlds` table" defect as the plural `sub_worlds.spawn` lens macro,
+    // PLUS never mirrored at all: "Enter" via the real cross-world travel
+    // path (`POST /api/worlds/travel` → `loadWorld`, `SELECT * FROM worlds
+    // WHERE id = ? AND status = 'active'`) would 404 on every world this
+    // macro ever spawned. Mirror + starter content, best-effort — never
+    // blocks the canonical `sub_worlds` row insert above.
+    try {
+      db.prepare(`
+        INSERT INTO worlds (id, name, universe_type, description, created_by, status)
+        VALUES (?, ?, ?, ?, ?, 'active')
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          universe_type = excluded.universe_type
+      `).run(worldId, name, kind, `Spawned from Forge app ${forgeAppDtuId}`, userId);
+      seedSubWorldStarterContent(db, { worldId, kind });
+    } catch (_e) { /* best-effort mirror; the sub_worlds row stays canonical */ }
     return { ok: true, worldId, name, kind };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Spawn a Forge app as a sub-world reachable via existing world-travel." });

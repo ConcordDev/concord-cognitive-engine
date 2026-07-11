@@ -183,8 +183,16 @@ function _deterministicPos(npcId, bounds = { minX: -400, maxX: 400, minZ: -400, 
  * on (id). Pulls archetype + faction + world_id from the authored
  * record; positions deterministically from sha-style hash. Failure is
  * logged but never throws — content-seeder is best-effort.
+ *
+ * Exported (despite the underscore, matching this file's existing
+ * `_authoredNPCs`/`_authoredFactions` convention) so other spawn paths
+ * that create a `worlds` row outside the authored content/world/ tree —
+ * e.g. `server/lib/sub-world-starter-content.js` for user-spawned
+ * sub-worlds — can seed a real, queryable starter NPC through the exact
+ * same persistence path real authored worlds use, instead of a parallel
+ * reimplementation of this INSERT.
  */
-function _persistAuthoredNpcToWorld(db, npc, defaultWorldId) {
+export function _persistAuthoredNpcToWorld(db, npc, defaultWorldId) {
   if (!db || !npc?.id) return false;
   const worldId = npc.world_id || defaultWorldId || "concordia-hub";
   const pos = (npc.spawn_location && typeof npc.spawn_location === "object")
