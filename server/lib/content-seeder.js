@@ -515,6 +515,14 @@ function seedQuestFile(quests) {
         // completion handler can grant gold + named items + skill xp.
         rewards:       quest.rewards ?? {},
         authoredId:    quest.id,
+        // Wave 4 — forward the authored moral_branch payload so a quest
+        // fetched back off the in-memory engine (quest.get / quest.progress)
+        // carries it too, not just the raw JSON retained below in
+        // _authoredQuests. The runtime that actually APPLIES
+        // reputation_change (server/lib/quests/moral-branch.js) reads from
+        // _authoredQuests directly since it's the stable, non-evicting copy —
+        // this field is for callers that only have the engine's quest object.
+        moralBranch: (quest.moral_branch && typeof quest.moral_branch === "object") ? quest.moral_branch : null,
       });
 
       if (result.ok) {

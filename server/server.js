@@ -16951,7 +16951,35 @@ async function initGhostFleet() {
     register("quest", "from_template", (_ctx, input = {}) => quest.createFromTemplate(input.templateName, input.domain, input.title));
     register("quest", "metrics", () => quest.getQuestMetrics());
 
-    structuredLog("info", "ghost_fleet_module_loaded", { name: "quest-engine", macros: 10 });
+    // Wave 4 gap-closure — docs/concordia-specs/quests-dialogue-capability-map.md
+    // §3/§6#1: moral_branch/reputation_change is authored across 11 quest
+    // files and was read by zero lines of code. This applies a chosen
+    // branch option's reputation_change to the real reputation substrate
+    // (character_opinions / player_faction_reputation_cache) via
+    // lib/quests/moral-branch.js. Idempotent per (userId, worldId,
+    // questAuthoredId) — a retried call never double-applies.
+    //
+    // HONEST SCOPE: this is the backend "did the number move" half only.
+    // There is still no frontend surface that presents moral_branch.options
+    // as a choice to the player, and no gameplay trigger that calls this
+    // macro automatically on quest-step completion — a caller (a future
+    // dialogue-choice UI, or a manual/admin path) must supply optionId
+    // explicitly. See that capability-map's finding #1 for the still-open
+    // frontend work this macro deliberately does not attempt.
+    register("quest", "resolve_moral_branch", async (ctx, input = {}) => {
+      const { applyMoralBranchChoice } = await import("./lib/quests/moral-branch.js");
+      const database = ctx?.db || db;
+      const userId = input.userId || ctx?.actor?.userId || ctx?.actor?.id || null;
+      const worldId = input.worldId || ctx?.worldId || null;
+      return applyMoralBranchChoice(database, {
+        userId,
+        worldId,
+        questAuthoredId: input.questAuthoredId || input.questId,
+        optionId: input.optionId,
+      });
+    }, { note: "apply a chosen moral_branch option's reputation_change to the real reputation substrate" });
+
+    structuredLog("info", "ghost_fleet_module_loaded", { name: "quest-engine", macros: 11 });
   } catch (err) {
     GHOST_FLEET_STATUS.modules["quest-engine"] = { loaded: false, error: err.message };
     structuredLog("warn", "ghost_fleet_module_failed", { name: "quest-engine", error: err.message });

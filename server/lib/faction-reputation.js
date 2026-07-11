@@ -118,6 +118,35 @@ export function getAllReputations(db, userId, worldId) {
 }
 
 /**
+ * Recompute + upsert the cache row for exactly one (user, world, faction)
+ * tuple, and return the freshly computed { score, tier, rank, opinionCount }.
+ *
+ * `refreshFactionReputationCache` below does the same upsert in bulk on a
+ * ~15-min heartbeat; this single-tuple variant exists so a caller that just
+ * wrote a character_opinions delta (e.g. quest-moral-branch application) can
+ * make the change visible in the cache immediately instead of waiting on the
+ * next sweep.
+ */
+export function refreshOneFactionReputation(db, userId, factionId, worldId) {
+  if (!db || !userId || !factionId) return null;
+  const wid = worldId || "concordia-hub";
+  const r = computeFactionReputation(db, userId, factionId, wid);
+  try {
+    db.prepare(`
+      INSERT INTO player_faction_reputation_cache
+        (user_id, world_id, faction_id, score, tier, opinion_count, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, unixepoch())
+      ON CONFLICT(user_id, world_id, faction_id) DO UPDATE SET
+        score = excluded.score,
+        tier = excluded.tier,
+        opinion_count = excluded.opinion_count,
+        updated_at = excluded.updated_at
+    `).run(userId, wid, factionId, r.score, r.tier, r.opinionCount);
+  } catch { /* cache table may not exist on a minimal build */ }
+  return r;
+}
+
+/**
  * Refresh cache. Called by the faction-rep-cache-refresh heartbeat
  * (frequency 60 = ~15min). Recomputes every (user, world, faction)
  * tuple that has any character_opinions entry.
