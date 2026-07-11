@@ -96,12 +96,22 @@ export function ScheduledList({ onChanged }: { onChanged?: () => void }) {
 export function SnoozedList() {
   const [list, setList] = useState<Snoozed[]>([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    lensRun({ domain: 'message', action: 'snooze-list', input: {} })
-      .then(r => setList((r.data?.result?.snoozed || []) as Snoozed[]))
-      .catch(e => console.error('[Snoozed] failed', e))
-      .finally(() => setLoading(false));
-  }, []);
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const r = await lensRun({ domain: 'message', action: 'snooze-list', input: {} });
+      setList((r.data?.result?.snoozed || []) as Snoozed[]);
+    } catch (e) { console.error('[Snoozed] failed', e); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void refresh(); }, []);
+  async function unsnooze(messageId: string) {
+    try {
+      const r = await lensRun({ domain: 'message', action: 'unsnooze', input: { messageId } });
+      if (r.data?.ok === false) { console.error('[Snoozed] unsnooze failed', r.data.error); return; }
+      await refresh();
+    } catch (e) { console.error('[Snoozed] unsnooze', e); }
+  }
   return (
     <div className="bg-[#0d1117] border border-violet-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
@@ -110,12 +120,15 @@ export function SnoozedList() {
         <span className="text-[10px] text-gray-400">{list.length}</span>
       </header>
       <div className="max-h-[32rem] overflow-y-auto">
-        {loading ? <Loading /> : list.length === 0 ? <Empty icon={Bookmark} label="Nothing snoozed." /> : (
+        {loading ? <Loading /> : list.length === 0 ? <Empty icon={Bookmark} label="Nothing snoozed. Hover a message and click the clock icon." /> : (
           <ul className="divide-y divide-white/5">
             {list.map(s => (
-              <li key={s.messageId} className="px-4 py-2 hover:bg-white/[0.02]">
-                <div className="text-[10px] text-amber-300 font-mono">→ {new Date(s.until).toLocaleString()}</div>
-                <div className="text-xs text-white">{s.messageId}</div>
+              <li key={s.messageId} className="px-4 py-2 hover:bg-white/[0.02] flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] text-amber-300 font-mono">→ {new Date(s.until).toLocaleString()}</div>
+                  <div className="text-xs text-white">{s.messageId}</div>
+                </div>
+                <button aria-label="Unsnooze" title="Unsnooze now" onClick={() => unsnooze(s.messageId)} className="p-1 rounded hover:bg-rose-500/20 text-rose-300"><XCircle className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>
