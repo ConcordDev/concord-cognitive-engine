@@ -93,7 +93,10 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
       // separate from persisted state so it doesn't leak into the move log.
       const stateWithBias = { ...f, coping_trait: resolveLeaderCopingTrait(db, f.faction_id) };
       const ethicsBias = valueRuleIndex ? factionMoveBias(valueRuleIndex, f.faction_id) : null;
-      const picked = pickMove(stateWithBias, peers, ethicsBias ? { ethicsBias } : {});
+      // getRelationScore() inside pickMove needs a live db handle to read
+      // real faction_relations pairs (PROPOSE_ALLIANCE friend-search,
+      // DECLARE_WAR rival-filter) instead of the pre-fix always-0 stub.
+      const picked = pickMove(stateWithBias, peers, { db, ...(ethicsBias ? { ethicsBias } : {}) });
       const applied = applyMove(db, f.faction_id, picked, allStates);
       if (applied) {
         advanced++;

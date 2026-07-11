@@ -154,6 +154,95 @@ describe("pickMove state machine", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+// getRelationScore threading — Wave 4 bug fix
+//
+// Pre-fix, the internal getRelationScore() helper was hardcoded to
+// `return 0` regardless of the real faction_relations table, which meant:
+//   (a) consolidate's `friend` search (`getRelationScore(...) > 0.3`) could
+//       never find a friend, so PROPOSE_ALLIANCE could never fire once the
+//       simulation was running (alliance formation was seed-only).
+//   (b) expand's rival filter (`getRelationScore(...) >= -0.3`) was a
+//       no-op (0 >= -0.3 is always true), so DECLARE_WAR's target was
+//       really just "first eligible peer by array order," regardless of
+//       the pair's actual relation.
+// The fix threads a live `db` handle through pickMove's `opts.db` so
+// getRelationScore can do a real getRelation() lookup; when opts.db is
+// omitted (as every pre-existing test call does) the neutral 0 default is
+// preserved byte-for-byte, so none of the 19 pre-fix tests above change
+// behavior. These tests exercise the NEW behavior explicitly by passing db.
+// ───────────────────────────────────────────────────────────────────────────
+
+describe("getRelationScore threading (bug fix)", () => {
+  it("PROPOSE_ALLIANCE is reachable from consolidate when a real strong-positive relation exists", () => {
+    const db = setupDb();
+    ensureFactionState(db, "f1", { stance: "consolidate" });
+    ensureFactionState(db, "f2", { stance: "consolidate" });
+    setRelation(db, "f1", "f2", { score: 0.8, kind: "truce" }); // > 0.3 threshold
+    const peers = [{ faction_id: "f2", stance: "consolidate", momentum: 0 }];
+
+    let firedWithDb = false;
+    let firedWithoutDb = false;
+    for (let phase = 0; phase < 200; phase++) {
+      const state = { faction_id: "f1", stance: "consolidate", momentum: 0, phase };
+      const withDb = pickMove(state, peers, { db });
+      if (withDb.move === "PROPOSE_ALLIANCE") {
+        firedWithDb = true;
+        assert.equal(withDb.target, "f2");
+        assert.equal(withDb.newStance, "alliance");
+        assert.equal(withDb.newKind, "alliance");
+      }
+      const withoutDb = pickMove(state, peers, {});
+      if (withoutDb.move === "PROPOSE_ALLIANCE") firedWithoutDb = true;
+    }
+
+    assert.equal(firedWithDb, true,
+      "PROPOSE_ALLIANCE should fire at least once across phases now that a real friend relation is visible");
+    assert.equal(firedWithoutDb, false,
+      "without a db (pre-fix / back-compat default), getRelationScore stays 0 and PROPOSE_ALLIANCE must never fire — confirms the old bug's shape is preserved as the fallback, not silently changed everywhere");
+  });
+
+  it("DECLARE_WAR targeting respects a real relation — excludes a deep-enmity peer, prefers the mild-tension one", () => {
+    const db = setupDb();
+    ensureFactionState(db, "f1", { stance: "expand" });
+    ensureFactionState(db, "deep-enemy", { stance: "expand" });
+    ensureFactionState(db, "mild-rival", { stance: "expand" });
+    setRelation(db, "f1", "deep-enemy", { score: -0.9, kind: "war" });   // < -0.3: excluded
+    setRelation(db, "f1", "mild-rival", { score: -0.1, kind: "tension" }); // >= -0.3: eligible
+
+    // deep-enemy listed FIRST — under the pre-fix always-0 stub, Array.find
+    // would pick the first stance-eligible peer regardless of relation.
+    const peers = [
+      { faction_id: "deep-enemy", stance: "expand", momentum: 0 },
+      { faction_id: "mild-rival", stance: "expand", momentum: 0 },
+    ];
+
+    const targetsWithDb = new Set();
+    const targetsWithoutDb = new Set();
+    for (let phase = 0; phase < 200; phase++) {
+      const state = { faction_id: "f1", stance: "expand", momentum: 0.1, phase };
+      const withDb = pickMove(state, peers, { db });
+      if (withDb.move === "DECLARE_WAR") targetsWithDb.add(withDb.target);
+      const withoutDb = pickMove(state, peers, {});
+      if (withoutDb.move === "DECLARE_WAR") targetsWithoutDb.add(withoutDb.target);
+    }
+
+    assert.deepEqual([...targetsWithDb], ["mild-rival"],
+      "with real relation data, DECLARE_WAR must never target the deep-enmity peer (score < -0.3)");
+    assert.deepEqual([...targetsWithoutDb], ["deep-enemy"],
+      "pre-fix behavior (no db) always resolves to the first array-order peer regardless of actual relation — this is the bug, preserved only as the explicit no-db fallback");
+  });
+
+  it("getRelationScore gracefully defaults to neutral when opts.db is a broken/foreign handle", () => {
+    // Defensive: a db-shaped object with no faction_relations table must
+    // not throw — getRelation()/getRelationScore() both swallow errors.
+    const fakeDb = { prepare() { throw new Error("no such table"); } };
+    const state = { faction_id: "f1", stance: "consolidate", momentum: 0, phase: 0 };
+    const peers = [{ faction_id: "f2", stance: "consolidate", momentum: 0 }];
+    assert.doesNotThrow(() => pickMove(state, peers, { db: fakeDb }));
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
 // applyMove — transactional persistence
 // ───────────────────────────────────────────────────────────────────────────
 

@@ -186,7 +186,14 @@ export function seedFactionStrategyState(db, factions) {
 
 /**
  * Pick a move for a faction given its state + the relations with peers.
- * Pure: returns the move spec; caller persists.
+ * Reads (never writes) via `opts.db`; caller persists via applyMove.
+ *
+ * `opts.db` is optional. When supplied, relation-gated branches
+ * (`consolidate`'s PROPOSE_ALLIANCE friend-search, `expand`'s DECLARE_WAR
+ * rival-filter) query the real `faction_relations` pairwise score via
+ * getRelation(). When omitted, those checks fall back to a neutral 0 score
+ * — this is the pre-fix behavior, kept as the default so callers/tests
+ * that don't pass a db still get deterministic, unchanged results.
  *
  * @returns {{ move: string, summary: string, target?: string, deltaMomentum: number, newStance?: string, newKind?: string, newScore?: number }}
  */
@@ -289,7 +296,7 @@ export function pickMove(state, peers = [], opts = {}) {
   if (stance === "expand") {
     const rival = peers
       .filter(p => p.stance === "expand" || p.stance === "war")
-      .find(p => getRelationScore(state.faction_id, p.faction_id) >= -0.3);
+      .find(p => getRelationScore(opts.db, state.faction_id, p.faction_id) >= -0.3);
     if (rival && rng() < (0.4 + biasFor("DECLARE_WAR") + eb("DECLARE_WAR"))) {
       return {
         move: "DECLARE_WAR",
@@ -316,7 +323,7 @@ export function pickMove(state, peers = [], opts = {}) {
   }
 
   // 6) Consolidate — peacetime; can pivot to alliance, expand, or isolation
-  const friend = peers.find(p => getRelationScore(state.faction_id, p.faction_id) > 0.3);
+  const friend = peers.find(p => getRelationScore(opts.db, state.faction_id, p.faction_id) > 0.3);
   if (friend && rng() < (0.2 + eb("PROPOSE_ALLIANCE"))) {
     return {
       move: "PROPOSE_ALLIANCE",
@@ -513,12 +520,25 @@ export function getRecentMoves(db, limit = 30) {
 // Internal helpers
 // ───────────────────────────────────────────────────────────────────────────
 
-function getRelationScore(_a, _b) {
-  // The applyMove caller passes in peerStates; pickMove gets relations
-  // from the closure via setupCycle. For simplicity in pickMove we
-  // assume peers carry their own relation snapshot. This helper is a
-  // hook for tests that want to override.
-  return 0;
+/**
+ * Look up the real pairwise relation score between two factions via the
+ * existing getRelation()/faction_relations machinery.
+ *
+ * `db` is optional and threaded in from pickMove's `opts.db` (set by the
+ * faction-strategy-cycle heartbeat, which already has a live db handle).
+ * Callers/tests that invoke pickMove without a db (the large majority of
+ * the existing contract-test suite) get the pre-fix neutral default (0) —
+ * this preserves those tests' pinned deterministic-RNG behavior exactly.
+ * Only the live heartbeat path (and any test that explicitly opts in by
+ * passing `{ db }`) exercises the real relation-gated logic.
+ */
+function getRelationScore(db, a, b) {
+  if (!db) return 0;
+  try {
+    return Number(getRelation(db, a, b)?.score ?? 0);
+  } catch {
+    return 0;
+  }
 }
 
 /** Deterministic seeded RNG so tests are reproducible. */
