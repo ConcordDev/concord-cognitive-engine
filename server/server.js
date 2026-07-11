@@ -24494,7 +24494,27 @@ register("mesh", "channels", (ctx, input) => {
 }, { description: "Get available transport layers and their status." });
 
 register("mesh", "send", async (ctx, input) => {
-  const dtu = input.dtu || (input.dtuId ? STATE.dtus?.get(input.dtuId) : null);
+  // Ownership/visibility gate (personal_dtus_never_leak, see CLAUDE.md): a
+  // resolved-by-id DTU comes from the SHARED STATE.dtus store, so an
+  // unguarded lookup would let any caller exfiltrate another user's private
+  // DTU over the mesh just by guessing/enumerating its id. `input.dtu` (a
+  // caller-supplied inline object, not a store lookup) carries no such risk
+  // — the caller already has whatever content they put in it — so only the
+  // id-resolved path is gated. Mirrors the dtu.create lineage-consent check
+  // above: owner, system/founder-authored, or public/global-scope all pass.
+  let dtu = input.dtu || null;
+  if (!dtu && input.dtuId) {
+    const stored = STATE.dtus?.get(input.dtuId);
+    if (stored) {
+      const _meshUserId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
+      const isOwner = !stored.ownerId || stored.ownerId === _meshUserId ||
+        stored.ownerId === "system" || stored.ownerId === "founder";
+      const vis = stored.meta?.visibility || stored.visibility;
+      const isPublic = vis === "published" || vis === "public" || stored.scope === "global";
+      if (!isOwner && !isPublic) return { ok: false, error: "not_your_dtu" };
+      dtu = stored;
+    }
+  }
   if (!dtu) return { ok: false, error: "No DTU specified. Provide dtu or dtuId." };
   const result = meshSendDTU(dtu, input.destination || input.destinationNodeId || "broadcast", {
     proximity: input.proximity,

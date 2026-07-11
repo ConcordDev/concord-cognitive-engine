@@ -7,13 +7,17 @@
  * status / channels / peers / transfers, and server/domains/mesh.js
  * adds the usability layer that makes the mesh a real comms tool:
  *
+ *   • Send DTU — the lens's namesake capability: transmit a real DTU
+ *     through the routing substrate (mesh.send → sendDTU: channel
+ *     selection, fragmentation, store-and-forward)
  *   • Topology — node graph + add / remove / ping (mesh.meshMap, addNode…)
  *   • Messages — direct / group / broadcast chat with delivery + read state
  *   • Signal   — per-transport RSSI / hop / latency + range estimate
  *   • Queue    — store-and-forward frame inspect / retry / prioritize
  *   • Channels — broadcast / group channels with per-channel PSK encryption
  *
- * Phase 4.14 wire-the-Lost (universe-gap fill).
+ * Phase 4.14 wire-the-Lost (universe-gap fill). Wave 4 gap-closure (2026-07)
+ * added the Send DTU tab — see docs/lens-specs/mesh-capability-map.md.
  */
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors. Local fetch errors caught with try/catch where shown.
 
@@ -27,6 +31,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MeshRepos } from '@/components/mesh/MeshRepos';
 import { MeshTopology } from '@/components/mesh/MeshTopology';
+import { MeshSendDtu } from '@/components/mesh/MeshSendDtu';
 import { MeshMessaging } from '@/components/mesh/MeshMessaging';
 import { MeshSignal } from '@/components/mesh/MeshSignal';
 import { MeshQueue } from '@/components/mesh/MeshQueue';
@@ -37,11 +42,11 @@ import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Radio, Loader2, Network, Send, MessageSquare, SignalHigh, Hash,
+  Radio, Loader2, Network, Send, MessageSquare, SignalHigh, Hash, PackagePlus,
   type LucideIcon,
 } from 'lucide-react';
 
-type TabKey = 'overview' | 'topology' | 'messages' | 'signal' | 'queue' | 'channels';
+type TabKey = 'overview' | 'transmit' | 'topology' | 'messages' | 'signal' | 'queue' | 'channels';
 
 interface MeshOverview {
   nodes: number;
@@ -61,6 +66,7 @@ export default function MeshLensPage() {
   useLensCommand(
     [
       { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+      { id: 'tab-transmit', keys: 't', description: 'Send DTU', category: 'navigation', action: () => setActiveTab('transmit') },
       { id: 'tab-topology', keys: 'g', description: 'Topology', category: 'navigation', action: () => setActiveTab('topology') },
       { id: 'tab-messages', keys: 'm', description: 'Messages', category: 'navigation', action: () => setActiveTab('messages') },
       { id: 'tab-signal', keys: 's', description: 'Signal', category: 'navigation', action: () => setActiveTab('signal') },
@@ -90,6 +96,7 @@ export default function MeshLensPage() {
 
   const tabs: { key: TabKey; label: string; icon: LucideIcon; count?: number }[] = [
     { key: 'overview',  label: 'Overview',  icon: Network },
+    { key: 'transmit',  label: 'Send DTU',  icon: PackagePlus },
     { key: 'topology',  label: 'Topology',  icon: Radio,         count: overview.data?.nodes },
     { key: 'messages',  label: 'Messages',  icon: MessageSquare, count: overview.data?.unread || undefined },
     { key: 'signal',    label: 'Signal',    icon: SignalHigh },
@@ -170,7 +177,8 @@ export default function MeshLensPage() {
                     <Network className="mx-auto mb-2 h-6 w-6 text-teal-700" aria-hidden />
                     <p className="font-medium text-teal-300">No mesh yet.</p>
                     <p className="mt-1 text-xs text-teal-600">
-                      Add your first peer node in <span className="text-teal-400">Topology</span> to start building the mesh.
+                      Add your first peer node in <span className="text-teal-400">Topology</span>, then send a DTU in{' '}
+                      <span className="text-teal-400">Send DTU</span> to start building the mesh.
                     </p>
                   </div>
                 ) : (
@@ -183,9 +191,17 @@ export default function MeshLensPage() {
                   </div>
                 )}
                 <p className="mt-4 text-xs text-teal-700">
-                  Use the tabs above — build your node graph in Topology, chat in Messages, inspect link quality in
-                  Signal, manage stuck frames in Queue, and set up encrypted group channels in Channels.
+                  Use the tabs above — transmit a real DTU in Send DTU, build your node graph in Topology, chat in
+                  Messages, inspect link quality in Signal, manage stuck frames in Queue, and set up encrypted group
+                  channels in Channels.
                 </p>
+              </motion.section>
+            )}
+
+            {activeTab === 'transmit' && (
+              <motion.section key="transmit" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                <h2 className="mb-3 text-base font-semibold text-teal-200">Send a DTU over the mesh</h2>
+                <MeshSendDtu />
               </motion.section>
             )}
 
