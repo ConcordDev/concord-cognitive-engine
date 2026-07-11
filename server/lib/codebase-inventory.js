@@ -247,7 +247,7 @@ export function scanLensPages() {
  * A component is orphaned if its export name does not appear in any lens page
  * or any other component file.
  *
- * @returns {Array<{path: string, exports: string[]}>}
+ * @returns {Array<{path: string, directory: string, exports: string[], lineCount: number, lastModified: string}>}
  */
 export function findOrphans() {
   const cached = getCached("orphans");
@@ -308,7 +308,13 @@ export function findOrphans() {
 
   return setCache(
     "orphans",
-    orphans.map((c) => ({ path: c.path, exports: c.exports }))
+    orphans.map((c) => ({
+      path: c.path,
+      directory: c.directory,
+      exports: c.exports,
+      lineCount: c.lineCount,
+      lastModified: c.lastModified,
+    }))
   );
 }
 
