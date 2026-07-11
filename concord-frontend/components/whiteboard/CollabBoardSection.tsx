@@ -14,13 +14,15 @@ import { FolderPlus, Trash2, Loader2, Save, Sparkles, MessageSquare, Download, C
 import { lensRun } from '@/lib/api/client';
 import { WhiteboardCanvas, Shape } from './WhiteboardCanvas';
 import { WhiteboardCollabPanel } from './WhiteboardCollabPanel';
+import { WhiteboardWorkspaceSummary } from './WhiteboardWorkspaceSummary';
 import { useWhiteboardCollab } from '@/hooks/useWhiteboardCollab';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 interface BoardMeta { id: string; title: string; createdAt: string; updatedAt: string; elementCount: number }
 interface Cluster { theme: string; memberIds: string[]; size: number }
 interface SummaryResult { summary: string; actionItems: Array<{ text: string; owner: string | null }>; source: string }
-interface Comment { id: string; elementId: string; authorName: string; body: string; createdAt: string; resolved: boolean }
+interface Comment { id: string; elementId: string; authorId: string; authorName: string; body: string; createdAt: string; resolved: boolean }
 
 const TEMPLATE_KINDS = [
   { id: 'brainstorm',   label: 'Brainstorm' },
@@ -32,6 +34,7 @@ const TEMPLATE_KINDS = [
 ] as const;
 
 export function CollabBoardSection() {
+  const { user } = useAuth();
   const [boards, setBoards] = useState<BoardMeta[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeShapes, setActiveShapes] = useState<Shape[]>([]);
@@ -57,6 +60,11 @@ export function CollabBoardSection() {
   // stray private board with the same id if called on a shared id.
   const [isSharedBoard, setIsSharedBoard] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Bumped whenever a mutation could change whiteboard.workspace-summary's
+  // counts (board create/delete/duplicate, a save landing, a comment
+  // add/resolve/delete) so the header stat strip re-fetches.
+  const [summaryRefreshToken, setSummaryRefreshToken] = useState(0);
+  const bumpSummary = () => setSummaryRefreshToken((t) => t + 1);
 
   // Realtime collaboration (Batch G E1/E3/E4): join the board's room, mirror remote
   // scene-updates onto the canvas, broadcast local edits + cursor, surface peers + votes.
@@ -144,7 +152,7 @@ export function CollabBoardSection() {
         scene: { elements: [], appState: {} },
       } });
       const id = r.data?.result?.board?.id;
-      if (id) { await refreshBoards(); openBoard(id); }
+      if (id) { await refreshBoards(); openBoard(id); bumpSummary(); }
     } catch (e) { console.error('[Board] create', e); }
   }
 
@@ -154,6 +162,7 @@ export function CollabBoardSection() {
       await lensRun({ domain: 'whiteboard', action: 'board-delete', input: { id } });
       if (activeId === id) { setActiveId(null); setActiveShapes([]); setActiveTitle(''); }
       await refreshBoards();
+      bumpSummary();
     } catch (e) { console.error('[Board] delete', e); }
   }
 
@@ -163,7 +172,7 @@ export function CollabBoardSection() {
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'board-duplicate', input: { id: activeId } });
       const newId = r.data?.result?.board?.id;
-      if (newId) { await refreshBoards(); openBoard(newId); }
+      if (newId) { await refreshBoards(); openBoard(newId); bumpSummary(); }
     } catch (e) { console.error('[Board] duplicate', e); }
   }
 
@@ -182,6 +191,7 @@ export function CollabBoardSection() {
         scene: { elements: activeShapes, appState: {} },
       } });
       setDirty(false);
+      bumpSummary(); // elementCount/stickyCount are computed from the persisted scene
     } catch (e) { console.error('[Board] save', e); }
     finally { setSaving(false); }
   }
@@ -272,6 +282,7 @@ export function CollabBoardSection() {
     try {
       await lensRun({ domain: 'whiteboard', action: 'comments-add', input: { boardId: activeId, elementId, body: body.trim() } });
       await refreshComments(activeId);
+      bumpSummary(); // openCommentCount changed
     } catch (e) { console.error('[Board] add comment', e); }
   }
 
@@ -280,13 +291,31 @@ export function CollabBoardSection() {
     try {
       await lensRun({ domain: 'whiteboard', action: 'comments-resolve', input: { boardId: activeId, id } });
       await refreshComments(activeId);
+      bumpSummary(); // openCommentCount changed
     } catch (e) { console.error('[Board] resolve', e); }
+  }
+
+  // whiteboard.comments-delete was previously UNSURFACED — real backend
+  // handler (author-only, enforced server-side too), no frontend caller.
+  // Deletion is gated client-side to the comment's own author (see the
+  // authorId check in CommentsTab) so the affordance only appears where it
+  // can actually succeed; the server re-checks ownership regardless.
+  async function deleteComment(id: string) {
+    if (!activeId) return;
+    try {
+      const r = await lensRun({ domain: 'whiteboard', action: 'comments-delete', input: { boardId: activeId, id } });
+      if (r.data?.ok === false) { console.error('[Board] delete comment', r.data?.error); return; }
+      await refreshComments(activeId);
+      bumpSummary(); // openCommentCount changed
+    } catch (e) { console.error('[Board] delete comment', e); }
   }
 
   const totalOpenComments = useMemo(() => Object.values(comments).reduce((s, arr) => s + arr.filter(c => !c.resolved).length, 0), [comments]);
 
   return (
-    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-pink-500/20 rounded-lg overflow-hidden">
+    <div className="flex flex-col bg-[#0d1117] border border-pink-500/20 rounded-lg overflow-hidden">
+      <WhiteboardWorkspaceSummary refreshToken={summaryRefreshToken} />
+    <div className="flex h-[calc(100vh-236px)] min-h-[560px]">
       {/* Boards rail */}
       <aside className="w-56 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
         <header className="px-3 py-2.5 border-b border-white/5 flex items-center gap-2">
@@ -355,6 +384,11 @@ export function CollabBoardSection() {
                 peerCursors={peerCursorList}
                 voteCounts={collab.voteCounts}
                 onCursorMove={collab.broadcastCursor}
+                // Click-to-vote only makes sense on a shared/live board — a
+                // private board has no `sharedVotes` ledger to cast into
+                // (whiteboard.shared-vote-cast operates on `sharedBoards`,
+                // a separate identity space from the private `boards` map).
+                onVoteElement={isSharedBoard ? collab.castVote : undefined}
                 className="h-full"
               />
             </div>
@@ -408,7 +442,7 @@ export function CollabBoardSection() {
                 <GenerateTab prompt={genPrompt} setPrompt={setGenPrompt} kind={genKind} setKind={setGenKind} loading={generating} onRun={runGenerate} />
               )}
               {aiTab === 'comments' && (
-                <CommentsTab activeId={activeId} shapes={activeShapes} comments={comments} onAdd={addComment} onResolve={resolveComment} />
+                <CommentsTab activeId={activeId} shapes={activeShapes} comments={comments} currentUserId={user?.id ?? null} onAdd={addComment} onResolve={resolveComment} onDelete={deleteComment} />
               )}
               {aiTab === 'export' && (
                 <div className="space-y-2">
@@ -422,6 +456,7 @@ export function CollabBoardSection() {
           )}
         </aside>
       )}
+    </div>
     </div>
   );
 }
@@ -576,7 +611,7 @@ function GenerateTab({ prompt, setPrompt, kind, setKind, loading, onRun }: { pro
   );
 }
 
-function CommentsTab({ activeId, shapes, comments, onAdd, onResolve }: { activeId: string | null; shapes: Shape[]; comments: Record<string, Comment[]>; onAdd: (elementId: string, body: string) => void; onResolve: (id: string) => void }) {
+function CommentsTab({ activeId, shapes, comments, currentUserId, onAdd, onResolve, onDelete }: { activeId: string | null; shapes: Shape[]; comments: Record<string, Comment[]>; currentUserId: string | null; onAdd: (elementId: string, body: string) => void; onResolve: (id: string) => void; onDelete: (id: string) => void }) {
   const [expandedEl, setExpandedEl] = useState<string | null>(null);
   const [draftBody, setDraftBody] = useState('');
   if (!activeId) return <div className="text-gray-400 italic">No board open.</div>;
@@ -606,6 +641,18 @@ function CommentsTab({ activeId, shapes, comments, onAdd, onResolve }: { activeI
                         <span className="font-semibold">{c.authorName}</span>
                         <span className="text-[9px] text-gray-400 font-mono">{c.createdAt.slice(0, 16).replace('T', ' ')}</span>
                         {!c.resolved && <button onClick={() => onResolve(c.id)} className="ml-auto text-[10px] text-emerald-300 hover:text-emerald-200">resolve</button>}
+                        {/* whiteboard.comments-delete — author-only (server-enforced too); only
+                            render the affordance where it can actually succeed. */}
+                        {currentUserId && c.authorId === currentUserId && (
+                          <button
+                            aria-label="Delete comment"
+                            onClick={() => onDelete(c.id)}
+                            className={cn('p-0.5 text-rose-300 hover:bg-rose-500/20 rounded', !c.resolved ? '' : 'ml-auto')}
+                            title="Delete comment"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                       <div>{c.body}</div>
                     </div>
