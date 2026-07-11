@@ -580,7 +580,7 @@ describe("voice — sharing + segment comments (shared ctx)", () => {
     assert.equal(allyShare.result.shared, true);
 
     const allyComments = await lensRun("voice", "segment-comments-list", { params: { recordingId: recId } }, ally);
-    assert.equal(allyComments.result.ok, true);
+    assert.equal(allyComments.ok, true);
     assert.equal(allyComments.result.count, 0);
   });
 });
