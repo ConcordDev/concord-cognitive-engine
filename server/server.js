@@ -41556,7 +41556,29 @@ registerLensAction("srs", "generate_cards_from_dtus", (ctx, artifact, params) =>
 });
 
 // === Voice ===
-registerLensAction("voice", "transcribe", (ctx, artifact, params) => {
+// NOTE (Wave 3 voice-lens audit): this LENS_ACTIONS handler used to be
+// registered under the name "transcribe", which collided with the REAL
+// audio-transcription macro `register("voice","transcribe", ...)` a few
+// thousand lines earlier (whisper.cpp-backed, ethos/opt-in gated). Because
+// `/api/lens/run`, the generic `/api/lens/:domain/:id/run` route, and the
+// MCP tool runner (`runMcpTool`) all resolve a (domain, action) pair by
+// checking LENS_ACTIONS FIRST and only fall back to the MACROS registry
+// (`register()`) if no LENS_ACTIONS entry exists, this handler — which does
+// NOT transcribe audio at all, it derives a pseudo-transcript struct
+// (segments/wordFreq/topWords) from an ALREADY-TYPED text field on a lens
+// artifact — permanently shadowed the real whisper.cpp transcription for
+// any caller reaching it that way (a raw `lensRun("voice","transcribe",…)`
+// call, or an MCP client invoking the "voice transcribe" tool). The actual
+// UI path (`apiHelpers.voice.transcribe` → `POST /api/voice/transcribe` →
+// bare `runMacro("voice","transcribe",…)`) was unaffected, since bare
+// runMacro cannot see LENS_ACTIONS — but the shadow was still a live
+// footgun for the two other call paths. Verified via direct grep that no
+// frontend code, test, or manifest ever calls this handler under the name
+// "transcribe" (only "transcriptAnalyze"/"speakerDiarize"/"sentimentScore"/
+// "keywordSpot" from server/domains/voice.js are wired), so renaming it
+// carries no behavioral regression. Renamed to `derive-transcript-struct`
+// to also stop it from misleadingly implying it does real ASR.
+registerLensAction("voice", "derive-transcript-struct", (ctx, artifact, params) => {
   const rawText = params.text || artifact.data?.rawText || artifact.data?.body || artifact.data?.content || "";
   const language = params.language || artifact.data?.language || "en";
   if (!rawText) {
