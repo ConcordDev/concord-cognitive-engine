@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, BookMarked, ChevronLeft, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag } from 'lucide-react';
+import { Loader2, Plus, BookMarked, ChevronLeft, ChevronDown, Trash2, Copy, FileText, ExternalLink, Pencil, Link2, X, Tag, Highlighter } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,7 @@ interface Reference {
   type: string; journal: string | null; doi: string | null; tags: string[]; status: string;
 }
 interface Annotation { id: string; page: number | null; quote: string | null; text: string | null; color: string }
+interface LibraryAnnotation extends Annotation { referenceId: string }
 interface PdfAttachment { id: string; referenceId: string; url: string; filename: string; pages: number | null }
 interface TagCount { tag: string; count: number }
 
@@ -22,6 +23,69 @@ const TYPES = ['article', 'book', 'chapter', 'conference', 'thesis', 'report', '
 const STATUS_COLOR: Record<string, string> = {
   to_read: 'text-zinc-400', reading: 'text-amber-400', read: 'text-emerald-400',
 };
+
+/**
+ * HighlightsSection — cross-library annotation browser. Was a real,
+ * never-called macro (`research.annotation-list` with no referenceId
+ * filter): the panel already showed a reference's own annotations inline
+ * (via `reference-detail`), but there was no way to see everything you'd
+ * highlighted across the whole library without opening each reference one
+ * at a time. Wires the global `annotation-list` call to a collapsible
+ * "My highlights" browser that jumps straight to the source reference.
+ */
+function HighlightsSection({ onOpenReference }: { onOpenReference: (ref: Reference) => Promise<void> | void }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [items, setItems] = useState<LibraryAnnotation[]>([]);
+
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (next && !loaded) {
+      setLoading(true);
+      const r = await lensRun<{ annotations: LibraryAnnotation[] }>('research', 'annotation-list', {});
+      setItems(r.data?.result?.annotations || []);
+      setLoading(false);
+      setLoaded(true);
+    }
+  };
+
+  const jump = async (referenceId: string) => {
+    const r = await lensRun('research', 'reference-detail', { id: referenceId });
+    const ref = r.data?.result?.reference as Reference | undefined;
+    if (ref) await onOpenReference(ref);
+  };
+
+  return (
+    <div className="border border-zinc-800 rounded-xl overflow-hidden">
+      <button type="button" onClick={toggle}
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-zinc-300 bg-zinc-900/70 hover:bg-zinc-900 transition-colors">
+        <span className="flex items-center gap-1.5">
+          <Highlighter className="w-3.5 h-3.5 text-amber-400" /> My highlights{loaded && items.length > 0 ? ` (${items.length})` : ''}
+        </span>
+        <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="p-2 space-y-1 max-h-64 overflow-y-auto bg-zinc-950/40">
+          {loading ? (
+            <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>
+          ) : items.length === 0 ? (
+            <p className="text-[11px] text-zinc-500 italic py-2 text-center">No annotations yet — open a reference and add one.</p>
+          ) : (
+            items.map((a) => (
+              <button key={a.id} type="button" onClick={() => jump(a.referenceId)}
+                className="w-full text-left text-[11px] border-l-2 border-amber-600/50 pl-2 py-1 hover:bg-zinc-800/40 rounded-r transition-colors">
+                {a.quote && <p className="text-zinc-300 italic truncate">&ldquo;{a.quote}&rdquo;{a.page ? ` (p.${a.page})` : ''}</p>}
+                {a.text && <p className="text-zinc-400 truncate">{a.text}</p>}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [references, setReferences] = useState<Reference[]>([]);
@@ -352,6 +416,8 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
           <Plus className="w-3.5 h-3.5" /> Add
         </button>
       </div>
+
+      <HighlightsSection onOpenReference={openRef} />
 
       {tags.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
