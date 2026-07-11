@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Tag, ListPlus, Zap, FileStack } from 'lucide-react';
+import { Loader2, Plus, Trash2, Tag, ListPlus, Zap, FileStack, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +29,8 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [lForm, setLForm] = useState({ name: '', color: 'indigo' });
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [lEditForm, setLEditForm] = useState({ name: '', color: 'indigo' });
   const [fForm, setFForm] = useState({ name: '', type: 'text', options: '' });
   const [rForm, setRForm] = useState({ name: '', trigger: 'status_changed', action: 'set_priority', actionValue: '' });
   const [tForm, setTForm] = useState({ name: '', title: '', points: '', subtasks: '' });
@@ -55,6 +57,17 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
     if (!lForm.name.trim()) return;
     await lensRun('projects', 'label-create', { projectId, name: lForm.name.trim(), color: lForm.color });
     setLForm({ name: '', color: 'indigo' });
+    await refresh();
+  };
+  const startEditLabel = (l: Label) => {
+    setEditingLabelId(l.id);
+    setLEditForm({ name: l.name, color: l.color });
+  };
+  const cancelEditLabel = () => setEditingLabelId(null);
+  const saveEditLabel = async () => {
+    if (!editingLabelId || !lEditForm.name.trim()) return;
+    await lensRun('projects', 'label-update', { id: editingLabelId, name: lEditForm.name.trim(), color: lEditForm.color });
+    setEditingLabelId(null);
     await refresh();
   };
   const addField = async () => {
@@ -110,12 +123,35 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
         </div>
         <div className="flex flex-wrap gap-1.5">
           {labels.map((l) => (
-            <span key={l.id} className="flex items-center gap-1 text-[10px] text-white rounded-lg pl-2 pr-1 py-0.5"
-              style={{ background: cssColor(l.color) }}>
-              {l.name}
-              <button type="button" onClick={() => lensRun('projects', 'label-delete', { id: l.id }).then(refresh)}
-                className="opacity-70 hover:opacity-100">×</button>
-            </span>
+            editingLabelId === l.id ? (
+              <span key={l.id} className="flex items-center gap-1.5 bg-zinc-900/70 border border-zinc-700 rounded-lg pl-2 pr-1 py-0.5">
+                <input value={lEditForm.name} onChange={(e) => setLEditForm({ ...lEditForm, name: e.target.value })}
+                  className="w-24 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100" />
+                <div className="flex gap-0.5">
+                  {COLORS.map((c) => (
+                    <button key={c} type="button" onClick={() => setLEditForm({ ...lEditForm, color: c })}
+                      aria-label={`Set label color ${c}`}
+                      className={cn('w-4 h-4 rounded-full', lEditForm.color === c ? 'ring-2 ring-white ring-offset-1 ring-offset-zinc-900' : '')}
+                      style={{ background: cssColor(c) }} />
+                  ))}
+                </div>
+                <button aria-label="Save label" type="button" onClick={saveEditLabel} className="text-emerald-400 hover:text-emerald-300">
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button aria-label="Cancel edit" type="button" onClick={cancelEditLabel} className="text-zinc-500 hover:text-zinc-300">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ) : (
+              <span key={l.id} className="flex items-center gap-1 text-[10px] text-white rounded-lg pl-2 pr-1 py-0.5"
+                style={{ background: cssColor(l.color) }}>
+                {l.name}
+                <button aria-label={`Edit label ${l.name}`} type="button" onClick={() => startEditLabel(l)}
+                  className="opacity-70 hover:opacity-100"><Pencil className="w-2.5 h-2.5" /></button>
+                <button aria-label={`Delete label ${l.name}`} type="button" onClick={() => lensRun('projects', 'label-delete', { id: l.id }).then(refresh)}
+                  className="opacity-70 hover:opacity-100">×</button>
+              </span>
+            )
           ))}
           {labels.length === 0 && <Empty text="No labels." />}
         </div>
