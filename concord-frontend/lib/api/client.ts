@@ -1056,16 +1056,36 @@ export const apiHelpers = {
     blindspots: () => api.get('/api/metacognition/blindspots'),
     calibration: () => api.get('/api/metacognition/calibration'),
     introspection: () => api.get('/api/metacognition/introspection-status'),
+    predictions: () => api.get('/api/metacognition/predictions'),
+    assessments: () => api.get('/api/metacognition/assessments'),
+    // NOTE: the backend macro (recordPrediction, server.js) reads `input.statement`,
+    // not `claim` — a prior version of this helper sent `claim` and every prediction
+    // silently recorded an empty statement. Keep the caller-facing param named
+    // `claim` (readable call sites) but map it onto the field the macro actually reads.
     predict: (data: { claim: string; confidence: number; domain?: string }) =>
-      api.post('/api/metacognition/predict', data),
+      api.post('/api/metacognition/predict', { statement: data.claim, confidence: data.confidence, domain: data.domain }),
+    // NOTE: resolvePrediction (server.js) reads `input.correct` (or legacy `wasCorrect`),
+    // not `outcome` — a prior version sent `{outcome}` so every resolve silently recorded
+    // as incorrect regardless of which button the user clicked.
     resolve: (predictionId: string, outcome: boolean) =>
-      api.post(`/api/metacognition/predictions/${predictionId}/resolve`, { outcome }),
+      api.post(`/api/metacognition/predictions/${predictionId}/resolve`, { correct: outcome }),
+    // NOTE: assessKnowledge (server.js) reads `input.topic`, not `domain` — a prior
+    // version sent `{domain}` so every assessment silently failed with
+    // "topic required" (only visible in the browser console, never surfaced to the
+    // user), and the Knowledge Confidence Map / Skill Timeline could never populate.
     assess: (data: { domain: string }) =>
-      api.post('/api/metacognition/assess', data),
+      api.post('/api/metacognition/assess', { topic: data.domain }),
+    // NOTE: introspectOnFailures (server.js) ignores its input entirely (analyzes
+    // ALL resolved predictions, unfiltered) — `focus` is accepted here for a
+    // future filtered pass but currently has no effect server-side.
     introspect: (data: { focus?: string }) =>
       api.post('/api/metacognition/introspect', data),
+    // NOTE: selectStrategy (server.js) reads `input.problem`, not `strategy` — not
+    // currently called anywhere in the frontend, but fixed for correctness since a
+    // future caller sending `{strategy}` would silently get `problem description
+    // required` back.
     strategy: (data: { strategy: string; params?: Record<string, unknown> }) =>
-      api.post('/api/metacognition/strategy', data),
+      api.post('/api/metacognition/strategy', { problem: data.strategy, ...data.params }),
   },
 
   // Meta-learning
