@@ -6,10 +6,11 @@
  * runs the 4 reasoning macros that previously had no UI, and exposes
  * the standard mint/DM/publish/agent quartet on top.
  *
- *   1. Logic validate   → reasoning.logicValidate
- *   2. Argument map     → reasoning.argumentMap (structured tree)
- *   3. Fallacy detect   → reasoning.fallacyDetect
- *   4. Premise extract  → reasoning.premiseExtract
+ *   1. Logic validate   → reasoning.logicValidate  (needs {premises[], conclusion})
+ *   2. Argument map     → reasoning.argumentMap    (needs {claims[]} — a support graph)
+ *   3. Fallacy detect   → reasoning.fallacyDetect   (free {argument} text)
+ *   4. Premise extract  → reasoning.premiseExtract  (free {argument} text — classifies
+ *                          sentences into premise/conclusion/statement)
  *   5. Mint reasoning   → dtu.create with the argument + all macro
  *                          outputs (private; tags=[reasoning,validated])
  *   6. DM derivation    → /api/social/dm with the structured premises
@@ -18,6 +19,19 @@
  *                          (federation pickup for verifiable arguments)
  *   8. Cross-check (agent) → chat_agent.do "challenge this argument
  *                          with the strongest counter-derivation"
+ *
+ * Wiring note (2026-07, Wave 3 reasoning-lens audit): logicValidate and
+ * argumentMap do NOT accept free text — they need a structured
+ * {premises, conclusion} / {claims} shape (see server/domains/reasoning.js).
+ * "Validate" and "Map" here first call premiseExtract (which DOES accept
+ * free text and classifies sentences via indicator-word heuristics) to
+ * derive that structure, then feed the derived premises/conclusion into
+ * the structural macros — real classification, not a client-side guess.
+ * The result interfaces below match the ACTUAL macro return shapes byte
+ * for byte (they previously assumed an imagined {valid,verdict}/{nodes,edges}
+ * contract that none of the four macros return, so every result pane
+ * rendered blank/undefined fields and the Premises pane threw at render
+ * time — premiseExtract's `premises` field is a COUNT, not an array).
  */
 
 import { useState } from 'react';
@@ -49,10 +63,58 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface ValidateResult { valid?: boolean; soundness?: number; issues?: string[]; verdict?: string }
-interface MapResult { nodes?: Array<{ id: string; text: string; role?: string }>; edges?: Array<{ from: string; to: string; kind?: string }> }
-interface FallacyResult { fallacies?: Array<{ name: string; explanation?: string }>; clean?: boolean }
-interface PremiseResult { premises?: string[]; conclusion?: string; hidden?: string[] }
+// ---- Result shapes — matched exactly to server/domains/reasoning.js ----
+
+interface ValidateResult {
+  premiseCount?: number;
+  conclusion?: string;
+  contradictions?: Array<{ premise1: string; premise2: string; type: string }>;
+  hasContradictions?: boolean;
+  termSupport?: number;
+  supportedTerms?: string[];
+  unsupportedTerms?: string[];
+  validity?: 'invalid-contradictions' | 'likely-valid' | 'partially-supported' | 'weak-support';
+  recommendation?: string;
+  message?: string;
+}
+interface MapResult {
+  totalClaims?: number;
+  rootClaims?: string[];
+  strengthMap?: Record<string, { support: number; counter: number; net: number; strength: number }>;
+  strongestClaim?: string;
+  weakestClaim?: string;
+  uncontested?: string[];
+  contested?: string[];
+  message?: string;
+}
+interface FallacyResult {
+  textLength?: number;
+  fallaciesDetected?: number;
+  fallacies?: Array<{ fallacy: string; description: string; matchedPatterns: string[]; severity: 'high' | 'moderate' }>;
+  overallAssessment?: string;
+  logicalStrength?: number;
+  message?: string;
+}
+interface ClassifiedSentence { text: string; role: 'premise' | 'conclusion' | 'statement'; type: 'normative' | 'factual' | 'definitional' }
+interface PremiseResult {
+  totalSentences?: number;
+  premises?: number; // count, not an array
+  conclusions?: number;
+  statements?: number;
+  classified?: ClassifiedSentence[];
+  premiseTypes?: { factual: number; normative: number; definitional: number };
+  message?: string;
+}
+
+function extractedPremises(r: PremiseResult | null): string[] {
+  return (r?.classified ?? []).filter(c => c.role === 'premise').map(c => c.text);
+}
+function extractedConclusion(r: PremiseResult | null): string {
+  const c = (r?.classified ?? []).find(x => x.role === 'conclusion');
+  if (c) return c.text;
+  const all = r?.classified ?? [];
+  return all.length ? all[all.length - 1].text : '';
+}
 
 export function ArgumentWorkbench() {
   const [argument, setArgument] = useState('');
@@ -72,13 +134,34 @@ export function ArgumentWorkbench() {
   const err = (text: string) => setFeedback({ kind: 'err', text });
   const ready = argument.trim().length > 0;
 
+  // Shared derivation step: logicValidate + argumentMap both need structure
+  // (premises[]/conclusion, claims[]) that premiseExtract's real sentence
+  // classification can supply — reused rather than duplicated so Validate
+  // and Map agree with whatever Premises last extracted.
+  async function classify(): Promise<{ premises: string[]; conclusion: string } | null> {
+    const r = await callMacro<PremiseResult>('premiseExtract', { argument: argument.trim() });
+    if (!r.ok || !r.result) return null;
+    setPremiseResult(r.result);
+    const premises = extractedPremises(r.result);
+    const conclusion = extractedConclusion(r.result);
+    if (premises.length === 0 && !conclusion) return null;
+    return { premises, conclusion };
+  }
+
   async function actValidate() {
     if (!ready) { err('Enter an argument.'); return; }
     setBusy('validate'); setFeedback(null);
     try {
-      const r = await callMacro<ValidateResult>('logicValidate', { argument: argument.trim() });
-      if (r.ok && r.result) { setValidateResult(r.result); ok(r.result.valid ? 'Valid.' : 'Issues flagged.'); }
-      else err(r.error ?? 'validate failed');
+      const derived = await classify();
+      if (!derived || derived.premises.length === 0) {
+        err('No clear premises found — try phrasing with "because"/"since"/"therefore".');
+        return;
+      }
+      const r = await callMacro<ValidateResult>('logicValidate', { premises: derived.premises, conclusion: derived.conclusion });
+      if (r.ok && r.result) {
+        setValidateResult(r.result);
+        ok(r.result.recommendation ?? r.result.validity ?? 'Checked.');
+      } else err(r.error ?? 'validate failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -87,8 +170,18 @@ export function ArgumentWorkbench() {
     if (!ready) { err('Enter an argument.'); return; }
     setBusy('map'); setFeedback(null);
     try {
-      const r = await callMacro<MapResult>('argumentMap', { argument: argument.trim() });
-      if (r.ok && r.result) { setMapResult(r.result); ok(`Mapped ${r.result.nodes?.length ?? 0} nodes.`); }
+      const derived = await classify();
+      if (!derived || derived.premises.length === 0) {
+        err('No clear claims found — try phrasing with "because"/"since"/"therefore".');
+        return;
+      }
+      const rootId = 'claim-root';
+      const claims = [
+        { id: rootId, text: derived.conclusion || argument.trim().slice(0, 200), type: 'thesis' },
+        ...derived.premises.map((text, i) => ({ id: `claim-p${i}`, text, type: 'premise', supports: [rootId] })),
+      ];
+      const r = await callMacro<MapResult>('argumentMap', { claims });
+      if (r.ok && r.result) { setMapResult(r.result); ok(`${r.result.totalClaims ?? claims.length} claims mapped.`); }
       else err(r.error ?? 'map failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -101,7 +194,7 @@ export function ArgumentWorkbench() {
       const r = await callMacro<FallacyResult>('fallacyDetect', { argument: argument.trim() });
       if (r.ok && r.result) {
         setFallacyResult(r.result);
-        const cnt = r.result.fallacies?.length ?? 0;
+        const cnt = r.result.fallaciesDetected ?? r.result.fallacies?.length ?? 0;
         ok(cnt === 0 ? 'No fallacies.' : `${cnt} flagged.`);
       } else err(r.error ?? 'fallacy detect failed');
     } catch (e) { err(pickMessage(e)); }
@@ -113,7 +206,7 @@ export function ArgumentWorkbench() {
     setBusy('premise'); setFeedback(null);
     try {
       const r = await callMacro<PremiseResult>('premiseExtract', { argument: argument.trim() });
-      if (r.ok && r.result) { setPremiseResult(r.result); ok(`${r.result.premises?.length ?? 0} premises extracted.`); }
+      if (r.ok && r.result) { setPremiseResult(r.result); ok(`${r.result.premises ?? 0} premises extracted.`); }
       else err(r.error ?? 'premise extract failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -127,7 +220,7 @@ export function ArgumentWorkbench() {
         domain: 'dtu', name: 'create',
         input: {
           title: `Reasoning — ${argument.trim().slice(0, 60)}${argument.length > 60 ? '…' : ''}`,
-          tags: ['reasoning', 'derivation', validateResult?.valid ? 'validated' : 'unvalidated'].filter(Boolean) as string[],
+          tags: ['reasoning', 'derivation', validateResult?.validity === 'likely-valid' ? 'validated' : 'unvalidated'].filter(Boolean) as string[],
           source: 'reasoning:mint',
           meta: {
             visibility: 'private',
@@ -158,17 +251,19 @@ export function ArgumentWorkbench() {
       argument.trim(),
       ``,
     ];
-    if (premiseResult?.premises?.length) {
+    const premises = extractedPremises(premiseResult);
+    const conclusion = extractedConclusion(premiseResult);
+    if (premises.length) {
       parts.push(`Premises:`);
-      premiseResult.premises.forEach((p, i) => parts.push(`  P${i + 1}. ${p}`));
-      if (premiseResult.conclusion) parts.push(`  C.  ${premiseResult.conclusion}`);
+      premises.forEach((p, i) => parts.push(`  P${i + 1}. ${p}`));
+      if (conclusion) parts.push(`  C.  ${conclusion}`);
       parts.push('');
     }
-    if (validateResult?.verdict) {
-      parts.push(`Validity verdict: ${validateResult.verdict}`);
+    if (validateResult?.validity) {
+      parts.push(`Validity verdict: ${validateResult.validity}`);
     }
     if (fallacyResult?.fallacies?.length) {
-      parts.push(`Flagged fallacies: ${fallacyResult.fallacies.map(f => f.name).join(', ')}`);
+      parts.push(`Flagged fallacies: ${fallacyResult.fallacies.map(f => f.fallacy).join(', ')}`);
     }
     try {
       const r = await api.post('/api/social/dm', { toUserId: dmRecipient.trim(), content: parts.join('\n') });
@@ -182,20 +277,22 @@ export function ArgumentWorkbench() {
     if (!ready) { err('Enter an argument.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
+      const premises = extractedPremises(premiseResult);
+      const conclusion = extractedConclusion(premiseResult);
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
         input: {
           title: `Public proof — ${argument.trim().slice(0, 60)}${argument.length > 60 ? '…' : ''}`,
-          tags: ['reasoning', 'proof', 'public', validateResult?.valid ? 'validated' : 'unvalidated'].filter(Boolean) as string[],
+          tags: ['reasoning', 'proof', 'public', validateResult?.validity === 'likely-valid' ? 'validated' : 'unvalidated'].filter(Boolean) as string[],
           source: 'reasoning:proof:publish',
           meta: {
             visibility: 'public',
             consent: { allowCitations: true },
             argument: argument.trim(),
-            premises: premiseResult?.premises ?? null,
-            conclusion: premiseResult?.conclusion ?? null,
-            verdict: validateResult?.verdict ?? null,
-            fallacies: fallacyResult?.fallacies?.map(f => f.name) ?? [],
+            premises: premises.length ? premises : null,
+            conclusion: conclusion || null,
+            verdict: validateResult?.validity ?? null,
+            fallacies: fallacyResult?.fallacies?.map(f => f.fallacy) ?? [],
           },
         },
       });
@@ -213,12 +310,14 @@ export function ArgumentWorkbench() {
     if (!ready) { err('Enter an argument.'); return; }
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
+      const premises = extractedPremises(premiseResult);
+      const conclusion = extractedConclusion(premiseResult);
       const task = [
         `Challenge this argument with the strongest possible counter-derivation. Be rigorous.`,
         ``,
         `Argument: "${argument.trim()}"`,
-        premiseResult?.premises?.length ? `Stated premises: ${premiseResult.premises.join('; ')}` : '',
-        premiseResult?.conclusion ? `Conclusion: ${premiseResult.conclusion}` : '',
+        premises.length ? `Stated premises: ${premises.join('; ')}` : '',
+        conclusion ? `Conclusion: ${conclusion}` : '',
         ``,
         `Return a plaintext counter-derivation: 1) the strongest objection to the conclusion;`,
         `2) any hidden premises this argument relies on; 3) what evidence would resolve the disagreement.`,
@@ -237,10 +336,10 @@ export function ArgumentWorkbench() {
   }
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
-    { id: 'validate', label: 'Validate',    desc: 'Soundness check + verdict',                       icon: CheckCircle2, accent: '#22c55e', handler: actValidate, disabled: !ready },
-    { id: 'map',      label: 'Map',         desc: 'Structured argument tree',                        icon: GitFork,      accent: '#06b6d4', handler: actMap,      disabled: !ready },
+    { id: 'validate', label: 'Validate',    desc: 'Contradiction + term-support check',              icon: CheckCircle2, accent: '#22c55e', handler: actValidate, disabled: !ready },
+    { id: 'map',      label: 'Map',         desc: 'Support-graph strength scoring',                  icon: GitFork,      accent: '#06b6d4', handler: actMap,      disabled: !ready },
     { id: 'fallacy',  label: 'Fallacies',   desc: 'Scan for logical fallacies',                      icon: AlertTriangle, accent: '#ef4444', handler: actFallacy,  disabled: !ready },
-    { id: 'premise',  label: 'Premises',    desc: 'Extract premises + conclusion + hidden ones',     icon: ListChecks,   accent: '#8b5cf6', handler: actPremise,  disabled: !ready },
+    { id: 'premise',  label: 'Premises',    desc: 'Classify sentences: premise / conclusion',        icon: ListChecks,   accent: '#8b5cf6', handler: actPremise,  disabled: !ready },
     { id: 'mint',     label: mintDtuId      ? 'Saved' : 'Mint derivation',  desc: mintDtuId      ? `DTU ${mintDtuId.slice(0, 8)}…`      : 'Private DTU with full analysis',         icon: Sparkles,     accent: '#3b82f6', handler: actMint,     disabled: !ready || !!mintDtuId },
     { id: 'dm',       label: 'DM for review', desc: 'DM premises + verdict to another user',         icon: Send,         accent: '#ec4899', handler: actDm,       disabled: !ready },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish proof', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public DTU + federation flag',         icon: Globe,        accent: '#15803d', handler: actPublish,  disabled: !ready || !!publishedDtuId },
@@ -264,7 +363,7 @@ export function ArgumentWorkbench() {
           onChange={(e) => setArgument(e.target.value)}
           rows={4}
           className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-400/40 resize-none font-mono"
-          placeholder='If all swans I have seen are white, then all swans are white. Therefore the swan in the next pond will be white…'
+          placeholder='All swans I have seen are white. Therefore all swans are white.'
         />
       </div>
 
@@ -305,15 +404,16 @@ export function ArgumentWorkbench() {
       {/* Result panes */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {validateResult && (
-          <div className={cn('rounded-md border p-2.5 space-y-1', validateResult.valid ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5')}>
-            <div className={cn('text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5', validateResult.valid ? 'text-emerald-300' : 'text-amber-300')}>
-              {validateResult.valid ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-              Validity: {validateResult.verdict ?? (validateResult.valid ? 'valid' : 'invalid')}
+          <div className={cn('rounded-md border p-2.5 space-y-1', validateResult.validity === 'likely-valid' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5')}>
+            <div className={cn('text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5', validateResult.validity === 'likely-valid' ? 'text-emerald-300' : 'text-amber-300')}>
+              {validateResult.validity === 'likely-valid' ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+              Validity: {validateResult.validity ?? validateResult.message ?? 'unknown'}
             </div>
-            {validateResult.soundness != null && <div className="text-[11px] text-zinc-300">Soundness: {(validateResult.soundness * 100).toFixed(0)}%</div>}
-            {validateResult.issues?.length ? (
+            {typeof validateResult.termSupport === 'number' && <div className="text-[11px] text-zinc-300">Term support: {validateResult.termSupport}%</div>}
+            {validateResult.recommendation && <div className="text-[11px] text-zinc-300">{validateResult.recommendation}</div>}
+            {validateResult.hasContradictions && (validateResult.contradictions?.length ?? 0) > 0 ? (
               <ul className="text-[11px] text-zinc-300 list-disc list-inside">
-                {validateResult.issues.map((i, idx) => <li key={idx}>{i}</li>)}
+                {validateResult.contradictions!.map((c, idx) => <li key={idx}>{c.premise1} ↔ {c.premise2}</li>)}
               </ul>
             ) : null}
           </div>
@@ -324,15 +424,15 @@ export function ArgumentWorkbench() {
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5">
               <ListChecks className="w-3 h-3" /> Premises
             </div>
-            {premiseResult.premises?.map((p, i) => (
-              <div key={i} className="text-[11px] text-zinc-300"><span className="text-purple-300 font-mono">P{i + 1}.</span> {p}</div>
+            {(premiseResult.classified ?? []).filter(c => c.role === 'premise').map((p, i) => (
+              <div key={i} className="text-[11px] text-zinc-300"><span className="text-purple-300 font-mono">P{i + 1}.</span> {p.text}</div>
             ))}
-            {premiseResult.conclusion && (
-              <div className="text-[11px] text-emerald-300 mt-1"><span className="font-mono">∴ C.</span> {premiseResult.conclusion}</div>
+            {(premiseResult.classified ?? []).filter(c => c.role === 'conclusion').map((c, i) => (
+              <div key={i} className="text-[11px] text-emerald-300 mt-1"><span className="font-mono">∴ C.</span> {c.text}</div>
+            ))}
+            {!premiseResult.classified?.length && premiseResult.message && (
+              <p className="text-[11px] text-zinc-400">{premiseResult.message}</p>
             )}
-            {premiseResult.hidden?.length ? (
-              <div className="text-[11px] text-amber-300 italic">Hidden assumptions: {premiseResult.hidden.join(' · ')}</div>
-            ) : null}
           </div>
         )}
 
@@ -341,14 +441,14 @@ export function ArgumentWorkbench() {
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold flex items-center gap-1.5">
               <AlertTriangle className="w-3 h-3" /> Fallacy scan
             </div>
-            {fallacyResult.clean || (fallacyResult.fallacies?.length ?? 0) === 0 ? (
-              <p className="text-[11px] text-emerald-300">No fallacies flagged.</p>
+            {(fallacyResult.fallaciesDetected ?? fallacyResult.fallacies?.length ?? 0) === 0 ? (
+              <p className="text-[11px] text-emerald-300">{fallacyResult.overallAssessment ?? 'No fallacies flagged.'}</p>
             ) : (
               <ul className="text-[11px] text-zinc-200 space-y-0.5">
                 {fallacyResult.fallacies?.map((f, i) => (
                   <li key={i}>
-                    <span className="font-semibold text-red-300">{f.name}</span>
-                    {f.explanation && <span className="text-zinc-400"> — {f.explanation}</span>}
+                    <span className="font-semibold text-red-300">{f.fallacy}</span>
+                    {f.description && <span className="text-zinc-400"> — {f.description}</span>}
                   </li>
                 ))}
               </ul>
@@ -359,13 +459,16 @@ export function ArgumentWorkbench() {
         {mapResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 space-y-1 overflow-x-auto">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5">
-              <GitFork className="w-3 h-3" /> Argument map ({mapResult.nodes?.length ?? 0} nodes, {mapResult.edges?.length ?? 0} edges)
+              <GitFork className="w-3 h-3" /> Argument map ({mapResult.totalClaims ?? 0} claims)
             </div>
-            {mapResult.nodes?.slice(0, 8).map(n => (
-              <div key={n.id} className="text-[11px] text-zinc-300 font-mono">
-                <span className="text-cyan-300">{n.id}</span>{n.role ? <span className="text-zinc-400"> [{n.role}]</span> : null}: {n.text.slice(0, 100)}
+            {mapResult.strengthMap && Object.entries(mapResult.strengthMap).slice(0, 8).map(([id, s]) => (
+              <div key={id} className="text-[11px] text-zinc-300 font-mono">
+                <span className="text-cyan-300">{id}</span>
+                <span className="text-zinc-400"> strength {s.strength} (support {s.support} / counter {s.counter})</span>
               </div>
             ))}
+            {mapResult.strongestClaim && <div className="text-[11px] text-emerald-300">strongest: {mapResult.strongestClaim}</div>}
+            {!mapResult.strengthMap && mapResult.message && <p className="text-[11px] text-zinc-400">{mapResult.message}</p>}
           </div>
         )}
       </div>

@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Loader2, Plus, Trash2, Eye, Link2, Unlink, Save } from 'lucide-react';
+import { Loader2, Plus, Trash2, Eye, Link2, Unlink, Save, Package, X, PackagePlus } from 'lucide-react';
 
 interface PaletteEntry { type: string; label: string; category: string; w: number; h: number }
 interface CanvasElement {
@@ -42,6 +42,10 @@ export function VisualEditor({
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [drag, setDrag] = useState<{ id: string; dx: number; dy: number } | null>(null);
+  const [libraryPrompt, setLibraryPrompt] = useState(false);
+  const [libraryName, setLibraryName] = useState('');
+  const [savingToLibrary, setSavingToLibrary] = useState(false);
+  const [deletingPage, setDeletingPage] = useState(false);
 
   useEffect(() => {
     lensRun('app-maker', 'editorPalette', {}).then((r) => {
@@ -52,6 +56,8 @@ export function VisualEditor({
   useEffect(() => {
     if (pages.length && !pages.some((p) => p.id === activePage)) setActivePage(pages[0].id);
   }, [pages, activePage]);
+
+  useEffect(() => { setLibraryPrompt(false); setLibraryName(''); }, [selectedId]);
 
   const loadPage = useCallback(async (pageId: string) => {
     if (!pageId) return;
@@ -115,6 +121,31 @@ export function VisualEditor({
     if (r.data?.ok) { onPagesChanged(); setActivePage(r.data.result?.page?.id ?? activePage); }
   }
 
+  async function deletePage(pageId: string) {
+    if (pages.length <= 1) return;
+    setDeletingPage(true);
+    const r = await lensRun('app-maker', 'editorDeletePage', { projectId, pageId });
+    setDeletingPage(false);
+    if (r.data?.ok) {
+      onPagesChanged();
+      if (activePage === pageId) {
+        const remaining = pages.filter((p) => p.id !== pageId);
+        setActivePage(remaining[0]?.id ?? '');
+      }
+    }
+  }
+
+  async function saveToLibrary() {
+    if (!selected || !libraryName.trim()) return;
+    setSavingToLibrary(true);
+    const r = await lensRun('app-maker', 'librarySave', {
+      projectId,
+      component: { name: libraryName.trim(), baseType: selected.type, props: selected.props ?? {}, style: {} },
+    });
+    setSavingToLibrary(false);
+    if (r.data?.ok) { setLibraryPrompt(false); setLibraryName(''); }
+  }
+
   async function bind(elementId: string, kind: 'table' | 'connector', refId: string) {
     const r = await lensRun('app-maker', 'dataBindElement', {
       projectId, pageId: activePage, elementId, source: { kind, refId },
@@ -176,15 +207,24 @@ export function VisualEditor({
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-2">
           {pages.map((p) => (
-            <button
+            <div
               key={p.id}
-              onClick={() => setActivePage(p.id)}
-              className={`rounded px-2 py-1 text-[11px] ${
+              className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] ${
                 activePage === p.id ? 'bg-pink-700/50 text-pink-100' : 'bg-pink-950/30 text-pink-500 hover:text-pink-300'
               }`}
             >
-              {p.name}
-            </button>
+              <button onClick={() => setActivePage(p.id)}>{p.name}</button>
+              {pages.length > 1 && (
+                <button
+                  aria-label={`Delete page ${p.name}`}
+                  onClick={() => deletePage(p.id)}
+                  disabled={deletingPage}
+                  className="text-pink-600 hover:text-rose-300 disabled:opacity-40"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              )}
+            </div>
           ))}
           <button onClick={addPage} className="inline-flex items-center gap-1 rounded bg-pink-950/30 px-2 py-1 text-[11px] text-pink-400 hover:text-pink-200">
             <Plus className="h-3 w-3" /> Page
@@ -247,10 +287,43 @@ export function VisualEditor({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-mono text-pink-300">{selected.type}</span>
-              <button aria-label="Delete" onClick={() => removeElement(selected.id)} className="text-rose-400 hover:text-rose-300">
-                <Trash2 className="h-3 w-3" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  aria-label="Save as reusable component"
+                  title="Save as reusable component"
+                  onClick={() => { setLibraryPrompt((v) => !v); setLibraryName(String(selected.props?.label ?? selected.type)); }}
+                  className="text-pink-400 hover:text-pink-200"
+                >
+                  <PackagePlus className="h-3 w-3" />
+                </button>
+                <button aria-label="Delete" onClick={() => removeElement(selected.id)} className="text-rose-400 hover:text-rose-300">
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
             </div>
+            {libraryPrompt && (
+              <div className="rounded border border-pink-700/50 bg-pink-950/30 p-1.5">
+                <div className="mb-1 flex items-center gap-1 text-[10px] uppercase text-pink-500">
+                  <Package className="h-3 w-3" /> Save to library
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    value={libraryName}
+                    onChange={(e) => setLibraryName(e.target.value)}
+                    placeholder="Component name"
+                    className="flex-1 rounded border border-pink-900/40 bg-black/40 px-1.5 py-1 text-pink-100"
+                  />
+                  <button
+                    onClick={saveToLibrary}
+                    disabled={savingToLibrary || !libraryName.trim()}
+                    className="rounded bg-pink-600 px-2 py-1 text-white hover:bg-pink-500 disabled:opacity-40"
+                  >
+                    {savingToLibrary ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                  </button>
+                </div>
+                <p className="mt-1 text-[9px] text-pink-700">Publish it from the Marketplace tab once saved.</p>
+              </div>
+            )}
             <Field label="Label">
               <input
                 value={String(selected.props?.label ?? '')}
