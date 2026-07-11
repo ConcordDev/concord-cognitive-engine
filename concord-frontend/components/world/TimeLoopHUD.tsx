@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useClientConfig } from '@/hooks/useClientConfig';
+import { useActiveWorldId } from '@/hooks/useActiveWorldId';
 import { Hourglass, RotateCcw } from 'lucide-react';
 
 interface ActiveLoop {
@@ -21,13 +22,10 @@ interface ActiveLoop {
 export function TimeLoopHUD() {
   const POLL_MS = useClientConfig().poll.timeLoopMs; // E0 — server-tunable
   const [loop, setLoop] = useState<ActiveLoop | null>(null);
-  const [worldId, setWorldId] = useState<string | null>(null);
+  // Same-tab-reactive active world (updates on world travel via
+  // concordia:active-world-changed) — replaces the one-shot mount read.
+  const worldId = useActiveWorldId('');
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
-
-  useEffect(() => {
-    const id = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
-    setWorldId(id);
-  }, []);
 
   const refresh = useCallback(async () => {
     if (!worldId) return;
@@ -39,6 +37,14 @@ export function TimeLoopHUD() {
 
   // Push: loop state on socket events; backstop poll covers gaps.
   useRealtimeRefresh(['time-loop:state'], refresh, { backstopMs: POLL_MS, enabled: !!worldId });
+  // Force an immediate re-fetch the moment the player travels — useRealtimeRefresh
+  // reads refresh() via a ref, so a worldId change alone (world-to-world, both
+  // truthy) doesn't retrigger its subscribe effect; without this the loop state
+  // stays pinned to the old world until the next backstop tick.
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldId]);
   // Local countdown clock (not a network poll — kept as-is).
   useEffect(() => {
     const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);

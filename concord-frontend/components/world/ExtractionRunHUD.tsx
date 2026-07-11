@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useClientConfig } from '@/hooks/useClientConfig';
+import { useActiveWorldId } from '@/hooks/useActiveWorldId';
 import { Package, MapPin, Clock, ArrowRight, AlertTriangle } from 'lucide-react';
 
 interface Run {
@@ -38,14 +39,11 @@ export function ExtractionRunHUD() {
   const [run, setRun] = useState<Run | null>(null);
   const [zones, setZones] = useState<Zone[]>([]);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
-  const [worldId, setWorldId] = useState<string | null>(null);
+  // Same-tab-reactive active world (updates on world travel via
+  // concordia:active-world-changed) — replaces the one-shot mount read.
+  const worldId = useActiveWorldId('');
   const [playerPos, setPlayerPos] = useState<Pos | null>(null);
   const [extracting, setExtracting] = useState(false);
-
-  useEffect(() => {
-    const id = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
-    setWorldId(id);
-  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -62,6 +60,14 @@ export function ExtractionRunHUD() {
 
   // Push: run/zone state arrives on socket events; backstop poll covers gaps.
   useRealtimeRefresh(['extraction:state', 'extraction:zones'], refresh, { backstopMs: POLL_MS });
+  // Force an immediate re-fetch (scoped to the new world's zones) the moment the
+  // player travels — useRealtimeRefresh reads refresh() via a ref, so a worldId
+  // change alone doesn't retrigger its subscribe effect; without this the zone
+  // list stays pinned to the old world until the next backstop tick.
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldId]);
   // Local clock + player-pose ticker (not a network poll — kept as-is).
   useEffect(() => {
     const t = setInterval(() => {
