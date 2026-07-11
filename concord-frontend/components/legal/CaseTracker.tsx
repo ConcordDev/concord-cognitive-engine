@@ -62,7 +62,7 @@ export function CaseTracker() {
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Gavel className="w-4 h-4 text-cyan-400" />
-        <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Active matters</span>
+        <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Docket — quick case log</span>
         <span className="ml-auto text-[10px] text-gray-400">{cases.length} cases{upcomingDeadlines.length > 0 ? ` · ${upcomingDeadlines.length} deadline${upcomingDeadlines.length === 1 ? '' : 's'} soon` : ''}</span>
         <button onClick={() => setAdding(v => !v)} className="p-1 text-gray-400 hover:text-white" title="Add case">
           <Plus className="w-4 h-4" />

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { apiHelpers } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -233,26 +233,29 @@ export default function MathLensPage() {
     ? `${Math.round((verifiedCount / totalExpressions) * 100)}%`
     : '---';
 
-  /* ─── Expression evaluator ─── */
+  /* ─── Expression evaluator ───
+   * Compute-don't-guess: routes to the real CAS (math.naturalQuery — a
+   * deterministic tokenizer/parser/simplifier, see server/domains/math.js),
+   * not an LLM chat call. An LLM is unreliable at arithmetic; the CAS is the
+   * engine of record for every other panel on this lens (SymbolicWorkbench),
+   * so the headline evaluator must use the same oracle instead of guessing. */
   const handleEvaluate = async () => {
     if (!expression.trim()) return;
     setEvaluating(true);
     setResult(null);
     try {
-      const response = await apiHelpers.chat.ask(expression, 'math');
-      const respData = response.data;
+      const r = await lensRun<{ answer?: unknown; kind?: string }>('math', 'naturalQuery', { query: expression });
 
       let evalValue: string;
       let verified: boolean;
 
-      if (respData && typeof respData === 'object') {
-        evalValue = String(
-          respData.result ?? respData.answer ?? respData.reply ?? respData.message ?? respData.data ?? 'No result'
-        );
-        verified = respData.verified !== false && evalValue !== 'Error' && evalValue !== 'No result';
+      if (r.data.ok && r.data.result) {
+        const answer = r.data.result.answer;
+        evalValue = answer != null ? String(answer) : 'No result';
+        verified = answer != null;
       } else {
-        evalValue = String(respData);
-        verified = true;
+        evalValue = `Error: ${r.data.error || 'Could not evaluate expression'}`;
+        verified = false;
       }
 
       setResult({ value: evalValue, verified });

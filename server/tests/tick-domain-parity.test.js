@@ -11,6 +11,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerTickActions from "../domains/tick.js";
+import { registerHeartbeat, _resetHeartbeatRegistry } from "../emergent/heartbeat-registry.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -29,7 +30,8 @@ beforeEach(() => {
   globalThis._concordSTATE = { settings: { disabledHeartbeats: [] } };
 });
 
-const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
+const ctxA = { actor: { userId: "user_a", role: "member" }, userId: "user_a" };
+const ctxAdmin = { actor: { userId: "user_admin", role: "admin" }, userId: "user_admin" };
 
 // ---------------------------------------------------------------------------
 // Pure-compute macros
@@ -260,39 +262,80 @@ describe("tick.latencyHistogram — tick latency histogram (#5)", () => {
   });
 });
 
-describe("tick.heartbeatControl — pause / resume / trigger (#6)", () => {
-  it("rejects an unknown op", () => {
-    const r = call("heartbeatControl", ctxA, {}, { moduleId: "x", op: "explode" });
+describe("tick.heartbeatControl — pause / resume / trigger (#6, admin-only)", () => {
+  // heartbeatControl now has real, server-wide effect (pause/resume write
+  // STATE.settings.disabledHeartbeats, the exact set tickAllRegistered
+  // reads; trigger actually invokes the module via runHeartbeatModuleNow),
+  // so it: (a) is gated to admin/owner/founder actors, and (b) requires
+  // the target to be a genuinely registered heartbeat module. Register a
+  // few fixtures so the admin-path tests exercise real wiring, not mocks.
+  beforeEach(() => {
+    _resetHeartbeatRegistry();
+    registerHeartbeat("fauna-spawner", { frequency: 30, handler: () => {} });
+    registerHeartbeat("repair-cycle", { frequency: 20, handler: () => {} });
+    registerHeartbeat("season-cycle", { frequency: 480, handler: () => {} });
+    registerHeartbeat("core-safety-net", { frequency: 1, handler: () => {}, neverDisable: true });
+  });
+
+  it("rejects a non-admin actor before even validating the op", async () => {
+    const r = await call("heartbeatControl", ctxA, {}, { moduleId: "fauna-spawner", op: "explode" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "admin_only");
+  });
+
+  it("rejects an unknown op (admin actor)", async () => {
+    const r = await call("heartbeatControl", ctxAdmin, {}, { moduleId: "fauna-spawner", op: "explode" });
     assert.equal(r.ok, false);
   });
 
-  it("requires a moduleId", () => {
-    const r = call("heartbeatControl", ctxA, {}, { op: "pause" });
+  it("requires a moduleId (admin actor)", async () => {
+    const r = await call("heartbeatControl", ctxAdmin, {}, { op: "pause" });
     assert.equal(r.ok, false);
   });
 
-  it("pauses and resumes a module", () => {
-    const paused = call("heartbeatControl", ctxA, {}, { moduleId: "fauna-spawner", op: "pause" });
+  it("rejects a moduleId that isn't a registered heartbeat module", async () => {
+    const r = await call("heartbeatControl", ctxAdmin, {}, { moduleId: "totally-made-up", op: "pause" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "unknown_heartbeat_module");
+  });
+
+  it("refuses to pause a neverDisable module", async () => {
+    const r = await call("heartbeatControl", ctxAdmin, {}, { moduleId: "core-safety-net", op: "pause" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "module_never_disable");
+  });
+
+  it("pauses and resumes a module, writing through to STATE.settings.disabledHeartbeats", async () => {
+    const paused = await call("heartbeatControl", ctxAdmin, {}, { moduleId: "fauna-spawner", op: "pause" });
     assert.equal(paused.ok, true);
     assert.equal(paused.result.enabled, false);
-    const resumed = call("heartbeatControl", ctxA, {}, { moduleId: "fauna-spawner", op: "resume" });
+    // This is the real kill-switch the governor dispatcher reads — not
+    // just cosmetic tick-lens bookkeeping.
+    assert.ok(globalThis._concordSTATE.settings.disabledHeartbeats.includes("fauna-spawner"));
+
+    const resumed = await call("heartbeatControl", ctxAdmin, {}, { moduleId: "fauna-spawner", op: "resume" });
     assert.equal(resumed.ok, true);
     assert.equal(resumed.result.enabled, true);
+    assert.ok(!globalThis._concordSTATE.settings.disabledHeartbeats.includes("fauna-spawner"));
   });
 
-  it("records a manual trigger request", () => {
-    const r = call("heartbeatControl", ctxA, {}, { moduleId: "repair-cycle", op: "trigger" });
+  it("trigger actually invokes the module immediately (not just a counter)", async () => {
+    let ran = false;
+    registerHeartbeat("repair-cycle", { frequency: 20, handler: () => { ran = true; } });
+    const r = await call("heartbeatControl", ctxAdmin, {}, { moduleId: "repair-cycle", op: "trigger" });
     assert.equal(r.ok, true);
     assert.equal(r.result.triggerRequests, 1);
     assert.ok(r.result.lastTriggerAt);
+    assert.equal(ran, true, "the registered handler should have actually run");
   });
 
   it("control state flows back into heartbeatRegistry", async () => {
-    call("heartbeatControl", ctxA, {}, { moduleId: "season-cycle", op: "trigger" });
-    const r = await call("heartbeatRegistry", ctxA, {}, {});
+    await call("heartbeatControl", ctxAdmin, {}, { moduleId: "season-cycle", op: "trigger" });
+    const r = await call("heartbeatRegistry", ctxAdmin, {}, {});
     assert.equal(r.ok, true);
     const m = r.result.modules.find((x) => x.id === "season-cycle");
-    if (m) assert.ok(m.triggerRequests >= 1);
+    assert.ok(m);
+    assert.ok(m.triggerRequests >= 1);
   });
 });
 
