@@ -16429,6 +16429,26 @@ globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
 
 const _ghostFleetYield = () => new Promise(r => { setTimeout(r, 2000); }); // 2s gap between modules
 
+// ADMIN GATE (ops lens substrate tabs): `attention_alloc`, `repair_network`,
+// `physical`, and `explore` are the operator-only "Substrate Ops" surface
+// of the `ops` lens (concord-frontend/app/lenses/ops/page.tsx renders
+// <AdminRequiredState> on forbidden, and `ops` is listed among the operator
+// lenses in tests/e2e/admin-gated-lenses.spec.ts) — but until this fix none
+// of their macros enforced that server-side, so any authenticated user
+// could force-focus up to 90% of the shared civilization LLM attention
+// budget, resize the total budget, or disconnect the shared distributed
+// repair network for everyone. Same class of gap as psyops (0de13bbe) and
+// the domains/admin.js console (7b0a52f1) — a dedicated local gate (not the
+// server.js-inline `requireAdminRole` used by admin.dashboard/logs/metrics,
+// which relies on its own HTTP-403 route translation) whose denial text
+// matches the frontend's `isForbidden()` regex (`/insufficient permission/i`)
+// so a non-admin caller sees the friendly gate instead of a stuck spinner.
+function requireOpsSubstrateAdminRole(ctx) {
+  const role = ctx?.actor?.role || "";
+  if (["owner", "admin", "founder"].includes(role)) return null;
+  return { ok: false, error: "Insufficient permissions: admin role required" };
+}
+
 async function initGhostFleet() {
   const startTime = Date.now();
   structuredLog("info", "ghost_fleet_init_start", { message: "Wiring emergent modules (staggered)..." });
@@ -17114,14 +17134,20 @@ async function initGhostFleet() {
     const physical = await import("./emergent/physical-dtu.js");
     GHOST_FLEET_STATUS.modules["physical-dtu"] = { loaded: true, loadedAt: new Date().toISOString() };
 
-    register("physical", "validate", (_ctx, input = {}) => physical.validatePhysicalDTU(input.dtu || input));
-    register("physical", "create_movement", (_ctx, input = {}) => physical.createMovementDTU(input));
-    register("physical", "create_craft", (_ctx, input = {}) => physical.createCraftDTU(input));
-    register("physical", "create_observation", (_ctx, input = {}) => physical.createObservationDTU(input));
-    register("physical", "create_spatial", (_ctx, input = {}) => physical.createSpatialDTU(input));
-    register("physical", "types", () => physical.listPhysicalDTUTypes());
-    register("physical", "query", (_ctx, input = {}) => physical.queryPhysicalDTUs(input));
-    register("physical", "metrics", () => physical.getPhysicalDTUMetrics());
+    // ADMIN GATE: the `physical` domain is the substrate-observability tab of
+    // the operator-only `ops` lens (frontend renders <AdminRequiredState> on
+    // 403 — see app/lenses/ops/page.tsx's `forbidden` check + this domain's
+    // listing in tests/e2e/admin-gated-lenses.spec.ts). Every macro below
+    // enforces the gate first, same idiom as requireAdminRole() below and
+    // the psyops/admin domain fixes.
+    register("physical", "validate", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return physical.validatePhysicalDTU(input.dtu || input); });
+    register("physical", "create_movement", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return physical.createMovementDTU(input); });
+    register("physical", "create_craft", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return physical.createCraftDTU(input); });
+    register("physical", "create_observation", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return physical.createObservationDTU(input); });
+    register("physical", "create_spatial", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return physical.createSpatialDTU(input); });
+    register("physical", "types", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return physical.listPhysicalDTUTypes(); });
+    register("physical", "query", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return physical.queryPhysicalDTUs(input); });
+    register("physical", "metrics", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return physical.getPhysicalDTUMetrics(); });
 
     structuredLog("info", "ghost_fleet_module_loaded", { name: "physical-dtu", macros: 8 });
   } catch (err) {
@@ -17158,12 +17184,16 @@ async function initGhostFleet() {
     const attention = await import("./emergent/attention-allocator.js");
     GHOST_FLEET_STATUS.modules["attention-allocator"] = { loaded: true, loadedAt: new Date().toISOString() };
 
-    register("attention_alloc", "status", () => attention.getStatus());
-    register("attention_alloc", "run", () => attention.runAttentionCycle());
-    register("attention_alloc", "focus", (_ctx, input = {}) => attention.setFocusOverride(input.domain, input.weight, input.minutes));
-    register("attention_alloc", "unfocus", () => attention.clearFocusOverride());
-    register("attention_alloc", "history", () => attention.getAllocationHistory());
-    register("attention_alloc", "budget", (_ctx, input = {}) => attention.setBudget(input.total));
+    // ADMIN GATE: same operator-only surface as `physical` above — the
+    // civilization-wide LLM attention budget is shared system state (a
+    // regular user calling `focus`/`budget` could force-focus up to 90% of
+    // compute onto one domain or resize the whole budget for every user).
+    register("attention_alloc", "status", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.getStatus(); });
+    register("attention_alloc", "run", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.runAttentionCycle(); });
+    register("attention_alloc", "focus", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.setFocusOverride(input.domain, input.weight, input.minutes); });
+    register("attention_alloc", "unfocus", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.clearFocusOverride(); });
+    register("attention_alloc", "history", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.getAllocationHistory(); });
+    register("attention_alloc", "budget", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.setBudget(input.total); });
 
     attention.init({ STATE });
     structuredLog("info", "ghost_fleet_module_loaded", { name: "attention-allocator", macros: 6, interval: "5min" });
@@ -17178,10 +17208,13 @@ async function initGhostFleet() {
     const repairNet = await import("./emergent/repair-network.js");
     GHOST_FLEET_STATUS.modules["repair-network"] = { loaded: true, loadedAt: new Date().toISOString() };
 
-    register("repair_network", "status", () => repairNet.getStatus());
-    register("repair_network", "push", () => repairNet.pushFixes());
-    register("repair_network", "pull", () => repairNet.pullFixes());
-    register("repair_network", "disconnect", () => repairNet.disconnect());
+    // ADMIN GATE: same operator-only surface — `disconnect` tears down the
+    // shared distributed repair network for everyone, so this must not be
+    // reachable by a regular authenticated user.
+    register("repair_network", "status", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return repairNet.getStatus(); });
+    register("repair_network", "push", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return repairNet.pushFixes(); });
+    register("repair_network", "pull", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return repairNet.pullFixes(); });
+    register("repair_network", "disconnect", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return repairNet.disconnect(); });
 
     repairNet.init({ STATE });
     structuredLog("info", "ghost_fleet_module_loaded", { name: "repair-network", macros: 4, enabled: process.env.REPAIR_NETWORK_ENABLED === "true" });
@@ -17239,9 +17272,10 @@ async function initGhostFleet() {
     const reality = await import("./emergent/reality-explorer.js");
     GHOST_FLEET_STATUS.modules["reality-explorer"] = { loaded: true, loadedAt: new Date().toISOString() };
 
-    register("explore", "run", (_ctx, input = {}) => reality.exploreAdjacent(input.constraints || {}, input.domain));
-    register("explore", "history", (_ctx, input = {}) => reality.getExplorationHistory(input.limit));
-    register("explore", "save", (_ctx, input = {}) => reality.saveExploration(input.id));
+    // ADMIN GATE: same operator-only surface (ops lens's "Explorations" tab).
+    register("explore", "run", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return reality.exploreAdjacent(input.constraints || {}, input.domain); });
+    register("explore", "history", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return reality.getExplorationHistory(input.limit); });
+    register("explore", "save", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return reality.saveExploration(input.id); });
 
     reality.init({ STATE });
     structuredLog("info", "ghost_fleet_module_loaded", { name: "reality-explorer", macros: 3 });
