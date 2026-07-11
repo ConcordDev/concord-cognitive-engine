@@ -33,6 +33,25 @@
 // (damage / hp / count / frame samples) calls `badNumericField` BEFORE the
 // write, rejecting NaN/Infinity/1e308/negative instead of silently clamping
 // them to an accepted row (the macro-assassin's V2 vector probes exactly this).
+//
+// ARENA WIRING (Wave-3 audit fix): the header above always claimed combat
+// "resolves through the production socket pipeline against the private
+// `sandbox` world" — but nothing ever created that world. `cityPresence`
+// requires the attacker to hold a live position row (`_userPositions`, set
+// only by the world-lens's `player:move` emits) AND the target to be a real
+// spawned NPC (`_npcState`, set only by `cityPresence.spawnNpc`). The
+// stand-alone Combat Sandbox page never sends `player:move` and nothing ever
+// spawned a "dummy_N" NPC, so `applyAttack` always returned
+// `attacker_not_found` / `target_not_found` and the arena's core "click a
+// dummy" interaction never produced a single `combat:hit` — dead on arrival.
+// `enterArena` below is the missing piece: it registers the caller into a
+// private per-user city (`sandbox_<userId>`) and spawns/refreshes real
+// training-dummy NPCs positioned within the socket path's attack range, so
+// the claim in this header is now actually true. The frontend calls it on
+// mount and whenever the dummy count/HP changes, and re-targets attacks at
+// the returned real npc ids (see `app/lenses/sandbox/page.tsx#syncArena`).
+
+import * as cityPresence from "../lib/city-presence.js";
 
 // Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE writing.
 // An absent/null field is fine (the macro uses its default). Returns null when
@@ -92,6 +111,8 @@ export default function registerSandboxMacros(register) {
     if (!Number.isFinite(n)) return dflt;
     return Math.min(hi, Math.max(lo, n));
   };
+  // Mirrors the frontend's MAX_DUMMIES (app/lenses/sandbox/page.tsx).
+  const MAX_ARENA_DUMMIES = 10;
 
   // The weapon / skill catalog the sandbox can equip. These mirror the
   // categories the production combat pipeline accepts; they are a fixed
@@ -125,6 +146,71 @@ export default function registerSandboxMacros(register) {
   // ─────────────────────────────────────────────────────────────────────
   registerLensAction("sandbox", "catalog", (_ctx, _a, _params = {}) => {
     return { ok: true, result: { weapons: WEAPONS, skills: SKILLS, behaviors: BEHAVIORS } };
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // enterArena — makes the "click a dummy → real combat pipeline" claim in
+  // the file header actually true. Registers the caller into a private
+  // per-user city (`sandbox_<userId>`) via cityPresence.updateUserPosition
+  // (so the socket combat:attack handler's `attacker_not_found` check
+  // passes) and spawns/refreshes real training-dummy NPCs via
+  // cityPresence.spawnNpc, positioned within the socket path's default
+  // attack range (3m) of the registered attacker (so the range check
+  // passes too). Idempotent: calling it again with the same count/hp
+  // re-registers the position. `params.reset` controls whether existing
+  // dummy NPCs are healed back to `hp` (mount / "Reset" button / applying a
+  // dummy preset — full re-heal is correct there) or left alone so an
+  // add/remove-dummy count change doesn't silently heal a dummy the player
+  // is mid-fight with (the response always echoes each dummy's REAL current
+  // server health via `existing.health` so the client can resync from
+  // authoritative state instead of drifting from its own local subtraction).
+  // [S] Real-npc arena — the substrate LoadoutPicker/DummyPresetPanel/
+  // TelemetryOverlay/ReplayPanel feel-tune against.
+  // ─────────────────────────────────────────────────────────────────────
+  registerLensAction("sandbox", "enterArena", (ctx, _a, params = {}) => {
+    try {
+      const uid = actor(ctx);
+      if (!uid || uid === "anon") return { ok: false, error: "auth_required" };
+      const bad = badNumericField(params, ["count", "hp"]);
+      if (bad) return { ok: false, error: `invalid_${bad}` };
+      const count = Math.round(clampNum(params.count, 1, MAX_ARENA_DUMMIES, 3));
+      const hp = Math.round(clampNum(params.hp, 1, 100000, 100));
+      const reset = !!params.reset;
+      const cityId = `sandbox_${uid}`;
+
+      // Place the attacker just outside the dummy cluster. The 3D arena's
+      // visual layout is purely cosmetic (client-only Three.js positions);
+      // these are the real coordinates the shared combat pipeline's
+      // range/distance checks run against, so they only need internal
+      // consistency with the dummy positions below, not the render.
+      cityPresence.updateUserPosition(uid, {
+        cityId, worldId: cityId, x: 0, y: 0, z: 1.6,
+        action: "idle", currentAnimation: "idle",
+      });
+
+      const dummies = [];
+      const spacing = 0.35; // keeps the widest (10-dummy) row within the 3m attack range
+      for (let i = 0; i < count; i++) {
+        const npcId = `${cityId}_dummy_${i}`;
+        const x = (i - (count - 1) / 2) * spacing;
+        const existing = cityPresence.getNpc(npcId);
+        if (reset || !existing) {
+          cityPresence.spawnNpc({
+            cityId, id: npcId, name: `Training Dummy ${i + 1}`,
+            x, y: 0, z: 0, health: hp, isHostile: false,
+          });
+          dummies.push({ index: i, npcId, hp });
+        } else {
+          dummies.push({ index: i, npcId, hp: existing.health });
+        }
+      }
+      // Despawn any dummies left over from a larger prior session in this arena.
+      for (let i = count; i < MAX_ARENA_DUMMIES; i++) {
+        cityPresence.despawnNpc(`${cityId}_dummy_${i}`);
+      }
+
+      return { ok: true, result: { cityId, dummies } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   // ─────────────────────────────────────────────────────────────────────

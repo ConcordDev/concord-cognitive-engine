@@ -18,6 +18,9 @@ import {
   Trash2,
   CheckCircle2,
   Play,
+  Gauge,
+  ListChecks,
+  Route as RouteIcon,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -142,6 +145,72 @@ interface MacroExplorerResult {
   totalAll: number;
   domains: { domain: string; count: number }[];
   available: boolean;
+}
+
+// ── Quality Lab types — shapes returned by meta.qualityMetrics /
+// meta.actionAnalytics / meta.systemReflection (server/domains/meta.js) ──────
+
+interface QualityField {
+  name: string;
+  value: string;
+  required: boolean;
+  expectedType: '' | 'string' | 'number' | 'boolean' | 'date' | 'email' | 'url' | 'array';
+  updatedAt: string; // ISO date, optional
+}
+
+interface QualityMetricsResult {
+  message?: string;
+  totalFields?: number;
+  completeness?: { requiredFilled: number; requiredTotal: number; scoreRequired: number; scoreAll: number };
+  consistency?: { score: number; consistentFields: number; inconsistencies: { field: string; expected: string; actual: string; value: string }[] };
+  freshness?: { avgScore: number; halfLifeDays: number; fields: { name: string; freshness: number; ageDays?: number; ageLabel: string }[]; staleCount: number };
+  overall?: { score: number; grade: string; weights: Record<string, number> };
+}
+
+interface ActionRow {
+  userId: string;
+  action: string;
+  timestamp: string; // ISO datetime
+  durationMs: string;
+}
+
+interface ActionAnalyticsResult {
+  message?: string;
+  totalActions?: number;
+  uniqueActions?: number;
+  uniqueUsers?: number;
+  totalSessions?: number;
+  avgSessionLength?: number;
+  frequencyDistribution?: { action: string; count: number; percentage: number }[];
+  topCoOccurrences?: { pair: string; count: number }[];
+  topTransitions?: { transition: string; count: number }[];
+  topJourneys?: { journey: string; count: number }[];
+  hourlyDistribution?: number[];
+  peakHour?: number;
+}
+
+interface MetricRow {
+  timestamp: string; // ISO datetime
+  responseMs: string;
+  success: boolean;
+  endpoint: string;
+  cpuPercent: string;
+  memPercent: string;
+}
+
+interface SystemReflectionResult {
+  message?: string;
+  totalRequests?: number;
+  overallErrorRate?: number;
+  responseTime?: { mean: number; stdDev: number; p50: number; p90: number; p95: number; p99: number; min: number; max: number };
+  errorTrend?: string;
+  capacity?: {
+    cpu: { avg: number; max: number; p95: number } | null;
+    memory: { avg: number; max: number; p95: number } | null;
+    cpuHealth: string;
+    memHealth: string;
+  };
+  endpoints?: { name: string; requests: number; errorRate: number; avgResponseMs: number }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1345,10 +1414,501 @@ function MacroExplorerPanel() {
 }
 
 // ===========================================================================
-// Dev Portal — tabbed shell over the 7 observability surfaces
+// Quality Lab — structured-input runners for meta.qualityMetrics /
+// meta.actionAnalytics / meta.systemReflection. These three macros are real
+// deterministic analytics engines (percentile math, session segmentation,
+// completeness/consistency/freshness scoring) that take a user-supplied
+// dataset rather than reading live server state — so "bring your own rows"
+// is the honest shape for this UI, but the *input* is a structured editable
+// table (add/remove row), never a raw JSON textarea (Wave 3 audit fix,
+// 2026-07-11 — these 3 macros previously had no purpose-built panel and were
+// reachable only via the generic Macro Explorer "try it" box).
 // ===========================================================================
 
-type PortalTab = 'catalog' | 'graph' | 'metrics' | 'health' | 'timeline' | 'alerts' | 'macros';
+function ScoreBar({ label, value, tone = 'purple' }: { label: string; value: number; tone?: 'purple' | 'green' | 'amber' }) {
+  const pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
+  const barColor = tone === 'green' ? 'bg-emerald-400' : tone === 'amber' ? 'bg-amber-400' : 'bg-neon-purple';
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-[11px] text-zinc-400">
+        <span>{label}</span>
+        <span className="font-mono text-zinc-200">{pct}%</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+const GRADE_COLOR: Record<string, string> = {
+  A: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30',
+  B: 'text-neon-cyan bg-neon-cyan/10 border-neon-cyan/30',
+  C: 'text-amber-300 bg-amber-500/10 border-amber-500/30',
+  D: 'text-orange-300 bg-orange-500/10 border-orange-500/30',
+  F: 'text-rose-300 bg-rose-500/10 border-rose-500/30',
+};
+
+function QualityMetricsPanel() {
+  const [rows, setRows] = useState<QualityField[]>([
+    { name: '', value: '', required: true, expectedType: '', updatedAt: '' },
+  ]);
+  const [result, setResult] = useState<QualityMetricsResult | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const updateRow = (i: number, patch: Partial<QualityField>) =>
+    setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+  const addRow = () => setRows((r) => [...r, { name: '', value: '', required: true, expectedType: '', updatedAt: '' }]);
+  const removeRow = (i: number) => setRows((r) => r.filter((_, idx) => idx !== i));
+
+  const analyze = useCallback(async () => {
+    const fields = rows
+      .filter((r) => r.name.trim())
+      .map((r) => ({
+        name: r.name.trim(),
+        value: r.value,
+        required: r.required,
+        expectedType: r.expectedType || undefined,
+        updatedAt: r.updatedAt || undefined,
+      }));
+    if (fields.length === 0) {
+      setErr('Add at least one named field.');
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    const r = await lensRun<QualityMetricsResult>('meta', 'qualityMetrics', { data: { fields } });
+    setBusy(false);
+    if (r.data.ok && r.data.result) setResult(r.data.result);
+    else setErr(r.data.error || 'Analysis failed.');
+  }, [rows]);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-zinc-400">
+        Score a dataset&apos;s completeness, type consistency, and freshness. Add one row per field —
+        this mirrors what `meta.qualityMetrics` grades on a real artifact.
+      </p>
+
+      <div className="space-y-1.5">
+        {rows.map((row, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950/40 p-2">
+            <input
+              value={row.name}
+              onChange={(e) => updateRow(i, { name: e.target.value })}
+              placeholder="field name"
+              className="input-lattice w-32 text-xs"
+            />
+            <input
+              value={row.value}
+              onChange={(e) => updateRow(i, { value: e.target.value })}
+              placeholder="value"
+              className="input-lattice w-28 text-xs"
+            />
+            <select
+              value={row.expectedType}
+              onChange={(e) => updateRow(i, { expectedType: e.target.value as QualityField['expectedType'] })}
+              className="input-lattice text-xs"
+            >
+              <option value="">any type</option>
+              {['string', 'number', 'boolean', 'date', 'email', 'url', 'array'].map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={row.updatedAt}
+              onChange={(e) => updateRow(i, { updatedAt: e.target.value })}
+              className="input-lattice text-xs"
+            />
+            <label className="flex items-center gap-1 text-[11px] text-zinc-400">
+              <input type="checkbox" checked={row.required} onChange={(e) => updateRow(i, { required: e.target.checked })} />
+              required
+            </label>
+            <button onClick={() => removeRow(i)} className="ml-auto rounded p-1 text-zinc-500 hover:text-rose-400">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button onClick={addRow} className="inline-flex items-center gap-1 rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:border-zinc-600">
+          <Plus className="h-3.5 w-3.5" /> Add field
+        </button>
+        <button
+          onClick={analyze}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+          Analyze
+        </button>
+      </div>
+
+      {err && <ErrorLine msg={err} />}
+
+      {result && result.message && <Empty msg={result.message} />}
+
+      {result && result.overall && (
+        <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Quality score</p>
+            <span className={`rounded border px-2 py-0.5 font-mono text-sm font-bold ${GRADE_COLOR[result.overall.grade] || GRADE_COLOR.C}`}>
+              {result.overall.grade} &middot; {Math.round(result.overall.score * 100)}%
+            </span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <ScoreBar label="Completeness (required)" value={result.completeness?.scoreRequired ?? 0} tone="green" />
+            <ScoreBar label="Consistency" value={result.consistency?.score ?? 0} tone="purple" />
+            <ScoreBar label="Freshness" value={result.freshness?.avgScore ?? 0} tone="amber" />
+          </div>
+          {(result.consistency?.inconsistencies?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-1 text-[11px] text-zinc-400">Type inconsistencies</p>
+              <div className="space-y-1">
+                {result.consistency!.inconsistencies.map((inc, i) => (
+                  <div key={i} className="rounded border border-rose-500/20 bg-rose-500/5 px-2 py-1 text-[11px] text-rose-300">
+                    <span className="font-mono">{inc.field}</span>: expected {inc.expected}, got {inc.actual} (&quot;{inc.value}&quot;)
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {(result.freshness?.staleCount ?? 0) > 0 && (
+            <p className="text-[11px] text-amber-300">{result.freshness!.staleCount} field(s) stale (older than {result.freshness!.halfLifeDays}-day half-life).</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActionAnalyticsPanel() {
+  const [rows, setRows] = useState<ActionRow[]>([
+    { userId: '', action: '', timestamp: '', durationMs: '' },
+  ]);
+  const [result, setResult] = useState<ActionAnalyticsResult | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const updateRow = (i: number, patch: Partial<ActionRow>) =>
+    setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+  const addRow = () => setRows((r) => [...r, { userId: '', action: '', timestamp: '', durationMs: '' }]);
+  const removeRow = (i: number) => setRows((r) => r.filter((_, idx) => idx !== i));
+
+  const analyze = useCallback(async () => {
+    const actionLog = rows
+      .filter((r) => r.action.trim() && r.timestamp)
+      .map((r) => ({
+        userId: r.userId.trim() || undefined,
+        action: r.action.trim(),
+        timestamp: r.timestamp,
+        durationMs: r.durationMs ? Number(r.durationMs) : undefined,
+      }));
+    if (actionLog.length === 0) {
+      setErr('Add at least one row with an action and a timestamp.');
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    const r = await lensRun<ActionAnalyticsResult>('meta', 'actionAnalytics', { data: { actionLog } });
+    setBusy(false);
+    if (r.data.ok && r.data.result) setResult(r.data.result);
+    else setErr(r.data.error || 'Analysis failed.');
+  }, [rows]);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-zinc-400">
+        Segment an action log into sessions and surface frequency, co-occurrence, and transition
+        patterns — what `meta.actionAnalytics` computes over real usage telemetry.
+      </p>
+
+      <div className="space-y-1.5">
+        {rows.map((row, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950/40 p-2">
+            <input
+              value={row.userId}
+              onChange={(e) => updateRow(i, { userId: e.target.value })}
+              placeholder="userId (optional)"
+              className="input-lattice w-32 text-xs"
+            />
+            <input
+              value={row.action}
+              onChange={(e) => updateRow(i, { action: e.target.value })}
+              placeholder="action name"
+              className="input-lattice w-32 text-xs"
+            />
+            <input
+              type="datetime-local"
+              value={row.timestamp}
+              onChange={(e) => updateRow(i, { timestamp: e.target.value })}
+              className="input-lattice text-xs"
+            />
+            <input
+              value={row.durationMs}
+              onChange={(e) => updateRow(i, { durationMs: e.target.value.replace(/[^0-9]/g, '') })}
+              placeholder="duration ms"
+              className="input-lattice w-24 text-xs"
+            />
+            <button onClick={() => removeRow(i)} className="ml-auto rounded p-1 text-zinc-500 hover:text-rose-400">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button onClick={addRow} className="inline-flex items-center gap-1 rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:border-zinc-600">
+          <Plus className="h-3.5 w-3.5" /> Add event
+        </button>
+        <button
+          onClick={analyze}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+          Analyze
+        </button>
+      </div>
+
+      {err && <ErrorLine msg={err} />}
+      {result && result.message && <Empty msg={result.message} />}
+
+      {result && result.totalActions !== undefined && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {[
+              ['Actions', result.totalActions],
+              ['Unique actions', result.uniqueActions],
+              ['Users', result.uniqueUsers],
+              ['Sessions', result.totalSessions],
+              ['Peak hour', result.peakHour !== undefined ? `${result.peakHour}:00` : '—'],
+            ].map(([label, value]) => (
+              <div key={label as string} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
+                <div className="font-mono text-sm text-neon-cyan">{value as React.ReactNode}</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {(result.frequencyDistribution?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-1 text-[11px] uppercase tracking-wider text-zinc-400">Frequency distribution</p>
+              <div className="space-y-1">
+                {result.frequencyDistribution!.slice(0, 8).map((f) => (
+                  <div key={f.action} className="flex items-center gap-2 text-[11px]">
+                    <span className="w-24 truncate text-zinc-300">{f.action}</span>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-800">
+                      <div className="h-full rounded-full bg-neon-purple" style={{ width: `${f.percentage}%` }} />
+                    </div>
+                    <span className="w-12 text-right font-mono text-zinc-500">{f.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(result.topTransitions?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-1 text-[11px] uppercase tracking-wider text-zinc-400">Top transitions</p>
+              <div className="flex flex-wrap gap-1">
+                {result.topTransitions!.map((t) => (
+                  <span key={t.transition} className="rounded bg-lattice-surface px-1.5 py-0.5 text-[11px] text-zinc-300">
+                    {t.transition} <span className="text-zinc-500">&times;{t.count}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SystemReflectionPanel() {
+  const [rows, setRows] = useState<MetricRow[]>([
+    { timestamp: '', responseMs: '', success: true, endpoint: '', cpuPercent: '', memPercent: '' },
+  ]);
+  const [result, setResult] = useState<SystemReflectionResult | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const updateRow = (i: number, patch: Partial<MetricRow>) =>
+    setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+  const addRow = () => setRows((r) => [...r, { timestamp: '', responseMs: '', success: true, endpoint: '', cpuPercent: '', memPercent: '' }]);
+  const removeRow = (i: number) => setRows((r) => r.filter((_, idx) => idx !== i));
+
+  const analyze = useCallback(async () => {
+    const metrics = rows
+      .filter((r) => r.timestamp && r.responseMs)
+      .map((r) => ({
+        timestamp: r.timestamp,
+        responseMs: Number(r.responseMs),
+        success: r.success,
+        endpoint: r.endpoint.trim() || undefined,
+        cpuPercent: r.cpuPercent ? Number(r.cpuPercent) : undefined,
+        memPercent: r.memPercent ? Number(r.memPercent) : undefined,
+      }));
+    if (metrics.length === 0) {
+      setErr('Add at least one row with a timestamp and response time.');
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    const r = await lensRun<SystemReflectionResult>('meta', 'systemReflection', { data: { metrics } });
+    setBusy(false);
+    if (r.data.ok && r.data.result) setResult(r.data.result);
+    else setErr(r.data.error || 'Analysis failed.');
+  }, [rows]);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-zinc-400">
+        Response-time percentiles, error-rate trend, and capacity health over a sample set — what
+        `meta.systemReflection` computes over request telemetry.
+      </p>
+
+      <div className="space-y-1.5">
+        {rows.map((row, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950/40 p-2">
+            <input
+              type="datetime-local"
+              value={row.timestamp}
+              onChange={(e) => updateRow(i, { timestamp: e.target.value })}
+              className="input-lattice text-xs"
+            />
+            <input
+              value={row.responseMs}
+              onChange={(e) => updateRow(i, { responseMs: e.target.value.replace(/[^0-9.]/g, '') })}
+              placeholder="responseMs"
+              className="input-lattice w-24 text-xs"
+            />
+            <input
+              value={row.endpoint}
+              onChange={(e) => updateRow(i, { endpoint: e.target.value })}
+              placeholder="endpoint"
+              className="input-lattice w-32 text-xs"
+            />
+            <input
+              value={row.cpuPercent}
+              onChange={(e) => updateRow(i, { cpuPercent: e.target.value.replace(/[^0-9.]/g, '') })}
+              placeholder="cpu%"
+              className="input-lattice w-16 text-xs"
+            />
+            <input
+              value={row.memPercent}
+              onChange={(e) => updateRow(i, { memPercent: e.target.value.replace(/[^0-9.]/g, '') })}
+              placeholder="mem%"
+              className="input-lattice w-16 text-xs"
+            />
+            <label className="flex items-center gap-1 text-[11px] text-zinc-400">
+              <input type="checkbox" checked={row.success} onChange={(e) => updateRow(i, { success: e.target.checked })} />
+              success
+            </label>
+            <button onClick={() => removeRow(i)} className="ml-auto rounded p-1 text-zinc-500 hover:text-rose-400">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button onClick={addRow} className="inline-flex items-center gap-1 rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:border-zinc-600">
+          <Plus className="h-3.5 w-3.5" /> Add sample
+        </button>
+        <button
+          onClick={analyze}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+          Analyze
+        </button>
+      </div>
+
+      {err && <ErrorLine msg={err} />}
+      {result && result.message && <Empty msg={result.message} />}
+
+      {result && result.responseTime && (
+        <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
+          <div className="grid grid-cols-4 gap-2 text-center">
+            {(['p50', 'p90', 'p95', 'p99'] as const).map((k) => (
+              <div key={k} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5">
+                <div className="font-mono text-sm text-neon-cyan">{result.responseTime![k]}ms</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500">{k}</div>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-zinc-400">
+            <span>Error rate: <span className="font-mono text-zinc-200">{Math.round((result.overallErrorRate ?? 0) * 100)}%</span></span>
+            <span>Trend: <span className={`font-mono ${result.errorTrend === 'increasing' ? 'text-rose-300' : result.errorTrend === 'decreasing' ? 'text-emerald-300' : 'text-zinc-200'}`}>{result.errorTrend}</span></span>
+            {result.capacity?.cpuHealth && (
+              <span>CPU: <span className={`font-mono ${result.capacity.cpuHealth === 'critical' ? 'text-rose-300' : result.capacity.cpuHealth === 'warning' ? 'text-amber-300' : 'text-emerald-300'}`}>{result.capacity.cpuHealth}</span></span>
+            )}
+            {result.capacity?.memHealth && (
+              <span>Mem: <span className={`font-mono ${result.capacity.memHealth === 'critical' ? 'text-rose-300' : result.capacity.memHealth === 'warning' ? 'text-amber-300' : 'text-emerald-300'}`}>{result.capacity.memHealth}</span></span>
+            )}
+          </div>
+          {(result.endpoints?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-1 text-[11px] uppercase tracking-wider text-zinc-400">Endpoint breakdown</p>
+              <div className="space-y-1">
+                {result.endpoints!.map((e) => (
+                  <div key={e.name} className="flex items-center justify-between text-[11px] text-zinc-300">
+                    <span className="font-mono">{e.name}</span>
+                    <span className="text-zinc-500">{e.requests} req &middot; {Math.round(e.errorRate * 100)}% err &middot; {e.avgResponseMs}ms avg</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type QualityLabTab = 'quality' | 'actions' | 'reflection';
+const QUALITY_LAB_TABS: { key: QualityLabTab; label: string; icon: typeof Gauge }[] = [
+  { key: 'quality', label: 'Quality Metrics', icon: ListChecks },
+  { key: 'actions', label: 'Action Analytics', icon: RouteIcon },
+  { key: 'reflection', label: 'System Reflection', icon: Gauge },
+];
+
+function QualityLabPanel() {
+  const [sub, setSub] = useState<QualityLabTab>('quality');
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1 overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950/40 p-1">
+        {QUALITY_LAB_TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setSub(t.key)}
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+              sub === t.key ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+            }`}
+          >
+            <t.icon className="h-3.5 w-3.5" />
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {sub === 'quality' && <QualityMetricsPanel />}
+      {sub === 'actions' && <ActionAnalyticsPanel />}
+      {sub === 'reflection' && <SystemReflectionPanel />}
+    </div>
+  );
+}
+
+// ===========================================================================
+// Dev Portal — tabbed shell over the 8 observability surfaces
+// ===========================================================================
+
+type PortalTab = 'catalog' | 'graph' | 'metrics' | 'health' | 'timeline' | 'alerts' | 'macros' | 'quality-lab';
 
 const PORTAL_TABS: { key: PortalTab; label: string; icon: typeof Server }[] = [
   { key: 'catalog', label: 'Service Catalog', icon: Server },
@@ -1358,6 +1918,7 @@ const PORTAL_TABS: { key: PortalTab; label: string; icon: typeof Server }[] = [
   { key: 'timeline', label: 'Change Timeline', icon: GitCommitHorizontal },
   { key: 'alerts', label: 'Alerts', icon: Siren },
   { key: 'macros', label: 'Macro Explorer', icon: Terminal },
+  { key: 'quality-lab', label: 'Quality Lab', icon: Gauge },
 ];
 
 export function DevPortal() {
@@ -1372,7 +1933,7 @@ export function DevPortal() {
         </h2>
         <p className="text-xs text-zinc-400">
           Backstage-style service catalog, dependency graph, live metrics, health roll-up, change timeline,
-          alert surface, and macro explorer.
+          alert surface, macro explorer, and a quality lab for artifact/action/latency analysis.
         </p>
       </div>
 
@@ -1401,6 +1962,7 @@ export function DevPortal() {
         {tab === 'timeline' && <DeployTimelinePanel />}
         {tab === 'alerts' && <AlertSurfacePanel />}
         {tab === 'macros' && <MacroExplorerPanel />}
+        {tab === 'quality-lab' && <QualityLabPanel />}
       </div>
     </div>
   );

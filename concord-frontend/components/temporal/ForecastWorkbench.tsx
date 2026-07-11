@@ -6,19 +6,21 @@
  * for the temporal lens. Every panel here is wired to a real `temporal`
  * domain macro: dataset-import (CSV), timeSeriesDecompose, anomalyDetection,
  * forecast, holidayForecast (confidence intervals + holidays), changepoints,
- * multiSeasonality, backtest (MAE/MAPE), crossCorrelation. No mock data —
- * every value rendered is computed server-side from a user-supplied series.
+ * multiSeasonality, backtest (MAE/MAPE), crossCorrelation, simulate
+ * (linear-trend scenario projection). No mock data — every value rendered
+ * is computed server-side from a user-supplied series.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit, TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
   Upload, Database, Activity, TrendingUp, ScanLine, GitCommitHorizontal,
-  Waves, Gauge, Link2, Trash2, Loader2, BarChart3,
+  Waves, Gauge, Link2, Trash2, Loader2, BarChart3, GitFork,
 } from 'lucide-react';
 
 interface DatasetSummary {
@@ -39,7 +41,7 @@ interface DatasetFull {
 
 type AnalysisTab =
   | 'decompose' | 'forecast' | 'anomaly' | 'changepoints'
-  | 'seasonality' | 'backtest' | 'correlation';
+  | 'seasonality' | 'backtest' | 'correlation' | 'simulate';
 
 const ANALYSIS_TABS: { id: AnalysisTab; label: string; icon: typeof Activity }[] = [
   { id: 'forecast', label: 'Forecast', icon: TrendingUp },
@@ -49,6 +51,7 @@ const ANALYSIS_TABS: { id: AnalysisTab; label: string; icon: typeof Activity }[]
   { id: 'seasonality', label: 'Seasonality', icon: Waves },
   { id: 'backtest', label: 'Backtest', icon: Gauge },
   { id: 'correlation', label: 'Correlation', icon: Link2 },
+  { id: 'simulate', label: 'Scenarios', icon: GitFork },
 ];
 
 interface HolidayInput { name: string; index: string; window: string }
@@ -79,6 +82,20 @@ export function ForecastWorkbench() {
 
   // brushing window over the series chart [startIdx, endIdx]
   const [brush, setBrush] = useState<{ start: number; end: number } | null>(null);
+
+  // Discoverable keyboard shortcuts: 1-7 switch analysis tabs, R runs the
+  // active analysis. Registered here (not at the page level) since this
+  // component owns the tab/run state — see docs/UI_QUALITY_RUBRIC.md §2.
+  useLensCommand(
+    ANALYSIS_TABS.map((t, i) => ({
+      id: `tab-${t.id}`,
+      keys: String(i + 1),
+      description: `Switch to ${t.label} analysis`,
+      category: 'navigation' as const,
+      action: () => { setTab(t.id); setResult(null); },
+    })),
+    { lensId: 'temporal' }
+  );
 
   const loadDatasets = useCallback(async () => {
     const r = await lensRun('temporal', 'dataset-list', {});
@@ -185,6 +202,9 @@ export function ForecastWorkbench() {
       macro = 'backtest';
       input.testFraction = Number(testFraction) || 0.2;
       if (period) input.period = Number(period);
+    } else if (tab === 'simulate') {
+      macro = 'simulate';
+      input.horizon = Number(horizon) || 12;
     } else if (tab === 'correlation') {
       macro = 'crossCorrelation';
       if (!compareId) { setErr('Pick a second dataset to correlate against.'); setRunning(false); return; }
@@ -339,12 +359,13 @@ export function ForecastWorkbench() {
                 />
               </div>
 
-              {/* analysis tabs */}
+              {/* analysis tabs — 1-7 jump directly (see the ? shortcuts help) */}
               <div className="flex flex-wrap gap-1.5">
-                {ANALYSIS_TABS.map((t) => (
+                {ANALYSIS_TABS.map((t, i) => (
                   <button
                     key={t.id}
                     onClick={() => { setTab(t.id); setResult(null); }}
+                    title={`${t.label} (press ${i + 1})`}
                     className={cn(
                       'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors',
                       tab === t.id
@@ -352,6 +373,9 @@ export function ForecastWorkbench() {
                         : 'text-zinc-400 hover:bg-zinc-800 hover:text-white',
                     )}
                   >
+                    <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1 font-mono text-[9px] leading-none text-zinc-500">
+                      {i + 1}
+                    </kbd>
                     <t.icon className="h-3.5 w-3.5" />
                     {t.label}
                   </button>
@@ -457,7 +481,7 @@ function ParamControls(props: {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {(tab === 'forecast') && field('Horizon (steps)',
+        {(tab === 'forecast' || tab === 'simulate') && field('Horizon (steps)',
           <input className={cn(ds.input, 'text-xs')} type="number" value={horizon}
             onChange={(e) => setHorizon(e.target.value)} />)}
         {(tab === 'forecast' || tab === 'decompose' || tab === 'backtest') && field('Period (optional)',
@@ -783,6 +807,46 @@ function ResultPanel({ result, activeData }: { result: any; activeData: DatasetF
             </tbody>
           </table>
         </div>
+      </div>
+    );
+  }
+
+  if (macro === 'simulate') {
+    const histLen = activeData.values.length;
+    const hist = activeData.values.map((v, i) => ({
+      label: activeData.timestamps?.[i] || String(i),
+      observed: v as number | undefined,
+      expected: undefined as number | undefined,
+      optimistic: undefined as number | undefined,
+      pessimistic: undefined as number | undefined,
+    }));
+    const scen = result.scenarios || {};
+    const proj = (scen.expected || []).map((_: number, i: number) => ({
+      label: String(histLen + i),
+      observed: undefined as number | undefined,
+      expected: scen.expected?.[i],
+      optimistic: scen.optimistic?.[i],
+      pessimistic: scen.pessimistic?.[i],
+    }));
+    const data = [...hist, ...proj];
+    return (
+      <div className={ds.panel}>
+        <h3 className="mb-2 text-xs font-semibold text-zinc-200">
+          Scenario Simulation — {result.method} · {result.horizon} steps
+        </h3>
+        <div className="mb-3 flex flex-wrap gap-2">
+          <Stat label="Last value" value={result.lastValue} />
+          <Stat label="Trend / step" value={result.trendPerStep} />
+          <Stat label="Volatility (σ diff)" value={result.volatility} />
+          <Stat label="Final expected" value={result.finalExpected} />
+        </div>
+        <ChartKit kind="line" data={data} xKey="label" height={230}
+          series={[
+            { key: 'observed', label: 'Observed', color: '#06b6d4' },
+            { key: 'optimistic', label: 'Optimistic (~80%)', color: '#22c55e' },
+            { key: 'expected', label: 'Expected', color: '#f59e0b' },
+            { key: 'pessimistic', label: 'Pessimistic (~80%)', color: '#ef4444' },
+          ]} />
       </div>
     );
   }

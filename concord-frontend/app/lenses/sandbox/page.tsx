@@ -8,10 +8,14 @@
  * body-language, and combo evolution presentation in isolation from the
  * world simulation.
  *
- * The dummies map to real WorldNPC entries in a private `sandbox` world.
- * Combat resolves through the same /api/worlds/:worldId/combat/attack +
- * socket pipeline as the live world — including anti-cheat reach +
- * damage-cap validation. So feel measured here matches feel in production.
+ * The dummies map to real NPC entries in a private per-user `sandbox_<uid>`
+ * city, entered via the `sandbox.enterArena` macro (server/domains/sandbox.js)
+ * on mount and re-synced on every dummy-count/hp change. Combat resolves
+ * through the same `combat:attack` socket pipeline the live world uses —
+ * including the same anti-cheat reach + damage-cap validation — so feel
+ * measured here matches feel in production. `combat:hit` is a platform-wide
+ * broadcast, so the hit-log/HP handler below filters to only the arena's own
+ * dummy ids before reacting.
  *
  * Feel-tuning extras (loadouts, dummy presets, frame telemetry, slow-motion +
  * frame-step, replay record/playback) persist per user through the `sandbox`
@@ -25,6 +29,7 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -102,6 +107,11 @@ function CombatSandboxInner() {
   );
   const [hitLog, setHitLog] = useState<{ id: string; text: string; t: number }[]>([]);
   const [flashId, setFlashId] = useState<string | null>(null);
+  // Whether the current dummy ids are real server npc ids (sandbox.enterArena
+  // has resolved at least once). Attacks fired before this resolves would
+  // target a client-only placeholder id no NPC exists for — a guaranteed
+  // silent no-op — so fireAttack gates on it instead of spamming the socket.
+  const [arenaReady, setArenaReady] = useState(false);
 
   // Active loadout — drives the damage / weapon sent to the combat pipeline.
   const [loadout, setLoadout] = useState<ActiveLoadout>({
@@ -118,20 +128,66 @@ function CombatSandboxInner() {
   const timeScale = paused ? 0 : SPEED_STEPS[speedIdx];
 
   const replayController = useRef<ReplayController | null>(null);
+  // Mirrors `dummies` for the combat:hit subscriber below, which is mounted
+  // once on mount (empty dep array) and would otherwise close over a stale
+  // dummy-id list.
+  const dummiesRef = useRef(dummies);
+  dummiesRef.current = dummies;
+
+  // sandbox.enterArena registers the caller into a private per-user
+  // `sandbox_<uid>` city + spawns/refreshes real training-dummy NPCs there —
+  // the actual substrate the combat:attack socket path resolves against
+  // (attacker + target both have to be real cityPresence entries or the
+  // pipeline silently no-ops with zero visible effect). `reset` fully heals
+  // every dummy (mount / Reset button / applying a preset); omitted, only
+  // newly-added dummies are (re)spawned so an add/remove doesn't heal a
+  // dummy mid-fight — the response's per-dummy `hp` is always the server's
+  // authoritative current health.
+  const syncArena = useCallback(async (count: number, hp: number, opts: { reset?: boolean } = {}) => {
+    try {
+      const r = await lensRun('sandbox', 'enterArena', { count, hp, reset: !!opts.reset });
+      if (r.data?.ok && r.data.result) {
+        const info = r.data.result as { cityId: string; dummies: { index: number; npcId: string; hp: number }[] };
+        setDummies(
+          info.dummies
+            .slice()
+            .sort((a, b) => a.index - b.index)
+            .map((d) => ({ id: d.npcId, name: `Training Dummy ${d.index + 1}`, hp: d.hp, maxHp: hp })),
+        );
+        setArenaReady(true);
+      }
+    } catch {
+      // Best-effort — the raycast/socket path just stays a no-op until the
+      // next sync succeeds (mount retry, or the next user-triggered change).
+    }
+  }, []);
+
+  // Enter the arena once on mount.
+  useEffect(() => {
+    void syncArena(initial, DUMMY_HP, { reset: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Boot a socket connection so combat:telegraph / combat:hit /
   // combat:combo-evolved fire into the existing overlays.
   useEffect(() => {
     connectSocket();
-    const off = subscribe<{ attackerId: string; targetId: string; damage: number; isCrit?: boolean; heavy?: boolean; targetKilled?: boolean }>(
+    const off = subscribe<{ attackerId: string; targetId: string; damage: number; isCrit?: boolean; heavy?: boolean; targetKilled?: boolean; targetHealth?: number }>(
       'combat:hit',
       (h) => {
+        // combat:hit is a platform-wide broadcast (every player's combat, not
+        // just this arena's) — only react to hits against one of THIS
+        // session's dummy npc ids, or a live-world hit elsewhere would
+        // pollute the hit log / flash a dummy that wasn't actually struck.
+        if (!dummiesRef.current.some((d) => d.id === h.targetId)) return;
         setHitLog((prev) =>
           [...prev, { id: `hl-${Date.now()}-${Math.random()}`, text: `${h.attackerId} → ${h.targetId} (${Math.round(h.damage)}${h.isCrit ? ' crit' : ''})`, t: Date.now() }].slice(-12),
         );
         setDummies((prev) =>
           prev.map((d) =>
-            d.id === h.targetId ? { ...d, hp: Math.max(0, d.hp - Math.round(h.damage)) } : d,
+            d.id === h.targetId
+              ? { ...d, hp: typeof h.targetHealth === 'number' ? Math.max(0, h.targetHealth) : Math.max(0, d.hp - Math.round(h.damage)) }
+              : d,
           ),
         );
         setFlashId(h.targetId);
@@ -152,6 +208,7 @@ function CombatSandboxInner() {
 
   const fireAttack = useCallback(
     (targetId: string, heavy = false) => {
+      if (!arenaReady) return;
       const sock = getSocket();
       sock.emit('combat:attack', {
         targetId,
@@ -167,20 +224,27 @@ function CombatSandboxInner() {
         worldId: SANDBOX_WORLD_ID,
       });
     },
-    [loadout, behaviorId],
+    [loadout, behaviorId, arenaReady],
   );
 
   const resetDummies = () => {
     setDummies((prev) => prev.map((d) => ({ ...d, hp: d.maxHp })));
     setHitLog([]);
+    void syncArena(dummies.length, dummyHp, { reset: true });
   };
 
   const addDummy = () => {
+    if (dummies.length >= MAX_DUMMIES) return;
+    const nextCount = dummies.length + 1;
     setDummies((prev) => (prev.length >= MAX_DUMMIES ? prev : [...prev, makeDummy(prev.length, dummyHp)]));
+    void syncArena(nextCount, dummyHp, { reset: false });
   };
 
   const removeDummy = () => {
+    if (dummies.length <= 1) return;
+    const nextCount = dummies.length - 1;
     setDummies((prev) => (prev.length <= 1 ? prev : prev.slice(0, -1)));
+    void syncArena(nextCount, dummyHp, { reset: false });
   };
 
   // Apply a saved dummy behavior preset: rebuild the arena dummies.
@@ -189,7 +253,8 @@ function CombatSandboxInner() {
     setDummyHp(cfg.hp);
     setDummies(Array.from({ length: cfg.count }, (_, i) => makeDummy(i, cfg.hp)));
     setHitLog([]);
-  }, []);
+    void syncArena(cfg.count, cfg.hp, { reset: true });
+  }, [syncArena]);
 
   // Slow-motion + frame-step controls.
   const cycleSpeed = useCallback(() => {
@@ -252,6 +317,11 @@ function CombatSandboxInner() {
           <span className="text-slate-400">skill: {loadout.skillId}</span>
           <span className="text-slate-400">dummies: {dummies.length}</span>
           <span className="text-slate-400">aggregate HP: {totalHp}/{totalMax}</span>
+          {!arenaReady && (
+            <span className="flex items-center gap-1 text-amber-400/80" aria-live="polite">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" /> entering arena…
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {/* Slow-motion + frame-step controls. */}

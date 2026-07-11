@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react';
-import { lensRun } from '@/lib/api/client';
+import { runPersona } from './persona-envelope';
 
 export interface PersonaDetail {
   id: string;
@@ -79,19 +79,19 @@ export function PersonaEditor({
       payload.personaId = existing.id;
       if (existing.published && changelog.trim()) {
         payload.changelog = changelog.trim();
-        r = await lensRun('personas', 'revise', payload);
+        r = await runPersona('revise', payload);
       } else {
-        r = await lensRun('personas', 'update', payload);
+        r = await runPersona('update', payload);
       }
     } else {
-      r = await lensRun('personas', 'create', payload);
+      r = await runPersona('create', payload);
     }
     setBusy(false);
-    if (r.data?.ok) {
-      const res = r.data.result as any;
+    if (r.ok) {
+      const res = r.data as any;
       onSaved(res?.persona?.id || existing?.id || res?.personaId);
     } else {
-      setErr(r.data?.error || 'save_failed');
+      setErr(r.error || 'save_failed');
     }
   };
 

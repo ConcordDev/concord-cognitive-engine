@@ -10,10 +10,9 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useState, useMemo, useEffect } from 'react';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion } from 'framer-motion';
 import {
@@ -30,8 +29,6 @@ import {
   BarChart3,
   Clock,
   Filter,
-  ToggleLeft,
-  ToggleRight,
   Gauge,
   TrendingUp,
   TrendingDown,
@@ -244,12 +241,12 @@ export default function AffectLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
 
   // --- Domain action state (backend analysis tools) ---
-  const runAction = useRunArtifact('affect');
   const [isRunning, setIsRunning] = useState<string | null>(null);
   const [sentimentResult, setSentimentResult] = useState<Record<string, unknown> | null>(null);
   const [timelineResult, setTimelineResult] = useState<Record<string, unknown> | null>(null);
   const [empathyResult, setEmpathyResult] = useState<Record<string, unknown> | null>(null);
   const [patternResult, setPatternResult] = useState<Record<string, unknown> | null>(null);
+  const [analysisText, setAnalysisText] = useState('');
 
   // --- Lens Bridge (mirrors affect state into universal artifact system) ---
   const bridge = useLensBridge('affect', 'snapshot');
@@ -301,6 +298,34 @@ export default function AffectLensPage() {
     refetchInterval: 5000,
   });
 
+  // Real journal text for the Analysis Tools tab — sourced from the user's own
+  // mood check-in notes/prompt answers (the `checkin` macro), never from the
+  // ATS 7D state snapshot. sentimentAnalysis/emotionTimeline/empathyMap/
+  // detect-patterns all require { text } or { entries: [{text,timestamp}] };
+  // the ATS state (v/a/s/c/g/t/f) has no text field at all.
+  const { data: checkinHistoryResult } = useQuery({
+    queryKey: ['affect-checkin-history-for-analysis'],
+    queryFn: () =>
+      lensRun<{ entries?: Array<{ id: string; note: string; promptAnswer: string; createdAt: string }> }>(
+        'affect',
+        'checkinHistory',
+        { limit: 200 }
+      ).then((r) => r.data.result),
+    staleTime: 15000,
+  });
+
+  const journalEntries = useMemo(() => {
+    const entries = checkinHistoryResult?.entries || [];
+    return entries
+      .map((e) => ({
+        id: e.id,
+        text: [e.note, e.promptAnswer].filter((s) => typeof s === 'string' && s.trim()).join('. ').trim(),
+        timestamp: e.createdAt,
+      }))
+      .filter((e) => e.text.length > 0)
+      .reverse(); // checkinHistory is newest-first; analysis wants chronological order
+  }, [checkinHistoryResult]);
+
   // --- Mutations ---
 
   const emitEvent = useMutation({
@@ -330,34 +355,6 @@ export default function AffectLensPage() {
     },
   });
 
-  // --- Policy toggle via artifact action ---
-  const togglePolicy = useMutation({
-    mutationFn: async ({ category, key, newValue }: { category: string; key: string; newValue: boolean }) => {
-      // Use the lens artifact action system to request a policy toggle
-      if (bridge.selectedId) {
-        return runAction.mutateAsync({
-          id: bridge.selectedId,
-          action: 'togglePolicy',
-          params: { category, key, value: newValue, sessionId },
-        });
-      }
-      // Fallback: emit a CUSTOM event carrying the toggle payload
-      return apiHelpers.affect.emit(sessionId, {
-        type: 'CUSTOM',
-        intensity: 0,
-        polarity: 0,
-        payload: { action: 'togglePolicy', category, key, value: newValue },
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['affect-policy', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['affect-state', sessionId] });
-    },
-    onError: (err) => {
-      console.error('Policy toggle failed:', err instanceof Error ? err.message : err);
-    },
-  });
-
   // --- Derived data ---
 
   const affectState = useMemo(() => {
@@ -381,18 +378,69 @@ export default function AffectLensPage() {
     }
   }, [affectState, bridge]);
 
-  // --- Domain action handler ---
-  const handleAnalysisAction = async (
-    action: string,
-    setter: (val: Record<string, unknown> | null) => void
-  ) => {
-    if (!bridge.selectedId) return;
-    setIsRunning(action);
+  // --- Domain action handlers ---
+  // Each of these calls the real affect.* analysis macro directly (via the
+  // /api/lens/run virtual-artifact path, `lensRun`) with the shape the
+  // handler actually reads — never through the artifact-bridge snapshot,
+  // whose synced data is the 7D ATS state (v/a/s/c/g/t/f) and has no text.
+  const runSentimentAnalysis = async () => {
+    const text = analysisText.trim() || journalEntries.map((e) => e.text).join('. ');
+    if (!text) {
+      setSentimentResult({ message: 'No text provided for sentiment analysis.' });
+      return;
+    }
+    setIsRunning('sentimentAnalysis');
     try {
-      const res = await runAction.mutateAsync({ id: bridge.selectedId, action });
-      if (res.ok === false) { setter({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` } as Record<string, unknown>); } else { setter((res.result as Record<string, unknown>) || null); }
+      const r = await lensRun<Record<string, unknown>>('affect', 'sentimentAnalysis', { text });
+      setSentimentResult(r.data.ok && r.data.result ? r.data.result : { message: r.data.error || 'Analysis failed' });
     } catch (e) {
-      console.error(`Action ${action} failed:`, e);
+      setSentimentResult({ message: e instanceof Error ? e.message : 'Analysis failed' });
+    }
+    setIsRunning(null);
+  };
+
+  const runEmotionTimeline = async () => {
+    if (journalEntries.length === 0) {
+      setTimelineResult({ message: 'No journal entries yet. Log a few mood check-ins with notes (Mood tab) to trace an emotional arc.' });
+      return;
+    }
+    setIsRunning('emotionTimeline');
+    try {
+      const r = await lensRun<Record<string, unknown>>('affect', 'emotionTimeline', { entries: journalEntries });
+      setTimelineResult(r.data.ok && r.data.result ? r.data.result : { message: r.data.error || 'Timeline build failed' });
+    } catch (e) {
+      setTimelineResult({ message: e instanceof Error ? e.message : 'Timeline build failed' });
+    }
+    setIsRunning(null);
+  };
+
+  const runEmpathyMap = async () => {
+    if (journalEntries.length === 0) {
+      setEmpathyResult({ message: 'No journal entries yet. Log a few mood check-ins with notes (Mood tab) to build an empathy map.' });
+      return;
+    }
+    setIsRunning('empathyMap');
+    try {
+      const feedback = journalEntries.map((e) => ({ userId: 'self', text: e.text, context: e.timestamp }));
+      const r = await lensRun<Record<string, unknown>>('affect', 'empathyMap', { feedback });
+      setEmpathyResult(r.data.ok && r.data.result ? r.data.result : { message: r.data.error || 'Empathy map failed' });
+    } catch (e) {
+      setEmpathyResult({ message: e instanceof Error ? e.message : 'Empathy map failed' });
+    }
+    setIsRunning(null);
+  };
+
+  const runDetectPatterns = async () => {
+    if (journalEntries.length === 0) {
+      setPatternResult({ message: 'No journal entries yet. Log a few mood check-ins with notes (Mood tab) to detect patterns.' });
+      return;
+    }
+    setIsRunning('detect-patterns');
+    try {
+      const r = await lensRun<Record<string, unknown>>('affect', 'detect-patterns', { entries: journalEntries });
+      setPatternResult(r.data.ok && r.data.result ? r.data.result : { message: r.data.error || 'Pattern detection failed' });
+    } catch (e) {
+      setPatternResult({ message: e instanceof Error ? e.message : 'Pattern detection failed' });
     }
     setIsRunning(null);
   };
@@ -1159,7 +1207,7 @@ export default function AffectLensPage() {
               Affect Policies
             </h2>
             <p className="text-sm text-gray-400 mb-4">
-              Policies govern how the emotional state responds to events. They define thresholds, dampening factors, and regulatory behaviors.
+              Read-only OS control signals, continuously re-derived from the 7D affective state above (style/cognition/memory/safety weights the chat, council, and agent-mode systems read). They are computed, not user-set.
             </p>
             {Object.keys(policyData).length > 0 ? (
               <div className="space-y-4">
@@ -1183,8 +1231,18 @@ export default function AffectLensPage() {
                         <div className="space-y-2">
                           {Object.entries(values as Record<string, unknown>).map(
                             ([key, val]) => {
-                              const isBoolean = typeof val === 'boolean';
+                              // Every AffectPolicy field (style/cognition/memory/safety) is a
+                              // continuously-derived control signal computed from the 7D state
+                              // (server/affect/policy.js) — there is no boolean/settable field
+                              // and no server-side override macro, so this is read-only by
+                              // construction. latencyBudgetMs is the one field outside 0..1
+                              // (1000-15000ms), so it gets its own normalization for the bar.
                               const isNumber = typeof val === 'number';
+                              const barFrac = isNumber
+                                ? key === 'latencyBudgetMs'
+                                  ? clamp((val as number) / 15000, 0, 1)
+                                  : clamp(val as number, 0, 1)
+                                : 0;
                               return (
                                 <div
                                   key={key}
@@ -1196,38 +1254,18 @@ export default function AffectLensPage() {
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {isBoolean ? (
-                                      <button
-                                        onClick={() => togglePolicy.mutate({ category, key, newValue: !val })}
-                                        disabled={togglePolicy.isPending}
-                                        className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50"
-                                        title={`Click to toggle ${key.replace(/_/g, ' ')} ${val ? 'off' : 'on'}`}
-                                      >
-                                        {val ? (
-                                          <ToggleRight className="w-5 h-5 text-green-400" />
-                                        ) : (
-                                          <ToggleLeft className="w-5 h-5 text-gray-400" />
-                                        )}
-                                        <span
-                                          className={`text-xs font-medium ${
-                                            val ? 'text-green-400' : 'text-gray-400'
-                                          }`}
-                                        >
-                                          {val ? 'ON' : 'OFF'}
-                                        </span>
-                                      </button>
-                                    ) : isNumber ? (
+                                    {isNumber ? (
                                       <div className="flex items-center gap-2">
                                         <div className="w-16 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
                                           <div
                                             className="h-full rounded-full bg-neon-cyan"
-                                            style={{
-                                              width: `${clamp(val as number, 0, 1) * 100}%`,
-                                            }}
+                                            style={{ width: `${barFrac * 100}%` }}
                                           />
                                         </div>
                                         <span className="font-mono text-sm text-neon-cyan">
-                                          {(val as number).toFixed(3)}
+                                          {key === 'latencyBudgetMs'
+                                            ? `${(val as number).toFixed(0)}ms`
+                                            : (val as number).toFixed(3)}
                                         </span>
                                       </div>
                                     ) : (
@@ -1526,21 +1564,33 @@ export default function AffectLensPage() {
       {activeTab === 'analysis' && (
         <div className="space-y-6">
           {/* Intro */}
-          <div className="panel p-4">
-            <h2 className="font-semibold mb-2 flex items-center gap-2">
+          <div className="panel p-4 space-y-3">
+            <h2 className="font-semibold mb-1 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-neon-pink" />
               Affect Analysis Engine
             </h2>
             <p className="text-sm text-gray-400">
-              Run domain-specific analysis actions against the current affect state snapshot.
-              Each tool calls the backend computation engine and returns structured results.
+              Real NLP tools (VAD sentiment scoring, emotional-arc detection, empathy mapping,
+              pattern/trigger detection) run against your own words &mdash; either pasted below,
+              or your recent mood check-in notes &amp; journal answers (Mood tab).
             </p>
-            {!bridge.selectedId && (
-              <div className="mt-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                No artifact synced yet. Affect state will sync automatically once dimensional data loads.
-              </div>
-            )}
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">
+                Text to analyze (optional &mdash; leave blank to use your journal notes)
+              </label>
+              <textarea
+                value={analysisText}
+                onChange={(e) => setAnalysisText(e.target.value)}
+                rows={2}
+                placeholder="Paste or type text here for Sentiment Analysis…"
+                className="input-lattice w-full text-sm resize-none"
+              />
+            </div>
+            <p className="text-xs text-gray-400">
+              {journalEntries.length > 0
+                ? `${journalEntries.length} journal entr${journalEntries.length === 1 ? 'y' : 'ies'} with notes available for Timeline / Empathy Map / Pattern Detection.`
+                : 'No journal entries with notes yet — log a mood check-in with a note (Mood tab) to power Timeline / Empathy Map / Pattern Detection.'}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1557,8 +1607,8 @@ export default function AffectLensPage() {
                   Sentiment Analysis
                 </h2>
                 <button
-                  onClick={() => handleAnalysisAction('sentimentAnalysis', setSentimentResult)}
-                  disabled={isRunning !== null || !bridge.selectedId}
+                  onClick={runSentimentAnalysis}
+                  disabled={isRunning !== null || (!analysisText.trim() && journalEntries.length === 0)}
                   className="btn-neon text-xs flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isRunning === 'sentimentAnalysis' ? (
@@ -1705,8 +1755,8 @@ export default function AffectLensPage() {
                   Emotion Timeline
                 </h2>
                 <button
-                  onClick={() => handleAnalysisAction('emotionTimeline', setTimelineResult)}
-                  disabled={isRunning !== null || !bridge.selectedId}
+                  onClick={runEmotionTimeline}
+                  disabled={isRunning !== null || journalEntries.length === 0}
                   className="btn-neon text-xs flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isRunning === 'emotionTimeline' ? (
@@ -1868,8 +1918,8 @@ export default function AffectLensPage() {
                   Empathy Map
                 </h2>
                 <button
-                  onClick={() => handleAnalysisAction('empathyMap', setEmpathyResult)}
-                  disabled={isRunning !== null || !bridge.selectedId}
+                  onClick={runEmpathyMap}
+                  disabled={isRunning !== null || journalEntries.length === 0}
                   className="btn-neon text-xs flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isRunning === 'empathyMap' ? (
@@ -2052,8 +2102,8 @@ export default function AffectLensPage() {
                   Pattern Detection
                 </h2>
                 <button
-                  onClick={() => handleAnalysisAction('detect-patterns', setPatternResult)}
-                  disabled={isRunning !== null || !bridge.selectedId}
+                  onClick={runDetectPatterns}
+                  disabled={isRunning !== null || journalEntries.length === 0}
                   className="btn-neon text-xs flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isRunning === 'detect-patterns' ? (
