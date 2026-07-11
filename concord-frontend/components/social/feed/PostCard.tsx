@@ -8,7 +8,7 @@
  * action calls a social-domain macro — no fake data.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Heart, Repeat2, MessageSquare, Share2, MoreHorizontal, Quote,
   Link2, Flag, VolumeX, Ban, Check, BarChart3,
@@ -18,15 +18,21 @@ import { cn } from '@/lib/utils';
 import type { SocialPost, PollOption } from './types';
 import { ReplyTree } from './ReplyTree';
 
-const REACTIONS: { id: string; label: string }[] = [
-  { id: 'like', label: '👍' },
-  { id: 'love', label: '❤️' },
-  { id: 'celebrate', label: '🎉' },
-  { id: 'insightful', label: '💡' },
-  { id: 'laugh', label: '😂' },
-  { id: 'sad', label: '😢' },
-];
+// Emoji presentation per reaction id — purely cosmetic, kept local. The
+// authoritative *set* of ids comes from the `social.reactionKinds` macro
+// (fetched below) so this component never drifts from what the backend
+// actually accepts; this hardcoded list below is only the last-resort
+// fallback if that fetch fails, and mirrors REACTION_KINDS in
+// server/domains/social.js at the time of writing.
+const REACTION_EMOJI: Record<string, string> = {
+  like: '👍', love: '❤️', celebrate: '🎉', insightful: '💡', laugh: '😂', sad: '😢',
+};
+const FALLBACK_REACTION_IDS = ['like', 'love', 'celebrate', 'insightful', 'laugh', 'sad'];
 const REPORT_REASONS = ['spam', 'harassment', 'misinformation', 'hate', 'violence', 'other'];
+
+// Module-level cache — reactionKinds is a static catalog, no need to
+// re-fetch per PostCard instance in a long feed.
+let reactionKindsCache: string[] | null = null;
 
 function relTime(iso: string): string {
   const d = Date.now() - new Date(iso).getTime();
@@ -55,8 +61,45 @@ export function PostCard({ post, username, onChanged, onQuote, onOpenHashtag, on
   const [poll, setPoll] = useState(post.poll);
   const [pollChoice, setPollChoice] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [reactionIds, setReactionIds] = useState<string[]>(reactionKindsCache || FALLBACK_REACTION_IDS);
 
   const permalink = `/lenses/social/post/${post.id}`;
+
+  // Fetch the authoritative reaction catalog once (cached module-wide) so
+  // the picker never drifts from what `social.react` actually accepts.
+  useEffect(() => {
+    if (reactionKindsCache) return;
+    let cancelled = false;
+    (async () => {
+      const r = await lensRun<{ kinds: string[] }>('social', 'reactionKinds', {});
+      if (!cancelled && r.data?.ok && Array.isArray(r.data.result?.kinds) && r.data.result.kinds.length) {
+        reactionKindsCache = r.data.result.kinds;
+        setReactionIds(reactionKindsCache);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // A post fetched from `feed`/`hashtagFeed` doesn't carry the viewer's own
+  // poll vote (the wire shape only exposes aggregate option counts, not a
+  // per-viewer field) — without this the checkmark on a poll you already
+  // voted on in a prior session never rendered. `pollResults` is the
+  // purpose-built read for exactly this: authoritative viewerChoice + a
+  // fresh tally in case other viewers have voted since the feed loaded.
+  useEffect(() => {
+    if (!post.poll) return;
+    let cancelled = false;
+    (async () => {
+      const r = await lensRun<{ viewerChoice: string | null; options: PollOption[]; totalVotes: number; closed: boolean; closesAt: string | null; question: string }>(
+        'social', 'pollResults', { postId: post.id },
+      );
+      if (cancelled || !r.data?.ok || !r.data.result) return;
+      setPollChoice(r.data.result.viewerChoice);
+      setPoll((p) => (p ? { ...p, options: r.data!.result!.options, closesAt: r.data!.result!.closesAt } : p));
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post.id]);
 
   const react = useCallback(async (kind: string) => {
     setShowReactions(false);
@@ -239,18 +282,18 @@ export function PostCard({ post, username, onChanged, onQuote, onOpenHashtag, on
           </button>
           {showReactions && (
             <div className="absolute bottom-7 left-0 z-20 flex gap-0.5 rounded-full border border-zinc-800 bg-zinc-950 px-1.5 py-1 shadow-xl">
-              {REACTIONS.map((r) => (
+              {reactionIds.map((id) => (
                 <button
-                  key={r.id}
+                  key={id}
                   type="button"
-                  onClick={() => void react(r.id)}
+                  onClick={() => void react(id)}
                   className={cn(
                     'rounded-full px-1 text-base hover:scale-125 transition-transform',
-                    post.viewerReaction === r.id && 'bg-indigo-500/20',
+                    post.viewerReaction === id && 'bg-indigo-500/20',
                   )}
-                  title={r.id}
+                  title={id}
                 >
-                  {r.label}
+                  {REACTION_EMOJI[id] || '➕'}
                 </button>
               ))}
             </div>
