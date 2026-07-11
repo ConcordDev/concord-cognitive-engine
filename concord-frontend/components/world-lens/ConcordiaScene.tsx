@@ -7,6 +7,8 @@ import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
 import { decideVisible } from '@/lib/world-lens/cull';
 import { mountPerfMonitor, attachRenderer as attachPerfRenderer, tickPerfMonitor } from '@/lib/world-lens/perf-monitor';
 import { createTraumaShake, type TraumaShake } from '@/lib/concordia/screen-trauma';
+import { disposeBuildingArchetype } from '@/lib/world-lens/procedural-buildings';
+import { clearProceduralCache } from '@/lib/world-lens/procedural-texture';
 
 // Track 1 — camera shake is the shared trauma engine (`lib/concordia/screen-trauma.ts`,
 // the Eiserloh GDC model): trauma accumulates per event, decays linearly, and the
@@ -369,6 +371,42 @@ export default function ConcordiaScene({
     }
     window.addEventListener('concordia:perf-budget', onPerfBudget);
     return () => window.removeEventListener('concordia:perf-budget', onPerfBudget);
+  }, []);
+
+  // ── Procedural building material/texture caches — dispose on TRUE unmount
+  // only (runtime-health-capability-map.md #5) ─────────────────────────────
+  // `procedural-buildings.ts#getMaterial()`/`procedural-texture.ts#makePBR()`
+  // cache CanvasTexture-backed materials at MODULE scope, keyed per building
+  // (the seed derives from the building's own DTU id), not per district or
+  // per world. Deliberately NOT wired into the big scene-setup effect below
+  // (whose cleanup already fires on every districtId/quality/theme/
+  // renderStyle change, not just real unmounts — see finding #1's
+  // effect-thrash writeup and the decoupled-downgrade effect right above
+  // this one): that effect's own generic `sc.traverse(...)` cleanup already
+  // calls `.dispose()` on every material/texture actually in the scene on
+  // each such rebuild (GPU-side cost is already paid there, unavoidably),
+  // but BuildingRenderer3D — the component that actually calls
+  // `createBuilding()` — does NOT rebuild on quality/theme/renderStyle
+  // changes (its own effect only depends on `buildings`/`validationData`/
+  // `viewMode`), so clearing the MODULE-level cache at that same cadence
+  // would only ever throw away entries that are still valid and about to be
+  // reused unchanged — a pure loss with no corresponding memory-pressure
+  // signal. A real component unmount (leaving `/lenses/world` entirely, or
+  // toggling the page's `viewMode` away from 'concordia', which conditionally
+  // unmounts this component) is the closest match to the "session is over,
+  // these buildings are not coming back imminently" signal the header
+  // comment's "on world unmount" always meant — so this is a standalone,
+  // stable-([])-dependency effect (same pattern as the perf-budget listener
+  // above) whose cleanup fires exactly once, on that real unmount, not on
+  // every internal scene rebuild. The caches also carry a bounded LRU cap
+  // (see MAX_MATERIAL_CACHE_ENTRIES / MAX_CACHE_ENTRIES in the two modules)
+  // as a belt-and-braces bound for a very long single session that never
+  // triggers this unmount.
+  useEffect(() => {
+    return () => {
+      try { disposeBuildingArchetype(); } catch { /* best-effort */ }
+      try { clearProceduralCache(); } catch { /* best-effort */ }
+    };
   }, []);
 
   // ── Initialize Three.js scene ──────────────────────────────────

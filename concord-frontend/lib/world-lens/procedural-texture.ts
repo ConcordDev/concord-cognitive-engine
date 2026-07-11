@@ -47,6 +47,28 @@ export interface ProceduralOptions {
 
 const cache = new Map<string, PBRTextureSet>();
 
+/**
+ * Safety-net LRU cap (runtime-health-capability-map.md #5, follow-up).
+ * The primary fix for the unbounded-leak finding is disposing this cache on
+ * world unmount (see ConcordiaScene.tsx); this cap is a cheap belt-and-
+ * braces bound for a very long single session that never leaves the world
+ * lens. `Map` preserves insertion order, so a get-then-reinsert on hit
+ * ("touch") plus evicting the oldest entry on overflow gives a standard
+ * LRU without a separate linked-list structure. Each entry is 4 CanvasTexture
+ * objects (default 512x512 RGBA canvases, ~1MB each) — 300 entries bounds
+ * the cache at roughly the texture memory of a few hundred concurrently
+ * visible buildings' worth of wall/roof materials, well above what any
+ * single district renders at once.
+ */
+const MAX_CACHE_ENTRIES = 300;
+
+function disposeSet(set: PBRTextureSet): void {
+  try { set.albedo.dispose(); } catch { /* idempotent */ }
+  try { set.normal.dispose(); } catch { /* idempotent */ }
+  try { set.roughness.dispose(); } catch { /* idempotent */ }
+  try { set.ao.dispose(); } catch { /* idempotent */ }
+}
+
 /** Deterministic 32-bit hash → [0, 1). */
 function makeRng(seed: number): () => number {
   let s = seed | 0;
@@ -345,7 +367,13 @@ export function makePBR(
   const size = opts.size ?? 512;
   const cacheKey = `${kind}::${seed}::${size}`;
   const hit = cache.get(cacheKey);
-  if (hit) return hit;
+  if (hit) {
+    // Touch: move to the MRU (most-recently-used) end so LRU eviction
+    // below evicts genuinely cold entries first.
+    cache.delete(cacheKey);
+    cache.set(cacheKey, hit);
+    return hit;
+  }
 
   const albedoCanvas    = makeAlbedoCanvas(kind, seed, size);
   const intensity = { stone: 3.5, wood: 2.5, brick: 4.5, cloth: 1.5,
@@ -365,17 +393,22 @@ export function makePBR(
 
   const set: PBRTextureSet = { albedo, normal, roughness, ao };
   cache.set(cacheKey, set);
+
+  if (cache.size > MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey !== undefined) {
+      const oldest = cache.get(oldestKey);
+      if (oldest) disposeSet(oldest);
+      cache.delete(oldestKey);
+    }
+  }
+
   return set;
 }
 
-/** Clear the cache (call after quality-preset change). */
+/** Clear the cache (call after quality-preset change, or on world unmount). */
 export function clearProceduralCache(): void {
-  for (const set of cache.values()) {
-    try { set.albedo.dispose(); } catch { /* idempotent */ }
-    try { set.normal.dispose(); } catch { /* idempotent */ }
-    try { set.roughness.dispose(); } catch { /* idempotent */ }
-    try { set.ao.dispose(); } catch { /* idempotent */ }
-  }
+  for (const set of cache.values()) disposeSet(set);
   cache.clear();
 }
 

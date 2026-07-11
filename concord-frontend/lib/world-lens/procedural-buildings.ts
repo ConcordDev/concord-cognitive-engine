@@ -7,8 +7,16 @@
  * accepts a deterministic seed so the same building stays stable across
  * sessions, which prevents the world from looking different every reload.
  *
- * All meshes use shared materials per archetype to keep draw-call count low.
- * The renderer should call disposeBuildingArchetype() on world unmount.
+ * Materials are cached per (slot, color, pbrKind, pbrSeed) — in practice
+ * this means per BUILDING (pbrSeed derives from the building's own DTU id,
+ * not the archetype), so two buildings of the same archetype do NOT share a
+ * material/texture set. Each cache miss mints ~8 CanvasTextures (see
+ * procedural-texture.ts). The cache is bounded by a cheap LRU cap
+ * (MAX_MATERIAL_CACHE_ENTRIES below) as a safety net, but the real fix for
+ * "grows forever" is disposeBuildingArchetype() (+ procedural-texture.ts's
+ * clearProceduralCache()) on world unmount — wired in
+ * ConcordiaScene.tsx's dedicated unmount-only effect (NOT its per-district
+ * scene-rebuild effect — see the comment there for why).
  */
 
 import type * as THREE_NS from "three";
@@ -120,6 +128,19 @@ export const SILHOUETTE_BIAS: Record<ArchitectureStyle, {
 const materialCache = new Map<string, THREE_NS.MeshStandardMaterial>();
 
 /**
+ * Safety-net LRU cap (runtime-health-capability-map.md #5, follow-up).
+ * The primary fix is disposing this cache on world unmount (wired in
+ * ConcordiaScene.tsx); this cap is a cheap belt-and-braces bound for a very
+ * long single session that never leaves the world lens. `Map` preserves
+ * insertion order, so a get-then-reinsert on hit ("touch") plus evicting the
+ * oldest entry on overflow gives a standard LRU without a separate
+ * linked-list structure. ~4 entries (wall/roof/trim/window) per unique
+ * building seed — 1200 entries bounds the cache at ~300 distinct buildings'
+ * worth of materials, well above what any single district renders at once.
+ */
+const MAX_MATERIAL_CACHE_ENTRIES = 1200;
+
+/**
  * Per-slot PBR texture overlay — 3-tier resolution wired through the
  * procedural-hand-authored content engine:
  *
@@ -151,7 +172,12 @@ function getMaterial(
 ) {
   const cacheKey = `${key}:${color}:${opts?.emissive ?? ""}:${opts?.pbrKind ?? ""}:${opts?.pbrSeed ?? ""}`;
   let m = materialCache.get(cacheKey);
-  if (!m) {
+  if (m) {
+    // Touch: move to the MRU end so LRU eviction below evicts genuinely
+    // cold entries first.
+    materialCache.delete(cacheKey);
+    materialCache.set(cacheKey, m);
+  } else {
     m = new THREE.MeshStandardMaterial({
       color,
       roughness:         opts?.roughness ?? 0.85,
@@ -195,6 +221,15 @@ function getMaterial(
         .catch(() => { /* keep procedural — substrate floor never fails */ });
     }
     materialCache.set(cacheKey, m);
+
+    if (materialCache.size > MAX_MATERIAL_CACHE_ENTRIES) {
+      const oldestKey = materialCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        const oldest = materialCache.get(oldestKey);
+        try { oldest?.dispose(); } catch { /* best-effort */ }
+        materialCache.delete(oldestKey);
+      }
+    }
   }
   return m;
 }
@@ -764,3 +799,6 @@ export function disposeBuildingArchetype(): void {
   }
   materialCache.clear();
 }
+
+/** Test-only introspection of the module-level material cache. */
+export const _testing = { materialCache, MAX_MATERIAL_CACHE_ENTRIES };
