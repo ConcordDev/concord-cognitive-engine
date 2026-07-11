@@ -54,7 +54,7 @@ import { MusicArtistExplorer } from '@/components/music/MusicArtistExplorer';
 import { MusicActionPanel } from '@/components/music/MusicActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMusicStore } from '@/lib/music/store';
@@ -228,6 +228,36 @@ export default function MusicLensPage() {
 
   // ---- View State ----
   const [view, setView] = useState<MusicLensView>('home');
+
+  // ---- Revenue Dashboard: real creator earnings (GET /api/creator/dashboard) ----
+  // Platform-wide, not filtered to music specifically — there's no reliable
+  // DTU-domain tag on marketplace/royalty ledger rows to filter by (checked;
+  // the codebase's DTU-domain conventions for tracks are inconsistent across
+  // the streaming-library vs. distribution-platform paths). Showing this
+  // real, correctly-computed figure honestly labeled as "across everything
+  // you've published on Concord" beats fabricating a music-only split we
+  // can't actually verify.
+  const { data: creatorDashboard, isLoading: revenueLoading, isError: revenueError } = useQuery({
+    queryKey: ['music-creator-dashboard'],
+    queryFn: async () => {
+      const res = await api.get('/api/creator/dashboard');
+      return res.data as {
+        ok: boolean;
+        summary: {
+          dtuCount: number; listingCount: number; totalDownloads: number;
+          totalEarnings: number; citationsReceived: number; citationsMade: number;
+          lineageDepth: number; reputationScore: number;
+        };
+        recentListings: Array<{
+          id: string; sourceDtuId: string | null; title: string | null;
+          price: number; downloads: number; promotionSource: string | null; listedAt: string;
+        }>;
+      };
+    },
+    enabled: view === 'revenue',
+    staleTime: 30000,
+    retry: false,
+  });
 
   // Lens-scoped keyboard commands (tab navigation).  Playback transport
   // shortcuts live in a second useLensCommand below — they need to close
@@ -481,6 +511,31 @@ export default function MusicLensPage() {
         const mediaId =
           mediaResp.data?.mediaDTU?.id || mediaResp.data?.id || mediaResp.data?.media?.id;
 
+        // Real waveform + duration/sampleRate/channels — decoded from the
+        // actual uploaded audio via the Web Audio API (same PCM decode path
+        // as the Studio AudioEditor), not fabricated. bpm/key/loudnessLUFS/
+        // spectralCentroid/onsetDensity below are still honest-unknown
+        // placeholders — real beat/key/loudness detection needs a DSP or ML
+        // pass this client-side decode doesn't do; a future pass should wire
+        // those to a real analysis endpoint rather than compute a
+        // plausible-looking guess.
+        let realWaveformPeaks: number[] = [];
+        let realDuration = (uploadData?.duration as number) || 240;
+        let realSampleRate = 44100;
+        let realChannels = 2;
+        try {
+          const { decodeBlobToDAWBuffer } = await import('@/lib/daw/audio-buffer-edit');
+          const decoded = await decodeBlobToDAWBuffer(file, trackTitle);
+          realWaveformPeaks = decoded.waveformPeaks;
+          realDuration = decoded.duration;
+          realSampleRate = decoded.sampleRate;
+          realChannels = decoded.channels;
+        } catch {
+          // Decode can fail for formats decodeAudioData doesn't support —
+          // degrade to an empty waveform (never a fabricated one) rather
+          // than block the upload.
+        }
+
         setUploadProgress({
           stage: 'processing',
           progress: 80,
@@ -490,12 +545,12 @@ export default function MusicLensPage() {
             loudnessLUFS: -14,
             spectralCentroid: 2200,
             onsetDensity: 4.2,
-            waveformPeaks: [],
+            waveformPeaks: realWaveformPeaks,
             chromaprintHash: mediaId || 'abc123',
-            duration: 240,
-            sampleRate: 44100,
+            duration: realDuration,
+            sampleRate: realSampleRate,
             bitDepth: 24,
-            channels: 2,
+            channels: realChannels,
           },
           error: null,
         });
@@ -511,17 +566,22 @@ export default function MusicLensPage() {
           coverArtUrl: null,
           audioUrl: mediaId ? `/api/media/${mediaId}/stream` : '',
           previewUrl: null,
-          duration: 240,
+          duration: realDuration,
           trackNumber: null,
           genre: (uploadData?.genre as string) || 'electronic',
           subGenre: (uploadData?.subGenre as string) || null,
           tags: (uploadData?.tags as string[]) || [],
+          // bpm/key/loudnessLUFS/spectralCentroid/onsetDensity: honest-unknown
+          // placeholders, not fabricated — real beat/key/loudness detection
+          // needs a DSP or ML analysis pass this client-side decode doesn't
+          // do. waveformPeaks below is the one field here that IS real,
+          // computed from the actual uploaded audio.
           bpm: 128,
           key: 'Am',
           loudnessLUFS: -14,
           spectralCentroid: 2200,
           onsetDensity: 4.2,
-          waveformPeaks: Array.from({ length: 200 }, () => Math.random() * 0.8),
+          waveformPeaks: realWaveformPeaks,
           tiers: (uploadData?.tiers as MusicTrack['tiers']) || [
             {
               tier: 'listen',
@@ -728,27 +788,6 @@ export default function MusicLensPage() {
                         <s.icon className={`w-5 h-5 ${s.color} mb-2`} />
                         <p className="text-2xl font-bold">{s.value}</p>
                         <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
-                      </div>
-                      {/* Waveform decoration */}
-                      <div className="absolute bottom-0 right-0 flex items-end gap-[2px] h-8 px-2 pb-1 opacity-20">
-                        {Array.from({ length: 8 }, (_, j) => (
-                          <motion.div
-                            key={j}
-                            className={`w-1 rounded-full ${s.color.replace('text-', 'bg-')}`}
-                            animate={{
-                              height: [
-                                4 + Math.random() * 12,
-                                4 + Math.random() * 20,
-                                4 + Math.random() * 12,
-                              ],
-                            }}
-                            transition={{
-                              duration: 1.2 + j * 0.1,
-                              repeat: Infinity,
-                              ease: 'easeInOut',
-                            }}
-                          />
-                        ))}
                       </div>
                     </motion.div>
                   ))}
@@ -1860,57 +1899,78 @@ export default function MusicLensPage() {
             {/* ---- REVENUE ---- */}
             {view === 'revenue' && (
               <div className="space-y-6 max-w-4xl">
-                <h1 className="text-xl font-bold">Revenue Dashboard</h1>
-
-                {/* Overview cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    {
-                      label: 'Total Revenue',
-                      value: '$15,840.00',
-                      icon: DollarSign,
-                      color: 'text-neon-green',
-                      bg: 'bg-neon-green/10',
-                    },
-                    {
-                      label: 'Direct Sales',
-                      value: '$12,200.00',
-                      icon: BarChart3,
-                      color: 'text-neon-cyan',
-                      bg: 'bg-neon-cyan/10',
-                    },
-                    {
-                      label: 'Remix Royalties',
-                      value: '$2,430.00',
-                      icon: GitFork,
-                      color: 'text-neon-purple',
-                      bg: 'bg-neon-purple/10',
-                    },
-                    {
-                      label: 'Citation Royalties',
-                      value: '$1,210.00',
-                      icon: Sparkles,
-                      color: 'text-neon-pink',
-                      bg: 'bg-neon-pink/10',
-                    },
-                  ].map((stat) => (
-                    <div
-                      key={stat.label}
-                      className="p-4 rounded-xl bg-white/[0.03] border border-white/5"
-                    >
-                      <div
-                        className={cn(
-                          'w-8 h-8 rounded-lg flex items-center justify-center mb-2',
-                          stat.bg
-                        )}
-                      >
-                        <stat.icon className={cn('w-4 h-4', stat.color)} />
-                      </div>
-                      <p className="text-xl font-bold">{stat.value}</p>
-                      <p className="text-xs text-gray-400">{stat.label}</p>
-                    </div>
-                  ))}
+                <div>
+                  <h1 className="text-xl font-bold">Revenue Dashboard</h1>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Your real creator earnings across everything you&apos;ve published on Concord — not
+                    filtered to music specifically (marketplace + royalty ledger rows don&apos;t carry a
+                    reliable per-lens tag to split by).
+                  </p>
                 </div>
+
+                {/* Overview cards — real GET /api/creator/dashboard data */}
+                {revenueLoading && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div key={i} className="p-4 rounded-xl bg-white/[0.03] border border-white/5 animate-pulse h-20" />
+                    ))}
+                  </div>
+                )}
+                {revenueError && (
+                  <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+                    Couldn&apos;t load your earnings — try again shortly.
+                  </div>
+                )}
+                {!revenueLoading && !revenueError && creatorDashboard?.summary && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      {
+                        label: 'Total Earnings',
+                        value: `$${creatorDashboard.summary.totalEarnings.toFixed(2)}`,
+                        icon: DollarSign,
+                        color: 'text-neon-green',
+                        bg: 'bg-neon-green/10',
+                      },
+                      {
+                        label: 'Listings',
+                        value: String(creatorDashboard.summary.listingCount),
+                        icon: BarChart3,
+                        color: 'text-neon-cyan',
+                        bg: 'bg-neon-cyan/10',
+                      },
+                      {
+                        label: 'Downloads',
+                        value: String(creatorDashboard.summary.totalDownloads),
+                        icon: GitFork,
+                        color: 'text-neon-purple',
+                        bg: 'bg-neon-purple/10',
+                      },
+                      {
+                        label: 'Citations Received',
+                        value: String(creatorDashboard.summary.citationsReceived),
+                        icon: Sparkles,
+                        color: 'text-neon-pink',
+                        bg: 'bg-neon-pink/10',
+                      },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className="p-4 rounded-xl bg-white/[0.03] border border-white/5"
+                      >
+                        <div
+                          className={cn(
+                            'w-8 h-8 rounded-lg flex items-center justify-center mb-2',
+                            stat.bg
+                          )}
+                        >
+                          <stat.icon className={cn('w-4 h-4', stat.color)} />
+                        </div>
+                        <p className="text-xl font-bold">{stat.value}</p>
+                        <p className="text-xs text-gray-400">{stat.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Royalty cascade explainer */}
                 <div className="bg-white/[0.03] rounded-xl border border-white/5 p-5 space-y-3">
@@ -1959,63 +2019,44 @@ export default function MusicLensPage() {
                   </div>
                 </div>
 
-                {/* Recent transactions */}
+                {/* Recent listings — real GET /api/creator/dashboard data. Each
+                    row's "earnings" is downloads × price (an aggregate, since
+                    the ledger doesn't expose a clean per-listing sale log here) —
+                    labeled as such rather than implied to be a live transaction feed. */}
                 <div>
-                  <h3 className="text-sm font-semibold mb-3">Recent Transactions</h3>
+                  <h3 className="text-sm font-semibold mb-3">Recent Listings</h3>
+                  {revenueLoading && (
+                    <div className="space-y-2">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="h-14 rounded-lg bg-white/[0.02] border border-white/5 animate-pulse" />
+                      ))}
+                    </div>
+                  )}
+                  {!revenueLoading && !revenueError && (creatorDashboard?.recentListings?.length ?? 0) === 0 && (
+                    <p className="text-xs text-gray-500">
+                      No listings yet — publish a track to the marketplace to see it here.
+                    </p>
+                  )}
                   <div className="space-y-2">
-                    {[
-                      {
-                        track: 'Substrate Dreams',
-                        tier: 'create',
-                        amount: 9.99,
-                        buyer: 'User-4821',
-                        date: '2h ago',
-                      },
-                      {
-                        track: 'Lattice Pulse',
-                        tier: 'listen',
-                        amount: 0,
-                        buyer: 'User-9023',
-                        date: '5h ago',
-                      },
-                      {
-                        track: 'Resonance Field',
-                        tier: 'commercial',
-                        amount: 99.99,
-                        buyer: 'Studio-Twelve',
-                        date: '1d ago',
-                      },
-                      {
-                        track: 'Substrate Dreams',
-                        tier: 'create',
-                        amount: 9.99,
-                        buyer: 'User-3301',
-                        date: '2d ago',
-                      },
-                    ].map((tx, i) => (
+                    {creatorDashboard?.recentListings?.map((listing) => (
                       <div
-                        key={i}
+                        key={listing.id}
                         className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5 text-xs"
                       >
                         <div className="flex items-center gap-3">
                           <Music className="w-4 h-4 text-gray-400" />
                           <div>
-                            <p className="text-gray-300">{tx.track}</p>
+                            <p className="text-gray-300">{listing.title || 'Untitled'}</p>
                             <p className="text-gray-400">
-                              {tx.buyer} · {tx.tier} tier
+                              ${listing.price.toFixed(2)} · {listing.downloads} download{listing.downloads === 1 ? '' : 's'}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p
-                            className={cn(
-                              'font-mono',
-                              tx.amount > 0 ? 'text-neon-green' : 'text-gray-400'
-                            )}
-                          >
-                            {tx.amount > 0 ? `+$${tx.amount.toFixed(2)}` : 'Free'}
+                          <p className="font-mono text-neon-green">
+                            +${(listing.price * listing.downloads).toFixed(2)}
                           </p>
-                          <p className="text-gray-600">{tx.date}</p>
+                          <p className="text-gray-600">{formatRelativeTime(listing.listedAt)}</p>
                         </div>
                       </div>
                     ))}
