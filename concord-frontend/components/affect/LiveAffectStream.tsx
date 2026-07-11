@@ -6,7 +6,13 @@ import { Heart, Loader2, Activity, TrendingUp } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
-interface AffectState { intensity?: number; polarity?: number; arousal?: number; valence?: number; mood?: string; lastEventAt?: string; [k: string]: unknown }
+// Real ATS state shape (server/affect/engine.js#createState, defaults.js#DIMS):
+// v=valence, a=arousal, s=stability, c=coherence, g=agency, t=trust, f=fatigue
+// (all 0..1) plus ts (last-tick epoch ms). GET /api/affect/state responds
+// { ok, state }. There is no intensity/polarity/mood field on state — those
+// belong to *events* (server/affect/store.js#logEvent), a separate shape.
+interface AffectStateVector { v?: number; a?: number; s?: number; c?: number; g?: number; t?: number; f?: number; ts?: number; [k: string]: unknown }
+interface AffectStateResponse { ok?: boolean; state?: AffectStateVector }
 interface AffectEvent { id?: string; type?: string; intensity?: number; polarity?: number; ts?: string; createdAt?: string }
 interface AffectPolicy { name?: string; rules?: Record<string, unknown>; [k: string]: unknown }
 
@@ -25,7 +31,7 @@ export function LiveAffectStream() {
   const state = useQuery({
     queryKey: ['affect-state', sessionId],
     enabled: !!sessionId,
-    queryFn: async () => (await apiHelpers.affect.state(sessionId)).data as AffectState,
+    queryFn: async () => (await apiHelpers.affect.state(sessionId)).data as AffectStateResponse,
     refetchInterval: 4000,
   });
   const events = useQuery({
@@ -41,11 +47,13 @@ export function LiveAffectStream() {
   });
 
   const eventList = (Array.isArray(events.data) ? events.data : events.data?.events || []) as AffectEvent[];
-  const s = state.data || {};
-  const intensity = typeof s.intensity === 'number' ? s.intensity : 0;
-  const polarity = typeof s.polarity === 'number' ? s.polarity : 0;
-  const polColor = polarity > 0.2 ? 'text-emerald-300' : polarity < -0.2 ? 'text-rose-300' : 'text-zinc-300';
-  const polLabel = polarity > 0.2 ? 'positive' : polarity < -0.2 ? 'negative' : 'neutral';
+  const st: AffectStateVector = state.data?.state || {};
+  const valence = typeof st.v === 'number' ? st.v : 0.5;
+  const arousal = typeof st.a === 'number' ? st.a : 0.25;
+  const fatigue = typeof st.f === 'number' ? st.f : 0.2;
+  // Valence is 0..1 non-negative (server/affect/defaults.js); 0.5 is neutral baseline.
+  const valColor = valence > 0.6 ? 'text-emerald-300' : valence < 0.4 ? 'text-rose-300' : 'text-zinc-300';
+  const valLabel = valence > 0.6 ? 'positive' : valence < 0.4 ? 'negative' : 'neutral';
 
   return (
     <div className="space-y-4">
@@ -60,9 +68,9 @@ export function LiveAffectStream() {
             compact
             apiSource="concord-affect"
             title={`Affect snapshot — ${new Date().toLocaleString()} (session ${sessionId.slice(-6)})`}
-            content={`Session: ${sessionId}\nIntensity: ${intensity.toFixed(2)} · Polarity: ${polarity.toFixed(2)} (${polLabel})\nMood: ${s.mood || '—'}\nArousal: ${s.arousal ?? '—'} · Valence: ${s.valence ?? '—'}\n\nRecent events (${eventList.length}):\n${eventList.slice(0, 15).map((e) => `  ${e.ts || e.createdAt || '?'} · ${e.type || '?'} i=${e.intensity ?? '-'} p=${e.polarity ?? '-'}`).join('\n')}`}
+            content={`Session: ${sessionId}\nValence: ${valence.toFixed(2)} (${valLabel}) · Arousal: ${arousal.toFixed(2)} · Fatigue: ${fatigue.toFixed(2)}\nStability: ${st.s ?? '—'} · Coherence: ${st.c ?? '—'} · Agency: ${st.g ?? '—'} · Trust: ${st.t ?? '—'}\n\nRecent events (${eventList.length}):\n${eventList.slice(0, 15).map((e) => `  ${e.ts || e.createdAt || '?'} · ${e.type || '?'} i=${e.intensity ?? '-'} p=${e.polarity ?? '-'}`).join('\n')}`}
             extraTags={['affect', 'ats', 'session']}
-            rawData={{ state: s, events: eventList, policy: policy.data }}
+            rawData={{ state: st, events: eventList, policy: policy.data }}
           />
         )}
       </header>
@@ -72,19 +80,20 @@ export function LiveAffectStream() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <div className="rounded-md border border-cyan-500/20 bg-zinc-950/60 p-3 text-center">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Intensity</div>
-          <div className="mt-1 font-mono text-3xl text-cyan-300">{intensity.toFixed(2)}</div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800"><div className="h-full bg-cyan-400" style={{ width: `${Math.min(100, Math.abs(intensity) * 100)}%` }} /></div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Valence</div>
+          <div className={`mt-1 font-mono text-3xl ${valColor}`}>{valence.toFixed(2)}</div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800"><div className="h-full bg-cyan-400" style={{ width: `${valence * 100}%` }} /></div>
+          <div className="mt-1 text-[11px] text-zinc-400">{valLabel}</div>
         </div>
         <div className="rounded-md border border-cyan-500/20 bg-zinc-950/60 p-3 text-center">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Polarity</div>
-          <div className={`mt-1 font-mono text-3xl ${polColor}`}>{polarity > 0 ? '+' : ''}{polarity.toFixed(2)}</div>
-          <div className="mt-2 text-[11px] text-zinc-400">{polLabel}</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Arousal</div>
+          <div className="mt-1 font-mono text-3xl text-cyan-300">{arousal.toFixed(2)}</div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800"><div className="h-full bg-cyan-400" style={{ width: `${arousal * 100}%` }} /></div>
         </div>
         <div className="rounded-md border border-cyan-500/20 bg-zinc-950/60 p-3 text-center">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Mood</div>
-          <div className="mt-1 font-mono text-base text-cyan-300 line-clamp-1">{s.mood || '—'}</div>
-          {s.lastEventAt && <div className="mt-2 text-[10px] text-zinc-400">last event {new Date(s.lastEventAt).toLocaleTimeString()}</div>}
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Fatigue</div>
+          <div className={`mt-1 font-mono text-3xl ${fatigue > 0.6 ? 'text-amber-300' : 'text-cyan-300'}`}>{fatigue.toFixed(2)}</div>
+          {typeof st.ts === 'number' && <div className="mt-2 text-[10px] text-zinc-400">last tick {new Date(st.ts).toLocaleTimeString()}</div>}
         </div>
       </div>
 
