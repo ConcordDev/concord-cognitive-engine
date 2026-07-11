@@ -93,9 +93,11 @@ describe('LedgerLensPage — four UX states', () => {
     await waitFor(() => {
       expect(screen.getByTestId('managed-parity')).toBeInTheDocument();
     });
-    // Real values from the data, not authored prose.
+    // Real values from the data, not authored prose. house_pell/house_varn
+    // are each their own clickable dossier-trigger button now, so assert on
+    // the section's full text content rather than a single-node regex match.
     expect(screen.getByText('the_tessera')).toBeInTheDocument();
-    expect(screen.getByText(/house_pell and house_varn/)).toBeInTheDocument();
+    expect(screen.getByTestId('managed-parity').textContent).toMatch(/house_pell.*and.*house_varn/);
     expect(screen.getByTestId('extraction-liens')).toBeInTheDocument();
     expect(screen.getByText('the_mercy_fund')).toBeInTheDocument();
     expect(screen.getByText(/collateral: tea_house/)).toBeInTheDocument();
