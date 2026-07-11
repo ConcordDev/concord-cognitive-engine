@@ -37,10 +37,16 @@ const STEPS = [
   { id: 'resolve', label: 'Resolve', description: 'Capture the outcome, mint a chronicle DTU.' },
 ];
 
+// POST /api/lens/run ALWAYS wraps a dispatched macro's own return value as
+// { ok: true, result: <macro's own return> }. Reading fields off the outer
+// envelope instead of `.result` silently discards every real response —
+// the fabricated-success envelope bug (see docs/lens-specs/sessions-capability-map.md).
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
     const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
+    const body = r?.data as { ok?: boolean; result?: T } | undefined;
+    if (body && typeof body === 'object' && 'result' in body) return body.result ?? null;
+    return (body as unknown as T) ?? null;
   } catch {
     return null;
   }

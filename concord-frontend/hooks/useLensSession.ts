@@ -73,10 +73,18 @@ export interface UseLensSessionReturn<T = Record<string, unknown>> {
   refresh: () => Promise<void>;
 }
 
+// POST /api/lens/run ALWAYS wraps a dispatched macro's own return value as
+// { ok: true, result: <macro's own return> } — even when the macro itself
+// reports failure (e.g. { ok: false, reason: 'not_found' }). Reading fields
+// off the outer envelope (e.g. `r.data.session`) instead of `r.data.result`
+// silently discards every real response, success AND failure alike — the
+// fabricated-success envelope bug (see docs/lens-specs/sessions-capability-map.md).
 async function runMacro<R = unknown>(name: string, input: Record<string, unknown>): Promise<R | null> {
   try {
     const r = await api.post('/api/lens/run', { domain: 'sessions', name, input });
-    return r?.data as R;
+    const body = r?.data as { ok?: boolean; result?: R } | undefined;
+    if (body && typeof body === 'object' && 'result' in body) return body.result ?? null;
+    return (body as unknown as R) ?? null;
   } catch {
     return null;
   }
