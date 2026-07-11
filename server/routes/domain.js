@@ -1111,16 +1111,25 @@ export default function registerDomainRoutes(app, {
   });
 
   // ---- Admin ----
+  // The three admin.* macros below enforce requireAdminRole() in-handler and
+  // return `{ ok:false, error }` on denial with no HTTP-level status change —
+  // fine for the macro layer, but the admin lens frontend's AdminRequiredState
+  // gate (isForbidden()) only fires off a real 403. Map the denial onto a
+  // genuine 403 here so a non-admin caller gets the friendly gate instead of
+  // a 200 response with an empty/broken-looking dashboard.
   app.get("/api/admin/dashboard", asyncHandler(async (req, res) => {
     const out = await runMacro("admin", "dashboard", {}, makeCtx(req));
+    if (out?.ok === false) return res.status(403).json(out);
     return res.json(out);
   }));
   app.get("/api/admin/logs", asyncHandler(async (req, res) => {
     const out = await runMacro("admin", "logs", { limit: req.query.limit, type: req.query.type }, makeCtx(req));
+    if (out?.ok === false) return res.status(403).json(out);
     return res.json(out);
   }));
   app.get("/api/admin/metrics", asyncHandler(async (req, res) => {
     const out = await runMacro("admin", "metrics", {}, makeCtx(req));
+    if (out?.ok === false) return res.status(403).json(out);
     return res.json(out);
   }));
 

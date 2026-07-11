@@ -36102,6 +36102,10 @@ register("admin", "dashboard", (ctx, _input) => {
       healthy: Array.from(STATE.organs?.values() || []).filter(o => (o.maturity?.score || 0) > 0.5).length
     },
     llm: {
+      // ollamaReady is the field the admin lens dashboard actually reads
+      // (DashboardData.llm.ollamaReady); consciousReady is kept alongside
+      // for any caller that already depends on the original name.
+      ollamaReady: LLM_READY,
       consciousReady: LLM_READY,
       ollamaEnabled: OLLAMA_ENABLED,
       defaultOn: DEFAULT_LLM_ON
@@ -36130,9 +36134,15 @@ register("admin", "logs", (ctx, input) => {
   const limit = clamp(Number(input.limit || 100), 1, 1000);
   const type = input.type || null;
 
-  let logs = STATE.__logs || [];
+  // NOTE: this used to read STATE.__logs, a key nothing in the codebase
+  // ever writes to — the admin dashboard's "Recent Activity" panel and
+  // audit-log analysis input silently got an empty array forever. The
+  // real structured log ring is STATE.logs (written by log() below and
+  // by the request-audit sites); read that instead. `at` is added as an
+  // alias of `ts` because the admin lens frontend reads `log.at`.
+  let logs = STATE.logs || [];
   if (type) logs = logs.filter(l => l.type === type);
-  logs = logs.slice(-limit);
+  logs = logs.slice(-limit).reverse().map(l => ({ ...l, at: l.ts }));
 
   return { ok: true, logs, count: logs.length };
 });
@@ -47037,13 +47047,17 @@ function _sampleHealthMetrics() {
       }
     }
   } catch (_e) { /* non-fatal */ }
-  // Error rate: last 100 log entries containing level=error / 100
+  // Error rate: last 100 log entries containing type=error / 100.
+  // NOTE: this used to read STATE.__logs (never written anywhere — always
+  // empty, so errorRate was permanently 0 regardless of real activity) and
+  // filtered on `.level`, a field the real log() helper doesn't set (it
+  // sets `.type`). Both fixed to read the real ring + the real field name.
   let errorRate = 0;
   try {
-    const logs = STATE.__logs || [];
+    const logs = STATE.logs || [];
     if (logs.length > 0) {
       const recent = logs.slice(-100);
-      const errs = recent.filter((l) => l && (l.level === "error" || l.level === "warn")).length;
+      const errs = recent.filter((l) => l && (l.type === "error" || l.type === "warn")).length;
       errorRate = (errs / recent.length) * 100;
     }
   } catch (_e) { /* non-fatal */ }
