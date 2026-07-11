@@ -1579,6 +1579,7 @@ import {
   createPurchase,
   transitionPurchase,
   recordSettlement,
+  getUserPurchases,
 } from "./economy/index.js";
 
 // ---- Atlas + Platform Upgrade Imports (v2) ----
@@ -2860,6 +2861,36 @@ const ETHOS_INVARIANTS = Object.freeze({
   ALIGNMENT_PHYSICS_BASED: true,
   FOUNDER_INTENT_STRUCTURAL: true
 });
+
+// Human-readable descriptions for ETHOS_INVARIANTS, surfaced by
+// /api/sovereignty/status so the lock lens's "Active Invariants" panel
+// shows the real constitutional invariants instead of an empty list.
+const ETHOS_INVARIANT_DESCRIPTIONS = Object.freeze({
+  LOCAL_FIRST_DEFAULT: "Local processing is the default; cloud requires explicit opt-in",
+  NO_TELEMETRY: "No external analytics or tracking (enforced on every tool action)",
+  NO_ADS: "No advertisements or sponsored content (enforced on every tool action)",
+  NO_SECRET_MONITORING: "No hidden monitoring or tracking of user activity (enforced on every tool action)",
+  NO_USER_PROFILING: "No fingerprinting or behavioral profiling (enforced on every tool action)",
+  CLOUD_LLM_OPT_IN_ONLY: "Cloud LLM use requires both an env flag and per-session consent",
+  PERSONA_SOVEREIGNTY: "User-authored personas remain under user control",
+  ALIGNMENT_PHYSICS_BASED: "Alignment mechanics are physics-based, not arbitrary policy",
+  FOUNDER_INTENT_STRUCTURAL: "Founder intent is encoded structurally in code, not just stated as policy",
+});
+
+// Returns the frozen ETHOS_INVARIANTS as a list shape the lock lens's
+// Invariant type expects: { id, name, status, description, lastChecked }.
+// Every entry is 'enforced' by construction (the object is Object.freeze'd
+// true/true) -- there is no partial/violated runtime state to report here.
+function ethosInvariantsList() {
+  const checkedAt = new Date().toISOString();
+  return Object.entries(ETHOS_INVARIANTS).map(([key, value]) => ({
+    id: key.toLowerCase().replace(/_/g, "-"),
+    name: key,
+    status: value ? "enforced" : "violated",
+    description: ETHOS_INVARIANT_DESCRIPTIONS[key] || key,
+    lastChecked: checkedAt,
+  }));
+}
 
 // Guard: call before any external/persistent/monitoring-like action
 //
@@ -13858,6 +13889,34 @@ register("metacognition", "adjust_confidence", (ctx, input = {}) => {
   const domain = String(input.domain || "general");
   const confidence = clamp(Number(input.confidence || 0.5), 0, 1);
   return adjustConfidenceFromLearning(domain, confidence);
+}, { public: true });
+
+// recordPrediction()/resolvePrediction() persist into STATE.metacognition.predictions
+// (a Map) but until this macro, nothing ever listed it back out — the Predictions
+// tab UI could create + resolve-by-id but had no way to discover ids or render the
+// history it was implicitly promising. Read-only, capped, newest-first.
+register("metacognition", "predictions_list", (ctx, _input = {}) => {
+  try {
+  enforceEthosInvariant("metacognition_predictions_list");
+  ensureMetacognitionSystem();
+  const predictions = Array.from(ctx.state.metacognition.predictions.values())
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, 200);
+  return { ok: true, predictions, total: predictions.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: true });
+
+// Same gap as predictions_list: assessKnowledge() appends to
+// STATE.metacognition.assessments but only its *count* was ever surfaced (via
+// metacognition.status). The Knowledge Confidence Map / Skill Timeline sections
+// need the actual per-domain scores.
+register("metacognition", "assessments_list", (ctx, _input = {}) => {
+  try {
+  enforceEthosInvariant("metacognition_assessments_list");
+  ensureMetacognitionSystem();
+  const assessments = ctx.state.metacognition.assessments.slice(-100).slice().reverse();
+  return { ok: true, assessments, total: assessments.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // ===== END METACOGNITION MACROS =====
@@ -41108,6 +41167,30 @@ registerLensAction("thread", "extract_decisions", (ctx, artifact, _params) => {
   const decisions = (artifact.data?.nodes || []).filter(n => n.type === "decision" || (n.content || "").toLowerCase().includes("decided"));
   return { ok: true, decisions: decisions.map(d => ({ nodeId: d.id, text: d.content })), count: decisions.length };
 });
+// Removes a node and any descendants (so the tree never keeps an orphaned
+// parentNodeId reference). Mirrors the branch/merge mutation pattern above.
+registerLensAction("thread", "delete_node", (ctx, artifact, params) => {
+  const nodeId = params?.nodeId;
+  if (!nodeId) return { ok: false, error: "nodeId required" };
+  const nodes = artifact.data?.nodes || [];
+  if (!nodes.some(n => n.id === nodeId)) return { ok: false, error: "node not found" };
+  const toRemove = new Set([nodeId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const n of nodes) {
+      if (n.parentNodeId && toRemove.has(n.parentNodeId) && !toRemove.has(n.id)) {
+        toRemove.add(n.id);
+        changed = true;
+      }
+    }
+  }
+  const remaining = nodes.filter(n => !toRemove.has(n.id));
+  artifact.data = { ...artifact.data, nodes: remaining };
+  artifact.updatedAt = nowISO();
+  saveStateDebounced();
+  return { ok: true, deletedIds: [...toRemove], remainingCount: remaining.length };
+});
 
 // === Music ===
 registerLensAction("music", "analyze", (ctx, artifact, _params) => {
@@ -41962,10 +42045,14 @@ registerUniversalLensActions();
 // Wire aliases so EVERY frontend button hits a REAL handler, no AI catch-all.
 {
   const aliases = [
-    // Reasoning lens: frontend calls validate_logic, check_fallacies, assess_strength
-    ["reasoning", "validate_logic", "validate"],
-    ["reasoning", "check_fallacies", "validate"],
-    ["reasoning", "assess_strength", "validate"],
+    // Reasoning lens: frontend calls validate_logic, check_fallacies, assess_strength.
+    // Fixed 2026-07 (Wave 3 reasoning-lens audit) — all three used to alias to the
+    // same generic artifact-only "validate" stub (steps.every(s=>s.content)), which
+    // vacuously returned {valid:true} on empty data under three different labels,
+    // including "Check Fallacies" — which never ran fallacy detection at all.
+    ["reasoning", "validate_logic", "logicValidate"],
+    ["reasoning", "check_fallacies", "fallacyDetect"],
+    ["reasoning", "assess_strength", "strengthAssessment"],
 
     // Council lens: frontend calls synthesize, generate-minutes
     ["council", "synthesize", "debate"],
@@ -44310,6 +44397,7 @@ app.get("/api/sovereignty/status", requireAuth(), async (req, res) => {
   )];
   const entityCount = Array.from(STATE.entities?.values() || [])
     .filter(e => e.ownerId === userId).length;
+  const invariants = ethosInvariantsList();
 
   res.json({
     ok: true,
@@ -44322,6 +44410,8 @@ app.get("/api/sovereignty/status", requireAuth(), async (req, res) => {
     entities: entityCount,
     sovereigntyPct: (personalCount + syncedCount) > 0
       ? Math.round(personalCount / (personalCount + syncedCount) * 100) : 100,
+    invariants,
+    isHealthy: invariants.every(inv => inv.status === "enforced"),
   });
 });
 
@@ -67021,6 +67111,7 @@ function createReasoningChain(input = {}) {
     id,
     question: String(input.question || "").slice(0, 1000),
     goal: String(input.goal || "derive_conclusion").slice(0, 200),
+    type: String(input.type || "deductive").slice(0, 50),
     steps: [],
     assumptions: [],
     conclusion: null,
@@ -73233,6 +73324,50 @@ app.post('/api/artistry/marketplace/purchase', (req, res) => {
   }
 });
 
+// Buyer-side purchase history — real read of the purchase state machine
+// (server/economy/purchases.js#getUserPurchases), so the marketplace lens's
+// "Purchases" tab survives a page reload instead of resetting to an empty
+// React-state array on every mount.
+app.get('/api/artistry/marketplace/purchases', requireAuth(), (req, res) => {
+  try {
+    if (!db) return res.json({ ok: true, purchases: [], total: 0 });
+    const userId = req.user?.id;
+    const { status, limit, offset } = req.query;
+    const page = getUserPurchases(db, userId, {
+      role: 'buyer',
+      status: status || undefined,
+      limit: Math.min(Math.max(Number(limit) || 50, 1), 200),
+      offset: Math.max(Number(offset) || 0, 0),
+    });
+    const art = ensureArtistryState();
+    const stores = { beat: art.beatStore, stems: art.stemStore, 'sample-pack': art.sampleStore, artwork: art.artStore };
+    const purchases = page.items.map(row => {
+      const store = stores[row.listing_type];
+      const listing = store?.get(row.listing_id);
+      return {
+        id: row.purchase_id,
+        status: row.status,
+        listingId: row.listing_id,
+        listingType: row.listing_type,
+        licenseType: row.license_type,
+        price: row.amount,
+        purchasedAt: row.created_at,
+        listing: listing ? {
+          id: listing.id,
+          title: listing.title || 'Untitled',
+          ownerId: listing.ownerId,
+          genre: listing.genre,
+          artType: listing.artType,
+        } : null,
+      };
+    });
+    res.json({ ok: true, purchases, total: page.total });
+  } catch (err) {
+    console.error('[Artistry] Purchase history fetch failed:', err.message);
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+  }
+});
+
 structuredLog("info", "artistry_init", { detail: "Phase 8: Marketplace expansion initialized" });
 
 // ── Phase 9: Collaboration + Remix Mode + Project Sharing ───────────────────
@@ -77181,7 +77316,25 @@ register("bounty", "resolve", (_ctx, input = {}) => {
 
 // #22 NPC psyops detector — flag NPCs whose skill_revisions diverge
 // suspiciously fast from cohort baseline.
-register("psyops", "scan_skill_divergence", (_ctx, input = {}) => {
+//
+// ADMIN GATE: psyops is an operator console end-to-end — the frontend
+// renders <AdminRequiredState> on a forbidden response and
+// `tests/e2e/admin-gated-lenses.spec.ts` lists it among the 6 operator
+// lenses. These three legacy macros read/mutate a SHARED table
+// (skill_divergence_alerts, not per-user), so they need the same
+// in-handler role gate as server/domains/psyops.js's requireOperatorRole
+// — every psyops.* macro on both surfaces is now admin-gated. The error
+// text matches isForbidden()'s `/insufficient permission/i` regex in
+// concord-frontend/lib/api/client.ts so the page correctly flips to the
+// friendly gate instead of silently rendering an empty console for a
+// non-admin caller.
+function _psyopsRequireOperatorRole(ctx) {
+  const role = ctx?.actor?.role || "";
+  if (["owner", "admin", "founder"].includes(role)) return null;
+  return { ok: false, error: "Insufficient permissions: admin role required" };
+}
+register("psyops", "scan_skill_divergence", (ctx, input = {}) => {
+  const denied = _psyopsRequireOperatorRole(ctx); if (denied) return denied;
   if (!db) return { ok: false, reason: "no_db" };
   const { sigmaThreshold = 2.5, windowHours = 168 } = input || {};
   try {
@@ -77225,7 +77378,8 @@ register("psyops", "scan_skill_divergence", (_ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Scan recent NPC skill_revisions for outliers. Files alerts on N-sigma divergence." });
 
-register("psyops", "list_alerts", (_ctx, input = {}) => {
+register("psyops", "list_alerts", (ctx, input = {}) => {
+  const denied = _psyopsRequireOperatorRole(ctx); if (denied) return denied;
   if (!db) return { ok: false, reason: "no_db" };
   const { limit = 50, includeQuarantined = false } = input || {};
   try {
@@ -77240,7 +77394,8 @@ register("psyops", "list_alerts", (_ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Recent skill-divergence alerts." });
 
-register("psyops", "quarantine", (_ctx, input = {}) => {
+register("psyops", "quarantine", (ctx, input = {}) => {
+  const denied = _psyopsRequireOperatorRole(ctx); if (denied) return denied;
   if (!db) return { ok: false, reason: "no_db" };
   const { alertId } = input || {};
   if (!alertId) return { ok: false, reason: "missing_id" };

@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Users, Star, Eye, Lock, Globe, EyeOff, Boxes, Pause, Play } from 'lucide-react';
+import { Users, Star, Eye, Lock, Globe, EyeOff, Boxes, Pause, Play, Loader2 } from 'lucide-react';
 
 export interface SubWorld {
   world_id: string;
@@ -41,6 +41,7 @@ const KIND_LABEL: Record<string, string> = {
 export function WorldCard({
   world,
   favorited,
+  traveling = false,
   onVisit,
   onFavorite,
   onManage,
@@ -48,6 +49,7 @@ export function WorldCard({
 }: {
   world: SubWorld;
   favorited: boolean;
+  traveling?: boolean;
   onVisit: () => void;
   onFavorite: () => void;
   onManage?: () => void;
@@ -96,10 +98,14 @@ export function WorldCard({
           <button
             type="button"
             onClick={onVisit}
-            disabled={archived}
+            disabled={archived || traveling}
             className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-cyan-700 hover:bg-cyan-600 disabled:opacity-40 px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
-            <Play className="h-3 w-3" /> Enter
+            {traveling ? (
+              <><Loader2 className="h-3 w-3 animate-spin" /> Entering…</>
+            ) : (
+              <><Play className="h-3 w-3" /> Enter</>
+            )}
           </button>
           <button
             type="button"

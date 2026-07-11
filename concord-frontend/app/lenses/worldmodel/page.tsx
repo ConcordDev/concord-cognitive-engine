@@ -30,13 +30,16 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WorldModelArxiv } from '@/components/worldmodel/WorldModelArxiv';
 import { GraphCanvas, type GraphNode, type GraphEdge } from '@/components/worldmodel/GraphCanvas';
 import { ChartKit } from '@/components/viz';
+import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
 import { lensRun } from '@/lib/api/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { DTU } from '@/lib/api/generated-types';
 import {
   Globe2, Loader2, Plus, Play, Camera, Network, Boxes, GitFork,
   Trash2, Save, Upload, GitCompareArrows, Pencil, RefreshCcw, Library,
+  FileSearch,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -355,6 +358,8 @@ function EntitiesTab({
   const [value, setValue] = useState('100');
   const [editId, setEditId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [extractNote, setExtractNote] = useState<string | null>(null);
 
   // typed schema builder
   const [typeName, setTypeName] = useState('');
@@ -365,6 +370,16 @@ function EntitiesTab({
       name, type, attributes: { value: Number(value) || 0 },
     }),
     onSuccess: () => { setName(''); setValue('100'); setErr(null); onChanged(); },
+    onError: (e) => setErr((e as Error).message),
+  });
+  const extractFromDtu = useMutation({
+    mutationFn: (dtu: DTU) => run<{ entity: WmEntity; created: boolean; alreadyLinked: boolean }>('wm_extract_from_dtu', {
+      dtuId: dtu.id, title: dtu.title, tags: dtu.tags, summary: dtu.summary,
+    }),
+    onSuccess: (r) => {
+      setExtractNote(r.created ? `Grounded new entity "${r.entity.name}" in this DTU.` : r.alreadyLinked ? `Already grounded — refreshed "${r.entity.name}".` : `Linked this DTU as evidence for "${r.entity.name}".`);
+      onChanged();
+    },
     onError: (e) => setErr((e as Error).message),
   });
   const del = useMutation({
@@ -398,9 +413,21 @@ function EntitiesTab({
           <button className={btn} disabled={!name || create.isPending} onClick={() => create.mutate()}>
             {create.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Create
           </button>
+          <button className={btnGhost} disabled={extractFromDtu.isPending} onClick={() => { setExtractNote(null); setPickerOpen(true); }}>
+            {extractFromDtu.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileSearch className="h-3 w-3" />} Extract from DTU
+          </button>
         </div>
-        <p className="mt-1.5 text-[11px] text-emerald-700">Entities carry a numeric <code>value</code> attribute that simulations propagate.</p>
+        <p className="mt-1.5 text-[11px] text-emerald-700">Entities carry a numeric <code>value</code> attribute that simulations propagate. &quot;Extract from DTU&quot; grounds a node in a real DTU from your archive instead of typing one by hand.</p>
         {err && <p className="mt-2 text-xs text-rose-400">{err}</p>}
+        {extractNote && <p className="mt-2 text-xs text-emerald-400">{extractNote}</p>}
+        {pickerOpen && (
+          <DTUPickerModal
+            lens="worldmodel"
+            title="Extract entity from DTU"
+            onClose={() => setPickerOpen(false)}
+            onSelect={(dtu) => extractFromDtu.mutate(dtu)}
+          />
+        )}
       </div>
 
       <div className={card}>
@@ -455,6 +482,11 @@ function EntitiesTab({
               <span className="text-emerald-100">{e.name}</span>
               <span className="rounded bg-emerald-800/30 px-1.5 py-0.5 text-[10px] text-emerald-300">{e.type}</span>
               <span className="font-mono text-emerald-600">value={Number(e.attributes?.value ?? 0)}</span>
+              {Array.isArray(e.attributes?.sourceDtuIds) && (e.attributes!.sourceDtuIds as string[]).length > 0 && (
+                <span className="flex items-center gap-1 rounded bg-sky-900/30 px-1.5 py-0.5 text-[10px] text-sky-300" title="Grounded in real DTU evidence">
+                  <FileSearch className="h-2.5 w-2.5" aria-hidden /> {(e.attributes!.sourceDtuIds as string[]).length} DTU{(e.attributes!.sourceDtuIds as string[]).length === 1 ? '' : 's'}
+                </span>
+              )}
               <button className={`${btnGhost} ml-auto`} onClick={() => setEditId(editId === e.id ? null : e.id)}>
                 <Pencil className="h-3 w-3" /> attrs
               </button>
