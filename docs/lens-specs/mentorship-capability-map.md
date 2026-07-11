@@ -35,15 +35,17 @@
 | `goal-checkin` | `{goal}` | DESIGNED | DESIGNED — Goals tab check-ins + status |
 | `goal-list` | `{goals[], count, active, done, avgProgress}` | DESIGNED | DESIGNED — Goals tab |
 | `review-add` | `{review, mentorRating, reviewCount}` | DESIGNED (`MentorDirectoryPanel` profile view) | DESIGNED |
-| `review-list` | `{reviews[], count, avgRating, histogram}` | UNSURFACED (only `review-add`'s echo was shown, not a full histogram fetch) | DESIGNED-BUT-PARTIAL — `mentor-profile` already returns the last 20 reviews used by the Directory profile view; the dedicated histogram-with-star-breakdown shape is not separately rendered. Flagged below (Ratings & Reviews checklist item). |
+| `review-list` | `{reviews[], count, avgRating, histogram}` | UNSURFACED (only `review-add`'s echo was shown, not a full histogram fetch) | DESIGNED — `ReviewHistogram` (`components/mentorship/ReviewHistogram.tsx`) renders the real `histogram` field (5 bars, 5★→1★, count + %) in the mentor profile's Reviews section; `MentorDirectoryPanel` calls `review-list` on profile open and after posting a review (Wave 4 gap-closure, 2026-07-11). |
 | `program-report` | `{mentors, activeMatches, requests{}, matchAcceptanceRate, sessions{}, sessionCompletionRate, goals{}, goalCompletionRate, avgSessionRating, avgMentorRating, cohort[]}` | DESIGNED (`MentorshipProgramPanel`), buried as one of 6 sub-tabs inside a section beneath the legacy CRUD system | DESIGNED — promoted to the page's own header KPI strip (via `useMacroDispatchFeedback`) **and** the Program tab's cohort table/funnel chart |
 | `message-send` | `{message, threadKey}` | DESIGNED (`MentorshipMessagesPanel`) | DESIGNED — Messages tab |
 | `message-thread` | `{messages[], count, threadKey}` | DESIGNED | DESIGNED — Messages tab |
 | `message-inbox` | `{threads[], count}` | DESIGNED | DESIGNED — Messages tab |
 
 **24/24 macros are DESIGNED** (no GENERIC-STRIP-ONLY, no UNSURFACED) after this
-rebuild. `review-list`'s full histogram shape is the one honest partial —
-noted above and in the parity checklist below, not silently dropped.
+rebuild. `review-list`'s full histogram shape was the one honest partial at
+rebuild time — closed 2026-07-11 (Wave 4 gap-closure, ENGINEERING triage: pure
+frontend, no backend gap) by `ReviewHistogram`, see the parity checklist
+below.
 
 ### What changed structurally
 
@@ -110,7 +112,7 @@ WebSearch 2026-07-09):
 | 4 | Group sessions (many mentees, one mentor) | GENUINELY MISSING | No `attendees[]`/capacity-per-session field in `mentorships` sessions — `session-book` is strictly 1:1 (`ownerId`/`partnerId`). Flagged as a scoped future build: would need a new macro shape, not a UI-only fix. |
 | 5 | Session notes & action items | ALREADY REAL | `session-note-save` — notes + checkable action items, wired in Sessions tab. |
 | 6 | 1:1 direct messaging between mentor/mentee | ALREADY REAL | `message-send`/`message-thread`/`message-inbox`. |
-| 7 | Ratings & written reviews per mentor | ALREADY REAL (partial) | `review-add` + `mentor-profile`'s last-20-reviews list are wired; the dedicated `review-list` star-histogram shape (1★-5★ bucket counts) has no separate UI — `mentor-profile`'s flat review list is the only surfaced view. BACKEND-CAPABLE-BUT-UNSURFACED, flagged as a small follow-up (one more panel section, no backend work). |
+| 7 | Ratings & written reviews per mentor | ALREADY REAL | `review-add` + `mentor-profile`'s last-20-reviews list are wired; the `review-list` star-histogram shape (1★-5★ bucket counts) is now rendered by `ReviewHistogram` above the review list in the profile drill-down (Wave 4, 2026-07-11) — no backend change, `MentorDirectoryPanel` now also calls `review-list` on profile open + after posting a review. |
 | 8 | Request → accept/decline matching flow | ALREADY REAL | `request-send`/`request-list`/`request-respond`/`request-withdraw`, full Requests tab with incoming (mentor) + outgoing (mentee) views. |
 | 9 | Goal tracking with progress check-ins | ALREADY REAL | `goal-create`/`goal-checkin`/`goal-list`, with a progress chart from check-in history. |
 | 10 | Admin/cohort program reporting (MentorcliQ) | ALREADY REAL | `program-report` — mentor cohort table, request funnel, completion rates, promoted to the page header. |
@@ -119,9 +121,9 @@ WebSearch 2026-07-09):
 | 13 | HRIS/enterprise integration, SSO, audit trails (MentorcliQ) | GENUINELY MISSING | No such surface in the domain or elsewhere in Concord — out of scope for a single-tenant creative-OS lens; would be a platform-wide identity feature, not a lens rebuild task. Not flagged as a build item (belongs to a different layer entirely). |
 | 14 | Live video call embedded in the product | GENUINELY MISSING (honest relabel already in place) | `session.videoLink` is an external URL field (Zoom/Meet/etc), opened in a new tab — same as the pre-2023 ADPList model before Around.co acquisition. Not faked as an embedded call. |
 
-**(d) Coverage:** 11 of 14 checklist items ALREADY REAL, 1 partial-but-real
-(session booking has no per-slot calendar), 1 backend-capable-but-unsurfaced
-(review histogram — small follow-up), 2 genuinely missing and explicitly
+**(d) Coverage (updated 2026-07-11 — Wave 4 gap-closure closed the review
+histogram):** 12 of 14 checklist items ALREADY REAL, 1 partial-but-real
+(session booking has no per-slot calendar), 2 genuinely missing and explicitly
 scoped/deferred (group sessions, HRIS/enterprise — the latter correctly
 out-of-scope for this lens). Nothing silently gapped.
 
