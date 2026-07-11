@@ -32,7 +32,7 @@ interface Draft {
   props: Array<{ id: string; kind: string; x: number; z: number; rotation: number; scale: number }>;
   spawnPoints: Array<{ id: string; name: string; x: number; z: number; isDefault: boolean }>;
   zones: Array<{ id: string; name: string; kind: string; x: number; z: number; radius: number }>;
-  npcs: Array<{ id: string; name: string; archetype: string; x: number; z: number; factionId: string | null; level: number }>;
+  npcs: Array<{ id: string; name: string; archetype: string; x: number; z: number; factionId: string | null; level: number; backstory: string }>;
   factions: Array<{ id: string; name: string; ethos: string; color: string; stance: string }>;
   terrain: { seed: number; roughness: number; waterLevel: number };
   visibility: string;
@@ -48,12 +48,18 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
   const [propKind, setPropKind] = useState('tree');
   const [zoneKind, setZoneKind] = useState('safe');
   const [zoneRadius, setZoneRadius] = useState(50);
+  const [zoneName, setZoneName] = useState('');
+  const [spawnName, setSpawnName] = useState('');
   const [npcArch, setNpcArch] = useState('warrior');
   const [selected, setSelected] = useState<{ kind: string; id: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState<'scene' | 'biome' | 'rules' | 'publish'>('scene');
   const [checkResult, setCheckResult] = useState<{ ready: boolean; issues: string[]; warnings: string[] } | null>(null);
+  // Pending NPC placement: a click with the NPC tool active opens an inline
+  // form (name/backstory/level) instead of committing immediately — mirrors
+  // the FactionPanel's inline-form pattern rather than a browser prompt().
+  const [pendingNpc, setPendingNpc] = useState<{ x: number; z: number } | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun<{ draft: Draft }>('world-creator', 'draft-get', { id: draftId });
@@ -80,13 +86,28 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
   const onCanvasClick = useCallback(async (x: number, z: number) => {
     if (!draft) return;
     if (tool === 'prop') await run('prop-place', { draftId, kind: propKind, x, z });
-    else if (tool === 'spawn') await run('spawn-add', { draftId, name: '', x, z });
-    else if (tool === 'zone') await run('zone-add', { draftId, kind: zoneKind, x, z, radius: zoneRadius });
-    else if (tool === 'npc') {
-      const nm = window.prompt('NPC name?');
-      if (nm) await run('npc-place', { draftId, name: nm, archetype: npcArch, x, z });
+    else if (tool === 'spawn') {
+      const ok = await run('spawn-add', { draftId, name: spawnName, x, z });
+      if (ok) setSpawnName('');
+    } else if (tool === 'zone') {
+      const ok = await run('zone-add', { draftId, kind: zoneKind, x, z, radius: zoneRadius, name: zoneName });
+      if (ok) setZoneName('');
+    } else if (tool === 'npc') {
+      // opens the inline NpcPlacementForm below instead of window.prompt()
+      setPendingNpc({ x, z });
     }
-  }, [draft, tool, propKind, zoneKind, zoneRadius, npcArch, draftId, run]);
+  }, [draft, tool, propKind, zoneKind, zoneRadius, zoneName, spawnName, draftId, run]);
+
+  const placeNpc = useCallback(async (fields: { name: string; backstory: string; level: number }) => {
+    if (!pendingNpc) return false;
+    const ok = await run('npc-place', {
+      draftId, name: fields.name, archetype: npcArch,
+      backstory: fields.backstory, level: fields.level,
+      x: pendingNpc.x, z: pendingNpc.z,
+    });
+    if (ok) setPendingNpc(null);
+    return ok;
+  }, [pendingNpc, npcArch, draftId, run]);
 
   // updateProp is the single write path for a prop's position/rotation/scale
   // (drag-move AND the inspector's rotate/scale fields both funnel through
@@ -207,7 +228,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
           <div className="space-y-2">
             <div className="flex flex-wrap gap-1.5">
               {TOOLS.map(t => (
-                <button key={t.id} onClick={() => { setTool(t.id); setSelected(null); }}
+                <button key={t.id} onClick={() => { setTool(t.id); setSelected(null); setPendingNpc(null); }}
                   className={`rounded px-2.5 py-1 text-xs ${tool === t.id ? 'bg-amber-600 text-stone-900' : 'border border-stone-700 text-stone-300 hover:bg-stone-800'}`}>
                   {t.label}
                 </button>
@@ -220,7 +241,10 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
               </select>
             )}
             {tool === 'zone' && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <input value={zoneName} onChange={e => setZoneName(e.target.value)}
+                  placeholder="Zone name (optional)" aria-label="Zone name"
+                  className="w-40 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100 placeholder:text-stone-600" />
                 <select value={zoneKind} onChange={e => setZoneKind(e.target.value)}
                   className="rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-200">
                   {ZONE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
@@ -234,6 +258,11 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                   m
                 </label>
               </div>
+            )}
+            {tool === 'spawn' && (
+              <input value={spawnName} onChange={e => setSpawnName(e.target.value)}
+                placeholder="Spawn name (optional)" aria-label="Spawn point name"
+                className="w-40 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100 placeholder:text-stone-600" />
             )}
             {tool === 'npc' && (
               <select value={npcArch} onChange={e => setNpcArch(e.target.value)}
@@ -252,6 +281,11 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
             <p className="text-[11px] text-stone-500">
               {tool === 'select' ? 'Click an entity to select; drag a prop to move it.' : `Click the canvas to place a ${tool}.`}
             </p>
+            {pendingNpc && (
+              <NpcPlacementForm busy={busy} archetype={npcArch}
+                onCancel={() => setPendingNpc(null)}
+                onSubmit={placeNpc} />
+            )}
           </div>
 
           {/* inspector */}
@@ -455,6 +489,12 @@ function InspectorBody({ draft, selected, onUpdateProp }: {
       <Row k="Name" v={n.name} /><Row k="Archetype" v={n.archetype} />
       <Row k="Level" v={String(n.level)} /><Row k="Position" v={`(${n.x}, ${n.z})`} />
       <Row k="Faction" v={f?.name || 'none'} />
+      {n.backstory ? (
+        <div className="pt-1">
+          <dt className="text-stone-500">Backstory</dt>
+          <dd className="mt-0.5 text-stone-300">{n.backstory}</dd>
+        </div>
+      ) : null}
     </dl>;
   }
   if (selected.kind === 'faction') {
@@ -470,6 +510,70 @@ function InspectorBody({ draft, selected, onUpdateProp }: {
 
 function Row({ k, v }: { k: string; v: string }) {
   return <div className="flex justify-between gap-2"><dt className="text-stone-500">{k}</dt><dd className="text-right text-stone-200">{v}</dd></div>;
+}
+
+// NpcPlacementForm — inline form shown after a canvas click with the NPC
+// tool active. Replaces the prior `window.prompt('NPC name?')` flow: the
+// server's `npc-place` macro accepts `backstory` (up to 600 chars) and
+// `level` (clamped 1-100) alongside `name`, but nothing in the UI captured
+// them until now.
+function NpcPlacementForm({
+  busy, archetype, onCancel, onSubmit,
+}: {
+  busy: boolean; archetype: string;
+  onCancel: () => void;
+  onSubmit: (fields: { name: string; backstory: string; level: number }) => Promise<boolean>;
+}) {
+  const [name, setName] = useState('');
+  const [backstory, setBackstory] = useState('');
+  const [level, setLevel] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { nameRef.current?.focus(); }, []);
+
+  const submit = useCallback(async () => {
+    if (!name.trim()) return;
+    setSubmitting(true);
+    await onSubmit({ name: name.trim(), backstory: backstory.trim(), level });
+    setSubmitting(false);
+  }, [name, backstory, level, onSubmit]);
+
+  return (
+    <div role="dialog" aria-label="Place NPC" onKeyDown={e => { if (e.key === 'Escape') onCancel(); }}
+      className="rounded-lg border border-amber-800/40 bg-amber-950/10 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+          New {archetype} NPC
+        </span>
+        <button onClick={onCancel} className="text-[11px] text-stone-400 hover:text-stone-200">✕ cancel</button>
+      </div>
+      <div className="space-y-1">
+        <label className="text-[11px] text-stone-400">Name</label>
+        <input ref={nameRef} value={name} onChange={e => setName(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && name.trim()) submit(); }}
+          placeholder="NPC name" aria-label="NPC name"
+          className="w-full rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100" />
+      </div>
+      <div className="space-y-1">
+        <label className="text-[11px] text-stone-400">Backstory (optional)</label>
+        <textarea value={backstory} onChange={e => setBackstory(e.target.value)} rows={3} maxLength={600}
+          placeholder="Who are they, what do they want here?" aria-label="NPC backstory"
+          className="w-full rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100" />
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="text-[11px] text-stone-400">Level</label>
+        <input type="number" min={1} max={100} value={level}
+          onChange={e => setLevel(clampNum(Number(e.target.value), 1, 100) || 1)}
+          aria-label="NPC level"
+          className="w-16 rounded border border-stone-700 bg-stone-900 px-1.5 py-1 text-xs text-stone-100" />
+      </div>
+      <button onClick={submit} disabled={busy || submitting || !name.trim()}
+        className="w-full rounded bg-amber-600 px-2 py-1 text-xs font-medium text-stone-900 hover:bg-amber-500 disabled:opacity-50">
+        + Place NPC
+      </button>
+    </div>
+  );
 }
 
 function FactionPanel({

@@ -147,3 +147,104 @@ describe('DraftEditor — scene wiring (Wave-3 audit fixes)', () => {
     await waitFor(() => expect(lensRun.mock.calls.filter((c) => c[1] === 'prop-move').length).toBe(1));
   });
 });
+
+describe('DraftEditor — Wave-4 gap closure (npc-place form + zone/spawn naming)', () => {
+  it('NPC placement opens an inline form (not window.prompt) and sends name+backstory+level to npc-place', async () => {
+    const promptSpy = vi.spyOn(window, 'prompt');
+    lensRun.mockImplementation(routed({}));
+    const { getByText, getByTestId, getByLabelText } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    fireEvent.click(getByText('NPC'));
+    fireEvent.click(getByTestId('click-canvas'));
+
+    // the click must NOT immediately call npc-place, nor use window.prompt —
+    // it should open the inline form instead.
+    expect(promptSpy).not.toHaveBeenCalled();
+    expect(lensRun.mock.calls.some((c) => c[1] === 'npc-place')).toBe(false);
+
+    const nameInput = await waitFor(() => getByLabelText('NPC name'));
+    fireEvent.change(nameInput, { target: { value: 'Old Seam' } });
+    fireEvent.change(getByLabelText('NPC backstory'), { target: { value: 'A quiet keeper of the plaza well.' } });
+    fireEvent.change(getByLabelText('NPC level'), { target: { value: '12' } });
+
+    lensRun.mockClear();
+    lensRun.mockImplementation(routed({
+      'npc-place': (params) => {
+        expect(params).toMatchObject({
+          draftId: 'draft_1', name: 'Old Seam', backstory: 'A quiet keeper of the plaza well.',
+          level: 12, archetype: 'warrior', x: 10, z: 20,
+        });
+        return reply({ npc: { id: 'npc_1' }, npcCount: 1 });
+      },
+    }));
+    fireEvent.click(getByText('+ Place NPC'));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('world-creator', 'npc-place',
+      expect.objectContaining({ name: 'Old Seam', backstory: 'A quiet keeper of the plaza well.', level: 12 })));
+
+    promptSpy.mockRestore();
+  });
+
+  it('cancelling the NPC form discards the pending placement without calling npc-place', async () => {
+    lensRun.mockImplementation(routed({}));
+    const { getByText, getByTestId } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    fireEvent.click(getByText('NPC'));
+    fireEvent.click(getByTestId('click-canvas'));
+    await waitFor(() => getByText('✕ cancel'));
+
+    lensRun.mockClear();
+    fireEvent.click(getByText('✕ cancel'));
+    expect(lensRun.mock.calls.some((c) => c[1] === 'npc-place')).toBe(false);
+  });
+
+  it('zone-add sends the user-set zone name instead of always relying on the server default', async () => {
+    lensRun.mockImplementation(routed({}));
+    const { getByText, getByTestId, getByLabelText } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    fireEvent.click(getByText('Zone'));
+    fireEvent.change(getByLabelText('Zone name'), { target: { value: 'Northgate Sanctuary' } });
+
+    lensRun.mockClear();
+    lensRun.mockImplementation(routed({
+      'zone-add': (params) => { expect(params.name).toBe('Northgate Sanctuary'); return reply({ zone: { id: 'z1' }, zoneCount: 1 }); },
+    }));
+    fireEvent.click(getByTestId('click-canvas'));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('world-creator', 'zone-add',
+      expect.objectContaining({ name: 'Northgate Sanctuary' })));
+  });
+
+  it('leaving the zone name blank still places a zone (server default fallback preserved)', async () => {
+    lensRun.mockImplementation(routed({}));
+    const { getByText, getByTestId } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    fireEvent.click(getByText('Zone'));
+    lensRun.mockClear();
+    lensRun.mockImplementation(routed({
+      'zone-add': (params) => { expect(params.name).toBe(''); return reply({ zone: { id: 'z1' }, zoneCount: 1 }); },
+    }));
+    fireEvent.click(getByTestId('click-canvas'));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('world-creator', 'zone-add',
+      expect.objectContaining({ name: '' })));
+  });
+
+  it('spawn-add sends the user-set spawn name instead of always relying on the server default', async () => {
+    lensRun.mockImplementation(routed({}));
+    const { getByText, getByTestId, getByLabelText } = render(<DraftEditor draftId="draft_1" onClose={() => {}} />);
+    await waitFor(() => getByTestId('scene-canvas'));
+
+    fireEvent.click(getByText('Spawn point'));
+    fireEvent.change(getByLabelText('Spawn point name'), { target: { value: 'Riverbend Camp' } });
+
+    lensRun.mockClear();
+    lensRun.mockImplementation(routed({
+      'spawn-add': (params) => { expect(params.name).toBe('Riverbend Camp'); return reply({ spawn: { id: 's1' }, spawnCount: 1 }); },
+    }));
+    fireEvent.click(getByTestId('click-canvas'));
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('world-creator', 'spawn-add',
+      expect.objectContaining({ name: 'Riverbend Camp' })));
+  });
+});
