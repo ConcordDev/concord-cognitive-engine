@@ -1091,14 +1091,21 @@ export const apiHelpers = {
     adaptations: () => api.get('/api/metalearning/adaptations'),
   },
 
-  // Reasoning chains
+  // Reasoning chains — field names match the real backend contract
+  // (server.js createReasoningChain / addReasoningStep / concludeChain).
+  // NOTE: this previously sent {premise,content} and an empty conclude body,
+  // which the backend engine doesn't read (it reads question/goal/type on
+  // create, and HARD-REJECTS addStep with no `justification`) — every
+  // add-step call failed and conclude wrote the literal string
+  // "[object Object]" as the chain's conclusion. Fixed 2026-07 (Wave 3
+  // reasoning-lens audit); see docs/lens-specs/reasoning-capability-map.md.
   reasoning: {
-    create: (data: { premise: string; type?: string }) =>
+    create: (data: { question: string; goal?: string; type?: string }) =>
       api.post('/api/reasoning/chains', data),
-    addStep: (chainId: string, data: { content: string; type?: string }) =>
+    addStep: (chainId: string, data: { conclusion: string; justification: string; premises?: string[]; rule?: string; type?: string }) =>
       api.post(`/api/reasoning/chains/${chainId}/steps`, data),
-    conclude: (chainId: string) =>
-      api.post(`/api/reasoning/chains/${chainId}/conclude`, {}),
+    conclude: (chainId: string, data: { statement: string }) =>
+      api.post(`/api/reasoning/chains/${chainId}/conclude`, data),
     validate: (stepId: string) =>
       api.post(`/api/reasoning/steps/${stepId}/validate`, {}),
     list: () => api.get('/api/reasoning/chains'),
@@ -1476,6 +1483,10 @@ export const apiHelpers = {
       licenses: () => api.get('/api/artistry/marketplace/licenses'),
       purchase: (data: { buyerId: string; listingId: string; listingType?: string; licenseType?: string }) =>
         api.post('/api/artistry/marketplace/purchase', data),
+      // Buyer's own purchase history — real read of the purchase state
+      // machine (server/economy/purchases.js), auth-scoped to the caller.
+      purchases: (params?: { status?: string; limit?: number; offset?: number }) =>
+        api.get('/api/artistry/marketplace/purchases', { params }),
     },
 
     // Collaboration (Phase 9)
@@ -1678,6 +1689,24 @@ export const apiHelpers = {
     status: () => api.get('/api/emergent/status'),
     latticeBeacon: () => api.get('/api/lattice/beacon'),
     resonance: () => api.get('/api/lattice/resonance'),
+  },
+
+  // ---- Resonance Boundary Detection (resonance lens) ----
+  // Distinct from `emergent.latticeBeacon`/`emergent.resonance` above (DTU-tier
+  // counters + lattice homeostasis snapshot) — these hit the `resonance.*`
+  // macros that compute the actual cross-domain boundary scan (frontier/
+  // interior crispness, constraint gradient, coherence direction, and the
+  // ranked cross-domain invariant-alignment pairs the lens visualizes).
+  resonance: {
+    boundary: (params?: { window?: number }) =>
+      api.get('/api/resonance/boundary', { params }),
+    scan: (params?: { window?: number }) =>
+      api.post('/api/resonance/scan', params || {}),
+    history: (params?: { limit?: number }) =>
+      api.get('/api/resonance/history', { params }),
+    // Lattice-wide homeostasis/repair-rate snapshot (register("lattice","resonance")) —
+    // used for the resonance lens's Health tab meters.
+    latticeHealth: () => api.get('/api/lattice/resonance'),
   },
 
   // ═══════════════════════════════════════════════════════════════════
