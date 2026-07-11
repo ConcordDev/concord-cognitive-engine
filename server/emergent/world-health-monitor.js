@@ -12,7 +12,10 @@ import { runWorldHealthPass } from "../lib/world-health.js";
 import { createInitiativeEngine } from "../lib/initiative-engine.js";
 
 let _engine = null;
-function escalator(db) {
+// Exported (not just used by the heartbeat) so the operator-triggered
+// `repair.run_now` macro (domains/repair.js) reuses the exact same
+// escalation logic instead of forking a second copy that could drift.
+export function escalator(db) {
   // Lazy, best-effort bridge to the Sovereign initiative inbox. The escalation
   // carries the pathology + subject so the operator can act; rate-limit/backoff
   // is the initiative engine's job. Disabled-safe.
