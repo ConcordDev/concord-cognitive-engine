@@ -323,6 +323,54 @@ export default function ConcordiaScene({
   });
   const [isReady, setIsReady] = useState(false);
 
+  // ── Decoupled FPS auto-downgrade (runtime-health-capability-map.md #1) ──
+  // Previously this decision (and the `setQuality` write) lived INSIDE the
+  // scene setup effect's own per-frame render loop below — which also
+  // depends on `quality` for legitimate construction reasons (different
+  // post-processing passes / shadow / TAA settings per tier). That meant the
+  // effect's own per-frame logic could write to a value the SAME effect
+  // depends on, forcing a full teardown/rebuild (new WebGLRenderer, new
+  // physics world, 5 window listeners re-registered) as its own "fix" for
+  // sustained low FPS — a fix that itself risks causing another dip right
+  // after reconstruction, which the buffer-reset below only partially
+  // dampens. Moving the decision here — a permanently-mounted effect with a
+  // stable (empty) dependency array, driven by the `concordia:perf-budget`
+  // event the render loop already dispatches every frame for the
+  // PerformanceOverlay — fully decouples the write from the effect it used to
+  // live inside, while leaving every quality-dependent construction path (and
+  // the legitimate need to rebuild when quality genuinely changes, whether
+  // via this downgrade or the manual quality-selector UI) completely
+  // untouched. `bufferLength` replicates the exact original
+  // `fpsBuffer.length >= 60` warm-up gate so a low reading from a
+  // not-yet-settled buffer right after a rebuild can't trigger a downgrade —
+  // identical threshold/hysteresis (avgFps < 50 for 3 consecutive readings),
+  // just relocated.
+  useEffect(() => {
+    function onPerfBudget(ev: Event) {
+      const detail = (ev as CustomEvent).detail as
+        | { fps?: number; bufferLength?: number }
+        | undefined;
+      if (!detail) return;
+      const { fps, bufferLength } = detail;
+      if (typeof fps !== 'number' || typeof bufferLength !== 'number') return;
+      if (bufferLength >= 60 && fps < 50) {
+        lowFpsCountRef.current += 1;
+        if (lowFpsCountRef.current >= 3) {
+          lowFpsCountRef.current = 0;
+          setQuality((prev) => {
+            const order: QualityPreset[] = ['low', 'medium', 'high', 'ultra'];
+            const idx = order.indexOf(prev);
+            return idx > 0 ? order[idx - 1] : prev;
+          });
+        }
+      } else {
+        lowFpsCountRef.current = 0;
+      }
+    }
+    window.addEventListener('concordia:perf-budget', onPerfBudget);
+    return () => window.removeEventListener('concordia:perf-budget', onPerfBudget);
+  }, []);
+
   // ── Initialize Three.js scene ──────────────────────────────────
 
   useEffect(() => {
@@ -1495,20 +1543,22 @@ export default function ConcordiaScene({
           });
         }
 
-        // ── Auto-downgrade quality when FPS sustained below 50 ──────
-        if (fpsBuffer.length >= 60 && avgFps < 50) {
-          lowFpsCountRef.current += 1;
-          if (lowFpsCountRef.current >= 3) {
-            lowFpsCountRef.current = 0;
-            setQuality((prev) => {
-              const order: QualityPreset[] = ['low', 'medium', 'high', 'ultra'];
-              const idx = order.indexOf(prev);
-              return idx > 0 ? order[idx - 1] : prev;
-            });
-          }
-        } else {
-          lowFpsCountRef.current = 0;
-        }
+        // Auto-downgrade quality when FPS is sustained below 50 — the DECISION
+        // (and the `setQuality` write) live in a separate effect below, driven
+        // by the `concordia:perf-budget` event dispatched a few lines down.
+        // This effect (the one this RAF loop lives inside) depends on `quality`
+        // for real construction reasons (post-processing passes, shadow/TAA
+        // settings, etc. genuinely differ per tier) — so it MUST keep rebuilding
+        // when quality changes. What must NOT happen is THIS SAME effect's own
+        // per-frame loop calling `setQuality` directly, which would make quality
+        // a dependency that the effect itself writes to — a full teardown+rebuild
+        // (new WebGLRenderer, new physics world, 5 window listeners
+        // re-registered) triggered by the effect's own FPS reading, which can
+        // itself cause a further FPS dip and trigger another downgrade. See
+        // docs/concordia-specs/runtime-health-capability-map.md finding #1.
+        // `bufferLength` lets the outside listener replicate the exact
+        // `fpsBuffer.length >= 60` warm-up gate below without needing access to
+        // this effect's local `fpsBuffer`.
 
         setPerfBudget({
           drawCalls: info.render.calls,
@@ -1521,7 +1571,8 @@ export default function ConcordiaScene({
           frameTime: Math.round(frameTime * 10) / 10,
         });
 
-        // Telemetry feed for the PerformanceOverlay + server aggregator.
+        // Telemetry feed for the PerformanceOverlay + server aggregator, and
+        // (bufferLength) for the auto-downgrade listener effect below.
         try {
           window.dispatchEvent(new CustomEvent('concordia:perf-budget', {
             detail: {
@@ -1530,6 +1581,7 @@ export default function ConcordiaScene({
               drawCalls: info.render.calls,
               triangles: info.render.triangles,
               textureMemory: (info.memory?.textures ?? 0) * 4,
+              bufferLength: fpsBuffer.length,
             },
           }));
         } catch { /* event dispatch silent */ }

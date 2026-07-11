@@ -2915,7 +2915,28 @@ export default function AvatarSystem3D({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- createAvatarMeshSmart is a stable builder; effect keys on the listed avatar deps
   }, [
-    playerAvatar,
+    // NOT `playerAvatar` (the whole object) — see runtime-health-capability-map.md
+    // finding #1. Every field this effect actually reads at construction time
+    // (id/appearance/name/profession/firmEmblem — grep-verified above) is listed
+    // individually. `playerAvatar.position`/`.rotation`/`.currentAnimation` are
+    // ONLY read here to seed the initial mesh transform/mixer clip on a genuine
+    // (re)construction; they're deliberately excluded because `onMove`/`onEmote`
+    // update them via `setPlayerAvatar((prev) => ({...prev, position, rotation}))`
+    // on every movement frame — a shallow spread that leaves appearance/name/
+    // profession/firmEmblem referentially/value-unchanged. Depending on the whole
+    // object meant every step the player took fed back into a full teardown and
+    // rebuild of this player's own mesh/mixer/physics registration (the effect's
+    // own per-frame movement loop calls onMove, which calls setPlayerAvatar, which
+    // changes `playerAvatar` identity, which re-triggers this effect — a genuine
+    // self-feeding loop). Whichever render DOES retrigger this effect (e.g. an
+    // appearance change) still reads the CURRENT position/rotation/currentAnimation
+    // off `playerAvatar` in that render's closure — never stale, since React state
+    // is always fully up to date on every render regardless of which field changed.
+    playerAvatar.id,
+    playerAvatar.appearance,
+    playerAvatar.name,
+    playerAvatar.profession,
+    playerAvatar.firmEmblem,
     otherPlayers,
     npcs,
     onMove,
