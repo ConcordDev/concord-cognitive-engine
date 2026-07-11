@@ -2289,12 +2289,23 @@ export const apiHelpers = {
     list: (limit?: number) => api.get('/api/cognitive/dreams', { params: { limit } }),
   },
 
-  /** Admin: Shadow vault + compression management */
+  /**
+   * Admin: shadow vault + compression management, plus the admin lens's
+   * own dashboard/metrics/logs. dashboard/metrics/logs wrap the
+   * admin.{dashboard,metrics,logs} macros, which enforce requireAdminRole()
+   * server-side and return a real 403 on denial (see server/routes/domain.js).
+   * Do NOT substitute the public system/health, perf/metrics, or events/log
+   * endpoints other lenses share — those are intentionally unauthenticated
+   * and have a different response shape.
+   */
   admin: {
     unshadow: (domain: string, count?: number) =>
       api.post('/api/admin/unshadow', { domain, count: count || 5 }),
     migrateCompression: () => api.post('/api/admin/migrate-compression'),
     compressionStats: () => api.get('/api/admin/compression-stats'),
+    dashboard: () => api.get('/api/admin/dashboard'),
+    metrics: () => api.get('/api/admin/metrics'),
+    logs: (params?: { limit?: number; type?: string }) => api.get('/api/admin/logs', { params }),
   },
 
   /* sovereignty and council merged into their primary definitions above */
