@@ -38,6 +38,10 @@ beforeEach(() => { globalThis._concordSTATE = {}; });
 
 const ctxA = { actor: { userId: "user_a" } };
 const ctxB = { actor: { userId: "user_b" } };
+// publish_post / send_thanks act on behalf of a seeded NPC creator with no
+// real-account ownership — admin-gated (see the authz note atop
+// domains/sponsorship.js). ctxAdmin exercises that legitimate operator path.
+const ctxAdmin = { actor: { userId: "user_a", role: "admin" } };
 
 const CREATOR = "npc_vael"; // baseMonthly 8 → bronze 8, silver 16, gold 32
 
@@ -204,10 +208,11 @@ describe("sponsorship — change_tier / pause / resume / cancel lifecycle", () =
 
 describe("sponsorship — sponsor-only content gating (tier rank math)", () => {
   it("locks posts above the caller's tier and unlocks at/below it", () => {
-    // Creator publishes one public, one silver-gated, one gold-gated post.
-    call("publish_post", ctxA, { creatorId: CREATOR, title: "Public note", body: "open", minTier: "public" });
-    call("publish_post", ctxA, { creatorId: CREATOR, title: "Silver scroll", body: "secret-s", minTier: "silver" });
-    call("publish_post", ctxA, { creatorId: CREATOR, title: "Gold tome", body: "secret-g", minTier: "gold" });
+    // Creator (admin-composed — see the authz note atop domains/sponsorship.js)
+    // publishes one public, one silver-gated, one gold-gated post.
+    call("publish_post", ctxAdmin, { creatorId: CREATOR, title: "Public note", body: "open", minTier: "public" });
+    call("publish_post", ctxAdmin, { creatorId: CREATOR, title: "Silver scroll", body: "secret-s", minTier: "silver" });
+    call("publish_post", ctxAdmin, { creatorId: CREATOR, title: "Gold tome", body: "secret-g", minTier: "gold" });
 
     // user_b subscribes at SILVER → sees public + silver bodies, gold is locked.
     call("subscribe", ctxB, { creatorId: CREATOR, tierId: `${CREATOR}_silver` });
@@ -223,8 +228,8 @@ describe("sponsorship — sponsor-only content gating (tier rank math)", () => {
   });
 
   it("a non-sponsor only sees public bodies", () => {
-    call("publish_post", ctxA, { creatorId: CREATOR, title: "Pub", body: "p", minTier: "public" });
-    call("publish_post", ctxA, { creatorId: CREATOR, title: "Br", body: "b", minTier: "bronze" });
+    call("publish_post", ctxAdmin, { creatorId: CREATOR, title: "Pub", body: "p", minTier: "public" });
+    call("publish_post", ctxAdmin, { creatorId: CREATOR, title: "Br", body: "b", minTier: "bronze" });
     const f = call("feed", ctxB, { creatorId: CREATOR });
     const byTitle = Object.fromEntries(f.result.posts.map((p) => [p.title, p]));
     assert.equal(byTitle["Pub"].locked, false);
@@ -234,17 +239,34 @@ describe("sponsorship — sponsor-only content gating (tier rank math)", () => {
 
   it("dispatch_history only returns dispatches published after the sponsorship started", () => {
     const s = call("subscribe", ctxB, { creatorId: CREATOR, tierId: `${CREATOR}_gold` });
-    call("publish_post", ctxA, { creatorId: CREATOR, title: "Weekly dispatch", body: "d1", kind: "dispatch" });
-    call("publish_post", ctxA, { creatorId: CREATOR, title: "Not a dispatch", body: "x", kind: "post" });
+    call("publish_post", ctxAdmin, { creatorId: CREATOR, title: "Weekly dispatch", body: "d1", kind: "dispatch" });
+    call("publish_post", ctxAdmin, { creatorId: CREATOR, title: "Not a dispatch", body: "x", kind: "post" });
     const h = call("dispatch_history", ctxB, { sponsorshipId: s.result.sponsorship.id });
     assert.equal(h.ok, true);
     assert.equal(h.result.count, 1);
     assert.equal(h.result.dispatches[0].title, "Weekly dispatch");
   });
 
-  it("publish_post rejects missing creatorId/title", () => {
-    assert.equal(call("publish_post", ctxA, { creatorId: CREATOR }).error, "creatorId and title required");
-    assert.equal(call("publish_post", ctxA, { title: "x" }).error, "creatorId and title required");
+  it("publish_post rejects missing creatorId/title (for an admin caller)", () => {
+    assert.equal(call("publish_post", ctxAdmin, { creatorId: CREATOR }).error, "creatorId and title required");
+    assert.equal(call("publish_post", ctxAdmin, { title: "x" }).error, "creatorId and title required");
+  });
+});
+
+describe("sponsorship — publish_post / send_thanks are admin-gated (Wave-3 authz fix)", () => {
+  it("publish_post rejects a non-admin caller before touching state", () => {
+    const r = call("publish_post", ctxA, { creatorId: CREATOR, title: "Impersonated dispatch" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "admin_only");
+    assert.equal(call("feed", ctxA, { creatorId: CREATOR }).result.count, 0);
+  });
+
+  it("send_thanks rejects a non-admin caller and writes nothing to the target inbox", () => {
+    call("subscribe", ctxB, { creatorId: CREATOR, tierId: `${CREATOR}_bronze` });
+    const r = call("send_thanks", ctxA, { toUserId: "user_b", creatorId: CREATOR, body: "spoofed thank-you" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "admin_only");
+    assert.equal(call("list_messages", ctxB, {}).result.count, 0);
   });
 });
 
@@ -273,14 +295,14 @@ describe("sponsorship — leaderboard ranks by contribution", () => {
 });
 
 describe("sponsorship — thank-you messaging", () => {
-  it("a creator can thank an active sponsor; non-sponsors are rejected", () => {
+  it("a creator (admin) can thank an active sponsor; non-sponsors are rejected", () => {
     call("subscribe", ctxB, { creatorId: CREATOR, tierId: `${CREATOR}_gold` });
-    const ok = call("send_thanks", ctxA, { toUserId: "user_b", creatorId: CREATOR, body: "Thank you!" });
+    const ok = call("send_thanks", ctxAdmin, { toUserId: "user_b", creatorId: CREATOR, body: "Thank you!" });
     assert.equal(ok.ok, true);
     assert.equal(ok.result.message.body, "Thank you!");
 
     // user_c is not a sponsor → rejected.
-    const no = call("send_thanks", ctxA, { toUserId: "user_c", creatorId: CREATOR, body: "Hi" });
+    const no = call("send_thanks", ctxAdmin, { toUserId: "user_c", creatorId: CREATOR, body: "Hi" });
     assert.equal(no.ok, false);
     assert.match(no.error, /not an active sponsor/);
 
@@ -293,8 +315,8 @@ describe("sponsorship — thank-you messaging", () => {
     assert.equal(call("list_messages", ctxB, {}).result.unread, 0);
   });
 
-  it("send_thanks rejects missing fields; mark_message_read rejects unknown id", () => {
-    assert.equal(call("send_thanks", ctxA, {}).error, "toUserId, creatorId and body required");
+  it("send_thanks rejects missing fields (for an admin caller); mark_message_read rejects unknown id", () => {
+    assert.equal(call("send_thanks", ctxAdmin, {}).error, "toUserId, creatorId and body required");
     assert.equal(call("mark_message_read", ctxB, { messageId: "nope" }).error, "message not found");
   });
 });
