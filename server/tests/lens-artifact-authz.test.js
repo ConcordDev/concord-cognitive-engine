@@ -23,28 +23,40 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { load } from "./depth/_harness.js";
-
-function ctxFor(userId, role = "member") {
-  return { actor: { userId, role }, userId };
-}
 
 test("lens artifact authz", async (t) => {
   const { runMacro, STATE } = await load();
+
+  function ctxFor(userId, role = "member") {
+    return { actor: { userId, role }, userId };
+  }
 
   const OWNER = "lens-authz-owner";
   const OTHER = "lens-authz-other";
   const ADMIN = "lens-authz-admin";
 
-  async function makeArtifact(domain = "security") {
-    const r = await runMacro(
-      "lens",
-      "create",
-      { domain, type: "Incident", title: "original title", data: { rootCause: "sensitive investigation notes" }, meta: {} },
-      ctxFor(OWNER),
-    );
-    assert.equal(r.ok, true, JSON.stringify(r));
-    return r.artifact.id;
+  // Seed the artifact directly into STATE.lensArtifacts (the same pattern
+  // tests/depth/_harness.js#lensRun uses) instead of going through
+  // `lens.create`. `lens.create`'s scope-enforcement bridge calls
+  // `ctx.macro.run(...)` without awaiting the result (a separate,
+  // pre-existing bug unrelated to this authz fix — filed for follow-up, not
+  // addressed here since it's out of scope for the security-lens audit),
+  // so routing through it here would conflate two different defects.
+  function makeArtifact(domain = "security") {
+    const id = `lens-authz-${domain}-${randomUUID()}`;
+    STATE.lensArtifacts.set(id, {
+      id, domain, type: "Incident",
+      ownerId: OWNER, createdBy: OWNER,
+      title: "original title",
+      data: { rootCause: "sensitive investigation notes" },
+      meta: { visibility: "private" },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      version: 1,
+    });
+    return id;
   }
 
   await t.test("lens.get already blocked a non-owner (sanity check on the existing rule)", async () => {
@@ -90,14 +102,8 @@ test("lens artifact authz", async (t) => {
   });
 
   await t.test("social-domain artifacts stay readable/actionable by non-owners (no regression)", async () => {
-    const r = await runMacro(
-      "lens",
-      "create",
-      { domain: "forum", type: "Post", title: "public post", data: {}, meta: {} },
-      ctxFor(OWNER),
-    );
-    assert.equal(r.ok, true, JSON.stringify(r));
-    const exportR = await runMacro("lens", "export", { id: r.artifact.id, format: "json" }, ctxFor(OTHER));
+    const id = makeArtifact("forum");
+    const exportR = await runMacro("lens", "export", { id, format: "json" }, ctxFor(OTHER));
     assert.equal(exportR.ok, true, "social-domain artifacts should stay visible to non-owners");
   });
 });
