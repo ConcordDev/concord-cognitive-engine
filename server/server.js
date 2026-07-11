@@ -1132,15 +1132,22 @@ registerHeartbeat("farm-growth-cycle", {
   handler: ({ db: ctxDb } = {}) => runFarmGrowthCycle({ db: ctxDb || db }),
 });
 
-// Phase BD1: world boss scheduler. Every 16 ticks (~4 min) per active
-// world runs a trigger pass (opens any schedule whose next_spawn_at <=
-// now), sweeps expired actives, advances next_spawn_at. Kill-switch:
+// Phase BD1: world boss scheduler. Every 16 ticks (~4 min) runs one
+// global trigger pass across every world's schedule (opens any row whose
+// next_spawn_at <= now), sweeps expired actives, advances next_spawn_at.
+// scope: 'global' (not the default 'world') because tickAllRegistered
+// never forwards a per-world worldId into a handler's ctx (see the fix
+// note in emergent/world-boss-cycle.js) — this heartbeat processes every
+// world in one pass instead of depending on a worldId it would never
+// receive, matching the farm-growth-cycle / announcement-broadcaster
+// pattern for scope:'global' heartbeats. Kill-switch:
 // CONCORD_WORLD_BOSSES_ENABLED=0.
 import { runWorldBossCycle } from "./emergent/world-boss-cycle.js";
 registerHeartbeat("world-boss-cycle", {
   frequency: 16,
-  handler: ({ db: ctxDb, worldId } = {}) => runWorldBossCycle({
-    db: ctxDb || db, worldId, io: REALTIME?.io,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => runWorldBossCycle({
+    db: ctxDb || db, io: REALTIME?.io,
   }),
 });
 
