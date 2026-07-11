@@ -13860,6 +13860,34 @@ register("metacognition", "adjust_confidence", (ctx, input = {}) => {
   return adjustConfidenceFromLearning(domain, confidence);
 }, { public: true });
 
+// recordPrediction()/resolvePrediction() persist into STATE.metacognition.predictions
+// (a Map) but until this macro, nothing ever listed it back out — the Predictions
+// tab UI could create + resolve-by-id but had no way to discover ids or render the
+// history it was implicitly promising. Read-only, capped, newest-first.
+register("metacognition", "predictions_list", (ctx, _input = {}) => {
+  try {
+  enforceEthosInvariant("metacognition_predictions_list");
+  ensureMetacognitionSystem();
+  const predictions = Array.from(ctx.state.metacognition.predictions.values())
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, 200);
+  return { ok: true, predictions, total: predictions.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: true });
+
+// Same gap as predictions_list: assessKnowledge() appends to
+// STATE.metacognition.assessments but only its *count* was ever surfaced (via
+// metacognition.status). The Knowledge Confidence Map / Skill Timeline sections
+// need the actual per-domain scores.
+register("metacognition", "assessments_list", (ctx, _input = {}) => {
+  try {
+  enforceEthosInvariant("metacognition_assessments_list");
+  ensureMetacognitionSystem();
+  const assessments = ctx.state.metacognition.assessments.slice(-100).slice().reverse();
+  return { ok: true, assessments, total: assessments.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: true });
+
 // ===== END METACOGNITION MACROS =====
 
 // ===== EXPLANATION ENGINE MACROS =====
