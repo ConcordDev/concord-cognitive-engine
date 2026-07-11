@@ -162,4 +162,58 @@ describe('translation lens — four UX states', () => {
     await waitFor(() => expect(view!.getByTestId('translation-detected')).toBeInTheDocument());
     expect(view!.getByTestId('translation-detected').textContent).toMatch(/Spanish \(82%\)/);
   });
+
+  it('BATCH: switching to batch mode and translating renders order-preserving results from translation.batch', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'languages') return Promise.resolve({ data: { ok: true, result: CATALOG, error: null } });
+      if (action === 'batch') {
+        return Promise.resolve({
+          data: { ok: true, result: { translations: ['Buenos días', '¿Cómo estás?'], targetLanguage: 'Spanish', formality: 'neutral', count: 2 }, error: null },
+        });
+      }
+      return Promise.resolve({ data: { ok: true, result: {}, error: null } });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<TranslationLens />); });
+    await waitFor(() => expect(view!.getByLabelText('Batch translation mode')).toBeInTheDocument());
+
+    await act(async () => { fireEvent.click(view!.getByLabelText('Batch translation mode')); });
+    await waitFor(() => expect(view!.getByTestId('translation-batch-empty')).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.change(view!.getByLabelText('Lines to batch translate'), { target: { value: 'Good morning\nHow are you?' } });
+    });
+    await act(async () => { fireEvent.click(view!.getByLabelText('Translate all lines')); });
+
+    await waitFor(() => expect(view!.getByTestId('translation-batch-results')).toBeInTheDocument());
+    const results = view!.getByTestId('translation-batch-results');
+    expect(results.textContent).toMatch(/Buenos días/);
+    expect(results.textContent).toMatch(/¿Cómo estás\?/);
+
+    // real macro call shape: items[] preserved order, no fabrication.
+    const batchCall = lensRunMock.mock.calls.find((c) => c[1] === 'batch');
+    expect(batchCall![2]).toMatchObject({ items: ['Good morning', 'How are you?'] });
+
+    // PERSIST: saving a batch line calls the same server-local artifact store.
+    await act(async () => { fireEvent.click(view!.getByLabelText('Save batch translation 1')); });
+    expect(createMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('BATCH ERROR: honest failure surfaces role=alert with a working Retry', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'languages') return Promise.resolve({ data: { ok: true, result: CATALOG, error: null } });
+      if (action === 'batch') return Promise.resolve({ data: { ok: false, result: null, error: 'translation_unavailable' } });
+      return Promise.resolve({ data: { ok: true, result: {}, error: null } });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<TranslationLens />); });
+    await act(async () => { fireEvent.click(view!.getByLabelText('Batch translation mode')); });
+    await act(async () => {
+      fireEvent.change(view!.getByLabelText('Lines to batch translate'), { target: { value: 'hello' } });
+    });
+    await act(async () => { fireEvent.click(view!.getByLabelText('Translate all lines')); });
+
+    await waitFor(() => expect(view!.getByTestId('translation-batch-error')).toBeInTheDocument());
+    expect(view!.getByTestId('translation-batch-error')).toHaveAttribute('role', 'alert');
+  });
 });

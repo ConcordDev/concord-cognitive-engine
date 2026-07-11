@@ -3,8 +3,9 @@
 import { LensShell } from '@/components/lens/LensShell';
 
 // Translation lens — machine translation through Concord's local LLM.
-// Wires the REAL `translation` backend domain (languages / detect / translate)
-// via POST /api/lens/run. No external API: text never leaves your server.
+// Wires the REAL `translation` backend domain (languages / detect / translate
+// / batch) via POST /api/lens/run. No external API: text never leaves your
+// server.
 //
 // Four explicit UX states (pinned by tests/translation-lens-states.test.tsx):
 //   LOADING — the language catalog is in flight (role=status, aria-busy)
@@ -12,6 +13,15 @@ import { LensShell } from '@/components/lens/LensShell';
 //   EMPTY   — idle, no output yet (honest "nothing translated yet")
 //   READY   — a real translation / detection result
 // a11y: every select + textarea + button carries an accessible name.
+//
+// Batch mode wires `translation.batch` (order-preserving array translation,
+// one LLM pass, MAX_BATCH=50/MAX_TEXT_LEN=8000 per server/domains/
+// translation.js) — a real, non-trivial macro that had no frontend caller
+// before this pass. The natural surface for it is a multi-line "translate a
+// list" workflow (the same shape DeepL/Google Translate's document mode
+// offers): paste several lines, translate them together in one pass instead
+// of N round-trips, then optionally save any result line to the same
+// server-local Saved translations store the single-text flow uses.
 
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -47,6 +57,15 @@ export default function TranslationLens() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const addToast = useUIStore((s) => s.addToast);
+
+  // Batch mode — wires `translation.batch` (see header comment). Kept as
+  // separate state from the single-text flow so switching modes never loses
+  // in-progress single-text work.
+  const [mode, setMode] = useState<'single' | 'batch'>('single');
+  const [batchText, setBatchText] = useState('');
+  const [batchResults, setBatchResults] = useState<{ input: string; output: string }[] | null>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchError, setBatchError] = useState<string | null>(null);
 
   // Saved translations — the generic per-user, server-LOCAL lens artifact store
   // (sovereignty intact: text still never leaves your server). Lets a user keep
@@ -119,11 +138,44 @@ export default function TranslationLens() {
     }
   }, [text]);
 
+  const batchLines = batchText.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  const handleBatchTranslate = useCallback(async () => {
+    const items = batchText.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (!items.length) return;
+    setBatchBusy(true);
+    setBatchError(null);
+    setBatchResults(null);
+    try {
+      const res = await lensRun<{ translations: string[] }>(DOMAIN, 'batch', {
+        items,
+        targetLanguage: target,
+        formality,
+      });
+      if (res.data?.ok && Array.isArray(res.data.result?.translations)) {
+        setBatchResults(items.map((input, i) => ({ input, output: res.data!.result!.translations[i] ?? '' })));
+        addToast({ type: 'success', message: `Translated ${items.length} lines`, duration: 2500 });
+      } else {
+        setBatchError(res.data?.error || 'translation_unavailable');
+        addToast({ type: 'error', message: 'Batch translation unavailable' });
+      }
+    } catch (e) {
+      setBatchError(String((e as Error)?.message || e));
+      addToast({ type: 'error', message: 'Batch translation request failed' });
+    } finally {
+      setBatchBusy(false);
+    }
+  }, [batchText, target, formality, addToast]);
+
   const friendlyError = (e: string) =>
     e === 'translation_unavailable'
       ? 'Translation engine unavailable — the local LLM is not responding. (No fabricated output is shown.)'
       : e === 'detection_unavailable'
       ? 'Language detection unavailable.'
+      : e === 'batch_translation_malformed'
+      ? 'The engine returned a malformed batch — please retry.'
+      : /^too many items/.test(e)
+      ? e + ' — split into smaller batches (max 50 lines).'
       : e;
 
   return (
@@ -150,16 +202,42 @@ export default function TranslationLens() {
 
         {!catalogLoading && (
           <>
+            {/* Mode toggle — Single reuses the existing translate/detect flow;
+                Batch wires the real `translation.batch` macro (order-preserving
+                array translation, one LLM pass) which previously had no UI. */}
+            <div role="tablist" aria-label="Translation mode" style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <button
+                role="tab"
+                aria-selected={mode === 'single'}
+                aria-label="Single translation mode"
+                onClick={() => setMode('single')}
+                style={btnStyle(mode === 'single')}
+              >
+                Single
+              </button>
+              <button
+                role="tab"
+                aria-selected={mode === 'batch'}
+                aria-label="Batch translation mode"
+                onClick={() => setMode('batch')}
+                style={btnStyle(mode === 'batch')}
+              >
+                Batch translate
+              </button>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-3">
-              <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
-                From
-                <select aria-label="Translate from" value={source} onChange={(e) => setSource(e.target.value)} style={selStyle}>
-                  <option value="auto">Auto-detect</option>
-                  {languages.map((l) => (
-                    <option key={l.code} value={l.code}>{l.name}</option>
-                  ))}
-                </select>
-              </label>
+              {mode === 'single' && (
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
+                  From
+                  <select aria-label="Translate from" value={source} onChange={(e) => setSource(e.target.value)} style={selStyle}>
+                    <option value="auto">Auto-detect</option>
+                    {languages.map((l) => (
+                      <option key={l.code} value={l.code}>{l.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
                 To
                 <select aria-label="Translate to" value={target} onChange={(e) => setTarget(e.target.value)} style={selStyle}>
@@ -178,63 +256,146 @@ export default function TranslationLens() {
               </label>
             </div>
 
-            <textarea
-              aria-label="Text to translate"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Enter text to translate…"
-              rows={6}
-              style={{ width: '100%', padding: 12, fontSize: 14, borderRadius: 8, border: '1px solid #444', background: 'transparent', color: 'inherit', marginBottom: 12 }}
-            />
+            {mode === 'single' && (
+              <>
+                <textarea
+                  aria-label="Text to translate"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="Enter text to translate…"
+                  rows={6}
+                  style={{ width: '100%', padding: 12, fontSize: 14, borderRadius: 8, border: '1px solid #444', background: 'transparent', color: 'inherit', marginBottom: 12 }}
+                />
 
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-              <button aria-label="Translate text" onClick={handleTranslate} disabled={busy || !text.trim()} style={btnStyle(true)}>
-                {busy ? 'Working…' : 'Translate'}
-              </button>
-              <button aria-label="Detect language" onClick={handleDetect} disabled={busy || !text.trim()} style={btnStyle(false)}>
-                Detect language
-              </button>
-              {detected && (
-                <span data-testid="translation-detected" style={{ fontSize: 13, opacity: 0.8 }}>
-                  Detected: {detected}
-                </span>
-              )}
-            </div>
-
-            {/* ERROR */}
-            {error && (
-              <div
-                data-testid="translation-error"
-                role="alert"
-                style={{ padding: 12, borderRadius: 8, border: '1px solid #a33', color: '#f88', fontSize: 13, marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}
-              >
-                <span>{friendlyError(error)}</span>
-                <button aria-label="Retry translation" onClick={handleTranslate} style={btnStyle(false)}>Retry</button>
-              </div>
-            )}
-
-            {/* READY */}
-            {output && (
-              <div data-testid="translation-output" className="mb-4 animate-in fade-in duration-200 motion-reduce:animate-none">
-                <div style={{ padding: 16, borderRadius: 8, border: '1px solid #444', whiteSpace: 'pre-wrap', fontSize: 15 }}>
-                  {output}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+                  <button aria-label="Translate text" onClick={handleTranslate} disabled={busy || !text.trim()} style={btnStyle(true)}>
+                    {busy ? 'Working…' : 'Translate'}
+                  </button>
+                  <button aria-label="Detect language" onClick={handleDetect} disabled={busy || !text.trim()} style={btnStyle(false)}>
+                    Detect language
+                  </button>
+                  {detected && (
+                    <span data-testid="translation-detected" style={{ fontSize: 13, opacity: 0.8 }}>
+                      Detected: {detected}
+                    </span>
+                  )}
                 </div>
-                <button
-                  aria-label="Save translation"
-                  onClick={() =>
-                    saveTranslation({
-                      title: `${text.slice(0, 40) || 'Translation'} → ${target}`,
-                      data: { source, target, formality, input: text, output },
-                    })
-                  }
-                  style={{ ...btnStyle(false), marginTop: 8 }}
-                >
-                  Save translation
-                </button>
-              </div>
+
+                {/* ERROR */}
+                {error && (
+                  <div
+                    data-testid="translation-error"
+                    role="alert"
+                    style={{ padding: 12, borderRadius: 8, border: '1px solid #a33', color: '#f88', fontSize: 13, marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}
+                  >
+                    <span>{friendlyError(error)}</span>
+                    <button aria-label="Retry translation" onClick={handleTranslate} style={btnStyle(false)}>Retry</button>
+                  </div>
+                )}
+
+                {/* READY */}
+                {output && (
+                  <div data-testid="translation-output" className="mb-4 animate-in fade-in duration-200 motion-reduce:animate-none">
+                    <div style={{ padding: 16, borderRadius: 8, border: '1px solid #444', whiteSpace: 'pre-wrap', fontSize: 15 }}>
+                      {output}
+                    </div>
+                    <button
+                      aria-label="Save translation"
+                      onClick={() =>
+                        saveTranslation({
+                          title: `${text.slice(0, 40) || 'Translation'} → ${target}`,
+                          data: { source, target, formality, input: text, output },
+                        })
+                      }
+                      style={{ ...btnStyle(false), marginTop: 8 }}
+                    >
+                      Save translation
+                    </button>
+                  </div>
+                )}
+
+                {/* EMPTY — idle, nothing translated yet */}
+                {!output && !error && !busy && (
+                  <div data-testid="translation-empty" style={{ padding: 16, opacity: 0.55, fontSize: 14, fontStyle: 'italic' }}>
+                    Nothing translated yet — enter text above and press Translate.
+                  </div>
+                )}
+              </>
             )}
 
-            {/* Saved translations — recallable from the server-local artifact store */}
+            {mode === 'batch' && (
+              <>
+                <textarea
+                  aria-label="Lines to batch translate"
+                  value={batchText}
+                  onChange={(e) => setBatchText(e.target.value)}
+                  placeholder={'One line per item, up to 50 lines…\ne.g.\nGood morning\nHow are you?\nSee you tomorrow'}
+                  rows={6}
+                  style={{ width: '100%', padding: 12, fontSize: 14, borderRadius: 8, border: '1px solid #444', background: 'transparent', color: 'inherit', marginBottom: 8, fontFamily: 'inherit' }}
+                />
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+                  <button
+                    aria-label="Translate all lines"
+                    onClick={handleBatchTranslate}
+                    disabled={batchBusy || !batchLines.length}
+                    style={btnStyle(true)}
+                  >
+                    {batchBusy ? 'Working…' : `Translate all${batchLines.length ? ` (${batchLines.length})` : ''}`}
+                  </button>
+                  <span style={{ fontSize: 12, opacity: 0.6 }}>{batchLines.length}/50 lines</span>
+                </div>
+
+                {/* BATCH ERROR */}
+                {batchError && (
+                  <div
+                    data-testid="translation-batch-error"
+                    role="alert"
+                    style={{ padding: 12, borderRadius: 8, border: '1px solid #a33', color: '#f88', fontSize: 13, marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}
+                  >
+                    <span>{friendlyError(batchError)}</span>
+                    <button aria-label="Retry batch translation" onClick={handleBatchTranslate} style={btnStyle(false)}>Retry</button>
+                  </div>
+                )}
+
+                {/* BATCH READY */}
+                {batchResults && batchResults.length > 0 && (
+                  <ul
+                    data-testid="translation-batch-results"
+                    style={{ listStyle: 'none', padding: 0, margin: '0 0 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}
+                  >
+                    {batchResults.map((r, i) => (
+                      <li key={i} style={{ padding: 12, borderRadius: 8, border: '1px solid #444', fontSize: 14 }}>
+                        <div style={{ opacity: 0.6, fontSize: 12, marginBottom: 4 }}>{r.input}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                          <span>{r.output}</span>
+                          <button
+                            aria-label={`Save batch translation ${i + 1}`}
+                            onClick={() =>
+                              saveTranslation({
+                                title: `${r.input.slice(0, 40) || 'Translation'} → ${target}`,
+                                data: { source: 'auto', target, formality, input: r.input, output: r.output },
+                              })
+                            }
+                            style={btnStyle(false)}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {/* BATCH EMPTY */}
+                {!batchResults && !batchError && !batchBusy && (
+                  <div data-testid="translation-batch-empty" style={{ padding: 16, opacity: 0.55, fontSize: 14, fontStyle: 'italic' }}>
+                    Nothing translated yet — enter one item per line above and press Translate all.
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Saved translations — recallable from the server-local artifact store; shared by both modes */}
             {saved.length > 0 && (
               <section data-testid="translation-saved" aria-label="Saved translations" style={{ marginTop: 8 }}>
                 <h2 style={{ fontSize: 14, fontWeight: 600, opacity: 0.8, marginBottom: 8 }}>Saved translations</h2>
@@ -252,13 +413,6 @@ export default function TranslationLens() {
                   ))}
                 </ul>
               </section>
-            )}
-
-            {/* EMPTY — idle, nothing translated yet */}
-            {!output && !error && !busy && (
-              <div data-testid="translation-empty" style={{ padding: 16, opacity: 0.55, fontSize: 14, fontStyle: 'italic' }}>
-                Nothing translated yet — enter text above and press Translate.
-              </div>
             )}
           </>
         )}
