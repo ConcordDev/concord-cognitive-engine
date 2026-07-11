@@ -63,6 +63,12 @@ interface ResonancePair {
 
 interface BoundaryScan {
   ok: boolean;
+  // Present when ok is false (e.g. "Insufficient DTU density for boundary
+  // detection") or when the scan resolved to a real zero-signal reading with
+  // an explanatory reason ("frontier_too_small", "insufficient_domain_diversity").
+  error?: string;
+  reason?: string;
+  count?: number;
   signal: number;
   classification: string;
   timestamp: string;
@@ -94,6 +100,24 @@ interface ThresholdConfig {
   strongResonance: number;
   moderateResonance: number;
   weakSignal: number;
+}
+
+// Shape of GET /api/lattice/resonance (register("lattice","resonance")) — the
+// lattice-wide homeostasis/repair snapshot used for the Health tab meters.
+// NOT the boundary-scan shape; kept distinct from BoundaryScan/HistoryPoint above.
+interface LatticeHealth {
+  ok: boolean;
+  coherence: number;
+  resonance: {
+    homeostasis: number;
+    continuity: number;
+    suffering: number;
+    contradictionLoad: number;
+    repairRate: number;
+    accepts: number;
+    rejections: number;
+  };
+  timestamp: string;
 }
 
 type ViewMode = 'live' | 'pairs' | 'history' | 'health' | 'growth';
@@ -951,35 +975,59 @@ export default function ResonanceBoundaryPage() {
     setResonanceActiveAction(action);
     try {
       const res = await runResonanceAction.mutateAsync({ id, action });
-      if (res.ok === false) { setResonanceActionResult({ action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setResonanceActionResult({ action, ...(res.result as Record<string, unknown>) }); }
+      // POST /api/lens/:domain/:id/run always wraps as { ok:true, result }
+      // even when the inner handler failed (register("lens","run") only
+      // unwraps a `.result` key, it doesn't propagate inner ok:false) — so
+      // the outer `res.ok` is NOT a reliable failure signal. Check the
+      // inner result's own `ok` field too, or the whole action silently
+      // renders blank score/tier fields instead of the real error.
+      const inner = res.result as Record<string, unknown> | undefined;
+      if (res.ok === false || inner?.ok === false) {
+        const errMsg = (res as Record<string, unknown>).error || inner?.error || inner?.message || 'Unknown error';
+        setResonanceActionResult({ action, message: `Action failed: ${errMsg}` });
+      } else {
+        setResonanceActionResult({ action, ...(inner || {}) });
+      }
     } catch (err) { console.error('Resonance action failed:', err); }
     finally { setResonanceActiveAction(null); }
   };
 
-  // Fetch latest boundary scan
+  // Fetch latest boundary scan — hits the real resonance.boundary macro
+  // (frontier/interior crispness, constraint gradient, coherence direction,
+  // ranked cross-domain invariant pairs). Previously pointed at
+  // /api/lattice/beacon, a DTU-tier counter with a completely different
+  // response shape, so every field below silently rendered as its default.
   const { data: scan, isLoading: scanLoading, isError: scanError, error: scanErrorObj, refetch: refetchScan } = useQuery<BoundaryScan>({
     queryKey: ['resonance-boundary'],
-    queryFn: () => apiHelpers.emergent.latticeBeacon().then(r => r.data),
+    queryFn: () => apiHelpers.resonance.boundary().then(r => r.data),
     refetchInterval: autoScan ? 15000 : false,
   });
 
-  // Fetch history
+  // Fetch history — the resonance.history macro's { readings: HistoryPoint[] }.
+  // Previously pointed at /api/lattice/resonance (the lattice homeostasis
+  // snapshot, no `readings` field at all), so the sparkline + history view
+  // never had real data.
   const { data: historyData } = useQuery<{ readings: HistoryPoint[] }>({
     queryKey: ['resonance-history'],
-    queryFn: () => apiHelpers.emergent.resonance().then(r => r.data),
+    queryFn: () => apiHelpers.resonance.history({ limit: 200 }).then(r => r.data),
     refetchInterval: 30000,
   });
 
-  // Fetch existing health metrics
-  const { data: growth } = useQuery({
-    queryKey: ['growth'],
-    queryFn: () => apiHelpers.guidance.health().then(r => r.data),
+  // Fetch lattice homeostasis/repair-rate snapshot for the Health tab meters.
+  // Previously pointed at /api/system/health, which has no `homeostasis` field
+  // at all — the meter silently rendered 0% forever.
+  const { data: growth } = useQuery<LatticeHealth>({
+    queryKey: ['resonance-lattice-health'],
+    queryFn: () => apiHelpers.resonance.latticeHealth().then(r => r.data),
     refetchInterval: 10000,
   });
 
-  // Scan mutation (stores result)
+  // Scan mutation — runs resonance.scan (computes + persists a new boundary
+  // reading into history) and returns the full BoundaryScan. Previously called
+  // bridge.beacon, an unrelated continuity-check macro, so "Scan Boundary"
+  // never actually advanced the resonance signal or its history.
   const scanMutation = useMutation({
-    mutationFn: () => apiHelpers.bridge.beacon().then(r => r.data),
+    mutationFn: () => apiHelpers.resonance.scan().then(r => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['resonance-boundary'] });
       queryClient.invalidateQueries({ queryKey: ['resonance-history'] });
@@ -999,8 +1047,8 @@ export default function ResonanceBoundaryPage() {
   const history = historyData?.readings ?? [];
   const isScanning = scanMutation.isPending || scanLoading;
 
-  const homeostasis = growth?.growth?.homeostasis ?? 0;
-  const repairRate = growth?.growth?.maintenance?.repairRate ?? 0.5;
+  const homeostasis = growth?.resonance?.homeostasis ?? 0;
+  const repairRate = growth?.resonance?.repairRate ?? 0.5;
 
   // Classify pairs using current thresholds
   const classifyPairSignal = (resonance: number): string => {
@@ -1165,6 +1213,18 @@ export default function ResonanceBoundaryPage() {
         <main className="flex-1 overflow-y-auto">
           {viewMode === 'live' && (
             <div className="h-full flex flex-col">
+              {/* Honest insufficient-data notice — the boundary macro needs a
+                  minimum DTU/domain density to compute a real signal; when it
+                  can't, say so instead of silently showing a 0% reading. */}
+              {scan?.ok === false && (
+                <div className="px-6 py-2 flex items-center gap-2 text-[11px] font-mono text-yellow-500/90 bg-yellow-500/[0.04] border-b border-yellow-500/10">
+                  <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>
+                    {scan.error || 'Boundary scan unavailable'}
+                    {typeof scan.count === 'number' ? ` (${scan.count} DTUs in corpus, need 20+)` : ''}
+                  </span>
+                </div>
+              )}
               {/* Classification banner */}
               <div className="px-6 py-3 flex items-center justify-between"
                 style={{ background: meta.glow.replace(')', ',0.05)') }}>

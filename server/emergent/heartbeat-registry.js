@@ -267,6 +267,25 @@ export function listHeartbeatModules() {
   }));
 }
 
+/**
+ * Manually invoke a single registered module immediately, out-of-band from
+ * the governor tick clock. Backs the Heartbeat Monitor lens's admin-only
+ * "trigger" control (`tick.heartbeatControl`, op: 'trigger') — without this,
+ * clicking "trigger" only recorded operator intent and never actually ran
+ * anything, a fabricated-success gap. Reuses `_runOne` so a manual trigger
+ * gets the same timeout / try-catch / metrics handling as a normal tick;
+ * it can never throw or hang the caller.
+ * @param {string} id - Registered module id.
+ * @param {{ state: object, db: object, reason?: string }} ctx
+ * @returns {Promise<{ ok: boolean, error?: string }>}
+ */
+export async function runHeartbeatModuleNow(id, { state, db, reason = "manual-trigger" } = {}) {
+  const entry = REGISTRY.get(id);
+  if (!entry) return { ok: false, error: `unknown_heartbeat_module:${id}` };
+  await _runOne(entry, { state, db, tickCount: -1, reason });
+  return { ok: true };
+}
+
 /** Test-only helper: clear the registry between tests. */
 export function _resetHeartbeatRegistry() {
   REGISTRY.clear();

@@ -4,8 +4,18 @@
  * Pins that the lens renders genuine loading / error (with a WORKING Retry) /
  * empty (CTA) / populated states against its real backend channel: the artifact
  * list (useLensData('services', type) → GET /api/lens/services), and that the
- * compute-action runner is constructed on the 'services' domain (a regression to
- * any other id resolves to NO backend receiver — the dead-wire trap).
+ * report/analysis macros (scheduleOptimize, reminderGenerate, dailyCloseReport,
+ * commissionCalc, clientRetentionReport, supplyCheck) dispatch on the 'services'
+ * domain via `lensRun` (a regression to any other id resolves to NO backend
+ * receiver — the dead-wire trap).
+ *
+ * Wiring note: these 6 macros read a PLURAL collection off `artifact.data`
+ * (e.g. `artifact.data.appointments`), so they are dispatched through
+ * `lensRun('services', action, { artifact: { data: {...whole book...} } })` —
+ * NOT through `useRunArtifact`'s single-record `/api/lens/services/:id/run`
+ * path, which would leave `artifact.data.appointments` undefined and silently
+ * compute over zero rows (an honestly-shaped but hollow "0 results" response
+ * that looks like a successful run). See runReport() in page.tsx.
  *
  * The ERROR state asserts the page surfaces a real failure with a Retry that
  * RE-FETCHES (refetch fires), NOT a silent "No items" empty page — closing the
@@ -27,10 +37,6 @@ const lensDataState: {
 } = { items: [], isLoading: false, isError: false, error: null };
 const refetch = vi.fn();
 
-// ── compute-action channel: useRunArtifact mutate ───────────────────────────
-const runMutate = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
-const useRunArtifactSpy = vi.fn();
-
 vi.mock('@/lib/hooks/use-lens-data', () => ({
   useLensData: () => ({
     items: lensDataState.items,
@@ -50,10 +56,7 @@ vi.mock('@/lib/hooks/use-lens-data', () => ({
 }));
 
 vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
-  useRunArtifact: (domain: string) => {
-    useRunArtifactSpy(domain);
-    return { mutateAsync: (...a: unknown[]) => runMutate(...a), isPending: false };
-  },
+  useRunArtifact: () => ({ mutateAsync: vi.fn(() => Promise.resolve({ ok: true, result: {} })), isPending: false }),
   useCreateArtifact: () => ({ mutateAsync: vi.fn(() => Promise.resolve({})), isPending: false }),
   useUpdateArtifact: () => ({ mutateAsync: vi.fn(() => Promise.resolve({})), isPending: false }),
 }));
@@ -117,6 +120,9 @@ vi.mock('lucide-react', async (importOriginal) => {
 });
 
 import ServicesLensPage from '@/app/lenses/services/page';
+import { lensRun } from '@/lib/api/client';
+
+const lensRunMock = vi.mocked(lensRun);
 
 const APPOINTMENT = {
   id: 'art_1',
@@ -132,15 +138,24 @@ beforeEach(() => {
   lensDataState.isError = false;
   lensDataState.error = null;
   refetch.mockReset();
-  runMutate.mockClear();
-  useRunArtifactSpy.mockClear();
+  lensRunMock.mockClear();
   window.localStorage.clear();
 });
 
 describe('services lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the services domain', () => {
-    render(<ServicesLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('services');
+  it('WIRING: report macros dispatch on the services domain via lensRun', async () => {
+    const { getAllByText, getByText } = render(<ServicesLensPage />);
+    // Domain Actions only render off the Dashboard tab.
+    await act(async () => { fireEvent.click(getAllByText('Appointments')[0]); });
+    await act(async () => { fireEvent.click(getByText('Inventory Check')); });
+    expect(lensRunMock).toHaveBeenCalledWith(
+      'services',
+      'supplyCheck',
+      expect.objectContaining({ artifact: expect.objectContaining({ data: expect.any(Object) }) }),
+    );
+    // Regression guard: never the domain-mismatched or single-record artifact
+    // path — the whole point of the fix is a real collection, not a stray id.
+    expect(lensRunMock.mock.calls.every(([domain]) => domain === 'services')).toBe(true);
   });
 
   it('LOADING: an in-flight feed shows a spinner indicator', async () => {

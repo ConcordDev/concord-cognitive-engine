@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plug, Search, Loader2, Check, Link2, Unlink, Zap, Send } from 'lucide-react';
+import { Plug, Search, Loader2, Check, Link2, Unlink, Zap, Send, ShieldAlert } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Connector {
@@ -28,6 +28,11 @@ interface Connection {
   account: string;
   status: string;
   createdAt: string;
+  // Honesty (Track C): credentialStored is true ONLY when a real OAuth token
+  // exists in connector_oauth_tokens. needsOauth flags an oauth2 connector the
+  // user has selected but not yet authorized — the real egress path refuses it.
+  credentialStored?: boolean;
+  needsOauth?: boolean;
 }
 
 export function ConnectorCatalog() {
@@ -83,13 +88,18 @@ export function ConnectorCatalog() {
       {connections.length > 0 && (
         <div className="panel p-3">
           <div className="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-1">
-            <Link2 className="w-3.5 h-3.5 text-neon-green" /> Connected accounts ({connections.length})
+            <Link2 className="w-3.5 h-3.5 text-neon-green" /> Linked accounts ({connections.length})
           </div>
           <div className="flex flex-wrap gap-2">
             {connections.map((conn) => (
               <div key={conn.id} className="flex items-center gap-2 bg-lattice-surface rounded px-2 py-1 text-xs">
-                <span className="text-neon-green">{conn.connectorName}</span>
+                <span className={conn.credentialStored ? 'text-neon-green' : 'text-yellow-400'}>{conn.connectorName}</span>
                 <span className="text-gray-400">· {conn.account}</span>
+                {!conn.credentialStored && (
+                  <span className="text-[10px] text-yellow-400/80 flex items-center gap-0.5" title="No OAuth token stored — real egress refused until authorized">
+                    <ShieldAlert className="w-3 h-3" /> needs auth
+                  </span>
+                )}
                 <button
                   onClick={() => disconnect(conn)}
                   disabled={busy === conn.id}
@@ -101,6 +111,11 @@ export function ConnectorCatalog() {
               </div>
             ))}
           </div>
+          {connections.some((c) => !c.credentialStored) && (
+            <p className="mt-2 text-[10px] text-gray-500">
+              Selecting an app records your intent. OAuth apps need an authorized token before Concord can read or send on your behalf — until then the egress path honestly refuses.
+            </p>
+          )}
         </div>
       )}
 
@@ -158,9 +173,18 @@ export function ConnectorCatalog() {
                     </div>
                   </div>
                   {conn ? (
-                    <span className="text-xs text-neon-green flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Connected
-                    </span>
+                    conn.credentialStored ? (
+                      <span className="text-xs text-neon-green flex items-center gap-1" title="Real OAuth credential stored — egress is live">
+                        <Check className="w-3 h-3" /> Connected
+                      </span>
+                    ) : (
+                      <span
+                        className="text-xs text-yellow-400 flex items-center gap-1"
+                        title="Selected but not yet authorized. No OAuth token is stored, so the real egress path will refuse this connector until you complete the OAuth flow."
+                      >
+                        <ShieldAlert className="w-3 h-3" /> Needs auth
+                      </span>
+                    )
                   ) : (
                     <button
                       onClick={() => connect(c)}
@@ -168,7 +192,7 @@ export function ConnectorCatalog() {
                       className="btn-secondary text-xs px-2 py-1 flex items-center gap-1"
                     >
                       {busy === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Link2 className="w-3 h-3" />}
-                      Connect
+                      {c.authType === 'oauth2' ? 'Select' : 'Connect'}
                     </button>
                   )}
                 </div>
