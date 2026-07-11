@@ -180,18 +180,45 @@ export default function registerSyncActions(registerLensAction) {
       try {
         const all = STATE?.dtus ? [...STATE.dtus.values()] : [];
         candidate = all.filter((d) => {
-          const scope = d?.scope || d?.core?.scope || "personal";
-          if (scope === "personal" && !dev.scopes.includes("personal")) return false;
-          if (scope === "public" && !dev.scopes.includes("public")) return false;
+          // Ownership gate — MUST come first. Without this, `all` is the
+          // whole-platform DTU substrate (every user's DTUs), so "sync my
+          // knowledge to my devices" would count and quota-charge every
+          // other user's data too. `ownerId` is the canonical creator field
+          // (server.js `dtu.create`: `ownerId: ctx?.actor?.userId`); the
+          // other keys cover older/alternate creation paths (matches the
+          // owner-resolution pattern at server.js's `userVisibleDTUs`).
+          const owner = d?.ownerId || d?.author || d?.userId || d?.createdBy || d?.meta?.createdBy;
+          if (owner !== userId) return false;
+
+          // Selective sync: `visibility` (private/public/published) is the
+          // real personal-vs-published axis on a DTU — `scope` (local/
+          // global/world/marketplace/...) is a different, technical axis
+          // (federation/consolidation placement) and almost never carries
+          // "personal"/"public" literally, so filtering on it left these
+          // two toggles nearly inert. "drafts" maps to the real
+          // `meta.status` field. "shared" (DTUs others granted access to)
+          // has no per-DTU field to check yet — left un-filtered (matches
+          // prior behavior) rather than fabricating a signal.
+          const visibility = d?.meta?.visibility || d?.visibility || "private";
+          const isPublished = visibility === "public" || visibility === "published";
+          const isDraft = (d?.meta?.status || d?.status) === "draft";
+          if (!isPublished && !dev.scopes.includes("personal")) return false;
+          if (isPublished && !dev.scopes.includes("public")) return false;
+          if (isDraft && !dev.scopes.includes("drafts")) return false;
           if ((d?.artifact || d?.artifactPath) && !dev.scopes.includes("artifacts")) return false;
           return true;
         });
       } catch { candidate = []; }
 
       const dtuCount = candidate.length;
-      // advisory byte estimate: ~4 KB structured + artifact bytes
+      // advisory byte estimate: ~4 KB structured + real artifact bytes.
+      // `artifact.sizeBytes` is the real field set by artifactMod.storeArtifact
+      // (server.js:38846-38847, :38963-38969) — the previous `artifactBytes` /
+      // `artifact.bytes` reads matched no field anywhere in the codebase, so
+      // every device's quota usage silently counted 0 artifact bytes even
+      // though the lens promises "any artifact bytes ride along too."
       const bytes = candidate.reduce((sum, d) => {
-        const artBytes = Number(d?.artifactBytes || d?.artifact?.bytes || 0);
+        const artBytes = Number(d?.artifact?.sizeBytes || 0);
         return sum + 4096 + artBytes;
       }, 0);
 
