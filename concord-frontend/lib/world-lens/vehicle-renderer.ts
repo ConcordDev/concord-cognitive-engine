@@ -98,6 +98,17 @@ declare global {
   interface Window { __concordiaPlayerPos?: { x: number; y: number; z: number } }
 }
 
+// Vehicles are multi-mesh (body/hull/wheels/wings) — dispose every geometry
+// and material in the group, not just the group's own. Shared by the
+// per-vehicle despawn path in reconcile() and the full-teardown dispose().
+function disposeVehicleGroup(g: THREE.Group): void {
+  g.traverse((m) => {
+    const mesh = m as { geometry?: { dispose?: () => void }; material?: { dispose?: () => void } };
+    mesh.geometry?.dispose?.();
+    mesh.material?.dispose?.();
+  });
+}
+
 export function createVehicleRenderer(
   parentGroup: THREE.Group,
   opts: VehicleRendererOpts,
@@ -150,7 +161,11 @@ export function createVehicleRenderer(
       }
     }
     for (const [id, entry] of entries) {
-      if (!seen.has(id)) { group.remove(entry.group); entries.delete(id); }
+      if (!seen.has(id)) {
+        group.remove(entry.group);
+        disposeVehicleGroup(entry.group);
+        entries.delete(id);
+      }
     }
   }
 
@@ -185,13 +200,7 @@ export function createVehicleRenderer(
 
   function dispose(): void {
     disposed = true;
-    for (const entry of entries.values()) {
-      entry.group.traverse((m) => {
-        const mesh = m as { geometry?: { dispose?: () => void }; material?: { dispose?: () => void } };
-        mesh.geometry?.dispose?.();
-        mesh.material?.dispose?.();
-      });
-    }
+    for (const entry of entries.values()) disposeVehicleGroup(entry.group);
     entries.clear();
     parentGroup.remove(group);
   }
