@@ -13,6 +13,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerSandboxMacros from "../domains/sandbox.js";
+import * as cityPresence from "../lib/city-presence.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) {
@@ -34,7 +35,7 @@ const ctxB = { actor: { userId: "user_b" } };
 describe("sandbox — registration", () => {
   it("registers every macro the lens calls", () => {
     for (const m of [
-      "catalog",
+      "catalog", "enterArena",
       "saveLoadout", "listLoadouts", "deleteLoadout",
       "saveDummyConfig", "listDummyConfigs", "deleteDummyConfig",
       "saveReplay", "listReplays", "getReplay", "deleteReplay",
@@ -57,6 +58,93 @@ describe("sandbox — catalog is the fixed engine vocabulary", () => {
     assert.equal(fist.baseHeavy, 16);
     const behaviorIds = r.result.behaviors.map((b) => b.id).sort();
     assert.deepEqual(behaviorIds, ["aggressive", "defensive", "idle", "static"]);
+  });
+});
+
+describe("sandbox — enterArena wires the real cityPresence combat pipeline", () => {
+  // cityPresence's _userPositions/_npcState are process-wide singleton Maps
+  // with no test-reset hook, so each case below uses its own userId to stay
+  // isolated from the others (a shared ctxA would leak spawned NPCs / damage
+  // across `it()` blocks since nothing tears cityPresence state down).
+
+  it("registers the attacker and spawns real dummy NPCs applyAttack can hit", () => {
+    const ctx = { actor: { userId: "arena_u1" } };
+    const r = call("enterArena", ctx, { count: 3, hp: 80 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.dummies.length, 3);
+    const first = r.result.dummies[0];
+    assert.equal(first.hp, 80);
+    assert.match(first.npcId, /^sandbox_arena_u1_dummy_0$/);
+
+    // The attacker is a real cityPresence entry now (pre-fix: applyAttack
+    // always returned attacker_not_found for this lens because nothing ever
+    // registered a position for a standalone-lens visitor).
+    assert.ok(cityPresence.getUserPosition("arena_u1"), "attacker must be registered");
+    // Every returned dummy is a real spawned NPC (pre-fix: target_not_found —
+    // nothing ever spawned an npc named "dummy_N").
+    for (const d of r.result.dummies) {
+      const npc = cityPresence.getNpc(d.npcId);
+      assert.ok(npc, `${d.npcId} must be a real spawned NPC`);
+      assert.equal(npc.health, 80);
+    }
+
+    // The shared combat pipeline actually resolves a hit end-to-end now.
+    const atk = cityPresence.applyAttack({
+      attackerId: "arena_u1", targetId: first.npcId, baseDamage: 20, range: 3,
+    });
+    assert.equal(atk.ok, true, `applyAttack should succeed: ${atk.error}`);
+    assert.ok(atk.damage > 0);
+    assert.ok(atk.targetHealth < 80);
+  });
+
+  it("is scoped per-user — two users get independent, non-colliding arenas", () => {
+    const a = call("enterArena", { actor: { userId: "arena_u2" } }, { count: 2, hp: 50 });
+    const b = call("enterArena", { actor: { userId: "arena_u3" } }, { count: 2, hp: 50 });
+    assert.notEqual(a.result.cityId, b.result.cityId);
+    assert.notEqual(a.result.dummies[0].npcId, b.result.dummies[0].npcId);
+    // user_b can't reach user_a's dummy — different city.
+    const cross = cityPresence.applyAttack({
+      attackerId: "arena_u3", targetId: a.result.dummies[0].npcId, baseDamage: 10, range: 3,
+    });
+    assert.equal(cross.ok, false);
+    assert.equal(cross.error, "different_city");
+  });
+
+  it("reset:true heals every dummy; omitted preserves current (damaged) health", () => {
+    const ctx = { actor: { userId: "arena_u4" } };
+    const enter = call("enterArena", ctx, { count: 1, hp: 100 });
+    const npcId = enter.result.dummies[0].npcId;
+    cityPresence.applyAttack({ attackerId: "arena_u4", targetId: npcId, baseDamage: 40, range: 3 });
+    const damagedHealth = cityPresence.getNpc(npcId).health;
+    assert.ok(damagedHealth < 100, "the dummy should have taken damage");
+
+    // Growing the count WITHOUT reset must not heal the damaged dummy.
+    const grown = call("enterArena", ctx, { count: 2, hp: 100 });
+    assert.equal(grown.result.dummies[0].hp, damagedHealth, "existing dummy health preserved");
+    assert.equal(grown.result.dummies[1].hp, 100, "the newly-added dummy spawns full health");
+
+    // reset:true fully heals.
+    const healed = call("enterArena", ctx, { count: 2, hp: 100, reset: true });
+    assert.equal(healed.result.dummies[0].hp, 100);
+  });
+
+  it("shrinking the count despawns the trailing dummies", () => {
+    const ctx = { actor: { userId: "arena_u5" } };
+    call("enterArena", ctx, { count: 4, hp: 60 });
+    const shrunk = call("enterArena", ctx, { count: 2, hp: 60 });
+    assert.equal(shrunk.result.dummies.length, 2);
+    assert.equal(cityPresence.getNpc(`${shrunk.result.cityId}_dummy_2`), undefined);
+    assert.equal(cityPresence.getNpc(`${shrunk.result.cityId}_dummy_3`), undefined);
+  });
+
+  it("clamps count/hp and fail-closes on poisoned numeric input", () => {
+    const ctx = { actor: { userId: "arena_u6" } };
+    const clamped = call("enterArena", ctx, { count: 999, hp: 5_000_000 });
+    assert.equal(clamped.result.dummies.length, 10, "count clamped to MAX_ARENA_DUMMIES");
+    assert.equal(clamped.result.dummies[0].hp, 100000, "hp clamped to 100000");
+
+    assert.equal(call("enterArena", ctx, { count: NaN }).ok, false);
+    assert.equal(call("enterArena", ctx, { hp: -1 }).ok, false);
   });
 });
 
