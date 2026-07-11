@@ -589,17 +589,27 @@ export default function registerSettingsActions(registerLensAction) {
     }
   });
 
-  // changePassword — request a password change. This does not write to the
-  // real auth DB (the auth route owns that); it records the request and
-  // validates the new password meets policy, returning a clear contract for
-  // the UI. The actual credential rotation is performed by /api/auth.
+  // changePassword — pre-flight policy check + bookkeeping ONLY. This does
+  // NOT write to the real auth DB (the auth route owns that) and does NOT
+  // rotate the credential — it validates the new password against the same
+  // policy `POST /api/auth/change-password` enforces (server.js's
+  // `schemas.changePassword`: newPassword length >= 12) so the caller gets
+  // a fast, in-lens rejection before round-tripping to the real endpoint,
+  // and stamps an in-memory `lastPasswordChange` timestamp this domain's
+  // ephemeral store can surface back through `accountOverview` (the real
+  // `users` table has no password-changed-at column to read instead).
+  // The UI MUST still call /api/auth/change-password itself and only
+  // report success once THAT call succeeds — this macro alone never
+  // changes what a user can log in with. (Length threshold intentionally
+  // mirrors server.js `schemas.changePassword.newPassword` — keep both in
+  // sync if either changes.)
   reg("settings", "changePassword", (ctx, _artifact, params = {}) => {
     try {
       const userId = actorId(ctx);
       const current = String(params.currentPassword || "");
       const next = String(params.newPassword || "");
       if (!current) return { ok: false, error: "current password is required" };
-      if (next.length < 8) return { ok: false, error: "new password must be at least 8 characters" };
+      if (next.length < 12) return { ok: false, error: "new password must be at least 12 characters" };
       if (!/[0-9]/.test(next) || !/[a-zA-Z]/.test(next)) {
         return { ok: false, error: "new password must contain letters and numbers" };
       }

@@ -47,6 +47,7 @@ export function PreferencesPanel() {
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const [kbMatches, setKbMatches] = useState<{ id: string; label: string }[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,6 +77,25 @@ export function PreferencesPanel() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Search-within-settings also spans keybindings — `settings.search` (the
+  // real backend macro built for this) cross-references keybinding labels
+  // that a purely client-side filter over the preference schema can never
+  // see. Debounced so a fast typist doesn't fire one request per keystroke.
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setKbMatches([]);
+      return;
+    }
+    const id = setTimeout(async () => {
+      const r = await lensRun<{ keybindings: { id: string; label: string }[] }>(
+        'settings', 'search', { query: q },
+      );
+      if (r.data?.ok && r.data.result) setKbMatches(r.data.result.keybindings);
+    }, 300);
+    return () => clearTimeout(id);
+  }, [query]);
 
   const writePref = useCallback(async (key: string, value: PrefValue) => {
     setSavingKey(key);
@@ -168,8 +188,14 @@ export function PreferencesPanel() {
         </p>
       )}
 
-      {filteredSections.length === 0 && (
+      {filteredSections.length === 0 && kbMatches.length === 0 && query.trim() && (
         <p className="text-xs text-gray-400 italic">No settings match &ldquo;{query}&rdquo;.</p>
+      )}
+
+      {kbMatches.length > 0 && (
+        <p className="text-[11px] text-amber-300/80 bg-amber-950/20 border border-amber-900/40 rounded px-3 py-1.5">
+          {kbMatches.length} matching keybinding{kbMatches.length === 1 ? '' : 's'} — {kbMatches.map((b) => b.label).join(', ')}. Open the Keybindings tab to remap.
+        </p>
       )}
 
       {filteredSections.map(({ section, items }) => (
