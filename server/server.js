@@ -41108,6 +41108,30 @@ registerLensAction("thread", "extract_decisions", (ctx, artifact, _params) => {
   const decisions = (artifact.data?.nodes || []).filter(n => n.type === "decision" || (n.content || "").toLowerCase().includes("decided"));
   return { ok: true, decisions: decisions.map(d => ({ nodeId: d.id, text: d.content })), count: decisions.length };
 });
+// Removes a node and any descendants (so the tree never keeps an orphaned
+// parentNodeId reference). Mirrors the branch/merge mutation pattern above.
+registerLensAction("thread", "delete_node", (ctx, artifact, params) => {
+  const nodeId = params?.nodeId;
+  if (!nodeId) return { ok: false, error: "nodeId required" };
+  const nodes = artifact.data?.nodes || [];
+  if (!nodes.some(n => n.id === nodeId)) return { ok: false, error: "node not found" };
+  const toRemove = new Set([nodeId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const n of nodes) {
+      if (n.parentNodeId && toRemove.has(n.parentNodeId) && !toRemove.has(n.id)) {
+        toRemove.add(n.id);
+        changed = true;
+      }
+    }
+  }
+  const remaining = nodes.filter(n => !toRemove.has(n.id));
+  artifact.data = { ...artifact.data, nodes: remaining };
+  artifact.updatedAt = nowISO();
+  saveStateDebounced();
+  return { ok: true, deletedIds: [...toRemove], remainingCount: remaining.length };
+});
 
 // === Music ===
 registerLensAction("music", "analyze", (ctx, artifact, _params) => {
