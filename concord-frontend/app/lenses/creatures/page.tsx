@@ -46,6 +46,8 @@ export default function CreaturesLensPage() {
   const [breedResult, setBreedResult] = useState<BreedResult | null>(null);
   const [lineageId, setLineageId] = useState('');
   const [lineage, setLineage] = useState<LineageRow[]>([]);
+  const [lineageSearched, setLineageSearched] = useState(false);
+  const [lineageError, setLineageError] = useState<string | null>(null);
   // Wave 7 / E6 — the world's emotional weather (recent creature felt-moments).
   const [affect, setAffect] = useState<{ histogram: Record<string, number>; recent: Array<{ species_id?: string; dominant_drive?: string; reason?: string; v?: number }>; total: number } | null>(null);
 
@@ -180,18 +182,26 @@ export default function CreaturesLensPage() {
 
   const fetchLineage = async () => {
     if (!lineageId) return;
+    setLineageSearched(true);
+    setLineageError(null);
     try {
       const r = await lensRun('creatures', 'lineage', { creatureId: lineageId });
       const result = r?.data?.result as { ok?: boolean; lineage?: { self?: LineageRow | null; descendants?: LineageRow[] } } | null;
-      if (result?.ok && result.lineage) {
+      if (r?.data?.ok && result?.ok !== false && result?.lineage) {
         const rows: LineageRow[] = [];
         if (result.lineage.self) rows.push(result.lineage.self);
         for (const d of result.lineage.descendants || []) rows.push(d);
         setLineage(rows);
       } else {
+        // Honest failure — surface the real reason instead of silently
+        // rendering an empty lineage indistinguishable from "not found".
         setLineage([]);
+        setLineageError(r?.data?.error || 'Lineage lookup failed');
       }
-    } catch { setLineage([]); }
+    } catch (e) {
+      setLineage([]);
+      setLineageError(e instanceof Error ? e.message : 'Lineage lookup failed');
+    }
   };
 
   return (
@@ -407,7 +417,7 @@ export default function CreaturesLensPage() {
           <input
             id="creature-lineage-id"
             value={lineageId}
-            onChange={(e) => setLineageId(e.target.value)}
+            onChange={(e) => { setLineageId(e.target.value); setLineageSearched(false); setLineageError(null); }}
             onKeyDown={(e) => { if (e.key === 'Enter') fetchLineage(); }}
             placeholder="creature id"
             className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
@@ -416,7 +426,7 @@ export default function CreaturesLensPage() {
             View
           </button>
         </div>
-        {lineage.length > 0 && (
+        {lineage.length > 0 ? (
           <div className="mt-2 space-y-1">
             {lineage.map((l) => (
               <div key={l.child_id} className="rounded bg-zinc-950 p-2 text-[10px] font-mono text-zinc-300">
@@ -425,7 +435,11 @@ export default function CreaturesLensPage() {
               </div>
             ))}
           </div>
-        )}
+        ) : lineageError ? (
+          <p className="mt-2 text-[11px] text-red-300" role="alert">× {lineageError}</p>
+        ) : lineageSearched ? (
+          <p className="mt-2 text-[11px] text-zinc-500">No lineage record for &ldquo;{lineageId}&rdquo; — it may not be a bred creature, or the id doesn&rsquo;t exist.</p>
+        ) : null}
       </section>
     </div>
     </LensShell>

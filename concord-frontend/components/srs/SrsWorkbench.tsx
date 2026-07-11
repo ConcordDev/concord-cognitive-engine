@@ -22,7 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Layers, Plus, Trash2, GraduationCap, Loader2, BarChart3, FolderTree,
   Filter, Image as ImageIcon, Volume2, Download, Upload, Settings2,
-  Search, Ban, EyeOff, Tags, Sparkles, Flame, CalendarDays, Library,
+  Search, Ban, EyeOff, Tags, Sparkles, Flame, CalendarDays, Library, Clock,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -90,6 +90,14 @@ interface Heatmap {
 }
 interface ForecastDay { day: number; date: string; count: number }
 interface Forecast { forecast: ForecastDay[]; dueNow: number; totalUpcoming: number }
+interface Dashboard {
+  decks: number; totalCards: number; newCards: number; dueCards: number;
+  matureCards: number; suspendedCards: number; reviewsLogged: number;
+}
+interface StudyStats {
+  totalReviews: number; accuracy: number;
+  ratingBreakdown: { again: number; hard: number; good: number; easy: number };
+}
 
 type Tab = 'decks' | 'cards' | 'browse' | 'study' | 'stats' | 'transfer';
 type CardType = 'basic' | 'cloze' | 'image-occlusion' | 'templated';
@@ -1072,17 +1080,23 @@ function StatsTab({
 }) {
   const [heatmap, setHeatmap] = useState<Heatmap | null>(null);
   const [forecast, setForecast] = useState<Forecast | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [studyStats, setStudyStats] = useState<StudyStats | null>(null);
   const [loading, setLoading] = useState(true);
   const deckId = active || '';
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [hm, fc] = await Promise.all([
+    const [hm, fc, dash, ss] = await Promise.all([
       lensRun('srs', 'review-heatmap', { days: 168, deckId: deckId || undefined }),
       lensRun('srs', 'review-forecast', { days: 30, deckId: deckId || undefined }),
+      lensRun('srs', 'srs-dashboard', {}),
+      lensRun('srs', 'study-stats', { deckId: deckId || undefined }),
     ]);
     setHeatmap((hm.data?.result as Heatmap) || null);
     setForecast((fc.data?.result as Forecast) || null);
+    setDashboard((dash.data?.result as Dashboard) || null);
+    setStudyStats((ss.data?.result as StudyStats) || null);
     setLoading(false);
   }, [deckId]);
   useEffect(() => { void refresh(); }, [refresh]);
@@ -1126,6 +1140,51 @@ function StatsTab({
       {!hasData && (
         <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
           No review history yet — study some cards to populate the heatmap and forecast.
+        </div>
+      )}
+
+      {/* Collection overview — srs.srs-dashboard */}
+      {dashboard && (
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+          <p className="text-xs font-semibold text-zinc-300 mb-2 flex items-center gap-1.5">
+            <Library className="w-3.5 h-3.5 text-purple-400" />Collection overview
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <Stat label="Decks" value={String(dashboard.decks)} icon={FolderTree} accent="text-purple-400" />
+            <Stat label="Total cards" value={String(dashboard.totalCards)} icon={Layers} accent="text-zinc-300" />
+            <Stat label="New" value={String(dashboard.newCards)} icon={Sparkles} accent="text-sky-400" />
+            <Stat label="Due" value={String(dashboard.dueCards)} icon={Clock} accent="text-amber-400" />
+            <Stat label="Mature" value={String(dashboard.matureCards)} icon={Flame} accent="text-emerald-400" />
+            <Stat label="Suspended" value={String(dashboard.suspendedCards)} icon={Ban} accent="text-rose-400" />
+          </div>
+        </div>
+      )}
+
+      {/* Accuracy — srs.study-stats */}
+      {studyStats && studyStats.totalReviews > 0 && (
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+          <p className="text-xs font-semibold text-zinc-300 mb-2 flex items-center gap-1.5">
+            <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
+            Accuracy{deckId ? ' — this deck' : ' — all decks'}
+            <span className="ml-auto text-[10px] text-zinc-400">{studyStats.totalReviews} review(s)</span>
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="text-2xl font-bold text-emerald-300">{studyStats.accuracy}%</div>
+            <div className="flex-1 flex h-2 rounded-full overflow-hidden bg-zinc-900">
+              {(['again', 'hard', 'good', 'easy'] as const).map((k) => {
+                const total = studyStats.totalReviews || 1;
+                const w = (studyStats.ratingBreakdown[k] / total) * 100;
+                const color = k === 'again' ? 'bg-rose-500' : k === 'hard' ? 'bg-amber-500' : k === 'good' ? 'bg-emerald-500' : 'bg-sky-500';
+                return w > 0 ? <div key={k} className={color} style={{ width: `${w}%` }} title={`${k}: ${studyStats.ratingBreakdown[k]}`} /> : null;
+              })}
+            </div>
+          </div>
+          <div className="mt-1.5 flex gap-3 text-[10px] text-zinc-400">
+            <span>Again {studyStats.ratingBreakdown.again}</span>
+            <span>Hard {studyStats.ratingBreakdown.hard}</span>
+            <span>Good {studyStats.ratingBreakdown.good}</span>
+            <span>Easy {studyStats.ratingBreakdown.easy}</span>
+          </div>
         </div>
       )}
 
