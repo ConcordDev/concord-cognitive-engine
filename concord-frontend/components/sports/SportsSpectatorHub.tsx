@@ -440,21 +440,29 @@ interface RosterPlayer {
   number: string | null; thumb: string | null; height: string | null; weight: string | null;
 }
 interface TeamHit {
-  id: string; name: string; league: string; sport: string; badge: string | null;
+  id: string; name: string; league: string; leagueId: string | null; sport: string; badge: string | null;
   stadium: string | null; formedYear: number | null;
+}
+interface LeagueTableRow {
+  rank: number; teamId: string; teamName: string; played: number; win: number;
+  draw: number; loss: number; goalsFor: number; goalsAgainst: number;
+  goalDifference: number; points: number; badge: string | null;
 }
 function RosterPanel() {
   const [query, setQuery] = useState('');
   const [teams, setTeams] = useState<TeamHit[]>([]);
   const [players, setPlayers] = useState<RosterPlayer[]>([]);
-  const [activeTeam, setActiveTeam] = useState<string | null>(null);
+  const [activeTeam, setActiveTeam] = useState<TeamHit | null>(null);
   const [loading, setLoading] = useState(false);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [table, setTable] = useState<LeagueTableRow[] | null>(null);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [tableErr, setTableErr] = useState<string | null>(null);
 
   const search = async () => {
     if (!query.trim()) return;
-    setLoading(true); setErr(null); setPlayers([]); setActiveTeam(null);
+    setLoading(true); setErr(null); setPlayers([]); setActiveTeam(null); setTable(null); setTableErr(null);
     const r = await run<{ teams: TeamHit[] }>('team-lookup', { name: query.trim() });
     if (r.ok && r.result) setTeams(r.result.teams);
     else { setTeams([]); setErr(r.error || 'failed'); }
@@ -462,11 +470,20 @@ function RosterPanel() {
   };
 
   const loadRoster = async (t: TeamHit) => {
-    setRosterLoading(true); setActiveTeam(t.name); setErr(null);
+    setRosterLoading(true); setActiveTeam(t); setErr(null); setTable(null); setTableErr(null);
     const r = await run<{ players: RosterPlayer[] }>('team-roster', { teamId: t.id });
     if (r.ok && r.result) setPlayers(r.result.players);
     else { setPlayers([]); setErr(r.error || 'failed'); }
     setRosterLoading(false);
+  };
+
+  const loadLeagueTable = async (t: TeamHit) => {
+    if (!t.leagueId) return;
+    setTableLoading(true); setTableErr(null);
+    const r = await run<{ table: LeagueTableRow[] }>('league-table', { leagueId: t.leagueId });
+    if (r.ok && r.result) setTable(r.result.table);
+    else { setTable(null); setTableErr(r.error || 'failed'); }
+    setTableLoading(false);
   };
 
   return (
@@ -492,21 +509,35 @@ function RosterPanel() {
       {teams.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {teams.map((t) => (
-            <button
+            <div
               key={t.id}
-              type="button"
-              onClick={() => loadRoster(t)}
               className={cn(
-                'flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs',
-                activeTeam === t.name
+                'flex items-center gap-1 rounded-lg border px-1 py-1 text-xs',
+                activeTeam?.id === t.id
                   ? 'border-red-500/40 bg-red-500/10 text-red-200'
-                  : 'border-zinc-800 bg-zinc-950/40 text-zinc-300 hover:border-zinc-700',
+                  : 'border-zinc-800 bg-zinc-950/40 text-zinc-300',
               )}
             >
-              {t.badge && <img src={t.badge} alt="" className="h-4 w-4" />}
-              {t.name}
-              <span className="font-mono text-[9px] text-zinc-400">{t.league}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => loadRoster(t)}
+                className="flex items-center gap-1.5 px-1 py-0.5 hover:text-white"
+              >
+                {t.badge && <img src={t.badge} alt="" className="h-4 w-4" />}
+                {t.name}
+                <span className="font-mono text-[9px] text-zinc-400">{t.league}</span>
+              </button>
+              {t.leagueId && (
+                <button
+                  type="button"
+                  onClick={() => loadLeagueTable(t)}
+                  title={`View ${t.league} table`}
+                  className="rounded px-1.5 py-0.5 text-[10px] text-amber-300 hover:bg-amber-500/15"
+                >
+                  <ListOrdered className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -529,7 +560,51 @@ function RosterPanel() {
         </div>
       )}
       {!rosterLoading && activeTeam && players.length === 0 && !err && (
-        <EmptyLine msg={`No roster data for ${activeTeam}.`} />
+        <EmptyLine msg={`No roster data for ${activeTeam.name}.`} />
+      )}
+      {tableLoading && <Spinner label="Loading league table" />}
+      {tableErr && <ErrLine msg={tableErr} />}
+      {table && table.length > 0 && (
+        <div className="overflow-hidden rounded-lg border border-zinc-800">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-900 text-zinc-400">
+              <tr>
+                <th className="px-2 py-1.5 text-left">#</th>
+                <th className="px-2 py-1.5 text-left">Team</th>
+                <th className="px-2 py-1.5 text-right">P</th>
+                <th className="px-2 py-1.5 text-right">W</th>
+                <th className="px-2 py-1.5 text-right">D</th>
+                <th className="px-2 py-1.5 text-right">L</th>
+                <th className="px-2 py-1.5 text-right">GD</th>
+                <th className="px-2 py-1.5 text-right">Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {table.map((row) => (
+                <tr key={row.teamId} className="border-t border-zinc-800/60">
+                  <td className="px-2 py-1.5 font-mono text-zinc-400">{row.rank}</td>
+                  <td className="px-2 py-1.5">
+                    <span className="flex items-center gap-1.5">
+                      {row.badge && <img src={row.badge} alt="" className="h-4 w-4" />}
+                      <span className="text-zinc-200">{row.teamName}</span>
+                    </span>
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-mono text-zinc-300">{row.played}</td>
+                  <td className="px-2 py-1.5 text-right font-mono text-emerald-400">{row.win}</td>
+                  <td className="px-2 py-1.5 text-right font-mono text-zinc-400">{row.draw}</td>
+                  <td className="px-2 py-1.5 text-right font-mono text-rose-400">{row.loss}</td>
+                  <td className="px-2 py-1.5 text-right font-mono text-zinc-300">
+                    {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-mono font-semibold text-zinc-100">{row.points}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {table && table.length === 0 && !tableLoading && (
+        <EmptyLine msg="No league table data available." />
       )}
     </div>
   );

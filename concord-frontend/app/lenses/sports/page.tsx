@@ -138,6 +138,8 @@ export default function SportsLensPage() {
 
       { id: 'tab-training', keys: 't', description: 'Training', category: 'navigation', action: () => setTab('training') },
 
+      { id: 'tab-leagues', keys: 'l', description: 'Leagues (live)', category: 'navigation', action: () => setTab('leagues') },
+
     ],
 
     { lensId: 'sports' }
