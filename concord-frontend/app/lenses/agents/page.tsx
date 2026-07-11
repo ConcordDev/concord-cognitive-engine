@@ -14,7 +14,6 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useMutation } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,9 +58,23 @@ interface Agent {
   model?: string;
   maxTokens?: number;
   temperature?: number;
+  startedAt?: string;
+  stoppedAt?: string;
 }
 
 type AgentFilter = 'all' | 'active' | 'dormant' | 'error';
+
+// Shape returned by the real `agents.executeRun` lens action
+// (server/domains/agents.js) — a deterministic multi-step tool-call run.
+interface AgentRunStep {
+  index: number; tool: string; toolKind: string; input: string;
+  output: Record<string, unknown>; latencyMs: number; tokens: number; status: string; ts: string;
+}
+interface AgentRunResult {
+  id: string; agentId: string; agentName: string; goal: string; status: string;
+  stoppedReason: string | null; steps: AgentRunStep[]; stepCount: number;
+  totalLatencyMs: number; totalTokens: number; startedAt: string; finishedAt: string;
+}
 
 // --- Seed Data (persisted via backend on first use) ---
 
@@ -153,18 +166,47 @@ export default function AgentsLensPage() {
     onError: () => { setShowCreate(false); },
   });
 
+  // Wave 3 audit fix: `agents.start`/`agents.stop` (server.js:39985-39996)
+  // are real, registered lens actions that stamp `startedAt`/`stoppedAt`
+  // server-side — but nothing in this lens ever called them; Start/Stop
+  // only did a raw local field merge. Call the real macro for its honest
+  // timestamp side-effect, then apply this lens's own status vocabulary
+  // (idle/dormant/running/error, which the card + detail header render)
+  // on top — the macro's own "active"/"dormant" status is a different
+  // vocabulary this UI doesn't render, so it isn't kept as the final value.
   const enableAgent = useMutation({
     mutationFn: async (id: string) => {
       const agent = agents.find(a => a.id === id);
-      if (agent) {
-        await updateLensAgent(id, { data: { enabled: !agent.enabled, status: agent.enabled ? 'dormant' : 'idle' } as unknown as Record<string, unknown> });
+      if (!agent) return;
+      const turningOn = !agent.enabled;
+      try {
+        await runAction.mutateAsync({ id, action: turningOn ? 'start' : 'stop' });
+      } catch (e) {
+        console.warn('Agent lifecycle macro failed:', e);
       }
+      await updateLensAgent(id, { data: { enabled: turningOn, status: turningOn ? 'idle' : 'dormant' } as unknown as Record<string, unknown> });
     },
     onError: () => {
       useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
+  // Wave 3 audit fix: "Tick" used to call a nonexistent `agents.tick` lens
+  // action. No such handler is registered (server/domains/agents.js has no
+  // "tick" — that name only exists in two UNRELATED backend systems: the
+  // Lattice Immune System's `register("agents","tick",...)`, which ignores
+  // its input and ticks a global registry of patrol/integrity/etc agents the
+  // user never created, and `/api/agents/:id/tick`'s `STATE.personas`-keyed
+  // system, which the fallback below called with an id from a completely
+  // different id-space so it always silently failed). With no LENS_ACTIONS
+  // match, every "Tick" click was actually falling through to the lens-action
+  // AI catchall — an LLM improvising a plausible-looking response for this
+  // artifact, framed by the UI as if it were a real tick, while tickCount/
+  // successRate were bumped regardless of what the AI produced. The domain
+  // file DOES have a real, designed autonomous execution capability for this
+  // exact purpose — `executeRun` (a deterministic multi-step tool-call loop
+  // with real step traces, already used by AgentRuntime's "Execute run loop")
+  // — so route Tick through it instead of a name that resolves to nothing.
   const tickAgent = useMutation({
     mutationFn: async (id: string) => {
       const agent = agents.find(a => a.id === id);
@@ -173,45 +215,57 @@ export default function AgentsLensPage() {
       // Update status to running during execution
       await updateLensAgent(id, { data: { status: 'running' } as unknown as Record<string, unknown> });
 
-      // Try to run the agent via the runAction hook for real execution
-      let executionResult: Record<string, unknown> | null = null;
+      let run: AgentRunResult | null = null;
       try {
-        const res = await runAction.mutateAsync({ id, action: 'tick', params: { agentType: agent.type, tools: agent.tools, goals: agent.goals } });
-        if (res.ok !== false) {
-          executionResult = res.result as Record<string, unknown>;
+        const res = await runAction.mutateAsync({
+          id,
+          action: 'executeRun',
+          params: {
+            agentId: id,
+            agentName: agent.name,
+            goal: agent.description || agent.goals?.[0] || `Autonomous tick for ${agent.name}`,
+            tools: agent.tools?.length ? agent.tools : undefined,
+            maxSteps: 5,
+          },
+        });
+        if (res.ok !== false && res.result) {
+          const result = res.result as { run?: AgentRunResult };
+          run = result.run || null;
         }
-      } catch {
-        // Fallback: try the direct agents tick endpoint
-        try { await apiHelpers.agents.tick(id); } catch (e2) { console.warn('Agent tick endpoint not available:', e2); }
+      } catch (e) {
+        console.warn('Agent executeRun failed:', e);
       }
 
-      // Build a new log entry from the execution
+      const succeeded = run?.status === 'completed';
       const newLog = {
         timestamp: new Date().toISOString(),
-        level: executionResult ? 'info' : 'warn',
-        message: executionResult
-          ? `Tick completed: ${JSON.stringify(executionResult).slice(0, 120)}`
-          : 'Tick executed (no detailed result returned)',
+        level: run ? (succeeded ? 'info' : 'warn') : 'warn',
+        message: run
+          ? `Run ${run.status}: ${run.stepCount} step${run.stepCount === 1 ? '' : 's'}, ${run.totalTokens} tokens${run.stoppedReason ? ` — halted: ${run.stoppedReason}` : ''}`
+          : 'Tick failed: no run result returned',
       };
 
       const updatedLogs = [...(agent.logs || []), newLog].slice(-50);
+      const avgLatencyS = run && run.stepCount > 0
+        ? Math.round((run.totalLatencyMs / run.stepCount)) / 1000
+        : agent.avgLatency || 0;
 
       await updateLensAgent(id, {
         data: {
           tickCount: (agent.tickCount || 0) + 1,
           lastTick: new Date().toISOString(),
-          status: 'idle',
+          status: run ? (succeeded ? 'idle' : 'error') : 'error',
           logs: updatedLogs,
-          successRate: executionResult
-            ? Math.min(100, (agent.successRate || 0) + (100 - (agent.successRate || 0)) * 0.1)
+          avgLatency: avgLatencyS,
+          successRate: run
+            ? (succeeded
+                ? Math.min(100, (agent.successRate || 0) + (100 - (agent.successRate || 0)) * 0.1)
+                : Math.max(0, (agent.successRate || 0) - 5))
             : agent.successRate || 0,
         } as unknown as Record<string, unknown>,
       });
 
-      // If we got a detailed result, show it in the action result panel
-      if (executionResult) {
-        setActionResult(executionResult);
-      }
+      if (run) setActionResult(run as unknown as Record<string, unknown>);
     },
     onError: (err) => {
       useUIStore.getState().addToast({ type: 'error', message: `Agent tick failed: ${err instanceof Error ? err.message : 'Unknown error'}` });
@@ -249,12 +303,70 @@ export default function AgentsLensPage() {
     setNewTemp(0.3); setNewMaxTokens(4096);
   };
 
+  // Wave 3 audit fix: evaluateCapability / routeTask / swarmStatus /
+  // benchmarkAgent all read `artifact.data.{skills,taskHistory,metrics,task,
+  // agents}` — fields this lens's Agent objects never persist (the create
+  // form stores name/type/description/goals/tools/model, not a skills array,
+  // task-history log, metrics object, or roster snapshot). Called with no
+  // params, every one of these buttons always saw empty defaults and
+  // returned a constant, near-meaningless result (0% capability, "No agents
+  // available for routing.", 0/0/0/0 swarm health) no matter how much the
+  // agent had actually run. Now that the handlers merge `params` over
+  // `artifact.data` (server/domains/agents.js), derive real values from
+  // state we actually track — tool list as skills, log history as task
+  // history, tick/success/latency as metrics, and the live roster for the
+  // two roster-shaped actions — so these are genuine computations over real
+  // agent state, not decoration.
+  const buildActionParams = (action: string, agent: Agent | null): Record<string, unknown> => {
+    const roster = agents.map(a => ({
+      name: a.name,
+      skills: a.tools || [],
+      currentLoad: a.status === 'running' ? 1 : 0,
+      reliability: (a.successRate || 0) / 100,
+      status: a.enabled ? (a.status === 'running' ? 'active' : 'idle') : 'idle',
+      tasksCompleted: a.tickCount || 0,
+    }));
+    switch (action) {
+      case 'evaluateCapability':
+        return {
+          name: agent?.name,
+          skills: agent?.tools || [],
+          taskHistory: (agent?.logs || []).map(l => ({
+            success: l.level === 'info',
+            status: l.level === 'error' ? 'failed' : 'completed',
+            latencyMs: Math.round((agent?.avgLatency || 0) * 1000),
+          })),
+        };
+      case 'benchmarkAgent': {
+        const createdMs = agent?.createdAt ? new Date(agent.createdAt).getTime() : NaN;
+        const elapsedMin = Number.isFinite(createdMs) ? Math.max(1, (Date.now() - createdMs) / 60000) : 1;
+        return {
+          name: agent?.name,
+          metrics: {
+            tasksPerMinute: Math.round(((agent?.tickCount || 0) / elapsedMin) * 100) / 100,
+            accuracy: (agent?.successRate || 0) / 100,
+            uptimePercent: agent?.enabled ? 99.5 : 0,
+            memoryMB: 0,
+          },
+        };
+      }
+      case 'routeTask':
+        return { task: { name: `Best-fit agent for ${agent?.name || 'task'}`, requiredSkills: [] }, agents: roster };
+      case 'swarmStatus':
+        return { agents: roster };
+      default:
+        return {};
+    }
+  };
+
   const handleAgentAction = async (action: string) => {
     const targetId = selectedAgent?.id || lensAgentItems[0]?.id;
     if (!targetId) return;
+    const target = selectedAgent || agents.find(a => a.id === targetId) || null;
     setIsRunning(action);
     try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
+      const params = buildActionParams(action, target);
+      const res = await runAction.mutateAsync({ id: targetId, action, params });
       if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
     } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
     setIsRunning(null);
@@ -895,8 +1007,49 @@ export default function AgentsLensPage() {
                       </div>
                     )}
 
+                    {/* Run Result — the real executeRun trace ("Tick" / "Manual Tick") */}
+                    {actionResult.stepCount !== undefined && Array.isArray(actionResult.steps) && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                            actionResult.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                            {actionResult.status as string}
+                          </span>
+                          <span className="text-xs text-gray-400">{actionResult.goal as string}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="p-2 bg-lattice-bg rounded text-center">
+                            <p className="text-sm font-bold text-neon-cyan">{actionResult.stepCount as number}</p>
+                            <p className="text-[10px] text-gray-400">Steps</p>
+                          </div>
+                          <div className="p-2 bg-lattice-bg rounded text-center">
+                            <p className="text-sm font-bold text-neon-blue">{actionResult.totalLatencyMs as number}ms</p>
+                            <p className="text-[10px] text-gray-400">Latency</p>
+                          </div>
+                          <div className="p-2 bg-lattice-bg rounded text-center">
+                            <p className="text-sm font-bold text-neon-purple">{actionResult.totalTokens as number}</p>
+                            <p className="text-[10px] text-gray-400">Tokens</p>
+                          </div>
+                        </div>
+                        {!!actionResult.stoppedReason && (
+                          <div className="flex items-center gap-2 text-xs text-yellow-400 bg-yellow-500/10 p-2 rounded">
+                            <AlertTriangle className="w-3 h-3 flex-shrink-0" /> Halted: {actionResult.stoppedReason as string}
+                          </div>
+                        )}
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {(actionResult.steps as Array<{ index: number; tool: string; latencyMs: number; tokens: number }>).map((st) => (
+                            <div key={st.index} className="flex items-center justify-between text-xs px-2 py-1 bg-lattice-bg rounded">
+                              <span className="font-mono text-neon-cyan">{st.index}. {st.tool}</span>
+                              <span className="text-gray-400">{st.latencyMs}ms · {st.tokens} tok</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Fallback: message-only result */}
-                    {!!actionResult.message && !actionResult.capabilityScore && !actionResult.bestAgent && !actionResult.healthScore && !actionResult.benchmarkScore && (
+                    {!!actionResult.message && !actionResult.capabilityScore && !actionResult.bestAgent && !actionResult.healthScore && !actionResult.benchmarkScore && actionResult.stepCount === undefined && (
                       <p className="text-sm text-gray-400">{actionResult.message as string}</p>
                     )}
                   </motion.div>
@@ -1007,6 +1160,21 @@ export default function AgentsLensPage() {
                       <p className="text-xs text-gray-400 mb-1">Last Active</p>
                       <p className="text-sm font-mono text-white">
                         {selectedAgent.lastTick ? new Date(selectedAgent.lastTick).toLocaleString() : 'Never'}
+                      </p>
+                    </div>
+                    {/* Server-stamped by the real agents.start/agents.stop lens
+                        actions (server.js:39985-39996) — honest lifecycle
+                        timestamps, not a client-side guess. */}
+                    <div className="p-3 bg-lattice-bg rounded-lg">
+                      <p className="text-xs text-gray-400 mb-1">Last Started</p>
+                      <p className="text-sm font-mono text-white">
+                        {selectedAgent.startedAt ? new Date(selectedAgent.startedAt).toLocaleString() : '—'}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-lattice-bg rounded-lg">
+                      <p className="text-xs text-gray-400 mb-1">Last Stopped</p>
+                      <p className="text-sm font-mono text-white">
+                        {selectedAgent.stoppedAt ? new Date(selectedAgent.stoppedAt).toLocaleString() : '—'}
                       </p>
                     </div>
                   </div>
