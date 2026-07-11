@@ -381,6 +381,35 @@ to have):
 2. Workspaces v2 (user-defined lens desktops) — extends destinations.
 3. create-concord-lens scaffold emitting contract-compliant, rubric-passing
    lenses (so new lenses are born real apps, not scaffold).
+4. **State-sync stability pass (2026-07-11, deferred to Wave 4 by owner decision)**
+   — deploy topology is a single A40 box behind a **free-tier** Cloudflare
+   Tunnel, which caps idle WebSocket connections at a 100s timeout and gives
+   "low" concurrent-connection guidance (paid tiers get 600s + higher
+   headroom) — this is a hard ceiling app-side fixes can't fully route
+   around, so the fix has to reduce request *volume and synchronization*,
+   not just handle more of it. Diagnosed root cause: 311 `refetchInterval`
+   react-query polls + 20 hardcoded `POLL_MS` constants across the frontend,
+   none jittered, so independently-mounted timers periodically synchronize
+   into request bursts against one origin — the same failure shape Discord
+   hit at their scale ("nearly 5M session processes stampeded 10 guild
+   registry processes... sessions blocked, queues ballooned, OOM'd the
+   VM" — same mechanism, smaller number here). Socket.io reconnection is
+   also a fixed `reconnectionDelay: 1000` with no explicit jitter. Planned
+   fix, priority order: (a) jitter every interval (`base + random(0, base *
+   0.3)`) — cheapest, highest-leverage, touches the most call sites; (b) one
+   shared polling scheduler instead of 311 independent timers, so requests
+   stagger and de-dupe by real query key; (c) prefer real socket events over
+   polling wherever one already exists (several Wave-3 fixes — whiteboard's
+   room:join, the combat impact-feel path — added exactly this kind of real
+   push channel this arc); (d) server-side rate-limit backstop (token
+   bucket per-session on `/api/lens/run` + hot REST routes) so the box is
+   protected regardless of frontend behavior; (e) explicit socket.io
+   `randomizationFactor` + app-level heartbeat ping so idle sockets survive
+   the tunnel's 100s window instead of dying and mass-reconnecting.
+   Research: [Discord scaling](https://discord.com/blog/how-discord-scaled-elixir-to-5-000-000-concurrent-users),
+   [Figma multiplayer](https://www.figma.com/blog/how-figmas-multiplayer-technology-works/),
+   [Cloudflare connection limits](https://developers.cloudflare.com/fundamentals/reference/connection-limits/),
+   [thundering herd / jitter](https://dev.to/rhythamnegi/understanding-the-thundering-herd-problem-2ele).
 
 ## Explicitly rejected (audited/researched reasons)
 - Turborepo 260-app split, module federation (dead on App Router),
