@@ -965,6 +965,14 @@ export default function registerDomainRoutes(app, {
     const out = await runMacro("metacognition", "adjust_confidence", req.body, makeCtx(req));
     return res.json(out);
   }));
+  app.get("/api/metacognition/predictions", asyncHandler(async (req, res) => {
+    const out = await runMacro("metacognition", "predictions_list", {}, makeCtx(req));
+    return res.json(out);
+  }));
+  app.get("/api/metacognition/assessments", asyncHandler(async (req, res) => {
+    const out = await runMacro("metacognition", "assessments_list", {}, makeCtx(req));
+    return res.json(out);
+  }));
 
   // ---- Explanation Engine ----
   app.get("/api/explanation/status", asyncHandler(async (req, res) => {

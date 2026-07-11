@@ -9,7 +9,7 @@
  *   3. Alerting feed          (alerts)
  *   4. Time-range selector    (stream)
  *   5. Latency histogram      (latencyHistogram)
- *   6. Pause / resume / trigger controls (heartbeatControl)
+ *   6. Pause / resume / trigger controls (heartbeatControl, admin-only)
  *   7. Uptime / SLA windows   (uptimeSLA)
  *
  * Every value rendered comes from a real macro. The panel polls the real
@@ -17,16 +17,38 @@
  * timestamps) and the heartbeatRegistry macro (the live registered
  * heartbeat modules), then feeds each observed sample to `recordSample`
  * so the analytics macros compute over genuine persisted history.
+ *
+ * Control #6 has real, server-wide effect (a heartbeat module is a
+ * singleton, not per-user) — pause/resume write through to
+ * STATE.settings.disabledHeartbeats, the exact set the governor's
+ * dispatcher reads, and trigger invokes the module immediately via
+ * runHeartbeatModuleNow. Gated admin-only on the backend; non-admin
+ * viewers see a read-only table instead of buttons that would silently
+ * no-op.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Activity, AlertTriangle, BarChart3, Bell, BellOff, CheckCircle, Clock,
-  Gauge, Heart, Pause, Play, RefreshCw, Timer, Zap,
+  Gauge, Heart, Lock, Pause, Play, RefreshCw, Timer, Zap,
 } from 'lucide-react';
 import { api, lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
+import { useAuth } from '@/hooks/useAuth';
+
+// heartbeatControl (pause/resume/trigger) has real, server-wide effect —
+// it's gated admin-only on the backend (server/domains/tick.js). Mirror the
+// gate here so non-admins see disabled controls with an honest reason
+// instead of clicking a button that silently no-ops on `admin_only`.
+const CONTROL_ROLES = new Set(['admin', 'owner', 'founder']);
+
+const CONTROL_ERROR_COPY: Record<string, string> = {
+  admin_only: "Your account isn't an admin — heartbeat control is admin-only.",
+  module_never_disable: 'This module is marked never-disable and cannot be paused.',
+  unknown_heartbeat_module: 'That module is no longer registered.',
+  trigger_failed: 'Manual trigger failed to run.',
+};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -92,9 +114,12 @@ const STATUS_DOT: Record<string, string> = {
 type MonitorTab = 'overview' | 'heartbeats' | 'latency' | 'alerts' | 'sla';
 
 export function MonitorPanel() {
+  const { user } = useAuth();
+  const canControl = !!user && CONTROL_ROLES.has(user.role);
   const [tab, setTab] = useState<MonitorTab>('overview');
   const [windowMs, setWindowMs] = useState<number>(900_000);
   const [live, setLive] = useState(true);
+  const [controlError, setControlError] = useState<string | null>(null);
 
   // Macro result state (each comes from a real backend macro).
   const [registry, setRegistry] = useState<RegistryModule[]>([]);
@@ -245,9 +270,15 @@ export function MonitorPanel() {
   // -------------------------------------------------------------------------
   const control = useCallback(async (moduleId: string, op: 'pause' | 'resume' | 'trigger') => {
     setBusyCtl(`${moduleId}:${op}`);
+    setControlError(null);
     try {
       const r = await lensRun('tick', 'heartbeatControl', { moduleId, op });
-      if (r.data.ok) await refreshViews();
+      if (r.data.ok) {
+        await refreshViews();
+      } else {
+        const reason = r.data.error || '';
+        setControlError(CONTROL_ERROR_COPY[reason] || `${op} failed${reason ? `: ${reason}` : '.'}`);
+      }
     } finally {
       setBusyCtl(null);
     }
@@ -450,6 +481,18 @@ export function MonitorPanel() {
             <MiniStat label="Stale" value={detailSummary.stale} color="text-amber-400" />
             <MiniStat label="Paused" value={detailSummary.paused} color="text-zinc-400" />
           </div>
+          {!canControl && (
+            <div className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-1.5 text-[11px] text-zinc-400">
+              <Lock className="h-3 w-3" />
+              Read-only — pause / resume / manual-trigger are admin-only (this module is a server-wide singleton).
+            </div>
+          )}
+          {controlError && (
+            <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-[11px] text-amber-300">
+              <AlertTriangle className="h-3 w-3 shrink-0" />
+              {controlError}
+            </div>
+          )}
           <div className="overflow-hidden rounded-lg border border-zinc-800">
             <table className="w-full text-left text-xs">
               <thead className="bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-400">
@@ -491,26 +534,28 @@ export function MonitorPanel() {
                         <div className="flex items-center justify-end gap-1">
                           {m.enabled ? (
                             <CtlBtn
-                              disabled={neverDisable || busyCtl === `${m.id}:pause`}
+                              disabled={!canControl || neverDisable || busyCtl === `${m.id}:pause`}
                               busy={busyCtl === `${m.id}:pause`}
                               onClick={() => control(m.id, 'pause')}
-                              title={neverDisable ? 'never-disable module' : 'pause'}
+                              title={!canControl ? 'admin-only' : neverDisable ? 'never-disable module' : 'pause (stops the real governor tick for this module)'}
                             >
                               <Pause className="h-3 w-3" />
                             </CtlBtn>
                           ) : (
                             <CtlBtn
+                              disabled={!canControl}
                               busy={busyCtl === `${m.id}:resume`}
                               onClick={() => control(m.id, 'resume')}
-                              title="resume"
+                              title={!canControl ? 'admin-only' : 'resume'}
                             >
                               <Play className="h-3 w-3" />
                             </CtlBtn>
                           )}
                           <CtlBtn
+                            disabled={!canControl}
                             busy={busyCtl === `${m.id}:trigger`}
                             onClick={() => control(m.id, 'trigger')}
-                            title="request manual trigger"
+                            title={!canControl ? 'admin-only' : 'run this module immediately, out-of-band from the tick clock'}
                           >
                             <Zap className="h-3 w-3" />
                           </CtlBtn>
