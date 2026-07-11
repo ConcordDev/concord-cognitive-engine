@@ -1680,6 +1680,24 @@ export const apiHelpers = {
     resonance: () => api.get('/api/lattice/resonance'),
   },
 
+  // ---- Resonance Boundary Detection (resonance lens) ----
+  // Distinct from `emergent.latticeBeacon`/`emergent.resonance` above (DTU-tier
+  // counters + lattice homeostasis snapshot) — these hit the `resonance.*`
+  // macros that compute the actual cross-domain boundary scan (frontier/
+  // interior crispness, constraint gradient, coherence direction, and the
+  // ranked cross-domain invariant-alignment pairs the lens visualizes).
+  resonance: {
+    boundary: (params?: { window?: number }) =>
+      api.get('/api/resonance/boundary', { params }),
+    scan: (params?: { window?: number }) =>
+      api.post('/api/resonance/scan', params || {}),
+    history: (params?: { limit?: number }) =>
+      api.get('/api/resonance/history', { params }),
+    // Lattice-wide homeostasis/repair-rate snapshot (register("lattice","resonance")) —
+    // used for the resonance lens's Health tab meters.
+    latticeHealth: () => api.get('/api/lattice/resonance'),
+  },
+
   // ═══════════════════════════════════════════════════════════════════
   // ATLAS GLOBAL + PLATFORM v2
   // ═══════════════════════════════════════════════════════════════════
