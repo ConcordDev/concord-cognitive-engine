@@ -4431,6 +4431,37 @@ export default function WorldLensPage() {
     [worldNPCs, walkerNpcs, procgenNpcs]
   );
 
+  // BuildingRenderer3D's `buildings` prop, stabilized the same way as
+  // `mergedNpcs` above — previously this `.map()` was inlined directly in
+  // JSX and allocated a new array (and new per-building object literals) on
+  // EVERY render of this page, not only when `worldBuildings` data actually
+  // changed. Since BuildingRenderer3D's rebuild effect depends on `buildings`
+  // by reference, that churn re-ran (and re-leaked, see the texture-map
+  // dispose fix in BuildingRenderer3D.tsx) the legacy per-floor material path
+  // far more often than necessary.
+  const buildingRendererBuildings = useMemo(
+    () => worldBuildings.map((b) => ({
+      id: b.id,
+      name: b.name || b.building_type,
+      position: { x: b.x, y: b.y ?? 0, z: b.z },
+      dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
+      floors: 1,
+      material: coerceMaterial(b.material),
+      style: 'colonial' as const,
+      // building_type drives the procedural archetype + iconic silhouette.
+      building_type: b.building_type,
+      structure: {
+        columns: { count: 0, spacing: 0, radius: 0 },
+        beams: { count: 0, height: 0 },
+        roofType: 'gable' as const,
+        hasBasement: false,
+        windowRows: 1,
+        windowsPerRow: 2,
+      },
+    })),
+    [worldBuildings]
+  );
+
   const handleAvatarMove = useCallback(
     (pos: { x: number; y: number; z: number }, rotation: number) => {
       // Update local avatar immediately for snappy response,
@@ -4754,25 +4785,7 @@ export default function WorldLensPage() {
             quality="medium"
           />
           <BuildingRenderer3D
-            buildings={worldBuildings.map((b) => ({
-              id: b.id,
-              name: b.name || b.building_type,
-              position: { x: b.x, y: b.y ?? 0, z: b.z },
-              dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
-              floors: 1,
-              material: coerceMaterial(b.material),
-              style: 'colonial' as const,
-              // building_type drives the procedural archetype + iconic silhouette.
-              building_type: b.building_type,
-              structure: {
-                columns: { count: 0, spacing: 0, radius: 0 },
-                beams: { count: 0, height: 0 },
-                roofType: 'gable' as const,
-                hasBasement: false,
-                windowRows: 1,
-                windowsPerRow: 2,
-              },
-            }))}
+            buildings={buildingRendererBuildings}
             viewMode="normal"
             buildingStyle={buildingStyleForWorld(worldIdForTheme)}
           />
