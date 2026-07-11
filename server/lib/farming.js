@@ -17,6 +17,15 @@ import logger from "../logger.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONTENT_FILE = path.resolve(__dirname, "..", "..", "content", "crops.json");
 
+// Watering: a real player action (waterCrop) stamps watered_at. A crop
+// watered within WATER_RECENCY_S of the growth tick gets a flat elapsed-days
+// bonus, so watering measurably speeds ripening instead of being a dead
+// write. Unwatered crops still grow at the base seasonal-elapsed-days rate
+// (unchanged) — watering is a bonus, not a requirement, so a plot with no
+// player attention doesn't stall.
+const WATER_BONUS_DAYS = Number(process.env.CONCORD_WATER_BONUS_DAYS) || 1;
+const WATER_RECENCY_S = Number(process.env.CONCORD_WATER_RECENCY_S) || 172800; // 48h
+
 let _catalog = null;
 function _loadCatalog() {
   if (_catalog) return _catalog;
@@ -63,8 +72,8 @@ export function plantSeed(db, userId, opts = {}) {
     db.prepare(`
       INSERT INTO claim_crops
         (claim_id, tile_x, tile_y, crop_kind, planted_season_idx,
-         planted_day, planted_by, watered_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
+         planted_day, planted_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(claimId, tileX, tileY, cropKind, currentSeasonIdx ?? 0, currentDay ?? 0, userId);
     return { ok: true };
   } catch (err) {
@@ -73,20 +82,57 @@ export function plantSeed(db, userId, opts = {}) {
 }
 
 /**
+ * Water a planted (not-yet-ripe) crop. Owner-gated, idempotent (re-watering
+ * just refreshes the timestamp). This is the real player action that makes
+ * `watered_at` meaningful — advanceGrowth() below grants a growth-rate
+ * bonus to crops watered within WATER_RECENCY_S of the tick.
+ */
+export function waterCrop(db, userId, opts = {}) {
+  if (!db || !userId) return { ok: false, error: "missing_inputs" };
+  const { claimId, tileX, tileY } = opts;
+  if (!claimId || tileX == null || tileY == null) {
+    return { ok: false, error: "missing_inputs" };
+  }
+  if (typeof opts.isOwner === "function" && !opts.isOwner(userId, claimId)) {
+    return { ok: false, error: "not_claim_owner" };
+  }
+  try {
+    const row = db.prepare(`
+      SELECT growth_stage FROM claim_crops
+      WHERE claim_id = ? AND tile_x = ? AND tile_y = ?
+    `).get(claimId, tileX, tileY);
+    if (!row) return { ok: false, error: "no_crop" };
+    if (row.growth_stage >= 3) return { ok: false, error: "already_ripe" };
+
+    db.prepare(`
+      UPDATE claim_crops SET watered_at = unixepoch()
+      WHERE claim_id = ? AND tile_x = ? AND tile_y = ?
+    `).run(claimId, tileX, tileY);
+    return { ok: true, wateredAt: Math.floor(Date.now() / 1000) };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+/**
  * Heartbeat-driven growth tick. Advances all crops whose current
  * season matches their seasons[] affinity AND whose elapsed days
- * cross the next stage boundary.
+ * cross the next stage boundary. A crop watered within WATER_RECENCY_S
+ * (real wall-clock seconds) of `nowUnix` gets a flat +WATER_BONUS_DAYS
+ * added to its effective elapsed days — a genuine growth-rate bonus,
+ * not just a stamp. Unwatered crops are unaffected (base rate unchanged).
  */
-export function advanceGrowth(db, currentSeasonIdx, currentDay) {
+export function advanceGrowth(db, currentSeasonIdx, currentDay, nowUnix = Math.floor(Date.now() / 1000)) {
   if (!db) return { ok: false, error: "missing_db" };
   try {
     const rows = db.prepare(`
       SELECT claim_id, tile_x, tile_y, crop_kind, growth_stage,
-             planted_season_idx, planted_day
+             planted_season_idx, planted_day, watered_at
       FROM claim_crops WHERE growth_stage < 3
     `).all();
 
     let advanced = 0;
+    let waterBonusApplied = 0;
     for (const r of rows) {
       const def = getCropDef(r.crop_kind);
       if (!def) continue;
@@ -97,7 +143,10 @@ export function advanceGrowth(db, currentSeasonIdx, currentDay) {
       const currentAbsDay = currentSeasonIdx * 7 + currentDay;
       const elapsedDays = (currentAbsDay - plantedAbsDay + 42) % 42;
 
-      const stagesElapsed = Math.floor((elapsedDays / def.growth_days) * 3);
+      const wateredRecently = r.watered_at != null && (nowUnix - r.watered_at) <= WATER_RECENCY_S;
+      const effectiveElapsedDays = wateredRecently ? elapsedDays + WATER_BONUS_DAYS : elapsedDays;
+
+      const stagesElapsed = Math.floor((effectiveElapsedDays / def.growth_days) * 3);
       const targetStage = Math.min(3, Math.max(r.growth_stage, stagesElapsed));
       if (targetStage > r.growth_stage) {
         db.prepare(`
@@ -105,10 +154,11 @@ export function advanceGrowth(db, currentSeasonIdx, currentDay) {
           WHERE claim_id = ? AND tile_x = ? AND tile_y = ?
         `).run(targetStage, r.claim_id, r.tile_x, r.tile_y);
         advanced++;
+        if (wateredRecently) waterBonusApplied++;
       }
     }
-    if (advanced > 0) logger.info?.("farming", "growth_tick", { advanced });
-    return { ok: true, advanced };
+    if (advanced > 0) logger.info?.("farming", "growth_tick", { advanced, waterBonusApplied });
+    return { ok: true, advanced, waterBonusApplied };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
@@ -152,7 +202,7 @@ export function listCropsOnClaim(db, claimId) {
   try {
     return db.prepare(`
       SELECT claim_id, tile_x, tile_y, crop_kind, growth_stage,
-             planted_season_idx, planted_day, planted_by, updated_at
+             planted_season_idx, planted_day, planted_by, updated_at, watered_at
       FROM claim_crops WHERE claim_id = ?
     `).all(claimId);
   } catch { return []; }

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import {
   plantSeed, advanceGrowth, harvestCrop, listCropsOnClaim,
-  getCropDef, listCrops,
+  getCropDef, listCrops, waterCrop,
 } from "../lib/farming.js";
 import { up as upCrops } from "../migrations/247_farm_plots.js";
 
@@ -110,6 +110,81 @@ describe("Phase CB3 — farming", () => {
     });
     // base 3 × 0.2 = 0.6 → floor → 1 min (Math.max(1))
     assert.equal(r.harvested.quantity, 1);
+  });
+
+  it("waterCrop rejects non-owner, missing crop, and already-ripe crops", () => {
+    plantSeed(db, "u1", {
+      claimId: "lc-1", tileX: 0, tileY: 0, cropKind: "wheat",
+      currentSeasonIdx: 0, currentDay: 0, isOwner: ownerYes,
+    });
+    const intruder = waterCrop(db, "intruder", {
+      claimId: "lc-1", tileX: 0, tileY: 0, isOwner: ownerNo,
+    });
+    assert.equal(intruder.ok, false);
+    assert.equal(intruder.error, "not_claim_owner");
+
+    const noCrop = waterCrop(db, "u1", {
+      claimId: "lc-1", tileX: 9, tileY: 9, isOwner: ownerYes,
+    });
+    assert.equal(noCrop.ok, false);
+    assert.equal(noCrop.error, "no_crop");
+
+    db.prepare(`UPDATE claim_crops SET growth_stage = 3`).run();
+    const ripe = waterCrop(db, "u1", {
+      claimId: "lc-1", tileX: 0, tileY: 0, isOwner: ownerYes,
+    });
+    assert.equal(ripe.ok, false);
+    assert.equal(ripe.error, "already_ripe");
+  });
+
+  it("watering is a genuine growth-rate bonus: watered crop ripens sooner than an unwatered one", () => {
+    // Wheat: seasons [0,3], growth_days 6. Two identical plots, same planted
+    // day. Water only lc-2's crop, then advance both by the same 3 days.
+    plantSeed(db, "u1", {
+      claimId: "lc-1", tileX: 0, tileY: 0, cropKind: "wheat",
+      currentSeasonIdx: 0, currentDay: 0, isOwner: ownerYes,
+    });
+    plantSeed(db, "u1", {
+      claimId: "lc-2", tileX: 0, tileY: 0, cropKind: "wheat",
+      currentSeasonIdx: 0, currentDay: 0, isOwner: ownerYes,
+    });
+
+    // Confirm plantSeed no longer stamps a fake watered_at (the dead-write bug).
+    const freshRow = db.prepare(`SELECT watered_at FROM claim_crops WHERE claim_id='lc-1'`).get();
+    assert.equal(freshRow.watered_at, null, "watered_at must stay null until a real water action");
+
+    const w = waterCrop(db, "u1", { claimId: "lc-2", tileX: 0, tileY: 0, isOwner: ownerYes });
+    assert.equal(w.ok, true);
+
+    const nowUnix = Math.floor(Date.now() / 1000);
+    // One tick advances every unripe crop; lc-1 (unwatered) gets the base
+    // rate, lc-2 (watered) gets +WATER_BONUS_DAYS.
+    const r1 = advanceGrowth(db, 0, 3, nowUnix);
+    assert.equal(r1.ok, true);
+    assert.ok(r1.waterBonusApplied >= 1, "expected the watered crop's advance to be tagged with a bonus");
+
+    const unwatered = db.prepare(`SELECT growth_stage FROM claim_crops WHERE claim_id='lc-1'`).get();
+    const watered = db.prepare(`SELECT growth_stage FROM claim_crops WHERE claim_id='lc-2'`).get();
+    // 3/6 of 3 = floor(1.5) = 1 (unwatered, base rate — matches the
+    // pre-existing "advances stage during planted season" assertion above).
+    assert.equal(unwatered.growth_stage, 1);
+    // (3+1)/6 of 3 = floor(2.0) = 2 — the watered crop is measurably ahead.
+    assert.equal(watered.growth_stage, 2);
+    assert.ok(watered.growth_stage > unwatered.growth_stage, "watered crop must ripen faster than unwatered");
+  });
+
+  it("watering bonus expires outside the recency window", () => {
+    plantSeed(db, "u1", {
+      claimId: "lc-1", tileX: 0, tileY: 0, cropKind: "wheat",
+      currentSeasonIdx: 0, currentDay: 0, isOwner: ownerYes,
+    });
+    waterCrop(db, "u1", { claimId: "lc-1", tileX: 0, tileY: 0, isOwner: ownerYes });
+    // Simulate a growth tick far beyond the 48h freshness window.
+    const staleNow = Math.floor(Date.now() / 1000) + 10 * 24 * 3600;
+    advanceGrowth(db, 0, 3, staleNow);
+    const r = db.prepare(`SELECT growth_stage FROM claim_crops WHERE claim_id='lc-1'`).get();
+    // No bonus applied once the watering has gone stale — same as unwatered.
+    assert.equal(r.growth_stage, 1);
   });
 
   it("listCrops returns the crop catalog (census target ≥18, base crops present)", () => {

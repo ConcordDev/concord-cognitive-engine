@@ -5,7 +5,7 @@
 // Ripe tile (growth_stage=3) → harvest. Growing tiles show stage glyph.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Sprout, Wheat, Loader2 } from 'lucide-react';
+import { Sprout, Wheat, Loader2, Droplets } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { successJuice, failureJuice, milestoneJuice } from '@/lib/concordia/juice';
@@ -17,7 +17,13 @@ interface Crop {
   tile_y: number;
   crop_kind: string;
   growth_stage: number;
+  watered_at?: number | null;
 }
+
+// Mirrors server CONCORD_WATER_RECENCY_S default (lib/farming.js) — how
+// long a watering stays "fresh" for the growth-rate bonus. Used here only
+// to decide whether to render the droplet indicator.
+const WATER_RECENCY_S = 172800; // 48h
 
 interface CatalogEntry {
   id: string;
@@ -97,10 +103,31 @@ export function FarmTileEditor({ building, onClose, worldId }: OverlayProps) {
     } finally { setPending(false); }
   }, [building.id, refresh]);
 
+  const water = useCallback(async (x: number, y: number) => {
+    setPending(true);
+    try {
+      const r = await fetch(`/api/farming/building/${building.id}/water`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tileX: x, tileY: y }),
+      });
+      const j = await r.json();
+      if (j?.ok) {
+        successJuice('ui_water');
+        setMsg('watered — growth boosted');
+        refresh();
+      } else {
+        failureJuice();
+        setMsg(j?.error || 'water_failed');
+      }
+    } finally { setPending(false); }
+  }, [building.id, refresh]);
+
   const onTileClick = (x: number, y: number) => {
     const t = tileMap.get(`${x}:${y}`);
     if (!t) setPicker({ x, y });
     else if (t.growth_stage >= 3) harvest(x, y);
+    else water(x, y);
   };
 
   return (
@@ -118,22 +145,27 @@ export function FarmTileEditor({ building, onClose, worldId }: OverlayProps) {
               const t = tileMap.get(`${x}:${y}`);
               const ripe = t && t.growth_stage >= 3;
               const stage = t?.growth_stage ?? -1;
+              const wateredFresh = !!t && !ripe && !!t.watered_at &&
+                (Date.now() / 1000 - t.watered_at) <= WATER_RECENCY_S;
               return (
                 <button
                   key={`${x}:${y}`}
                   onClick={() => onTileClick(x, y)}
                   disabled={pending}
                   className={[
-                    'h-14 w-14 rounded border text-xs font-mono transition',
+                    'relative h-14 w-14 rounded border text-xs font-mono transition',
                     !t
                       ? 'border-emerald-500/20 bg-emerald-950/30 text-emerald-300/50 hover:border-emerald-400/60 hover:bg-emerald-900/40'
                       : ripe
                       ? 'border-amber-400/70 bg-amber-500/30 text-amber-100 hover:bg-amber-500/50'
                       : 'border-emerald-500/40 bg-emerald-900/40 text-emerald-200',
                   ].join(' ')}
-                  title={t ? `${t.crop_kind} · stage ${stage}/3` : 'empty'}
+                  title={t ? `${t.crop_kind} · stage ${stage}/3${!ripe ? (wateredFresh ? ' · watered (growth boosted)' : ' · click to water') : ''}` : 'empty'}
                 >
                   {!t ? <Sprout className="mx-auto opacity-30" size={14} /> : ripe ? <Wheat className="mx-auto" size={18} /> : <span>{stage}/3</span>}
+                  {wateredFresh && (
+                    <Droplets className="absolute right-0.5 top-0.5 text-sky-300" size={10} />
+                  )}
                 </button>
               );
             })
@@ -141,7 +173,7 @@ export function FarmTileEditor({ building, onClose, worldId }: OverlayProps) {
         </div>
 
         <div className="text-center text-[11px] text-zinc-400">
-          {pending && <Loader2 className="inline animate-spin" size={11} />} {msg || 'click empty to plant · click ripe to harvest'}
+          {pending && <Loader2 className="inline animate-spin" size={11} />} {msg || 'click empty to plant · click growing to water · click ripe to harvest'}
         </div>
 
         {picker && (

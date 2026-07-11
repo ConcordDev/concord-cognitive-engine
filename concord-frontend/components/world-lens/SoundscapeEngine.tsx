@@ -212,6 +212,7 @@ const SFX_ALIASES: Record<string, string> = {
   ui_npc_menu_open: 'snap-click', ui_workbench_open: 'snap-click', ui_workbench_close: 'snap-click',
   // farming / restaurant
   ui_seed_plant: 'gather-tick', ui_crop_harvest: 'gather-success', ui_dish_serve: 'gather-success',
+  ui_water: 'footstep-water',
   // trivia
   ui_trivia_correct: 'gather-success', ui_trivia_wrong: 'gather-miss',
   // hacking / terminal
