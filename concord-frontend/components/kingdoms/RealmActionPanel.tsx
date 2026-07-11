@@ -18,10 +18,42 @@ import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
-interface Realm { id: string; name: string; rulerUserId?: string; capital?: string; loyalty?: number; size?: number }
-interface DecreeResult { decreeId?: string; region?: string; effect?: string }
-interface LoyaltyResult { realmId?: string; loyalty?: number; delta?: number; reason?: string }
-interface TakeoverResult { ok?: boolean; method?: string; newRulerUserId?: string; reason?: string }
+// Realm rows are `SELECT * FROM realms` (migration 158) — snake_case,
+// no `loyalty`/`size` columns (loyalty is a separately-computed summary
+// from kingdoms.get / kingdoms.recompute_loyalty). Field names verified
+// against server/lib/kingdoms.js and the HUDContextProvider consumer
+// (components/world/concordia-hud/HUDContextProvider.tsx) which reads
+// the exact same `kingdoms.my_realm` macro.
+interface Realm {
+  id: string;
+  name: string;
+  world_id?: string;
+  capital_settlement_id?: string | null;
+  faction_id?: string | null;
+  ruler_kind?: string;
+  ruler_id?: string | null;
+  legitimacy?: number;
+  treasury?: number;
+  tax_rate?: number;
+  founded_at?: number;
+}
+// propose_decree returns { ok, id, kind, popularity_delta } — flat, not
+// the {region, effect} shape this panel used to assume.
+interface DecreeResult { id?: string; kind?: string; popularity_delta?: number }
+// recompute_loyalty only returns { ok, refreshed, count }; the actual
+// loyalty score + rebellion risk comes from kingdoms.kingdom_status's
+// separate `loyalty`/`rebellionRisk` fields. actLoyalty() below composes
+// both real calls.
+interface LoyaltyResult {
+  kingdomId?: string; avg?: number; low?: number; high?: number; count?: number; refreshed?: number;
+  rebellionScore?: number; rebellionThreshold?: number;
+}
+// realm_decrees rows my_realm's `activeDecrees` field returns (own SELECT
+// list in server/domains/kingdoms.js:101-107 — snake_case, not camelCase).
+interface RealmDecree { id: string; kind: string; body_json?: string | null; issued_at?: number; expires_at?: number | null; popularity_delta?: number }
+// takeoverBy* return { ok, legitimacy, path } on success or { ok:false, reason } —
+// there is no newRulerUserId field (the caller already knows who it is: them).
+interface TakeoverResult { ok?: boolean; method?: string; legitimacy?: number; path?: string; reason?: string }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'list' | 'mine' | 'decree' | 'loyalty' | 'conquest' | 'inheritance' | 'election' | 'mint' | 'dm' | 'publish' | 'agent';
@@ -31,29 +63,74 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
+// POST /api/lens/run wraps the macro's own return as { ok:true, result: PAYLOAD } —
+// the outer `ok` is a transport flag, not the macro's success/failure (confirmed
+// against server.js's /api/lens/run handler). Every kingdoms.* macro used here
+// returns a FLAT payload with its own `ok`/`reason` (never a second nested
+// `result`), so this unwraps exactly one level and checks the macro's real `ok`.
+// The previous version of this helper skipped that inner check entirely, so
+// every macro failure (missing_inputs / invalid_kind / kingdom_not_found / …)
+// was rendered as a fake success toast — a real honesty-invariant violation,
+// not just a display bug.
 async function callKingdoms<T>(name: string, input: Record<string, unknown>): Promise<{ ok: boolean; result?: T; error?: string; reason?: string }> {
   try {
     const r = await api.post('/api/lens/run', { domain: 'kingdoms', name, input });
-    const d = r.data as { ok?: boolean; result?: T; error?: string; reason?: string };
-    if (d && typeof d === 'object' && 'ok' in d) return d as { ok: boolean; result?: T };
-    return { ok: false, error: 'unexpected response' };
+    const envelope = r.data as { ok?: boolean; result?: unknown; error?: string };
+    if (!envelope || envelope.ok === false) return { ok: false, error: envelope?.error || 'request failed' };
+    const inner = envelope.result as (T & { ok?: boolean; error?: string; reason?: string }) | undefined;
+    if (!inner || typeof inner !== 'object') return { ok: false, error: 'unexpected response' };
+    if (inner.ok === false) return { ok: false, error: inner.error, reason: inner.reason };
+    return { ok: true, result: inner as T };
   } catch (e) { return { ok: false, error: pickMessage(e) }; }
 }
+
+// server/domains/kingdoms.js#propose_decree only accepts these 8 kinds
+// (server/lib/kingdom-decrees.js KIND_DEFAULTS) — any other string is
+// rejected with reason:'invalid_kind'.
+const DECREE_KINDS = [
+  { id: 'tax_change', label: 'Tax change' },
+  { id: 'conscription', label: 'Conscription' },
+  { id: 'trade_embargo', label: 'Trade embargo' },
+  { id: 'recipe_grant', label: 'Recipe grant' },
+  { id: 'pardon', label: 'Pardon' },
+  { id: 'exile', label: 'Exile' },
+  { id: 'construction', label: 'Construction' },
+  { id: 'festival', label: 'Festival' },
+] as const;
+type DecreeKind = typeof DECREE_KINDS[number]['id'];
 
 export function RealmActionPanel() {
   const [realmList, setRealmList] = useState<Realm[]>([]);
   const [myRealm, setMyRealm] = useState<Realm | null>(null);
   const [targetRealmId, setTargetRealmId] = useState('');
-  const [decreeKind, setDecreeKind] = useState<'tax' | 'levy' | 'mercy' | 'crackdown' | 'border-watch'>('tax');
-  const [decreeRegion, setDecreeRegion] = useState('');
+  const [decreeKind, setDecreeKind] = useState<DecreeKind>('tax_change');
+  // Repurposed per decree kind: tax_change reads this as the new tax rate
+  // (0-0.50, sent as body.new_rate); other kinds ignore it.
   const [decreeMagnitude, setDecreeMagnitude] = useState('');
+  // pardon/exile read this as body.target_npc_id; other kinds ignore it.
+  const [decreeTargetNpc, setDecreeTargetNpc] = useState('');
   const [recipient, setRecipient] = useState('');
+  // kingdoms.list requires a worldId (server/domains/kingdoms.js:47-53) —
+  // follow the same localStorage hint the rest of the world lens uses
+  // (see DriftAlertToast.tsx, HUDContextProvider.tsx) rather than the flat
+  // 'concordia-hub' default only, so this panel tracks whatever world the
+  // player is actually in.
+  const [worldId, setWorldId] = useState('concordia-hub');
+  useEffect(() => {
+    const id = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
+    if (id) setWorldId(id);
+  }, []);
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   const [decreeResult, setDecreeResult] = useState<DecreeResult | null>(null);
   const [loyaltyResult, setLoyaltyResult] = useState<LoyaltyResult | null>(null);
+  // kingdoms.my_realm's `activeDecrees` field was already being fetched
+  // but silently dropped — never rendered, and kingdoms.revoke_decree had
+  // zero UI anywhere despite being a real, working macro. Surfacing both.
+  const [myRealmDecrees, setMyRealmDecrees] = useState<RealmDecree[]>([]);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
   const [takeoverResult, setTakeoverResult] = useState<TakeoverResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
@@ -77,81 +154,133 @@ export function RealmActionPanel() {
     },
   });
 
-  // Auto-load realm list + my realm on mount
+  // Auto-load realm list + my realm on mount (and whenever the active-world
+  // hint resolves from localStorage after mount).
   useEffect(() => {
     (async () => {
       try {
-        const list = await callKingdoms<{ realms: Realm[] }>('list', {});
-        if (list.ok && list.result?.realms) setRealmList(list.result.realms);
+        const list = await callKingdoms<{ kingdoms: Realm[] }>('list', { worldId });
+        if (list.ok && list.result?.kingdoms) setRealmList(list.result.kingdoms);
       } catch {/* dormant */}
       try {
-        const mine = await callKingdoms<{ realm: Realm }>('my_realm', {});
-        if (mine.ok && mine.result?.realm) setMyRealm(mine.result.realm);
+        const mine = await callKingdoms<{ realm: Realm; activeDecrees?: RealmDecree[] }>('my_realm', {});
+        if (mine.ok && mine.result?.realm) {
+          setMyRealm(mine.result.realm);
+          setMyRealmDecrees(mine.result.activeDecrees || []);
+        }
       } catch {/* dormant */}
     })();
-  }, []);
+  }, [worldId]);
 
   async function actList() {
     setBusy('list'); setFeedback(null);
-    const r = await callKingdoms<{ realms: Realm[] }>('list', {});
-    if (r.ok && r.result?.realms) {
-      setRealmList(r.result.realms);
-      pipe.publish('kingdoms.realmList', r.result.realms, { label: `${r.result.realms.length} realms` });
-      ok(`${r.result.realms.length} realms.`);
+    const r = await callKingdoms<{ kingdoms: Realm[] }>('list', { worldId });
+    if (r.ok && r.result?.kingdoms) {
+      setRealmList(r.result.kingdoms);
+      pipe.publish('kingdoms.realmList', r.result.kingdoms, { label: `${r.result.kingdoms.length} realms` });
+      ok(`${r.result.kingdoms.length} realms in ${worldId}.`);
     }
     else err(r.error ?? r.reason ?? 'list failed');
     setBusy(null);
   }
   async function actMine() {
     setBusy('mine'); setFeedback(null);
-    const r = await callKingdoms<{ realm: Realm }>('my_realm', {});
+    const r = await callKingdoms<{ realm: Realm; activeDecrees?: RealmDecree[] }>('my_realm', {});
     if (r.ok && r.result?.realm) {
       setMyRealm(r.result.realm);
+      setMyRealmDecrees(r.result.activeDecrees || []);
       pipe.publish('kingdoms.myRealm', r.result.realm, { label: r.result.realm.name });
       ok(`My realm: ${r.result.realm.name}.`);
     }
     else err(r.error ?? r.reason ?? 'no realm');
     setBusy(null);
   }
+  // kingdoms.revoke_decree was a real, wired macro with zero UI anywhere
+  // in the lens — a ruler had no way to repeal their own decree.
+  async function actRevokeDecree(decreeId: string) {
+    setRevokingId(decreeId); setFeedback(null);
+    const r = await callKingdoms<{ ok: boolean }>('revoke_decree', { decreeId });
+    if (r.ok) {
+      setMyRealmDecrees((prev) => prev.filter((d) => d.id !== decreeId));
+      ok('Decree revoked.');
+    } else err(r.error ?? r.reason ?? 'revoke failed');
+    setRevokingId(null);
+  }
   async function actDecree() {
-    if (!decreeRegion.trim()) { err('Region required.'); return; }
+    const kingdomId = targetRealmId.trim();
+    if (!kingdomId) { err('Target kingdom id required.'); return; }
+    const body: Record<string, unknown> = {};
+    if (decreeKind === 'tax_change') {
+      const rate = parseFloat(decreeMagnitude);
+      if (!Number.isFinite(rate) || rate < 0 || rate > 0.5) { err('New tax rate must be 0–0.50.'); return; }
+      body.new_rate = rate;
+    } else if (decreeKind === 'pardon' || decreeKind === 'exile') {
+      if (!decreeTargetNpc.trim()) { err('Target NPC id required for pardon/exile.'); return; }
+      body.target_npc_id = decreeTargetNpc.trim();
+    }
     setBusy('decree'); setFeedback(null);
-    const r = await callKingdoms<DecreeResult>('propose_decree', {
-      region: decreeRegion.trim(), kind: decreeKind, magnitude: parseFloat(decreeMagnitude),
-    });
+    const r = await callKingdoms<DecreeResult>('propose_decree', { kingdomId, kind: decreeKind, body });
     if (r.ok && r.result) {
       setDecreeResult(r.result);
-      pipe.publish('kingdoms.decree', r.result, { label: `${decreeKind} · ${r.result.region ?? decreeRegion}` });
-      ok(`Decree proposed: ${r.result.decreeId ?? r.result.effect}.`);
+      pipe.publish('kingdoms.decree', r.result, { label: `${decreeKind} · ${kingdomId.slice(0, 8)}` });
+      ok(`Decree issued: ${decreeKind} (popularity Δ ${r.result.popularity_delta ?? 0}).`);
     }
     else err(r.error ?? r.reason ?? 'decree failed');
     setBusy(null);
   }
   async function actLoyalty() {
-    if (!targetRealmId.trim() && !myRealm) { err('Pick a target realm.'); return; }
+    const kingdomId = targetRealmId.trim() || myRealm?.id;
+    if (!kingdomId) { err('Pick a target realm.'); return; }
     setBusy('loyalty'); setFeedback(null);
-    const realmId = targetRealmId.trim() || myRealm?.id;
-    const r = await callKingdoms<LoyaltyResult>('recompute_loyalty', { realmId });
-    if (r.ok && r.result) {
-      setLoyaltyResult(r.result);
-      pipe.publish('kingdoms.loyalty', r.result, { label: `loyalty ${r.result.loyalty}` });
-      ok(`Loyalty ${r.result.loyalty}${r.result.delta != null ? ` (Δ ${r.result.delta})` : ''}.`);
+    // recompute_loyalty only returns { refreshed, count } — the actual
+    // avg/low/high loyalty summary + rebellion risk live on
+    // kingdoms.kingdom_status's `loyalty`/`rebellionRisk` fields, so this
+    // composes both real calls rather than guessing a shape.
+    const recompute = await callKingdoms<{ refreshed: number; count: number }>('recompute_loyalty', { kingdomId });
+    if (!recompute.ok) { err(recompute.error ?? recompute.reason ?? 'loyalty failed'); setBusy(null); return; }
+    const status = await callKingdoms<{
+      kingdom: Realm;
+      loyalty: { avg: number; count: number; low: number; high: number };
+      rebellionRisk?: { score?: number; threshold?: number };
+    }>('kingdom_status', { kingdomId });
+    if (status.ok && status.result?.loyalty) {
+      const l = status.result.loyalty;
+      const rr = status.result.rebellionRisk;
+      const next: LoyaltyResult = {
+        kingdomId, avg: l.avg, low: l.low, high: l.high, count: l.count, refreshed: recompute.result?.refreshed,
+        rebellionScore: rr?.score, rebellionThreshold: rr?.threshold,
+      };
+      setLoyaltyResult(next);
+      pipe.publish('kingdoms.loyalty', next, { label: `loyalty ${next.avg}` });
+      ok(`Loyalty avg ${next.avg} (refreshed ${next.refreshed ?? 0}/${next.count ?? 0} citizens).`);
+    } else {
+      // Recompute genuinely succeeded even though the follow-up summary
+      // fetch failed — report the real partial result honestly rather
+      // than a generic error.
+      ok(`Recomputed loyalty for ${recompute.result?.refreshed ?? 0} citizens.`);
     }
-    else err(r.error ?? r.reason ?? 'loyalty failed');
     setBusy(null);
   }
   async function actTakeover(method: 'conquest' | 'inheritance' | 'election') {
-    if (!targetRealmId.trim()) { err('Target realm id required.'); return; }
+    const kingdomId = targetRealmId.trim();
+    if (!kingdomId) { err('Target realm id required.'); return; }
     setBusy(method); setFeedback(null);
     const macroName = method === 'conquest' ? 'takeover_conquest' : method === 'inheritance' ? 'takeover_inheritance' : 'takeover_election';
-    const r = await callKingdoms<TakeoverResult>(macroName, { realmId: targetRealmId.trim() });
-    if (r.ok) {
-      const next = { ...r.result, method };
+    // takeoverBy* return { legitimacy, path } on success — no proof of a real
+    // ruler-kill / capital-hold is fabricated client-side here (conquest
+    // without proof.rulerKilledAt/capitalHeldSince honestly fails with
+    // reason:'ruler_not_killed' — that's the correct behaviour, not a bug).
+    const r = await callKingdoms<TakeoverResult>(macroName, { kingdomId });
+    if (r.ok && r.result) {
+      const next: TakeoverResult = { ...r.result, ok: true, method };
       setTakeoverResult(next);
-      pipe.publish('kingdoms.takeover', next, { label: `${method} · ${next.ok ? 'success' : 'failed'}` });
-      ok(`${method}: ${r.result?.ok ? 'success' : 'failed'}.`);
+      pipe.publish('kingdoms.takeover', next, { label: `${method} · success` });
+      ok(`${method}: you now rule (legitimacy ${r.result.legitimacy ?? '?'}).`);
+    } else {
+      const reason = r.error ?? r.reason ?? `${method} failed`;
+      setTakeoverResult({ method, ok: false, reason });
+      err(reason);
     }
-    else err(r.error ?? r.reason ?? `${method} failed`);
     setBusy(null);
   }
 
@@ -183,9 +312,9 @@ export function RealmActionPanel() {
     setBusy('dm'); setFeedback(null);
     const body = [
       `👑 Realm dispatch`,
-      myRealm ? `From: ${myRealm.name} (capital ${myRealm.capital ?? '—'})` : '',
-      loyaltyResult ? `Loyalty: ${loyaltyResult.loyalty} (Δ ${loyaltyResult.delta ?? 0})` : '',
-      decreeResult ? `Recent decree: ${decreeResult.decreeId ?? decreeResult.effect ?? '—'} in ${decreeResult.region}` : '',
+      myRealm ? `From: ${myRealm.name} (capital ${myRealm.capital_settlement_id ?? '—'})` : '',
+      loyaltyResult ? `Loyalty: avg ${loyaltyResult.avg} (low ${loyaltyResult.low} / high ${loyaltyResult.high})` : '',
+      decreeResult ? `Recent decree: ${decreeResult.kind ?? '—'} (popularity Δ ${decreeResult.popularity_delta ?? 0}) in ${targetRealmId || '—'}` : '',
       takeoverResult ? `Takeover (${takeoverResult.method}): ${takeoverResult.ok ? 'succeeded' : 'failed'}${takeoverResult.reason ? ` — ${takeoverResult.reason}` : ''}` : '',
       mintedDtuId ? `\n[Realm DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
@@ -207,10 +336,10 @@ export function RealmActionPanel() {
         const r = await api.post('/api/lens/run', {
           domain: 'dtu', name: 'create',
           input: {
-            title: `Public decree — ${decreeResult.region}`,
+            title: `Public decree — ${targetRealmId || decreeResult.kind}`,
             tags: ['kingdoms', 'decree', 'public', decreeKind],
             source: 'kingdoms:decree:publish',
-            meta: { visibility: 'public', consent: { allowCitations: true }, decree: { region: decreeResult.region, kind: decreeKind, magnitude: parseFloat(decreeMagnitude), effect: decreeResult.effect } },
+            meta: { visibility: 'public', consent: { allowCitations: true }, decree: { kingdomId: targetRealmId, kind: decreeResult.kind ?? decreeKind, popularityDelta: decreeResult.popularity_delta } },
           },
         });
         const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
@@ -232,9 +361,9 @@ export function RealmActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = [
-        `Realm context: ${myRealm ? `${myRealm.name} (capital ${myRealm.capital}, loyalty ${loyaltyResult?.loyalty ?? '?'})` : 'no realm yet'}.`,
+        `Realm context: ${myRealm ? `${myRealm.name} (capital ${myRealm.capital_settlement_id ?? '—'}, loyalty ${loyaltyResult?.avg ?? '?'})` : 'no realm yet'}.`,
         realmList.length ? `${realmList.length} realms on the map.` : '',
-        decreeResult ? `Recent decree: ${decreeKind} in ${decreeResult.region}.` : '',
+        decreeResult ? `Recent decree: ${decreeResult.kind ?? decreeKind} in ${targetRealmId || '—'}.` : '',
         '',
         'Suggest the single highest-leverage move for my realm this turn: which decree, when to call levies, whether to attempt a takeover (conquest / inheritance / election) and why.',
         'Speak in the voice of a CK3 council member. One paragraph. Direct.',
@@ -271,12 +400,12 @@ export function RealmActionPanel() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <input type="text" value={targetRealmId} onChange={(e) => setTargetRealmId(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Target realm id" />
-        <select value={decreeKind} onChange={(e) => setDecreeKind(e.target.value as typeof decreeKind)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
-          {(['tax', 'levy', 'mercy', 'crackdown', 'border-watch'] as const).map(k => <option key={k} value={k}>{k}</option>)}
+        <input type="text" value={targetRealmId} onChange={(e) => setTargetRealmId(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Target kingdom id" />
+        <select value={decreeKind} onChange={(e) => setDecreeKind(e.target.value as DecreeKind)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+          {DECREE_KINDS.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
         </select>
-        <input type="text" value={decreeRegion} onChange={(e) => setDecreeRegion(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Decree region" />
-        <input type="text" value={decreeMagnitude} onChange={(e) => setDecreeMagnitude(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="magnitude (1-10)" />
+        <input type="text" value={decreeMagnitude} onChange={(e) => setDecreeMagnitude(e.target.value.replace(/[^\d.]/g, ''))} disabled={decreeKind !== 'tax_change'} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono disabled:opacity-40" placeholder="new tax rate 0–0.50 (tax_change)" />
+        <input type="text" value={decreeTargetNpc} onChange={(e) => setDecreeTargetNpc(e.target.value)} disabled={decreeKind !== 'pardon' && decreeKind !== 'exile'} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white disabled:opacity-40" placeholder="target NPC id (pardon/exile)" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="md:col-span-4 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM ally user id" />
       </div>
 
@@ -307,9 +436,32 @@ export function RealmActionPanel() {
           <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5"><Map className="w-3 h-3" /> Realms on the map ({realmList.length})</div>
           {realmList.slice(0, 20).map(r => (
             <button key={r.id} onClick={() => setTargetRealmId(r.id)} className="block w-full text-left text-[11px] text-zinc-300 hover:text-cyan-200 py-0.5">
-              <span className="font-mono text-cyan-300">{r.id.slice(0, 8)}</span> {r.name} <span className="text-zinc-400">{r.capital ? `· ${r.capital}` : ''} {r.loyalty != null ? `· loyalty ${r.loyalty}` : ''}</span>
+              <span className="font-mono text-cyan-300">{r.id.slice(0, 8)}</span> {r.name} <span className="text-zinc-400">{r.capital_settlement_id ? `· ${r.capital_settlement_id}` : ''} · legitimacy {r.legitimacy ?? '?'}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {myRealm && myRealmDecrees.length > 0 && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
+          <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold flex items-center gap-1.5">
+            <Scroll className="w-3 h-3" /> {myRealm.name}&rsquo;s active decrees ({myRealmDecrees.length})
+          </div>
+          <ul className="mt-1.5 space-y-1">
+            {myRealmDecrees.map((d) => (
+              <li key={d.id} className="flex items-center justify-between rounded bg-zinc-900/60 px-2 py-1 text-[11px]">
+                <span className="capitalize text-zinc-200">{d.kind.replace(/_/g, ' ')}</span>
+                <button
+                  type="button"
+                  onClick={() => actRevokeDecree(d.id)}
+                  disabled={revokingId === d.id}
+                  className="rounded bg-rose-900/50 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-800/60 disabled:opacity-50"
+                >
+                  {revokingId === d.id ? 'revoking…' : 'revoke'}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -317,14 +469,26 @@ export function RealmActionPanel() {
         {decreeResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5"><Scroll className="w-3 h-3" /> Decree</div>
-            <div className="text-[11px] text-zinc-300 mt-1">In <strong className="text-purple-200">{decreeResult.region}</strong>: {decreeResult.effect ?? decreeResult.decreeId ?? '(processed)'}</div>
+            <div className="text-[11px] text-zinc-300 mt-1">
+              <strong className="text-purple-200 capitalize">{decreeResult.kind?.replace(/_/g, ' ')}</strong> issued
+              {decreeResult.popularity_delta != null && (
+                <span className={cn('ml-1', decreeResult.popularity_delta >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
+                  (popularity Δ {decreeResult.popularity_delta >= 0 ? '+' : ''}{decreeResult.popularity_delta})
+                </span>
+              )}
+            </div>
           </div>
         )}
         {loyaltyResult && (
-          <div className={cn('rounded-md border p-2.5', (loyaltyResult.loyalty ?? 0) >= 70 ? 'border-emerald-500/40 bg-emerald-500/5' : (loyaltyResult.loyalty ?? 0) >= 40 ? 'border-amber-500/40 bg-amber-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
+          <div className={cn('rounded-md border p-2.5', (loyaltyResult.avg ?? 0) >= 70 ? 'border-emerald-500/40 bg-emerald-500/5' : (loyaltyResult.avg ?? 0) >= 40 ? 'border-amber-500/40 bg-amber-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-pink-300 font-semibold flex items-center gap-1.5"><Heart className="w-3 h-3" /> Loyalty</div>
-            <div className="text-2xl font-bold text-zinc-100 mt-1">{loyaltyResult.loyalty}{loyaltyResult.delta != null && <span className={cn('text-sm ml-2', loyaltyResult.delta >= 0 ? 'text-emerald-300' : 'text-rose-300')}>Δ {loyaltyResult.delta >= 0 ? '+' : ''}{loyaltyResult.delta}</span>}</div>
-            {loyaltyResult.reason && <p className="text-[10px] text-zinc-400 italic">{loyaltyResult.reason}</p>}
+            <div className="text-2xl font-bold text-zinc-100 mt-1">{loyaltyResult.avg}</div>
+            <p className="text-[10px] text-zinc-400">low {loyaltyResult.low} / high {loyaltyResult.high} · {loyaltyResult.count} citizens ({loyaltyResult.refreshed ?? 0} refreshed)</p>
+            {loyaltyResult.rebellionScore != null && (
+              <p className={cn('mt-1 text-[10px]', loyaltyResult.rebellionThreshold != null && loyaltyResult.rebellionScore >= loyaltyResult.rebellionThreshold ? 'text-rose-300 font-semibold' : 'text-zinc-400')}>
+                Rebellion risk: {loyaltyResult.rebellionScore}{loyaltyResult.rebellionThreshold != null ? ` / ${loyaltyResult.rebellionThreshold} threshold` : ''}
+              </p>
+            )}
           </div>
         )}
         {takeoverResult && (
@@ -334,7 +498,7 @@ export function RealmActionPanel() {
               {takeoverResult.method === 'conquest' ? <Sword className="w-3 h-3" /> : takeoverResult.method === 'inheritance' ? <FileText className="w-3 h-3" /> : <Vote className="w-3 h-3" />}
               {takeoverResult.method}: {takeoverResult.ok ? 'success' : 'failed'}
             </div>
-            {takeoverResult.newRulerUserId && <div className="text-[11px] text-zinc-300 mt-1">New ruler: <span className="font-mono">{takeoverResult.newRulerUserId.slice(0, 8)}</span></div>}
+            {takeoverResult.ok && takeoverResult.legitimacy != null && <div className="text-[11px] text-zinc-300 mt-1">Legitimacy: <span className="font-mono">{takeoverResult.legitimacy}</span></div>}
             {takeoverResult.reason && <p className="text-[11px] text-zinc-400 italic">{takeoverResult.reason}</p>}
           </div>
         )}

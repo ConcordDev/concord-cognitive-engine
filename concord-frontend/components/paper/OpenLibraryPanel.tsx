@@ -29,7 +29,11 @@ interface OpenLibraryBook {
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
     const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
+    // /api/lens/run always answers { ok:true, result: <macro's own return> } —
+    // the macro's own { ok, books, total, ... } lives one level down at
+    // r.data.result, not at r.data itself. Reading r.data directly used to
+    // silently return zero books/total for every real search.
+    return (r?.data?.result ?? null) as T;
   } catch {
     return null;
   }

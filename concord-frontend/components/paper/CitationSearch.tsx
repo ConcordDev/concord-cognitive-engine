@@ -1,34 +1,48 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Loader2, FileText, Quote } from 'lucide-react';
+import { Search, Loader2, FileText, ExternalLink } from 'lucide-react';
 import { api } from '@/lib/api/client';
 
+// Matches the actual shape returned by paper.search (server/domains/paper.js
+// parseArxivAtom) — arXiv has no citation-count or open-access field, so
+// this component previously rendered a fabricated "undefined cites" / never-
+// shown "Open access" badge for fields the API never sends. Render only
+// what arXiv actually returns.
 export interface Paper {
   id: string;
   title: string;
-  authors: string[];
-  journal?: string;
-  year: number;
-  doi?: string;
-  abstract: string;
-  citationCount: number;
-  openAccess: boolean;
+  authors?: string[];
+  abstract?: string;
+  published?: string;
+  primaryCategory?: string | null;
+  url?: string;
+  pdfUrl?: string | null;
 }
 
 export function CitationSearch() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function search() {
     if (!query.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await api.post('/api/lens/run', { domain: 'paper', action: 'search', input: { query: query.trim() } });
-      setResults((res.data?.result?.papers || []) as Paper[]);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+      const result = res.data?.result as { ok?: boolean; papers?: Paper[]; error?: string } | undefined;
+      if (result?.ok === false) {
+        setError(result.error || 'search failed');
+        setResults([]);
+      } else {
+        setResults((result?.papers || []) as Paper[]);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'search failed');
+      console.error(e);
+    } finally { setLoading(false); }
   }
 
   return (
@@ -36,7 +50,7 @@ export function CitationSearch() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Search className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Citation search</span>
-        <span className="ml-auto text-[10px] text-gray-400">arXiv / PubMed / Semantic Scholar shape</span>
+        <span className="ml-auto text-[10px] text-gray-400">arXiv export API</span>
       </header>
       <div className="p-3 border-b border-white/10 flex items-center gap-2 text-xs">
         <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') search(); }} placeholder="Search papers (e.g. transformer attention)" className="flex-1 px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -45,8 +59,9 @@ export function CitationSearch() {
           Search
         </button>
       </div>
+      {error && <div className="px-3 py-2 text-xs text-rose-300 bg-rose-950/30 border-b border-rose-900/50">{error}</div>}
       <div className="max-h-[500px] overflow-y-auto">
-        {results.length === 0 && !loading ? (
+        {results.length === 0 && !loading && !error ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400">Enter a query to search papers.</div>
         ) : (
           <ul className="divide-y divide-white/5">
@@ -55,16 +70,15 @@ export function CitationSearch() {
                 <div className="flex items-start gap-3">
                   <FileText className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-white">{p.title}</h3>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-bold text-white">{p.title}</h3>
+                      {p.pdfUrl && <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-cyan-400 hover:text-cyan-300" aria-label="PDF"><ExternalLink className="w-3.5 h-3.5" /></a>}
+                    </div>
                     <div className="text-[10px] text-gray-400 mt-0.5">
-                      {p.authors.slice(0, 3).join(', ')}{p.authors.length > 3 ? ' et al.' : ''} · {p.year} · {p.journal || 'arXiv'}
-                      {p.doi && ` · doi:${p.doi}`}
+                      {(p.authors || []).slice(0, 3).join(', ')}{(p.authors || []).length > 3 ? ' et al.' : ''} · arXiv{p.published ? ` · ${p.published.slice(0, 10)}` : ''}
+                      {p.primaryCategory && ` · ${p.primaryCategory}`}
                     </div>
-                    <p className="text-xs text-gray-400 mt-1 line-clamp-3">{p.abstract}</p>
-                    <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-3">
-                      <span className="inline-flex items-center gap-0.5"><Quote className="w-3 h-3" /> {p.citationCount} cites</span>
-                      {p.openAccess && <span className="text-green-400">Open access</span>}
-                    </div>
+                    {p.abstract && <p className="text-xs text-gray-400 mt-1 line-clamp-3">{p.abstract}</p>}
                   </div>
                 </div>
               </li>

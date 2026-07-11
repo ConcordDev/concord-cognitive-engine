@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Loader2, Plus, AlertCircle, Gavel, Users, FileText, ScanText, Check } from 'lucide-react';
+import { Calendar, Loader2, Plus, AlertCircle, Gavel, Users, FileText, ScanText, Check, Milestone } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +21,19 @@ const KINDS: CalEvent['kind'][] = ['deadline', 'hearing', 'meeting', 'filing', '
 interface CourtDocSuggestion {
   kind: 'deadline' | 'hearing'; source: string; days?: number; context: string; suggestedDate: string;
 }
+
+interface TimelineDeadline {
+  event: string; date: string; daysFromFiling: number; daysRemaining: number;
+  status: 'past' | 'urgent' | 'upcoming' | 'future';
+}
+interface TimelineResult {
+  filingDate: string; jurisdiction: string; deadlines: TimelineDeadline[]; error?: string;
+}
+const JURISDICTIONS = [
+  { id: 'federal', name: 'Federal' },
+  { id: 'state', name: 'State' },
+  { id: 'default', name: 'Default / unspecified' },
+];
 
 const RULES = [
   { id: 'frcp-12-answer',          name: 'FRCP 12(a)(1)(A) — Answer (21 days)' },
@@ -51,6 +64,11 @@ export function CalendarPanel() {
   const [suggestions, setSuggestions] = useState<CourtDocSuggestion[] | null>(null);
   const [parseBusy, setParseBusy] = useState(false);
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [timeline, setTimeline] = useState({ filingDate: '', jurisdiction: 'federal', matterId: '' });
+  const [timelineResult, setTimelineResult] = useState<TimelineResult | null>(null);
+  const [timelineBooked, setTimelineBooked] = useState(false);
+  const [timelineBusy, setTimelineBusy] = useState(false);
 
   useEffect(() => { refresh(); }, []);
 
@@ -104,6 +122,45 @@ export function CalendarPanel() {
       setShowCalc(false);
       await refresh();
     } catch (e) { console.error('[Calendar] book calc failed', e); }
+  }
+
+  async function runTimeline() {
+    if (!timeline.filingDate) return;
+    setTimelineBusy(true);
+    setTimelineBooked(false);
+    try {
+      const r = await lensRun({
+        domain: 'legal', action: 'deadlineCalculator',
+        input: { filingDate: timeline.filingDate, jurisdiction: timeline.jurisdiction },
+      });
+      const result = (r.data?.result || null) as TimelineResult | null;
+      if (result?.error) { setTimelineResult(null); alert(result.error); return; }
+      setTimelineResult(result);
+    } catch (e) { console.error('[Calendar] timeline calc failed', e); }
+    finally { setTimelineBusy(false); }
+  }
+
+  async function bookTimeline() {
+    if (!timelineResult) return;
+    setTimelineBusy(true);
+    try {
+      for (const dl of timelineResult.deadlines) {
+        await lensRun({
+          domain: 'legal', action: 'calendar-create',
+          input: {
+            title: dl.event,
+            kind: 'deadline',
+            date: dl.date,
+            matterId: timeline.matterId || undefined,
+            sourceRule: `case-timeline:${timeline.jurisdiction}`,
+            description: `Projected from filing date ${timelineResult.filingDate} (${timeline.jurisdiction} jurisdiction, ${dl.daysFromFiling} days from filing). Not a rule-cited deadline — use the court rules calculator above for FRCP-specific dates.`,
+          },
+        });
+      }
+      setTimelineBooked(true);
+      await refresh();
+    } catch (e) { console.error('[Calendar] book timeline failed', e); }
+    finally { setTimelineBusy(false); }
   }
 
   async function parseCourtDoc() {
@@ -174,6 +231,57 @@ export function CalendarPanel() {
                   {calcResult.rolledForward && ` Raw was ${calcResult.rawDeadline}; rolled forward to next business day per FRCP 6(a)(1)(C).`}
                 </div>
                 <button onClick={bookCalcResult} className="mt-2 px-2.5 py-1 text-[11px] rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Add to calendar</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Case timeline projector — full multi-milestone litigation timeline from a
+          filing date, distinct from the single-rule calculator above: that one
+          computes ONE FRCP-cited deadline from a triggering event; this projects
+          FIVE milestones (response/extension/discovery/motion/trial) from the
+          filing date using a coarser jurisdiction table, no holiday-rolling. */}
+      <div className="bg-amber-500/[0.05] border border-amber-500/20 rounded-lg overflow-hidden">
+        <header className="px-4 py-2.5 border-b border-amber-500/20 flex items-center gap-2">
+          <Milestone className="w-4 h-4 text-amber-400" />
+          <span className="text-sm font-semibold text-amber-200">Case timeline projector</span>
+          <button onClick={() => setShowTimeline(v => !v)} className="ml-auto text-[10px] text-amber-300 underline">{showTimeline ? 'Hide' : 'Project a case timeline'}</button>
+        </header>
+        {showTimeline && (
+          <div className="p-3 grid grid-cols-12 gap-2">
+            <input type="date" value={timeline.filingDate} onChange={e => setTimeline({ ...timeline, filingDate: e.target.value })} title="Filing date" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <select value={timeline.jurisdiction} onChange={e => setTimeline({ ...timeline, jurisdiction: e.target.value })} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+              {JURISDICTIONS.map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
+            </select>
+            <select value={timeline.matterId} onChange={e => setTimeline({ ...timeline, matterId: e.target.value })} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+              <option value="">No matter</option>
+              {matters.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            <button onClick={runTimeline} disabled={!timeline.filingDate || timelineBusy} className="col-span-12 px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
+              {timelineBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}Project timeline
+            </button>
+            {timelineResult && (
+              <div className="col-span-12 mt-1 rounded border border-emerald-500/30 bg-emerald-500/[0.05] p-3">
+                <ul className="space-y-1.5">
+                  {timelineResult.deadlines.map((dl, i) => (
+                    <li key={i} className="flex items-center justify-between text-xs">
+                      <span className="text-gray-200">{dl.event}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono text-gray-400">{dl.date}</span>
+                        <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-semibold',
+                          dl.status === 'past' ? 'bg-gray-500/20 text-gray-400' :
+                          dl.status === 'urgent' ? 'bg-rose-500/20 text-rose-300' :
+                          dl.status === 'upcoming' ? 'bg-amber-500/20 text-amber-300' :
+                          'bg-cyan-500/20 text-cyan-300')}>{dl.status}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={bookTimeline} disabled={timelineBusy || timelineBooked} className="mt-2 px-2.5 py-1 text-[11px] rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 disabled:opacity-40 inline-flex items-center gap-1">
+                  {timelineBooked ? <Check className="w-3 h-3" /> : null}
+                  {timelineBooked ? 'Added to calendar' : `Add all ${timelineResult.deadlines.length} to calendar`}
+                </button>
               </div>
             )}
           </div>
