@@ -47992,10 +47992,24 @@ app.patch("/api/marketplace/listings/:id", requireAuth(), (req, res) => {
   if (listing.sellerId !== userId && req.user?.role !== "admin") {
     return res.status(403).json({ ok: false, error: "not_listing_owner" });
   }
-  const { price, description, title } = req.body || {};
+  const { price, description, title, tierPrices } = req.body || {};
   if (typeof price === "number" && price >= 0) listing.price = price;
   if (typeof description === "string") listing.description = description.slice(0, 1000);
   if (typeof title === "string") listing.title = title.slice(0, 200);
+  // tierPrices was accepted by the Creator lens's listing editor (usage /
+  // remix / commercial) but silently dropped here — every save reported
+  // ok:true while the tier data vanished. Persist it like the sibling
+  // personal-locker publish path does (server/routes/personal-locker.js).
+  if (tierPrices && typeof tierPrices === "object" && !Array.isArray(tierPrices)) {
+    const clean = {};
+    for (const key of ["usage", "remix", "commercial"]) {
+      const v = Number(tierPrices[key]);
+      if (Number.isFinite(v) && v >= 0) clean[key] = Math.round(v * 100) / 100;
+    }
+    if (Object.keys(clean).length > 0) listing.tierPrices = clean;
+  } else if (tierPrices === null) {
+    delete listing.tierPrices;
+  }
   listing.updatedAt = new Date().toISOString();
   saveStateDebounced();
   res.json({ ok: true, listing });

@@ -76,7 +76,13 @@ export function EducationActionPanel() {
     const parsed = parseJSON<Record<string, unknown>>(gradesText); if (!parsed) { err('Invalid grades JSON.'); return; }
     setBusy('grade'); setFeedback(null);
     try {
-      const r = await callMacro<GradeResult>('gradeCalculation', { artifact: { data: parsed } });
+      // gradeCalculation reads artifact.data.students / artifact.data.weightScheme.
+      // The /api/lens/run dispatcher builds artifact.data from the raw POST
+      // `input` verbatim (virtualArtifact.data = rest) — so `parsed` must be
+      // sent AS the input, not nested one level deeper under `{artifact:{data}}`
+      // (that shape put the payload at artifact.data.artifact.data.students,
+      // which the handler never reads — every grade silently came back empty).
+      const r = await callMacro<GradeResult>('gradeCalculation', parsed);
       if (r.ok && r.result) { setGradeResult(r.result); pipe.publish('education.grade', r.result, { label: `${r.result.studentsGraded} graded · avg ${r.result.classStats?.average}%` }); ok(`${r.result.studentsGraded} graded · class avg ${r.result.classStats?.average}%.`); } else err(r.error ?? 'grade failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -85,7 +91,9 @@ export function EducationActionPanel() {
     const parsed = parseJSON<Record<string, unknown>>(progText); if (!parsed) { err('Invalid progress JSON.'); return; }
     setBusy('prog'); setFeedback(null);
     try {
-      const r = await callMacro<ProgResult>('progressTrack', { artifact: { data: parsed } });
+      // progressTrack reads artifact.data.requirements / artifact.data.completions —
+      // same double-nesting fix as gradeCalculation above.
+      const r = await callMacro<ProgResult>('progressTrack', parsed);
       if (r.ok && r.result) { setProgResult(r.result); pipe.publish('education.prog', r.result, { label: `Progress ${r.result.overallCompletionPct}%` }); ok(`${r.result.overallCompletionPct}% complete · ${r.result.completedRequirements}/${r.result.totalRequirements} reqs.`); } else err(r.error ?? 'prog failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -183,11 +191,11 @@ export function EducationActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Grades JSON</label>
-          <textarea value={gradesText} onChange={(e) => setGradesText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={gradesText} onChange={(e) => setGradesText(e.target.value)} rows={6} placeholder={'{"students":[{"studentId":"s1","name":"Alice","grades":[{"category":"hw","score":90,"maxScore":100}]}],"weightScheme":[{"category":"hw","weight":100}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1 placeholder:text-zinc-600" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Progress JSON</label>
-          <textarea value={progText} onChange={(e) => setProgText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea value={progText} onChange={(e) => setProgText(e.target.value)} rows={6} placeholder={'{"requirements":[{"requirementId":"r1","name":"Core","requiredUnits":10}],"completions":[{"requirementId":"r1","completedUnits":4}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1 placeholder:text-zinc-600" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Lesson + quiz</div>
