@@ -115,7 +115,10 @@ export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) 
     setRecording(false);
     if (!song) return;
 
-    // Compute pitch deviation Hz (std-dev across samples) + rhythm jitter (approximation).
+    // Legacy fallback measure (std-dev across samples) — kept for songs with
+    // no parseable `key` and for back-compat. The server prefers scoring
+    // key-fit (how well the sung notes fit the song's declared scale) when
+    // both pitchSamplesHz + songKey are supplied — see resolveKaraoke.
     const pitches = pitchesRef.current;
     if (pitches.length < 5) { setError('not_enough_signal'); return; }
     const mean = pitches.reduce((a, b) => a + b, 0) / pitches.length;
@@ -132,7 +135,8 @@ export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) 
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          pitchAccuracyHz, rhythmTimingMs, durationSec: elapsed,
+          pitchAccuracyHz, pitchSamplesHz: pitches, songKey: song.key,
+          rhythmTimingMs, durationSec: elapsed,
           songDifficulty: song.difficulty, singingSkill: 30,
         }),
       });

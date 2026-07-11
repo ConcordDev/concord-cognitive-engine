@@ -86,16 +86,106 @@ export function resolvePhotograph(input = {}) {
 
 /* ───────── Karaoke ─────────────────────────────────────────────────── */
 
+// Wave 4 gap-closure (minigames-capability-map.md item 2) — `pitchAccuracyHz`
+// alone scores the STD-DEV of the singer's own pitch samples: a consistency/
+// flatness measure, not a distance-from-melody measure. A singer who holds a
+// single wrong note perfectly steady scored "accurate"; a singer nailing the
+// real melody with natural vibrato scored worse. None of the 25 songs in
+// content/karaoke-songs.json carry an authored per-note melody contour (that
+// would be a CURATION-class follow-up — see the capability-map doc), but
+// every song already carries an unused `key` field (e.g. "C minor"). Scoring
+// how well the sung notes fit the song's declared diatonic scale is a real,
+// much better proxy for melody accuracy than pure self-consistency, and it's
+// derived entirely from data that already exists — no new content authoring.
+const PITCH_CLASS_BY_LETTER = Object.freeze({ C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 });
+const MAJOR_SCALE_STEPS = Object.freeze([0, 2, 4, 5, 7, 9, 11]);
+const MINOR_SCALE_STEPS = Object.freeze([0, 2, 3, 5, 7, 8, 10]); // natural minor
+
+/**
+ * Parse a song's declared key into { tonic (0-11 pitch class), mode }.
+ * Accepts both symbolic ("F# minor", "Bb minor") and spelled-out
+ * ("B flat minor") accidentals — content/karaoke-songs.json uses both
+ * across its 25 songs (verified: "iron-witness" is authored as
+ * "B flat minor").
+ */
+export function parseSongKey(keyStr) {
+  if (!keyStr || typeof keyStr !== "string") return null;
+  const m = keyStr.trim().match(/^([A-Ga-g])\s*(#|b|sharp|flat)?\s*(major|minor)?$/i);
+  if (!m) return null;
+  const base = PITCH_CLASS_BY_LETTER[m[1].toUpperCase()];
+  if (base === undefined) return null;
+  const acc = (m[2] || "").toLowerCase();
+  let semitone = base;
+  if (acc === "#" || acc === "sharp") semitone += 1;
+  else if (acc === "b" || acc === "flat") semitone -= 1;
+  const tonic = ((semitone % 12) + 12) % 12;
+  const mode = (m[3] || "major").toLowerCase();
+  return { tonic, mode };
+}
+
+/** The 7 diatonic pitch classes (0-11) for a parsed key. */
+export function scalePitchClasses(key) {
+  const steps = key?.mode === "minor" ? MINOR_SCALE_STEPS : MAJOR_SCALE_STEPS;
+  return steps.map((s) => (key.tonic + s) % 12);
+}
+
+/** Nearest equal-tempered pitch class (0-11, A4=440Hz reference) + cents deviation from it. */
+export function hzToPitchClass(hz) {
+  if (!Number.isFinite(hz) || hz <= 0) return null;
+  const midi = 69 + 12 * Math.log2(hz / 440);
+  const nearest = Math.round(midi);
+  const centsOff = (midi - nearest) * 100;
+  const pitchClass = ((nearest % 12) + 12) % 12;
+  return { pitchClass, centsOff };
+}
+
+/**
+ * Score (0-100) of how well a series of sampled pitches (Hz) fits a song's
+ * declared musical key. In-scale notes score by closeness to the exact
+ * scale tone (tight intonation beats a barely-in-tune note); out-of-scale
+ * notes score 0. Returns null when there isn't enough data to score
+ * (unknown/unparseable key, or no usable pitch samples) so the caller can
+ * fall back to the legacy consistency measure.
+ */
+export function keyFitScore(pitchesHz, songKey) {
+  const key = parseSongKey(songKey);
+  if (!key || !Array.isArray(pitchesHz) || pitchesHz.length === 0) return null;
+  const scale = new Set(scalePitchClasses(key));
+  let counted = 0;
+  let fitSum = 0;
+  for (const raw of pitchesHz) {
+    const hz = Number(raw);
+    const p = hzToPitchClass(hz);
+    if (!p) continue;
+    counted += 1;
+    if (scale.has(p.pitchClass)) fitSum += Math.max(0, 1 - Math.abs(p.centsOff) / 50);
+  }
+  if (counted === 0) return null;
+  return Math.max(0, Math.min(100, (fitSum / counted) * 100));
+}
+
 export function resolveKaraoke(input = {}) {
-  // input: { pitchAccuracyHz, rhythmTimingMs, durationSec, songDifficulty 0..1,
-  //          singingSkill 0..100 }
-  const pitchHz = Math.max(0, Math.min(50, Number(input.pitchAccuracyHz ?? 12))); // lower is better
+  // input: { pitchAccuracyHz, pitchSamplesHz?, songKey?, rhythmTimingMs,
+  //          durationSec, songDifficulty 0..1, singingSkill 0..100 }
   const rhythmMs = Math.max(0, Math.min(500, Number(input.rhythmTimingMs ?? 60))); // lower is better
   const duration = Math.max(1, Math.min(600, Number(input.durationSec) || 60));
   const difficulty = Math.max(0, Math.min(1, Number(input.songDifficulty) || 0.5));
   const skill = Math.max(0, Math.min(100, Number(input.singingSkill) || 30));
-  // Score: invert pitch + rhythm errors, weight by skill, scale by difficulty
-  const pitchScore  = (1 - pitchHz / 50)  * 100;
+
+  // Prefer key-fit scoring (a real proxy for melody accuracy) whenever the
+  // caller supplies raw pitch samples + the song's declared key. Fall back
+  // to the legacy self-consistency measure (still honest, just weaker)
+  // when either is missing — e.g. older clients or a song with no `key`.
+  const keyFit = keyFitScore(input.pitchSamplesHz, input.songKey);
+  const usedKeyFit = keyFit !== null;
+  let pitchScore;
+  if (usedKeyFit) {
+    pitchScore = keyFit;
+  } else {
+    const pitchHz = Math.max(0, Math.min(50, Number(input.pitchAccuracyHz ?? 12))); // lower is better
+    pitchScore = (1 - pitchHz / 50) * 100;
+  }
+
   const rhythmScore = (1 - rhythmMs / 500) * 100;
   const composite = (pitchScore * 0.6 + rhythmScore * 0.4) * (1 + difficulty * 0.5) * (1 + skill / 200);
   const score = Math.round(Math.max(0, Math.min(200, composite)));
@@ -107,7 +197,10 @@ export function resolveKaraoke(input = {}) {
   return {
     ok: true,
     score, xpGained,
-    payload: { pitchScore, rhythmScore, durationSec: duration, songDifficulty: difficulty, grade },
+    payload: {
+      pitchScore, rhythmScore, durationSec: duration, songDifficulty: difficulty, grade,
+      pitchScoreMethod: usedKeyFit ? "key_fit" : "consistency",
+    },
   };
 }
 

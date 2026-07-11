@@ -7,8 +7,9 @@ import {
   authorPuzzle, attemptCommand, listPuzzles, getPuzzle, getAttemptStatus,
 } from "../lib/hacking.js";
 import { up as upHack } from "../migrations/252_hacking_puzzles.js";
+import { up as upHackHintCost } from "../migrations/358_hacking_hint_cost.js";
 
-function freshDb() { const db = new Database(":memory:"); upHack(db); return db; }
+function freshDb() { const db = new Database(":memory:"); upHack(db); upHackHintCost(db); return db; }
 
 describe("Phase CC2 — hacking puzzles", () => {
   let db;
