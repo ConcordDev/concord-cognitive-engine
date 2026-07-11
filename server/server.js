@@ -38554,10 +38554,21 @@ register("lens", "create", async (ctx, input={}) => {
   if (!domain || !type) return { ok: false, error: "domain and type required" };
 
   // v5.5: Scope enforcement via capability bridge
-  const scopeCheck = (() => {
+  //
+  // ctx.macro.run() calls runMacro(), an `async function` — it ALWAYS
+  // returns a Promise, even though the bridge.lensScope handler itself is
+  // synchronous. The un-awaited IIFE below used to capture that Promise
+  // object as `scopeCheck` (always truthy) and read `.allowed` off of it
+  // (always undefined), so `!scopeCheck.allowed` was always true and every
+  // lens.create call — the generic POST /api/lens/:domain path every lens
+  // without a bespoke create macro relies on via useCreateArtifact() — fell
+  // through to `scope_denied` unconditionally. Found live (not just
+  // grepped) while wiring the council lens's Simulate Budget button, which
+  // is what actually calls this path end-to-end. `await` fixes it.
+  const scopeCheck = await (async () => {
     try {
       const tempArt = { data, meta: meta || {} };
-      return ctx.macro.run("emergent", "bridge.lensScope", { artifact: tempArt, operation: "create", actorScope: ctx.actor?.scope || "local", STATE });
+      return await ctx.macro.run("emergent", "bridge.lensScope", { artifact: tempArt, operation: "create", actorScope: ctx.actor?.scope || "local", STATE });
     } catch { return { ok: false, allowed: false, error: 'scope_check_error' }; }
   })();
   if (scopeCheck && !scopeCheck.allowed) {
