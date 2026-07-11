@@ -193,6 +193,66 @@ describe('literary lens — four UX states', () => {
     expect(annotationCreate).toHaveBeenCalledTimes(1);
   });
 
+  it('DETAIL: "Read full passage" calls literary.detail and renders the full chunk + neighbors', async () => {
+    lensRun.mockImplementation((_d: string, name: string, input?: Record<string, unknown>) => {
+      if (name === 'stats') return reply({ ok: true, sources: 1, chunks: 2, embedded: 2 });
+      if (name === 'search') return reply({ ok: true, results: [HIT], count: 1, semantic: true });
+      if (name === 'semantic_graph') return reply({ ok: true, nodes: [], edges: [] });
+      if (name === 'resonance') return reply({ ok: true, dtuId: 'dtu_lit_1', edges: [] });
+      if (name === 'detail') {
+        return reply({
+          ok: true,
+          chunk: { chunkId: input?.chunkId, sourceId: 'gut_1524', dtuId: 'dtu_lit_1', ord: 3, heading: 'The Question', content: 'To be, or not to be, that is the question:\nWhether ’tis nobler in the mind to suffer' },
+          neighbors: [{ chunkId: 'c2', ord: 4, heading: 'The Answer', preview: 'The undiscovered country' }],
+        });
+      }
+      return reply({ ok: true, nodes: [], edges: [] });
+    });
+    const { getByLabelText, getByText, getByTestId } = render(<LiteraryLensPage />);
+    await waitFor(() => expect(getByLabelText('Literary search query')).toBeInTheDocument());
+    fireEvent.change(getByLabelText('Literary search query'), { target: { value: 'mortality' } });
+    await act(async () => { fireEvent.click(getByText('Search')); });
+    await act(async () => { fireEvent.click(getByText('To be, or not to be…')); });
+
+    await act(async () => { fireEvent.click(getByText(/Read full passage/i)); });
+    await waitFor(() => expect(getByTestId('passage-detail')).toBeInTheDocument());
+    expect(getByText(/Whether .tis nobler in the mind to suffer/)).toBeInTheDocument();
+    expect(getByText(/The undiscovered country/)).toBeInTheDocument();
+    expect(lensRun).toHaveBeenCalledWith('literary', 'detail', { chunkId: 'c1' });
+
+    // Clicking a neighbor navigates the reader without losing the Annotate panel
+    // (which is anchored to the original search-hit `selected`, not the reader).
+    await act(async () => { fireEvent.click(getByText(/The undiscovered country/)); });
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('literary', 'detail', { chunkId: 'c2' }));
+    expect(getByLabelText('Annotation note')).toBeInTheDocument();
+  });
+
+  it('DETAIL error: a failed literary.detail call renders role=alert with a working Retry', async () => {
+    let fail = true;
+    lensRun.mockImplementation((_d: string, name: string) => {
+      if (name === 'stats') return reply({ ok: true, sources: 1, chunks: 2, embedded: 2 });
+      if (name === 'search') return reply({ ok: true, results: [HIT], count: 1, semantic: true });
+      if (name === 'semantic_graph') return reply({ ok: true, nodes: [], edges: [] });
+      if (name === 'resonance') return reply({ ok: true, dtuId: 'dtu_lit_1', edges: [] });
+      if (name === 'detail') {
+        if (fail) return reply({ error: 'not_found' }, false);
+        return reply({ ok: true, chunk: { chunkId: 'c1', sourceId: 'gut_1524', dtuId: 'dtu_lit_1', ord: 3, content: 'Recovered text.' }, neighbors: [] });
+      }
+      return reply({ ok: true, nodes: [], edges: [] });
+    });
+    const { getByLabelText, getByText, getByTestId } = render(<LiteraryLensPage />);
+    await waitFor(() => expect(getByLabelText('Literary search query')).toBeInTheDocument());
+    fireEvent.change(getByLabelText('Literary search query'), { target: { value: 'mortality' } });
+    await act(async () => { fireEvent.click(getByText('Search')); });
+    await act(async () => { fireEvent.click(getByText('To be, or not to be…')); });
+    await act(async () => { fireEvent.click(getByText(/Read full passage/i)); });
+
+    await waitFor(() => expect(getByTestId('passage-detail').querySelector('[role="alert"]')).toBeTruthy());
+    fail = false;
+    await act(async () => { fireEvent.click(getByText('Retry')); });
+    await waitFor(() => expect(getByText('Recovered text.')).toBeInTheDocument());
+  });
+
   it('LIBRARY: previously-saved annotations render from the persistence store', async () => {
     annotationItems = [{ id: 'a1', title: 'Note: Hamlet', data: { title: 'Hamlet', author: 'William Shakespeare', note: 'Conscience as a brake.' } }];
     lensRun.mockImplementation((_d: string, name: string) =>

@@ -4,7 +4,7 @@
 
 /**
  * ContractorSuite — production contractor workflow surface for the masonry lens.
- * Wires the 8 backlog macros in server/domains/masonry.js to real, purpose-built UI:
+ * Wires the macros in server/domains/masonry.js to real, purpose-built UI:
  *
  *  1. Visual takeoff      — takeoff-save / takeoff-list / takeoff-delete
  *  2. Proposals           — proposal-create / proposal-list / proposal-update-status / proposal-render
@@ -14,13 +14,15 @@
  *  6. Material price book — pricebook-list / pricebook-save / pricebook-delete
  *  7. Invoicing           — invoice-create / invoice-list / invoice-record-payment / invoice-delete
  *  8. Code library        — code-search / code-for-check
+ *  9. Client CRM          — client-add / client-list / client-delete (cross-referenced
+ *                            against proposals + invoices by client name for real revenue totals)
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import {
   Ruler, FileText, CalendarDays, Camera, ClipboardEdit, BookOpen,
   Receipt, Library, Plus, Trash2, Loader2, X, CheckCircle2,
-  CloudRain, DollarSign, Copy,
+  CloudRain, DollarSign, Copy, Users, Phone, Mail, MapPin,
 } from 'lucide-react';
 import Image from 'next/image';
 import { lensRun } from '@/lib/api/client';
@@ -29,7 +31,7 @@ import { TimelineView, type TimelineEvent } from '@/components/viz';
 
 type SuiteTab =
   | 'takeoff' | 'proposals' | 'schedule' | 'photos'
-  | 'changeOrders' | 'pricebook' | 'invoices' | 'codes';
+  | 'changeOrders' | 'pricebook' | 'invoices' | 'codes' | 'clients';
 
 const TABS: { id: SuiteTab; label: string; icon: typeof Ruler }[] = [
   { id: 'takeoff', label: 'Takeoff', icon: Ruler },
@@ -40,6 +42,7 @@ const TABS: { id: SuiteTab; label: string; icon: typeof Ruler }[] = [
   { id: 'pricebook', label: 'Price Book', icon: BookOpen },
   { id: 'invoices', label: 'Invoices', icon: Receipt },
   { id: 'codes', label: 'Code Library', icon: Library },
+  { id: 'clients', label: 'Clients', icon: Users },
 ];
 
 async function run<T = any>(action: string, input: Record<string, unknown> = {}): Promise<T | null> {
@@ -807,6 +810,91 @@ function CodesTab() {
   );
 }
 
+// ───────────────────────── 9. Clients (CRM) ─────────────────────────
+interface Client {
+  id: string; name: string; phone: string; email: string; address: string; notes: string;
+  proposalsCount: number; proposalsValue: number;
+  invoicesCount: number; invoicesTotal: number; invoicesPaid: number; invoicesOutstanding: number;
+}
+
+function ClientsTab() {
+  const [list, setList] = useState<Client[]>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [editing, setEditing] = useState<Partial<Client> | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const r = await run<{ clients: Client[]; totalRevenue: number }>('client-list');
+    if (r) { setList(r.clients || []); setTotalRevenue(r.totalRevenue || 0); }
+  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    if (!editing?.name?.trim()) return;
+    setBusy(true);
+    const r = await run('client-add', { ...editing });
+    setBusy(false);
+    if (r) { setEditing(null); await load(); }
+  };
+  const del = async (id: string) => { await run('client-delete', { id }); await load(); };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Stat label="Clients" value={String(list.length)} />
+        <Stat label="Revenue collected" value={money(totalRevenue)} />
+      </div>
+      <div className={card}>
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-white">Client book ({list.length})</h4>
+          <button className={btnP} onClick={() => setEditing({})}><Plus className="h-3.5 w-3.5" />Add client</button>
+        </div>
+        {list.length === 0 && <p className="text-xs text-zinc-400">No clients yet — proposals and invoices you create will cross-reference against this book by name.</p>}
+        <div className="space-y-2">
+          {list.map((c) => (
+            <div key={c.id} className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
+              <div className="flex items-center justify-between">
+                <button className="text-left" onClick={() => setEditing(c)}>
+                  <p className="text-xs font-medium text-white">{c.name}</p>
+                  <p className="mt-0.5 flex flex-wrap gap-x-3 text-[10px] text-zinc-400">
+                    {c.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{c.phone}</span>}
+                    {c.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{c.email}</span>}
+                    {c.address && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.address}</span>}
+                  </p>
+                </button>
+                <button onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete client"><Trash2 className="h-3.5 w-3.5" /></button>
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-3 text-[10px] text-zinc-400">
+                <span>{c.proposalsCount} proposal{c.proposalsCount === 1 ? '' : 's'} · {money(c.proposalsValue)}</span>
+                <span>{c.invoicesCount} invoice{c.invoicesCount === 1 ? '' : 's'} · {money(c.invoicesPaid)} paid</span>
+                {c.invoicesOutstanding > 0 && <span className="text-amber-300">{money(c.invoicesOutstanding)} outstanding</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {editing && (
+        <Modal title={editing.id ? 'Edit client' : 'New client'} onClose={() => setEditing(null)}>
+          <div className="grid gap-3">
+            <div><label className={lbl}>Name — must match the &quot;Client&quot; field on proposals/invoices to link revenue</label><input className={inp} value={editing.name || ''} onChange={(e) => setEditing((s) => ({ ...s, name: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={lbl}>Phone</label><input className={inp} value={editing.phone || ''} onChange={(e) => setEditing((s) => ({ ...s, phone: e.target.value }))} /></div>
+              <div><label className={lbl}>Email</label><input className={inp} value={editing.email || ''} onChange={(e) => setEditing((s) => ({ ...s, email: e.target.value }))} /></div>
+            </div>
+            <div><label className={lbl}>Address</label><input className={inp} value={editing.address || ''} onChange={(e) => setEditing((s) => ({ ...s, address: e.target.value }))} /></div>
+            <div><label className={lbl}>Notes</label><textarea className={inp} rows={2} value={editing.notes || ''} onChange={(e) => setEditing((s) => ({ ...s, notes: e.target.value }))} /></div>
+          </div>
+          <button className={`${btnP} mt-4`} onClick={save} disabled={busy || !(editing.name || '').trim()}>
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}Save
+          </button>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 // ───────────────────────── Modal helper ─────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
@@ -844,6 +932,7 @@ export function ContractorSuite() {
       {tab === 'pricebook' && <PriceBookTab />}
       {tab === 'invoices' && <InvoicesTab />}
       {tab === 'codes' && <CodesTab />}
+      {tab === 'clients' && <ClientsTab />}
     </div>
   );
 }

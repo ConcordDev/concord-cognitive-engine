@@ -18,7 +18,7 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic2, Play, Pause, Plus, Search, Rss, BarChart3,
@@ -87,6 +87,7 @@ export default function PodcastLensPage() {
     contextDTUs, hyperDTUs, megaDTUs, regularDTUs,
     publishToMarketplace, isLoading: dtusLoading,
   } = useLensDTUs({ lens: 'podcast' });
+  const [publishingDtu, setPublishingDtu] = useState(false);
 
   // ---- My-show episodes, backed by the real podcastLens engine (Model B) ----
   // Episodes created here are the same episodes the Listening Hub, library,
@@ -305,17 +306,48 @@ export default function PodcastLensPage() {
     audio.play().catch(() => { setIsPlayingPreview(false); });
   }, [recordedUrl]);
 
-  const handleUseRecording = useCallback(() => {
+  const [uploadingRecording, setUploadingRecording] = useState(false);
+  const handleUseRecording = useCallback(async () => {
     if (!recordedBlob) return;
-    // Store the blob as a pseudo media ID so the create flow can reference it.
-    // In a full implementation this would upload the blob to the media API.
-    // For now we create a local object URL and set duration from recordingTime.
-    setFormDuration(recordingTime);
-    // Create a unique local identifier for the recorded blob
-    const localId = `local-recording-${Date.now()}`;
-    setFormMediaId(localId);
-    showToast('success', `Recording saved (${formatDuration(recordingTime)})`);
-  }, [recordedBlob, recordingTime]);
+    // Actually upload the recorded bytes through the real media pipeline
+    // (POST /api/media/upload) so formMediaId is a real, streamable media
+    // id — the prior code minted a fake `local-recording-<ts>` string that
+    // was never uploaded anywhere, so /api/media/{id}/stream 404'd on every
+    // episode created from a live recording while the UI claimed success.
+    setUploadingRecording(true);
+    try {
+      const arrayBuffer = await recordedBlob.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const CHUNK = 0x8000;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+      }
+      const base64Data = btoa(binary);
+      const mimeType = recordedBlob.type.split(';')[0] || 'audio/webm';
+      const r = await api.post('/api/media/upload', {
+        title: formTitle.trim() || `Recording ${new Date().toLocaleString()}`,
+        mediaType: 'audio',
+        mimeType,
+        fileSize: recordedBlob.size,
+        originalFilename: `recording-${Date.now()}.webm`,
+        duration: recordingTime,
+        tags: ['podcast', 'recording'],
+        privacy: 'private',
+        tier: 'regular',
+        data: base64Data,
+      });
+      const mediaId = r.data?.mediaDTU?.id ?? r.data?.id;
+      if (!mediaId) throw new Error(r.data?.error || 'Upload returned no media id');
+      setFormDuration(recordingTime);
+      setFormMediaId(mediaId);
+      showToast('success', `Recording uploaded (${formatDuration(recordingTime)})`);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Recording upload failed');
+    } finally {
+      setUploadingRecording(false);
+    }
+  }, [recordedBlob, recordingTime, formTitle]);
 
   const handleDiscardRecording = useCallback(() => {
     if (recordedUrl) URL.revokeObjectURL(recordedUrl);
@@ -384,6 +416,26 @@ export default function PodcastLensPage() {
       // clipboard API may not be available
     }
   }, []);
+
+  // ---- Publish a real DTU to the marketplace ----
+  // The Analytics "DTU Overview" section surfaces real context/regular DTUs
+  // pulled via useLensDTUs — a podcast *episode* id (ep_...) lives in a
+  // completely different id space (the podcastLens STATE Map, not the DTU
+  // table) and was never publishable. Publish the most recent real DTU
+  // instead of the first episode.
+  const publishableDtuId = regularDTUs[0]?.id ?? contextDTUs[0]?.id ?? null;
+  const handlePublishDtu = useCallback(async () => {
+    if (!publishableDtuId) return;
+    setPublishingDtu(true);
+    try {
+      await publishToMarketplace({ dtuId: publishableDtuId });
+      showToast('success', 'Published to marketplace');
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Publish failed');
+    } finally {
+      setPublishingDtu(false);
+    }
+  }, [publishableDtuId, publishToMarketplace]);
 
   // ---- Upload handler ----
   const handleAudioUpload = useCallback((_data: unknown, _file: File) => {
@@ -719,9 +771,10 @@ export default function PodcastLensPage() {
                           </button>
                           <button
                             onClick={handleUseRecording}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-purple-400/20 text-purple-400 hover:bg-purple-400/30 transition-colors text-sm"
+                            disabled={uploadingRecording}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-purple-400/20 text-purple-400 hover:bg-purple-400/30 disabled:opacity-40 transition-colors text-sm"
                           >
-                            <Check className="w-3.5 h-3.5" /> Use Recording
+                            <Check className="w-3.5 h-3.5" /> {uploadingRecording ? 'Uploading…' : 'Use Recording'}
                           </button>
                           <button
                             onClick={handleDiscardRecording}
@@ -840,12 +893,13 @@ export default function PodcastLensPage() {
                       </div>
                     )}
                   </div>
-                  {episodes.length > 0 && (
+                  {publishableDtuId && (
                     <button
-                      onClick={() => publishToMarketplace({ dtuId: episodes[0].id })}
-                      className="mt-3 flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-400/10 text-purple-400 text-sm hover:bg-purple-400/20 transition-colors"
+                      onClick={handlePublishDtu}
+                      disabled={publishingDtu}
+                      className="mt-3 flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-400/10 text-purple-400 text-sm hover:bg-purple-400/20 disabled:opacity-40 transition-colors"
                     >
-                      <Rss className="w-4 h-4" /> Publish to Marketplace
+                      <Rss className="w-4 h-4" /> {publishingDtu ? 'Publishing…' : 'Publish to Marketplace'}
                     </button>
                   )}
                 </div>

@@ -82,11 +82,15 @@ export default function UnifiedSelfLensPage() {
 
   // Cross-substrate pulls — these call REAL, registered macros only.
   // fitness → fitness.activity-summary (real in-STATE wearable/activity ledger).
+  // Field names below mirror the EXACT shape fitness.js's activity-summary
+  // returns (see `domains/fitness.js` — the handler's own comment says it
+  // maps stored rows to "the EXACT shape ActivityRings.tsx renders"):
+  // steps / exerciseMinutes, not a generic "activeMinutes".
   const fitness = useQuery({
     queryKey: ['self-fitness'],
     queryFn: async () => {
       const r = await safeRunDomain('fitness', 'activity-summary', { days: 7 });
-      return r as { days?: Array<{ date?: string; steps?: number; activeMinutes?: number; distanceKm?: number }>; source?: string; notes?: string } | null;
+      return r as { days?: Array<{ date?: string; steps?: number; exerciseMinutes?: number }>; source?: string; notes?: string } | null;
     },
   });
 
@@ -365,7 +369,7 @@ export default function UnifiedSelfLensPage() {
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                     <Stat label="Days logged" value={(fitness.data?.days ?? []).length} icon={Activity} />
                     <Stat label="Total steps" value={(fitness.data?.days ?? []).reduce((a, d) => a + (d.steps ?? 0), 0) || '—'} icon={Activity} />
-                    <Stat label="Active min" value={(fitness.data?.days ?? []).reduce((a, d) => a + (d.activeMinutes ?? 0), 0) || '—'} icon={Activity} />
+                    <Stat label="Active min" value={(fitness.data?.days ?? []).reduce((a, d) => a + (d.exerciseMinutes ?? 0), 0) || '—'} icon={Activity} />
                   </div>
                   <p className="text-[11px] text-rose-800">Last 7 days · sourced from {fitness.data?.source ?? 'your activity ledger'}.</p>
                 </div>

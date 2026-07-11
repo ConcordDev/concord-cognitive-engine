@@ -1056,16 +1056,36 @@ export const apiHelpers = {
     blindspots: () => api.get('/api/metacognition/blindspots'),
     calibration: () => api.get('/api/metacognition/calibration'),
     introspection: () => api.get('/api/metacognition/introspection-status'),
+    predictions: () => api.get('/api/metacognition/predictions'),
+    assessments: () => api.get('/api/metacognition/assessments'),
+    // NOTE: the backend macro (recordPrediction, server.js) reads `input.statement`,
+    // not `claim` — a prior version of this helper sent `claim` and every prediction
+    // silently recorded an empty statement. Keep the caller-facing param named
+    // `claim` (readable call sites) but map it onto the field the macro actually reads.
     predict: (data: { claim: string; confidence: number; domain?: string }) =>
-      api.post('/api/metacognition/predict', data),
+      api.post('/api/metacognition/predict', { statement: data.claim, confidence: data.confidence, domain: data.domain }),
+    // NOTE: resolvePrediction (server.js) reads `input.correct` (or legacy `wasCorrect`),
+    // not `outcome` — a prior version sent `{outcome}` so every resolve silently recorded
+    // as incorrect regardless of which button the user clicked.
     resolve: (predictionId: string, outcome: boolean) =>
-      api.post(`/api/metacognition/predictions/${predictionId}/resolve`, { outcome }),
+      api.post(`/api/metacognition/predictions/${predictionId}/resolve`, { correct: outcome }),
+    // NOTE: assessKnowledge (server.js) reads `input.topic`, not `domain` — a prior
+    // version sent `{domain}` so every assessment silently failed with
+    // "topic required" (only visible in the browser console, never surfaced to the
+    // user), and the Knowledge Confidence Map / Skill Timeline could never populate.
     assess: (data: { domain: string }) =>
-      api.post('/api/metacognition/assess', data),
+      api.post('/api/metacognition/assess', { topic: data.domain }),
+    // NOTE: introspectOnFailures (server.js) ignores its input entirely (analyzes
+    // ALL resolved predictions, unfiltered) — `focus` is accepted here for a
+    // future filtered pass but currently has no effect server-side.
     introspect: (data: { focus?: string }) =>
       api.post('/api/metacognition/introspect', data),
+    // NOTE: selectStrategy (server.js) reads `input.problem`, not `strategy` — not
+    // currently called anywhere in the frontend, but fixed for correctness since a
+    // future caller sending `{strategy}` would silently get `problem description
+    // required` back.
     strategy: (data: { strategy: string; params?: Record<string, unknown> }) =>
-      api.post('/api/metacognition/strategy', data),
+      api.post('/api/metacognition/strategy', { problem: data.strategy, ...data.params }),
   },
 
   // Meta-learning
@@ -1091,14 +1111,21 @@ export const apiHelpers = {
     adaptations: () => api.get('/api/metalearning/adaptations'),
   },
 
-  // Reasoning chains
+  // Reasoning chains — field names match the real backend contract
+  // (server.js createReasoningChain / addReasoningStep / concludeChain).
+  // NOTE: this previously sent {premise,content} and an empty conclude body,
+  // which the backend engine doesn't read (it reads question/goal/type on
+  // create, and HARD-REJECTS addStep with no `justification`) — every
+  // add-step call failed and conclude wrote the literal string
+  // "[object Object]" as the chain's conclusion. Fixed 2026-07 (Wave 3
+  // reasoning-lens audit); see docs/lens-specs/reasoning-capability-map.md.
   reasoning: {
-    create: (data: { premise: string; type?: string }) =>
+    create: (data: { question: string; goal?: string; type?: string }) =>
       api.post('/api/reasoning/chains', data),
-    addStep: (chainId: string, data: { content: string; type?: string }) =>
+    addStep: (chainId: string, data: { conclusion: string; justification: string; premises?: string[]; rule?: string; type?: string }) =>
       api.post(`/api/reasoning/chains/${chainId}/steps`, data),
-    conclude: (chainId: string) =>
-      api.post(`/api/reasoning/chains/${chainId}/conclude`, {}),
+    conclude: (chainId: string, data: { statement: string }) =>
+      api.post(`/api/reasoning/chains/${chainId}/conclude`, data),
     validate: (stepId: string) =>
       api.post(`/api/reasoning/steps/${stepId}/validate`, {}),
     list: () => api.get('/api/reasoning/chains'),
@@ -1476,6 +1503,10 @@ export const apiHelpers = {
       licenses: () => api.get('/api/artistry/marketplace/licenses'),
       purchase: (data: { buyerId: string; listingId: string; listingType?: string; licenseType?: string }) =>
         api.post('/api/artistry/marketplace/purchase', data),
+      // Buyer's own purchase history — real read of the purchase state
+      // machine (server/economy/purchases.js), auth-scoped to the caller.
+      purchases: (params?: { status?: string; limit?: number; offset?: number }) =>
+        api.get('/api/artistry/marketplace/purchases', { params }),
     },
 
     // Collaboration (Phase 9)
@@ -1678,6 +1709,24 @@ export const apiHelpers = {
     status: () => api.get('/api/emergent/status'),
     latticeBeacon: () => api.get('/api/lattice/beacon'),
     resonance: () => api.get('/api/lattice/resonance'),
+  },
+
+  // ---- Resonance Boundary Detection (resonance lens) ----
+  // Distinct from `emergent.latticeBeacon`/`emergent.resonance` above (DTU-tier
+  // counters + lattice homeostasis snapshot) — these hit the `resonance.*`
+  // macros that compute the actual cross-domain boundary scan (frontier/
+  // interior crispness, constraint gradient, coherence direction, and the
+  // ranked cross-domain invariant-alignment pairs the lens visualizes).
+  resonance: {
+    boundary: (params?: { window?: number }) =>
+      api.get('/api/resonance/boundary', { params }),
+    scan: (params?: { window?: number }) =>
+      api.post('/api/resonance/scan', params || {}),
+    history: (params?: { limit?: number }) =>
+      api.get('/api/resonance/history', { params }),
+    // Lattice-wide homeostasis/repair-rate snapshot (register("lattice","resonance")) —
+    // used for the resonance lens's Health tab meters.
+    latticeHealth: () => api.get('/api/lattice/resonance'),
   },
 
   // ═══════════════════════════════════════════════════════════════════
@@ -2289,12 +2338,23 @@ export const apiHelpers = {
     list: (limit?: number) => api.get('/api/cognitive/dreams', { params: { limit } }),
   },
 
-  /** Admin: Shadow vault + compression management */
+  /**
+   * Admin: shadow vault + compression management, plus the admin lens's
+   * own dashboard/metrics/logs. dashboard/metrics/logs wrap the
+   * admin.{dashboard,metrics,logs} macros, which enforce requireAdminRole()
+   * server-side and return a real 403 on denial (see server/routes/domain.js).
+   * Do NOT substitute the public system/health, perf/metrics, or events/log
+   * endpoints other lenses share — those are intentionally unauthenticated
+   * and have a different response shape.
+   */
   admin: {
     unshadow: (domain: string, count?: number) =>
       api.post('/api/admin/unshadow', { domain, count: count || 5 }),
     migrateCompression: () => api.post('/api/admin/migrate-compression'),
     compressionStats: () => api.get('/api/admin/compression-stats'),
+    dashboard: () => api.get('/api/admin/dashboard'),
+    metrics: () => api.get('/api/admin/metrics'),
+    logs: (params?: { limit?: number; type?: string }) => api.get('/api/admin/logs', { params }),
   },
 
   /* sovereignty and council merged into their primary definitions above */

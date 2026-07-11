@@ -7,9 +7,11 @@
  * the client resolver reads), then mint it as a real move_recipe DTU.
  *
  * Wired front-to-back: every panel below is a pure function of a real
- * `move-builder.*` macro (compose / mint / list / catalog) via lensRun — no
- * fabricated rows, no fake progress. The four UX states (empty / loading /
- * error+retry / populated) are all driven by real macro responses.
+ * `move-builder.*` macro (compose / mint / list / catalog / get) via lensRun —
+ * no fabricated rows, no fake progress. The four UX states (empty / loading /
+ * error+retry / populated) are all driven by real macro responses. Each
+ * minted move in "Your moves" expands (move-builder.get) to the round-tripped
+ * stamped motion descriptor — previously registered/tested with zero caller.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,6 +33,14 @@ interface Composed {
   budget: { ok: boolean; spent: number; budget: number; overspent: boolean; balanced: boolean; dominantAspect: string | null; effective: Record<string, number>; };
 }
 interface MintedMove { id: string; name: string; element: string | null; skillKind: string | null; tier: number | null; }
+interface MoveDetail {
+  ok: boolean; reason?: string;
+  move?: {
+    id: string; name: string; element: string | null; skillKind: string | null; tier: number | null;
+    allocation: Record<string, number> | null; effective: Record<string, number> | null;
+    balanced: boolean | null; motion: MotionBlock | null;
+  };
+}
 
 const EMPTY_ALLOC: Alloc = { power: 2, speed: 1, area: 1, efficiency: 1, control: 0 };
 
@@ -50,6 +60,40 @@ export default function MoveBuilderLensPage() {
   const [composed, setComposed] = useState<Composed | null>(null);
   const [minting, setMinting] = useState(false);
   const [mintMsg, setMintMsg] = useState<string | null>(null);
+
+  // ── minted-move detail expand — move-builder.get was registered/tested but
+  // had zero UI caller; the minted list only ever showed name/element/kind/tier,
+  // never the round-tripped stamped motion (the same descriptor the preview
+  // above shows before minting, but for a move already committed to the DTU). ──
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<MoveDetail['move'] | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  const fetchDetail = useCallback(async (moveId: string) => {
+    setDetail(null);
+    setDetailError(null);
+    setDetailLoading(true);
+    try {
+      const r = await lensRun<MoveDetail>('move-builder', 'get', { moveId });
+      const out = r.data?.result as MoveDetail | undefined;
+      if (r.data?.ok === false || !out || out.ok === false) {
+        setDetailError(out?.reason || r.data?.error || 'unavailable');
+        return;
+      }
+      setDetail(out.move ?? null);
+    } catch {
+      setDetailError('request_failed');
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const toggleDetail = useCallback((moveId: string) => {
+    if (expandedId === moveId) { setExpandedId(null); return; }
+    setExpandedId(moveId);
+    void fetchDetail(moveId);
+  }, [expandedId, fetchDetail]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -232,10 +276,47 @@ export default function MoveBuilderLensPage() {
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {(moves ?? []).map((m) => (
                     <li key={m.id} style={{ ...card, marginBottom: 8, padding: '10px 14px' }}>
-                      <b>{m.name}</b>
-                      <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 8 }}>
-                        {m.element ?? '—'} · {m.skillKind ?? '—'} · tier {m.tier ?? 1}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void toggleDetail(m.id)}
+                        aria-expanded={expandedId === m.id}
+                        className="transition-colors hover:brightness-125"
+                        style={{ background: 'none', border: 'none', color: 'inherit', padding: 0, textAlign: 'left', cursor: 'pointer', width: '100%' }}
+                      >
+                        <b>{m.name}</b>
+                        <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 8 }}>
+                          {m.element ?? '—'} · {m.skillKind ?? '—'} · tier {m.tier ?? 1}
+                        </span>
+                        <span style={{ opacity: 0.4, fontSize: 11, marginLeft: 8 }}>{expandedId === m.id ? '▲ hide detail' : '▼ show detail'}</span>
+                      </button>
+
+                      {expandedId === m.id && (
+                        <div data-testid="move-detail" style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #2a2a35', fontSize: 13 }}>
+                          {detailLoading && <div role="status" aria-live="polite" style={{ opacity: 0.6 }}>Loading move detail…</div>}
+                          {!detailLoading && detailError && (
+                            <div role="alert" style={{ color: '#e0a0a0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span>Couldn&apos;t load this move ({detailError}).</span>
+                              <button type="button" onClick={() => void fetchDetail(m.id)} style={{ color: '#e8b0b0', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>Retry</button>
+                            </div>
+                          )}
+                          {!detailLoading && !detailError && detail && (
+                            <>
+                              {detail.motion && (
+                                <div style={{ opacity: 0.85, lineHeight: 1.7, marginBottom: 6 }}>
+                                  motion <b>{detail.motion.motionFamily}</b> · archetype <b>{detail.motion.motionArchetype}</b><br />
+                                  effect <b>{detail.motion.effectArchetype}</b> · gauge <b>{detail.motion.resourceGauge}</b> · limb <b>{detail.motion.leadingLimb}</b>
+                                </div>
+                              )}
+                              {detail.allocation && (
+                                <div style={{ opacity: 0.7, fontSize: 12 }}>
+                                  {ASPECTS.map((a) => `${a} ${detail.allocation?.[a] ?? 0}`).join(' · ')}
+                                  {detail.balanced === false && <span style={{ color: '#e0a030' }}> — over-invested</span>}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

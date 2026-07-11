@@ -16,7 +16,7 @@
  * an empty backend renders an empty-state CTA.
  */
 
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -30,6 +30,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { SessionDetail } from '@/components/sessions/SessionDetail';
 import { StaleReminder } from '@/components/sessions/StaleReminder';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -89,6 +90,7 @@ export default function SessionsLensPage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -172,6 +174,24 @@ export default function SessionsLensPage() {
     [rows],
   );
 
+  // Discoverable via the global "?" shortcuts help modal + command palette
+  // (useLensCommand registers into both) — not decorative, every binding
+  // maps to a real state transition already reachable by mouse.
+  useLensCommand(
+    [
+      { id: 'focus-search', keys: '/', description: 'Search sessions', category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'refresh',      keys: 'r', description: 'Refresh sessions', category: 'actions', action: () => refreshAll() },
+      { id: 'toggle-select', keys: 's', description: 'Toggle multi-select', category: 'actions', action: () => { setSelectMode(v => !v); setSelected(new Set()); } },
+      { id: 'close-overlay', keys: 'esc', description: 'Close detail / exit select mode', category: 'navigation', action: () => { if (detailId) setDetailId(null); else if (selectMode) { setSelectMode(false); setSelected(new Set()); } } },
+      { id: 'filter-all',       keys: '0', description: 'Filter: all',       category: 'view', action: () => setActiveFilter('all') },
+      { id: 'filter-open',      keys: '1', description: 'Filter: open',      category: 'view', action: () => setActiveFilter('open') },
+      { id: 'filter-paused',    keys: '2', description: 'Filter: paused',    category: 'view', action: () => setActiveFilter('paused') },
+      { id: 'filter-completed', keys: '3', description: 'Filter: completed', category: 'view', action: () => setActiveFilter('completed') },
+      { id: 'filter-abandoned', keys: '4', description: 'Filter: abandoned', category: 'view', action: () => setActiveFilter('abandoned') },
+    ],
+    { lensId: 'sessions' },
+  );
+
   return (
     <LensShell lensId="sessions" asMain={false}>
       <FirstRunTour lensId="sessions" />
@@ -220,12 +240,16 @@ export default function SessionsLensPage() {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
               <input
+                ref={searchInputRef}
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search by title or lens…"
-                className="w-full text-xs bg-zinc-900 border border-zinc-800 rounded pl-8 pr-2 py-2 text-zinc-100 focus:border-indigo-500/50 outline-none"
+                className="w-full text-xs bg-zinc-900 border border-zinc-800 rounded pl-8 pr-7 py-2 text-zinc-100 focus:border-indigo-500/50 outline-none"
               />
+              <kbd className="hidden sm:inline-flex absolute right-2 top-1/2 -translate-y-1/2 items-center px-1 py-0.5 rounded border border-zinc-700 bg-zinc-800/80 text-[9px] font-mono text-zinc-500 pointer-events-none">
+                /
+              </kbd>
             </div>
             <select
               value={sort}

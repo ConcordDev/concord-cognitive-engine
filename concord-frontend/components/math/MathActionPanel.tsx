@@ -37,7 +37,10 @@ function pickMessage(e: unknown): string {
 }
 
 interface StatsResult { count?: number; mean?: number; median?: number; stdDev?: number; min?: number; max?: number; q1?: number; q3?: number }
-interface MatrixResult { result?: number[][]; determinant?: number; rank?: number }
+interface MatrixEigenvalue { real?: number; imag?: number }
+// server/domains/math.js#matrixOperations returns the computed matrix under `matrix`
+// (transpose/multiply/inverse) — not `result`. rank/eigenvalues have their own fields.
+interface MatrixResult { matrix?: number[][]; determinant?: number; rank?: number; fullRank?: boolean; eigenvalues?: Array<number | MatrixEigenvalue> }
 interface PolyResult { roots?: number[]; derivative?: string; degree?: number }
 interface RegressResult { coefficients?: number[]; rSquared?: number; equation?: string }
 
@@ -45,7 +48,8 @@ export function MathActionPanel() {
   const [problem, setProblem] = useState('');
   const [dataset, setDataset] = useState('');
   const [matrixA, setMatrixA] = useState('');
-  const [matrixOp, setMatrixOp] = useState<'determinant' | 'transpose' | 'inverse'>('determinant');
+  const [matrixB, setMatrixB] = useState('');
+  const [matrixOp, setMatrixOp] = useState<'determinant' | 'transpose' | 'inverse' | 'rank' | 'eigenvalues' | 'multiply'>('determinant');
   const [polyCoef, setPolyCoef] = useState('');
   const [regressX, setRegressX] = useState('');
   const [regressY, setRegressY] = useState('');
@@ -85,11 +89,21 @@ export function MathActionPanel() {
   async function actStats() {
     const data = parseList(dataset); if (!data.length) { err('Add numeric dataset.'); return; }
     setBusy('stats'); setFeedback(null);
-    try { const r = await callMacro<StatsResult>('statisticalAnalysis', { data }); if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('math.stats', r.result, { label: `n=${r.result.count} μ=${r.result.mean?.toFixed(2)}` }); ok(`μ=${r.result.mean?.toFixed(2)}, σ=${r.result.stdDev?.toFixed(2)}.`); } else err(r.error ?? 'stats failed'); }
+    // server/domains/math.js#statisticalAnalysis reads artifact.data.values (not .data) —
+    // sending { data } here silently always returned "No numeric values to analyze."
+    try { const r = await callMacro<StatsResult>('statisticalAnalysis', { values: data }); if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('math.stats', r.result, { label: `n=${r.result.count} μ=${r.result.mean?.toFixed(2)}` }); ok(`μ=${r.result.mean?.toFixed(2)}, σ=${r.result.stdDev?.toFixed(2)}.`); } else err(r.error ?? 'stats failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMatrix() {
     const m = parseMatrix(matrixA); if (!m.length) { err('Add matrix rows.'); return; }
+    if (matrixOp === 'multiply') {
+      const mb = parseMatrix(matrixB);
+      if (!mb.length) { err('Multiply needs Matrix B.'); return; }
+      setBusy('matrix'); setFeedback(null);
+      try { const r = await callMacro<MatrixResult>('matrixOperations', { matrix: m, matrixB: mb, operation: matrixOp }); if (r.ok && r.result) { setMatrixResult(r.result); pipe.publish('math.matrix', r.result, { label: matrixOp }); ok(`${matrixOp} computed.`); } else err(r.error ?? 'matrix failed'); }
+      catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+      return;
+    }
     setBusy('matrix'); setFeedback(null);
     try { const r = await callMacro<MatrixResult>('matrixOperations', { matrix: m, operation: matrixOp }); if (r.ok && r.result) { setMatrixResult(r.result); pipe.publish('math.matrix', r.result, { label: matrixOp }); ok(`${matrixOp} computed.`); } else err(r.error ?? 'matrix failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -180,8 +194,14 @@ export function MathActionPanel() {
         <div>
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Matrix op</label>
           <select value={matrixOp} onChange={(e) => setMatrixOp(e.target.value as typeof matrixOp)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">
-            {(['determinant', 'transpose', 'inverse'] as const).map(o => <option key={o} value={o}>{o}</option>)}
+            {(['determinant', 'transpose', 'inverse', 'rank', 'eigenvalues', 'multiply'] as const).map(o => <option key={o} value={o}>{o}</option>)}
           </select>
+          {matrixOp === 'multiply' && (
+            <div className="mt-2">
+              <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Matrix B (rows / lines)</label>
+              <textarea value={matrixB} onChange={(e) => setMatrixB(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" />
+            </div>
+          )}
         </div>
         <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Regression X</label><textarea value={regressX} onChange={(e) => setRegressX(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
         <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Regression Y</label><textarea value={regressY} onChange={(e) => setRegressY(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
@@ -228,9 +248,16 @@ export function MathActionPanel() {
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Matrix · {matrixOp}</div>
             {matrixResult.determinant != null && <div className="text-2xl font-bold text-purple-300">det = {matrixResult.determinant.toFixed(3)}</div>}
-            {matrixResult.rank != null && <div className="text-[10px] text-zinc-400">rank {matrixResult.rank}</div>}
-            {matrixResult.result && Array.isArray(matrixResult.result[0]) && (
-              <pre className="text-[10px] text-purple-200 font-mono mt-1 overflow-x-auto">{matrixResult.result.map(row => '[' + row.map(c => c.toFixed(2)).join(', ') + ']').join('\n')}</pre>
+            {matrixResult.rank != null && <div className="text-[10px] text-zinc-400">rank {matrixResult.rank}{matrixResult.fullRank != null && (matrixResult.fullRank ? ' (full rank)' : ' (rank-deficient)')}</div>}
+            {matrixResult.eigenvalues && (
+              <div className="text-[11px] text-purple-200 font-mono">
+                λ = {matrixResult.eigenvalues.map((e) => (
+                  typeof e === 'object' && e !== null ? `${(e.real ?? 0).toFixed(3)} ${((e.imag ?? 0) >= 0 ? '+' : '−')} ${Math.abs(e.imag ?? 0).toFixed(3)}i` : Number(e).toFixed(3)
+                )).join(', ')}
+              </div>
+            )}
+            {matrixResult.matrix && Array.isArray(matrixResult.matrix[0]) && (
+              <pre className="text-[10px] text-purple-200 font-mono mt-1 overflow-x-auto">{matrixResult.matrix.map(row => '[' + row.map(c => c.toFixed(2)).join(', ') + ']').join('\n')}</pre>
             )}
           </div>
         )}
