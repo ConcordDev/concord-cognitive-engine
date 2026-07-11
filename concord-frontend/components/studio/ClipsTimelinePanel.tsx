@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Music, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Music, Plus, Trash2, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface Clip { id: string; projectId: string; trackId: string; name: string; kind: 'audio' | 'midi' | 'drum'; startBeats: number; lengthBeats: number; colour: string; muted: boolean }
 
@@ -28,6 +29,7 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
     if (!projectId || !trackId || !form.name.trim()) return;
     try {
       await lensRun({ domain: 'studio', action: 'clips-create', input: { projectId, trackId, name: form.name, startBeats: Number(form.startBeats), lengthBeats: Number(form.lengthBeats), kind: form.kind } });
+      logStudioCollabEdit(projectId, 'clips-create', trackId, { name: form.name });
       setForm({ name: '', startBeats: '0', lengthBeats: '4', kind: 'midi' });
       await refresh();
     } catch (e) { console.error('[Clips] create', e); }
@@ -37,7 +39,21 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
     try {
       await lensRun({ domain: 'studio', action: 'clips-delete', input: { id } });
       setClips(prev => prev.filter(c => c.id !== id));
+      logStudioCollabEdit(projectId, 'clips-delete', id);
     } catch (e) { console.error('[Clips] delete', e); }
+  }
+
+  async function toggleMute(clip: Clip) {
+    const nextMuted = !clip.muted;
+    // Optimistic — clips-update persists a real `muted` field on the clip.
+    setClips(prev => prev.map(c => c.id === clip.id ? { ...c, muted: nextMuted } : c));
+    try {
+      await lensRun({ domain: 'studio', action: 'clips-update', input: { id: clip.id, muted: nextMuted } });
+      logStudioCollabEdit(projectId, 'clips-update', clip.id, { muted: nextMuted });
+    } catch (e) {
+      console.error('[Clips] update (mute)', e);
+      setClips(prev => prev.map(c => c.id === clip.id ? { ...c, muted: clip.muted } : c));
+    }
   }
 
   return (
@@ -74,6 +90,14 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
                   <div className="text-sm text-white">{c.name}</div>
                   <div className="text-[10px] text-gray-400">{c.kind} · start {c.startBeats} · length {c.lengthBeats} beats</div>
                 </div>
+                <button
+                  aria-label={c.muted ? 'Unmute' : 'Mute'}
+                  onClick={() => toggleMute(c)}
+                  title="clips-update: muted"
+                  className={cn('opacity-0 group-hover:opacity-100 p-1', c.muted ? 'text-amber-400' : 'text-gray-400 hover:text-white')}
+                >
+                  {c.muted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                </button>
                 <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}

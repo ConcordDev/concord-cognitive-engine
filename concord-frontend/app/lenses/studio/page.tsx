@@ -40,7 +40,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
 import { useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Music,
@@ -107,7 +107,13 @@ import type {
   ExportSettings,
   SnapMode,
   AudioBuffer as DAWAudioBuffer,
+  AudioEditOperation,
 } from '@/lib/daw/types';
+import {
+  decodeBlobToDAWBuffer,
+  applyAudioEditOperation,
+  encodeDAWBufferToWavBlob,
+} from '@/lib/daw/audio-buffer-edit';
 import {
   dtuHooks,
   emitSessionDTU,
@@ -529,10 +535,12 @@ export default function StudioLensPage() {
   // Synth state
   const [activeSynthPreset, setActiveSynthPreset] = useState<SynthPreset | null>(null);
 
-  // Audio editor
-  const [audioEditorBuffer, _setAudioEditorBuffer] = useState<DAWAudioBuffer | null>(null);
+  // Audio editor — real decoded PCM (see lib/daw/audio-buffer-edit.ts),
+  // populated when a recording finishes; audioClipboardRef backs cut/copy/paste.
+  const [audioEditorBuffer, setAudioEditorBuffer] = useState<DAWAudioBuffer | null>(null);
   const [audioSelection, setAudioSelection] = useState<{ start: number; end: number } | null>(null);
   const [audioPosition, setAudioPosition] = useState(0);
+  const audioClipboardRef = useRef<Float32Array[] | null>(null);
   const [isRecording, setIsRecording] = useState(false);
 
   // Live recording state (mic capture)
@@ -866,6 +874,18 @@ export default function StudioLensPage() {
         setRecordedBlob(blob);
         const url = URL.createObjectURL(blob);
         setRecordedUrl(url);
+        // Decode the real recorded PCM for the Audio Editor view (waveform
+        // + cut/copy/paste/fade/normalize/reverse all need actual samples,
+        // not just a playback URL). Async — the recorder callback itself
+        // can't await, so this resolves after the state above is set.
+        audioClipboardRef.current = null;
+        setAudioSelection(null);
+        setAudioPosition(0);
+        decodeBlobToDAWBuffer(blob, `Recording ${new Date().toLocaleTimeString()}`)
+          .then((buf) => setAudioEditorBuffer(buf))
+          .catch((decodeErr) => {
+            console.warn('[Studio] Failed to decode recording for the audio editor:', decodeErr);
+          });
       },
       (err: Error) => {
         console.error('[Studio] Recorder error:', err);
@@ -975,6 +995,37 @@ export default function StudioLensPage() {
     }
     setIsPlayingBack(false);
   }, []);
+
+  // ---- Audio Editor: real PCM cut/copy/paste/fade/normalize/reverse ----
+  // Applies the operation to actual decoded samples (lib/daw/audio-buffer-
+  // edit.ts) and re-encodes the result to WAV so the transport's "Play"
+  // button always plays what the editor currently shows — no divergence
+  // between the visible waveform and what's audible.
+  const handleAudioEditOperation = useCallback(
+    (op: AudioEditOperation) => {
+      if (!audioEditorBuffer) return;
+      const result = applyAudioEditOperation(
+        audioEditorBuffer,
+        op,
+        audioSelection,
+        audioClipboardRef.current,
+        audioPosition
+      );
+      const changed = result.buffer !== audioEditorBuffer;
+      if (result.clipboard) audioClipboardRef.current = result.clipboard;
+      if (changed) {
+        setAudioEditorBuffer(result.buffer);
+        setAudioSelection(null);
+        setAudioPosition(0);
+        const wavBlob = encodeDAWBufferToWavBlob(result.buffer);
+        if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+        setRecordedBlob(wavBlob);
+        setRecordedUrl(URL.createObjectURL(wavBlob));
+      }
+      showToast(changed || result.clipboard ? 'success' : 'info', result.summary);
+    },
+    [audioEditorBuffer, audioSelection, audioPosition, recordedUrl]
+  );
 
   // ---- Save recording to backend ----
   const handleSaveRecording = useCallback(async () => {
@@ -2144,7 +2195,7 @@ export default function StudioLensPage() {
               currentPosition={audioPosition}
               selection={audioSelection}
               isRecording={isRecording}
-              onOperation={() => {}}
+              onOperation={handleAudioEditOperation}
               onSeek={setAudioPosition}
               onSelect={(start, end) => setAudioSelection({ start, end })}
               onStartRecording={handleRecord}
@@ -2930,11 +2981,72 @@ type WorkbenchTab =
   | 'clips' | 'midi' | 'automation' | 'bounce' | 'markers' | 'tempo' | 'presets' | 'sends' | 'scenes'
   | 'clipEdit' | 'drumRack' | 'fxRack' | 'midiMap' | 'quantize' | 'recording' | 'projectIO' | 'collab';
 
+interface WorkbenchProjectRow { id: string; name: string; trackCount?: number }
+interface WorkbenchTrackRow { id: string; name: string; kind: string }
+interface WorkbenchClipRow { id: string; name: string }
+
 function DawWorkbenchSection() {
   const [active, setActive] = useState<WorkbenchTab>('clips');
   const [projectId, setProjId] = useState<string>('');
   const [trackId, setTrackId] = useState<string>('');
   const [clipId, setClipId] = useState<string>('');
+
+  // Real pickers sourced from the studio.* parity backend (project-list /
+  // project-get / clips-list) — no raw-ID paste. Cascades project → track
+  // → clip so a user can never select an id that doesn't actually belong
+  // to the current project/track.
+  const [projects, setProjects] = useState<WorkbenchProjectRow[]>([]);
+  const [tracks, setTracks] = useState<WorkbenchTrackRow[]>([]);
+  const [clips, setClips] = useState<WorkbenchClipRow[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+
+  const refreshProjects = useCallback(async () => {
+    setLoadingProjects(true);
+    try {
+      const res = await lensRun('studio', 'project-list', {});
+      setProjects((res.data?.result?.projects || []) as WorkbenchProjectRow[]);
+    } catch (e) {
+      console.error('[Studio workbench] project-list failed:', e);
+    } finally {
+      setLoadingProjects(false);
+    }
+  }, []);
+
+  useEffect(() => { void refreshProjects(); }, [refreshProjects]);
+
+  useEffect(() => {
+    setTrackId('');
+    setTracks([]);
+    if (!projectId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await lensRun('studio', 'project-get', { id: projectId });
+        const proj = res.data?.result?.project as { tracks?: WorkbenchTrackRow[] } | undefined;
+        if (!cancelled) setTracks(proj?.tracks || []);
+      } catch (e) {
+        console.error('[Studio workbench] project-get failed:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  useEffect(() => {
+    setClipId('');
+    setClips([]);
+    if (!projectId || !trackId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await lensRun('studio', 'clips-list', { projectId, trackId });
+        if (!cancelled) setClips((res.data?.result?.clips || []) as WorkbenchClipRow[]);
+      } catch (e) {
+        console.error('[Studio workbench] clips-list failed:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [projectId, trackId]);
+
   const TABS: { id: WorkbenchTab; label: string }[] = [
     { id: 'clips', label: 'Clips' },
     { id: 'clipEdit', label: 'Clip editor' },
@@ -2957,11 +3069,52 @@ function DawWorkbenchSection() {
   return (
     <section className="mt-6 space-y-3">
       <h2 className="text-sm font-semibold text-violet-300 uppercase tracking-wider">Session workbench</h2>
-      <div className="grid grid-cols-3 gap-2 text-xs">
-        <input value={projectId} onChange={e => setProjId(e.target.value)} placeholder="Project ID (paste from project list)" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <input value={trackId} onChange={e => setTrackId(e.target.value)} placeholder="Track ID" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <input value={clipId} onChange={e => setClipId(e.target.value)} placeholder="Clip ID (for MIDI editor)" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+      <div className="grid grid-cols-3 gap-2 text-xs items-center">
+        <div className="flex items-center gap-1">
+          <select
+            value={projectId}
+            onChange={e => setProjId(e.target.value)}
+            className="flex-1 min-w-0 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white"
+          >
+            <option value="">— pick a project ({projects.length}) —</option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}{p.trackCount != null ? ` · ${p.trackCount} tracks` : ''}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => void refreshProjects()}
+            disabled={loadingProjects}
+            title="Refresh project list"
+            className="px-2 py-1 text-[10px] text-violet-300 hover:text-violet-200 border border-violet-500/20 rounded disabled:opacity-40"
+          >
+            {loadingProjects ? '…' : '⟳'}
+          </button>
+        </div>
+        <select
+          value={trackId}
+          onChange={e => setTrackId(e.target.value)}
+          disabled={!projectId}
+          className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white disabled:opacity-40"
+        >
+          <option value="">{projectId ? `— pick a track (${tracks.length}) —` : 'pick a project first'}</option>
+          {tracks.map(t => <option key={t.id} value={t.id}>{t.name} · {t.kind}</option>)}
+        </select>
+        <select
+          value={clipId}
+          onChange={e => setClipId(e.target.value)}
+          disabled={!trackId}
+          className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white disabled:opacity-40"
+        >
+          <option value="">{trackId ? `— pick a clip (${clips.length}) —` : 'pick a track first'}</option>
+          {clips.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
       </div>
+      {!loadingProjects && projects.length === 0 && (
+        <p className="text-[10px] text-gray-400">
+          No projects yet — create one in &ldquo;Studio session&rdquo; below, then hit refresh (&#x27F3;) above.
+        </p>
+      )}
       <nav className="flex items-center gap-1 border-b border-violet-900/30 pb-2 overflow-x-auto">
         {TABS.map(t => (
           <button
