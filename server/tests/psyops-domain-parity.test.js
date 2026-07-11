@@ -21,8 +21,13 @@ beforeEach(() => {
   globalThis._concordSTATE = {};
 });
 
-const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
-const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+// psyops is an admin-gated operator console (see requireOperatorRole in
+// domains/psyops.js) — every macro denies a caller whose ctx.actor.role
+// isn't owner/admin/founder. All the behavioral tests below exercise
+// admin callers; the dedicated "admin gate" describe block at the bottom
+// covers the denial path itself.
+const ctxA = { actor: { userId: "user_a", role: "admin" }, userId: "user_a" };
+const ctxB = { actor: { userId: "user_b", role: "admin" }, userId: "user_b" };
 
 // A tight baseline cohort + one extreme outlier. With ~24 tight samples a
 // single outlier can reach ~4.9σ — enough to clear every default rule
@@ -239,6 +244,45 @@ describe("psyops — critical-alert notifications", () => {
 
   it("notification_ack rejects an unknown id", () => {
     assert.equal(call("notification_ack", ctxA, { notificationId: "nope" }).ok, false);
+  });
+});
+
+describe("psyops — admin gate", () => {
+  const ctxViewer = { actor: { userId: "user_v", role: "viewer" }, userId: "user_v" };
+  const ctxNoRole = { actor: { userId: "user_n" }, userId: "user_n" };
+  const ctxOwner = { actor: { userId: "user_o", role: "owner" }, userId: "user_o" };
+  const ctxFounder = { actor: { userId: "user_f", role: "founder" }, userId: "user_f" };
+
+  it("denies a non-admin caller on every macro with a forbidden-shaped error", () => {
+    for (const name of [
+      "rules_list", "rules_update", "scan_signal", "alerts_list", "alert_detail",
+      "alert_triage", "incident_create", "incident_list", "incident_close",
+      "quarantine_entity", "quarantine_release", "quarantine_log",
+      "notifications_list", "notification_ack",
+    ]) {
+      const r = call(name, ctxViewer);
+      assert.equal(r.ok, false, `${name} must deny a viewer`);
+      assert.match(r.error, /insufficient permission/i, `${name} error must match the frontend isForbidden() regex`);
+    }
+  });
+
+  it("denies a caller with no role at all (defaults to non-admin)", () => {
+    assert.equal(call("alerts_list", ctxNoRole).ok, false);
+  });
+
+  it("admits owner and founder roles, not just admin", () => {
+    assert.equal(call("rules_list", ctxOwner).ok, true);
+    assert.equal(call("rules_list", ctxFounder).ok, true);
+  });
+
+  it("never touches per-user STATE for a denied caller", () => {
+    // A denied scan_signal must not file an alert — the gate runs before
+    // any state mutation.
+    call("scan_signal", ctxViewer, { signal: "economy", samples: cohortWithOutlier("x", 900) });
+    assert.equal(call("alerts_list", ctxViewer).ok, false);
+    // Even as an admin looking at the SAME userId, no alert was filed by
+    // the denied call (state was never touched — user_v never got an entry).
+    assert.equal(call("alerts_list", { actor: { userId: "user_v", role: "admin" } }).result.alerts.length, 0);
   });
 });
 

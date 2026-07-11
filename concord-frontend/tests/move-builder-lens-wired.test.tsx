@@ -136,4 +136,69 @@ describe('move-builder lens — wiring + four UX states', () => {
     );
     expect(await screen.findByText(/Minted "Cinder Lance"/)).toBeInTheDocument();
   });
+
+  it('expanding a minted move calls the REAL move-builder.get and renders the stamped motion', async () => {
+    lensRun.mockImplementation((domain: string, action: string, input?: Record<string, unknown>) => {
+      if (domain !== 'move-builder') throw new Error(`unexpected domain ${domain}`);
+      if (action === 'catalog') return Promise.resolve({ data: { ok: true, result: CATALOG } });
+      if (action === 'list') return Promise.resolve({ data: { ok: true, result: { ok: true, moves: [{ id: 'move:u1:abcd1234', name: 'Cinder Lance', element: 'fire', skillKind: 'spell', tier: 1 }] } } });
+      if (action === 'compose') return Promise.resolve({ data: { ok: true, result: COMPOSED } });
+      if (action === 'get') {
+        expect(input?.moveId).toBe('move:u1:abcd1234');
+        return Promise.resolve({
+          data: {
+            ok: true,
+            result: {
+              ok: true,
+              move: {
+                id: 'move:u1:abcd1234', name: 'Cinder Lance', element: 'fire', skillKind: 'spell', tier: 1,
+                allocation: { power: 4, speed: 1, area: 0, efficiency: 1, control: 0 },
+                effective: { power: 3.8, speed: 1, area: 0, efficiency: 1, control: 0 },
+                balanced: false,
+                motion: { motionFamily: 'magic', motionArchetype: 'cast_channel', effectArchetype: 'projectile', element: 'fire', resourceGauge: 'mana', leadingLimb: 'both_arms', targetShape: 'single' },
+              },
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+    render(<MoveBuilderLensPage />);
+
+    const moveToggle = await screen.findByRole('button', { name: /Cinder Lance/ });
+    fireEvent.click(moveToggle);
+
+    const detail = await screen.findByTestId('move-detail');
+    await waitFor(() => expect(within(detail).getByText(/cast_channel/)).toBeInTheDocument());
+    expect(within(detail).getByText(/over-invested/i)).toBeInTheDocument();
+    expect(lensRun.mock.calls.some((c) => c[0] === 'move-builder' && c[1] === 'get')).toBe(true);
+
+    // Collapsing hides the detail again without a second fetch.
+    fireEvent.click(moveToggle);
+    await waitFor(() => expect(screen.queryByTestId('move-detail')).toBeNull());
+  });
+
+  it('a failed move-builder.get renders role=alert with a working Retry', async () => {
+    let fail = true;
+    lensRun.mockImplementation((domain: string, action: string) => {
+      if (domain !== 'move-builder') throw new Error(`unexpected domain ${domain}`);
+      if (action === 'catalog') return Promise.resolve({ data: { ok: true, result: CATALOG } });
+      if (action === 'list') return Promise.resolve({ data: { ok: true, result: { ok: true, moves: [{ id: 'move:u1:x', name: 'Cinder Lance', element: 'fire', skillKind: 'spell', tier: 1 }] } } });
+      if (action === 'compose') return Promise.resolve({ data: { ok: true, result: COMPOSED } });
+      if (action === 'get') {
+        if (fail) return Promise.resolve({ data: { ok: true, result: { ok: false, reason: 'not_found' } } });
+        return Promise.resolve({ data: { ok: true, result: { ok: true, move: { id: 'move:u1:x', name: 'Cinder Lance', element: 'fire', skillKind: 'spell', tier: 1, allocation: null, effective: null, balanced: true, motion: null } } } });
+      }
+      return Promise.resolve({ data: { ok: true, result: { ok: true } } });
+    });
+    render(<MoveBuilderLensPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Cinder Lance/ }));
+    const detail = await screen.findByTestId('move-detail');
+    await waitFor(() => expect(within(detail).getByRole('alert')).toHaveTextContent(/not_found/));
+
+    fail = false;
+    fireEvent.click(within(detail).getByRole('button', { name: /retry/i }));
+    await waitFor(() => expect(within(detail).queryByRole('alert')).toBeNull());
+  });
 });

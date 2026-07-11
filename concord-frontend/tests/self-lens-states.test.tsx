@@ -235,10 +235,14 @@ describe('self lens — cross-substrate tabs hit REAL macros (no dead callers)',
   it('the Fitness tab calls the REAL fitness.activity-summary macro and renders its fields', async () => {
     runDomain.mockImplementation((domain: string, action: string) => {
       if (domain === 'fitness' && action === 'activity-summary') {
+        // Field names mirror the REAL shape fitness.js's activity-summary
+        // returns (steps / exerciseMinutes) — NOT a generic "activeMinutes"
+        // (that field never existed server-side; a prior bug read it and
+        // always rendered "—" for Active min regardless of real data).
         return Promise.resolve({ data: { result: {
           days: [
-            { date: '2026-06-26', steps: 5000, activeMinutes: 30 },
-            { date: '2026-06-27', steps: 7000, activeMinutes: 45 },
+            { date: '2026-06-26', steps: 5000, exerciseMinutes: 30 },
+            { date: '2026-06-27', steps: 7000, exerciseMinutes: 45 },
           ],
           source: 'device',
         } } });
@@ -251,6 +255,8 @@ describe('self lens — cross-substrate tabs hit REAL macros (no dead callers)',
       expect(runDomain.mock.calls.some((c) => c[0] === 'fitness' && c[1] === 'activity-summary')).toBe(true));
     // Renders real aggregated fields (12000 total steps, 2 days).
     await waitFor(() => expect(getByText('12000')).toBeInTheDocument());
+    // Renders the real exerciseMinutes sum (30+45=75), not a stale "—".
+    expect(getByText('75')).toBeInTheDocument();
     expect(getByText(/sourced from device/i)).toBeInTheDocument();
     // PROOF: the old phantom fitness.status / fitness.metrics is never called.
     expect(runDomain.mock.calls.some((c) => c[1] === 'status' || c[1] === 'metrics')).toBe(false);

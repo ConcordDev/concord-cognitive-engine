@@ -1066,6 +1066,57 @@ export default function registerInvariantActions(registerLensAction) {
   });
 
   /**
+   * testAction
+   * Check a free-text action description against the caller's authored
+   * ethos invariants (name + description) using deterministic keyword
+   * matching — no LLM call, so the result is reproducible and explainable.
+   * Each invariant contributes a keyword set derived from its
+   * SCREAMING_SNAKE name (split on `_`) plus significant (4+ char) words
+   * in its description; a match is a case-insensitive whole-word hit
+   * against the action text. This is a text-overlap advisory check, not a
+   * formal proof — the AST-verified expression evaluator above requires a
+   * boolean `expression` field the ethos-invariant CRUD schema doesn't
+   * carry, so keyword matching is the honest mechanism available here.
+   * params: { text: string, invariants?: [{ name, description }] }
+   */
+  registerLensAction("invariant", "testAction", (_ctx, _artifact, params) => {
+    try {
+      const p = params || {};
+      const text = String(p.text || "").trim();
+      if (!text) return { ok: false, error: "text_required" };
+      const invariants = Array.isArray(p.invariants) ? p.invariants.slice(0, 200) : [];
+      if (invariants.length === 0) {
+        return { ok: true, result: { passed: true, message: "No invariants defined yet — nothing to check against.", violations: [] } };
+      }
+      const lowerText = ` ${text.toLowerCase()} `;
+      const STOPWORDS = new Set(["that", "this", "with", "from", "have", "will", "your", "user", "data", "into", "onto", "system"]);
+      function keywordsFor(inv) {
+        const nameWords = String(inv?.name || "").toLowerCase().split(/[^a-z0-9]+/).filter(w => w && w !== "no" && w.length > 2);
+        const descWords = String(inv?.description || "").toLowerCase().match(/[a-z]{4,}/g) || [];
+        return [...new Set([...nameWords, ...descWords])].filter(w => !STOPWORDS.has(w));
+      }
+      const violations = [];
+      for (const inv of invariants) {
+        const kws = keywordsFor(inv);
+        const hit = kws.find(k => lowerText.includes(` ${k} `) || lowerText.includes(` ${k}.`) || lowerText.includes(` ${k},`));
+        if (hit) violations.push({ name: inv?.name || "unnamed", matchedKeyword: hit });
+      }
+      return {
+        ok: true,
+        result: {
+          passed: violations.length === 0,
+          message: violations.length > 0
+            ? `Blocked by: ${violations.map(v => v.name).join(", ")}`
+            : "No matching invariant keywords found in this action description.",
+          violations: violations.map(v => v.name),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
    * quantifiedCheck
    * Evaluate a quantified invariant (∀ / ∃) over a collection. params:
    *   { quantifier: "forall"|"exists", collection: [{...}], predicate, bind? }

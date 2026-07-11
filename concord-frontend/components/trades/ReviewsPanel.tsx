@@ -6,9 +6,11 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Review { id: string; jobId: string; rating: number; nps: number | null; text: string; customerName: string; submittedAt: string }
+interface CompletedJob { id: string; number: string; customerName: string; description: string; status: string }
 
 export function ReviewsPanel() {
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [jobs, setJobs] = useState<CompletedJob[]>([]);
   const [avgRating, setAvgRating] = useState(0);
   const [nps, setNps] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -19,12 +21,23 @@ export function ReviewsPanel() {
   async function refresh() {
     setLoading(true);
     try {
-      const res = await lensRun({ domain: 'trades', action: 'reviews-list', input: {} });
+      const [res, jobsRes] = await Promise.all([
+        lensRun({ domain: 'trades', action: 'reviews-list', input: {} }),
+        lensRun({ domain: 'trades', action: 'job-list', input: {} }),
+      ]);
       setReviews((res.data?.result?.reviews || []) as Review[]);
       setAvgRating(res.data?.result?.avgRating || 0);
       setNps(res.data?.result?.nps || 0);
+      const allJobs = (jobsRes.data?.result?.jobs || []) as CompletedJob[];
+      const reviewedJobIds = new Set(((res.data?.result?.reviews || []) as Review[]).map(r => r.jobId));
+      setJobs(allJobs.filter(j => (j.status === 'completed' || j.status === 'invoiced') && !reviewedJobIds.has(j.id)));
     } catch (e) { console.error('[Reviews] failed', e); }
     finally { setLoading(false); }
+  }
+
+  function pickJob(jobId: string) {
+    const job = jobs.find(j => j.id === jobId);
+    setForm({ ...form, jobId, customerName: job?.customerName || form.customerName });
   }
 
   async function submit() {
@@ -51,7 +64,10 @@ export function ReviewsPanel() {
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
-        <input value={form.jobId} onChange={e => setForm({ ...form, jobId: e.target.value })} placeholder="Job ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <select value={form.jobId} onChange={e => pickJob(e.target.value)} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="">— select completed job —</option>
+          {jobs.map(j => <option key={j.id} value={j.id}>{j.number} · {j.customerName}</option>)}
+        </select>
         <input value={form.customerName} onChange={e => setForm({ ...form, customerName: e.target.value })} placeholder="Customer name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <select value={form.rating} onChange={e => setForm({ ...form, rating: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           {[1, 2, 3, 4, 5].map(r => <option key={r} value={r}>{r}★</option>)}
@@ -59,6 +75,7 @@ export function ReviewsPanel() {
         <input type="number" min="0" max="10" value={form.nps} onChange={e => setForm({ ...form, nps: e.target.value })} placeholder="NPS 0-10" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.text} onChange={e => setForm({ ...form, text: e.target.value })} placeholder="Feedback (optional)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={submit} className="px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Submit</button>
+        {jobs.length === 0 && <p className="col-span-5 text-[10px] text-amber-300/80">No completed jobs awaiting review yet.</p>}
       </div>
 
       <div className="max-h-80 overflow-y-auto">

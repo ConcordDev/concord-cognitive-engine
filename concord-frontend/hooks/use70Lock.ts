@@ -2,19 +2,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useCallback } from 'react';
 
-interface SovereigntyStatus {
-  lockPercentage: number;
-  invariants: Invariant[];
-  lastAudit: string;
-  isHealthy: boolean;
-}
-
 interface Invariant {
   id: string;
   name: string;
   status: 'enforced' | 'warning' | 'violated';
   description: string;
   lastChecked: string;
+}
+
+// Real shape of GET /api/sovereignty/status (server.js's sovereignty/status
+// route) -- the sovereignty percentage field is `sovereigntyPct`, not
+// `lockPercentage`, and `invariants`/`isHealthy` are derived server-side
+// from the frozen ETHOS_INVARIANTS constant. Don't rename these to match a
+// wished-for shape; SovereigntyDashboard.tsx reads this same endpoint with
+// these exact field names.
+interface SovereigntyStatusResponse {
+  ok: boolean;
+  mode: string;
+  sovereigntyPct: number;
+  invariants: Invariant[];
+  isHealthy: boolean;
+  lastAudit?: string;
 }
 
 /**
@@ -29,7 +37,7 @@ export function use70Lock() {
     data: status,
     isLoading,
     error,
-  } = useQuery<SovereigntyStatus>({
+  } = useQuery<SovereigntyStatusResponse>({
     queryKey: ['sovereignty-status'],
     queryFn: () => api.get('/api/sovereignty/status').then((r) => r.data),
     refetchInterval: 60000, // Check every minute
@@ -44,7 +52,7 @@ export function use70Lock() {
   });
 
   // Check if above 70% threshold
-  const isLocked = (status?.lockPercentage ?? 0) >= 70;
+  const isLocked = (status?.sovereigntyPct ?? 0) >= 70;
 
   // Get lock color based on percentage
   const getLockColor = useCallback((percentage: number) => {
@@ -55,21 +63,21 @@ export function use70Lock() {
 
   // Get invariant status summary
   const invariantSummary = {
-    enforced: status?.invariants.filter((i) => i.status === 'enforced').length ?? 0,
-    warning: status?.invariants.filter((i) => i.status === 'warning').length ?? 0,
-    violated: status?.invariants.filter((i) => i.status === 'violated').length ?? 0,
+    enforced: status?.invariants?.filter((i) => i.status === 'enforced').length ?? 0,
+    warning: status?.invariants?.filter((i) => i.status === 'warning').length ?? 0,
+    violated: status?.invariants?.filter((i) => i.status === 'violated').length ?? 0,
   };
 
   return {
     // State
-    lockPercentage: status?.lockPercentage ?? 0,
+    lockPercentage: status?.sovereigntyPct ?? 0,
     invariants: status?.invariants ?? [],
     lastAudit: status?.lastAudit,
     isHealthy: status?.isHealthy ?? true,
 
     // Computed
     isLocked,
-    lockColor: getLockColor(status?.lockPercentage ?? 0),
+    lockColor: getLockColor(status?.sovereigntyPct ?? 0),
     invariantSummary,
 
     // Loading state
