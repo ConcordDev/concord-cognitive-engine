@@ -52357,6 +52357,20 @@ app.post("/api/farming/harvest", requireAuth(), asyncHandler(async (req, res) =>
   res.json(harvestCrop(db, userId, { ...(req.body || {}), isOwner }));
 }));
 
+// Phase CB3-follow — watering. Owner-gated; grants a real growth-rate
+// bonus in advanceGrowth() (see lib/farming.js) instead of being a dead write.
+app.post("/api/farming/water", requireAuth(), asyncHandler(async (req, res) => {
+  const { waterCrop } = await import("./lib/farming.js");
+  const userId = req.user?.id || req.user?.userId;
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(waterCrop(db, userId, { ...(req.body || {}), isOwner }));
+}));
+
 app.get("/api/farming/claim/:claimId", asyncHandler(async (req, res) => {
   const { listCropsOnClaim } = await import("./lib/farming.js");
   res.json({ ok: true, crops: listCropsOnClaim(db, req.params.claimId) });
@@ -52406,6 +52420,21 @@ app.post("/api/farming/building/:buildingId/harvest", requireAuth(), asyncHandle
     return res.status(403).json({ ok: false, error: "not_owner" });
   }
   res.json(harvestCrop(db, userId, {
+    ...(req.body || {}),
+    claimId: b.id,
+    isOwner: () => true,
+  }));
+}));
+
+app.post("/api/farming/building/:buildingId/water", requireAuth(), asyncHandler(async (req, res) => {
+  const { waterCrop } = await import("./lib/farming.js");
+  const userId = req.user?.id || req.user?.userId;
+  const b = db.prepare(`SELECT id, owner_id, owner_type FROM world_buildings WHERE id = ?`).get(req.params.buildingId);
+  if (!b) return res.status(404).json({ ok: false, error: "no_building" });
+  if (b.owner_type === "player" && b.owner_id !== userId) {
+    return res.status(403).json({ ok: false, error: "not_owner" });
+  }
+  res.json(waterCrop(db, userId, {
     ...(req.body || {}),
     claimId: b.id,
     isOwner: () => true,
