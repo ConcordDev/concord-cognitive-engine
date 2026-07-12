@@ -78,7 +78,7 @@ path below −0.3 affinity, not a manual player choice). This is a real,
 minor scope gap, not fabricated data or a regression — flagging it for a
 future pass rather than fixing it here (documentation-only task).~~
 
-**CLOSED (2026-07-12, pending commit)** — Frontend Rebuild Program Wave 4
+**CLOSED (2026-07-12, `7bf37520`)** — Frontend Rebuild Program Wave 4
 gap-closure unit. What shipped:
 
 - **`ConfirmDissolveModal`** (`concord-frontend/components/courtship/
