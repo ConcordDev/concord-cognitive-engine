@@ -9040,6 +9040,19 @@ async function tryInitWebSockets(server) {
             || null;
           _hitAttackerPos = cityPresence.getUserPosition?.(userId) || null;
         } catch { /* position lookup best-effort */ }
+        // Wave 4 — the socket combat:hit broadcast had no worldId, so every
+        // connected client (regardless of which world they're spectating/
+        // playing in) received every hit from every world. `cityPresence.
+        // getPlayerWorld` (used lower down for the sibling combat:impact
+        // emit, and at server.js:8830/8855/9232) does NOT actually exist on
+        // lib/city-presence.js's exports — it's always undefined, so every
+        // one of those call sites silently falls back to the hardcoded
+        // "concordia-hub" default regardless of the attacker's real world.
+        // getUserPosition(userId).worldId is the real, populated field
+        // (set by updateUserPosition — city-presence.js:415) so this uses
+        // that instead. Best-effort — never blocks the hit broadcast.
+        let _hitWorldId = "concordia-hub";
+        try { _hitWorldId = cityPresence.getUserPosition?.(userId)?.worldId ?? "concordia-hub"; } catch { /* world lookup best-effort */ }
         realtimeEmit("combat:hit", {
           attackerId: userId,
           targetId: data.targetId,
@@ -9050,6 +9063,7 @@ async function tryInitWebSockets(server) {
           targetKilled: result.targetKilled,
           targetPosition: _hitTargetPos,
           attackerPosition: _hitAttackerPos,
+          worldId: _hitWorldId,
           // BUG B fix — the socket combat path never set element/skill, so
           // CombatVFXBridge.normalizeElement fell back to 'physical' and the
           // element burst + per-skill VFX never fired here. Carry the cast's
@@ -9078,7 +9092,7 @@ async function tryInitWebSockets(server) {
             const { buildImpactPayload, derivePvpSeverity, pvpMomentumFromDamage } =
               await import("./lib/combat/impact-feel.js");
             const _heavy = data.heavy === true || data.style === "attack-heavy";
-            const _world = cityPresence.getPlayerWorld?.(userId) ?? "concordia-hub";
+            const _world = _hitWorldId;
             realtimeEmit("combat:impact", buildImpactPayload({
               worldId: _world,
               attackerId: userId,
@@ -37748,7 +37762,19 @@ register("scope", "promote", async (ctx, input) => {
       } catch (_e) { logger.debug('server', 'silent', { error: _e?.message }); }
     }
 
-    realtimeEmit("dtu:promoted", { dtuId: dtu.id, targetScope, votes: reviewResult.votes });
+    // Wave 4 — DTUs are cross-world by design (no formal world_id field on
+    // the in-memory STATE.dtus object; see CLAUDE.md on the DTU substrate).
+    // Most promotions genuinely have no natural world scope. Stamp worldId
+    // ONLY when the DTU actually carries one (a caller-supplied meta.world_id
+    // on creation, or a rare top-level field) — never invent one. Consumers
+    // (spectate ticker, EmergentEventFeed) already treat worldId as optional
+    // and filter/display opportunistically when present.
+    const _promotedWorldId = dtu.world_id ?? dtu.worldId
+      ?? dtu.meta?.world_id ?? dtu.meta?.worldId ?? null;
+    realtimeEmit("dtu:promoted", {
+      dtuId: dtu.id, targetScope, votes: reviewResult.votes,
+      ...(_promotedWorldId ? { worldId: _promotedWorldId } : {}),
+    });
 
     // Event-to-DTU bridge: promotion events are knowledge worth preserving
     try {

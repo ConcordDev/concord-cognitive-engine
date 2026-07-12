@@ -16,7 +16,7 @@
 // for builds without seeded factions: zero work, zero error.
 
 import logger from "../logger.js";
-import { pickMove, applyMove } from "../lib/embodied/faction-strategy.js";
+import { pickMove, applyMove, resolveFactionWorldId } from "../lib/embodied/faction-strategy.js";
 import { ethicsEnabled, getSharedValueRuleIndex, factionMoveBias } from "../lib/viability/value-rule-index.js";
 import { collapseCascadeEnabled, cascadeCollapse } from "../lib/viability/collapse-cascade.js";
 
@@ -37,21 +37,13 @@ function factionStrengthEnabled() { return process.env.CONCORD_FACTION_STRENGTH 
 // player could walk up to and fight in. Kill-switch CONCORD_FACTION_WAR_SPAWN=0.
 function factionWarSpawnEnabled() { return process.env.CONCORD_FACTION_WAR_SPAWN !== "0"; }
 
-/**
- * Best-effort resolve a "home" cityId/worldId for a faction from its living
- * NPCs. Purely cosmetic metadata on the spawned faction_wars row (surfaced by
- * FactionWarBanner/FactionWarIntel) — never gates the spawn itself.
- */
-function resolveFactionWorld(db, factionId) {
-  try {
-    const row = db.prepare(`
-      SELECT world_id FROM world_npcs WHERE faction = ? AND world_id IS NOT NULL LIMIT 1
-    `).get(factionId);
-    return row?.world_id ?? null;
-  } catch {
-    return null;
-  }
-}
+// Wave 4 — the local resolveFactionWorld helper that used to live here was
+// moved to lib/embodied/faction-strategy.js as resolveFactionWorldId (same
+// query, same best-effort/never-invented contract) so the same faction→world
+// resolution is shared between this war-spawn cosmetic metadata use and the
+// faction:war-declared/alliance-formed/truce-sought realtime event payloads
+// applyMove now stamps. Purely cosmetic metadata on the spawned faction_wars
+// row (surfaced by FactionWarBanner/FactionWarIntel) — never gates the spawn.
 
 /**
  * Wire-the-unwired hook: when the strategy cycle picks (and persists)
@@ -72,7 +64,7 @@ async function maybeSpawnFactionWarEncounter(db, { factionId, targetId, move, mo
       sideA: factionId,
       sideB: targetId,
       eventId: moveId ?? null,
-      cityId: resolveFactionWorld(db, factionId) ?? resolveFactionWorld(db, targetId),
+      cityId: resolveFactionWorldId(db, factionId) ?? resolveFactionWorldId(db, targetId),
     });
     if (result?.ok) {
       try {

@@ -13,7 +13,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { scheduleEventsForWorld } from "../lib/world-event-scheduler.js";
+import { scheduleEventsForWorld, tick } from "../lib/world-event-scheduler.js";
+import { validateEvent } from "../lib/event-shapes.js";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const ONE_DAY_MS  = 24 * ONE_HOUR_MS;
@@ -231,5 +232,60 @@ describe("scheduleEventsForWorld — created event payload shape", () => {
       assert.ok(c.reward, "missing reward");
       assert.equal(typeof c.reward.cc, "number");
     }
+  });
+});
+
+// Wave 4 (docs/lens-specs/spectate-capability-map.md "Honest residual" closure)
+// — verifies world:event:scheduled's payload (what server.js's
+// world_event_scheduler_tick heartbeat block actually emits via
+// `REALTIME?.io?.emit?.("world:event:scheduled", c)` for each `c` in
+// `tick().created`) already carries the real worldId of the world it fired
+// for, and that the new event-shapes.js entry accepts it. Unlike combat:hit/
+// dtu:promoted/the faction:* events, this emit site needed NO server.js
+// payload change — only the previously-missing schema registration — because
+// `tick()` already merges `{ ...c, worldId }` onto every created item
+// (server/lib/world-event-scheduler.js, confirmed via git blame at the
+// original commit, not a recent fix).
+describe("tick() — worldId on every created event (world:event:scheduled payload)", () => {
+  it("merges the real worldId onto every created event, matching the world it scheduled for", () => {
+    const worldId = uniqueWorld("tick-worldid");
+    const r = tick({ worlds: [worldId] });
+    assert.equal(r.ok, true);
+    assert.ok(r.created.length > 0, "first tick should seed events");
+    for (const c of r.created) {
+      assert.equal(c.worldId, worldId, `created event ${c.type} must carry the world it was scheduled for`);
+    }
+  });
+
+  it("keeps each world's events scoped to their own worldId across multiple worlds in one tick", () => {
+    const worldA = uniqueWorld("tick-multi-a");
+    const worldB = uniqueWorld("tick-multi-b");
+    const r = tick({ worlds: [worldA, worldB] });
+    assert.equal(r.ok, true);
+    const worldsSeen = new Set(r.created.map((c) => c.worldId));
+    assert.ok(worldsSeen.has(worldA));
+    assert.ok(worldsSeen.has(worldB));
+    // No cross-contamination: every created event's worldId is one of the
+    // two worlds passed in, never invented, never blank.
+    for (const c of r.created) {
+      assert.ok(c.worldId === worldA || c.worldId === worldB, `unexpected worldId ${c.worldId}`);
+    }
+  });
+
+  it("the emitted payload shape (each tick() item) validates against event-shapes.js", () => {
+    const worldId = uniqueWorld("tick-shape");
+    const r = tick({ worlds: [worldId] });
+    for (const c of r.created) {
+      // This is exactly the object server.js passes to
+      // REALTIME.io.emit("world:event:scheduled", c) — no transformation.
+      const v = validateEvent("world:event:scheduled", c);
+      assert.equal(v.ok, true, `payload for ${c.type} failed shape validation: ${JSON.stringify(v)}`);
+    }
+  });
+
+  it("a payload missing worldId now fails required-field validation (regression lock)", () => {
+    const v = validateEvent("world:event:scheduled", { id: "e1", type: "concert" });
+    assert.equal(v.ok, false);
+    assert.ok(v.missing.includes("worldId"));
   });
 });
