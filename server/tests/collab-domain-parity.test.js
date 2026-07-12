@@ -304,3 +304,104 @@ describe("collab comments + @-mentions + notifications", () => {
     assert.match(r.error, /permission denied/);
   });
 });
+
+// ── Session rooms — live participant join/leave + real roster sync ─────────
+// Sessions are generic cross-user lens artifacts (domain='collab',
+// type='session') living in STATE.lensArtifacts, a DIFFERENT store from
+// this file's own document/presence maps. `beforeEach` above resets
+// globalThis._concordSTATE to `{}`, so these tests seed a fake session
+// artifact directly — exactly what sessionJoin/sessionLeave/sessionRoster
+// require before they'll track a roster for it.
+function seedSession(id, ownerId = "user_a") {
+  if (!(globalThis._concordSTATE.lensArtifacts instanceof Map)) {
+    globalThis._concordSTATE.lensArtifacts = new Map();
+  }
+  globalThis._concordSTATE.lensArtifacts.set(id, {
+    id, domain: "collab", type: "session", ownerId,
+    data: { name: "Design Jam", participants: [] }, meta: {},
+  });
+}
+
+describe("collab session rooms (live roster sync)", () => {
+  it("sessionJoin adds a real tracked participant, visible via a separate sessionRoster read", () => {
+    seedSession("sess_1");
+    const join = call("sessionJoin", ctxB, { sessionId: "sess_1" });
+    assert.equal(join.ok, true);
+    assert.equal(join.result.count, 1);
+    assert.equal(join.result.participants[0].userId, "user_b");
+    // Verify via an INDEPENDENT read, not just the join call's own echo.
+    const roster = call("sessionRoster", ctxA, { sessionId: "sess_1" });
+    assert.equal(roster.ok, true);
+    assert.equal(roster.result.count, 1);
+    assert.equal(roster.result.participants[0].userId, "user_b");
+    assert.equal(roster.result.participants[0].name, "Bob");
+    assert.ok(Number.isFinite(roster.result.participants[0].joinedAt));
+  });
+
+  it("sessionLeave removes the participant; roster reflects the removal", () => {
+    seedSession("sess_2");
+    call("sessionJoin", ctxB, { sessionId: "sess_2" });
+    let roster = call("sessionRoster", ctxA, { sessionId: "sess_2" });
+    assert.equal(roster.result.count, 1);
+    const leave = call("sessionLeave", ctxB, { sessionId: "sess_2" });
+    assert.equal(leave.ok, true);
+    assert.equal(leave.result.count, 0);
+    roster = call("sessionRoster", ctxA, { sessionId: "sess_2" });
+    assert.equal(roster.result.count, 0);
+    assert.deepEqual(roster.result.participants, []);
+  });
+
+  it("multiple concurrent joiners are all tracked correctly", () => {
+    seedSession("sess_3");
+    call("sessionJoin", ctxA, { sessionId: "sess_3" });
+    call("sessionJoin", ctxB, { sessionId: "sess_3" });
+    call("sessionJoin", ctxC, { sessionId: "sess_3" });
+    const roster = call("sessionRoster", ctxA, { sessionId: "sess_3" });
+    assert.equal(roster.result.count, 3);
+    const ids = roster.result.participants.map((p) => p.userId).sort();
+    assert.deepEqual(ids, ["user_a", "user_b", "user_c"]);
+    // One of the three leaves; the other two remain.
+    call("sessionLeave", ctxB, { sessionId: "sess_3" });
+    const after = call("sessionRoster", ctxA, { sessionId: "sess_3" });
+    assert.equal(after.result.count, 2);
+    assert.deepEqual(after.result.participants.map((p) => p.userId).sort(), ["user_a", "user_c"]);
+  });
+
+  it("re-joining an already-joined user is idempotent (no duplicate roster row)", () => {
+    seedSession("sess_4");
+    call("sessionJoin", ctxB, { sessionId: "sess_4" });
+    const rejoin = call("sessionJoin", ctxB, { sessionId: "sess_4" });
+    assert.equal(rejoin.ok, true);
+    assert.equal(rejoin.result.count, 1);
+  });
+
+  it("sessionJoin rejects a sessionId that was never created as a real session artifact", () => {
+    // No seedSession() call — "sess_ghost" does not exist in lensArtifacts.
+    const r = call("sessionJoin", ctxA, { sessionId: "sess_ghost" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not found/);
+  });
+
+  it("sessionRoster rejects a missing sessionId param", () => {
+    const r = call("sessionRoster", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+
+  it("sessionLeave on a user who never joined is a harmless no-op", () => {
+    seedSession("sess_5");
+    const r = call("sessionLeave", ctxA, { sessionId: "sess_5" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 0);
+  });
+
+  it("rosters for different sessions are independent", () => {
+    seedSession("sess_6a");
+    seedSession("sess_6b");
+    call("sessionJoin", ctxA, { sessionId: "sess_6a" });
+    call("sessionJoin", ctxB, { sessionId: "sess_6b" });
+    const rosterA = call("sessionRoster", ctxA, { sessionId: "sess_6a" });
+    const rosterB = call("sessionRoster", ctxA, { sessionId: "sess_6b" });
+    assert.deepEqual(rosterA.result.participants.map((p) => p.userId), ["user_a"]);
+    assert.deepEqual(rosterB.result.participants.map((p) => p.userId), ["user_b"]);
+  });
+});

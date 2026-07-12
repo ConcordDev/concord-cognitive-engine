@@ -269,6 +269,22 @@ export const EVENT_SHAPES = Object.freeze({
     optional: [],
   },
 
+  // ── Collab session rooms — live participant roster (Wave 4) ────────
+  // Emitted by server/domains/collab.js sessionJoin/sessionLeave macros
+  // to room `collab:${sessionId}` — the same room the session's
+  // screen-share WebRTC signaling already joins via `room:join`. Closes
+  // the "Live participant join/leave with real roster sync" gap: sessions
+  // previously only had a static, creation-time `participants` array with
+  // no live join/leave tracking (see docs/lens-specs/collab-capability-map.md).
+  "collab:participant-joined": {
+    required: ["sessionId", "userId", "name"],
+    optional: ["joinedAt", "participantCount"],
+  },
+  "collab:participant-left": {
+    required: ["sessionId", "userId"],
+    optional: ["participantCount"],
+  },
+
   // ── Message lens multi-device sync ────────────────────────────────
   // Emitted by server/domains/message.js to room `user:${userId}` so
   // a save/react/voice action on one device flips instantly on every

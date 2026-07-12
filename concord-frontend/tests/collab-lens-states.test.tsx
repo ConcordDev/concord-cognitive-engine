@@ -19,7 +19,7 @@
  * 'collab' domain (the result-card surface the macro tests cover).
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { render, fireEvent, waitFor, act } from '@testing-library/react';
 import React from 'react';
 
@@ -84,6 +84,29 @@ vi.mock('@/lib/api/client', () => ({
 
 vi.mock('@/store/ui', () => ({ useUIStore: { getState: () => ({ addToast: vi.fn() }) } }));
 
+// Capturing socket mock for the ActiveSessionView live-roster join effect —
+// `getSocket()` (not the typed `subscribe()` helper) because the page's
+// screen-share signaling already uses the raw socket instance directly, and
+// the roster join/leave listeners reuse that same room + socket. `__emit`
+// lets a test simulate a genuine server-pushed `collab:participant-joined`/
+// `-left` event.
+vi.mock('@/lib/realtime/socket', () => {
+  const listeners: Record<string, Array<(data: unknown) => void>> = {};
+  const socket = {
+    emit: vi.fn(),
+    on: vi.fn((event: string, cb: (data: unknown) => void) => {
+      (listeners[event] ||= []).push(cb);
+    }),
+    off: vi.fn((event: string) => { delete listeners[event]; }),
+  };
+  return {
+    getSocket: () => socket,
+    __emit: (event: string, data?: unknown) => {
+      (listeners[event] || []).forEach((cb) => cb(data));
+    },
+  };
+});
+
 // realtime hook inert.
 vi.mock('@/hooks/useRealtimeLens', () => ({
   useRealtimeLens: () => ({ latestData: null, alerts: [], insights: [], isLive: false, lastUpdated: null }),
@@ -131,6 +154,7 @@ vi.mock('lucide-react', async (importOriginal) => {
 });
 
 import CollabLensPage from '@/app/lenses/collab/page';
+import { lensRun } from '@/lib/api/client';
 
 function makeSession(id: string, name: string) {
   const host = { id: 'p-host', name: 'Host', avatar: 'bg-blue-500', role: 'host', online: true };
@@ -160,6 +184,8 @@ beforeEach(() => {
   refetch.mockReset();
   runMutate.mockClear();
   useRunArtifactSpy.mockClear();
+  (lensRun as unknown as Mock).mockReset();
+  (lensRun as unknown as Mock).mockImplementation(() => Promise.resolve({ data: { ok: true, result: null } }));
   window.localStorage.clear();
 });
 
@@ -208,5 +234,101 @@ describe('collab lens — four UX states', () => {
     expect(getByText('API gateway spike')).toBeInTheDocument();
     // the empty state must NOT show when sessions are present.
     expect(() => getByText(/No sessions found/i)).toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Live participant join/leave roster sync (closes "Live participant
+// join/leave with real roster sync" — docs/lens-specs/collab-capability-map.md).
+// Pins that clicking "Join" calls the REAL collab.sessionJoin macro (not just
+// a local `setActiveSession`), that the roster panel renders the server's
+// actual returned participant set, that a genuine server-pushed
+// `collab:participant-joined` socket event live-updates the roster for
+// someone already viewing the session, and that leaving calls sessionLeave.
+// ---------------------------------------------------------------------------
+describe('collab lens — live session roster sync', () => {
+  // jsdom has no scrollIntoView implementation; ActiveSessionView's chat
+  // auto-scroll effect calls it unconditionally on mount.
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  it('Join calls collab.sessionJoin (not just opening the room) and renders the real returned roster', async () => {
+    sessionState.items = [makeSession('s_1', 'Design jam')];
+    (lensRun as unknown as Mock).mockImplementation((domain: string, action: string, input: { sessionId: string }) => {
+      if (domain === 'collab' && action === 'sessionJoin') {
+        return Promise.resolve({
+          data: {
+            ok: true,
+            result: {
+              sessionId: input.sessionId,
+              participants: [{ userId: 'anon', name: 'You', joinedAt: Date.now() }],
+              count: 1,
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: { ok: true, result: null } });
+    });
+
+    const { getByText } = render(<CollabLensPage />);
+    await waitFor(() => expect(getByText('Design jam')).toBeInTheDocument());
+    await act(async () => { fireEvent.click(getByText('Join')); });
+
+    // The real macro was called with this session's id — not a locally
+    // fabricated join.
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('collab', 'sessionJoin', { sessionId: 's_1' }));
+    // The roster panel reflects the server's actual returned participant
+    // count, not the session's static creation-time `participants` array.
+    await waitFor(() => expect(getByText('Participants (1)')).toBeInTheDocument());
+  });
+
+  it('a genuine collab:participant-joined socket event live-updates the roster for someone already in the session', async () => {
+    sessionState.items = [makeSession('s_2', 'Live roster test')];
+    (lensRun as unknown as Mock).mockImplementation((domain: string, action: string, input: { sessionId: string }) => {
+      if (domain === 'collab' && action === 'sessionJoin') {
+        return Promise.resolve({
+          data: { ok: true, result: { sessionId: input.sessionId, participants: [{ userId: 'anon', name: 'You', joinedAt: Date.now() }], count: 1 } },
+        });
+      }
+      return Promise.resolve({ data: { ok: true, result: null } });
+    });
+
+    const { getByText } = render(<CollabLensPage />);
+    await waitFor(() => expect(getByText('Live roster test')).toBeInTheDocument());
+    await act(async () => { fireEvent.click(getByText('Join')); });
+    await waitFor(() => expect(getByText('Participants (1)')).toBeInTheDocument());
+
+    // Simulate a REAL server push — another user joins the same session.
+    const socketMock = await import('@/lib/realtime/socket');
+    await act(async () => {
+      (socketMock as unknown as { __emit: (e: string, d?: unknown) => void }).__emit(
+        'collab:participant-joined',
+        { sessionId: 's_2', userId: 'user_c', name: 'Cara', joinedAt: Date.now() }
+      );
+    });
+
+    await waitFor(() => expect(getByText('Participants (2)')).toBeInTheDocument());
+    expect(getByText('Cara')).toBeInTheDocument();
+  });
+
+  it('Leave calls collab.sessionLeave for the real session id', async () => {
+    sessionState.items = [makeSession('s_3', 'Leaving test')];
+    (lensRun as unknown as Mock).mockImplementation((domain: string, action: string, input: { sessionId: string }) => {
+      if (domain === 'collab' && action === 'sessionJoin') {
+        return Promise.resolve({
+          data: { ok: true, result: { sessionId: input.sessionId, participants: [{ userId: 'anon', name: 'You', joinedAt: Date.now() }], count: 1 } },
+        });
+      }
+      return Promise.resolve({ data: { ok: true, result: null } });
+    });
+
+    const { getByText } = render(<CollabLensPage />);
+    await waitFor(() => expect(getByText('Leaving test')).toBeInTheDocument());
+    await act(async () => { fireEvent.click(getByText('Join')); });
+    await waitFor(() => expect(getByText('Participants (1)')).toBeInTheDocument());
+
+    await act(async () => { fireEvent.click(getByText('Leave')); });
+    await waitFor(() => expect(lensRun).toHaveBeenCalledWith('collab', 'sessionLeave', { sessionId: 's_3' }));
   });
 });
