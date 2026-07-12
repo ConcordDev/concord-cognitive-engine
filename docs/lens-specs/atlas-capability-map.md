@@ -131,17 +131,20 @@ hand-off notes and added one correction:
 | `anomalies` | `GET /api/atlas/signals/anomalies` | **DESIGNED** — Signal Tomography mode, Anomalies tab |
 | `spectrum` | `GET /api/atlas/signals/spectrum` | **DESIGNED** — Signal Tomography mode, Signals tab (spectrum sub-view) |
 | `unknown` | `GET /api/atlas/signals/unknown` | **GENUINELY MISSING — DEFERRED.** No frontend caller. Deferred with the rest of the tomography power-tools. |
-| `classify` | `POST /api/atlas/signals/classify` | **GENUINELY MISSING — DEFERRED, but flagged as the highest-value future build in this whole subsystem.** This is the ONE write path into the signal-cortex store — a manually-submitted signal classification. Building a form here (device/frequency/location/measurement fields → `POST`) would be the single cheapest way to give Signal Tomography mode a legitimate path to non-empty data in THIS deployment, without waiting on a real mesh-network integration. Scoped size: ~1 form component + wiring, well under 150 LOC. Recorded here for the next session, not built now (out of this session's scope — the task was to consolidate/rebuild the existing surface honestly, not add new backend-adjacent submission flows without a UX spec for what a "signal" even looks like to a human submitter). |
+| `classify` | `POST /api/atlas/signals/classify` | ~~**GENUINELY MISSING — DEFERRED, but flagged as the highest-value future build in this whole subsystem.** This is the ONE write path into the signal-cortex store — a manually-submitted signal classification. Building a form here (device/frequency/location/measurement fields → `POST`) would be the single cheapest way to give Signal Tomography mode a legitimate path to non-empty data in THIS deployment, without waiting on a real mesh-network integration. Scoped size: ~1 form component + wiring, well under 150 LOC.~~ **CLOSED (2026-07-12, pending commit).** Verified the macro's real input contract first (`server/lib/atlas-signal-cortex.js#classifySignal` — no strictly-required fields, everything defaults) and added server-side validation for the two fields a classification is meaningless without: `frequency` (MHz, finite, > 0) and `origin` (`{lat, lng}`, valid coordinate range) — see the guard clauses at the top of `register("cortex", "classify", ...)` in `server.js`. Built `concord-frontend/components/atlas/SignalClassifyForm.tsx`, a real designed form (frequency / modulation select / lat+lng / bandwidth / power / description / keywords — the macro's actual identity+location+measurement fields, not invented ones, and not a raw JSON-paste textarea) mounted at the top of the Signal Tomography "Signals" tab (`app/lenses/atlas/page.tsx`). A successful submission calls `apiHelpers.atlasTomography.signalsClassify` (new helper in `lib/api/client.ts`) and invalidates the `atlas-taxonomy`/`atlas-spectrum`/`atlas-anomalies` react-query keys so the existing `AtlasSignalView` taxonomy + spectrum panels on the same tab pick it up without a hard refresh. Backend behavioral coverage: `server/tests/depth/atlas-signal-classify-behavior.test.js` (14/14 — exact 5-property classification round-trip, safety-frequency ADJUST_FORBIDDEN override, rejection for missing/invalid frequency, rejection for missing/out-of-range origin, no taxonomy write on a rejected submission, retrieval via `taxonomy`/`spectrum`/`unknown`). Frontend coverage: `concord-frontend/tests/components/atlas/SignalClassifyForm.test.tsx` (5/5 — designed-form field render, client + server validation-error display with no false success state, real payload shape asserted on submit). |
 | `privacy.zones`/`privacy.verify`/`privacy.stats` | `GET/POST /api/atlas/privacy/*` | **GENUINELY MISSING — DEFERRED.** A privacy-zone map/verification surface (ABSOLUTE/RESTRICTED/CONTROLLED/OPEN zone visualization). Real, well-designed backend (interior-never-generated guarantee for residential/medical/religious zones) with zero frontend surface. Deferred — meaningful future work, but a full zone-map UI is a multi-panel build in its own right, not a same-session addition to a geography-lens consolidation pass. |
 | `metrics` | (macro dispatch) | **GENUINELY MISSING — DEFERRED**, same reasoning as the Foundation Atlas `metrics`. |
 
 **Coverage summary:** 60 real macros across the lens's 4 in-scope registration
-sites (41 + 1 + 9 + 9). **34 DESIGNED** (up from an estimated ~26 pre-rebuild
-— `geocode`, `regionStats`, and `atlas-dashboard-summary` newly wired this
-session), **1 UNSURFACED-BY-DESIGN backend duplicate** (`live_geocode`),
+sites (41 + 1 + 9 + 9). **35 DESIGNED** (up from an estimated ~26 pre-rebuild
+— `geocode`, `regionStats`, and `atlas-dashboard-summary` newly wired earlier
+this session, `classify` closed 2026-07-12 per §1d above — note this count
+does not yet reflect the same-day `places-update`/`trips-reorder-stops`
+closures at §1a, a pre-existing staleness in this paragraph out of scope for
+this pass), **1 UNSURFACED-BY-DESIGN backend duplicate** (`live_geocode`),
 **1 macro superseded and intentionally retired from frontend use**
-(`directions`), **13 GENUINELY MISSING** (all explicitly dispositioned above
-— 2 real small deferred features on the map/trips side, 11 on the
+(`directions`), **12 GENUINELY MISSING** (all explicitly dispositioned above
+— 2 real small deferred features on the map/trips side, 10 on the
 tomography side where 7 are low-priority given the empty substrate, 3 are a
 meaningful privacy/classification UI deferred as multi-panel future work,
 and 1 [`change`] is deliberately never wired because wiring it would violate
@@ -310,12 +313,12 @@ needs to know, and it's now stated on-screen (§0.2, §4).
 | 4 | Spectral occupancy / multi-band fusion | **ALREADY REAL (honestly empty)** | `cortex.spectrum` — Signals tab spectrum sub-view |
 | 5 | Material/subsurface classification | **BACKEND-CAPABLE, UI-DEFERRED** | `material`/`subsurface` macros exist; no dedicated UI (§1c) — deferred, empty substrate makes it low-value right now |
 | 6 | Displacement/change-over-time maps | **GENUINELY MISSING — DELIBERATELY NOT WIRED** | `change` macro's `layers_affected`/`magnitude` are self-disclosed-simulated in the backend source; surfacing them would violate honest-by-construction (§0.2, §1c) |
-| 7 | Manual sensor/signal submission (the one real write path) | **BACKEND-CAPABLE-BUT-UNSURFACED — FLAGGED FOR NEXT SESSION** | `cortex.classify` — the only way this deployment could get non-empty data without a mesh-network integration; scoped, not built this session (§1d) |
+| 7 | Manual sensor/signal submission (the one real write path) | ~~**BACKEND-CAPABLE-BUT-UNSURFACED — FLAGGED FOR NEXT SESSION**~~ **CLOSED (2026-07-12, pending commit)** | `cortex.classify` — `SignalClassifyForm` now gives this deployment a legitimate non-empty-data path without a mesh-network integration; see §1d |
 | 8 | Privacy-zone-aware redaction | **BACKEND-CAPABLE-BUT-UNSURFACED, DEFERRED** | `cortex.privacy.*` — a real, carefully-designed guarantee (interior data for ABSOLUTE zones is architecturally never generated) with no UI; deferred as multi-panel future work (§1d) |
 | 9 | Honest disclosure of data-source status | **FIXED THIS SESSION** | New banner in Signal Tomography mode explicitly states no mesh-ingestion pipeline is wired — see §4 |
 
-**Coverage: 4 of 9 already real; 1 explicitly and permanently not wired
-(honesty rule); 1 newly-flagged highest-value next step; 2 deferred with
+**Coverage: 5 of 9 already real; 1 explicitly and permanently not wired
+(honesty rule); 1 closed 2026-07-12 (manual submission form); 1 deferred with
 named scope; 1 (disclosure itself) fixed this session. No silent gaps.**
 
 ## 4. What this rebuild changed — architecture summary

@@ -24942,11 +24942,28 @@ register("cortex", "anomalies", (ctx, input) => {
 }, { description: "Retrieve detected signal anomalies." });
 
 register("cortex", "classify", (ctx, input) => {
+  // Manual signal-submission entry point (Wave 4 gap-closure, 2026-07-12) —
+  // the ONE write path into the signal-cortex taxonomy store. Require the
+  // two fields a classification is meaningless without: frequency (what is
+  // being observed) and an origin location (where it was observed). Every
+  // other field on the signal shape (modulation/bandwidth/power/description/
+  // keywords) is optional enrichment that classifySignal() already defaults
+  // safely — see server/lib/atlas-signal-cortex.js#classifySignal.
+  const frequency = Number(input?.frequency);
+  if (!Number.isFinite(frequency) || frequency <= 0) {
+    return { ok: false, error: "frequency (MHz, > 0) is required" };
+  }
+  const origin = input?.origin;
+  const lat = Number(origin?.lat);
+  const lng = Number(origin?.lng);
+  if (!origin || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return { ok: false, error: "origin.lat and origin.lng (valid coordinates) are required" };
+  }
   // Wrap so the macro contract holds — cortexClassifySignal returns the
   // raw signal record, not the {ok, ...} envelope every other macro uses.
   const signal = cortexClassifySignal(input);
   return { ok: true, signal };
-}, { description: "Submit a signal for 5-property classification." });
+}, { description: "Submit a signal for 5-property classification. Requires frequency (MHz) and origin {lat, lng}." });
 
 register("cortex", "spectrum", (ctx, input) => {
   return getSpectralOccupancy();
