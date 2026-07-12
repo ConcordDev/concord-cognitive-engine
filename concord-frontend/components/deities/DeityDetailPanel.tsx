@@ -103,6 +103,13 @@ export function DeityDetailPanel({
   const [lastReply, setLastReply] = useState<CommuneResult | null>(null);
   const [communing, setCommuning] = useState(false);
 
+  // pilgrim log — `detail` caps the roster at 50; `deity.pilgrim_log` returns
+  // the same rows up to 200. Only fetched on demand, only offered when the
+  // 50-row roster is plausibly hiding more (pilgrim_count exceeds it).
+  const [fullPilgrimLog, setFullPilgrimLog] = useState<RosterEntry[] | null>(null);
+  const [pilgrimLogLoading, setPilgrimLogLoading] = useState(false);
+  const [pilgrimLogError, setPilgrimLogError] = useState<string | null>(null);
+
   // edit form (author-only)
   const [editing, setEditing] = useState(false);
   const [edit, setEdit] = useState<{ warmth: number; refusal: number; mystery: number; commune: number; refuse: number } | null>(null);
@@ -111,6 +118,8 @@ export function DeityDetailPanel({
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setFullPilgrimLog(null);
+    setPilgrimLogError(null);
     const [d, b, c] = await Promise.all([
       lensRun<DetailResult>('deity', 'detail', { deityId }),
       lensRun<BlessingsResult>('deity', 'blessings', { deityId }),
@@ -179,6 +188,21 @@ export function DeityDetailPanel({
     }
   };
 
+  const loadFullPilgrimLog = async () => {
+    setPilgrimLogLoading(true);
+    setPilgrimLogError(null);
+    const r = await lensRun<{ pilgrims: RosterEntry[]; count: number }>('deity', 'pilgrim_log', {
+      deityId,
+      limit: 200,
+    });
+    if (r.data.ok && r.data.result) {
+      setFullPilgrimLog(r.data.result.pilgrims);
+    } else {
+      setPilgrimLogError(r.data.error || 'Could not load the full pilgrim log');
+    }
+    setPilgrimLogLoading(false);
+  };
+
   if (loading) {
     return <div role="status" aria-live="polite" aria-busy="true" className="text-sm text-zinc-400 italic py-6">Summoning deity…</div>;
   }
@@ -207,13 +231,17 @@ export function DeityDetailPanel({
     { axis: 'Refusal', value: deity.toneVector.refusal },
     { axis: 'Mystery', value: deity.toneVector.mystery },
   ];
-  const rosterEvents: TimelineEvent[] = pilgrimRoster.map((p) => ({
+  const activeRoster = fullPilgrimLog ?? pilgrimRoster;
+  const rosterEvents: TimelineEvent[] = activeRoster.map((p) => ({
     id: p.id,
     label: p.pilgrim_user_id.slice(0, 8) + (p.origin_peer ? ` ⇄ ${p.origin_peer}` : ''),
     time: p.arrived_at * 1000,
     tone: p.origin_peer ? 'info' : 'good',
     detail: p.origin_peer ? `federated pilgrim from ${p.origin_peer}` : 'local pilgrim',
   }));
+  // The 50-row roster from `detail` is plausibly hiding more only when the
+  // deity's real pilgrim count exceeds what we were handed.
+  const canExpandPilgrimLog = !fullPilgrimLog && deity.pilgrim_count > pilgrimRoster.length;
 
   return (
     <div className="space-y-5">
@@ -390,11 +418,38 @@ export function DeityDetailPanel({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Pilgrim roster */}
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <h3 className="mb-2 text-sm font-bold text-zinc-200">Pilgrim roster ({detail.rosterCount})</h3>
+          <h3 className="mb-2 text-sm font-bold text-zinc-200">
+            Pilgrim roster ({fullPilgrimLog ? `${fullPilgrimLog.length} of ${deity.pilgrim_count} — full log` : detail.rosterCount})
+          </h3>
           {rosterEvents.length > 0 ? (
-            <TimelineView events={rosterEvents} height={120} />
+            <TimelineView events={rosterEvents} height={fullPilgrimLog ? 220 : 120} />
           ) : (
             <p className="text-xs italic text-zinc-400">No pilgrims yet.</p>
+          )}
+          {pilgrimLogError && (
+            <div role="alert" className="mt-2 rounded border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-[11px] text-rose-300">
+              {pilgrimLogError}
+            </div>
+          )}
+          {canExpandPilgrimLog && (
+            <button
+              type="button"
+              onClick={loadFullPilgrimLog}
+              disabled={pilgrimLogLoading}
+              aria-busy={pilgrimLogLoading}
+              className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 py-1.5 text-[11px] text-zinc-300"
+            >
+              {pilgrimLogLoading ? 'Loading full pilgrim log…' : `View full pilgrim log (${deity.pilgrim_count} total)`}
+            </button>
+          )}
+          {fullPilgrimLog && (
+            <button
+              type="button"
+              onClick={() => { setFullPilgrimLog(null); setPilgrimLogError(null); }}
+              className="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 hover:bg-zinc-900 py-1.5 text-[11px] text-zinc-400"
+            >
+              Show recent 50 only
+            </button>
           )}
         </section>
 
