@@ -168,14 +168,24 @@ faked or stubbed; the gaps below are honest capability boundaries, each triaged
 per the sixth hard invariant:
 
 - **DSAR "deletion" request currently records + tracks the request; it does not
-  yet execute a real cross-lens data purge.** The DSAR lifecycle
-  (received → in_review → completed) is real state, but "completed" is a status
-  transition, not a substrate-wide delete. Triage: **ENGINEERING** — wiring
-  `dsarAdvance('completed')` on a `kind:'deletion'` request to the existing
-  `dtu:deleted` hard-delete path + retention sweeps would make the "delete my
-  data" request actually erase data. Deferred because it touches the deletion/
-  tombstone invariant (`forgetting-engine` retention vs. user hard-delete) and
-  deserves its own careful pass, not a rushed wire.
+  yet execute a real cross-lens data purge.** **INVESTIGATED (2026-07-12,
+  `docs/PRIVACY_DSAR_DELETION_INVESTIGATION.md`) — reframed, not just
+  confirmed.** The DSAR lifecycle (received → in_review → completed) is real
+  state, but "completed" is a status transition only, as originally found.
+  What the investigation adds: Concord already has a SEPARATE, real, live
+  account-deletion pipeline (`server/lib/account-lifecycle.js`, mounted at
+  `POST /api/account/delete`) that anonymizes cited DTUs, deletes uncited
+  ones, and tombstones the ledger — correctly implementing the tombstone
+  invariant this row originally flagged as the blocker. The DSAR flow was
+  simply never wired to it. Tracing that real pipeline then surfaced its own
+  independent, previously-unknown defects: an empirically-confirmed bug
+  where its "delete social content" step silently fails on every target
+  table, zero functional test coverage, and several personal-data categories
+  (chat history, connector OAuth tokens, the encrypted personal-DTU locker,
+  sign-in OAuth links, world/avatar/player state) never covered by it at
+  all. Triage: **ENGINEERING**, but not a rushed wire — the investigation
+  doc's per-category policy ledger and 4 candidate fix directions need an
+  owner decision before any code changes here. Deferred, not fixed.
 - **Cookie-banner + retention-policy config is stored per-user but not yet
   enforced by a runtime consent gate.** The config round-trips honestly (real
   state, real consent string), but no request-time middleware currently reads

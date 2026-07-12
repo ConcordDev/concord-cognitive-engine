@@ -70,7 +70,7 @@ For each category, we list: what's collected, why, where stored, retention, who 
 | **Art. 6** (Lawfulness) | Legal basis for processing | Contract (account) + Consent (analytics opt-in) |
 | **Art. 7** (Consent) | Specific, informed, withdrawable | Consent UI on signup; `account.consent_revoke` macro |
 | **Art. 15** (Right of access) | User can export their data | `exportUserCorpus` (DTU portability) — gated at `platinum-gdpr.test.js` |
-| **Art. 17** (Right to erasure) | User can delete account + data | `user.delete` macro — cascades to wallet, DTUs, ledger (tombstoned for 7y audit retention) |
+| **Art. 17** (Right to erasure) | User can delete account + data | `POST /api/account/delete` (`server/lib/account-lifecycle.js#executeAccountDeletion`) — DTUs anonymized-if-cited/deleted-if-not, ledger tombstoned for 7y audit retention, marketplace listings delisted. **Correction (2026-07-12, `docs/PRIVACY_DSAR_DELETION_INVESTIGATION.md`): the "delete social content" step is empirically confirmed to silently fail on every target table (column-name mismatch + 2 of 4 tables don't exist), and several real personal-data categories — chat history, connector OAuth tokens, the encrypted personal-DTU locker, sign-in OAuth links, world/avatar/player state — are not covered by this pipeline at all. See that doc for the full per-category ledger before relying on this row.** |
 | **Art. 20** (Data portability) | Machine-readable export | `concord-dtu-pack/v1` envelope spec |
 | **Art. 25** (Privacy by design) | Default-private | All new DTUs default `scope='personal'`; `personal_dtus_never_leak` invariant |
 | **Art. 32** (Security) | Appropriate technical measures | Sprint 18 platinum gates (SAST, DAST, encryption-at-rest via SQLite, TLS via reverse proxy) |
@@ -130,7 +130,17 @@ These appear in the public privacy policy (`/legal/privacy`):
 1. **We never sell user data.** Marketplace is creator-driven; royalties flow to creators, not Concord, beyond the documented 4% + 1.46% fees.
 2. **Personal DTUs are private by default.** No federation, no NPC eavesdrop, no analytics — until you publish.
 3. **You can export everything we have on you, anytime.** Self-service via `/api/user/export`.
-4. **You can delete everything, anytime.** Self-service via `/api/user/delete`. We tombstone ledger entries for 7y for tax compliance; everything else is hard-deleted.
+4. **You can delete everything, anytime.** Self-service via `/api/account/delete`
+   (corrected 2026-07-12 — this doc previously cited a nonexistent
+   `/api/user/delete`). We tombstone ledger entries for 7y for tax
+   compliance. **Correction (2026-07-12): "everything else is hard-deleted"
+   overclaimed the current implementation** — social posts and direct
+   messages are not currently deleted due to a confirmed live bug, and
+   several categories (chat history, connector OAuth tokens, the encrypted
+   personal-DTU locker, sign-in OAuth links, world/avatar/player state) are
+   not yet in scope of the deletion pipeline at all. Full findings + a
+   per-category policy ledger for closing this honestly:
+   `docs/PRIVACY_DSAR_DELETION_INVESTIGATION.md`.
 5. **We don't profile you for ads.** No behavioural advertising; no third-party tracking pixels.
 
 ---
