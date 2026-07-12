@@ -563,6 +563,177 @@ export default function registerAdminActions(registerLensAction) {
   const MAX_TRACES = 1000;
 
   // ---------------------------------------------------------------------------
+  // DB-backed store facade (migration 364) for alertRules / featureFlags /
+  // incidents — the three adminLens buckets docs/lens-specs/
+  // admin-capability-map.md and docs/WAVE4_INVENTORY.md named as the
+  // ops-console backlog gap. Same db-or-memory pattern as
+  // domains/education.js (migration 363) / domains/tournaments.js
+  // (migration 360): when ctx.db is reachable and the admin_* tables exist,
+  // every read/write goes through real SQL (durable across restarts);
+  // otherwise the process-global `adminState()` Maps back the same
+  // interface (identical behavior to the pre-364 code). series/tenants/
+  // logBuffer/traces are intentionally out of scope — see the migration's
+  // header comment.
+  function getAdminDb(ctx) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+    if (!db) return null;
+    try { db.prepare("SELECT 1 FROM admin_alert_rules LIMIT 1").get(); }
+    catch { return null; }
+    return db;
+  }
+  function safeParseArrayAdmin(json) {
+    try { const v = JSON.parse(json); return Array.isArray(v) ? v : []; }
+    catch { return []; }
+  }
+
+  // ── alert rules ─────────────────────────────────────────────────
+  function rowToAlertRule(r) {
+    return {
+      id: r.id, name: r.name, metric: r.metric, comparator: r.comparator,
+      threshold: r.threshold, severity: r.severity, aggregation: r.aggregation,
+      windowMinutes: r.window_minutes, enabled: !!r.enabled,
+      createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+  }
+  function alertRuleToParams(r) {
+    return {
+      id: r.id, name: r.name, metric: r.metric, comparator: r.comparator,
+      threshold: Number(r.threshold), severity: r.severity, aggregation: r.aggregation,
+      window_minutes: Number(r.windowMinutes), enabled: r.enabled ? 1 : 0,
+      created_at: r.createdAt, updated_at: r.updatedAt,
+    };
+  }
+  const UPSERT_ALERT_RULE_SQL = `
+    INSERT INTO admin_alert_rules
+      (id, name, metric, comparator, threshold, severity, aggregation,
+       window_minutes, enabled, created_at, updated_at)
+    VALUES
+      (@id, @name, @metric, @comparator, @threshold, @severity, @aggregation,
+       @window_minutes, @enabled, @created_at, @updated_at)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name, metric = excluded.metric, comparator = excluded.comparator,
+      threshold = excluded.threshold, severity = excluded.severity,
+      aggregation = excluded.aggregation, window_minutes = excluded.window_minutes,
+      enabled = excluded.enabled, updated_at = excluded.updated_at
+  `;
+  function dbAlertRuleStore(db) {
+    return {
+      listAll() { return db.prepare("SELECT * FROM admin_alert_rules ORDER BY rowid ASC").all().map(rowToAlertRule); },
+      get(id) { const r = db.prepare("SELECT * FROM admin_alert_rules WHERE id = ?").get(id); return r ? rowToAlertRule(r) : null; },
+      put(rule) { db.prepare(UPSERT_ALERT_RULE_SQL).run(alertRuleToParams(rule)); },
+      delete(id) { db.prepare("DELETE FROM admin_alert_rules WHERE id = ?").run(id); },
+      size() { return db.prepare("SELECT COUNT(*) AS n FROM admin_alert_rules").get().n; },
+    };
+  }
+  function memAlertRuleStore(s) {
+    return {
+      listAll() { return [...s.alertRules.values()]; },
+      get(id) { return s.alertRules.get(id) || null; },
+      put(rule) { s.alertRules.set(rule.id, rule); },
+      delete(id) { s.alertRules.delete(id); },
+      size() { return s.alertRules.size; },
+    };
+  }
+  function alertRuleStore(ctx, s) {
+    const db = getAdminDb(ctx);
+    return db ? dbAlertRuleStore(db) : memAlertRuleStore(s);
+  }
+
+  // ── feature flags ───────────────────────────────────────────────
+  function rowToFeatureFlag(r) {
+    return {
+      id: r.id, key: r.key, enabled: !!r.enabled, description: r.description || "",
+      rolloutPct: r.rollout_pct, createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+  }
+  function featureFlagToParams(f) {
+    return {
+      id: f.id, key: f.key, enabled: f.enabled ? 1 : 0, description: f.description || "",
+      rollout_pct: Number(f.rolloutPct), created_at: f.createdAt, updated_at: f.updatedAt,
+    };
+  }
+  const UPSERT_FEATURE_FLAG_SQL = `
+    INSERT INTO admin_feature_flags (id, key, enabled, description, rollout_pct, created_at, updated_at)
+    VALUES (@id, @key, @enabled, @description, @rollout_pct, @created_at, @updated_at)
+    ON CONFLICT(id) DO UPDATE SET
+      key = excluded.key, enabled = excluded.enabled, description = excluded.description,
+      rollout_pct = excluded.rollout_pct, updated_at = excluded.updated_at
+  `;
+  function dbFeatureFlagStore(db) {
+    return {
+      listAll() { return db.prepare("SELECT * FROM admin_feature_flags ORDER BY rowid ASC").all().map(rowToFeatureFlag); },
+      get(id) { const r = db.prepare("SELECT * FROM admin_feature_flags WHERE id = ?").get(id); return r ? rowToFeatureFlag(r) : null; },
+      put(flag) { db.prepare(UPSERT_FEATURE_FLAG_SQL).run(featureFlagToParams(flag)); },
+      size() { return db.prepare("SELECT COUNT(*) AS n FROM admin_feature_flags").get().n; },
+    };
+  }
+  function memFeatureFlagStore(s) {
+    return {
+      listAll() { return [...s.featureFlags.values()]; },
+      get(id) { return s.featureFlags.get(id) || null; },
+      put(flag) { s.featureFlags.set(flag.id, flag); },
+      size() { return s.featureFlags.size; },
+    };
+  }
+  function featureFlagStore(ctx, s) {
+    const db = getAdminDb(ctx);
+    return db ? dbFeatureFlagStore(db) : memFeatureFlagStore(s);
+  }
+
+  // ── incidents ────────────────────────────────────────────────────
+  function rowToIncident(r) {
+    return {
+      id: r.id, title: r.title, severity: r.severity, service: r.service,
+      description: r.description || "", status: r.status,
+      acknowledgedBy: r.acknowledged_by || null, acknowledgedAt: r.acknowledged_at || null,
+      openedAt: r.opened_at, resolvedAt: r.resolved_at || null,
+      durationMs: r.duration_ms == null ? null : Number(r.duration_ms),
+      timeline: safeParseArrayAdmin(r.timeline_json),
+    };
+  }
+  function incidentToParams(i) {
+    return {
+      id: i.id, title: i.title, severity: i.severity, service: i.service,
+      description: i.description || "", status: i.status,
+      acknowledged_by: i.acknowledgedBy || null, acknowledged_at: i.acknowledgedAt || null,
+      opened_at: i.openedAt, resolved_at: i.resolvedAt || null,
+      duration_ms: i.durationMs == null ? null : Number(i.durationMs),
+      timeline_json: JSON.stringify(Array.isArray(i.timeline) ? i.timeline : []),
+      created_at: i.openedAt,
+    };
+  }
+  const UPSERT_INCIDENT_SQL = `
+    INSERT INTO admin_incidents
+      (id, title, severity, service, description, status, acknowledged_by,
+       acknowledged_at, opened_at, resolved_at, duration_ms, timeline_json, created_at)
+    VALUES
+      (@id, @title, @severity, @service, @description, @status, @acknowledged_by,
+       @acknowledged_at, @opened_at, @resolved_at, @duration_ms, @timeline_json, @created_at)
+    ON CONFLICT(id) DO UPDATE SET
+      status = excluded.status, acknowledged_by = excluded.acknowledged_by,
+      acknowledged_at = excluded.acknowledged_at, resolved_at = excluded.resolved_at,
+      duration_ms = excluded.duration_ms, timeline_json = excluded.timeline_json
+  `;
+  function dbIncidentStore(db) {
+    return {
+      listAll() { return db.prepare("SELECT * FROM admin_incidents ORDER BY rowid ASC").all().map(rowToIncident); },
+      get(id) { const r = db.prepare("SELECT * FROM admin_incidents WHERE id = ?").get(id); return r ? rowToIncident(r) : null; },
+      put(inc) { db.prepare(UPSERT_INCIDENT_SQL).run(incidentToParams(inc)); },
+    };
+  }
+  function memIncidentStore(s) {
+    return {
+      listAll() { return [...s.incidents.values()]; },
+      get(id) { return s.incidents.get(id) || null; },
+      put(inc) { s.incidents.set(inc.id, inc); },
+    };
+  }
+  function incidentStore(ctx, s) {
+    const db = getAdminDb(ctx);
+    return db ? dbIncidentStore(db) : memIncidentStore(s);
+  }
+
+  // ---------------------------------------------------------------------------
   // Feature 1 — Historical time-series charts with selectable ranges.
   // recordMetric ingests a point; metricHistory reads back a windowed,
   // optionally down-sampled series for any selected range.
@@ -700,7 +871,8 @@ export default function registerAdminActions(registerLensAction) {
         : "avg";
 
       const st = adminState();
-      const existing = input.id ? st.alertRules.get(input.id) : null;
+      const store = alertRuleStore(ctx, st);
+      const existing = input.id ? store.get(input.id) : null;
       const id = existing ? existing.id : rid("alert");
       const rule = {
         id,
@@ -715,8 +887,8 @@ export default function registerAdminActions(registerLensAction) {
         createdAt: existing ? existing.createdAt : nowIso(),
         updatedAt: nowIso(),
       };
-      st.alertRules.set(id, rule);
-      return { ok: true, result: { rule, totalRules: st.alertRules.size } };
+      store.put(rule);
+      return { ok: true, result: { rule, totalRules: store.size() } };
     } catch (e) {
       return { ok: false, error: String((e && e.message) || e) };
     }
@@ -728,9 +900,10 @@ export default function registerAdminActions(registerLensAction) {
     const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const ruleId = String((params && params.ruleId) || "");
       const st = adminState();
-      if (!st.alertRules.has(ruleId)) return { ok: false, error: "rule not found" };
-      st.alertRules.delete(ruleId);
-      return { ok: true, result: { deleted: ruleId, totalRules: st.alertRules.size } };
+      const store = alertRuleStore(ctx, st);
+      if (!store.get(ruleId)) return { ok: false, error: "rule not found" };
+      store.delete(ruleId);
+      return { ok: true, result: { deleted: ruleId, totalRules: store.size() } };
     } catch (e) {
       return { ok: false, error: String((e && e.message) || e) };
     }
@@ -744,7 +917,7 @@ export default function registerAdminActions(registerLensAction) {
     try {
     const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
-      const rules = [...st.alertRules.values()];
+      const rules = alertRuleStore(ctx, st).listAll();
       const evaluated = rules.map((rule) => {
         const buf = st.series.get(rule.metric) || [];
         const cutoff = Date.now() - rule.windowMinutes * 60 * 1000;
@@ -1098,17 +1271,19 @@ export default function registerAdminActions(registerLensAction) {
     try {
     const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
+      const store = featureFlagStore(ctx, st);
       if (params && params.toggle) {
-        const flag = st.featureFlags.get(String(params.toggle));
+        const flag = store.get(String(params.toggle));
         if (!flag) return { ok: false, error: "flag not found" };
         flag.enabled = !flag.enabled;
         flag.updatedAt = nowIso();
+        store.put(flag);
         return { ok: true, result: { flag } };
       }
       const input = (params && params.flag) || {};
       const key = String(input.key || "").trim();
       if (!key) return { ok: false, error: "flag.key is required" };
-      const existing = input.id ? st.featureFlags.get(input.id) : null;
+      const existing = input.id ? store.get(input.id) : null;
       const id = existing ? existing.id : rid("flag");
       const flag = {
         id,
@@ -1124,8 +1299,8 @@ export default function registerAdminActions(registerLensAction) {
         createdAt: existing ? existing.createdAt : nowIso(),
         updatedAt: nowIso(),
       };
-      st.featureFlags.set(id, flag);
-      return { ok: true, result: { flag, totalFlags: st.featureFlags.size } };
+      store.put(flag);
+      return { ok: true, result: { flag, totalFlags: store.size() } };
     } catch (e) {
       return { ok: false, error: String((e && e.message) || e) };
     }
@@ -1136,7 +1311,7 @@ export default function registerAdminActions(registerLensAction) {
     try {
     const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
-      const flags = [...st.featureFlags.values()].sort((a, b) => a.key.localeCompare(b.key));
+      const flags = featureFlagStore(ctx, st).listAll().sort((a, b) => a.key.localeCompare(b.key));
       return {
         ok: true,
         result: {
@@ -1174,6 +1349,7 @@ export default function registerAdminActions(registerLensAction) {
         ? params.severity
         : "sev3";
       const st = adminState();
+      const store = incidentStore(ctx, st);
       const id = rid("inc");
       const actorId = (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "system";
       const incident = {
@@ -1190,7 +1366,7 @@ export default function registerAdminActions(registerLensAction) {
         durationMs: null,
         timeline: [{ at: nowIso(), actorId, kind: "opened", note: `Incident declared (${severity})` }],
       };
-      st.incidents.set(id, incident);
+      store.put(incident);
       return { ok: true, result: { incident } };
     } catch (e) {
       return { ok: false, error: String((e && e.message) || e) };
@@ -1206,7 +1382,8 @@ export default function registerAdminActions(registerLensAction) {
     const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const incidentId = String((params && params.incidentId) || "");
       const st = adminState();
-      const incident = st.incidents.get(incidentId);
+      const store = incidentStore(ctx, st);
+      const incident = store.get(incidentId);
       if (!incident) return { ok: false, error: "incident not found" };
       const action = String((params && params.action) || "");
       const actorId = (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "system";
@@ -1240,6 +1417,7 @@ export default function registerAdminActions(registerLensAction) {
       } else {
         return { ok: false, error: "action must be acknowledge|note|resolve" };
       }
+      store.put(incident);
       return { ok: true, result: { incident } };
     } catch (e) {
       return { ok: false, error: String((e && e.message) || e) };
@@ -1252,13 +1430,13 @@ export default function registerAdminActions(registerLensAction) {
     const _denied = requireAdminRole(ctx); if (_denied) return _denied;
       const st = adminState();
       const filter = String((params && params.status) || "all");
-      let incidents = [...st.incidents.values()];
+      let incidents = incidentStore(ctx, st).listAll();
       if (filter === "open") incidents = incidents.filter((i) => i.status === "open");
       else if (filter === "active") incidents = incidents.filter((i) => i.status !== "resolved");
       else if (filter === "resolved") incidents = incidents.filter((i) => i.status === "resolved");
       incidents.sort((a, b) => (b.openedAt > a.openedAt ? 1 : -1));
 
-      const all = [...st.incidents.values()];
+      const all = incidentStore(ctx, st).listAll();
       const resolved = all.filter((i) => i.status === "resolved" && i.durationMs != null);
       const mttr = resolved.length
         ? Math.round(resolved.reduce((s, i) => s + i.durationMs, 0) / resolved.length)

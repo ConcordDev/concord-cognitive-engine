@@ -175,7 +175,7 @@ no generic-scaffold pattern (`grade-ux-polish.mjs --honest` confirms
 None identified as a *defining* competitive gap against Datadog/Grafana —
 the lens already implements time-series history, alert rules, tenant
 admin, log search, distributed traces, feature flags, and an incident
-timeline with on-call ack. The ops-console backlog macros' state
+timeline with on-call ack. ~~The ops-console backlog macros' state
 (`globalThis._concordSTATE.adminLens`) is explicitly **in-memory and
 per-deployment**, not persisted to the DB or replicated across shards —
 that's a scale/durability limitation worth a named disposition:
@@ -185,7 +185,38 @@ semantics imply it should eventually be) if this ever needs to survive a
 restart or run correctly under `CONCORD_SHARD_WORLDS=true`. Not attempted
 here — out of scope for the auth-focused pass this task requested, and the
 existing state shape is honestly in-memory (no fabricated persistence
-claims anywhere in the code or UI).
+claims anywhere in the code or UI).~~ **CLOSED (2026-07-12, pending
+commit).** Built the genuine DB-backed persistence: migration 364
+(`admin_alert_rules` / `admin_feature_flags` / `admin_incidents`) adds one
+shared row per rule/flag/incident, reached through an `alertRuleStore(ctx,
+s)` / `featureFlagStore(ctx, s)` / `incidentStore(ctx, s)` db-or-memory
+facade — the same pattern `domains/education.js` (migration 363) /
+`domains/tournaments.js` (migration 360) established this session. When
+`ctx.db` is reachable (the always-true case for the running server) every
+read/write goes through real SQL, so alert rules, feature flags, and the
+incident timeline (including its full `timeline` event log, stored as
+`timeline_json`) survive a restart; the in-memory fallback (bare
+unit-test/minimal builds) keeps the original `adminLens` Maps unchanged.
+`alertEvaluate` reads its rules from the same DB-backed store and still
+evaluates firing state correctly against the (intentionally still
+in-memory) metric series. Scoped to exactly the three buckets both this
+doc and `docs/WAVE4_INVENTORY.md` named — `series` (metric ring buffers),
+`tenants`, `logBuffer`, and `traces` stay in-memory by design (high-churn,
+TTL/cap-bounded telemetry, not the kind of state an operator expects to
+survive a restart — see migration 364's header comment for the full
+rationale). This state is genuinely global/per-deployment, not per-user —
+no `user_id`/`created_by` scoping column was added since no existing macro
+filters by caller identity (an actor's id is recorded only as an audit
+trail, e.g. `acknowledgedBy`). Proof: `server/tests/admin-ops-persistence.
+test.js` — raw-SQL row checks (not just the macro's own reader) + a
+second, independent `better-sqlite3` handle on the same file seeing the
+same rows (restart-equivalence) + `alertEvaluate` producing correct
+firing/ok state from the DB-backed rule. `CONCORD_SHARD_WORLDS` write-
+routing for these new tables (per CLAUDE.md's DB write-ownership rules,
+they're user-global tables written from HTTP routes / macro calls, not a
+per-world table) was not separately re-verified here — out of scope for
+this pass, same disposition as every other newly-DB-backed lens table
+this session.
 
 ## Verification
 
