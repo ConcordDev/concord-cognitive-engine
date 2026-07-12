@@ -60,6 +60,75 @@ describe("vote.fairnessCheck", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.majorityCriterion.majorityCandidate, "X");
   });
+
+  // ── Gallagher index / seat-allocation input contract ──────────────────────
+  // artifact.data.results = { [candidate]: seats } — the piece the Ballot
+  // Analysis Lab's "Seat allocation" editor now collects and sends. Seat
+  // COUNTS are accepted (not pre-divided shares); the macro normalizes by
+  // the sum of all values itself (server/domains/vote.js:197).
+  const ballotsFor = (counts) =>
+    Object.entries(counts).flatMap(([candidate, n]) =>
+      Array.from({ length: n }, () => ({ rankings: [candidate] })));
+
+  it("reports gallagherIndex as the honest N/A sentinel when no results/seat map is supplied", () => {
+    const r = call("fairnessCheck", ctxA, {
+      data: { ballots: ballotsFor({ A: 50, B: 30, C: 20 }) },
+    }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.gallagherIndex, "N/A (no seat data)");
+    assert.equal(r.result.gallagherLabel, null);
+  });
+
+  it("computes a ~0 Gallagher index when seats are allocated exactly proportionally to vote share", () => {
+    // 100 ballots: A 50 / B 30 / C 20 first-choice votes; seats mirror the
+    // same 5/3/2 split out of 10 — a textbook proportional-representation
+    // result (server/domains/vote.js:192-205).
+    const r = call("fairnessCheck", ctxA, {
+      data: {
+        ballots: ballotsFor({ A: 50, B: 30, C: 20 }),
+        results: { A: 5, B: 3, C: 2 },
+      },
+    }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.gallagherIndex, 0);
+    assert.equal(r.result.gallagherLabel, "highly proportional");
+  });
+
+  it("computes the correct Gallagher index for a disproportional winner-take-all seat allocation", () => {
+    // 100 ballots split near-evenly (34/33/33) but a single-member-plurality
+    // style allocation gives all 10 seats to A — the FPTP disproportionality
+    // case the index exists to flag. LSq = sqrt(0.5 * sum((voteShare% -
+    // seatShare%)^2)) = sqrt(0.5 * (66^2 + 33^2 + 33^2)) = 57.158, verified
+    // independently in bash/node before writing the assertion (per the
+    // "verify the formula, don't paste output" methodology).
+    const r = call("fairnessCheck", ctxA, {
+      data: {
+        ballots: ballotsFor({ A: 34, B: 33, C: 33 }),
+        results: { A: 10, B: 0, C: 0 },
+      },
+    }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.gallagherIndex, 57.158);
+    assert.equal(r.result.gallagherLabel, "highly disproportional");
+    // declaredWinner is derived from the highest seat count in `results`,
+    // independent of the vote-share plurality winner.
+    assert.equal(r.result.majorityCriterion.majorityCandidate, undefined); // no candidate cleared 50% of first-choice votes
+  });
+
+  it("treats a candidate absent from the seat map as holding zero seats", () => {
+    // A minor candidate on the ballot with real votes but no seat entry —
+    // results[c] || 0 (server/domains/vote.js:199) must not throw or
+    // silently exclude them from the disproportionality sum.
+    const r = call("fairnessCheck", ctxA, {
+      data: {
+        ballots: ballotsFor({ A: 60, B: 30, C: 10 }),
+        results: { A: 8, B: 2 }, // C intentionally omitted — 0 seats
+      },
+    }, {});
+    assert.equal(r.ok, true);
+    assert.notEqual(r.result.gallagherIndex, "N/A (no seat data)");
+    assert.ok(typeof r.result.gallagherIndex === "number" && r.result.gallagherIndex > 0);
+  });
 });
 
 describe("vote.consensusMeasure", () => {

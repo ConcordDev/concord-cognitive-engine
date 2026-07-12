@@ -63,6 +63,7 @@ function pct(v: unknown): string {
 export function BallotAnalysisLab() {
   const [candidates, setCandidates] = useState<string[]>(['', '']);
   const [ballots, setBallots] = useState<Ballot[]>([]);
+  const [seatsByCandidate, setSeatsByCandidate] = useState<Record<string, number>>({});
   const [analysis, setAnalysis] = useState<Analysis>('tallyVotes');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -70,10 +71,16 @@ export function BallotAnalysisLab() {
 
   const validCandidates = useMemo(() => candidates.map((c) => c.trim()).filter(Boolean), [candidates]);
   const validBallots = useMemo(() => ballots.filter((b) => b.rankings.length > 0), [ballots]);
+  const totalSeats = useMemo(
+    () => validCandidates.reduce((s, c) => s + Math.max(0, Math.round(seatsByCandidate[c] ?? 0)), 0),
+    [validCandidates, seatsByCandidate],
+  );
+  const setSeatsFor = (c: string, v: number) => setSeatsByCandidate((cur) => ({ ...cur, [c]: v }));
 
   const loadExample = () => {
     setCandidates(EXAMPLE_CANDIDATES);
     setBallots(EXAMPLE_BALLOTS.map((b) => ({ ...b, rankings: [...b.rankings] })));
+    setSeatsByCandidate({});
     setResults({});
     setErr(null);
   };
@@ -81,6 +88,7 @@ export function BallotAnalysisLab() {
   const clearAll = () => {
     setCandidates(['', '']);
     setBallots([]);
+    setSeatsByCandidate({});
     setResults({});
     setErr(null);
   };
@@ -102,10 +110,23 @@ export function BallotAnalysisLab() {
     setBusy(true);
     setAnalysis(which);
     try {
-      const input = {
+      const input: { candidates: string[]; ballots: { voter: string; rankings: string[] }[]; results?: Record<string, number> } = {
         candidates: validCandidates,
         ballots: validBallots.map((b) => ({ voter: b.voter, rankings: b.rankings })),
       };
+      if (which === 'fairnessCheck') {
+        // Seat allocation is genuine external real-world data (who actually won
+        // which seats in the election/body being analyzed) — the system has no
+        // way to derive this on its own, so it's manual entry, not fabrication.
+        // Only sent when the user has actually entered at least one seat; an
+        // untouched editor keeps the macro's honest "no seat data" empty state.
+        const seatEntries = validCandidates
+          .map((c) => [c, Math.max(0, Math.round(seatsByCandidate[c] ?? 0))] as const)
+          .filter(([, seats]) => seats > 0);
+        if (seatEntries.length > 0) {
+          input.results = Object.fromEntries(seatEntries);
+        }
+      }
       const { data } = await lensRun(
         'vote',
         which === 'tallyVotes' ? 'tallyVotes' : which === 'fairnessCheck' ? 'fairnessCheck' : 'consensusMeasure',
@@ -230,6 +251,45 @@ export function BallotAnalysisLab() {
               </div>
             )}
           </div>
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-xs font-medium text-zinc-400">
+                Seat allocation <span className="text-zinc-600">(optional — Gallagher index)</span>
+              </p>
+              {totalSeats > 0 && (
+                <span className="text-[10px] text-zinc-500">{totalSeats} seat{totalSeats === 1 ? '' : 's'} total</span>
+              )}
+            </div>
+            {validCandidates.length < 2 ? (
+              <p className="text-[11px] text-zinc-500">Add at least 2 candidates first.</p>
+            ) : (
+              <>
+                <p className="mb-1.5 text-[10px] text-zinc-500">
+                  Enter each candidate/party&apos;s actual seats won (a real election result, or a
+                  hypothetical allocation) to compute the Gallagher disproportionality index against
+                  the vote shares above. This is real-world data the system has no other way to
+                  derive — leave everyone at 0 to skip it.
+                </p>
+                <div className="space-y-1">
+                  {validCandidates.map((c) => (
+                    <div key={c} className="flex items-center gap-2">
+                      <span className="flex-1 truncate text-[11px] text-zinc-300">{c}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={seatsByCandidate[c] ?? 0}
+                        onChange={(e) => setSeatsFor(c, Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                        className="w-16 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-right text-[11px] text-white"
+                        aria-label={`Seats won by ${c}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Analysis runner + results */}
@@ -327,7 +387,8 @@ function FairnessResult({ r }: { r: any }) {
         </div>
       ) : (
         <div className="rounded border border-dashed border-zinc-800 px-2.5 py-1.5 text-[11px] text-zinc-500">
-          No seat/result shares supplied — Gallagher index needs a <code>results</code> map to compare against vote shares.
+          No seat data supplied — enter each candidate&apos;s seats won in the &quot;Seat
+          allocation&quot; editor and re-run to compute the Gallagher index.
         </div>
       )}
       <div>
