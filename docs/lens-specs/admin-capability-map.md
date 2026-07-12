@@ -185,8 +185,8 @@ semantics imply it should eventually be) if this ever needs to survive a
 restart or run correctly under `CONCORD_SHARD_WORLDS=true`. Not attempted
 here — out of scope for the auth-focused pass this task requested, and the
 existing state shape is honestly in-memory (no fabricated persistence
-claims anywhere in the code or UI).~~ **CLOSED (2026-07-12, pending
-commit).** Built the genuine DB-backed persistence: migration 364
+claims anywhere in the code or UI).~~ **CLOSED (2026-07-12,
+`5501dd98`).** Built the genuine DB-backed persistence: migration 364
 (`admin_alert_rules` / `admin_feature_flags` / `admin_incidents`) adds one
 shared row per rule/flag/incident, reached through an `alertRuleStore(ctx,
 s)` / `featureFlagStore(ctx, s)` / `incidentStore(ctx, s)` db-or-memory
