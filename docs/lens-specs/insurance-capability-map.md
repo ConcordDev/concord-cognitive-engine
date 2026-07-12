@@ -106,7 +106,7 @@ divergent policy/claim data model** running in parallel with the real one:
   or a CE-credit/license-renewal compliance record at the time of this
   removal pass. Quote/Compliance are still genuinely missing (see below);
   the client/CRM record is **no longer missing — CLOSED (2026-07-12,
-  pending commit)**, see below.
+  `ddbd111f`)**, see below.
 - **`Documents`** duplicated the real, policy-scoped `policy-document-add`/
   `policy-document-list` macros with an untied, generic document library
   (arbitrary `fileName`/`category`, no `policyId`).
@@ -316,7 +316,7 @@ the honesty invariant they're relabeled as deferred rather than faked:
 - ~~**Client/CRM record management** — a persisted contact record per
   insured client (phone/email/address/DOB/risk-profile/referral-source,
   linked to their policies). No `insurance.*` macro creates or lists such
-  a record.~~ **CLOSED (2026-07-12, pending commit).** Built the
+  a record.~~ **CLOSED (2026-07-12, `ddbd111f`).** Built the
   `client-add`/`client-list` macro pair this row called for:
   `server/domains/insurance.js` gained `client-add` / `client-list` (this
   file's own hyphenated macro-naming convention) plus a `resolveClientRef(
