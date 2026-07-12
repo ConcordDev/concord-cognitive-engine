@@ -58,12 +58,29 @@ export default function registerPlumbingActions(registerLensAction) {
         phone: clean(params.phone, 40),
         baseColor: clean(params.baseColor, 16) || "#38bdf8",
         active: params.active !== false,
+        certifications: [], // formal license/cert records — see techCertAdd. Distinct
+        // from `skills` above: skills is a freeform capability tag list used for
+        // quick dispatch matching, certifications is a structured record with an
+        // issuing body + license number + expiry, used for compliance tracking.
         createdAt: new Date().toISOString(),
       };
       techs.push(tech); savePlumb();
       return { ok: true, result: { tech } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
+  // Certifications past their expiryDate are flagged, not deleted — an expired
+  // license is still a real (lapsed) record a shop owner needs to see and
+  // renew, not something that should silently disappear. Computed at read
+  // time (no background sweep) since expiry here doesn't cascade into any
+  // other domain — mirrors the "simple is fine" guidance for this kind of
+  // derived flag (contrast with hr.js's I-9 sweep, which needs a stored
+  // status because I-9 verification blocks downstream actions).
+  function isCertExpired(expiryDate) {
+    if (!expiryDate) return false;
+    return expiryDate < new Date().toISOString().slice(0, 10);
+  }
+  function withExpiry(cert) { return { ...cert, isExpired: isCertExpired(cert.expiryDate) }; }
+  function certsOf(t) { return Array.isArray(t.certifications) ? t.certifications : (t.certifications = []); }
   registerLensAction("plumbing", "techList", (ctx) => {
     try {
       const g = guard(); if (g.error) return g.error;
@@ -72,10 +89,15 @@ export default function registerPlumbingActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          techs: techs.map(t => ({
-            ...t,
-            openJobs: dispatch.filter(d => d.techId === t.id && d.status !== "completed" && d.status !== "cancelled").length,
-          })),
+          techs: techs.map(t => {
+            const certifications = certsOf(t).map(withExpiry);
+            return {
+              ...t,
+              certifications,
+              expiredCertCount: certifications.filter(c => c.isExpired).length,
+              openJobs: dispatch.filter(d => d.techId === t.id && d.status !== "completed" && d.status !== "cancelled").length,
+            };
+          }),
           count: techs.length,
         },
       };
@@ -89,6 +111,69 @@ export default function registerPlumbingActions(registerLensAction) {
       if (idx < 0) return { ok: false, error: "tech_not_found" };
       techs.splice(idx, 1); savePlumb();
       return { ok: true, result: { removed: params.techId } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Technician certifications (formal license records) ──────────────
+  // Closes the "Certs" gap (docs/lens-specs/plumbing-capability-map.md):
+  // techAdd's `skills` field was a freeform tag list, not a formal
+  // certification record with issuing body + license number + expiry date.
+  // This is a distinct, additive `certifications` array per tech — `skills`
+  // is untouched and keeps serving quick dispatch-matching.
+  registerLensAction("plumbing", "techCertAdd", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const techs = list(g.s.techs, actor(ctx));
+      const techId = clean(params.techId, 64);
+      if (!techId) return { ok: false, error: "techId_required" };
+      const tech = techs.find(t => t.id === techId);
+      if (!tech) return { ok: false, error: "tech_not_found" };
+      const name = clean(params.name, 120);
+      if (!name) return { ok: false, error: "name_required" };
+      const issuingBody = clean(params.issuingBody, 120);
+      if (!issuingBody) return { ok: false, error: "issuingBody_required" };
+      const cert = {
+        id: pid("cert"), name, issuingBody,
+        licenseNumber: clean(params.licenseNumber, 60),
+        issueDate: clean(params.issueDate, 16) || null,
+        expiryDate: clean(params.expiryDate, 16) || null,
+        createdAt: new Date().toISOString(),
+      };
+      certsOf(tech).push(cert); savePlumb();
+      return { ok: true, result: { certification: withExpiry(cert), techId } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "techCertList", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const techs = list(g.s.techs, actor(ctx));
+      const techId = clean(params.techId, 64);
+      if (!techId) return { ok: false, error: "techId_required" };
+      const tech = techs.find(t => t.id === techId);
+      if (!tech) return { ok: false, error: "tech_not_found" };
+      const certifications = certsOf(tech).map(withExpiry);
+      return {
+        ok: true,
+        result: {
+          certifications, count: certifications.length,
+          expiredCount: certifications.filter(c => c.isExpired).length,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "techCertRemove", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const techs = list(g.s.techs, actor(ctx));
+      const techId = clean(params.techId, 64);
+      if (!techId) return { ok: false, error: "techId_required" };
+      const tech = techs.find(t => t.id === techId);
+      if (!tech) return { ok: false, error: "tech_not_found" };
+      const certs = certsOf(tech);
+      const idx = certs.findIndex(c => c.id === params.certId);
+      if (idx < 0) return { ok: false, error: "certification_not_found" };
+      certs.splice(idx, 1); savePlumb();
+      return { ok: true, result: { removed: params.certId, techId } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

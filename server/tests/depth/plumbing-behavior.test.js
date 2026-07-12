@@ -469,3 +469,140 @@ describe("plumbing — persisted Client (CRM) entity + clientId wiring", () => {
     assert.equal(found.totalBilled, 100);
   });
 });
+
+describe("plumbing — technician certifications (formal license records, distinct from skills tags)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("plumbing-tech-certs"); });
+
+  it("techCertAdd → techCertList: an added certification round-trips with all fields", async () => {
+    const tech = await lensRun("plumbing", "techAdd", { params: { name: "Riley" } }, ctx);
+    const techId = tech.result.tech.id;
+    const added = await lensRun("plumbing", "techCertAdd", { params: {
+      techId, name: "Master Plumber License", issuingBody: "State Board of Plumbing Examiners",
+      licenseNumber: "MP-44201", issueDate: "2022-01-15", expiryDate: "2099-01-15",
+    } }, ctx);
+    assert.equal(added.ok, true);
+    assert.equal(added.result.certification.name, "Master Plumber License");
+    assert.equal(added.result.certification.issuingBody, "State Board of Plumbing Examiners");
+    assert.equal(added.result.certification.licenseNumber, "MP-44201");
+    assert.equal(added.result.certification.issueDate, "2022-01-15");
+    assert.equal(added.result.certification.expiryDate, "2099-01-15");
+    assert.equal(added.result.certification.isExpired, false);
+    const certId = added.result.certification.id;
+    const listed = await lensRun("plumbing", "techCertList", { params: { techId } }, ctx);
+    assert.equal(listed.ok, true);
+    assert.equal(listed.result.count, 1);
+    assert.ok(listed.result.certifications.some((c) => c.id === certId), "certification appears in the per-tech list");
+  });
+
+  it("techCertAdd: techId_required rejection when techId is omitted", async () => {
+    const r = await lensRun("plumbing", "techCertAdd", { params: { name: "Gas Fitting License", issuingBody: "State Board" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /techId_required/);
+  });
+
+  it("techCertAdd: tech_not_found rejection on an unknown techId", async () => {
+    const r = await lensRun("plumbing", "techCertAdd", { params: { techId: "tech_ghost", name: "X", issuingBody: "Y" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /tech_not_found/);
+  });
+
+  it("techCertAdd: name_required rejection when name is blank", async () => {
+    const tech = await lensRun("plumbing", "techAdd", { params: { name: "Sam" } }, ctx);
+    const r = await lensRun("plumbing", "techCertAdd", { params: { techId: tech.result.tech.id, issuingBody: "State Board" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /name_required/);
+  });
+
+  it("techCertAdd: issuingBody_required rejection when issuingBody is blank", async () => {
+    const tech = await lensRun("plumbing", "techAdd", { params: { name: "Jordan" } }, ctx);
+    const r = await lensRun("plumbing", "techCertAdd", { params: { techId: tech.result.tech.id, name: "Backflow Prevention Certification" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /issuingBody_required/);
+  });
+
+  it("expiry detection: a past expiryDate reads isExpired=true, a future one reads isExpired=false", async () => {
+    const tech = await lensRun("plumbing", "techAdd", { params: { name: "Casey" } }, ctx);
+    const techId = tech.result.tech.id;
+    const past = await lensRun("plumbing", "techCertAdd", { params: {
+      techId, name: "Backflow Prevention Certification", issuingBody: "American Backflow Prevention Association",
+      expiryDate: "2000-01-01",
+    } }, ctx);
+    assert.equal(past.result.certification.isExpired, true);
+    const future = await lensRun("plumbing", "techCertAdd", { params: {
+      techId, name: "Gas Fitting License", issuingBody: "State Board of Plumbing Examiners",
+      expiryDate: "2099-01-01",
+    } }, ctx);
+    assert.equal(future.result.certification.isExpired, false);
+    const noExpiry = await lensRun("plumbing", "techCertAdd", { params: {
+      techId, name: "Journeyman Plumber License", issuingBody: "State Board of Plumbing Examiners",
+    } }, ctx);
+    assert.equal(noExpiry.result.certification.isExpired, false, "a cert with no expiryDate never reads as expired");
+    const listed = await lensRun("plumbing", "techCertList", { params: { techId } }, ctx);
+    assert.equal(listed.result.count, 3);
+    assert.equal(listed.result.expiredCount, 1);
+    // techList surfaces the same derived expiry so the roster view doesn't need a second call.
+    const roster = await lensRun("plumbing", "techList", { params: {} }, ctx);
+    const rosterTech = roster.result.techs.find((t) => t.id === techId);
+    assert.equal(rosterTech.expiredCertCount, 1);
+    assert.equal(rosterTech.certifications.filter((c) => c.isExpired).length, 1);
+  });
+
+  it("techCertRemove: removed certification no longer lists; certification_not_found on a bad certId", async () => {
+    const tech = await lensRun("plumbing", "techAdd", { params: { name: "Morgan" } }, ctx);
+    const techId = tech.result.tech.id;
+    const added = await lensRun("plumbing", "techCertAdd", { params: {
+      techId, name: "Medical Gas Systems Certification", issuingBody: "ASSE 6010",
+    } }, ctx);
+    const certId = added.result.certification.id;
+    const badRemove = await lensRun("plumbing", "techCertRemove", { params: { techId, certId: "cert_ghost" } }, ctx);
+    assert.equal(badRemove.result.ok, false);
+    assert.match(badRemove.result.error, /certification_not_found/);
+    const rm = await lensRun("plumbing", "techCertRemove", { params: { techId, certId } }, ctx);
+    assert.equal(rm.result.removed, certId);
+    const listed = await lensRun("plumbing", "techCertList", { params: { techId } }, ctx);
+    assert.equal(listed.result.count, 0);
+  });
+
+  it("techCertList: techId_required and tech_not_found rejections", async () => {
+    const noId = await lensRun("plumbing", "techCertList", { params: {} }, ctx);
+    assert.equal(noId.result.ok, false);
+    assert.match(noId.result.error, /techId_required/);
+    const badId = await lensRun("plumbing", "techCertList", { params: { techId: "tech_ghost" } }, ctx);
+    assert.equal(badId.result.ok, false);
+    assert.match(badId.result.error, /tech_not_found/);
+  });
+
+  it("certifications are per-tech: a cert added to one technician doesn't appear on another's list", async () => {
+    const a = await lensRun("plumbing", "techAdd", { params: { name: "TechA" } }, ctx);
+    const b = await lensRun("plumbing", "techAdd", { params: { name: "TechB" } }, ctx);
+    await lensRun("plumbing", "techCertAdd", { params: { techId: a.result.tech.id, name: "Solar Water Heating Certification", issuingBody: "NABCEP" } }, ctx);
+    const bList = await lensRun("plumbing", "techCertList", { params: { techId: b.result.tech.id } }, ctx);
+    assert.equal(bList.result.count, 0, "TechB has no certifications of its own");
+  });
+
+  it("certifications are per-user: a fresh user can't read another user's technician's certifications", async () => {
+    const tech = await lensRun("plumbing", "techAdd", { params: { name: "Isolated Tech" } }, ctx);
+    const techId = tech.result.tech.id;
+    await lensRun("plumbing", "techCertAdd", { params: { techId, name: "Master Plumber License", issuingBody: "State Board" } }, ctx);
+    const otherCtx = await depthCtx("plumbing-tech-certs-other-user");
+    // The other user's own tech roster is empty, so the techId belongs to no
+    // tech in THEIR roster — techCertAdd/List must fail honestly, never leak.
+    const otherAdd = await lensRun("plumbing", "techCertAdd", { params: { techId, name: "X", issuingBody: "Y" } }, otherCtx);
+    assert.equal(otherAdd.result.ok, false);
+    assert.match(otherAdd.result.error, /tech_not_found/);
+    const otherList = await lensRun("plumbing", "techCertList", { params: { techId } }, otherCtx);
+    assert.equal(otherList.result.ok, false);
+    assert.match(otherList.result.error, /tech_not_found/);
+  });
+
+  it("the freeform `skills` tag list is untouched by certifications (both coexist on the same tech record)", async () => {
+    const tech = await lensRun("plumbing", "techAdd", { params: { name: "Dual", skills: ["drain", "gas"] } }, ctx);
+    const techId = tech.result.tech.id;
+    await lensRun("plumbing", "techCertAdd", { params: { techId, name: "Gas Fitting License", issuingBody: "State Board" } }, ctx);
+    const roster = await lensRun("plumbing", "techList", { params: {} }, ctx);
+    const t = roster.result.techs.find((x) => x.id === techId);
+    assert.deepEqual(t.skills, ["drain", "gas"]);
+    assert.equal(t.certifications.length, 1);
+  });
+});

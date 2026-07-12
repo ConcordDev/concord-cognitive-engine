@@ -15,6 +15,8 @@ import { ChartKit, TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
 import { ClientAutocomplete } from '@/components/plumbing/ClientAutocomplete';
 import type { ClientRecord } from '@/components/plumbing/ClientAutocomplete';
+import { TechCertifications } from '@/components/plumbing/TechCertifications';
+import type { Certification } from '@/components/plumbing/TechCertifications';
 import {
   Calendar, Users, BookOpen, Receipt, ClipboardCheck, RefreshCw,
   Bell, Boxes, Plus, Trash2, Loader2, Check, AlertTriangle, Send,
@@ -24,7 +26,10 @@ type Section =
   | 'dispatch' | 'pricebook' | 'invoicing' | 'workflow'
   | 'plans' | 'notify' | 'inventory';
 
-interface Tech { id: string; name: string; skills: string[]; phone: string; baseColor: string; active: boolean; openJobs?: number; }
+interface Tech {
+  id: string; name: string; skills: string[]; phone: string; baseColor: string; active: boolean; openJobs?: number;
+  certifications?: Certification[]; expiredCertCount?: number;
+}
 interface Assignment {
   id: string; jobTitle: string; client: string; clientId?: string | null; address: string;
   techId: string | null; date: string; startHour: number; durationHours: number;
@@ -506,13 +511,21 @@ export function FieldServiceConsole() {
               </div>
               <div className="mt-3 space-y-1.5">
                 {techs.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between rounded border border-zinc-800 px-2 py-1.5 text-xs">
-                    <span className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.baseColor }} />
-                      <span className="text-white">{t.name}</span>
-                      <span className="text-zinc-400">{t.openJobs ?? 0} open</span>
-                    </span>
-                    <button onClick={() => removeTech(t.id)} aria-label="Remove technician" className="text-zinc-600 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <div key={t.id} className="rounded border border-zinc-800 px-2 py-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.baseColor }} />
+                        <span className="text-white">{t.name}</span>
+                        <span className="text-zinc-400">{t.openJobs ?? 0} open</span>
+                      </span>
+                      <button onClick={() => removeTech(t.id)} aria-label="Remove technician" className="text-zinc-600 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                    <TechCertifications
+                      techId={t.id}
+                      techName={t.name}
+                      certifications={t.certifications ?? []}
+                      onChanged={() => void refreshDispatch()}
+                    />
                   </div>
                 ))}
                 {techs.length === 0 && <p className="text-xs text-zinc-400">No technicians yet.</p>}
