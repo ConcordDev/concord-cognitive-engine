@@ -62,6 +62,24 @@ if (typeof window.URL.createObjectURL !== 'function') {
   window.URL.revokeObjectURL = vi.fn();
 }
 
+// jsdom's File/Blob doesn't implement `.text()` (a standard Blob-interface
+// method every real browser supports) — file-upload components across this
+// codebase (e.g. ExportToolkit's DecryptedArchive, PortabilityPanel) call
+// `file.text()` on the File a user selects. Without this polyfill any test
+// that fires a file input `change` event throws `f.text is not a function`
+// synchronously inside the component's try/catch, which silently looks like
+// a "not valid JSON" parse failure instead of a real environment gap.
+if (typeof File.prototype.text !== 'function') {
+  File.prototype.text = function (this: Blob) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(this);
+    });
+  };
+}
+
 // Mock localStorage — a REAL in-memory store (still vi.fn, so .mockReturnValue
 // overrides keep working). The prior bare-vi.fn() stubs never persisted, so any
 // test relying on a getItem/setItem round-trip (avatar compute mode, active
