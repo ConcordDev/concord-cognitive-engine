@@ -20,27 +20,32 @@ import { PoliceFeed } from '@/components/law-enforcement/PoliceFeed';
 import { LawEnforcementActionPanel } from '@/components/law-enforcement/LawEnforcementActionPanel';
 import { RmsCadConsole } from '@/components/law-enforcement/RmsCadConsole';
 import { LawEnforcementOverviewPanel } from '@/components/law-enforcement/LawEnforcementOverviewPanel';
+import { CaseManagementPanel } from '@/components/law-enforcement/CaseManagementPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { Shield, LayoutDashboard, Radio, Sparkles, Newspaper } from 'lucide-react';
+import { Shield, LayoutDashboard, Radio, Sparkles, Newspaper, FolderOpen } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
 /*  Tabs — every tab below is backed by real, macro-calling components */
 /*  (no generic artifact-store CRUD). Overview aggregates cadCallQueue/ */
 /*  cadUnitBoard/rosterBoard/evidenceList/warrantList/reportList/       */
-/*  bookingList; Console is the full RMS/CAD console (dispatch,        */
+/*  bookingList; Cases is the persisted Case entity (migration 362 —   */
+/*  caseCreate/caseGet/caseList/caseUpdate/caseLinked) with a real      */
+/*  status lifecycle + linkage to reports/evidence/bookings/warrants   */
+/*  by case number; Console is the full RMS/CAD console (dispatch,     */
 /*  evidence chain-of-custody, roster, crime map, warrants, reports,   */
 /*  booking); Analysis is the ad-hoc case-strength / patrol-allocation /*/
 /*  crime-stats calculators + incident report + mint/DM/publish/agent; */
 /*  Field Notes is the real-world LE-subreddit pulse.                  */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'Overview' | 'Console' | 'Analysis' | 'Field Notes';
+type ModeTab = 'Overview' | 'Cases' | 'Console' | 'Analysis' | 'Field Notes';
 
 const MODE_TABS: { id: ModeTab; icon: typeof Shield; label: string }[] = [
   { id: 'Overview', icon: LayoutDashboard, label: 'Overview' },
+  { id: 'Cases', icon: FolderOpen, label: 'Cases' },
   { id: 'Console', icon: Radio, label: 'RMS / CAD Console' },
   { id: 'Analysis', icon: Sparkles, label: 'Quick Analysis' },
   { id: 'Field Notes', icon: Newspaper, label: 'Field Notes' },
@@ -96,6 +101,7 @@ export default function LawEnforcementLensPage() {
         </nav>
 
         {mode === 'Overview' && <LawEnforcementOverviewPanel />}
+        {mode === 'Cases' && <CaseManagementPanel />}
         {mode === 'Console' && <RmsCadConsole />}
         {mode === 'Analysis' && (
           <PipingProvider>

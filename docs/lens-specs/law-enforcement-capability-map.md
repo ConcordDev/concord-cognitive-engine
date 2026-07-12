@@ -8,8 +8,11 @@
 ```
 grep -c 'registerLensAction("law-enforcement"' server/domains/lawenforcement.js
 ```
-→ **29** macros in `server/domains/lawenforcement.js` (955 lines), registered
-via `registerLawEnforcementActions(register)`. The filename is `lawenforcement.js`
+→ **34** macros in `server/domains/lawenforcement.js` (1260 lines; was 29
+macros / 955 lines before the 2026-07-12 Case-entity pass — see "No
+persisted 'Case' record type exists server-side" below, now CLOSED),
+registered via `registerLawEnforcementActions(register)`. The filename is
+`lawenforcement.js`
 (no hyphen) but the domain string used in every registration — and the one the
 frontend must call — is `"law-enforcement"` (hyphenated). No domain-string
 collisions with `crime.js`/`crime-engine.js` or `law.js` (the `law` lens is a
@@ -199,7 +202,7 @@ classification above.
 
 ## Investigated and honestly deferred
 
-- **No persisted "Case" record type exists server-side.** `caseAnalysis` is
+- ~~**No persisted "Case" record type exists server-side.** `caseAnalysis` is
   a pure-compute case-strength calculator over caller-supplied evidence/
   witness/suspect counts — it has never written to a store. The closest
   real persisted case-adjacent records are `reportDraft`/`reportList`
@@ -211,7 +214,48 @@ classification above.
   and is out of scope for this pass, which fixes existing wiring rather
   than growing the backend. Left as an honest gap: the "Case ID" field in
   the rebuilt Quick Analysis form is caller-supplied free text, not a
-  foreign key into anything.
+  foreign key into anything.~~
+  **CLOSED (2026-07-12, pending commit)** — migration 362
+  (`server/migrations/362_law_enforcement_cases.js`) adds a real `le_cases`
+  table: id/user_id/case_number/title/synopsis/status/assigned_detective/
+  opened_at/closed_at/closure_reason, unique-indexed on
+  `(user_id, case_number)`. `server/domains/lawenforcement.js` gained five
+  new macros — `caseCreate`, `caseGet` (by id or caseNumber), `caseList`
+  (per-officer, status-filterable), `caseUpdate` (a real state machine:
+  open -> under_investigation/closed, under_investigation ->
+  closed/cold/open, closed -> open (reopen), cold ->
+  under_investigation/closed; invalid transitions are rejected), and
+  `caseLinked` (joins `reports`/`evidence`/`bookings`/`warrants` against
+  the case by case-insensitive, trimmed `caseNumber` string match — not a
+  foreign key, because those buckets are per-user in-memory Maps, not DB
+  rows, so there is nothing on the DB side for a foreign key to reference;
+  see the migration's header for the full reasoning). `bookingCreate`
+  gained an additive, optional `caseNumber` field so bookings can
+  participate in the same linkage reports/evidence already had. Storage
+  follows the same db-or-memory facade pattern migration 360
+  (`bracket_tournaments`) established: durable via `ctx.db` when present
+  (the running server always has it), falling back to an in-memory
+  `Map<userId, Map<caseId, record>>` bucket — the same shape every other
+  collection in this file already uses — for bare-unit-test/minimal
+  builds. Frontend: a new `CaseManagementPanel.tsx` (Cases tab, 5th tab in
+  the lens) is a real case board — create form, status-filterable list,
+  a detail view driven by `caseLinked` showing linked report/evidence/
+  booking/warrant counts, and status-transition buttons that only offer
+  the transitions the backend state machine actually allows. The Quick
+  Analysis tab's "Case ID" field is no longer inert: it now
+  debounce-resolves against `caseGet` and shows whether it links to a
+  real case on file. New regression coverage in `server/tests/
+  lawenforcement-case.test.js` (14 tests) proves DB persistence via raw
+  SQL against `le_cases` (not just the macro's own reader), per-officer
+  scoping, the status state-machine's valid/invalid transitions, dual
+  id/caseNumber resolution, and `caseLinked`'s join correctly including
+  matches and excluding non-matches. `concord-frontend/tests/components/
+  CaseManagementPanel.test.tsx` (6 tests, added during independent
+  verification of this pass) pins the panel's macro contract: `caseList`
+  results render as real rows (not fabricated), `caseCreate` is called
+  with the actual entered fields, selecting a case round-trips through
+  `caseLinked`, and the transition buttons only ever offer the statuses
+  `CASE_TRANSITIONS[currentStatus]` actually allows.
 - **`PoliceFeed`'s Reddit integration is unauthenticated client-side
   `fetch` to `reddit.com/r/.../top.json`.** This is a pre-existing,
   intentional pattern (same shape used by several other rebuilt lenses in
