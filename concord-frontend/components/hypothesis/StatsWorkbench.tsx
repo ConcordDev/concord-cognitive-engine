@@ -17,10 +17,10 @@ import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import {
   Calculator, FlaskConical, Sigma, GitCompareArrows, Table2, ShieldCheck,
-  Layers3, ClipboardCheck, FileText, Loader2, Trash2, Plus, Upload,
+  Layers3, ClipboardCheck, FileText, Loader2, Trash2, Plus, Upload, History,
 } from 'lucide-react';
 
-type TabId = 'tests' | 'datasets' | 'assumptions' | 'correction' | 'registry';
+type TabId = 'tests' | 'datasets' | 'assumptions' | 'correction' | 'registry' | 'history';
 
 const TABS: { id: TabId; label: string; icon: typeof Calculator }[] = [
   { id: 'tests', label: 'Test Battery', icon: Sigma },
@@ -28,6 +28,7 @@ const TABS: { id: TabId; label: string; icon: typeof Calculator }[] = [
   { id: 'assumptions', label: 'Assumption Checks', icon: ShieldCheck },
   { id: 'correction', label: 'Multiple Comparison', icon: Layers3 },
   { id: 'registry', label: 'Pre-Registration', icon: ClipboardCheck },
+  { id: 'history', label: 'History', icon: History },
 ];
 
 // ---- numeric-list parsing -----------------------------------------------------
@@ -112,6 +113,7 @@ export function StatsWorkbench() {
         {tab === 'assumptions' && <AssumptionsPanel />}
         {tab === 'correction' && <CorrectionPanel />}
         {tab === 'registry' && <RegistryPanel />}
+        {tab === 'history' && <HistoryPanel />}
       </div>
     </section>
   );
@@ -1234,6 +1236,127 @@ function PreRegCard({
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Analysis history — server/domains/hypothesis.js#analysisHistory. Every test
+// in the battery above (zTest/abTest/bayesianInference/powerAnalysis/tTest/
+// anova/chiSquare/correlation/regression/assumptionCheck/multipleComparison)
+// calls recordAnalysis() on success, so this is a real per-user run log, not
+// a fabricated timeline — clicking a row asks apaReport to regenerate the
+// write-up from the SAME stored result (analysisId), not from re-computed
+// or invented numbers.
+// ============================================================================
+
+interface AnalysisHistoryItem {
+  id: string;
+  kind: string;
+  summary: string;
+  createdAt: string;
+}
+
+function HistoryPanel() {
+  const [items, setItems] = useState<AnalysisHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [apa, setApa] = useState<string | null>(null);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const res = await lensRun('hypothesis', 'analysisHistory', {});
+    if (res.data.ok) {
+      setItems((res.data.result as { items: AnalysisHistoryItem[] } | null)?.items || []);
+    } else {
+      setError(res.data.error || 'Could not load analysis history.');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const openReport = useCallback(async (item: AnalysisHistoryItem) => {
+    if (openId === item.id) {
+      setOpenId(null);
+      setApa(null);
+      return;
+    }
+    setOpenId(item.id);
+    setApa(null);
+    setReportError(null);
+    setReportBusy(true);
+    const res = await lensRun('hypothesis', 'apaReport', { analysisId: item.id });
+    if (res.data.ok) {
+      setApa((res.data.result as { apa?: string } | null)?.apa || null);
+    } else {
+      setReportError(res.data.error || 'Could not generate report.');
+    }
+    setReportBusy(false);
+  }, [openId]);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-zinc-400">
+        Every test run above (t-test, ANOVA, chi-square, correlation, regression, Z-test,
+        A/B test, Bayesian inference, power analysis, assumption checks, multiple-comparison
+        correction) is saved here. Click a run to regenerate its APA write-up from the exact
+        stored result.
+      </p>
+
+      {loading ? (
+        <p className="flex items-center gap-2 text-xs text-zinc-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading history…
+        </p>
+      ) : error ? (
+        <p className="rounded-md bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{error}</p>
+      ) : items.length === 0 ? (
+        <p className="text-xs text-zinc-400">
+          No analyses run yet — results from the Test Battery, Assumption Checks, or
+          Multiple Comparison tabs will appear here.
+        </p>
+      ) : (
+        <ul className="space-y-1.5" data-testid="hypothesis-analysis-history">
+          {items.map((item) => (
+            <li key={item.id} className="rounded-md border border-zinc-800 bg-zinc-900/50">
+              <button
+                onClick={() => openReport(item)}
+                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
+              >
+                <div>
+                  <p className="text-xs font-medium text-zinc-100">{item.summary}</p>
+                  <p className="text-[11px] text-zinc-500">
+                    {item.kind} · {new Date(item.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <FileText className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+              </button>
+              {openId === item.id && (
+                <div className="border-t border-zinc-800 p-3">
+                  {reportBusy ? (
+                    <p className="flex items-center gap-2 text-xs text-zinc-400">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating report…
+                    </p>
+                  ) : reportError ? (
+                    <p className="rounded-md bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{reportError}</p>
+                  ) : (
+                    <pre className="whitespace-pre-wrap rounded-md bg-zinc-950 p-3 font-serif text-xs leading-relaxed text-zinc-200">
+                      {apa}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
