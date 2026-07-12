@@ -322,6 +322,78 @@ describe("realestate.compare", () => {
   });
 });
 
+describe("realestate.cma_generate (Comparative Market Analysis — from the user's own tracked listings)", () => {
+  it("produces a sane valuation range from real matching comps", () => {
+    // Three real comps in the same city/kind, beds within ±1, sqft within ±25%.
+    call("listings-add", ctxA, { address: "Comp A", price: 480000, beds: 3, baths: 2, sqft: 2000, city: "Austin", kind: "single_family" }); // $240/sqft
+    call("listings-add", ctxA, { address: "Comp B", price: 475000, beds: 4, baths: 3, sqft: 1900, city: "Austin", kind: "single_family" }); // $250/sqft
+    call("listings-add", ctxA, { address: "Comp C", price: 546000, beds: 2, baths: 2, sqft: 2100, city: "Austin", kind: "single_family" }); // $260/sqft
+
+    const r = call("cma_generate", ctxA, { city: "Austin", kind: "single_family", beds: 3, baths: 2, sqft: 2000, condition: "good" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.compCount, 3);
+    assert.equal(r.result.valuation.medianPricePerSqft, 250);
+    assert.equal(r.result.valuation.minPricePerSqft, 240);
+    assert.equal(r.result.valuation.maxPricePerSqft, 260);
+    // estimate = median $/sqft (250) × subject sqft (2000) × condition mult (good = 1.0)
+    assert.equal(r.result.valuation.estimate, 500000);
+    assert.equal(r.result.valuation.lowEstimate, 480000);
+    assert.equal(r.result.valuation.highEstimate, 520000);
+    assert.ok(r.result.methodology.includes("3 comparable listings"));
+    assert.ok(r.result.methodology.includes("NOT an MLS-wide"));
+  });
+
+  it("accepts an existing tracked listing as the subject via listingId", () => {
+    const subj = call("listings-add", ctxA, { address: "Subject House", price: 500000, beds: 3, baths: 2, sqft: 2000, city: "Austin", kind: "single_family" });
+    call("listings-add", ctxA, { address: "Comp A", price: 480000, beds: 3, baths: 2, sqft: 1950, city: "Austin", kind: "single_family" });
+    const r = call("cma_generate", ctxA, { listingId: subj.result.listing.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.compCount, 1);
+    // The subject's own listing must never appear as a comp for itself.
+    assert.ok(!r.result.comps.some(c => c.id === subj.result.listing.id));
+  });
+
+  it("honestly reports zero comps instead of fabricating a number", () => {
+    const r = call("cma_generate", ctxA, { city: "Nowhereville", kind: "single_family", beds: 3, baths: 2, sqft: 2000 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.compCount, 0);
+    assert.deepEqual(r.result.comps, []);
+    assert.equal(r.result.valuation, null);
+    assert.equal(r.result.message, "No comparable listings tracked yet — add some in the Listings tab to generate a CMA.");
+  });
+
+  it("excludes comps that fail city, kind, or bed-count-range criteria", () => {
+    call("listings-add", ctxA, { address: "Good Comp", price: 480000, beds: 3, baths: 2, sqft: 1950, city: "Austin", kind: "single_family" });
+    call("listings-add", ctxA, { address: "Wrong City", price: 480000, beds: 3, baths: 2, sqft: 1950, city: "Dallas", kind: "single_family" });
+    call("listings-add", ctxA, { address: "Wrong Kind", price: 480000, beds: 3, baths: 2, sqft: 1950, city: "Austin", kind: "condo" });
+    call("listings-add", ctxA, { address: "Beds Out Of Range", price: 480000, beds: 1, baths: 1, sqft: 1950, city: "Austin", kind: "single_family" }); // diff=2 > ±1 tolerance
+    call("listings-add", ctxA, { address: "Sqft Out Of Range", price: 200000, beds: 3, baths: 2, sqft: 900, city: "Austin", kind: "single_family" }); // 55% smaller than subject, > ±25%
+
+    const r = call("cma_generate", ctxA, { city: "Austin", kind: "single_family", beds: 3, baths: 2, sqft: 2000 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.compCount, 1);
+    assert.equal(r.result.comps[0].address, "Good Comp");
+  });
+
+  it("rejects manual subject specs missing city or sqft", () => {
+    assert.equal(call("cma_generate", ctxA, { kind: "single_family", beds: 3, sqft: 2000 }).ok, false);
+    assert.equal(call("cma_generate", ctxA, { city: "Austin", kind: "single_family", beds: 3, sqft: 0 }).ok, false);
+  });
+
+  it("rejects an unknown listingId", () => {
+    const r = call("cma_generate", ctxA, { listingId: "does-not-exist" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not found/);
+  });
+
+  it("comps never leak across users", () => {
+    call("listings-add", ctxA, { address: "A's comp", price: 480000, beds: 3, baths: 2, sqft: 1950, city: "Austin", kind: "single_family" });
+    const r = call("cma_generate", ctxB, { city: "Austin", kind: "single_family", beds: 3, baths: 2, sqft: 2000 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.compCount, 0);
+  });
+});
+
 describe("realestate.agents-* + agent-message + messages-list", () => {
   it("add agent + send message + list messages", () => {
     const ag = call("agents-add", ctxA, { name: "Jane Doe", brokerage: "Acme", email: "jane@x.com", rating: 5 });

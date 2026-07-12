@@ -82,8 +82,10 @@ export default function registerRomanceMacros(register) {
 
   register("romance", "dissolve", async (ctx, input = {}) => {
     const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
-    return dissolveMarriage(db, String(input?.marriageId || ""), String(input?.reason || "estranged"));
+    if (!userId) return { ok: false, reason: "no_user" };
+    return dissolveMarriage(db, String(input?.marriageId || ""), String(input?.reason || "estranged"), userId);
   });
 
   register("romance", "marriages", async (ctx, input = {}) => {

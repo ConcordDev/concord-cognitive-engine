@@ -224,6 +224,7 @@ export default function registerHRActions(registerLensAction) {
       "jobs", "applicants", "hrDocuments",
       "payRuns", "benefitPlans", "benefitEnrollments", "timeclock",
       "courses", "courseAssignments", "complianceDocs", "complianceAcks",
+      "i9Records",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -1064,6 +1065,248 @@ export default function registerHRActions(registerLensAction) {
         totalRequired,
         totalAcknowledged: totalAcked,
         compliancePct: totalRequired ? Math.round((totalAcked / totalRequired) * 100) : 100,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ── I-9 / E-Verify employment eligibility ───────────────────────────
+  // Real USCIS Form I-9 categories (not invented): List A documents
+  // establish BOTH identity and employment authorization on their own
+  // (US passport, permanent resident/"green" card, employment
+  // authorization document); the remaining entries are the common
+  // List B (identity) + List C (employment authorization) combinations
+  // an employer records together. Follows the compliance-doc-* shape:
+  // one record per submission, workspace-scoped Map, explicit-enum
+  // validation instead of the silent-default style used for cosmetic
+  // fields elsewhere in this file — a compliance record with a bad
+  // document type or status must fail loudly, not coerce.
+  const I9_DOCUMENT_TYPES = [
+    "us_passport", "permanent_resident_card", "employment_authorization_document",
+    "drivers_license_ssn_card", "state_id_ssn_card", "foreign_passport_i94", "other",
+  ];
+  const I9_STATUSES = ["pending", "verified", "rejected", "expired"];
+  const I9_EVERIFY_STATUSES = [
+    "not_submitted", "pending", "employment_authorized",
+    "tentative_nonconfirmation", "final_nonconfirmation", "closed",
+  ];
+  // Documents that are inherently time-limited must carry an expiration
+  // date at intake — an EAD with no expiration is an incomplete record,
+  // not a valid "no expiration" I-9.
+  const I9_ALWAYS_EXPIRES = new Set(["employment_authorization_document", "foreign_passport_i94"]);
+
+  // Lazily flips verified/pending records whose expirationDate has
+  // passed into "expired" and persists the change. Mirrors the
+  // acknowledgedRate-style derived-field pattern in compliance-doc-list,
+  // but here the derived fact (expired) is also the source of truth for
+  // future i9-verify calls, so it's persisted rather than computed
+  // fresh on every read.
+  function sweepI9Expirations(s, userId) {
+    const recs = s.i9Records.get(userId) || [];
+    const today = hrDay(hrNow());
+    let changed = false;
+    for (const r of recs) {
+      if ((r.status === "verified" || r.status === "pending") && r.expirationDate && r.expirationDate < today) {
+        r.status = "expired";
+        changed = true;
+      }
+    }
+    if (changed) saveHrState();
+    return recs;
+  }
+
+  registerLensAction("hr", "i9-add", (ctx, _a, params = {}) => {
+  try {
+    const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = hrAid(ctx);
+    if (!findEmployee(s, userId, params.employeeId)) return { ok: false, error: "employee not found" };
+    const documentType = hrClean(params.documentType, 60).toLowerCase();
+    if (!I9_DOCUMENT_TYPES.includes(documentType)) {
+      return { ok: false, error: `invalid document type; must be one of ${I9_DOCUMENT_TYPES.join(", ")}` };
+    }
+    const expirationDate = hrDay(params.expirationDate) || null;
+    if (I9_ALWAYS_EXPIRES.has(documentType) && !expirationDate) {
+      return { ok: false, error: "this document type requires an expirationDate" };
+    }
+    const record = {
+      id: hrId("i9"),
+      employeeId: String(params.employeeId),
+      documentType,
+      documentIdentifier: hrClean(params.documentIdentifier, 60) || null,
+      issuingAuthority: hrClean(params.issuingAuthority, 80) || null,
+      section2CompletedBy: hrClean(params.section2CompletedBy, 120) || null,
+      status: "pending",
+      verifiedAt: null,
+      rejectedAt: null,
+      rejectionReason: null,
+      expirationDate,
+      everifyCaseNumber: null,
+      everifyStatus: "not_submitted",
+      everifySubmittedAt: null,
+      attachedDocumentIds: [],
+      notes: hrClean(params.notes, 500) || null,
+      createdAt: hrNow(),
+    };
+    hrListB(s.i9Records, userId).push(record);
+    saveHrState();
+    return { ok: true, result: { record } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("hr", "i9-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = hrAid(ctx);
+    const recs = sweepI9Expirations(s, userId);
+    const empName = new Map((s.employees.get(userId) || []).map((e) => [e.id, e.name]));
+    const today = hrDay(hrNow());
+    let rows = [...recs];
+    if (params.employeeId) rows = rows.filter((r) => r.employeeId === params.employeeId);
+    if (params.status) {
+      const st = String(params.status).toLowerCase();
+      rows = rows.filter((r) => r.status === st);
+    }
+    rows = rows.map((r) => ({
+      ...r,
+      employeeName: empName.get(r.employeeId) || "(unknown)",
+      daysUntilExpiration: r.expirationDate
+        ? Math.round((new Date(r.expirationDate) - new Date(today)) / 86400000) : null,
+    })).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    return { ok: true, result: { records: rows, count: rows.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("hr", "i9-verify", (ctx, _a, params = {}) => {
+  try {
+    const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = hrAid(ctx);
+    const rec = (s.i9Records.get(userId) || []).find((r) => r.id === params.id);
+    if (!rec) return { ok: false, error: "I-9 record not found" };
+    if (rec.status === "rejected") return { ok: false, error: "cannot verify a rejected I-9 record" };
+    if (rec.status === "expired") return { ok: false, error: "cannot verify an expired I-9 record; create a new record" };
+    if (params.expirationDate != null) {
+      const exp = hrDay(params.expirationDate);
+      if (exp) rec.expirationDate = exp;
+    }
+    if (I9_ALWAYS_EXPIRES.has(rec.documentType) && !rec.expirationDate) {
+      return { ok: false, error: "this document type requires an expirationDate before it can be verified" };
+    }
+    rec.status = "verified";
+    rec.verifiedAt = hrNow();
+    saveHrState();
+    return { ok: true, result: { record: rec } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("hr", "i9-reject", (ctx, _a, params = {}) => {
+  try {
+    const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = hrAid(ctx);
+    const rec = (s.i9Records.get(userId) || []).find((r) => r.id === params.id);
+    if (!rec) return { ok: false, error: "I-9 record not found" };
+    if (rec.status === "rejected") return { ok: false, error: "already rejected" };
+    rec.status = "rejected";
+    rec.rejectedAt = hrNow();
+    rec.rejectionReason = hrClean(params.reason, 300) || "document did not establish identity or employment authorization";
+    saveHrState();
+    return { ok: true, result: { record: rec } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // E-Verify case submission — a Final Nonconfirmation is a real
+  // employment-eligibility failure, so it cascades into rejecting the
+  // underlying I-9 record rather than leaving the record "verified"
+  // while its E-Verify case says the person isn't authorized.
+  registerLensAction("hr", "i9-everify-submit", (ctx, _a, params = {}) => {
+  try {
+    const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = hrAid(ctx);
+    const rec = (s.i9Records.get(userId) || []).find((r) => r.id === params.id);
+    if (!rec) return { ok: false, error: "I-9 record not found" };
+    const caseNumber = hrClean(params.caseNumber, 40);
+    if (!caseNumber) return { ok: false, error: "E-Verify caseNumber required" };
+    const status = hrClean(params.status, 40).toLowerCase();
+    if (!I9_EVERIFY_STATUSES.includes(status)) {
+      return { ok: false, error: `invalid E-Verify status; must be one of ${I9_EVERIFY_STATUSES.join(", ")}` };
+    }
+    rec.everifyCaseNumber = caseNumber;
+    rec.everifyStatus = status;
+    rec.everifySubmittedAt = hrNow();
+    if (status === "final_nonconfirmation" && rec.status !== "rejected") {
+      rec.status = "rejected";
+      rec.rejectedAt = hrNow();
+      rec.rejectionReason = "E-Verify Final Nonconfirmation";
+    }
+    saveHrState();
+    return { ok: true, result: { record: rec } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // Reuses the existing hr-document-add store (kind: "i9_support") instead
+  // of a parallel upload pipeline, per the domain's document-tracking
+  // convention (metadata record — title/kind/employeeId — with no binary
+  // storage layer, same as compliance-doc-* and hr-document-*), and links
+  // the resulting doc id back onto the I-9 record.
+  registerLensAction("hr", "i9-document-attach", (ctx, _a, params = {}) => {
+  try {
+    const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = hrAid(ctx);
+    const rec = (s.i9Records.get(userId) || []).find((r) => r.id === params.id);
+    if (!rec) return { ok: false, error: "I-9 record not found" };
+    const title = hrClean(params.title, 120);
+    if (!title) return { ok: false, error: "document title required" };
+    const doc = {
+      id: hrId("doc"), employeeId: rec.employeeId, title,
+      kind: "i9_support", createdAt: hrNow(),
+    };
+    hrListB(s.hrDocuments, userId).push(doc);
+    rec.attachedDocumentIds = [...(rec.attachedDocumentIds || []), doc.id];
+    saveHrState();
+    return { ok: true, result: { document: doc, record: rec } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // Org-wide (no employeeId) or per-employee I-9/E-Verify compliance
+  // view. Mirrors compliance-status's per-employee vs. org-wide branch.
+  // "Overdue" follows the real Form I-9 rule: Section 2 must be
+  // completed within 3 business days of the employee's first day of
+  // work — approximated here as 3 calendar days (the codebase has no
+  // business-day calendar primitive), documented rather than silently
+  // wrong.
+  registerLensAction("hr", "i9-status", (ctx, _a, params = {}) => {
+  try {
+    const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = hrAid(ctx);
+    const recs = sweepI9Expirations(s, userId);
+    if (params.employeeId) {
+      if (!findEmployee(s, userId, params.employeeId)) return { ok: false, error: "employee not found" };
+      const rows = recs.filter((r) => r.employeeId === params.employeeId);
+      return {
+        ok: true,
+        result: {
+          records: rows,
+          hasVerified: rows.some((r) => r.status === "verified"),
+        },
+      };
+    }
+    const activeEmps = (s.employees.get(userId) || []).filter((e) => e.status === "active");
+    const today = hrDay(hrNow());
+    const verifiedEmployeeIds = new Set(recs.filter((r) => r.status === "verified").map((r) => r.employeeId));
+    const anyRecordEmployeeIds = new Set(recs.map((r) => r.employeeId));
+    // 3-day I-9 deadline: milliseconds since hire vs. 3 days, floored at 0.
+    const THREE_DAYS_MS = 3 * 86400000;
+    const overdue = activeEmps.filter((e) =>
+      !anyRecordEmployeeIds.has(e.id)
+      && (new Date(today) - new Date(e.hireDate || today)) > THREE_DAYS_MS).length;
+    const verifiedCount = activeEmps.filter((e) => verifiedEmployeeIds.has(e.id)).length;
+    return {
+      ok: true,
+      result: {
+        activeEmployees: activeEmps.length,
+        verified: verifiedCount,
+        missing: activeEmps.length - verifiedCount,
+        overdue,
+        compliancePct: activeEmps.length ? Math.round((verifiedCount / activeEmps.length) * 100) : 100,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

@@ -2,24 +2,38 @@
 
 /**
  * FashionClosetPanel — wardrobe item grid with add, wear logging,
- * category filter and cost-per-wear value ratings.
+ * category filter, laundry/availability status (clean/dirty/at
+ * cleaner/lent out) with a status filter for "what can I wear right
+ * now," and cost-per-wear value ratings.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Repeat, Scissors, Eye } from 'lucide-react';
+import { Loader2, Plus, Trash2, Repeat, Scissors, Eye, Shirt } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Item {
   id: string; name: string; category: string; brand: string | null; color: string | null;
   season: string; cost: number; timesWorn: number; costPerWear: number | null; valueRating: string;
-  photo: string | null; bgRemoved?: boolean; bgRemovalMode?: string;
+  photo: string | null; bgRemoved?: boolean; bgRemovalMode?: string; laundryStatus: LaundryStatus;
 }
+
+type LaundryStatus = 'clean' | 'dirty' | 'at_cleaner' | 'lent_out';
 
 const CATEGORIES = ['top', 'bottom', 'dress', 'outerwear', 'shoes', 'accessory', 'bag', 'activewear'];
 const VALUE_COLOR: Record<string, string> = {
   excellent: 'text-emerald-400', good: 'text-sky-400', moderate: 'text-amber-400',
   poor: 'text-rose-400', unworn: 'text-zinc-400',
+};
+const LAUNDRY_STATUSES: LaundryStatus[] = ['clean', 'dirty', 'at_cleaner', 'lent_out'];
+const LAUNDRY_LABEL: Record<LaundryStatus, string> = {
+  clean: 'Clean', dirty: 'Dirty', at_cleaner: 'At cleaner', lent_out: 'Lent out',
+};
+const LAUNDRY_COLOR: Record<LaundryStatus, string> = {
+  clean: 'border-emerald-700/50 bg-emerald-950/40 text-emerald-300',
+  dirty: 'border-amber-700/50 bg-amber-950/40 text-amber-300',
+  at_cleaner: 'border-sky-700/50 bg-sky-950/40 text-sky-300',
+  lent_out: 'border-zinc-600 bg-zinc-800/60 text-zinc-300',
 };
 
 export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
@@ -27,6 +41,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
+  const [laundryFilter, setLaundryFilter] = useState<LaundryStatus | ''>('');
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', category: 'top', brand: '', color: '', cost: '', photo: '' });
   const [bgBusy, setBgBusy] = useState<string | null>(null);
@@ -35,10 +50,13 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('fashion', 'item-list', filter ? { category: filter } : {});
+    const params: Record<string, string> = {};
+    if (filter) params.category = filter;
+    if (laundryFilter) params.laundryStatus = laundryFilter;
+    const r = await lensRun('fashion', 'item-list', params);
     setItems(r.data?.result?.items || []);
     setLoading(false);
-  }, [filter]);
+  }, [filter, laundryFilter]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -55,6 +73,12 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
   };
   const wear = async (id: string) => { await lensRun('fashion', 'item-wear', { id }); await refresh(); onChange(); };
   const del = async (id: string) => { await lensRun('fashion', 'item-delete', { id }); await refresh(); onChange(); };
+  const setLaundry = async (id: string, laundryStatus: LaundryStatus) => {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, laundryStatus } : i)));
+    const r = await lensRun('fashion', 'item-update', { id, laundryStatus });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed to update laundry status'); }
+    await refresh(); onChange();
+  };
   const removeBg = async (id: string) => {
     setBgBusy(id); setError(null);
     const r = await lensRun('fashion', 'item-remove-bg', { id });
@@ -95,6 +119,25 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg shrink-0">
           <Plus className="w-3.5 h-3.5" /> Add
         </button>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        <Shirt className="w-3 h-3 text-zinc-500 shrink-0" />
+        <span className="text-[10px] text-zinc-500 shrink-0">What can I wear:</span>
+        <div className="flex flex-wrap gap-1">
+          <button type="button" onClick={() => setLaundryFilter('')}
+            aria-pressed={laundryFilter === ''}
+            className={cn('text-[11px] px-2 py-0.5 rounded-full border', laundryFilter === '' ? 'border-fuchsia-700/50 bg-fuchsia-950/40 text-fuchsia-300' : 'border-zinc-700 text-zinc-400')}>
+            Any status
+          </button>
+          {LAUNDRY_STATUSES.map((ls) => (
+            <button key={ls} type="button" onClick={() => setLaundryFilter(ls)}
+              aria-pressed={laundryFilter === ls}
+              className={cn('text-[11px] px-2 py-0.5 rounded-full border', laundryFilter === ls ? LAUNDRY_COLOR[ls] : 'border-zinc-700 text-zinc-400')}>
+              {LAUNDRY_LABEL[ls]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
@@ -170,6 +213,18 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
               {i.bgRemoved && (
                 <span className="inline-block mt-2 text-[10px] text-emerald-400">Flat-lay cutout applied</span>
               )}
+              <label className="block mt-2">
+                <span className="sr-only">Laundry status for {i.name}</span>
+                <select
+                  value={i.laundryStatus}
+                  onChange={(e) => setLaundry(i.id, e.target.value as LaundryStatus)}
+                  className={cn('w-full text-[11px] rounded-lg border px-2 py-1 bg-zinc-950', LAUNDRY_COLOR[i.laundryStatus] || LAUNDRY_COLOR.clean)}
+                >
+                  {LAUNDRY_STATUSES.map((ls) => (
+                    <option key={ls} value={ls}>{LAUNDRY_LABEL[ls]}</option>
+                  ))}
+                </select>
+              </label>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-[10px] text-zinc-400">
                   worn {i.timesWorn}× ·{' '}

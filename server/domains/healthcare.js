@@ -2,6 +2,7 @@
 // Domain actions for healthcare: drug interaction checks, protocol matching, patient summaries.
 
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
+import { listProtocols, listSpecialties } from "../lib/healthcare-protocols.js";
 
 export default function registerHealthcareActions(registerLensAction) {
   registerLensAction("healthcare", "vision", async (ctx, artifact, _params) => {
@@ -72,8 +73,10 @@ export default function registerHealthcareActions(registerLensAction) {
   /**
    * protocolMatch
    * Match patient conditions (artifact.data.conditions) to care protocols
-   * (artifact.data.protocols or params.protocols). Each protocol has
-   * { id, name, triggerConditions: [...icd10], steps: [...] }.
+   * (artifact.data.protocols or params.protocols, falling back to the real
+   * curated reference library in content/healthcare-protocols.json when the
+   * caller supplies neither). Each protocol has
+   * { id, name, source, triggerConditions: [...icd10], steps: [...] }.
    * A protocol matches when ALL of its triggerConditions are present in the
    * patient's active condition list.
    */
@@ -82,7 +85,7 @@ export default function registerHealthcareActions(registerLensAction) {
     const conditions = (artifact.data.conditions || []).map((c) =>
       typeof c === "string" ? c : c.icd10 || c.code
     );
-    const protocols = params.protocols || artifact.data.protocols || [];
+    const protocols = params.protocols || artifact.data.protocols || listProtocols();
 
     if (conditions.length === 0) {
       return { ok: true, result: { matched: [], message: "No active conditions on record." } };
@@ -104,6 +107,8 @@ export default function registerHealthcareActions(registerLensAction) {
         matched.push({
           protocolId: protocol.id,
           name: protocol.name,
+          source: protocol.source || null,
+          specialty: protocol.specialty || null,
           matchRatio: 1,
           steps: protocol.steps || [],
           matchedConditions: matchedTriggers,
@@ -112,6 +117,8 @@ export default function registerHealthcareActions(registerLensAction) {
         partial.push({
           protocolId: protocol.id,
           name: protocol.name,
+          source: protocol.source || null,
+          specialty: protocol.specialty || null,
           matchRatio: Math.round(matchRatio * 100) / 100,
           missingConditions: triggers.filter((t) => !conditionSet.has(t)),
           matchedConditions: matchedTriggers,
@@ -138,6 +145,22 @@ export default function registerHealthcareActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  /**
+   * protocols-list
+   * Browse the curated reference protocol library (content/healthcare-
+   * protocols.json) — for the Protocols tab to show what's available
+   * before/independent of running a match against a specific patient.
+   * Optional params.specialty filters to one specialty.
+   */
+  registerLensAction("healthcare", "protocols-list", (_ctx, _a, params = {}) => {
+    try {
+      const specialty = String(params.specialty || "").trim();
+      const all = listProtocols();
+      const protocols = specialty ? all.filter((p) => p.specialty === specialty) : all;
+      return { ok: true, result: { protocols, specialties: listSpecialties(), total: all.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 
   /**
    * exportEncounter

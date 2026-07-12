@@ -10,7 +10,7 @@
  */
 
 import { useState } from 'react';
-import { Calculator, TrendingUp, FileText, Scale, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { Calculator, TrendingUp, FileText, Scale, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,7 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'tb' | 'pl' | 'aging' | 'var' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'tb' | 'pl' | 'aging' | 'var' | 'validate' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
 // Result shapes below are pinned to the REAL registerLensAction handlers in
@@ -52,6 +52,12 @@ interface AgingBucket { invoices: { invoiceId?: string; customer?: string; amoun
 interface AgingResult { totalInvoices: number; unpaidCount: number; totalOutstanding: number; totalOverdue: number; avgDaysOutstanding: number; buckets: Record<string, AgingBucket> }
 interface VarLine { category?: string; planned: number; actual: number; variance: number; variancePct: number; status: string }
 interface VarResult { period?: string; lineItems: VarLine[]; totalPlanned: number; totalActual: number; totalVariance: number; totalVariancePct: number; overBudgetCount: number; largestOverrun: VarLine | null }
+// validate-ledger (server/domains/accounting.js:390) — double-entry integrity
+// checker for pasted/imported books. Reuses the same `{accounts:[{entries:
+// [{debit,credit}]}]}` shape as the TB textarea above (the macro reads
+// artifact.data.accounts directly), so "Validate" runs against the TB JSON.
+interface AccountIssue { account?: string; issue: string; balance: number }
+interface ValidateResult { validatedAt?: string; totalDebits: number; totalCredits: number; difference: number; isBalanced: boolean; accountCount: number; accountIssues: AccountIssue[]; severity: 'error' | 'warning' | 'ok'; message: string }
 
 export function AccountingActionPanel() {
   const [tbText, setTbText] = useState('');
@@ -66,6 +72,7 @@ export function AccountingActionPanel() {
   const [plResult, setPlResult] = useState<PlResult | null>(null);
   const [agingResult, setAgingResult] = useState<AgingResult | null>(null);
   const [varResult, setVarResult] = useState<VarResult | null>(null);
+  const [validateResult, setValidateResult] = useState<ValidateResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
@@ -104,6 +111,17 @@ export function AccountingActionPanel() {
       const r = await callMacro<VarResult>('budgetVariance', { artifact: { data: parsed } });
       if (r.ok && r.result) { setVarResult(r.result); pipe.publish('accounting.var', r.result, { label: `Variance ${r.result.totalVariance >= 0 ? '+' : ''}$${r.result.totalVariance.toLocaleString()}` }); ok(`Variance ${r.result.totalVariance >= 0 ? '+' : ''}$${r.result.totalVariance.toLocaleString()}.`); } else err(r.error ?? 'var failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid variance JSON.' : pickMessage(e)); } finally { setBusy(null); }
+  }
+  async function actValidate() {
+    if (!tbText.trim()) { err('Paste books JSON in the TB field first (same accounts/entries shape).'); return; }
+    try { const parsed = JSON.parse(tbText); setBusy('validate'); setFeedback(null);
+      const r = await callMacro<ValidateResult>('validate-ledger', { artifact: { data: parsed } });
+      if (r.ok && r.result) {
+        setValidateResult(r.result);
+        pipe.publish('accounting.validate', r.result, { label: r.result.message });
+        if (r.result.severity === 'error') err(r.result.message); else ok(r.result.message);
+      } else err(r.error ?? 'validate failed');
+    } catch (e) { err(e instanceof SyntaxError ? 'Invalid books JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   const plPeriodLabel = (pl: PlResult | null) => pl?.period ? `${pl.period.start} → ${pl.period.end}` : 'period';
   const varOverallStatus = (v: VarResult) => v.totalVariance > 0 ? 'over-budget' : v.totalVariance < 0 ? 'under-budget' : 'on-budget';
@@ -171,6 +189,7 @@ export function AccountingActionPanel() {
     { id: 'pl' as ActionId, label: 'P&L', desc: 'profitLoss', icon: TrendingUp, accent: '#22c55e', handler: actPl },
     { id: 'aging' as ActionId, label: 'AR aging', desc: 'invoiceAging', icon: FileText, accent: '#f59e0b', handler: actAging },
     { id: 'var' as ActionId, label: 'Variance', desc: 'budgetVariance', icon: Calculator, accent: '#a855f7', handler: actVar },
+    { id: 'validate' as ActionId, label: 'Validate', desc: 'validate-ledger', icon: ShieldCheck, accent: '#14b8a6', handler: actValidate },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private books DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send to CFO', icon: Send, accent: '#ec4899', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon P&L card', icon: Globe, accent: '#15803d', handler: actPublish },
@@ -182,7 +201,7 @@ export function AccountingActionPanel() {
       <header className="flex items-center gap-2 border-b border-emerald-500/10 pb-2">
         <Calculator className="h-4 w-4 text-emerald-400" />
         <h3 className="text-sm font-semibold text-white">Accounting bench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">TB · P&L · AR aging · variance</span>
+        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">TB · P&L · AR aging · variance · validate</span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -209,7 +228,7 @@ export function AccountingActionPanel() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-2">
         {actions.map(act => {
           const Icon = act.icon; const isBusy = busy === act.id;
           return (
@@ -256,6 +275,24 @@ export function AccountingActionPanel() {
             <div className={cn('text-2xl font-bold', varResult.totalVariance >= 0 ? 'text-emerald-300' : 'text-red-300')}>{varResult.totalVariance >= 0 ? '+' : ''}${varResult.totalVariance.toLocaleString()}</div>
             <div className="text-[10px] text-zinc-400">${varResult.totalActual.toLocaleString()} / ${varResult.totalPlanned.toLocaleString()}</div>
             {varResult.lineItems.slice(0, 4).map((l, i) => <div key={i} className={cn('text-[10px] mt-0.5', l.variance < 0 ? 'text-red-300' : 'text-emerald-300')}><span className="font-mono">{l.category}</span> {l.variancePct >= 0 ? '+' : ''}{l.variancePct}%</div>)}
+          </div>
+        )}
+        {validateResult && (
+          <div className={cn('rounded-md border p-2.5 max-h-44 overflow-y-auto', validateResult.severity === 'error' ? 'border-red-500/30 bg-red-500/5' : validateResult.severity === 'warning' ? 'border-amber-500/30 bg-amber-500/5' : 'border-emerald-500/30 bg-emerald-500/5')}>
+            <div className="text-[10px] uppercase tracking-wider text-teal-300 font-semibold">Ledger validation</div>
+            <div className={cn('text-2xl font-bold', validateResult.severity === 'error' ? 'text-red-300' : validateResult.severity === 'warning' ? 'text-amber-300' : 'text-emerald-300')}>
+              {validateResult.severity === 'error' ? '✗' : validateResult.severity === 'warning' ? '⚠' : '✓'}
+              <span className="text-xs text-zinc-400"> {validateResult.isBalanced ? 'balanced' : `off by $${validateResult.difference}`}</span>
+            </div>
+            <div className="text-[10px] text-zinc-400">D ${validateResult.totalDebits.toLocaleString()} · C ${validateResult.totalCredits.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">{validateResult.accountCount} account{validateResult.accountCount === 1 ? '' : 's'} checked</div>
+            {validateResult.accountIssues.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                {validateResult.accountIssues.slice(0, 5).map((iss, i) => (
+                  <div key={i} className="text-[10px] text-amber-300"><span className="font-mono">{iss.account ?? '—'}</span>: {iss.issue} (${iss.balance.toLocaleString()})</div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

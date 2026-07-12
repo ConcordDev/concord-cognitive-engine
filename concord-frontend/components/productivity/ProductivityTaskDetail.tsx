@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Check, Trash2, MessageSquare, UserPlus } from 'lucide-react';
+import { Loader2, Plus, Check, Trash2, MessageSquare, UserPlus, Repeat } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -27,10 +27,58 @@ interface TaskDetail {
   assigneeId: string | null;
   subtasks: Subtask[];
   comments?: Comment[];
+  recurring: string | null;
 }
 
 const PRIORITY_COLOR: Record<number, string> = {
   1: 'text-rose-400', 2: 'text-amber-400', 3: 'text-sky-400', 4: 'text-zinc-400',
+};
+
+// Structured recurrence kinds this control offers. These are exactly the
+// patterns `server/domains/productivity.js#normRecurring` accepts on write
+// (daily / weekly / monthly / yearly / weekday, plus the every_N_days
+// custom-interval family) — this is a compact picker, not free-text NLP,
+// so it can never write a value the backend would reject.
+type RecurKind = 'none' | 'daily' | 'weekday' | 'weekly' | 'monthly' | 'yearly' | 'every_n_days';
+
+function kindFromBackendValue(v: string | null): { kind: RecurKind; n: number } {
+  if (!v) return { kind: 'none', n: 3 };
+  if (v === 'daily' || v === 'weekday' || v === 'weekly' || v === 'monthly' || v === 'yearly') {
+    return { kind: v, n: 3 };
+  }
+  const m = /^every_(\d+)_days$/.exec(v);
+  if (m) return { kind: 'every_n_days', n: Math.max(1, Math.min(365, parseInt(m[1], 10))) };
+  return { kind: 'none', n: 3 };
+}
+
+/**
+ * Mirrors `server/domains/productivity.js#advanceDate` exactly (same
+ * branches, same UTC date arithmetic) so the "next occurrence" preview
+ * below is a real computation of what the backend will produce on
+ * completion — never a fabricated guess. Kept in lockstep with the
+ * server function; if that function changes, update this one too.
+ */
+function mirrorAdvanceDate(dateStr: string | null, recurring: string | null): string | null {
+  if (!recurring) return null;
+  const base = dateStr ? new Date(dateStr + 'T00:00:00Z') : new Date();
+  if (recurring === 'daily') base.setUTCDate(base.getUTCDate() + 1);
+  else if (recurring === 'weekly') base.setUTCDate(base.getUTCDate() + 7);
+  else if (recurring === 'monthly') base.setUTCMonth(base.getUTCMonth() + 1);
+  else if (recurring === 'yearly') base.setUTCFullYear(base.getUTCFullYear() + 1);
+  else if (recurring === 'weekday') {
+    do { base.setUTCDate(base.getUTCDate() + 1); }
+    while (base.getUTCDay() === 0 || base.getUTCDay() === 6);
+  } else {
+    const m = /^every_(\d+)_days$/.exec(recurring);
+    if (m) base.setUTCDate(base.getUTCDate() + parseInt(m[1], 10));
+    else return null;
+  }
+  return base.toISOString().slice(0, 10);
+}
+
+const RECUR_LABEL: Record<RecurKind, string> = {
+  none: 'Does not repeat', daily: 'Daily', weekday: 'Every weekday',
+  weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly', every_n_days: 'Every N days',
 };
 
 export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; onChange: () => void }) {
@@ -41,6 +89,9 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
   const [subForm, setSubForm] = useState({ content: '', priority: '4', dueDate: '' });
   const [assignee, setAssignee] = useState('');
   const [commentBody, setCommentBody] = useState('');
+  const [recurKind, setRecurKind] = useState<RecurKind>('none');
+  const [recurN, setRecurN] = useState(3);
+  const [savingRecur, setSavingRecur] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -51,11 +102,27 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
     const t = (d.data?.result?.task as TaskDetail | undefined) || null;
     setTask(t);
     setAssignee(t?.assigneeId || '');
+    const { kind, n } = kindFromBackendValue(t?.recurring ?? null);
+    setRecurKind(kind);
+    setRecurN(n);
     setComments(c.data?.result?.comments || []);
     setLoading(false);
   }, [taskId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  const backendRecurValue = (kind: RecurKind, n: number): string =>
+    kind === 'none' ? '' : kind === 'every_n_days' ? `every_${Math.max(1, Math.min(365, n))}_days` : kind;
+
+  const saveRecurring = async (kind: RecurKind, n: number) => {
+    setSavingRecur(true);
+    const r = await lensRun('productivity', 'task-update', { id: taskId, recurring: backendRecurValue(kind, n) });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed to update recurrence.'); setSavingRecur(false); return; }
+    setError(null);
+    await refresh();
+    setSavingRecur(false);
+    onChange();
+  };
 
   const addSub = async () => {
     if (!subForm.content.trim()) { setError('Subtask content is required.'); return; }
@@ -114,6 +181,55 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
           <span className={PRIORITY_COLOR[task.priority]}>P{task.priority}</span>
           {task.dueDate && <span className="ml-2">{task.dueDate}</span>}
         </p>
+      </div>
+
+      {/* Recurrence — structured picker, not free-text NLP. Options are exactly
+          the patterns the backend's normRecurring accepts, so every write
+          round-trips cleanly through task-update. */}
+      <div className="space-y-1.5">
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 flex items-center gap-1">
+          <Repeat className="w-3 h-3" /> Repeats
+        </p>
+        <div className="flex gap-1.5 items-center flex-wrap">
+          <select
+            aria-label="Repeats"
+            value={recurKind}
+            disabled={savingRecur}
+            onChange={(e) => {
+              const kind = e.target.value as RecurKind;
+              setRecurKind(kind);
+              void saveRecurring(kind, recurN);
+            }}
+            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 disabled:opacity-50"
+          >
+            {(Object.keys(RECUR_LABEL) as RecurKind[]).map((k) => (
+              <option key={k} value={k}>{RECUR_LABEL[k]}</option>
+            ))}
+          </select>
+          {recurKind === 'every_n_days' && (
+            <>
+              <span className="text-xs text-zinc-400">every</span>
+              <input
+                type="number" min={1} max={365} value={recurN}
+                disabled={savingRecur}
+                aria-label="Repeat interval in days"
+                onChange={(e) => setRecurN(Math.max(1, Math.min(365, Number(e.target.value) || 1)))}
+                onBlur={() => void saveRecurring('every_n_days', recurN)}
+                className="w-16 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 disabled:opacity-50"
+              />
+              <span className="text-xs text-zinc-400">days</span>
+            </>
+          )}
+          {savingRecur && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-500" />}
+        </div>
+        {recurKind !== 'none' && task.dueDate && (
+          <p className="text-[11px] text-zinc-500">
+            Next occurrence after completion: {mirrorAdvanceDate(task.dueDate, backendRecurValue(recurKind, recurN))}
+          </p>
+        )}
+        {recurKind !== 'none' && !task.dueDate && (
+          <p className="text-[11px] text-zinc-500">Set a due date to see the next occurrence.</p>
+        )}
       </div>
 
       {/* Assignee */}

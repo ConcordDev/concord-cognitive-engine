@@ -1,12 +1,24 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Receipt, Loader2, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Receipt, Loader2, Plus, Trash2, CheckCircle, AlertCircle, Sparkles, Truck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
 interface Vendor { id: string; name: string; defaultExpenseAccountId: string }
+// Real shape of the `accounting.ai-suggest-vendor` macro's result
+// (server/domains/accounting.js:2244) — token-overlap match against
+// existing vendors, or a suggested new-vendor name extracted from the
+// free text. `score` is the macro's own hits/tokens ratio, never invented
+// client-side.
+interface VendorSuggestion {
+  matched: boolean;
+  vendorId?: string;
+  vendorName?: string;
+  score?: number;
+  suggestedNewVendor?: string;
+}
 interface Bill {
   id: string; number: string;
   vendorId: string; vendorName: string;
@@ -26,6 +38,14 @@ export function BillsPanel() {
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<'all' | 'open' | 'paid'>('open');
   const [draft, setDraft] = useState({ vendorId: '', total: '', expenseAccountId: '', memo: '', issuedAt: '', dueAt: '' });
+
+  // Vendor combobox — free-text entry backed by ai-suggest-vendor instead
+  // of the old plain <select> of existing vendors only.
+  const [vendorQuery, setVendorQuery] = useState('');
+  const [vendorSuggestion, setVendorSuggestion] = useState<VendorSuggestion | null>(null);
+  const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
+  const [suggestingVendor, setSuggestingVendor] = useState(false);
+  const [creatingVendor, setCreatingVendor] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -49,6 +69,47 @@ export function BillsPanel() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // Debounced ai-suggest-vendor lookup as the user types a vendor name that
+  // doesn't already match a picked vendor. Real macro call, real score —
+  // no fabricated confidence, no fabricated candidate list.
+  useEffect(() => {
+    const q = vendorQuery.trim();
+    if (draft.vendorId || q.length < 2) { setVendorSuggestion(null); setSuggestingVendor(false); return; }
+    setSuggestingVendor(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await lensRun({ domain: 'accounting', action: 'ai-suggest-vendor', input: { description: q } });
+        setVendorSuggestion(r.data?.ok && r.data.result ? (r.data.result as unknown as VendorSuggestion) : null);
+      } catch (e) { console.error('[Bills] ai-suggest-vendor failed', e); setVendorSuggestion(null); }
+      finally { setSuggestingVendor(false); }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [vendorQuery, draft.vendorId]);
+
+  function selectVendor(v: Vendor) {
+    setDraft(d => ({ ...d, vendorId: v.id, expenseAccountId: v.defaultExpenseAccountId || d.expenseAccountId }));
+    setVendorQuery(v.name);
+    setVendorSuggestion(null);
+    setVendorDropdownOpen(false);
+  }
+
+  async function createVendorFromSuggestion() {
+    const name = vendorSuggestion?.suggestedNewVendor?.trim();
+    if (!name || creatingVendor) return;
+    setCreatingVendor(true);
+    try {
+      const r = await lensRun({ domain: 'accounting', action: 'vendors-create', input: { name } });
+      const v = r.data?.result?.vendor as Vendor | undefined;
+      if (v) { setVendors(prev => [...prev, v]); selectVendor(v); }
+    } catch (e) { console.error('[Bills] vendor create-from-suggestion failed', e); }
+    finally { setCreatingVendor(false); }
+  }
+
+  const filteredVendors = (vendorQuery.trim()
+    ? vendors.filter(v => v.name.toLowerCase().includes(vendorQuery.trim().toLowerCase()))
+    : vendors
+  ).slice(0, 6);
+
   async function create() {
     if (!draft.vendorId || !draft.total) return;
     const vendor = vendors.find(v => v.id === draft.vendorId);
@@ -60,6 +121,8 @@ export function BillsPanel() {
         input: { ...draft, total: Number(draft.total), expenseAccountId },
       });
       setDraft({ vendorId: '', total: '', expenseAccountId: '', memo: '', issuedAt: '', dueAt: '' });
+      setVendorQuery('');
+      setVendorSuggestion(null);
       setCreating(false);
       await refresh();
     } catch (e) { console.error('[Bills] create failed', e); }
@@ -117,13 +180,65 @@ export function BillsPanel() {
 
         {creating && (
           <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
-            <select value={draft.vendorId} onChange={e => {
-              const v = vendors.find(x => x.id === e.target.value);
-              setDraft({ ...draft, vendorId: e.target.value, expenseAccountId: v?.defaultExpenseAccountId || draft.expenseAccountId });
-            }} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
-              <option value="">Vendor *</option>
-              {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-            </select>
+            <div className="col-span-4 relative">
+              <input
+                value={vendorQuery}
+                onChange={e => { setVendorQuery(e.target.value); setDraft(d => ({ ...d, vendorId: '' })); setVendorDropdownOpen(true); }}
+                onFocus={() => setVendorDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setVendorDropdownOpen(false), 150)}
+                placeholder="Vendor * (type to search or add)"
+                className={cn(
+                  'w-full px-2 py-1.5 pr-6 text-xs bg-lattice-deep border rounded text-white',
+                  draft.vendorId ? 'border-emerald-500/40' : 'border-lattice-border',
+                )}
+              />
+              {draft.vendorId && (
+                <CheckCircle className="w-3 h-3 text-emerald-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              )}
+              {vendorDropdownOpen && (filteredVendors.length > 0 || suggestingVendor || vendorSuggestion) && (
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-[#0d1117] border border-emerald-500/20 rounded shadow-lg max-h-48 overflow-y-auto">
+                  {filteredVendors.map(v => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onMouseDown={() => selectVendor(v)}
+                      className="w-full text-left px-2 py-1.5 text-xs text-gray-200 hover:bg-emerald-500/10 flex items-center gap-1.5"
+                    >
+                      <Truck className="w-3 h-3 text-gray-500 flex-shrink-0" />{v.name}
+                    </button>
+                  ))}
+                  {suggestingVendor && (
+                    <div className="px-2 py-1.5 text-[10px] text-gray-400 flex items-center gap-1.5 border-t border-white/5">
+                      <Loader2 className="w-3 h-3 animate-spin" />Checking AI match…
+                    </div>
+                  )}
+                  {!suggestingVendor && vendorSuggestion?.matched && vendorSuggestion.vendorId && !filteredVendors.some(v => v.id === vendorSuggestion!.vendorId) && (
+                    <button
+                      type="button"
+                      onMouseDown={() => selectVendor({
+                        id: vendorSuggestion!.vendorId!,
+                        name: vendorSuggestion!.vendorName || vendorQuery,
+                        defaultExpenseAccountId: vendors.find(v => v.id === vendorSuggestion!.vendorId)?.defaultExpenseAccountId || '',
+                      })}
+                      className="w-full text-left px-2 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/10 flex items-center gap-1.5 border-t border-white/5"
+                    >
+                      <Sparkles className="w-3 h-3 flex-shrink-0" />AI match: {vendorSuggestion.vendorName} · {Math.round((vendorSuggestion.score ?? 0) * 100)}%
+                    </button>
+                  )}
+                  {!suggestingVendor && vendorSuggestion && !vendorSuggestion.matched && vendorSuggestion.suggestedNewVendor && (
+                    <button
+                      type="button"
+                      disabled={creatingVendor}
+                      onMouseDown={createVendorFromSuggestion}
+                      className="w-full text-left px-2 py-1.5 text-xs text-amber-300 hover:bg-amber-500/10 flex items-center gap-1.5 border-t border-white/5 disabled:opacity-50"
+                    >
+                      {creatingVendor ? <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" /> : <Plus className="w-3 h-3 flex-shrink-0" />}
+                      Create vendor &quot;{vendorSuggestion.suggestedNewVendor}&quot;
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             <input type="number" step="0.01" value={draft.total} onChange={e => setDraft({ ...draft, total: e.target.value })} placeholder="Total *" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
             <select value={draft.expenseAccountId} onChange={e => setDraft({ ...draft, expenseAccountId: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
               <option value="">Expense account…</option>

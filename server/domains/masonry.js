@@ -66,6 +66,7 @@ export default function registerMasonryActions(registerLensAction) {
     for (const k of [
       "takeoffs", "proposals", "schedule", "photos",
       "changeOrders", "priceBook", "invoices", "codeRefs", "clients",
+      "inspections", "certifications",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -676,6 +677,192 @@ export default function registerMasonryActions(registerLensAction) {
       const list = mlist(s.clients, maid(ctx));
       const idx = list.findIndex((c) => c.id === params.id);
       if (idx < 0) return { ok: false, error: "Client not found" };
+      list.splice(idx, 1);
+      saveMasonState();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // FEATURE 10 — Job inspections (AHJ/QA inspections scheduled against a
+  // real job; pass/fail/pending result with deficiency notes + a
+  // re-inspection date on failure). Closes the "Inspections" gap named in
+  // docs/lens-specs/masonry-capability-map.md's "Investigated and honestly
+  // deferred" section, modeled on change-order-* per that doc's own
+  // recommendation: numbered records, an explicit job link, and a
+  // create/list/update-status shape. Unlike change-order-create's soft
+  // `jobId || "general"` default, an inspection with no job reference is
+  // a genuinely free-floating record — jobId is REQUIRED here. `jobId` is
+  // the schedule record's own `id` (not free text) so the frontend can
+  // offer a real job picker sourced from schedule-list instead of a
+  // typed field; jobTitle/jobFound are looked up live, never fabricated —
+  // an inspection against a since-deleted job still displays honestly
+  // (jobFound:false) instead of silently losing its link.
+  // ─────────────────────────────────────────────────────────────────────
+  const INSPECTION_TYPES = [
+    "footing_foundation", "reinforcement_placement", "grout_mortar_qa",
+    "wall_tie_spacing", "pre_pour_grout_cells", "flashing_weatherproofing",
+    "ahj_building_inspection", "final_walkthrough",
+  ];
+  const INSPECTION_RESULTS = ["pending", "pass", "fail"];
+
+  registerLensAction("masonry", "inspection-add", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = maid(ctx);
+      const jobId = mclean(params.jobId, 60);
+      if (!jobId) return { ok: false, error: "jobId required — inspections must be scheduled against a job" };
+      const inspectionType = mclean(params.inspectionType, 40).toLowerCase();
+      if (!INSPECTION_TYPES.includes(inspectionType)) {
+        return { ok: false, error: `invalid inspectionType; must be one of ${INSPECTION_TYPES.join(", ")}` };
+      }
+      const inspector = mclean(params.inspector, 120);
+      if (!inspector) return { ok: false, error: "inspector required" };
+      const scheduledDate = mclean(params.scheduledDate, 10);
+      if (!scheduledDate) return { ok: false, error: "scheduledDate required" };
+      const job = mlist(s.schedule, userId).find((j) => j.id === jobId);
+      const list = mlist(s.inspections, userId);
+      const num = `INSP-${String(list.length + 1).padStart(3, "0")}`;
+      const rec = {
+        id: mid("insp"), number: num, jobId,
+        jobTitle: job ? job.title : null, jobFound: !!job,
+        inspectionType, inspector, scheduledDate,
+        result: "pending", deficiencyNotes: null, reInspectionDate: null,
+        notes: mclean(params.notes, 500),
+        createdAt: mnow(), updatedAt: mnow(), completedAt: null,
+      };
+      list.unshift(rec);
+      saveMasonState();
+      return { ok: true, result: rec };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("masonry", "inspection-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = maid(ctx);
+      let list = mlist(s.inspections, userId);
+      if (params.jobId) list = list.filter((i) => i.jobId === params.jobId);
+      // Re-derive jobFound/jobTitle live against the current schedule so a
+      // job renamed or deleted after the inspection was scheduled is
+      // reflected honestly, not frozen at creation time.
+      const jobsById = new Map(mlist(s.schedule, userId).map((j) => [j.id, j]));
+      const enriched = list.map((i) => {
+        const job = jobsById.get(i.jobId);
+        return { ...i, jobTitle: job ? job.title : null, jobFound: !!job };
+      });
+      const passCount = enriched.filter((i) => i.result === "pass").length;
+      const failCount = enriched.filter((i) => i.result === "fail").length;
+      const pendingCount = enriched.filter((i) => i.result === "pending").length;
+      return { ok: true, result: { inspections: enriched, passCount, failCount, pendingCount } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("masonry", "inspection-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = mlist(s.inspections, maid(ctx));
+      const insp = list.find((i) => i.id === params.id);
+      if (!insp) return { ok: false, error: "Inspection not found" };
+      const result = INSPECTION_RESULTS.includes(params.result) ? params.result : null;
+      if (!result) return { ok: false, error: `result required; must be one of ${INSPECTION_RESULTS.join(", ")}` };
+      if (result === "fail") {
+        const deficiencyNotes = mclean(params.deficiencyNotes, 1000);
+        if (!deficiencyNotes) return { ok: false, error: "deficiencyNotes required when result is fail" };
+        insp.deficiencyNotes = deficiencyNotes;
+        insp.reInspectionDate = mclean(params.reInspectionDate, 10) || null;
+      } else if (result === "pass") {
+        insp.deficiencyNotes = null;
+        insp.reInspectionDate = null;
+      } else {
+        // back to pending — keep any prior deficiency notes visible, but
+        // allow the caller to update them (e.g. re-inspection notes).
+        if (params.deficiencyNotes != null) insp.deficiencyNotes = mclean(params.deficiencyNotes, 1000) || null;
+        if (params.reInspectionDate != null) insp.reInspectionDate = mclean(params.reInspectionDate, 10) || null;
+      }
+      insp.result = result;
+      insp.updatedAt = mnow();
+      insp.completedAt = result === "pending" ? null : mnow();
+      saveMasonState();
+      return { ok: true, result: insp };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // FEATURE 11 — Crew certifications (formal license/training records —
+  // OSHA 10/30, lift-operator, confined-space, silica-exposure-control,
+  // NCMA/MCAA mason certification tiers). Closes the "Certifications" gap
+  // named alongside Inspections in docs/lens-specs/masonry-capability-map.md.
+  // Modeled on plumbing.js's techCertAdd/techCertList/techCertRemove: expiry
+  // is READ-TIME-DERIVED (expiryStatus/isExpired computed on every list/add,
+  // never persisted), because nothing in this domain currently gates a
+  // downstream action on cert status — no dispatch/hiring/job-assignment
+  // check reads it (contrast hr.js's i9-* family, which persists status
+  // because an expired I-9 blocks employment actions and E-Verify
+  // submission can force a rejection). If a future masonry feature needs to
+  // block crew assignment on an expired cert, that's the trigger to move to
+  // hr.js's sweep-and-persist shape — not before. Masonry has no separate
+  // "crew member" entity (schedule-add's `crew` field is a freeform name
+  // list) so certifications are a flat per-user list keyed by
+  // `crewMemberName` (free text); the "roster" is derived by grouping.
+  // ─────────────────────────────────────────────────────────────────────
+  function certExpiryStatus(expiryDate) {
+    if (!expiryDate) return "no_expiry";
+    const today = mnow().slice(0, 10);
+    if (expiryDate < today) return "expired";
+    const daysUntil = Math.round((new Date(`${expiryDate}T00:00:00Z`) - new Date(`${today}T00:00:00Z`)) / 86400000);
+    return daysUntil <= 30 ? "expiring_soon" : "valid";
+  }
+  function withCertStatus(c) {
+    const expiryStatus = certExpiryStatus(c.expiryDate);
+    return { ...c, expiryStatus, isExpired: expiryStatus === "expired" };
+  }
+
+  registerLensAction("masonry", "cert-add", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = maid(ctx);
+      const crewMemberName = mclean(params.crewMemberName, 120);
+      if (!crewMemberName) return { ok: false, error: "crewMemberName required" };
+      const certType = mclean(params.certType, 160);
+      if (!certType) return { ok: false, error: "certType required" };
+      const issuingBody = mclean(params.issuingBody, 120);
+      if (!issuingBody) return { ok: false, error: "issuingBody required" };
+      const rec = {
+        id: mid("cert"), crewMemberName, certType, issuingBody,
+        licenseNumber: mclean(params.licenseNumber, 60),
+        issueDate: mclean(params.issueDate, 10) || null,
+        expiryDate: mclean(params.expiryDate, 10) || null,
+        createdAt: mnow(), updatedAt: mnow(),
+      };
+      const list = mlist(s.certifications, userId);
+      list.unshift(rec);
+      saveMasonState();
+      return { ok: true, result: withCertStatus(rec) };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("masonry", "cert-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      let list = mlist(s.certifications, maid(ctx)).map(withCertStatus);
+      if (params.crewMemberName) {
+        const n = mclean(params.crewMemberName, 120).toLowerCase();
+        list = list.filter((c) => c.crewMemberName.toLowerCase() === n);
+      }
+      const roster = [...new Set(list.map((c) => c.crewMemberName))].sort();
+      const expiredCount = list.filter((c) => c.expiryStatus === "expired").length;
+      const expiringSoonCount = list.filter((c) => c.expiryStatus === "expiring_soon").length;
+      return { ok: true, result: { certifications: list, roster, expiredCount, expiringSoonCount } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("masonry", "cert-remove", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = mlist(s.certifications, maid(ctx));
+      const idx = list.findIndex((c) => c.id === params.id);
+      if (idx < 0) return { ok: false, error: "Certification not found" };
       list.splice(idx, 1);
       saveMasonState();
       return { ok: true, result: { deleted: params.id } };

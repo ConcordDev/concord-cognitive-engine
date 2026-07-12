@@ -1123,7 +1123,7 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
       'Profile artifact persists via /api/social/profile with full CRUD',
       'Followers + Following lists rendered from /api/social/followers + /following',
       'Top-3 earners surface from listing × downloads or totalEarnings',
-      'Tier-pricing edit flow (usage / remix / commercial) PATCHes /api/marketplace/listings/:id',
+      'Tier-pricing edit flow (usage / remix / commercial) calls marketplace.updateListing (dtu.marketplace, not the dead STATE.marketplaceListings store)',
       'Withdrawal eligibility distinguishes eligible vs pending vs hold',
       'Cascade panel walks downstream lineage with per-generation share',
       'Broadcast artifact persists in lens-artifact runtime on each profile save',

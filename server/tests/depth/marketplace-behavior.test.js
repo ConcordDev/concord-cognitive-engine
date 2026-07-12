@@ -1042,6 +1042,160 @@ describe("marketplace — DTU listing + plain purchase (register family)", () =>
   });
 });
 
+describe("marketplace — Creator lens Listings tab: ownership gate + myListings/updateListing/unlist/relist (register family)", () => {
+  // These macros back the Creator lens's Listings tab (search/sort/CSV/edit/
+  // withdraw/relist) — previously pointed at the dead STATE.marketplaceListings
+  // store with no purchase route anywhere. Redirected to the real,
+  // purchase-tested dtu.marketplace + purchaseWithRoyalties system (see
+  // docs/lens-specs/creator-capability-map.md finding #3). None of these
+  // touch fee/royalty math — purchaseWithRoyalties itself is untouched and
+  // already covered by the money-path tests below.
+  let runMacro, STATE, ctx, other;
+  before(async () => {
+    ({ runMacro, STATE, ctx } = await macroRuntime("marketplace-listings-tab"));
+    other = (await macroRuntime("marketplace-listings-tab-other")).ctx;
+  });
+
+  function seedDtu(id, owner, overrides = {}) {
+    const dtu = {
+      id,
+      title: overrides.title || `DTU ${id}`,
+      scope: "personal",
+      ownerId: owner,
+      human: { summary: overrides.summary || `summary ${id}` },
+      meta: { createdBy: owner, type: "dtu_pack" },
+      lineage: { parents: [] },
+      createdAt: new Date().toISOString(),
+      ...overrides,
+    };
+    STATE.dtus.set(id, dtu);
+    return dtu;
+  }
+
+  it("list rejects a caller who does not own the DTU", async () => {
+    seedDtu("owg-dtu-1", other.actor.userId);
+    const r = await runMacro("marketplace", "list", { dtuId: "owg-dtu-1", price: 10 }, ctx);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not_your_dtu/);
+    // the DTU must be untouched — no listing leaked onto someone else's item
+    assert.equal(STATE.dtus.get("owg-dtu-1").marketplace, undefined);
+  });
+
+  it("list rejects a non-personal-scope DTU (e.g. already listed, or global/marketplace-scoped)", async () => {
+    seedDtu("owg-dtu-2", ctx.actor.userId, { scope: "global" });
+    const r = await runMacro("marketplace", "list", { dtuId: "owg-dtu-2", price: 10 }, ctx);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /can_only_list_personal_dtus/);
+  });
+
+  it("list succeeds for the true owner; myListings surfaces it as active with sourceDtuId === id", async () => {
+    seedDtu("lst-dtu-1", ctx.actor.userId, { title: "My Track" });
+    const listed = await runMacro("marketplace", "list", { dtuId: "lst-dtu-1", price: 25 }, ctx);
+    assert.equal(listed.ok, true);
+
+    const mine = await runMacro("marketplace", "myListings", {}, ctx);
+    assert.equal(mine.ok, true);
+    const row = mine.listings.find((l) => l.id === "lst-dtu-1");
+    assert.ok(row, "the new listing appears in myListings");
+    assert.equal(row.sourceDtuId, "lst-dtu-1");
+    assert.equal(row.status, "active");
+    assert.equal(row.price, 25);
+    assert.equal(row.downloads, 0);
+
+    // it must NOT show up in someone else's myListings
+    const theirs = await runMacro("marketplace", "myListings", {}, other);
+    assert.ok(!theirs.listings.some((l) => l.id === "lst-dtu-1"));
+  });
+
+  it("updateListing edits price/title/tierPrices without resetting purchase count", async () => {
+    seedDtu("upd-dtu-1", ctx.actor.userId, { title: "Original Title" });
+    await runMacro("marketplace", "list", { dtuId: "upd-dtu-1", price: 10 }, ctx);
+    // simulate a prior sale so we can prove update never wipes it
+    STATE.dtus.get("upd-dtu-1").marketplace.purchases = 3;
+
+    const upd = await runMacro("marketplace", "updateListing", {
+      dtuId: "upd-dtu-1", price: 40, title: "New Title",
+      tierPrices: { usage: 5, remix: 15, commercial: 60 },
+    }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.listing.price, 40);
+    assert.equal(upd.listing.title, "New Title");
+    assert.deepEqual(upd.listing.tierPrices, { usage: 5, remix: 15, commercial: 60 });
+    // purchase history survives an edit (this is the bug `marketplace.list`
+    // itself would have if reused for editing — it always resets purchases:0)
+    assert.equal(STATE.dtus.get("upd-dtu-1").marketplace.purchases, 3);
+  });
+
+  it("updateListing rejects a non-owner", async () => {
+    seedDtu("upd-dtu-2", ctx.actor.userId);
+    await runMacro("marketplace", "list", { dtuId: "upd-dtu-2", price: 10 }, ctx);
+    const bad = await runMacro("marketplace", "updateListing", { dtuId: "upd-dtu-2", price: 999 }, other);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /not_listing_owner/);
+    assert.equal(STATE.dtus.get("upd-dtu-2").marketplace.price, 10); // unchanged
+  });
+
+  it("updateListing rejects a DTU that was never listed", async () => {
+    seedDtu("upd-dtu-3", ctx.actor.userId);
+    const bad = await runMacro("marketplace", "updateListing", { dtuId: "upd-dtu-3", price: 5 }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /not_listed/);
+  });
+
+  it("unlist flips status to withdrawn; myListings still returns it (not deleted) but purchaseWithRoyalties now rejects it", async () => {
+    seedDtu("wd-dtu-1", ctx.actor.userId);
+    await runMacro("marketplace", "list", { dtuId: "wd-dtu-1", price: 5 }, ctx);
+    const wd = await runMacro("marketplace", "unlist", { dtuId: "wd-dtu-1" }, ctx);
+    assert.equal(wd.ok, true);
+    assert.equal(wd.listing.listed, false);
+
+    const mine = await runMacro("marketplace", "myListings", {}, ctx);
+    const row = mine.listings.find((l) => l.id === "wd-dtu-1");
+    assert.ok(row, "withdrawn listings stay visible to the owner");
+    assert.equal(row.status, "withdrawn");
+
+    const buy = await runMacro("marketplace", "purchaseWithRoyalties", { dtuId: "wd-dtu-1" }, other);
+    assert.equal(buy.ok, false);
+    assert.match(buy.error, /not_listed/);
+  });
+
+  it("unlist rejects a non-owner", async () => {
+    seedDtu("wd-dtu-2", ctx.actor.userId);
+    await runMacro("marketplace", "list", { dtuId: "wd-dtu-2", price: 5 }, ctx);
+    const bad = await runMacro("marketplace", "unlist", { dtuId: "wd-dtu-2" }, other);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /not_listing_owner/);
+    assert.equal(STATE.dtus.get("wd-dtu-2").marketplace.listed, true); // unchanged
+  });
+
+  it("relist reactivates a withdrawn listing and clears withdrawnAt", async () => {
+    seedDtu("re-dtu-1", ctx.actor.userId);
+    await runMacro("marketplace", "list", { dtuId: "re-dtu-1", price: 5 }, ctx);
+    await runMacro("marketplace", "unlist", { dtuId: "re-dtu-1" }, ctx);
+    const re = await runMacro("marketplace", "relist", { dtuId: "re-dtu-1" }, ctx);
+    assert.equal(re.ok, true);
+    assert.equal(re.listing.listed, true);
+    assert.equal(re.listing.withdrawnAt, undefined);
+
+    const mine = await runMacro("marketplace", "myListings", {}, ctx);
+    assert.equal(mine.listings.find((l) => l.id === "re-dtu-1").status, "active");
+  });
+
+  it("relist rejects a DTU that was never listed", async () => {
+    seedDtu("re-dtu-2", ctx.actor.userId);
+    const bad = await runMacro("marketplace", "relist", { dtuId: "re-dtu-2" }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /not_listed_before/);
+  });
+
+  it("myListings requires authentication", async () => {
+    const anon = { ...ctx, internal: true, actor: { ...ctx.actor, userId: undefined } };
+    const bad = await runMacro("marketplace", "myListings", {}, anon);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /authentication_required/);
+  });
+});
+
 describe("marketplace — purchaseWithRoyalties money path (register family)", () => {
   let runMacro, STATE, ctx;
   before(async () => { ({ runMacro, STATE, ctx } = await macroRuntime("marketplace-royalty")); });

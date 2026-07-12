@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Download, Loader2, FileAudio, CheckCircle, Upload } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 import { PublishAsAdaptiveMusicDialog } from './PublishAsAdaptiveMusicDialog';
 
 interface Render { id: string; projectId: string; projectName: string; trackId: string | null; format: string; sampleRate: number; kind: string; durationSec: number; status: string; downloadUrl?: string; reason?: string; sizeBytes?: number; bouncedAt: string }
@@ -55,7 +56,8 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
   async function bounce() {
     if (!projectId) return;
     try {
-      await lensRun({ domain: 'studio', action: 'bounce', input: { projectId, format: form.format, sampleRate: Number(form.sampleRate), stems: form.stems } });
+      const res = await lensRun({ domain: 'studio', action: 'bounce', input: { projectId, format: form.format, sampleRate: Number(form.sampleRate), stems: form.stems } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'bounce', undefined, { format: form.format, sampleRate: Number(form.sampleRate), stems: form.stems });
       await refresh();
     } catch (e) { console.error('[Bounce] bounce', e); }
   }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Magnet, Loader2, CheckCircle2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface Groove { id: string; name: string; swing: number; velAccent: number }
 interface ResultMsg { ok: boolean; text: string }
@@ -16,7 +17,7 @@ const GRID_OPTIONS = [
   { label: '1/32', value: 0.125 },
 ];
 
-export function QuantizePanel({ clipId }: { clipId?: string }) {
+export function QuantizePanel({ projectId, clipId }: { projectId?: string; clipId?: string }) {
   const [grooves, setGrooves] = useState<Groove[]>([]);
   const [loading, setLoading] = useState(true);
   const [grid, setGrid] = useState(0.25);
@@ -43,8 +44,10 @@ export function QuantizePanel({ clipId }: { clipId?: string }) {
     try {
       const res = await lensRun('studio', 'midi-quantize', { clipId, gridBeats: grid, strength, swing, quantizeLength });
       const r = res.data?.result as { quantized?: number; moved?: number } | undefined;
-      if (res.data?.ok && r) setMsg({ ok: true, text: `Quantized ${r.quantized} notes — ${r.moved} moved.` });
-      else setMsg({ ok: false, text: res.data?.error || 'Quantize failed.' });
+      if (res.data?.ok && r) {
+        setMsg({ ok: true, text: `Quantized ${r.quantized} notes — ${r.moved} moved.` });
+        logStudioCollabEdit(projectId, 'midi-quantize', clipId, { gridBeats: grid, strength, swing, moved: r.moved });
+      } else setMsg({ ok: false, text: res.data?.error || 'Quantize failed.' });
     } catch (e) { console.error('[Quantize] run', e); setMsg({ ok: false, text: 'Quantize failed.' }); }
     finally { setBusy(false); }
   }
@@ -55,8 +58,10 @@ export function QuantizePanel({ clipId }: { clipId?: string }) {
     try {
       const res = await lensRun('studio', 'groove-apply', { clipId, gridBeats: grid, swing: g.swing, velAccent: g.velAccent });
       const r = res.data?.result as { grooved?: number } | undefined;
-      if (res.data?.ok && r) setMsg({ ok: true, text: `Applied "${g.name}" to ${r.grooved} notes.` });
-      else setMsg({ ok: false, text: res.data?.error || 'Groove failed.' });
+      if (res.data?.ok && r) {
+        setMsg({ ok: true, text: `Applied "${g.name}" to ${r.grooved} notes.` });
+        logStudioCollabEdit(projectId, 'groove-apply', clipId, { grooveName: g.name, grooved: r.grooved });
+      } else setMsg({ ok: false, text: res.data?.error || 'Groove failed.' });
     } catch (e) { console.error('[Quantize] groove', e); setMsg({ ok: false, text: 'Groove failed.' }); }
     finally { setBusy(false); }
   }

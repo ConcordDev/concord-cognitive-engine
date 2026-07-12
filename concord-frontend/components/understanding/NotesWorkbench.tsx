@@ -11,10 +11,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import {
   Plus, Search, Loader2, X, Save, Trash2, Tag as TagIcon,
-  Link2, Download, History, GitCompare, FileText, ChevronRight,
+  Link2, Download, History, GitCompare, FileText, ChevronRight, Clock,
 } from 'lucide-react';
 
 // ── Types ───────────────────────────────────────────────────────────
+
+export interface NoteSrs {
+  enabled: boolean;
+  state: 'new' | 'learning' | 'review' | 'relearning';
+  ease: number;
+  interval: number;
+  reps: number;
+  lapses: number;
+  dueAt: string | null;
+  lastReviewedAt: string | null;
+}
 
 export interface Note {
   id: string;
@@ -25,6 +36,7 @@ export interface Note {
   updatedAt: string;
   revisionCount: number;
   wordCount: number;
+  srs: NoteSrs;
 }
 
 interface RevisionRef { index: number; at: string; title: string }
@@ -468,6 +480,27 @@ function NoteEditor({
     }
   }
 
+  // Toggling review is a real macro call (understanding.edit reviewEnabled),
+  // not a client-only flag — reflects instantly (optimistic), reconciles
+  // quietly, and rolls back honestly on failure, matching save()'s pattern.
+  async function toggleReview() {
+    if (!note) return;
+    const nextEnabled = !note.srs.enabled;
+    setNote((n) => (n ? { ...n, srs: { ...n.srs, enabled: nextEnabled } } : n));
+    try {
+      const r = await lensRun<{ note: Note }>('understanding', 'edit', { id: noteId, reviewEnabled: nextEnabled });
+      if (!r.data?.ok) {
+        setNote((n) => (n ? { ...n, srs: { ...n.srs, enabled: !nextEnabled } } : n));
+        setError(r.data?.error || 'toggle review failed');
+      } else if (r.data.result) {
+        setNote(r.data.result.note);
+      }
+    } catch (e) {
+      setNote((n) => (n ? { ...n, srs: { ...n.srs, enabled: !nextEnabled } } : n));
+      setError(e instanceof Error ? e.message : 'toggle review failed');
+    }
+  }
+
   async function remove() {
     if (!window.confirm('Delete this note and all its links?')) return;
     setBusy(true);
@@ -622,6 +655,26 @@ function NoteEditor({
           {savedAt && !dirty && <span className="text-emerald-300 ml-2">saved {savedAt}</span>}
         </p>
         {error && <p className="text-xs text-rose-300 mt-1">{error}</p>}
+
+        {/* Spaced-repetition review toggle — real state, real due date */}
+        <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between flex-wrap gap-2">
+          <label className="inline-flex items-center gap-2 text-xs text-white/70 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={note.srs.enabled}
+              onChange={toggleReview}
+              className="accent-amber-500"
+            />
+            <Clock className="w-3.5 h-3.5 text-amber-300" /> In review queue
+          </label>
+          {note.srs.enabled && (
+            <span className="text-[11px] text-white/40">
+              {note.srs.reps === 0 && note.srs.lastReviewedAt == null
+                ? 'not reviewed yet — due now'
+                : `ease ${note.srs.ease.toFixed(2)} · ${note.srs.reps} rep${note.srs.reps === 1 ? '' : 's'} · next due ${note.srs.dueAt ? new Date(note.srs.dueAt).toLocaleDateString() : '—'}`}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Manual linking */}

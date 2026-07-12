@@ -64,6 +64,87 @@ describe("sim.scenarioRun / parameterSweep / monteCarlo / sensitivityAnalysis", 
   });
 });
 
+// ─── monteCarlo seeded reproducibility (docs/lens-specs/sim-capability-map.md,
+// closed 2026-07-12) — an optional `seed` routes every draw through the
+// shared mulberry32 PRNG so re-runs are byte-identical; omitting it preserves
+// the original Math.random() path exactly. ─────────────────────────────────
+
+describe("sim.monteCarlo — seeded reproducibility", () => {
+  const cfgUniformNormal = {
+    trials: 5000,
+    formula: "sum",
+    variables: [
+      { name: "a", min: 0, max: 10 },
+      { name: "b", mean: 5, stddev: 2 },
+    ],
+  };
+
+  it("same seed (via artifact.data.seed) produces a byte-identical result object", () => {
+    const r1 = call("monteCarlo", ctxA, { data: { ...cfgUniformNormal, seed: 42 } }, {});
+    const r2 = call("monteCarlo", ctxA, { data: { ...cfgUniformNormal, seed: 42 } }, {});
+    assert.equal(r1.ok, true);
+    assert.equal(r2.ok, true);
+    assert.deepEqual(r1.result, r2.result);
+    assert.equal(r1.result.seeded, true);
+    assert.equal(r1.result.seed, 42);
+  });
+
+  it("same seed passed via params (not artifact.data) also produces a byte-identical result, and params wins over artifact.data.seed", () => {
+    const cfg = { trials: 3000, formula: "max", variables: [{ name: "x", min: -5, max: 5 }] };
+    const r1 = call("monteCarlo", ctxA, { data: { ...cfg, seed: 999 } }, { seed: 777 });
+    const r2 = call("monteCarlo", ctxA, { data: { ...cfg, seed: 999 } }, { seed: 777 });
+    assert.deepEqual(r1.result, r2.result);
+    assert.equal(r1.result.seed, 777, "params.seed must take precedence over artifact.data.seed");
+
+    // Confirm params.seed genuinely drives the draws, not just the echoed field:
+    // a run seeded 999 via artifact.data alone (no params) diverges from the
+    // params=777 run above.
+    const rDataSeed999 = call("monteCarlo", ctxA, { data: { ...cfg, seed: 999 } }, {});
+    assert.notDeepEqual(rDataSeed999.result, r1.result);
+  });
+
+  it("different seeds produce different results (8000 trials × 3 variables — a mean collision is astronomically unlikely)", () => {
+    const cfg = {
+      trials: 8000,
+      formula: "sum",
+      variables: [
+        { name: "a", min: 0, max: 1000 },
+        { name: "b", min: 0, max: 1000 },
+        { name: "c", mean: 500, stddev: 150 },
+      ],
+    };
+    const r1 = call("monteCarlo", ctxA, { data: { ...cfg, seed: 1 } }, {});
+    const r2 = call("monteCarlo", ctxA, { data: { ...cfg, seed: 2 } }, {});
+    assert.equal(r1.ok, true);
+    assert.equal(r2.ok, true);
+    assert.notDeepEqual(r1.result, r2.result);
+    assert.notEqual(r1.result.mean, r2.result.mean);
+    assert.notEqual(r1.result.percentiles.p50, r2.result.percentiles.p50);
+  });
+
+  it("omitting the seed preserves the pre-existing Math.random() code path (shape-only assertion — non-determinism itself isn't testable reliably)", () => {
+    const r = call("monteCarlo", ctxA, {
+      data: { trials: 500, formula: "sum", variables: [{ name: "a", min: 0, max: 10 }] },
+    }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.seeded, false);
+    assert.equal(r.result.seed, null);
+    assert.equal(r.result.trials, 500);
+    assert.ok(Number.isFinite(r.result.mean));
+    assert.ok(Number.isFinite(r.result.stddev));
+    assert.ok("p5" in r.result.percentiles && "p95" in r.result.percentiles);
+  });
+
+  it("seed of 0 counts as an explicit seed (falsy-but-provided), not as omitted", () => {
+    const cfg = { trials: 1000, formula: "sum", variables: [{ name: "a", min: 0, max: 10 }] };
+    const r1 = call("monteCarlo", ctxA, { data: { ...cfg, seed: 0 } }, {});
+    const r2 = call("monteCarlo", ctxA, { data: { ...cfg, seed: 0 } }, {});
+    assert.equal(r1.result.seeded, true);
+    assert.equal(r1.result.seed, 0);
+    assert.deepEqual(r1.result, r2.result);
+  });
+});
+
 // ─── System dynamics (stock-and-flow) ────────────────────────────────────────
 
 describe("sim.systemDynamics", () => {

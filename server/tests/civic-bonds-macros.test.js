@@ -73,4 +73,26 @@ describe("civic_bonds macros", () => {
     const ledger = await M.get("civic_bonds.ledger")(ctxFor(db, "anon"), { bondId });
     assert.equal(ledger.pledges.length, 22);
   });
+
+  it("scopes returns the real GOVERNANCE_SCOPES hierarchy (public read)", async () => {
+    const r = await M.get("civic_bonds.scopes")(ctxFor(db, null), {});
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.scopes, ["town", "city", "county", "state", "national", "international"]);
+  });
+
+  it("scopes gates on the kill-switch same as other reads", async () => {
+    process.env.CONCORD_CIVIC_BONDS = "0";
+    const r = await M.get("civic_bonds.scopes")(ctxFor(db, null), {});
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "disabled");
+  });
+
+  it("spillover accepts a scope from the scopes list and defaults to 0 (no fabricated balance)", async () => {
+    const scopes = await M.get("civic_bonds.scopes")(ctxFor(db, null), {});
+    for (const scope of scopes.scopes) {
+      const r = await M.get("civic_bonds.spillover")(ctxFor(db, null), { scope, worldId: "w1" });
+      assert.equal(r.ok, true);
+      assert.equal(r.amount, 0);
+    }
+  });
 });

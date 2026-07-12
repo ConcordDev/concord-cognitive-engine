@@ -14,7 +14,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Frame, Link2, Globe, Image as ImageIcon, FileText, Video, Presentation,
   Plus, Trash2, Loader2, Download, Smile, Users, ChevronLeft, ChevronRight, X, LogOut, ExternalLink, BarChart2,
-  Pencil, Check,
+  Pencil, Check, Eye,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -330,6 +330,13 @@ function EmbedsTab({ boardId }: { boardId: string }) {
   // field here is the display title. Inline rename, same row as Delete.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  // whiteboard.vision was previously UNSURFACED — real backend (LLaVA/Qwen2.5-VL
+  // via server/lib/vision-inference.js) with no upload/analyze affordance calling
+  // it. Image embeds are the existing "image element pin" the vision macro needs;
+  // "Analyze" reuses that pin instead of inventing a new upload flow. Per-embed
+  // state (not a single shared slot) so analyzing one image doesn't clobber
+  // another's in-flight result.
+  const [vision, setVision] = useState<Record<string, { loading: boolean; content?: string; error?: string }>>({});
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -361,6 +368,17 @@ function EmbedsTab({ boardId }: { boardId: string }) {
   async function saveEmbedEdit(id: string) {
     const r = await lensRun({ domain: 'whiteboard', action: 'embed-update', input: { boardId, id, title: editTitle.trim() } });
     if (r.data?.ok) { setEditingId(null); await refresh(); }
+  }
+  async function analyzeEmbed(e: EmbedRec) {
+    setVision(prev => ({ ...prev, [e.id]: { loading: true } }));
+    const r = await lensRun({ domain: 'whiteboard', action: 'vision', input: { imageUrl: e.url } });
+    if (r.data?.ok) {
+      const content = String((r.data.result as { content?: string } | null)?.content || '').trim();
+      setVision(prev => ({ ...prev, [e.id]: { loading: false, content: content || '(vision model returned no description)' } }));
+    } else {
+      // Honest failure — never fabricate a description when the brain is unreachable or blocked.
+      setVision(prev => ({ ...prev, [e.id]: { loading: false, error: r.data?.error || 'analysis failed' } }));
+    }
   }
 
   return (
@@ -405,9 +423,28 @@ function EmbedsTab({ boardId }: { boardId: string }) {
                       {e.description && <div className="text-[10px] text-gray-400 truncate">{e.description}</div>}
                       <div className="text-[10px] text-gray-400 font-mono uppercase">{e.kind}</div>
                     </div>
+                    {e.kind === 'image' && (
+                      <button aria-label="Analyze" title="Analyze image with the vision model" onClick={() => analyzeEmbed(e)}
+                        disabled={vision[e.id]?.loading}
+                        className="p-0.5 text-violet-300 hover:bg-violet-500/20 rounded disabled:opacity-40">
+                        {vision[e.id]?.loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />}
+                      </button>
+                    )}
                     <button aria-label="Edit" onClick={() => startEditEmbed(e)} className="p-0.5 text-sky-300 hover:bg-sky-500/20 rounded"><Pencil className="w-3 h-3" /></button>
                     <button aria-label="Delete" onClick={() => deleteEmbed(e.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
                   </div>
+                )}
+                {vision[e.id] && !vision[e.id].loading && (
+                  vision[e.id].error ? (
+                    <div className="mt-1.5 rounded border border-rose-500/30 bg-rose-500/[0.04] p-1.5 text-[11px] text-rose-300">
+                      Analysis failed: {vision[e.id].error}
+                    </div>
+                  ) : (
+                    <div className="mt-1.5 rounded border border-violet-500/30 bg-violet-500/[0.04] p-1.5">
+                      <div className="text-[10px] uppercase tracking-wider text-violet-300 mb-1">Vision analysis</div>
+                      <div className="text-[11px] text-violet-100 whitespace-pre-wrap">{vision[e.id].content}</div>
+                    </div>
+                  )
                 )}
               </li>
             );

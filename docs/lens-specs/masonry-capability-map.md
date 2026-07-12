@@ -128,21 +128,46 @@ precedents).
 
 ## Investigated and honestly deferred
 
-- **Inspections and Certifications** (the remaining 2 tabs from the
-  removed fake dashboard) have no real backing macro and were NOT
-  rebuilt this wave. Triage: **ENGINEERING** — no external data
-  dependency, same `STATE`-backed pattern would apply — but neither ties
-  as directly into the existing workflow loop (takeoff → proposal →
-  schedule → invoice) as Clients did, and building three new feature
-  systems in one pass risks the same "generic scaffold slapped on
-  top" failure mode this wave was fixing. Left as a named, scoped
-  follow-up rather than faked with client-side data. If picked up: model
-  `inspection-add/list/update` identically to `change-order-*` (AHJ/QA
-  inspection scheduled against a job, pass/fail result, deficiency notes,
-  re-inspection date) and `cert-add/list` for crew certifications
-  (name/type/expiry/issuing body) with an expiry-approaching indicator —
-  both are simple ENGINEERING lifts, not DATA-SOURCING or CURATION, since
-  no external feed or authored reference content is required.
+*(Empty — the one deferred item below was closed this wave.)*
+
+## Wave 4 gap-closure (2026-07-12, `3e1234af`)
+
+- **Inspections and Certifications** (the remaining 2 tabs named above as
+  a scoped follow-up) are now real. `inspection-add`/`inspection-list`/
+  `inspection-update` model `change-order-*` per the original plan, with
+  one deliberate divergence: change-order's soft `jobId || "general"`
+  default was NOT copied — an inspection with no job reference would be a
+  genuinely free-floating record, so `jobId` is required and must
+  reference a real `schedule-list` job (the frontend offers a real job
+  picker, not free text). `jobTitle`/`jobFound` are re-derived live on
+  every `inspection-list` call rather than frozen at creation, so a job
+  renamed or deleted after the inspection was scheduled is reflected
+  honestly instead of silently stale. 8 real inspection-type categories
+  (footing/foundation, reinforcement placement, grout/mortar QA, wall-tie
+  spacing, pre-pour grout cells, flashing/weatherproofing, AHJ building
+  inspection, final walkthrough); a `fail` result requires deficiency
+  notes and accepts a re-inspection date, a `pass` clears both.
+  `cert-add`/`cert-list`/`cert-remove` cover crew certifications with 13
+  real masonry-trade categories (OSHA 10/30, forklift/scissor/boom lift
+  operator, confined space entry, silica exposure control, scaffold
+  competent person, fall protection, NCMA Certified Mason, MCAA
+  Journeyman Mason, First Aid/CPR, plus an "Other" free-text fallback).
+  **Expiry-handling shape decision, made on masonry's own merits (not
+  copied blindly):** modeled on plumbing's `techCertAdd`/`techCertList`
+  read-time-derived `isExpired` (no persistence sweep), NOT hr's `i9-*`
+  sweep-and-persist shape — verified by reading `masonry.js` in full that
+  nothing downstream currently gates a dispatch/hiring/assignment action
+  on cert status, so the lighter pattern is the correct fit; hr's I-9
+  needs the heavier shape specifically because an expired I-9 blocks
+  employment actions. If a future masonry feature needs to block crew
+  assignment on an expired cert, that's the trigger to move to the
+  sweep-and-persist shape, not before. Two new tabs in
+  `ContractorSuite.tsx` (job-linked inspection scheduler + result
+  recorder; crew-roster certification tracker with expiry badges), both
+  real designed forms matching the existing 9 tabs' idiom — no generic
+  scaffold. Tests: 67 new backend (23 depth-behavior + 20 lens-macros +
+  24 domain-parity, individually and combined re-run, 0 fail) + 14 new
+  frontend (`ContractorSuiteInspectionsCerts.test.tsx`).
 
 ## Reference apps
 

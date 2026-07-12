@@ -728,10 +728,15 @@ describe("education — unenroll + certificates-list + cohorts-list (wave 17 top
     // sorted ascending by scheduledAt → Early before Late
     assert.deepEqual(cx.result.cohorts.map((c) => c.title), ["Early", "Late"]);
 
+    // cohorts-list with no courseId is the GLOBAL catalog (multi-tenant —
+    // every cohort from every user/course in this run, not just cctx's
+    // own), so assert containment + relative order among OUR three titles
+    // rather than an exact total (other tests in this file create cohorts
+    // too, and they're now genuinely visible here as well).
     const all = await lensRun("education", "cohorts-list", {}, cctx);
-    assert.equal(all.result.cohorts.length, 3);
-    // global list is also scheduledAt-ascending
-    assert.deepEqual(all.result.cohorts.map((c) => c.title), ["Early", "Other", "Late"]);
+    assert.ok(all.result.cohorts.length >= 3);
+    const ours = all.result.cohorts.filter((c) => ["Early", "Other", "Late"].includes(c.title));
+    assert.deepEqual(ours.map((c) => c.title), ["Early", "Other", "Late"]);
   });
 
   it("cohorts-join on an ended cohort is rejected; cohorts-leave of a non-member is rejected", async () => {

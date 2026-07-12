@@ -804,3 +804,118 @@ describe("healthcare — family / proxy access", () => {
     assert.equal(call("proxy-revoke", ctxA, { id: g.id }).ok, false);
   });
 });
+
+// ── Wave 4 gap-closure: curated protocol reference library + protocolMatch ──
+//
+// content/healthcare-protocols.json seeds protocolMatch's real default
+// library (server/lib/healthcare-protocols.js). Every protocol must carry a
+// real, cited source — this is the honest-by-construction invariant, not
+// just a happy-path check.
+
+describe("healthcare — protocol reference library (protocols-list)", () => {
+  it("returns the full curated library with real citations on every entry", () => {
+    const r = call("protocols-list", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.protocols.length >= 10, "expected at least 10 seeded protocols");
+    assert.equal(r.result.total, r.result.protocols.length);
+    for (const p of r.result.protocols) {
+      assert.ok(p.id, "protocol missing id");
+      assert.ok(p.name, `protocol ${p.id} missing name`);
+      assert.ok(typeof p.source === "string" && p.source.trim().length > 10,
+        `protocol ${p.id} missing a real, non-trivial source citation`);
+      assert.ok(Array.isArray(p.triggerConditions) && p.triggerConditions.length > 0,
+        `protocol ${p.id} missing triggerConditions`);
+      assert.ok(Array.isArray(p.steps) && p.steps.length > 0,
+        `protocol ${p.id} missing steps`);
+    }
+  });
+
+  it("filters by specialty", () => {
+    const all = call("protocols-list", ctxA, {}).result;
+    const specialty = all.specialties[0];
+    const filtered = call("protocols-list", ctxA, { specialty });
+    assert.equal(filtered.ok, true);
+    assert.ok(filtered.result.protocols.length > 0);
+    for (const p of filtered.result.protocols) assert.equal(p.specialty, specialty);
+  });
+});
+
+describe("healthcare — protocolMatch against the real default library", () => {
+  function callMatch(conditions, extraParams = {}) {
+    const fn = ACTIONS.get("healthcare.protocolMatch");
+    assert.ok(fn, "healthcare.protocolMatch not registered");
+    return fn(ctxA, { id: null, data: { conditions }, meta: {} }, extraParams);
+  }
+
+  it("full-matches Type 2 Diabetes (E11.9) against the seeded ADA protocol", () => {
+    const r = callMatch(["E11.9"]);
+    assert.equal(r.ok, true);
+    const hit = r.result.matched.find((m) => m.protocolId === "t2dm-ada-2024");
+    assert.ok(hit, "expected the ADA T2DM protocol to full-match");
+    assert.equal(hit.matchRatio, 1);
+    assert.ok(hit.source.includes("American Diabetes Association"));
+    assert.ok(hit.steps.length > 0);
+  });
+
+  it("full-matches Sepsis (A41.9) against the Surviving Sepsis Campaign protocol", () => {
+    const r = callMatch(["A41.9"]);
+    const hit = r.result.matched.find((m) => m.protocolId === "sepsis-ssc-2021");
+    assert.ok(hit);
+    assert.ok(hit.source.includes("Surviving Sepsis Campaign"));
+  });
+
+  it("partial-matches the two-condition diabetes+CKD protocol when only one condition is present", () => {
+    const r = callMatch(["E11.9"]);
+    const partial = r.result.partial.find((m) => m.protocolId === "diabetes-ckd-kdigo-2022");
+    assert.ok(partial, "expected the diabetes+CKD combo protocol to partial-match on diabetes alone");
+    assert.equal(partial.matchRatio, 0.5);
+    assert.deepEqual(partial.missingConditions, ["N18.9"]);
+  });
+
+  it("full-matches the two-condition diabetes+CKD protocol when both conditions are present", () => {
+    const r = callMatch(["E11.9", "N18.9"]);
+    const hit = r.result.matched.find((m) => m.protocolId === "diabetes-ckd-kdigo-2022");
+    assert.ok(hit);
+    assert.equal(hit.matchRatio, 1);
+    assert.deepEqual(hit.matchedConditions.slice().sort(), ["E11.9", "N18.9"]);
+  });
+
+  it("is case-insensitive on condition codes", () => {
+    const r = callMatch(["i10"]);
+    const hit = r.result.matched.find((m) => m.protocolId === "htn-acc-aha-2017");
+    assert.ok(hit, "expected lowercase i10 to match the I10 trigger");
+  });
+
+  it("returns no matches for an unrelated condition set", () => {
+    const r = callMatch(["Z00.00"]); // encounter for general adult medical exam
+    assert.equal(r.result.matched.length, 0);
+    assert.equal(r.result.partial.length, 0);
+  });
+
+  it("returns an honest empty result with no conditions on record", () => {
+    const r = callMatch([]);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.matched, []);
+  });
+
+  it("an explicit empty params.protocols overrides the library default (caller opt-out is respected)", () => {
+    const r = callMatch(["E11.9"], { protocols: [] });
+    assert.equal(r.result.protocolsEvaluated, 0);
+    assert.equal(r.result.matched.length, 0);
+  });
+
+  it("a realistic patient problem-list flows into a real protocol match end-to-end", () => {
+    const p = newPatient();
+    call("problems-add", ctxA, { patientId: p.id, name: "Type 2 diabetes mellitus", icd10: "E11.9", status: "active" });
+    call("problems-add", ctxA, { patientId: p.id, name: "Essential hypertension", icd10: "I10", status: "active" });
+    const chart = call("patients-detail", ctxA, { id: p.id });
+    const activeConditions = chart.result.problems
+      .filter((prob) => prob.status === "active")
+      .map((prob) => prob.icd10)
+      .filter(Boolean);
+    assert.deepEqual(activeConditions.slice().sort(), ["E11.9", "I10"]);
+    const r = callMatch(activeConditions);
+    const ids = r.result.matched.map((m) => m.protocolId).sort();
+    assert.deepEqual(ids, ["htn-acc-aha-2017", "t2dm-ada-2024"]);
+  });
+});

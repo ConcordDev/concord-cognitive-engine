@@ -6,7 +6,8 @@
 //   run_draft.pick      — take a boon (validates not-already-picked)
 //   run_draft.modifiers — accumulated live modifier bundle + active synergies
 
-import { rollDraft, recordPick, getRunModifiers } from "../lib/run-draft.js";
+import { rollDraft, recordPick, getRunModifiers, nearSynergyHints } from "../lib/run-draft.js";
+import { invalidateRunModifierCache } from "../lib/run-modifiers.js";
 
 const KINDS = new Set(["roguelite", "extraction", "horde"]);
 
@@ -17,7 +18,11 @@ export default function registerRunDraftMacros(register) {
     const { runKind, runId } = input;
     if (!KINDS.has(runKind) || !runId) return { ok: false, reason: "missing_inputs" };
     const count = Math.max(1, Math.min(5, Number(input.count) || 3));
-    return { ok: true, offering: rollDraft(db, runKind, String(runId), count) };
+    return {
+      ok: true,
+      offering: rollDraft(db, runKind, String(runId), count),
+      synergyHints: nearSynergyHints(db, runKind, String(runId)),
+    };
   });
 
   register("run_draft", "pick", async (ctx, input = {}) => {
@@ -28,6 +33,9 @@ export default function registerRunDraftMacros(register) {
     if (!userId || !KINDS.has(runKind) || !runId || !pickId) return { ok: false, reason: "missing_inputs" };
     const r = recordPick(db, { runKind, runId: String(runId), userId, pickId: String(pickId) });
     if (!r.ok) return r;
+    // Wave 4 — bust the combat-path modifier cache immediately so THIS pick
+    // is reflected on the player's very next hit, not after the cache TTL.
+    try { invalidateRunModifierCache(userId); } catch { /* cache module optional */ }
     return { ok: true, ...r, ...getRunModifiers(db, runKind, String(runId)) };
   });
 

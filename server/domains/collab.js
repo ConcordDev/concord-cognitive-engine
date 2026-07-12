@@ -22,7 +22,22 @@ export default function registerCollabActions(registerLensAction) {
     // presence:      docId -> Map(userId -> { userId, name, cursor, selection, color, following, viewport, updatedAt })
     // comments:      docId -> [ { id, threadId, parentId, authorId, authorName, text, mentions[], elementId, resolved, createdAt } ]
     // notifications: userId -> [ { id, kind, docId, commentId, fromId, fromName, text, read, createdAt } ]
-    for (const k of ["documents", "presence", "comments", "notifications"]) {
+    // sessionRosters: sessionId -> Map(userId -> { userId, name, joinedAt })
+    // Live join/leave tracking for the Discord/Teams-style multi-participant
+    // session rooms (a DIFFERENT substrate from `documents`/`presence` above,
+    // which back the CRDT doc-editing surface). Sessions themselves are
+    // generic cross-user lens artifacts (domain='collab', type='session',
+    // STATE.lensArtifacts) created by the frontend's Create Session flow;
+    // this map is the genuinely-live "who is actually connected right now"
+    // roster the static creation-time `participants` array can't provide.
+    // Kept in-memory only (not folded into a DB migration): unlike a
+    // persistent catalog, "who is currently connected" is inherently
+    // session-scoped and ephemeral — if the process restarts, every real
+    // socket connection drops too, so a surviving roster row would already
+    // be a lie the instant the process comes back. Same pattern as the
+    // `presence` map above (doc cursor presence is also intentionally
+    // memory-only for the same reason).
+    for (const k of ["documents", "presence", "comments", "notifications", "sessionRosters"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -56,6 +71,28 @@ export default function registerCollabActions(registerLensAction) {
     try {
       REALTIME?.io?.to(`user:${userId}`).emit(name, { userId, ...payload, ts: cbNow() });
     } catch (_e) { /* best effort */ }
+  }
+  // Emit to a session room (`collab:${sessionId}`) — the exact room name the
+  // frontend's screen-share WebRTC signaling already joins via `room:join`
+  // (concord-frontend/app/lenses/collab/page.tsx `shareRoom`), so a session
+  // roster event reaches every already-connected participant with no new
+  // room-join plumbing required.
+  function emitToSession(sessionId, name, payload) {
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`collab:${sessionId}`).emit(name, { sessionId, ...payload, ts: cbNow() });
+    } catch (_e) { /* best effort — clients fall back to a poll/refresh */ }
+  }
+  // Look up the real session artifact from the generic cross-user
+  // lens-artifact store (STATE.lensArtifacts) so join/leave/roster can't be
+  // pointed at an id that was never actually created as a collab session.
+  function getSessionArtifact(sessionId) {
+    try {
+      const GSTATE = globalThis._concordSTATE;
+      const art = GSTATE?.lensArtifacts?.get(sessionId);
+      if (art && art.domain === "collab" && art.type === "session") return art;
+    } catch (_e) { /* ignore */ }
+    return null;
   }
   // Permission tier resolution. Owner always has edit. Tiers: view < comment < edit.
   const TIER_RANK = { view: 1, comment: 2, edit: 3 };
@@ -778,6 +815,81 @@ export default function registerCollabActions(registerLensAction) {
       n.read = true;
       saveCollabState();
       return { ok: true, result: { marked: 1, unread: list.filter(x => !x.read).length } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Session rooms — live participant join/leave + real roster sync
+  //
+  // Sessions (browse/create/join Discord/Teams-style working rooms) are
+  // generic cross-user lens artifacts (domain='collab', type='session')
+  // persisted via STATE.lensArtifacts, NOT this file's own document store.
+  // Their `data.participants` array is set once at creation time and never
+  // changes — it cannot tell you who is actually in the session right now.
+  // These three macros are the genuinely-live roster: a joining user calls
+  // `sessionJoin`, becomes a real tracked entry in `sessionRosters`, and
+  // every other session member is notified in real time over the same
+  // `collab:${sessionId}` room the session's screen-share signaling already
+  // uses. `sessionLeave` removes them; `sessionRoster` reads the live set.
+  // ═══════════════════════════════════════════════════════════════════
+
+  registerLensAction("collab", "sessionJoin", (ctx, _artifact, params) => {
+    try {
+      const sessionId = cbClean(params?.sessionId, 80);
+      if (!sessionId) return { ok: false, error: "sessionId is required" };
+      if (!getSessionArtifact(sessionId)) return { ok: false, error: "session not found" };
+      const s = getCollabState();
+      if (!s.sessionRosters.has(sessionId)) s.sessionRosters.set(sessionId, new Map());
+      const roster = s.sessionRosters.get(sessionId);
+      const uid = cbUid(ctx);
+      const existing = roster.get(uid);
+      const row = { userId: uid, name: cbName(ctx), joinedAt: existing?.joinedAt || cbNow() };
+      roster.set(uid, row);
+      const participants = [...roster.values()].sort((a, b) => a.joinedAt - b.joinedAt);
+      saveCollabState();
+      // Only broadcast a fresh join (a re-join / heartbeat by an already-
+      // present user shouldn't spam other participants with a join event).
+      if (!existing) {
+        emitToSession(sessionId, "collab:participant-joined", {
+          userId: uid, name: row.name, joinedAt: row.joinedAt, participantCount: participants.length,
+        });
+      }
+      return { ok: true, result: { sessionId, participants, count: participants.length } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("collab", "sessionLeave", (ctx, _artifact, params) => {
+    try {
+      const sessionId = cbClean(params?.sessionId, 80);
+      if (!sessionId) return { ok: false, error: "sessionId is required" };
+      const s = getCollabState();
+      const roster = s.sessionRosters.get(sessionId);
+      const uid = cbUid(ctx);
+      const wasPresent = !!roster?.has(uid);
+      if (roster) roster.delete(uid);
+      const participants = roster ? [...roster.values()].sort((a, b) => a.joinedAt - b.joinedAt) : [];
+      saveCollabState();
+      if (wasPresent) {
+        emitToSession(sessionId, "collab:participant-left", {
+          userId: uid, participantCount: participants.length,
+        });
+      }
+      return { ok: true, result: { sessionId, participants, count: participants.length } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Read-only live roster — the real current joined set, never the static
+  // creation-time `participants` array.
+  registerLensAction("collab", "sessionRoster", (ctx, _artifact, params) => {
+    try {
+      const sessionId = cbClean(params?.sessionId, 80);
+      if (!sessionId) return { ok: false, error: "sessionId is required" };
+      if (!getSessionArtifact(sessionId)) return { ok: false, error: "session not found" };
+      const s = getCollabState();
+      const roster = s.sessionRosters.get(sessionId) || new Map();
+      const participants = [...roster.values()].sort((a, b) => a.joinedAt - b.joinedAt);
+      const uid = cbUid(ctx);
+      return { ok: true, result: { sessionId, participants, count: participants.length, amJoined: roster.has(uid) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 }

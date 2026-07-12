@@ -398,3 +398,104 @@ describe("experience — invitations + highlight clips/reels (shared ctx)", () =
     assert.match(bad.result.error, /no clips selected for reel/);
   });
 });
+
+// ── EXTENSION (append-only): multi-hop surveyNext branching, terminal
+// "done" state, and the full branch-aware take → submit → results round
+// trip that concord-frontend/components/experience/UXResearchSuite.tsx's
+// branch-aware SurveyPanel now drives one question at a time. Each answer
+// sequence below is hand-verified against the real resolver logic in
+// server/domains/experience.js#surveyNext (branch[answer] lookup, else
+// fall through to questions[idx+1]; `done: !next`) — not guessed.
+describe("experience — surveyNext multi-hop branching + terminal state (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("experience-survey-branch"); });
+
+  it("a 4-question survey: one path skips two questions via branch, the other falls through both", async () => {
+    const survey = await lensRun("experience", "createSurvey", {
+      params: { name: "Onboarding fit", questions: [
+        { id: "q1", kind: "single", prompt: "Are you a new user?", options: ["Yes", "No"], branch: { Yes: "q4" } },
+        { id: "q2", kind: "text", prompt: "What made you switch?" },
+        { id: "q3", kind: "text", prompt: "What tool did you switch from?" },
+        { id: "q4", kind: "text", prompt: "What's your #1 goal today?" },
+      ] },
+    }, ctx);
+    const sid = survey.result.survey.id;
+
+    // Path A: "Yes" branches straight from q1 to q4, skipping q2 and q3.
+    const a1 = await lensRun("experience", "surveyNext", { params: { surveyId: sid, questionId: "q1", answer: "Yes" } }, ctx);
+    assert.equal(a1.result.next.id, "q4");
+    assert.equal(a1.result.done, false);
+    const a2 = await lensRun("experience", "surveyNext", { params: { surveyId: sid, questionId: "q4", answer: "Ship faster" } }, ctx);
+    assert.equal(a2.result.next, null);
+    assert.equal(a2.result.done, true);   // q4 is the last question — terminal
+
+    // Path B: "No" has no branch entry → falls through in array order,
+    // q2 → q3 → q4, each hop also falling through with no branch entry.
+    const b1 = await lensRun("experience", "surveyNext", { params: { surveyId: sid, questionId: "q1", answer: "No" } }, ctx);
+    assert.equal(b1.result.next.id, "q2");
+    const b2 = await lensRun("experience", "surveyNext", { params: { surveyId: sid, questionId: "q2", answer: "Pricing" } }, ctx);
+    assert.equal(b2.result.next.id, "q3");
+    const b3 = await lensRun("experience", "surveyNext", { params: { surveyId: sid, questionId: "q3", answer: "Typeform" } }, ctx);
+    assert.equal(b3.result.next.id, "q4");
+    const b4 = await lensRun("experience", "surveyNext", { params: { surveyId: sid, questionId: "q4", answer: "Grow revenue" } }, ctx);
+    assert.equal(b4.result.done, true);
+  });
+
+  it("surveyNext: an unknown questionId is rejected, an unknown answer falls through instead of erroring", async () => {
+    const survey = await lensRun("experience", "createSurvey", {
+      params: { name: "Simple branch", questions: [
+        { id: "s1", kind: "single", prompt: "Pick one", options: ["X", "Y"], branch: { X: "s3" } },
+        { id: "s2", kind: "text", prompt: "middle" },
+        { id: "s3", kind: "text", prompt: "end" },
+      ] },
+    }, ctx);
+    const sid = survey.result.survey.id;
+
+    const badQ = await lensRun("experience", "surveyNext", { params: { surveyId: sid, questionId: "does-not-exist", answer: "X" } }, ctx);
+    assert.equal(badQ.result.ok, false);
+    assert.match(badQ.result.error, /question not found/);
+
+    // "Z" was never authored as a branch key on s1 — falls through to s2,
+    // the same as any other non-matching answer (no crash, no silent skip).
+    const unknownAnswer = await lensRun("experience", "surveyNext", { params: { surveyId: sid, questionId: "s1", answer: "Z" } }, ctx);
+    assert.equal(unknownAnswer.result.next.id, "s2");
+  });
+
+  it("end-to-end branch-aware take: only the traversed path's answers are persisted and scored", async () => {
+    // Mirrors the frontend flow: walk surveyNext one question at a time,
+    // collecting only the questions actually reached, then submit once.
+    const survey = await lensRun("experience", "createSurvey", {
+      params: { name: "CSAT skip-logic", questions: [
+        { id: "r1", kind: "csat", prompt: "How satisfied are you?", branch: { "5": "r3" } }, // top score skips the follow-up
+        { id: "r2", kind: "text", prompt: "What went wrong?" },
+        { id: "r3", kind: "text", prompt: "Anything else?" },
+      ] },
+    }, ctx);
+    const sid = survey.result.survey.id;
+
+    // Respondent 1 answers "5" at r1 → branches straight to r3.
+    const n1 = await lensRun("experience", "surveyNext", { params: { surveyId: sid, questionId: "r1", answer: "5" } }, ctx);
+    assert.equal(n1.result.next.id, "r3");
+    await lensRun("experience", "submitSurveyResponse", {
+      params: { surveyId: sid, respondent: "Happy", answers: { r1: "5", r3: "Nothing, great job" } },
+    }, ctx);
+
+    // Respondent 2 answers "3" at r1 → no branch entry → falls through to r2.
+    const n2 = await lensRun("experience", "surveyNext", { params: { surveyId: sid, questionId: "r1", answer: "3" } }, ctx);
+    assert.equal(n2.result.next.id, "r2");
+    await lensRun("experience", "submitSurveyResponse", {
+      params: { surveyId: sid, respondent: "Mixed", answers: { r1: "3", r2: "Onboarding was confusing" } },
+    }, ctx);
+
+    const res = await lensRun("experience", "surveyResults", { params: { surveyId: sid } }, ctx);
+    assert.equal(res.result.responseCount, 2);
+    const r1Result = res.result.perQuestion.find((q) => q.questionId === "r1");
+    assert.equal(r1Result.answered, 2);
+    assert.equal(r1Result.avgScore, 4);           // (5 + 3) / 2
+    const r2Result = res.result.perQuestion.find((q) => q.questionId === "r2");
+    assert.equal(r2Result.answered, 1);           // only the "Mixed" respondent reached r2
+    assert.deepEqual(r2Result.samples, ["Onboarding was confusing"]);
+    const r3Result = res.result.perQuestion.find((q) => q.questionId === "r3");
+    assert.equal(r3Result.answered, 1);           // only the "Happy" respondent reached r3 (skipped it)
+  });
+});

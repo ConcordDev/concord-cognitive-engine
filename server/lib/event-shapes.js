@@ -27,7 +27,12 @@ const RESERVED = new Set(["ts", "_seq", "_rid", "_evt"]);
 export const EVENT_SHAPES = Object.freeze({
   // ── Combat ────────────────────────────────────────────────────────
   "combat:attack": { required: ["attackerId"], optional: ["weapon", "animation", "direction", "position"] },
-  "combat:hit":    { required: ["attackerId", "victimId", "damage"], optional: ["isCrit", "blocked", "staggered", "hitDirection", "magnitude", "position", "weapon", "targetId", "targetHealth", "targetMaxHealth", "targetKilled", "targetPosition", "attackerPosition", "element", "skillId", "tier", "style", "skillKey"] },
+  // Wave 4 — worldId added (optional, not required): the socket PvP path at
+  // server.js's combat:attack handler now stamps a best-effort worldId
+  // (cityPresence.getPlayerWorld), but the separate combat-netcode.js
+  // broadcastHit path (already room-scoped to user:<id>, not global) does
+  // not — so this stays optional rather than forcing that path to change.
+  "combat:hit":    { required: ["attackerId", "victimId", "damage"], optional: ["isCrit", "blocked", "staggered", "hitDirection", "magnitude", "position", "weapon", "targetId", "targetHealth", "targetMaxHealth", "targetKilled", "targetPosition", "attackerPosition", "element", "skillId", "tier", "style", "skillKey", "worldId"] },
   "combat:miss":   { required: ["attackerId", "victimId"], optional: ["missed"] },
   "combat:death":  { required: ["victimId"], optional: ["killerId", "position"] },
   // Sprint 1 — defensive-loop wiring. ack events carry the granted i-frame
@@ -80,6 +85,15 @@ export const EVENT_SHAPES = Object.freeze({
   "world:clock":         { required: ["phase", "segment", "epochMs", "dayLengthMs"], optional: [] },
   "world:weather":       { required: ["worldId", "type"], optional: ["intensity", "since", "windDirection"] },
   "world:refusal-field": { required: ["worldId", "kind"], optional: ["expiresAt", "reason", "glyphHint", "strength"] },
+  // Wave 4 — was completely unregistered (no EVENT_SHAPES entry, no
+  // LENIENT_EVENTS listing) despite being a real, high-signal emit.
+  // Emitted by lib/world-event-scheduler.js#tick → server.js's
+  // world_event_scheduler_tick heartbeat block (REALTIME.io.emit, platform-
+  // wide). Verified worldId was ALREADY present on every created event —
+  // tick() merges `{ ...c, worldId }` for each item — so, unlike combat:hit/
+  // dtu:promoted/the faction:* events, no server.js payload change was
+  // needed here; this entry just makes the existing shape checkable.
+  "world:event:scheduled": { required: ["id", "type", "worldId"], optional: ["districtId", "hostId", "reward"] },
 
   // ── Evo-Asset ─────────────────────────────────────────────────────
   "evo:asset-promoted": { required: ["assetId", "versionId", "passKind"], optional: ["score", "kind"] },
@@ -102,7 +116,14 @@ export const EVENT_SHAPES = Object.freeze({
 
   // ── DTU lifecycle ─────────────────────────────────────────────────
   "dtu:created":   { required: ["dtuId", "title"], optional: ["userId", "tags", "tier"] },
-  "dtu:promoted":  { required: ["dtuId", "tier"], optional: ["fromTier", "score"] },
+  // Wave 4 — worldId added (optional): DTUs are cross-world by design (no
+  // formal world_id field on the in-memory dtu object — see CLAUDE.md's DTU
+  // substrate notes), so most promotions have no natural world scope. The
+  // scope.promote emit site now stamps worldId only when the DTU actually
+  // carries one (caller-supplied meta.world_id); other dtu:promoted emit
+  // sites (economy/global-gates.js, routes/sovereign.js) are untouched and
+  // don't set it either, so this must stay optional, not required.
+  "dtu:promoted":  { required: ["dtuId", "tier"], optional: ["fromTier", "score", "worldId"] },
 
   // ── Marketplace ───────────────────────────────────────────────────
   "marketplace:purchase": { required: ["buyerId", "sellerId", "contentId", "amount"], optional: ["currency", "txId"] },
@@ -248,6 +269,22 @@ export const EVENT_SHAPES = Object.freeze({
     optional: [],
   },
 
+  // ── Collab session rooms — live participant roster (Wave 4) ────────
+  // Emitted by server/domains/collab.js sessionJoin/sessionLeave macros
+  // to room `collab:${sessionId}` — the same room the session's
+  // screen-share WebRTC signaling already joins via `room:join`. Closes
+  // the "Live participant join/leave with real roster sync" gap: sessions
+  // previously only had a static, creation-time `participants` array with
+  // no live join/leave tracking (see docs/lens-specs/collab-capability-map.md).
+  "collab:participant-joined": {
+    required: ["sessionId", "userId", "name"],
+    optional: ["joinedAt", "participantCount"],
+  },
+  "collab:participant-left": {
+    required: ["sessionId", "userId"],
+    optional: ["participantCount"],
+  },
+
   // ── Message lens multi-device sync ────────────────────────────────
   // Emitted by server/domains/message.js to room `user:${userId}` so
   // a save/react/voice action on one device flips instantly on every
@@ -290,9 +327,15 @@ export const EVENT_SHAPES = Object.freeze({
   },
 
   // ── Phase F3 — simulation surfacing emit sites ────────────────────
-  "faction:war-declared":       { required: ["factionId", "targetFactionId", "move", "summary", "moveId"], optional: [] },
-  "faction:alliance-formed":    { required: ["factionId", "targetFactionId", "summary", "moveId"], optional: [] },
-  "faction:truce-sought":       { required: ["factionId", "targetFactionId", "summary", "moveId"], optional: [] },
+  // Wave 4 — worldId added (optional, not required): resolveFactionWorldId
+  // (lib/embodied/faction-strategy.js) resolves it from the faction's living
+  // NPCs, which is a real signal for authored factions but genuinely returns
+  // null for a faction with no `world_npcs` rows (e.g. a synthetic/test
+  // faction, or one whose NPCs haven't been seeded yet) — factions aren't
+  // strictly per-world, so this can't be required.
+  "faction:war-declared":       { required: ["factionId", "targetFactionId", "move", "summary", "moveId"], optional: ["worldId"] },
+  "faction:alliance-formed":    { required: ["factionId", "targetFactionId", "summary", "moveId"], optional: ["worldId"] },
+  "faction:truce-sought":       { required: ["factionId", "targetFactionId", "summary", "moveId"], optional: ["worldId"] },
   "npc:scheme-resolved":        { required: ["schemeId", "plotterKind", "plotterId", "kind", "outcome"], optional: ["targetKind", "targetId"] },
   "dream:composed":             { required: ["userId", "dreamRowId", "dreamDtuId", "fragmentCount"], optional: ["worldId"] },
   "prediction:realised":        { required: ["predictionId"], optional: ["userId", "subjectKind", "subjectId", "outcome"] },

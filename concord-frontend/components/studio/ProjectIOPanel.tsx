@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { Package, Loader2, Download, Upload, Layers } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface Stem { trackId: string; trackName: string; index: number; outputUrl: string }
 interface StemJob { id: string; projectName: string; format: string; sampleRate: number; stemCount: number; stems: Stem[] }
@@ -25,8 +26,10 @@ export function ProjectIOPanel({ projectId }: { projectId?: string }) {
     setBusy(true); setErr(null); setJob(null);
     try {
       const res = await lensRun('studio', 'export-stems', { projectId, format, sampleRate });
-      if (res.data?.ok) setJob((res.data.result?.job ?? null) as StemJob | null);
-      else setErr(res.data?.error || 'Stem export failed.');
+      if (res.data?.ok) {
+        setJob((res.data.result?.job ?? null) as StemJob | null);
+        logStudioCollabEdit(projectId, 'export-stems', projectId, { format, sampleRate });
+      } else setErr(res.data?.error || 'Stem export failed.');
     } catch (e) { console.error('[ProjectIO] stems', e); setErr('Stem export failed.'); }
     finally { setBusy(false); }
   }
@@ -55,8 +58,15 @@ export function ProjectIOPanel({ projectId }: { projectId?: string }) {
       const text = await file.text();
       const bundle = JSON.parse(text);
       const res = await lensRun('studio', 'project-import', { bundle });
-      if (res.data?.ok) setImportResult(res.data.result as ImportResult);
-      else setErr(res.data?.error || 'Import failed.');
+      if (res.data?.ok) {
+        const result = res.data.result as ImportResult;
+        setImportResult(result);
+        // Logs against the NEW project id — import always creates a fresh
+        // project (never merges into the one currently open), so there's
+        // no collab session for it yet; this is a safe, correct no-op that
+        // starts paying off the moment someone starts collaborating on it.
+        logStudioCollabEdit(result.project?.id, 'project-import', result.project?.id, result.imported);
+      } else setErr(res.data?.error || 'Import failed.');
     } catch (e) { console.error('[ProjectIO] import', e); setErr('Import failed — invalid bundle file.'); }
     finally { setBusy(false); }
   }

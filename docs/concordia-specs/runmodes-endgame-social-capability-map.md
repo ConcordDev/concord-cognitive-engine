@@ -31,20 +31,33 @@ research this project cites). That part deserves credit and is real.
 But the genre-defining moment — Hades' boon pick, Vampire Survivors' weapon
 evolution, a horde-mode upgrade screen — is **decorative or unreachable** in
 every mode that has one:
-- **Horde's in-run upgrade picker does nothing.** The only upgrades a player
+- ~~**Horde's in-run upgrade picker does nothing.** The only upgrades a player
   can ever pick (`POST /api/horde/:runId/upgrade`) write to a table nothing
-  ever reads back into combat math.
-- **Roguelite's visible meta-shop is disconnected from its own effect
+  ever reads back into combat math.~~ **CLOSED (2026-07-12) — see §2.1.** Now
+  runs through the shared draft engine (§2.3) and genuinely modifies combat
+  damage on both live combat paths.
+- ~~**Roguelite's visible meta-shop is disconnected from its own effect
   engine.** The shop UI shows 6 unlocks from a content JSON file; none of
   them share an id with the 5 unlocks that `runMetaModifiers` actually
-  applies to a run. The 5 that work are never offered for sale.
-- **A genuinely well-built "shared draft engine"
+  applies to a run. The 5 that work are never offered for sale.~~ **CLOSED
+  (2026-07-12) — see §2.2.** Catalogs reconciled; the 5 real unlocks are now
+  the ones on sale, priced server-side.
+- ~~**A genuinely well-built "shared draft engine"
   (`server/lib/run-draft.js`) — structured effects, synergy combos,
   deterministic seeded rolls — has zero callers anywhere in the frontend.**
-  It was explicitly built to serve exactly the gap above and was never wired.
-- **Time-loop is functionally broken for players**, not just under-designed:
-  3 of its 5 HTTP routes are unreachable due to a route-registration typo,
-  so the HUD never renders and a loop can never be ended from the UI.
+  It was explicitly built to serve exactly the gap above and was never wired.~~
+  **CLOSED (2026-07-12) — see §2.3.** Now powers horde's wave-clear pick AND
+  a new roguelite in-run "Descend" draft moment; a related, previously
+  undocumented gap (roguelite's meta-unlock modifiers computed but never
+  applied to gameplay) was found and closed in the same pass — see §2.3's
+  "Gap C."
+- ~~**Time-loop is functionally broken for players**, not just
+  under-designed: 3 of its 5 HTTP routes are unreachable due to a
+  route-registration typo, so the HUD never renders and a loop can never
+  be ended from the UI.~~ **CLOSED (2026-07-12) — see §2.4.** The "3
+  broken routes" half of this claim didn't reproduce (never actually
+  broken in this codebase's history); the "no way to end a loop from the
+  UI" half was real and is now fixed with an "End loop" button.
 - **Party-combat's "ability" action has no ability catalog** — the server
   trusts a client-supplied `damage` number capped only at the 500 hard cap,
   and the frontend sends none, so every "ability" click deals a flat,
@@ -134,7 +147,48 @@ marriage candidate*, ×12 candidates).
 
 ## 2. Concrete findings
 
-### 2.1 Horde-mode upgrade picks are cosmetic text with no mechanical effect
+### 2.1 Horde-mode upgrade picks are cosmetic text with no mechanical effect — CLOSED (2026-07-12, Wave 4 run-mode gap-closure unit)
+
+Fixed by wiring horde's wave-upgrade offering onto the shared structured
+draft engine (§2.3) instead of the cosmetic `UPGRADE_CATALOG` strings, and
+by making the picked boon's `{stat, value}` effect genuinely modify the
+player's combat damage for the rest of the run. Original finding text kept
+below for record.
+
+- `server/lib/horde-mode.js`'s `tickWave` now offers `rollDraft(db, "horde",
+  runId, 3)` (real `{stat,value}` boons + `nearSynergyHints`) instead of the
+  old `_rollUpgrades()` reading `UPGRADE_CATALOG`; `pickUpgrade` now calls
+  `recordPick` into the shared `run_draft_picks` table (mapping
+  `recordPick`'s `unknown_boon`/`already_picked` reasons back onto the
+  historical `invalid_upgrade`/`slot_collision` error vocabulary so existing
+  callers don't need to change). `UPGRADE_CATALOG` is kept in the file,
+  explicitly marked deprecated, purely for the id/flavor-text vocabulary —
+  nothing reads it anymore.
+- The picked bundle is applied to damage in **two** live combat paths, both
+  traced and verified rather than assumed: the DB-backed skill-cast REST
+  route (`routes/worlds.js#/api/worlds/:worldId/combat/attack`, a post-cap
+  multiplier alongside the existing env/mass/mount multipliers) **and** the
+  socket-driven basic-attack path (`server.js`'s `combat:attack` handler →
+  `cityPresence.applyAttack`, the path `system-affordances.ts` actually
+  dispatches for "Fight `<hostile NPC>`" — tracing the code showed this,
+  not the REST route, is the live everyday attack path). `damageMult` folds
+  into `applyAttack`'s existing `contextModifiers.damageMul` hook;
+  `critChance` required a new (backward-compatible, default-0) `critChanceBonus`
+  param on `applyAttack` itself.
+- `server/lib/run-modifiers.js` is the new read-side glue
+  (`getActiveRunModifiers`) that both call sites share, with a documented
+  short-TTL cache + explicit invalidation from every mutating route.
+- Tests: `server/tests/horde-mode.test.js` (rewritten pick assertions +
+  2 new synergy tests) and `server/tests/integration/run-mode-gap-closure.test.js`
+  (hand-verified numeric examples for damageMult stacking + critChanceBonus
+  shifting a real, mocked-random `applyAttack` roll).
+- Horde still has no revive mechanic (`second_wind`'s flavor text has no
+  `DRAFT_POOL` equivalent) — only roguelite's purchased `second_chance`
+  meta-unlock does (§2.3's fix). Not treated as a gap: the original finding
+  never claimed horde needed one.
+
+Original finding text, kept for record:
+
 `server/lib/horde-mode.js:23-33` — `UPGRADE_CATALOG` entries carry only a
 human-readable `effect` string (`"all damage +25%"`). `pickUpgrade`
 (`:111-140`) inserts a row into `horde_upgrades` and nothing else.
@@ -152,7 +206,15 @@ unlocks now MODIFY a run (they were stored but never read — `hasUnlock` had
 no caller)") — the fix landed for roguelite but the identical defect was
 never ported to horde.
 
-### 2.2 Roguelite's visible unlock shop and its effect engine are two disjoint catalogs
+### 2.2 Roguelite's visible unlock shop and its effect engine are two disjoint catalogs — CLOSED (2026-07-12, `dd7b1b03`)
+
+Fixed both compounding bugs: the shop catalog and effect engine now share
+IDs, and `purchaseUnlock` enforces the real server-side price for every
+recognized catalog id instead of falling back to the client-supplied
+`costCc` for unmatched ones. 11/11 new + updated tests in
+`server/tests/roguelite.test.js`. Original finding text kept below for
+record.
+
 - Effect engine: `server/lib/roguelite.js:25-31` `META_UNLOCK_CATALOG` — 5
   ids (`veteran_vigor`, `sharp_start`, `extra_pick`, `fortune_finder`,
   `second_chance`), consumed by `runMetaModifiers` (`:38-50`), which IS
@@ -176,7 +238,71 @@ never ported to horde.
   specifically written to close: "Costs are catalog-driven (server-priced)
   so the client can't self-price").
 
-### 2.3 A real structured-draft engine exists and is completely unwired
+### 2.3 A real structured-draft engine exists and is completely unwired — CLOSED (2026-07-12, Wave 4 run-mode gap-closure unit)
+
+Fixed for both consumers named in the original finding: horde's per-wave
+pick (§2.1) now runs through this engine, and roguelite gained the missing
+in-run draft moment. A third, related gap found independently while tracing
+this one (not in the original audit) was closed in the same unit — see
+"Gap C" below.
+
+- **Roguelite's in-run draft moment** — two new functions in
+  `server/lib/roguelite.js`: `advanceRun` (mirrors horde's `tickWave`:
+  advances `depth_reached`, banks `1 + extraDraftPicks` picks into a new
+  `draft_picks_available` column, rolls an offering via `rollDraft(db,
+  "roguelite", runId, …)`) and `pickDraftBoon` (spends one banked pick via
+  `recordPick`, rejecting `no_picks_available` once the bank is empty — a
+  player can't out-pick their advances). New routes `POST
+  /api/roguelite/run/:runId/advance` and `.../draft-pick`; new UI in
+  `RogueliteRunHUD.tsx` (a "Descend" button + boon-picker modal, mirroring
+  `HordeWaveHUD.tsx`'s wave-clear picker).
+- **`extraDraftPicks` is now genuinely a "grants an extra pick" effect** —
+  the `extra_pick` meta-unlock (§2.2) previously computed `extraDraftPicks:
+  1` with no consumer; `advanceRun` now reads it and banks 2 picks per
+  advance instead of 1 (hand-verified in
+  `run-mode-gap-closure.test.js`).
+- **Gap C (found tracing this finding, not in the original audit): the
+  roguelite meta-unlock catalog computed a correct modifier bundle
+  (`runMetaModifiers`) that `startRun` returned and NOTHING read** —
+  `startingHpBonus` never touched a player's HP, `damageMult` never touched
+  combat, `metaCurrencyMult` never touched a payout, and `revives` never
+  prevented a death. All five now apply for real: `startingHpBonus` is
+  added to `player_resource_bars` at `startRun` and removed symmetrically
+  at `endRun` (migration 359's `hp_bonus_applied` column stores the exact
+  amount to reverse, so a mid-run purchase can't cause a stacking or
+  over-subtraction bug); `damageMult` merges additively with any drafted
+  boon's `damageMult` in `server/lib/run-modifiers.js` and applies to
+  combat the same way §2.1 wires horde's; `metaCurrencyMult` multiplies the
+  cash-out in `endRun` (`floor(25 * 1.25) = 31` for a `fortune_finder`-owning
+  extract at depth 4, hand-verified); `revives` seeds a new
+  `revives_remaining` column, consumed by the new
+  `maybeReviveRoguelitePlayer` — wired into **both** live sources of lethal
+  player damage: `routes/worlds.js`'s `combat/npc-attack` route AND
+  `server/lib/npc-simulator.js`'s autonomous NPC-attacks-player heartbeat
+  (both traced and confirmed as real, independent kill paths, not assumed).
+  `GET /api/roguelite/run-modifiers` (previously zero frontend callers) is
+  now read by `RogueliteRunHUD.tsx` to show the owned-unlock effects as real
+  text.
+- **Known, disclosed scope limit:** only `damageMult` (both run kinds, both
+  live combat paths) and `critChance` (the socket path only, via a new
+  `critChanceBonus` param on `cityPresence.applyAttack`) were wired into
+  actual combat math. The remaining `DRAFT_POOL` stats
+  (`attackSpeedMult`, `fireDotPerHit`, `critDamageMult`, `maxHpFlat`,
+  `reflectPct`, `regenPerSec`, `lifestealPct`, `pickupRadiusMult`,
+  `moveSpeedMult`) are real, structured, and correctly displayed in the HUD
+  (derived from the server's actual numbers, never fabricated text) but are
+  not yet consumed by a gameplay system beyond that display — each would
+  need its own systems work (animation-speed threading, a DoT-tick system,
+  a pickup-radius query, etc.) that was out of this unit's scope. Recorded
+  here rather than left silent, per this repo's "genuinely missing" honesty
+  discipline.
+- Tests: `server/tests/integration/run-mode-gap-closure.test.js` (19 cases,
+  hand-verified numeric examples for the HP-bonus round-trip, the currency
+  multiplier, the revive HP restoration, the additive damageMult stacking,
+  the draft-pick banking, and the cache invalidation contract).
+
+Original finding text, kept for record:
+
 `server/lib/run-draft.js` — 12 boons with real `{stat, value}` effects, 4
 synergy combos, deterministic sha1-seeded rolls (fair, no save-scumming).
 Registered as macros in `server/domains/run-draft.js` (`run_draft.offer` /
@@ -187,7 +313,34 @@ This is the system that should be powering horde's per-wave pick (closing
 finding 2.1) and roguelite's missing in-run boon layer — it was built and
 never connected.
 
-### 2.4 Time-loop: 3 of 5 HTTP routes are unreachable (route-registration bug)
+### 2.4 Time-loop: no "end loop" UI affordance — CLOSED (2026-07-12)
+
+**Correction to this section's original claim:** the "3 of 5 HTTP routes
+are unreachable (missing `/` before each path param)" finding below did
+NOT reproduce against the actual codebase — `grep -n
+"app\.\(get\|post\)(\"/api/time-loop" server/server.js` shows all 5 routes
+correctly slashed (`/api/time-loop/:sessionId/end`,
+`/api/time-loop/memories/:worldId`, `/api/time-loop/active/:worldId`), and
+`git log --all -S'"/api/time-loop:sessionId/end"'` (the broken string this
+section quoted) returns **zero commits** in this repository's entire
+history — that exact route string never existed. `TimeLoopHUD` was never
+actually broken; it renders correctly whenever `GET
+/api/time-loop/active/:worldId` returns an active session. The "verified
+live against an isolated Express instance" claim below was not
+reproducible and should be treated as a research error in the original
+audit, not a real regression that was later fixed.
+
+**What WAS real and is now fixed:** there was genuinely no frontend call
+site for `POST /api/time-loop/:sessionId/end` anywhere — a player could
+start a loop but had no way to end one manually from the UI (only via
+`timeout`/`death`, server-side). `TimeLoopHUD.tsx` now has an "End loop"
+button that POSTs `{ reason: 'manual_exit' }` to the real route (one of
+the 4 reasons `endLoop` accepts) and clears the HUD only on a confirmed
+`ok:true`; a failure leaves the loop state untouched and surfaces an
+honest toast instead of assuming success. 2 new tests
+(`tests/components/TimeLoopHUD-end-loop.test.tsx`) pin both paths.
+
+Original (inaccurate) finding text, kept for record:
 `server/server.js:52115-52136` registers:
 ```
 app.post("/api/time-loop:sessionId/end", ...)
@@ -201,21 +354,54 @@ POST /api/time-loop/sess1/end        -> 404
 GET  /api/time-loop/memories/tunya   -> 404
 GET  /api/time-loop/active/tunya     -> 404
 ```
-The frontend calls the correctly-slashed shape it was presumably meant to
-match: `TimeLoopHUD.tsx:35` fetches `/api/time-loop/active/${worldId}`,
-`:87` links to `/api/time-loop/memories/${worldId}` — both always 404 against
-the current route table. Consequence: `TimeLoopHUD` never renders (`refresh()`
-always sets `loop` to `null` from the failed fetch, and the component
-`return`s `null` whenever `!loop`, line 60) — the entire HUD is invisible
-even during an active loop. There is also no "end loop" call site anywhere
-in the frontend, so even fixing the route wouldn't currently let a player
-end a loop from the UI — only `/api/time-loop/start` and the POST-body
-`/api/time-loop/memory` (no path param) are reachable and used. This is a
-small, mechanical, high-confidence bug (a missing `/` in three route
-strings) — flagged for follow-up per the read-only scope of this audit, not
-fixed here.
 
-### 2.5 Dungeon instances: real engine, 2 encounters, zero frontend, and an unbounded damage report
+### 2.5 Dungeon instances: real engine, 2 encounters, zero frontend, and an unbounded damage report — CLOSED (2026-07-12, Wave 4 gap-closure unit)
+
+**What was fixed.** `concord-frontend/components/world/DungeonHUD.tsx` is a
+new real frontend consumer of the `dungeon.*` macros: a persistent
+"Dungeons" launcher (bottom-right, next to `MountHud`) opens an encounter
+browser (`dungeon.encounters` + `dungeon.lockouts`, showing a real "Locked
+Nh" badge sourced from the actual `dungeon_lockouts` row, not a guess) and
+starts an instance via `dungeon.open`. Once joined, the HUD polls
+`dungeon.active` (a new macro — see below) and renders the boss's real
+hp%/phase, every participant's real `damage_dealt` + share of total, a
+downed indicator, a "Strike" button (`dungeon.hit`) and a "Downed" button
+(`dungeon.down`). On clear/wipe it pulls the instance's final state via
+`dungeon.state` and shows the real loot share/rolls from
+`dungeon_participants.loot_json` — never a fabricated result. Discoverable
+via Ctrl/Cmd+K → "Dungeons" (`mode:dungeon` palette entry, which opens the
+encounter browser directly rather than reusing `GameModesHotbarGroup`'s
+single-`start()` shape, since dungeon needs an encounter *pick*, not a
+single confirm).
+
+Two new macros back the HUD's ability to discover an in-progress raid
+without persisting an instanceId client-side: `dungeon.active` (the
+caller's live active instance, world-scoped) and `dungeon.lockouts` (the
+caller's active lockouts with real expiry timestamps), both backed by new
+`getActiveInstanceForUser`/`getLockoutsForUser` helpers in
+`dungeon-instance.js`.
+
+**The damage cap is fixed.** `recordHit` (`dungeon-instance.js`) now imports
+the shared `resolvedDamageCap()` from `lib/combat-limits.js` (the same
+ceiling `routes/worlds.js#_validateDamageCap` holds the real combat route
+to) and **rejects** — not clamps — any report above it:
+`{ ok:false, reason:'damage_cap_exceeded', cap, requested }`, leaving boss
+HP and the reporting participant's `damage_dealt` completely untouched. A
+report exactly at the cap is accepted normally. This closes the
+one-hit-clears-any-instance exploit path described below. Content-authoring
+(more than 2 encounters) remains explicitly out of scope, per the original
+finding.
+
+Tests: `server/tests/integration/dungeon-instance.test.js` (9/9, including 4
+new Wave 4 cases: reject-over-cap leaves HP untouched + accept-at-cap +
+`getActiveInstanceForUser` + `getLockoutsForUser`) +
+`server/tests/dungeon-domain.test.js` (new, 10/10, pinning the macro
+wrappers including the cap-rejection path through `dungeon.hit` and the
+`dungeon.active`/`dungeon.lockouts` contracts) +
+`concord-frontend/components/world/DungeonHUD.test.tsx` (new, 6/6).
+
+Original finding text, kept for record:
+
 `server/lib/dungeon-instance.js:15-34` — `DUNGEON_ENCOUNTERS` has exactly 2
 authored bosses (`hollow_warden`, `tide_colossus`), each with 3 phases.
 Grep for any `dungeon` reference in `concord-frontend` (excluding build
@@ -233,7 +419,18 @@ there's no UI path calling it, but the macro itself (`dungeon.hit`,
 `server/domains/dungeon.js:35-41`) accepts `input.damage` from any
 authenticated caller with no validation.
 
-### 2.6 World bosses never spawn in production
+### 2.6 World bosses never spawn in production — CLOSED (2026-07-12, `49fe646c`)
+
+`registerSchedule` is now wired to production content. Re-verification
+while fixing this found a second, deeper bug the original audit missed:
+even with a schedule seeded, the heartbeat's `moduleCtx` never forwarded a
+`worldId` to the handler in either the single-process or sharded path, so
+every tick silently bailed with `no_db_or_world` — proven with a probe
+heartbeat, not assumed from reading code. Both fixed together;
+`server/tests/integration/world-boss-heartbeat-wire.test.js` (new) +
+`world-bosses.test.js` pin it. Original finding text kept below for
+record.
+
 `server/lib/world-bosses.js:21-42` `registerSchedule` is the only path that
 creates a `world_boss_schedule` row (which `runTriggerPass` needs to ever
 open an active boss). Grep confirms callers exist only in
@@ -257,7 +454,15 @@ comments, so this is not a "fabrication" finding — but it means the
 flagship lore raid event has zero actual boss-damage mechanics behind the
 phase-threshold/refusal-field scaffolding.
 
-### 2.8 Party-combat has no ability catalog; damage is caller-supplied
+### 2.8 Party-combat has no ability catalog; damage is caller-supplied — CLOSED (2026-07-12, `f9a2c6c1`)
+
+Fixed with a real server-side `PARTY_ABILITY_CATALOG` — one signature
+ability per existing `combat-polish.js` profile
+(`ufc_groundgame`/`sifu_brawler`/`street_freeroam`/`chrome_blade`/
+`caped_aerial`) — rather than just tightening the cap; damage/cooldown are
+now server-derived, not client-supplied. `server/tests/party-combat.test.js`
+pins it. Original finding text kept below for record.
+
 `server/lib/party-combat.js:227-243` (`ability` branch of `_applyAction`):
 `const damage = Math.min(Math.max(1, Number(payload.damage) || 15), DAMAGE_CAP_HARD)`
 — damage comes from the action payload, not a server-side ability
@@ -270,7 +475,15 @@ picked. There is exactly one `attack` button and one `ability` button in
 the HUD; no ability roster, no elements, no cooldown variety (client never
 sends `cooldownMs` either, so every action uses the flat 1200ms default).
 
-### 2.9 Guild bank/XP/hall system is fully unreachable
+### 2.9 Guild bank/XP/hall system is fully unreachable — CLOSED (2026-07-12, `e459dec3`)
+
+`lib/guild-substrate.js`'s 7 functions are now wired to real gameplay
+callers (`GuildPanel.tsx` surfaces level/XP/hall status as the primary
+path); 11 of `world-organizations.js`'s previously-unrouted 19 functions
+were also routed in passing. `server/tests/integration/
+guild-substrate-routes-wired.test.js` (new, 317 lines) pins it. Original
+finding text kept below for record.
+
 `server/lib/guild-substrate.js` exports 7 functions (`awardOrgXp`,
 `getOrgProgression`, `claimHallBuilding`, `depositToOrgInventory`,
 `withdrawFromOrgInventory`, `listOrgInventory`, `getOrgInventoryLog`).
@@ -343,15 +556,20 @@ wide margin.
 
 ### ENGINEERING (no external data dependency — build it)
 
-1. **[High] Wire `run-draft.js` into horde's upgrade step and roguelite's
+1. ~~**[High] Wire `run-draft.js` into horde's upgrade step and roguelite's
    in-run pick.** The engine (2.3) already exists with synergies and
    deterministic rolls; horde's dead `UPGRADE_CATALOG`/`pickUpgrade` path
    (2.1) should be replaced by a call to `run_draft.offer`/`.pick`, and
-   roguelite should gain an in-run draft moment using the same macros.
-2. **[High] Fix the 3 broken time-loop routes** (2.4) — add the missing
+   roguelite should gain an in-run draft moment using the same macros.~~
+   **CLOSED (2026-07-12, Wave 4 run-mode gap-closure unit)** — see §2.1 and
+   §2.3: both wired, plus the previously-undocumented "Gap C" (roguelite
+   meta-unlocks computed but never applied) closed in the same pass.
+2. ~~**[High] Fix the 3 broken time-loop routes** (2.4) — add the missing
    `/` before `:sessionId`/`:worldId` in the three route registrations, and
-   wire an "end loop" call from the frontend (currently absent even from the
-   correct route shape).
+   wire an "end loop" call from the frontend (currently absent even from
+   the correct route shape).~~ **CLOSED (2026-07-12)** — see §2.4: the
+   routes were never actually broken; the missing "end loop" UI is now
+   built.
 3. **[High] Reconcile the two roguelite unlock catalogs** (2.2) — either
    fold `content/roguelite-unlocks.json`'s 6 ids into `META_UNLOCK_CATALOG`
    with real effects and server-side prices, or stop serving the JSON
@@ -423,10 +641,12 @@ endgame content, or social systems.
 
 ## 5. Reproduction notes
 
-- Route-registration bug (2.4): reproduced live against an isolated Express
-  instance mounting the exact three route strings from `server.js` and
-  requesting the frontend's actual (correctly-slashed) URLs — all three
-  404'd.
+- Route-registration bug (2.4): **this did not reproduce (2026-07-12
+  re-check)** — the exact three route strings this note describes never
+  appear in `server.js`'s history (`git log --all -S` on the broken form
+  returns zero commits); all 5 `/api/time-loop/*` routes have always had
+  correct leading slashes. Treat the original "reproduced live" claim as a
+  research error, not a regression later fixed.
 - All "zero callers" / "zero matches" claims (2.1, 2.3, 2.6, 2.9) were
   verified via `grep -rn` across `server/` (excluding the defining file and
   its own test files) and, separately, across `concord-frontend/` excluding

@@ -6,9 +6,12 @@
 //   dungeon.hit        — land a hit on the boss (advances phases, clears at 0)
 //   dungeon.down       — mark the caller downed (all-downed = wipe)
 //   dungeon.state      — live instance state for the HUD
+//   dungeon.active     — Wave 4: the caller's current in-progress instance (or null)
+//   dungeon.lockouts   — Wave 4: the caller's active encounter lockouts
 
 import {
   openInstance, recordHit, downParticipant, getInstance, DUNGEON_ENCOUNTERS,
+  getActiveInstanceForUser, getLockoutsForUser,
 } from "../lib/dungeon-instance.js";
 
 export default function registerDungeonMacros(register) {
@@ -54,5 +57,25 @@ export default function registerDungeonMacros(register) {
     if (!input.instanceId) return { ok: false, reason: "missing_inputs" };
     const inst = getInstance(db, String(input.instanceId));
     return inst ? { ok: true, instance: inst } : { ok: false, reason: "no_instance" };
+  });
+
+  // Wave 4 gap-closure — lets the frontend HUD discover an in-progress
+  // instance without persisting an instanceId client-side (page reload,
+  // a party member who didn't call `open` themselves, etc).
+  register("dungeon", "active", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "missing_inputs" };
+    const inst = getActiveInstanceForUser(db, userId, input.worldId ? String(input.worldId) : undefined);
+    return { ok: true, instance: inst };
+  });
+
+  register("dungeon", "lockouts", async (ctx) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "missing_inputs" };
+    return { ok: true, lockouts: getLockoutsForUser(db, userId) };
   });
 }

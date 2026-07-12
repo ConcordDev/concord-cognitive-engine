@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
+import { ClientAutocomplete, type LandscapingClientRecord } from '@/components/landscaping/ClientAutocomplete';
 import {
   LayoutGrid,
   ImageIcon,
@@ -30,6 +31,11 @@ import {
   Trash2,
   Loader2,
   Sprout,
+  Receipt,
+  Send,
+  CheckCircle2,
+  CircleDollarSign,
+  ArrowRight,
 } from 'lucide-react';
 
 type StudioTab =
@@ -39,6 +45,7 @@ type StudioTab =
   | 'reminders'
   | 'climate'
   | 'proposal'
+  | 'invoices'
   | 'calendar'
   | 'diary';
 
@@ -49,6 +56,7 @@ const STUDIO_TABS: { id: StudioTab; label: string; icon: typeof LayoutGrid }[] =
   { id: 'reminders', label: 'Care Reminders', icon: BellRing },
   { id: 'climate', label: 'Climate Match', icon: Globe2 },
   { id: 'proposal', label: 'Proposal', icon: FileSpreadsheet },
+  { id: 'invoices', label: 'Invoices', icon: Receipt },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'diary', label: 'Health Diary', icon: NotebookPen },
 ];
@@ -137,7 +145,8 @@ export function GardenStudio() {
       {tab === 'identify' && <PlantIdentify />}
       {tab === 'reminders' && <CareReminders />}
       {tab === 'climate' && <ClimateMatch />}
-      {tab === 'proposal' && <ProposalBuilder />}
+      {tab === 'proposal' && <ProposalBuilder onConverted={() => setTab('invoices')} />}
+      {tab === 'invoices' && <InvoiceTracker />}
       {tab === 'calendar' && <MaintenanceCalendar />}
       {tab === 'diary' && <HealthDiary />}
     </div>
@@ -996,8 +1005,10 @@ interface ProposalResult {
   proposalMarkdown: string;
 }
 
-function ProposalBuilder() {
+function ProposalBuilder({ onConverted }: { onConverted?: (invoiceNumber: string) => void }) {
   const [client, setClient] = useState('');
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [clients, setClients] = useState<LandscapingClientRecord[]>([]);
   const [project, setProject] = useState('');
   const [overheadPct, setOverheadPct] = useState('15');
   const [marginPct, setMarginPct] = useState('20');
@@ -1008,20 +1019,43 @@ function ProposalBuilder() {
   const [result, setResult] = useState<ProposalResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [convertedNumber, setConvertedNumber] = useState<string | null>(null);
+
+  // Load the persisted client roster once so the autocomplete has real
+  // suggestions + history (jobsCount/invoiceCount/totalBilled) from the
+  // first keystroke.
+  useEffect(() => {
+    (async () => {
+      const r = await lensRun<{ clients: LandscapingClientRecord[] }>('landscaping', 'client-list', {});
+      if (r.data.ok && r.data.result) setClients(r.data.result.clients || []);
+    })();
+  }, []);
+
+  const selectClient = (c: LandscapingClientRecord | null, text: string) => {
+    setClientId(c ? c.id : null);
+    setClient(text);
+  };
+  const handleClientCreated = (c: LandscapingClientRecord) => {
+    setClients((cs) => (cs.some((existing) => existing.id === c.id) ? cs : [...cs, c]));
+  };
 
   const setItem = (i: number, patch: Partial<LineItem>) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
 
-  const build = async () => {
+  // Shared with convertToInvoice below — the invoice conversion re-runs the
+  // exact same server-side math (server/domains/landscaping.js#computeProposal)
+  // from these raw inputs rather than trusting the already-rendered totals.
+  // `clientId` is sent additively: when a saved client is linked, the server
+  // resolves its name onto the proposal/invoice (server/domains/
+  // landscaping.js#lsResolveClientRef); a plain free-text client (no
+  // clientId) behaves exactly as it did before this file existed.
+  const buildPayload = () => {
     const valid = items.filter((it) => it.description.trim() && it.unitCost);
-    if (!valid.length) {
-      setErr('add at least one line item with a description and unit cost');
-      return;
-    }
-    setBusy(true);
-    setErr(null);
-    const r = await lensRun<ProposalResult>('landscaping', 'proposal-build', {
+    if (!valid.length) return null;
+    return {
       client: client.trim(),
+      clientId: clientId || undefined,
       project: project.trim(),
       overheadPct: Number(overheadPct) || 0,
       marginPct: Number(marginPct) || 0,
@@ -1033,10 +1067,38 @@ function ProposalBuilder() {
         quantity: Number(it.quantity) || 1,
         unitCost: Number(it.unitCost) || 0,
       })),
-    });
+    };
+  };
+
+  const build = async () => {
+    const payload = buildPayload();
+    if (!payload) {
+      setErr('add at least one line item with a description and unit cost');
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    setConvertedNumber(null);
+    const r = await lensRun<ProposalResult>('landscaping', 'proposal-build', payload);
     setBusy(false);
     if (r.data.ok && r.data.result) setResult(r.data.result);
     else setErr(r.data.error || 'proposal build failed');
+  };
+
+  const convertToInvoice = async () => {
+    const payload = buildPayload();
+    if (!payload || !result) return;
+    setConverting(true);
+    setErr(null);
+    const r = await lensRun<{ invoice: { number: string } }>('landscaping', 'invoice-from-proposal', payload);
+    setConverting(false);
+    // Stay on this tab and show the confirmation — jumping straight to the
+    // Invoices tab would unmount this component before the user ever sees
+    // the "converted" state land. Navigation is a deliberate follow-up
+    // click (the confirmation banner's own button), not an implicit side
+    // effect of the conversion call.
+    if (r.data.ok && r.data.result) setConvertedNumber(r.data.result.invoice.number);
+    else setErr(r.data.error || 'convert to invoice failed');
   };
 
   const exportProposal = () => {
@@ -1058,11 +1120,13 @@ function ProposalBuilder() {
         </div>
       )}
       <div className="grid grid-cols-2 gap-2">
-        <input
-          className={inputCls}
-          placeholder="Client name"
+        <ClientAutocomplete
+          clients={clients}
           value={client}
-          onChange={(e) => setClient(e.target.value)}
+          clientId={clientId}
+          onSelect={selectClient}
+          onCreated={handleClientCreated}
+          placeholder="Client name"
         />
         <input
           className={inputCls}
@@ -1173,14 +1237,312 @@ function ProposalBuilder() {
             <Stat label="Tax" value={`$${result.tax.toLocaleString()}`} />
             <Stat label="Total" value={`$${result.total.toLocaleString()}`} accent />
           </div>
-          <button onClick={exportProposal} className={btnCls}>
-            <FileSpreadsheet className="h-3.5 w-3.5" /> Export proposal (.md)
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={exportProposal} className={btnCls}>
+              <FileSpreadsheet className="h-3.5 w-3.5" /> Export proposal (.md)
+            </button>
+            {convertedNumber ? (
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Converted to invoice {convertedNumber}
+                <button
+                  onClick={() => onConverted?.(convertedNumber)}
+                  className="ml-1 inline-flex items-center gap-1 rounded border border-emerald-500/30 px-1.5 py-0.5 text-[10px] text-emerald-200 hover:bg-emerald-500/20"
+                >
+                  View in Invoices <ArrowRight className="h-3 w-3" />
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={convertToInvoice}
+                disabled={converting}
+                className="inline-flex items-center gap-1.5 rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-200 hover:bg-sky-500/20 disabled:opacity-50"
+              >
+                {converting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Receipt className="h-3.5 w-3.5" />}
+                Convert to invoice
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            )}
+          </div>
           <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded bg-zinc-950 p-3 text-[11px] text-zinc-300">
             {result.proposalMarkdown}
           </pre>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Feature 10 — Proposal -> invoice status machine ────────────────
+// Draft -> sent -> accepted -> paid, backed by
+// server/domains/landscaping.js invoice-from-proposal / invoice-list /
+// invoice-send / invoice-accept / invoice-record-payment. Reached either
+// from the Proposal tab's "Convert to invoice" button, or directly here.
+type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'paid';
+interface InvoiceLineItem {
+  description: string;
+  category: string;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+  lineTotal: number;
+}
+interface Payment {
+  id: string;
+  amount: number;
+  method: string;
+  at: string;
+}
+interface Invoice {
+  id: string;
+  number: string;
+  proposalRef: string | null;
+  client: string;
+  project: string;
+  lineItems: InvoiceLineItem[];
+  subtotal: number;
+  overhead: number;
+  margin: number;
+  tax: number;
+  total: number;
+  status: InvoiceStatus;
+  amountPaid: number;
+  payments: Payment[];
+  dueDate: string;
+  createdAt: string;
+  sentAt: string | null;
+  acceptedAt: string | null;
+  paidAt: string | null;
+}
+
+const INVOICE_STATUS_STYLE: Record<InvoiceStatus, string> = {
+  draft: 'bg-zinc-800 text-zinc-300',
+  sent: 'bg-sky-500/15 text-sky-300',
+  accepted: 'bg-amber-500/15 text-amber-300',
+  paid: 'bg-emerald-500/15 text-emerald-300',
+};
+const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
+  draft: 'Draft',
+  sent: 'Sent',
+  accepted: 'Accepted',
+  paid: 'Paid',
+};
+const PAYMENT_METHODS = ['card', 'cash', 'check', 'transfer'];
+
+function InvoiceTracker() {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [summary, setSummary] = useState<{
+    draftCount: number; sentCount: number; acceptedCount: number; paidCount: number;
+    outstanding: number; collected: number;
+  } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('card');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async (status: InvoiceStatus | '') => {
+    setBusy(true);
+    setErr(null);
+    const r = await lensRun<{
+      invoices: Invoice[];
+      draftCount: number; sentCount: number; acceptedCount: number; paidCount: number;
+      outstanding: number; collected: number;
+    }>('landscaping', 'invoice-list', status ? { status } : {});
+    setBusy(false);
+    if (r.data.ok && r.data.result) {
+      setInvoices(r.data.result.invoices);
+      setSummary(r.data.result);
+    } else setErr(r.data.error || 'invoice list failed');
+  }, []);
+
+  useEffect(() => {
+    load(statusFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
+
+  const transition = async (name: 'invoice-send' | 'invoice-accept', id: string) => {
+    setErr(null);
+    const r = await lensRun('landscaping', name, { id });
+    if (r.data.ok) await load(statusFilter);
+    else setErr(r.data.error || `${name} failed`);
+  };
+
+  const recordPayment = async (invoice: Invoice) => {
+    const amount = Number(payAmount);
+    if (!amount || amount <= 0) {
+      setErr('enter a payment amount greater than 0');
+      return;
+    }
+    setErr(null);
+    const r = await lensRun('landscaping', 'invoice-record-payment', {
+      id: invoice.id,
+      amount,
+      method: payMethod,
+    });
+    if (r.data.ok) {
+      setPayAmount('');
+      await load(statusFilter);
+    } else setErr(r.data.error || 'payment recording failed');
+  };
+
+  return (
+    <div className="space-y-3">
+      {err && (
+        <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">
+          {err}
+        </div>
+      )}
+
+      {summary && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Stat label="Outstanding" value={`$${summary.outstanding.toLocaleString()}`} accent />
+          <Stat label="Collected" value={`$${summary.collected.toLocaleString()}`} />
+          <Stat label="Accepted (unpaid)" value={String(summary.acceptedCount)} />
+          <Stat label="Paid" value={String(summary.paidCount)} />
+        </div>
+      )}
+
+      <nav className="flex flex-wrap gap-1.5">
+        {(['', 'draft', 'sent', 'accepted', 'paid'] as const).map((s) => (
+          <button
+            key={s || 'all'}
+            onClick={() => setStatusFilter(s)}
+            className={`rounded px-2.5 py-1 text-[11px] capitalize transition-colors ${
+              statusFilter === s ? 'bg-emerald-500/20 text-emerald-200' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+            }`}
+          >
+            {s || 'all'}
+          </button>
+        ))}
+      </nav>
+
+      {busy && invoices.length === 0 && (
+        <p className="text-[11px] text-zinc-500">Loading invoices…</p>
+      )}
+
+      {!busy && invoices.length === 0 && (
+        <p className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
+          No invoices yet. Build a proposal in the Proposal tab, then use &ldquo;Convert to invoice&rdquo;.
+        </p>
+      )}
+
+      <div className="space-y-2">
+        {invoices.map((inv) => {
+          const isOpen = expandedId === inv.id;
+          const balanceDue = Math.max(0, Math.round((inv.total - inv.amountPaid) * 100) / 100);
+          return (
+            <div key={inv.id} className={cardCls}>
+              <button
+                type="button"
+                onClick={() => setExpandedId(isOpen ? null : inv.id)}
+                className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-white">{inv.number}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${INVOICE_STATUS_STYLE[inv.status]}`}>
+                      {INVOICE_STATUS_LABEL[inv.status]}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-zinc-400">
+                    {inv.client || 'Client'} — {inv.project || 'Project'}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-sm text-emerald-200">${inv.total.toLocaleString()}</div>
+                  {inv.amountPaid > 0 && inv.status !== 'paid' && (
+                    <div className="text-[10px] text-zinc-500">${balanceDue.toLocaleString()} due</div>
+                  )}
+                </div>
+              </button>
+
+              {isOpen && (
+                <div className="mt-3 space-y-3 border-t border-zinc-800 pt-3">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <Stat label="Subtotal" value={`$${inv.subtotal.toLocaleString()}`} />
+                    <Stat label="Overhead" value={`$${inv.overhead.toLocaleString()}`} />
+                    <Stat label="Margin" value={`$${inv.margin.toLocaleString()}`} />
+                    <Stat label="Total" value={`$${inv.total.toLocaleString()}`} accent />
+                  </div>
+
+                  <div className="space-y-1">
+                    {inv.lineItems.map((li, i) => (
+                      <div key={i} className="flex justify-between text-[11px] text-zinc-400">
+                        <span>{li.description} <span className="text-zinc-600">({li.category})</span></span>
+                        <span className="font-mono text-zinc-300">${li.lineTotal.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* status-machine actions */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {inv.status === 'draft' && (
+                      <button
+                        onClick={() => transition('invoice-send', inv.id)}
+                        className={btnCls}
+                      >
+                        <Send className="h-3.5 w-3.5" /> Send to client
+                      </button>
+                    )}
+                    {inv.status === 'sent' && (
+                      <button
+                        onClick={() => transition('invoice-accept', inv.id)}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-500/20"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Mark accepted
+                      </button>
+                    )}
+                    {inv.status === 'accepted' && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <input
+                          type="number"
+                          className={`${inputCls} w-28`}
+                          placeholder={`Up to $${balanceDue.toFixed(2)}`}
+                          value={payAmount}
+                          onChange={(e) => setPayAmount(e.target.value)}
+                        />
+                        <select
+                          className={`${inputCls} w-28`}
+                          value={payMethod}
+                          onChange={(e) => setPayMethod(e.target.value)}
+                        >
+                          {PAYMENT_METHODS.map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => recordPayment(inv)}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-500/20"
+                        >
+                          <CircleDollarSign className="h-3.5 w-3.5" /> Record payment
+                        </button>
+                      </div>
+                    )}
+                    {inv.status === 'paid' && (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Paid in full{inv.paidAt ? ` on ${new Date(inv.paidAt).toLocaleDateString()}` : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  {inv.payments.length > 0 && (
+                    <div className="space-y-1 border-t border-zinc-800 pt-2">
+                      <p className="text-[10px] uppercase tracking-wider text-zinc-500">Payments</p>
+                      {inv.payments.map((p) => (
+                        <div key={p.id} className="flex justify-between text-[11px] text-zinc-400">
+                          <span className="capitalize">{p.method} · {new Date(p.at).toLocaleDateString()}</span>
+                          <span className="font-mono text-zinc-300">${p.amount.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

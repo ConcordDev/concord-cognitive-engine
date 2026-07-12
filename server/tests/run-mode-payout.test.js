@@ -16,13 +16,16 @@ import { up as up241 } from "../migrations/241_difficulty_tiers.js";
 import { up as up245 } from "../migrations/245_roguelite_runs.js";
 import { up as up246 } from "../migrations/246_horde_mode.js";
 import { up as up258 } from "../migrations/258_extraction_runs.js";
+// Wave 4 — startRun/endRun now read/write hp_bonus_applied, revives_remaining,
+// draft_picks_available (migration 359); apply it so those columns exist.
+import { up as up359 } from "../migrations/359_run_mode_modifiers.js";
 
 import { lootMultFor, grantRunMeta } from "../lib/run-difficulty.js";
 import { startRun as rglStart, endRun as rglEnd, getBalance } from "../lib/roguelite.js";
 import { startHorde, endHorde } from "../lib/horde-mode.js";
 import { startRun as extrStart, pickupLoot, declareExtractionZone, extract, dieDuringRun, extractionDanger } from "../lib/extraction.js";
 
-function db241() { const db = new Database(":memory:"); up241(db); up245(db); up246(db); up258(db); return db; }
+function db241() { const db = new Database(":memory:"); up241(db); up245(db); up246(db); up258(db); up359(db); return db; }
 
 describe("D6 — shared run-meta helpers", () => {
   it("lootMultFor is identity for no modifier, scales for a real one", () => {

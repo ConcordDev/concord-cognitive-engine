@@ -10,7 +10,7 @@
  * `organ` macro — no seed/mock data.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { TreeDiagram, ChartKit } from '@/components/viz';
 import type { TreeNode } from '@/components/viz';
@@ -32,7 +32,30 @@ interface Employee {
   level: string;
   status: string;
   skills: string[];
+  role?: string;
+  demographics?: Record<string, string>;
 }
+
+// Belbin team-role bucket — must exactly match BELBIN_ROLES in
+// server/domains/organ.js so a value picked here lands in teamComposition's
+// roleMapping instead of being silently normalized away to "".
+const BELBIN_ROLE_OPTS: { value: string; label: string }[] = [
+  { value: 'plant', label: 'Plant (ideas & creativity)' },
+  { value: 'monitor-evaluator', label: 'Monitor Evaluator' },
+  { value: 'coordinator', label: 'Coordinator' },
+  { value: 'resource-investigator', label: 'Resource Investigator' },
+  { value: 'implementer', label: 'Implementer' },
+  { value: 'completer-finisher', label: 'Completer Finisher' },
+  { value: 'teamworker', label: 'Teamworker' },
+  { value: 'shaper', label: 'Shaper' },
+  { value: 'specialist', label: 'Specialist' },
+];
+
+// Small, closed categorical option sets — kept as dropdowns (not free text)
+// so teamComposition's Simpson's-diversity-index groups values that are
+// actually the same category instead of fragmenting on typos/casing.
+const GENDER_OPTS = ['Woman', 'Man', 'Non-binary', 'Prefer not to say'];
+const AGE_BAND_OPTS = ['Under 25', '25-34', '35-44', '45-54', '55+', 'Prefer not to say'];
 
 interface RosterResult {
   employees: Employee[];
@@ -285,6 +308,9 @@ function EmployeeModal({
     level: employee?.level || '',
     status: employee?.status || 'active',
     skills: (employee?.skills || []).join(', '),
+    role: employee?.role || '',
+    gender: employee?.demographics?.gender || '',
+    ageBand: employee?.demographics?.ageBand || '',
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -295,6 +321,9 @@ function EmployeeModal({
     if (!form.name.trim()) { setErr('Name is required'); return; }
     setBusy(true);
     setErr(null);
+    const demographics: Record<string, string> = {};
+    if (form.gender) demographics.gender = form.gender;
+    if (form.ageBand) demographics.ageBand = form.ageBand;
     const res = await run('employee-upsert', {
       id: employee?.id,
       name: form.name,
@@ -308,6 +337,8 @@ function EmployeeModal({
       level: form.level,
       status: form.status,
       skills: form.skills.split(',').map((s) => s.trim()).filter(Boolean),
+      role: form.role || '',
+      demographics,
     });
     setBusy(false);
     if (res.ok) onSaved();
@@ -328,33 +359,48 @@ function EmployeeModal({
           <Field label="Name *" value={form.name} onChange={(v) => set('name', v)} />
           <Field label="Title" value={form.title} onChange={(v) => set('title', v)} />
           <Field label="Department" value={form.department} onChange={(v) => set('department', v)} />
-          <div>
-            <label className="text-xs text-gray-400">Manager</label>
-            <select
-              value={form.managerId}
-              onChange={(e) => set('managerId', e.target.value)}
-              className="w-full mt-0.5 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
-            >
-              <option value="">— top of org —</option>
-              {managers.filter((m) => m.id !== employee?.id).map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
-          </div>
+          <SelectField
+            label="Manager"
+            value={form.managerId}
+            onChange={(v) => set('managerId', v)}
+            options={[{ value: '', label: '— top of org —' }, ...managers.filter((m) => m.id !== employee?.id).map((m) => ({ value: m.id, label: m.name }))]}
+          />
           <Field label="Email" value={form.email} onChange={(v) => set('email', v)} />
           <Field label="Location" value={form.location} onChange={(v) => set('location', v)} />
           <Field label="Compensation" value={form.compensation} onChange={(v) => set('compensation', v)} type="number" />
           <Field label="Start Date" value={form.startDate} onChange={(v) => set('startDate', v)} type="date" />
           <Field label="Level" value={form.level} onChange={(v) => set('level', v)} />
-          <div>
-            <label className="text-xs text-gray-400">Status</label>
-            <select
-              value={form.status}
-              onChange={(e) => set('status', e.target.value)}
-              className="w-full mt-0.5 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
-            >
-              {STATUS_OPTS.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+          <SelectField
+            label="Status"
+            value={form.status}
+            onChange={(v) => set('status', v)}
+            options={STATUS_OPTS.map((s) => ({ value: s, label: s }))}
+          />
+          <SelectField
+            label="Team role (Belbin)"
+            value={form.role}
+            onChange={(v) => set('role', v)}
+            options={[{ value: '', label: '— not specified —' }, ...BELBIN_ROLE_OPTS]}
+          />
+        </div>
+        <div className="border-t border-lattice-border pt-2">
+          <p className="text-xs text-gray-400 mb-1">
+            Demographics — optional, feeds the Skill Coverage / Diversity report&apos;s
+            Simpson&apos;s diversity index. Closed dropdowns only, no free text.
+          </p>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <SelectField
+              label="Gender"
+              value={form.gender}
+              onChange={(v) => set('gender', v)}
+              options={[{ value: '', label: '— not specified —' }, ...GENDER_OPTS.map((g) => ({ value: g, label: g }))]}
+            />
+            <SelectField
+              label="Age band"
+              value={form.ageBand}
+              onChange={(v) => set('ageBand', v)}
+              options={[{ value: '', label: '— not specified —' }, ...AGE_BAND_OPTS.map((a) => ({ value: a, label: a }))]}
+            />
           </div>
         </div>
         <Field label="Skills (comma-separated)" value={form.skills} onChange={(v) => set('skills', v)} />
@@ -423,6 +469,30 @@ function ReassignModal({
   );
 }
 
+function SelectField({
+  label, value, onChange, options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  const id = useId();
+  return (
+    <div>
+      <label htmlFor={id} className="text-xs text-gray-400">{label}</label>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full mt-0.5 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
+      >
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function Field({
   label, value, onChange, type = 'text',
 }: {
@@ -431,10 +501,12 @@ function Field({
   onChange: (v: string) => void;
   type?: string;
 }) {
+  const id = useId();
   return (
     <div>
-      <label className="text-xs text-gray-400">{label}</label>
+      <label htmlFor={id} className="text-xs text-gray-400">{label}</label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}

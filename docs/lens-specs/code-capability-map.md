@@ -45,14 +45,59 @@ tabs+snapshots model vs. the full virtual-git project model). Each was
 independently verified free of fabricated data (no `Math.random`, no
 hardcoded arrays presented as live data, no unfulfilled dead buttons).
 
-**Honest observation, not fixed this pass**: the three surfaces each carry
+~~**Honest observation, not fixed this pass**: the three surfaces each carry
 their own "pick a project" state (the quick-script tabs have none; the
 virtual-git workspace has `ProjectSwitcher`; the advanced panel has its own
 separate `ProjectSwitcher` instance) — a real UX friction (three independent
 project contexts on one page) but out of scope for this pass given the risk
 of touching all three simultaneously. **Flagged as a scoped future build
 task**: thread a single shared `projectId` through all three via lifted
-state or a small context, no backend changes needed.
+state or a small context, no backend changes needed.~~
+
+**CLOSED (2026-07-12, `220fd971`) — Wave 4 gap-closure.** Built the
+small-context option (matching the codebase's existing pattern for this
+exact shape, e.g. `components/news/ArticleDetailContext.tsx`): a new
+`CodeProjectContext`/`useCodeProject` hook
+(`concord-frontend/components/code/CodeProjectContext.tsx`) holds the one
+`projectId` + setter, with a safe local-state fallback when a consumer is
+rendered outside a provider (never crashes). `app/lenses/code/page.tsx` wraps
+its `LensShell` children in a single `<CodeProjectProvider>`. All three
+surfaces were re-pointed at it:
+- `CodeWorkbenchSection.tsx`'s `projectId` state → `useCodeProject()`, its
+  existing `ProjectSwitcher` instance now reads/writes the shared value.
+- `CodeAdvancedPanel.tsx`'s previously-independent `projectId` state →
+  `useCodeProject()` too — its own `ProjectSwitcher` instance is unchanged
+  code, just now bound to the shared value instead of local state.
+- The quick-script tabs get a new `QuickScriptProjectBadge.tsx` in the
+  header — a slim `<select>` (fetches `code.projects-list` itself, same
+  pattern `ProjectSwitcher` already uses) bound to the same context.
+  **Decision on "no project" state**: kept it fully valid and unchanged.
+  The quick-script tabs' semantic-sync buffer (`code-lens-live`, used only
+  to mirror the active tab into the backend LanguageService for
+  hover/completions/diagnostics) still targets that fixed ephemeral bucket
+  — it does **not** repoint at whatever project is selected. Retargeting it
+  would mean quick-script keystrokes silently start overwriting a real
+  project's files via `files-write`, which is exactly the cross-surface
+  risk this item was originally deferred over. So selecting a project in
+  the quick-script header only sets the shared pointer the other two
+  surfaces read — it has zero effect on quick-script execution/save
+  behavior.
+
+`ProjectSwitcher.tsx` gained one additive change: its `<select>` now carries
+`aria-label="Select project"` (a real accessibility improvement, and what
+makes it unambiguously testable against `CodeAdvancedPanel`'s unrelated
+file-picker `<select>` that also mounts once a project is selected).
+
+Tests: `concord-frontend/tests/code-project-context.test.tsx` (3/3) —
+renders the real `CodeWorkbenchSection` + `CodeAdvancedPanel` together under
+one `CodeProjectProvider` (not stand-ins) and asserts a selection made in
+either surface's `ProjectSwitcher` is immediately reflected in the other,
+including the Advanced panel's project-gated tools unblocking; a second
+case pins the same sharing between `QuickScriptProjectBadge` and
+`CodeWorkbenchSection`; a third pins that `useCodeProject()` degrades to
+independent local state (no cross-talk) when rendered with no provider.
+Pre-existing `tests/editor-pane-ctrlk-race.test.tsx` (2/2) still passes
+unmodified.
 
 ## What this rebuild changed (closing the 5 confirmed gaps)
 
@@ -108,9 +153,11 @@ page:
   selection size) than the canned single-goal macro. Wiring a second button
   for a strict subset of an already-wired capability would be redundant UI,
   not new capability — honest relabel, not a gap.
-- **Flagged as a scoped future build task**: unify the three project-picker
+- ~~**Flagged as a scoped future build task**: unify the three project-picker
   states across the page's three sub-systems (see "Honest observation"
-  above) — presentation-only, no backend work.
+  above) — presentation-only, no backend work.~~ **CLOSED (2026-07-12,
+  `220fd971`)** — see the "Honest observation" section above for the
+  full writeup.
 
 ## Verification
 
@@ -120,3 +167,9 @@ page:
 - `node scripts/grade-ux-polish.mjs --honest` — `code`: `tier: "polished"`, `isGenericScaffold: false`.
 - `node scripts/lens-unsurfaced.mjs --lens code` — 6/80 → 1/80 (only the honestly-relabeled `refactor-suggest` remains).
 - `npx vitest run tests/editor-pane-ctrlk-race.test.tsx` — 2/2 passing (the new Explain/Tests/Blame state doesn't interfere with the existing Ctrl+K capture-phase race fix).
+
+**Project-picker unification verification (2026-07-12, `220fd971`):**
+- `npx vitest run tests/code-project-context.test.tsx` — 3/3 passing.
+- `npx eslint app/lenses/code/page.tsx components/code/ProjectSwitcher.tsx components/code/CodeWorkbenchSection.tsx components/code/CodeAdvancedPanel.tsx components/code/CodeProjectContext.tsx components/code/QuickScriptProjectBadge.tsx` — clean.
+- `npx tsc --noEmit -p .` — 0 errors project-wide.
+- `npx vitest run tests/editor-pane-ctrlk-race.test.tsx tests/code-project-context.test.tsx` — 5/5 passing, no regressions.

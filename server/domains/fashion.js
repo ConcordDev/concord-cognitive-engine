@@ -80,23 +80,29 @@ export default function registerFashionActions(registerLensAction) {
   const findOutfit = (s, userId, id) => (s.outfits.get(userId) || []).find((o) => o.id === id) || null;
 
   const CATEGORIES = ["top", "bottom", "dress", "outerwear", "shoes", "accessory", "bag", "activewear", "underwear"];
+  // Stylebook-parity laundry/availability status (capability-map #20).
+  // "clean" is the default for both newly-added items and back-compat
+  // reads of items persisted before this field existed.
+  const LAUNDRY_STATUSES = ["clean", "dirty", "at_cleaner", "lent_out"];
 
   function itemView(item) {
     const cpw = item.timesWorn > 0 ? Math.round((item.cost / item.timesWorn) * 100) / 100 : null;
     return {
       ...item,
+      laundryStatus: LAUNDRY_STATUSES.includes(item.laundryStatus) ? item.laundryStatus : "clean",
       costPerWear: cpw,
       valueRating: cpw == null ? "unworn"
         : cpw < 5 ? "excellent" : cpw < 15 ? "good" : cpw < 30 ? "moderate" : "poor",
     };
   }
 
-  // ── Wardrobe items ──────────────────────────────────────────────────
-  registerLensAction("fashion", "item-add", (ctx, _a, params = {}) => {
-    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+  // Shared wardrobe-item constructor — used by item-add AND by
+  // wishlist-convert-to-item so "create a real closet item" has exactly
+  // one implementation, not a copy-pasted second one.
+  function buildWardrobeItem(params) {
     const name = fsClean(params.name, 120);
-    if (!name) return { ok: false, error: "item name required" };
-    const item = {
+    if (!name) return null;
+    return {
       id: fsId("itm"), name,
       category: CATEGORIES.includes(String(params.category).toLowerCase())
         ? String(params.category).toLowerCase() : "top",
@@ -109,8 +115,16 @@ export default function registerFashionActions(registerLensAction) {
       photo: fsClean(params.photo, 500) || null,
       archived: false,
       lastWorn: null,
+      laundryStatus: "clean",
       createdAt: fsNow(),
     };
+  }
+
+  // ── Wardrobe items ──────────────────────────────────────────────────
+  registerLensAction("fashion", "item-add", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const item = buildWardrobeItem(params);
+    if (!item) return { ok: false, error: "item name required" };
     fsListB(s.items, fsAid(ctx)).push(item);
     saveFashionState();
     return { ok: true, result: { item: itemView(item) } };
@@ -122,6 +136,10 @@ export default function registerFashionActions(registerLensAction) {
     if (!params.includeArchived) items = items.filter((i) => !i.archived);
     if (params.category) items = items.filter((i) => i.category === String(params.category).toLowerCase());
     if (params.season) items = items.filter((i) => i.season === String(params.season).toLowerCase() || i.season === "all");
+    if (params.laundryStatus) {
+      const want = String(params.laundryStatus).toLowerCase();
+      items = items.filter((i) => (LAUNDRY_STATUSES.includes(i.laundryStatus) ? i.laundryStatus : "clean") === want);
+    }
     items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { items: items.map(itemView), count: items.length } };
   });
@@ -130,6 +148,15 @@ export default function registerFashionActions(registerLensAction) {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const item = findItem(s, fsAid(ctx), params.id);
     if (!item) return { ok: false, error: "item not found" };
+    // Validate laundryStatus BEFORE mutating anything else, so an invalid
+    // value rejects the whole call rather than partially applying other
+    // fields and then failing.
+    let nextLaundryStatus = null;
+    if (params.laundryStatus != null) {
+      const ls = String(params.laundryStatus).toLowerCase();
+      if (!LAUNDRY_STATUSES.includes(ls)) return { ok: false, error: `invalid laundryStatus (must be one of ${LAUNDRY_STATUSES.join(", ")})` };
+      nextLaundryStatus = ls;
+    }
     if (params.name != null) { const n = fsClean(params.name, 120); if (n) item.name = n; }
     if (params.brand != null) item.brand = fsClean(params.brand, 80) || null;
     if (params.color != null) item.color = fsClean(params.color, 40).toLowerCase() || null;
@@ -138,6 +165,7 @@ export default function registerFashionActions(registerLensAction) {
       item.category = String(params.category).toLowerCase();
     }
     if (params.archived != null) item.archived = params.archived === true;
+    if (nextLaundryStatus != null) item.laundryStatus = nextLaundryStatus;
     saveFashionState();
     return { ok: true, result: { item: itemView(item) } };
   });
@@ -431,7 +459,7 @@ export default function registerFashionActions(registerLensAction) {
   function getFashionStateExt() {
     const s = getFashionState();
     if (!s) return null;
-    for (const k of ["styleProfiles", "challenges", "capsules"]) {
+    for (const k of ["styleProfiles", "challenges", "capsules", "wishlist"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     if (!Array.isArray(s.communityPosts)) s.communityPosts = [];
@@ -1007,6 +1035,77 @@ export default function registerFashionActions(registerLensAction) {
       ok: true,
       result: { challenges: list, count: list.length, completed: complete },
     };
+  });
+
+  // ── [M] Wishlist — save desired external items (price/link/note) ────
+  // Real per-user persistence (STATE.fashionLens.wishlist, the same
+  // Map-per-user shape as items/outfits/capsules). The old page's
+  // Wishlist tab was pure client-side useState with zero backend — this
+  // closes that gap for real, including a "convert to closet item"
+  // action that reuses buildWardrobeItem so a purchased wishlist item
+  // becomes a real, first-class wardrobe item instead of a second,
+  // parallel data shape.
+  registerLensAction("fashion", "wishlist-add", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = fsClean(params.name, 120);
+    if (!name) return { ok: false, error: "item name required" };
+    let price = null;
+    if (params.price != null && params.price !== "") {
+      const n = Number(params.price);
+      if (!Number.isFinite(n) || n < 0) return { ok: false, error: "price must be a non-negative number" };
+      price = Math.round(n * 100) / 100;
+    }
+    const category = CATEGORIES.includes(String(params.category || "").toLowerCase())
+      ? String(params.category).toLowerCase() : null;
+    const entry = {
+      id: fsId("wsh"), name, price,
+      link: fsClean(params.link, 500) || null,
+      note: fsClean(params.note, 300) || null,
+      category,
+      createdAt: fsNow(),
+    };
+    fsListB(s.wishlist, fsAid(ctx)).push(entry);
+    saveFashionState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("fashion", "wishlist-list", (ctx, _a, _params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entries = [...(s.wishlist.get(fsAid(ctx)) || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const totalValue = Math.round(entries.reduce((a, w) => a + (w.price || 0), 0) * 100) / 100;
+    return { ok: true, result: { wishlist: entries, count: entries.length, totalValue } };
+  });
+
+  registerLensAction("fashion", "wishlist-remove", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.wishlist.get(fsAid(ctx)) || [];
+    const i = arr.findIndex((w) => w.id === params.id);
+    if (i < 0) return { ok: false, error: "wishlist entry not found" };
+    arr.splice(i, 1);
+    saveFashionState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("fashion", "wishlist-convert-to-item", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const arr = s.wishlist.get(userId) || [];
+    const idx = arr.findIndex((w) => w.id === params.id);
+    if (idx < 0) return { ok: false, error: "wishlist entry not found" };
+    const entry = arr[idx];
+    const item = buildWardrobeItem({
+      name: params.name || entry.name,
+      category: params.category || entry.category || "top",
+      brand: params.brand,
+      color: params.color,
+      cost: params.cost != null ? params.cost : entry.price,
+      photo: params.photo,
+    });
+    if (!item) return { ok: false, error: "item name required" };
+    fsListB(s.items, userId).push(item);
+    arr.splice(idx, 1);
+    saveFashionState();
+    return { ok: true, result: { item: itemView(item), removedWishlistId: entry.id } };
   });
 
   // feed — ingest real fashion / costume pieces from The Metropolitan

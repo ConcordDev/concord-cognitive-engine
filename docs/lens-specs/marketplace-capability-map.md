@@ -116,14 +116,19 @@ shape (`title`/`description`/`priceUsd`/`tags`) matches this form. Follows
 with `listings-publish` so the listing goes live immediately (matching the
 button's "Publish" intent), then switches to the My Shop tab so the user
 sees the concrete result rather than a listing that silently lands in a
-store the Browse tab never reads. **Known trade-off, documented not hidden:**
-the e-commerce listing model has one `priceUsd`, not this form's 4-tier
-license schema — only the basic-tier price carries over. Fully unifying the
-4-tier license form with the single-price listing model, or building a
-public cross-seller browse macro for `s.listings` so newly-published items
-also appear in the Browse tab, is a larger change triaged below (DATA
-already exists locally per-user; what's missing is a public/global read
-macro — ENGINEERING).
+store the top-level `page.tsx` "Browse" tab (the separate DTU/artistry
+system's tab) never reads. **Known trade-off, documented not hidden:** the
+e-commerce listing model has one `priceUsd`, not this form's 4-tier license
+schema — only the basic-tier price carries over. Fully unifying the 4-tier
+license form with the single-price listing model is still open (a genuine
+product-shape question, not triaged here). The other half of the original
+sentence here — "building a public cross-seller browse macro for
+`s.listings`" — is **CLOSED (2026-07-12, `78337966`)**: it turned out to
+already exist (`storefront-browse`, wired into `StorefrontPanel` inside
+`ShopfrontSection`'s "Storefront" nav item, which is mounted at the very top
+of the marketplace lens, always visible). See the corrected "Genuinely
+missing" entry below for the full citation — this doc's own §"Genuinely
+missing" list was stale on this exact point.
 
 ### 4. Purchases didn't survive a page reload
 
@@ -192,16 +197,49 @@ optimistic-forever.
 
 ## Genuinely missing / deferred (triaged, not silently dropped)
 
-- **Public cross-seller browse for `s.listings`** (the e-commerce domain's
+- ~~**Public cross-seller browse for `s.listings`** (the e-commerce domain's
   per-user listing store) — **ENGINEERING**. No macro currently lets Browse
   discover listings created via `listings-create` across all sellers; today
   they're only visible in the creating seller's own My Shop tab. A
   `listings-browse-all` macro (paginate across all users' published
   listings) would let "New Listing" (fixed this pass to publish into this
-  store) actually surface in Browse too. Not attempted this pass — the fix
-  above already makes the button truthful (it publishes a real, visible
-  listing under My Shop) without inventing a new cross-user index; unifying
-  Browse with this store is additive future work, not a regression.
+  store) actually surface in Browse too.~~ **CLOSED (2026-07-12,
+  `78337966`) — was already shipped, this entry was stale.** Re-audited before
+  building anything: the macro this bullet asked for already existed under
+  the name `storefront-browse` (`server/domains/marketplace.js:721`) —
+  aggregates every seller's `status === 'published'` listings into one
+  public catalog with `search`/`kind`/`sellerId`/`minPrice`/`maxPrice`
+  filters + `newest`/`price_asc`/`price_desc`/`popular` sort, and a sibling
+  `storefront-shop` macro (`:768`) for a single seller's public shop page.
+  Both are already wired end-to-end: `concord-frontend/components/marketplace/StorefrontPanel.tsx`
+  (buyer catalog UI with cart + per-shop checkout + order history) calls
+  them, mounted via `ShopfrontSection`'s "Storefront" nav item
+  (`concord-frontend/components/marketplace/ShopfrontSection.tsx:69`),
+  which is itself mounted at the very top of `/lenses/marketplace`, always
+  visible above the page's own top-level tab bar (see "Two systems share one
+  lens" above). This was landed and independently audited in commit
+  `f3c06f15` ("feat(feed): wire candidates-pattern macros + record-interaction
+  training loop" — a misleadingly-scoped commit message that also carried a
+  large batch of unrelated lens work, this marketplace macro + component
+  included) together with `docs/lens-specs/marketplace-wave3-audit.md`,
+  which documents `storefront-shop` — the *sibling* single-seller macro —
+  as the item that was unsurfaced and got fixed; that audit's own prose
+  ("`StorefrontPanel.tsx` only ever called cross-seller `storefront-browse`")
+  already establishes that cross-seller browse was live and wired at that
+  time. This capability-map file was last touched (`290aa740`, 2026-07-11)
+  *after* `f3c06f15` (2026-07-10) landed, so the staleness here was a
+  cross-reference miss, not a case of finding a gap before the fix shipped.
+  **What this pass actually did:** verified the macro's contract by reading
+  it end-to-end, added 5 new reciprocal-visibility + privacy-leak + kind-filter
+  backend tests (`server/tests/marketplace-domain-parity.test.js` — a
+  published listing from seller A is visible to seller B; a draft from
+  seller A is never visible to seller B; no non-public field leaks;
+  category filtering works across sellers) and 3 new frontend tests
+  (`concord-frontend/tests/components/StorefrontPanel.test.tsx` — renders
+  listings from multiple distinct sellers off one `storefront-browse` call,
+  filters pass through untouched, honest empty state). No purchase/checkout/
+  wallet/royalty code was touched — this was a pure verification + test-
+  coverage + documentation-correction pass, not a rebuild.
 - **Plugin-type Browse items have no real purchase path** — **ENGINEERING**
   (a genuine product-shape question, not a data-sourcing one: does buying a
   "plugin" listing mean something different from an artistry purchase, e.g.

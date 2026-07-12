@@ -45,6 +45,32 @@ function relKey(a, b) {
 }
 
 /**
+ * Wave 4 — best-effort resolve a "home" worldId for a faction from its
+ * living NPCs. `faction_strategy_state` itself carries no world_id column
+ * (factions aren't strictly per-world — see the "Global (factions aren't
+ * per-world)" note in emergent/faction-strategy-cycle.js), so this is a
+ * lookup, not a stored fact: most authored factions live in exactly one
+ * world in practice, so their NPCs' world_id is a reliable-enough signal
+ * for event display/filtering, but it is never treated as authoritative
+ * ownership. Returns null (never invented) when no NPC row resolves it —
+ * callers must treat worldId as optional. Previously duplicated inline in
+ * emergent/faction-strategy-cycle.js as `resolveFactionWorld`; centralised
+ * here so both the war-spawn cosmetic metadata and the realtime event
+ * payloads below use the exact same resolution.
+ */
+export function resolveFactionWorldId(db, factionId) {
+  if (!db || !factionId) return null;
+  try {
+    const row = db.prepare(`
+      SELECT world_id FROM world_npcs WHERE faction = ? AND world_id IS NOT NULL LIMIT 1
+    `).get(factionId);
+    return row?.world_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Read or initialise a faction's strategy state. Idempotent.
  */
 export function ensureFactionState(db, factionId, opts = {}) {
@@ -464,23 +490,32 @@ export function applyMove(db, factionId, picked, peerStates) {
   // Phase F3.1 — fire realtime event so the player sees factions doing
   // things. Three event names for the three high-impact move classes.
   // Best-effort; never blocks the cycle.
+  // Wave 4 — stamp a best-effort worldId (resolved from the faction's living
+  // NPCs, see resolveFactionWorldId above) so a spectator/client can filter
+  // these platform-wide broadcasts to the world they're watching. Resolved
+  // once per applyMove call since all three branches need the same lookup.
   try {
     const emitFn = globalThis._concordRealtimeEmit;
     if (typeof emitFn === "function" && picked.move) {
+      const _factionWorldId = resolveFactionWorldId(db, factionId);
+      const _worldIdField = _factionWorldId ? { worldId: _factionWorldId } : {};
       if (picked.move === "DECLARE_WAR" || picked.move === "RAID") {
         emitFn("faction:war-declared", {
           factionId, targetFactionId: picked.target ?? null,
           move: picked.move, summary: picked.summary, moveId,
+          ..._worldIdField,
         });
       } else if (picked.move === "PROPOSE_ALLIANCE" || picked.move === "FORM_ALLIANCE") {
         emitFn("faction:alliance-formed", {
           factionId, targetFactionId: picked.target ?? null,
           summary: picked.summary, moveId,
+          ..._worldIdField,
         });
       } else if (picked.move === "SEEK_TRUCE") {
         emitFn("faction:truce-sought", {
           factionId, targetFactionId: picked.target ?? null,
           summary: picked.summary, moveId,
+          ..._worldIdField,
         });
       }
     }

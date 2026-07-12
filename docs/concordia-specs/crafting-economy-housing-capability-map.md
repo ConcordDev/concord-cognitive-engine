@@ -251,21 +251,15 @@ catalog was built for. This is a real, narrow, mechanical seam (not a design jud
 
 ## 3. Prioritized gap list (triaged)
 
-1. **[ENGINEERING] Dead multi-step craft-chain content.** `content/world/concordia-hub/recipes/
-   chains.json` (4 authored chains) is never loaded by `content-seeder.js` or anything else. Either
-   add a seeder pass that calls `registerChain` for each entry in the file (mirrors the pattern
-   already used for hacking/code/trivia/karaoke content in Phase Z2), or the multi-step chain feature
-   has zero live content on any freshly-provisioned world. Small, scoped, no design judgment
-   required — this is a wiring gap, not a content-authoring gap (content already exists).
+1. ~~**[ENGINEERING] Dead multi-step craft-chain content.** `content/world/concordia-hub/recipes/
+   chains.json` (4 authored chains) is never loaded by `content-seeder.js` or anything else.~~
+   **CLOSED (2026-07-12, `080fe557`)** — `content-seeder.js` now walks every
+   `content/world/<world>/recipes/chains.json`.
 
-2. **[ENGINEERING] Resource-id namespace split between crafting and the market.** `RESOURCE_CATALOG`
+2. ~~**[ENGINEERING] Resource-id namespace split between crafting and the market.** `RESOURCE_CATALOG`
    (snake_case, crafting-property system) and `BASE_PRICES` (mostly hyphenated, supply/demand
-   pricing) overlap on only 3 of ~30-36 ids. Reconciling ids (or adding an id-alias layer in
-   `propsFor`) would let world-gathered/traded resources (iron-ore, mana-crystal, gold-ore, etc.)
-   actually carry real crafting properties instead of silently degrading to `DEFAULT_PROPS`. This is
-   the single biggest "silent depth loss" in the crafting stack — the tier-5/magical-sub-tier
-   materials in the catalog are real, but a player who only ever gathers via the standard world
-   market path may never touch them under their catalog names.
+   pricing) overlap on only 3 of ~30-36 ids.~~ **CLOSED (2026-07-12, `dec6d05b`)** — 4 real
+   market-id → catalog-id aliases reconciled in `propsFor`.
 
 3. **[ENGINEERING] `world-economy.js`'s `'craft'` transaction type is unused.** The price formula
    already branches on it (resources consumed → demand rises), but no caller passes `type: 'craft'`

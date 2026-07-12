@@ -2,10 +2,12 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-// UX Research Suite — wires the 7 stateful experience-domain macros:
+// UX Research Suite — wires the stateful experience-domain macros:
 // unmoderated usability test runner, click/heatmap tester,
-// card-sorting / tree-testing, survey builder with branching,
-// participant panel + screeners, highlight reels, prototype analytics.
+// card-sorting / tree-testing, a branch-aware survey builder + taker
+// (author custom per-answer branch logic, then take it one question at a
+// time via the real `surveyNext` resolver), participant panel + screeners,
+// highlight reels, prototype analytics.
 // Every value rendered comes from a real `lensRun('experience', ...)` call.
 
 import { useCallback, useEffect, useState } from 'react';
@@ -13,7 +15,7 @@ import { lensRun } from '@/lib/api/client';
 import {
   Loader2, Plus, Play, MousePointerClick, FolderTree, ClipboardList,
   Users, Film, MonitorPlay, CheckCircle2, XCircle, AlertTriangle,
-  Target, Share2, ChevronRight,
+  Target, Share2, ChevronRight, GitBranch, Trash2, ArrowRight,
 } from 'lucide-react';
 
 type SuiteTab = 'tests' | 'heatmap' | 'cardsort' | 'survey' | 'panel' | 'clips' | 'prototype';
@@ -453,8 +455,21 @@ function CardSortPanel() {
 
 // ════════════════════════════════════════════════════════════════════════════
 // 4. Survey builder with branching + NPS/CSAT
+//
+//    Backend contract (server/domains/experience.js):
+//    - createSurvey({ name, template? , questions? }) — questions carry an
+//      optional `branch: { answerValue: targetQuestionId }` map.
+//    - surveyNext({ surveyId, questionId, answer }) -> { next, done } —
+//      looks up `question.branch[answer]`; falls through to the next
+//      question in array order when no branch entry matches the answer.
+//    - submitSurveyResponse persists the full answers map once the taker
+//      reaches a `done` terminal question.
+//    The taking flow below asks ONE question at a time and calls
+//    surveyNext after every answer so branching is real, not simulated —
+//    the "next" question genuinely depends on what surveyNext returns.
 // ════════════════════════════════════════════════════════════════════════════
 
+type SurveyQKind = 'single' | 'multi' | 'nps' | 'csat' | 'text' | 'rating';
 interface SurveyQ { id: string; kind: string; prompt: string; options: string[] }
 interface Survey { id: string; name: string; template: string | null; questions: SurveyQ[]; responseCount: number }
 interface SurveyResultsT {
@@ -467,15 +482,41 @@ interface SurveyResultsT {
   }[];
 }
 
+// Custom (non-template) survey-authoring row. Branch targets reference a
+// sibling row's `localId`, which is sent to the server as the question's
+// `id` — createSurvey preserves a caller-supplied id, so the branch map
+// authored here resolves correctly once the survey is created.
+interface CustomSurveyQ {
+  localId: string;
+  kind: SurveyQKind;
+  prompt: string;
+  optionsText: string;
+  branch: Record<string, string>; // answerValue -> target localId ('' omitted = fall through to next-in-order)
+}
+const makeCustomQ = (): CustomSurveyQ => ({
+  localId: `q_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+  kind: 'single', prompt: '', optionsText: '', branch: {},
+});
+
 function SurveyPanel() {
   const [templates, setTemplates] = useState<{ id: string; label: string; questionCount: number }[]>([]);
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<'template' | 'custom'>('template');
   const [name, setName] = useState('');
   const [template, setTemplate] = useState('nps');
+  const [customQs, setCustomQs] = useState<CustomSurveyQ[]>([makeCustomQ()]);
+
+  // Branch-aware taking flow — one question at a time via surveyNext.
   const [active, setActive] = useState<Survey | null>(null);
   const [respondent, setRespondent] = useState('');
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [current, setCurrent] = useState<SurveyQ | null>(null);
+  const [collected, setCollected] = useState<Record<string, string | string[]>>({});
+  const [multiSel, setMultiSel] = useState<string[]>([]);
+  const [freeText, setFreeText] = useState('');
+  const [advancing, setAdvancing] = useState(false);
+  const [takeError, setTakeError] = useState<string | null>(null);
+  const [completed, setCompleted] = useState(false);
   const [results, setResults] = useState<SurveyResultsT | null>(null);
 
   const load = useCallback(async () => {
@@ -485,46 +526,160 @@ function SurveyPanel() {
     if (s) setSurveys(s.surveys || []);
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setMultiSel([]); setFreeText(''); }, [current?.id]);
 
   const create = async () => {
     if (!name.trim()) return;
     setBusy(true);
-    await run('createSurvey', { name, template });
+    if (mode === 'template') {
+      await run('createSurvey', { name, template });
+    } else {
+      const questions = customQs
+        .filter(q => q.prompt.trim())
+        .map(q => ({
+          id: q.localId,
+          kind: q.kind,
+          prompt: q.prompt.trim(),
+          options: ['single', 'multi', 'rating'].includes(q.kind)
+            ? q.optionsText.split(',').map(o => o.trim()).filter(Boolean)
+            : [],
+          branch: Object.keys(q.branch).length ? q.branch : null,
+        }));
+      if (questions.length === 0) { setBusy(false); return; }
+      await run('createSurvey', { name, questions });
+      setCustomQs([makeCustomQ()]);
+    }
     setName('');
     await load();
     setBusy(false);
   };
 
-  const submit = async () => {
-    if (!active) return;
-    setBusy(true);
-    await run('submitSurveyResponse', { surveyId: active.id, respondent: respondent || 'Anonymous', answers });
-    const res = await run('surveyResults', { surveyId: active.id });
-    if (res) setResults(res);
-    setAnswers({}); setRespondent('');
-    await load();
-    setBusy(false);
-  };
+  const addCustomQ = () => setCustomQs(qs => [...qs, makeCustomQ()]);
+  const removeCustomQ = (localId: string) => setCustomQs(qs => qs
+    .filter(q => q.localId !== localId)
+    .map(q => ({ ...q, branch: Object.fromEntries(Object.entries(q.branch).filter(([, v]) => v !== localId)) })));
+  const patchCustomQ = (localId: string, patch: Partial<CustomSurveyQ>) =>
+    setCustomQs(qs => qs.map(q => q.localId === localId ? { ...q, ...patch } : q));
+  const setBranchTarget = (localId: string, answerKey: string, target: string) =>
+    setCustomQs(qs => qs.map(q => {
+      if (q.localId !== localId) return q;
+      const branch = { ...q.branch };
+      if (target) branch[answerKey] = target; else delete branch[answerKey];
+      return { ...q, branch };
+    }));
 
   const openSurvey = async (s: Survey) => {
-    setActive(s); setAnswers({}); setResults(null);
+    setActive(s); setCurrent(s.questions[0] || null); setCollected({});
+    setCompleted(false); setTakeError(null); setRespondent(''); setResults(null);
     const res = await run('surveyResults', { surveyId: s.id });
     if (res) setResults(res);
   };
 
+  const restart = () => {
+    if (!active) return;
+    setCurrent(active.questions[0] || null);
+    setCollected({}); setCompleted(false); setTakeError(null); setRespondent('');
+  };
+
+  // Ask surveyNext for the real next question — the branch (or fall-through
+  // to next-in-order) is resolved server-side, never guessed client-side.
+  const advance = async (rawAnswer: string | string[]) => {
+    if (!active || !current) return;
+    setAdvancing(true); setTakeError(null);
+    const merged = { ...collected, [current.id]: rawAnswer };
+    setCollected(merged);
+    const answerStr = Array.isArray(rawAnswer) ? rawAnswer.join(',') : rawAnswer;
+    const res = await run('surveyNext', { surveyId: active.id, questionId: current.id, answer: answerStr });
+    if (!res) { setAdvancing(false); setTakeError('Could not resolve the next question — try again.'); return; }
+    if (res.done || !res.next) {
+      await run('submitSurveyResponse', { surveyId: active.id, respondent: respondent || 'Anonymous', answers: merged });
+      const r = await run('surveyResults', { surveyId: active.id });
+      if (r) setResults(r);
+      await load();
+      setCurrent(null);
+      setCompleted(true);
+    } else {
+      setCurrent(res.next as SurveyQ);
+    }
+    setAdvancing(false);
+  };
+
+  const answeredCount = Object.keys(collected).length;
+
   return (
     <div className="space-y-4">
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
-        <SectionHeader icon={ClipboardList} title="New survey" hint="Start from an NPS / CSAT / CES template with branching-ready questions." />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <Field label="Survey name"><input className={inputCls} value={name} onChange={e => setName(e.target.value)} placeholder="Post-task feedback" /></Field>
-          <Field label="Template">
-            <select className={inputCls} value={template} onChange={e => setTemplate(e.target.value)}>
-              {templates.map(t => <option key={t.id} value={t.id}>{t.label} ({t.questionCount}q)</option>)}
-            </select>
-          </Field>
+        <SectionHeader icon={ClipboardList} title="New survey" hint="Start from an NPS / CSAT / CES template, or author custom questions with per-answer branch logic (Typeform-style skip rules)." />
+        <div className="flex gap-1 mb-2">
+          <button onClick={() => setMode('template')} className={`text-[11px] px-2 py-1 rounded ${mode === 'template' ? 'bg-neon-cyan text-black font-semibold' : 'bg-zinc-800 text-gray-400'}`}>Template</button>
+          <button onClick={() => setMode('custom')} className={`text-[11px] px-2 py-1 rounded flex items-center gap-1 ${mode === 'custom' ? 'bg-neon-cyan text-black font-semibold' : 'bg-zinc-800 text-gray-400'}`}><GitBranch className="w-3 h-3" /> Custom + branching</button>
         </div>
-        <button onClick={create} disabled={busy || !name.trim()} className="btn-neon cyan text-xs mt-2 flex items-center gap-1 disabled:opacity-40">
+        <Field label="Survey name"><input className={inputCls} value={name} onChange={e => setName(e.target.value)} placeholder="Post-task feedback" /></Field>
+
+        {mode === 'template' && (
+          <div className="mt-2">
+            <Field label="Template">
+              <select className={inputCls} value={template} onChange={e => setTemplate(e.target.value)}>
+                {templates.map(t => <option key={t.id} value={t.id}>{t.label} ({t.questionCount}q)</option>)}
+              </select>
+            </Field>
+          </div>
+        )}
+
+        {mode === 'custom' && (
+          <div className="mt-2 space-y-2">
+            {customQs.map((q, qi) => {
+              const branchOptions = (q.kind === 'single' || q.kind === 'rating')
+                ? q.optionsText.split(',').map(o => o.trim()).filter(Boolean)
+                : [];
+              return (
+                <div key={q.localId} className="bg-zinc-900 border border-zinc-800 rounded p-2 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-500 w-4">{qi + 1}.</span>
+                    <select className={`${inputCls} w-32`} value={q.kind} onChange={e => patchCustomQ(q.localId, { kind: e.target.value as SurveyQKind })}>
+                      <option value="single">Single choice</option>
+                      <option value="multi">Multi choice</option>
+                      <option value="rating">Rating scale</option>
+                      <option value="nps">NPS (0-10)</option>
+                      <option value="csat">CSAT (1-5)</option>
+                      <option value="text">Free text</option>
+                    </select>
+                    <input className={inputCls} value={q.prompt} onChange={e => patchCustomQ(q.localId, { prompt: e.target.value })} placeholder="Question prompt" />
+                    {customQs.length > 1 && (
+                      <button onClick={() => removeCustomQ(q.localId)} className="text-gray-500 hover:text-red-400 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                    )}
+                  </div>
+                  {['single', 'multi', 'rating'].includes(q.kind) && (
+                    <input className={inputCls} value={q.optionsText} onChange={e => patchCustomQ(q.localId, { optionsText: e.target.value })} placeholder="Options, comma-separated" />
+                  )}
+                  {(q.kind === 'single' || q.kind === 'rating') && branchOptions.length > 0 && customQs.length > 1 && (
+                    <div className="pl-4 space-y-1 border-l border-zinc-800">
+                      <p className="text-[10px] text-gray-500 flex items-center gap-1"><GitBranch className="w-3 h-3" /> Branch on answer (optional — default is next question in order)</p>
+                      {branchOptions.map((o, oi) => {
+                        const answerKey = q.kind === 'rating' ? String(oi + 1) : o;
+                        return (
+                          <div key={answerKey} className="flex items-center gap-1.5 text-[11px]">
+                            <span className="text-gray-400 w-24 truncate">&ldquo;{o}&rdquo;</span>
+                            <ArrowRight className="w-3 h-3 text-gray-600 shrink-0" />
+                            <select className={`${inputCls} py-1`} value={q.branch[answerKey] || ''} onChange={e => setBranchTarget(q.localId, answerKey, e.target.value)}>
+                              <option value="">Next question</option>
+                              {customQs.filter(other => other.localId !== q.localId).map(other => (
+                                <option key={other.localId} value={other.localId}>{other.prompt.trim() || `Question ${customQs.indexOf(other) + 1}`}</option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <button onClick={addCustomQ} className="text-[11px] px-2 py-1 rounded border border-zinc-700 text-gray-400 hover:border-neon-cyan flex items-center gap-1"><Plus className="w-3 h-3" /> Add question</button>
+          </div>
+        )}
+
+        <button onClick={create} disabled={busy || !name.trim() || (mode === 'custom' && !customQs.some(q => q.prompt.trim()))} className="btn-neon cyan text-xs mt-2 flex items-center gap-1 disabled:opacity-40">
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Create survey
         </button>
       </div>
@@ -541,51 +696,85 @@ function SurveyPanel() {
 
       {active && (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-3">
-          <SectionHeader icon={ClipboardList} title={`Respond — ${active.name}`} />
-          <input className={`${inputCls} max-w-[200px]`} value={respondent} onChange={e => setRespondent(e.target.value)} placeholder="Respondent name" />
-          {active.questions.map(q => (
-            <div key={q.id} className="space-y-1">
-              <p className="text-xs text-gray-300">{q.prompt}</p>
-              {q.kind === 'nps' && (
+          <SectionHeader icon={ClipboardList} title={`Take — ${active.name}`} hint={completed ? 'Complete' : `Question ${answeredCount + 1} · one at a time, branch-aware via surveyNext`} />
+
+          {!completed && current && (
+            <div className="space-y-2">
+              <input className={`${inputCls} max-w-[200px]`} value={respondent} onChange={e => setRespondent(e.target.value)} placeholder="Respondent name" disabled={answeredCount > 0} />
+              <p className="text-sm text-gray-200">{current.prompt}</p>
+
+              {current.kind === 'nps' && (
                 <div className="flex flex-wrap gap-1">
                   {Array.from({ length: 11 }, (_, n) => (
-                    <button key={n} onClick={() => setAnswers({ ...answers, [q.id]: String(n) })}
-                      className={`w-7 h-7 rounded text-[11px] ${answers[q.id] === String(n) ? 'bg-neon-cyan text-black font-bold' : 'bg-zinc-800 text-gray-400'}`}>{n}</button>
+                    <button key={n} disabled={advancing} onClick={() => advance(String(n))}
+                      className="w-7 h-7 rounded text-[11px] bg-zinc-800 text-gray-400 hover:bg-neon-cyan hover:text-black disabled:opacity-40">{n}</button>
                   ))}
                 </div>
               )}
-              {q.kind === 'csat' && (
+              {current.kind === 'csat' && (
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map(n => (
-                    <button key={n} onClick={() => setAnswers({ ...answers, [q.id]: String(n) })}
-                      className={`w-9 h-8 rounded text-xs ${answers[q.id] === String(n) ? 'bg-neon-cyan text-black font-bold' : 'bg-zinc-800 text-gray-400'}`}>{n}★</button>
+                    <button key={n} disabled={advancing} onClick={() => advance(String(n))}
+                      className="w-9 h-8 rounded text-xs bg-zinc-800 text-gray-400 hover:bg-neon-cyan hover:text-black disabled:opacity-40">{n}★</button>
                   ))}
                 </div>
               )}
-              {q.kind === 'rating' && (
+              {current.kind === 'rating' && current.options.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {q.options.map((o, i) => (
-                    <button key={o} onClick={() => setAnswers({ ...answers, [q.id]: String(i + 1) })}
-                      className={`px-2 py-1 rounded text-[11px] ${answers[q.id] === String(i + 1) ? 'bg-neon-cyan text-black font-bold' : 'bg-zinc-800 text-gray-400'}`}>{o}</button>
+                  {current.options.map((o, i) => (
+                    <button key={o} disabled={advancing} onClick={() => advance(String(i + 1))}
+                      className="px-2 py-1 rounded text-[11px] bg-zinc-800 text-gray-400 hover:bg-neon-cyan hover:text-black disabled:opacity-40">{o}</button>
                   ))}
                 </div>
               )}
-              {(q.kind === 'single') && q.options.length > 0 && (
+              {current.kind === 'single' && current.options.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {q.options.map(o => (
-                    <button key={o} onClick={() => setAnswers({ ...answers, [q.id]: o })}
-                      className={`px-2 py-1 rounded text-[11px] ${answers[q.id] === o ? 'bg-neon-cyan text-black font-bold' : 'bg-zinc-800 text-gray-400'}`}>{o}</button>
+                  {current.options.map(o => (
+                    <button key={o} disabled={advancing} onClick={() => advance(o)}
+                      className="px-2 py-1 rounded text-[11px] bg-zinc-800 text-gray-400 hover:bg-neon-cyan hover:text-black disabled:opacity-40">{o}</button>
                   ))}
                 </div>
               )}
-              {(q.kind === 'text' || (q.kind === 'single' && q.options.length === 0)) && (
-                <input className={inputCls} value={answers[q.id] || ''} onChange={e => setAnswers({ ...answers, [q.id]: e.target.value })} placeholder="Your answer" />
+              {current.kind === 'multi' && current.options.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap gap-1">
+                    {current.options.map(o => (
+                      <button key={o} disabled={advancing}
+                        onClick={() => setMultiSel(sel => sel.includes(o) ? sel.filter(x => x !== o) : [...sel, o])}
+                        className={`px-2 py-1 rounded text-[11px] ${multiSel.includes(o) ? 'bg-neon-cyan text-black font-bold' : 'bg-zinc-800 text-gray-400'}`}>{o}</button>
+                    ))}
+                  </div>
+                  <button onClick={() => advance(multiSel)} disabled={advancing || multiSel.length === 0}
+                    className="btn-neon purple text-xs flex items-center gap-1 disabled:opacity-40">
+                    {advancing ? <Loader2 className="w-3 h-3 animate-spin" /> : <ChevronRight className="w-3 h-3" />} Continue
+                  </button>
+                </div>
               )}
+              {(current.kind === 'text' || (current.options.length === 0 && (current.kind === 'single' || current.kind === 'multi' || current.kind === 'rating'))) && (
+                <div className="flex gap-1.5">
+                  <input className={inputCls} value={freeText} onChange={e => setFreeText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && freeText.trim()) advance(freeText.trim()); }}
+                    placeholder="Your answer" />
+                  <button onClick={() => advance(freeText.trim())} disabled={advancing || !freeText.trim()}
+                    className="btn-neon purple text-xs flex items-center gap-1 disabled:opacity-40 shrink-0">
+                    {advancing ? <Loader2 className="w-3 h-3 animate-spin" /> : <ChevronRight className="w-3 h-3" />}
+                  </button>
+                </div>
+              )}
+              {takeError && <p className="text-[11px] text-red-400 flex items-center gap-1"><XCircle className="w-3 h-3" /> {takeError}</p>}
             </div>
-          ))}
-          <button onClick={submit} disabled={busy} className="btn-neon purple text-xs flex items-center gap-1 disabled:opacity-40">
-            {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />} Submit response
-          </button>
+          )}
+
+          {!completed && !current && (
+            <p className="text-xs text-gray-400">This survey has no questions.</p>
+          )}
+
+          {completed && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-neon-green flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Response submitted{answeredCount ? ` — ${answeredCount} question${answeredCount === 1 ? '' : 's'} answered` : ''}. Thanks{respondent ? `, ${respondent}` : ''}.</p>
+              <button onClick={restart} className="text-[11px] px-2 py-1 rounded border border-zinc-700 text-gray-400 hover:border-neon-cyan shrink-0">Take another</button>
+            </div>
+          )}
         </div>
       )}
 

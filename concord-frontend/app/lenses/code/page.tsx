@@ -15,6 +15,8 @@ import { ShellPreview } from '@/components/lens/ShellPreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { CodeWorkbenchSection } from '@/components/code/CodeWorkbenchSection';
 import { CodeAdvancedPanel } from '@/components/code/CodeAdvancedPanel';
+import { CodeProjectProvider } from '@/components/code/CodeProjectContext';
+import { QuickScriptProjectBadge } from '@/components/code/QuickScriptProjectBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -1341,6 +1343,7 @@ export default function CodeLensPage() {
 
   return (
     <LensShell lensId="code" asMain={false} disableAgentFab={true}>
+     <CodeProjectProvider>
       <FirstRunTour lensId="code" />
       <ManifestActionBar />
       <DepthBadge lensId="code" size="sm" className="ml-2" />
@@ -1360,6 +1363,10 @@ export default function CodeLensPage() {
             <h1 className="text-lg font-bold text-green-300 font-mono tracking-tight">Code Workspace</h1>
             <p className="text-xs text-green-600 font-mono">Write, run & share code</p>
           </div>
+
+      {/* Shared project pointer — same projectId the virtual-git workspace
+          and Advanced IDE panel below read/write. See QuickScriptProjectBadge. */}
+      <QuickScriptProjectBadge />
 
       {/* Real-time Enhancement Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -2648,6 +2655,7 @@ export default function CodeLensPage() {
               setActivity(a);
             }}
           />
+     </CodeProjectProvider>
     </LensShell>
   );
 }

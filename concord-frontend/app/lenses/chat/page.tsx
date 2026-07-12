@@ -101,6 +101,7 @@ import { ToolCallCard } from '@/components/chat/ToolCallCard';
 import ComputeBadge from '@/components/chat/ComputeBadge';
 import CitationChips from '@/components/chat/CitationChips';
 import AnonNudge from '@/components/chat/AnonNudge';
+import BranchForkButton from '@/components/chat/BranchForkButton';
 import BYOKeyDrawer from '@/components/chat/BYOKeyDrawer';
 import { useAuth } from '@/hooks/useAuth';
 import { ReasoningIndicator } from '@/components/chat/ReasoningIndicator';
@@ -2230,6 +2231,11 @@ export default function ChatLensPage() {
       const timeStr = message.timestamp
         ? new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : '';
+      // Real index within the flat `messages` array (NOT `msgIdx`, which is
+      // an index into the mixed thread-item list that also carries
+      // initiative chips / tool traces) — this is what the server-side
+      // `chat.branch-fork` macro needs to slice history up to this point.
+      const forkIdx = messages.findIndex((m) => m.id === message.id);
 
       return (
         <motion.div
@@ -2586,11 +2592,36 @@ export default function ChatLensPage() {
                   <button
                     onClick={() => handleBranchFromMessage(message.id)}
                     className="hover:text-neon-purple transition-colors"
-                    title="Branch a new conversation from this message"
+                    title="Branch a new conversation from this message (local, instant)"
                     aria-label="Branch from here"
                   >
                     <GitBranch className="w-3 h-3" />
                   </button>
+                  {isAuthenticated && selectedConversation && forkIdx !== -1 && (
+                    <BranchForkButton
+                      sourceThreadId={selectedConversation}
+                      atMessageIdx={forkIdx}
+                      messages={messages
+                        .slice(0, forkIdx + 1)
+                        .map((m) => ({ role: m.role, content: m.content, ts: m.timestamp }))}
+                      label="Sync"
+                      doneLabel="Synced"
+                      title="Save a synced branch to your account (persists across devices, separate from the local branch above)"
+                      ariaLabel="Save a server-synced branch from this message"
+                      onForked={() =>
+                        useUIStore.getState().addToast({
+                          type: 'success',
+                          message: 'Synced branch saved to your account.',
+                        })
+                      }
+                      onError={() =>
+                        useUIStore.getState().addToast({
+                          type: 'error',
+                          message: 'Could not save the synced branch. Please try again.',
+                        })
+                      }
+                    />
+                  )}
                   <span>·</span>
                   <button
                     onClick={() => forgeMutation.mutate(message.content)}
@@ -2632,6 +2663,9 @@ export default function ChatLensPage() {
       deleteMessage,
       handleBranchFromMessage,
       isConKay,
+      messages,
+      selectedConversation,
+      isAuthenticated,
     ]
   );
 

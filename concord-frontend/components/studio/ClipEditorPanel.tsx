@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AudioWaveform, Scissors, Loader2, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface WarpMarker { beat: number; sampleSec: number }
 interface Clip {
@@ -56,7 +57,8 @@ export function ClipEditorPanel({ projectId, trackId }: { projectId?: string; tr
     setBusy(true);
     try {
       const next = [...(selected.warpMarkers || []), { beat: Number(warpBeat), sampleSec: Number(warpSec) }];
-      await lensRun('studio', 'clip-warp-set', { clipId: selected.id, warpMarkers: next, warpEnabled: true });
+      const res = await lensRun('studio', 'clip-warp-set', { clipId: selected.id, warpMarkers: next, warpEnabled: true });
+      if (res.data?.ok) logStudioCollabEdit(selected.projectId, 'clip-warp-set', selected.id, { markerCount: next.length, warpEnabled: true });
       setWarpBeat('0'); setWarpSec('0');
       await refresh();
     } catch (e) { console.error('[ClipEditor] warp', e); }
@@ -68,7 +70,8 @@ export function ClipEditorPanel({ projectId, trackId }: { projectId?: string; tr
     setBusy(true);
     try {
       const next = (selected.warpMarkers || []).filter((_, i) => i !== idx);
-      await lensRun('studio', 'clip-warp-set', { clipId: selected.id, warpMarkers: next });
+      const res = await lensRun('studio', 'clip-warp-set', { clipId: selected.id, warpMarkers: next });
+      if (res.data?.ok) logStudioCollabEdit(selected.projectId, 'clip-warp-set', selected.id, { markerCount: next.length });
       await refresh();
     } catch (e) { console.error('[ClipEditor] warp rm', e); }
     finally { setBusy(false); }
@@ -78,11 +81,12 @@ export function ClipEditorPanel({ projectId, trackId }: { projectId?: string; tr
     if (!selected) return;
     setBusy(true);
     try {
-      await lensRun('studio', 'clip-warp-set', {
+      const res = await lensRun('studio', 'clip-warp-set', {
         clipId: selected.id,
         warpMarkers: selected.warpMarkers || [],
         warpMode: mode,
       });
+      if (res.data?.ok) logStudioCollabEdit(selected.projectId, 'clip-warp-set', selected.id, { warpMode: mode });
       await refresh();
     } catch (e) { console.error('[ClipEditor] warpMode', e); }
     finally { setBusy(false); }
@@ -93,7 +97,11 @@ export function ClipEditorPanel({ projectId, trackId }: { projectId?: string; tr
     setBusy(true);
     try {
       const res = await lensRun('studio', 'clip-slice', { clipId: selected.id, atBeats: Number(sliceAt) });
-      if (res.data?.ok) { setSliceAt(''); await refresh(); }
+      if (res.data?.ok) {
+        logStudioCollabEdit(selected.projectId, 'clip-slice', selected.id, { atBeats: Number(sliceAt) });
+        setSliceAt('');
+        await refresh();
+      }
     } catch (e) { console.error('[ClipEditor] slice', e); }
     finally { setBusy(false); }
   }
@@ -102,7 +110,8 @@ export function ClipEditorPanel({ projectId, trackId }: { projectId?: string; tr
     if (!selected) return;
     setBusy(true);
     try {
-      await lensRun('studio', 'clip-fade-set', { clipId: selected.id, ...patch });
+      const res = await lensRun('studio', 'clip-fade-set', { clipId: selected.id, ...patch });
+      if (res.data?.ok) logStudioCollabEdit(selected.projectId, 'clip-fade-set', selected.id, patch);
       await refresh();
     } catch (e) { console.error('[ClipEditor] fade', e); }
     finally { setBusy(false); }

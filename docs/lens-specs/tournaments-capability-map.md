@@ -4,11 +4,15 @@ Audited 2026-07-10. Backend: `server/domains/tournaments.js` (12 macros, no
 shadowing re-registration in `server.js` — confirmed by
 `grep -n '"tournaments"' server/server.js`, which finds no
 `registerLensAction("tournaments", ...)`/`register("tournaments", ...)`
-call outside the domain file). State is in-memory per-user
-(`globalThis._concordSTATE.tournamentsLens.tournaments`, a `Map<userId,
-Tournament[]>`) — this lens has no DB table of its own; it is a
-Challonge/Battlefy-class bracket-platform toolkit layered entirely on the
-macro system.
+call outside the domain file). **Update 2026-07-12 — see "Investigated and
+honestly deferred / left alone" below: the in-memory-only persistence gap
+this section originally described is now CLOSED.** State is durably
+DB-backed via migration 360's `bracket_tournaments` table (reached through
+`server/domains/tournaments.js`'s `store(ctx)` facade), falling back to the
+legacy `globalThis._concordSTATE.tournamentsLens.tournaments` `Map<userId,
+Tournament[]>` only when no `ctx.db` is available (minimal/test builds).
+It remains a Challonge/Battlefy-class bracket-platform toolkit layered on
+the macro system.
 
 ## Backend surface
 
@@ -140,7 +144,7 @@ assert on `prizePoolCc`/`payoutSplit`/`payouts`/`unallocated`).
   of `lib/tournament.js`) — but out of scope for a frontend-lens audit
   pass with zero live callers to verify against; flagged here for a
   future backend-cleanup pass rather than fixed blind.
-- **`server/domains/tournaments.js` state is in-memory, not DB-backed.**
+- ~~**`server/domains/tournaments.js` state is in-memory, not DB-backed.**
   Unlike most lenses, tournaments created through this macro surface do
   not survive a server restart (`globalThis._concordSTATE.tournamentsLens`
   is a plain object). This is a pre-existing architectural choice (the
@@ -148,15 +152,39 @@ assert on `prizePoolCc`/`payoutSplit`/`payouts`/`unallocated`).
   per-user state lives in `globalThis._concordSTATE.tournamentsLens`"),
   not a defect this pass introduced or is positioned to fix; a durable
   DB-backed rewrite would be a much larger CURATION/ENGINEERING project
-  (new migration + table design) outside a frontend-rebuild pass's remit.
+  (new migration + table design) outside a frontend-rebuild pass's remit.~~
+  **CLOSED (2026-07-12, `f688402f`)** — migration 360
+  (`server/migrations/360_bracket_tournaments.js`) adds a real
+  `bracket_tournaments` table (one denormalized row per tournament: scalar
+  columns for id/user_id/title/format/mode/status/prizePoolCc/shareSlug/etc,
+  `*_json` columns for the entrants/matches/standings/payouts/log arrays —
+  the same fidelity-over-normalization pattern migration 356's `saved_items`
+  uses). `server/domains/tournaments.js` now reads/writes through a
+  db-or-memory store facade (`store(ctx)` → `dbStore`/`memStore`, mirroring
+  `domains/saved.js`'s pattern): when `ctx.db` is present and the table
+  exists, every macro is durable and survives a restart; the in-memory
+  `tournamentsLens` Map remains only as the fallback for minimal/test
+  builds with no DB handle, so the existing 53 macro-level tests (which
+  construct a bare `ctx` with no `db`) keep passing unmodified against the
+  same code path they always exercised. All 12 macros' response shapes are
+  byte-identical — only the storage layer changed; `computePayouts`,
+  `rankFromBracket`, `computeStandings`, and every bracket-generation
+  function are untouched. New regression coverage in
+  `server/tests/tournaments-persistence.test.js` (8 tests) proves the
+  persistence is real by querying `bracket_tournaments` directly via a raw
+  SQL statement (not just through the macro's own `get` handler) and via a
+  second independent `better-sqlite3` handle opened against the same file.
+  The tournaments lens holds no wallet before or after this change — the
+  `prizePoolCc`/`payoutSplit` distribution math was not touched, only where
+  the resulting numbers are stored.
 - **No `server/tests/*tournament*` file exercises the frontend's exact
   field shapes end-to-end** (they test the macros directly via `lensRun`/
   a local `call()` harness, which is the correct level for backend tests)
   — the payouts-shape bug above was found by reading the macro and the
-  page's generic `run()` helper side by side, not by a failing test. No
-  new test was added for this pass (frontend-only mandate); the existing
-  53 macro-level tests across the 5 tournaments test files continue to
-  pass unmodified.
+  page's generic `run()` helper side by side, not by a failing test. The
+  existing 74 macro-level tests across the tournaments test files continue
+  to pass unmodified; 8 new tests were added specifically to pin the DB
+  persistence path (see above), for 82 total.
 
 ## Verification
 

@@ -6,12 +6,51 @@
  * the `concordia:hit-pause` window event the GameJuice layer dispatches).
  * A session can be recorded and persisted via the sandbox domain so feel
  * passes can be compared over time.
+ *
+ * Also renders a Street-Fighter-6/Tekken-practice-mode-style frame-data
+ * timeline for the currently equipped weapon (startup/active/recovery +
+ * parry/dodge windows), sourced live from `GET /api/combat/frame-data/:skillId`
+ * (server/server.js, delegates to server/lib/combat-frame-data.js). See the
+ * WEAPON_TO_FRAME_KIND note below for how the sandbox's weapon id is
+ * resolved to a real backend frame envelope.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz/ChartKit';
-import { Activity, CircleDot, Save, Loader2, Trash2 } from 'lucide-react';
+import { Activity, CircleDot, Save, Loader2, Trash2, Zap, AlertTriangle } from 'lucide-react';
+
+interface FrameData {
+  skillId: string | null;
+  name: string;
+  kind: string;
+  level: number;
+  startup_ms: number;
+  active_ms: number;
+  recovery_ms: number;
+  parry_window_ms: number;
+  dodge_window_ms: number;
+  combo_followups: Array<{ skillId: string; name: string }>;
+}
+type FrameDataStatus = 'idle' | 'loading' | 'error' | 'ready';
+
+// The sandbox's fixed weapon catalog (server/domains/sandbox.js WEAPONS:
+// fist/blade/pistol/staff/greataxe) doesn't share ids 1:1 with the backend's
+// built-in frame-envelope vocabulary (server/lib/combat-frame-data.js
+// KIND_FRAME_BASE: sword/axe/spear/bow/staff/fist/dagger/hammer). Two ids
+// match exactly (fist, staff); the rest are routed to their nearest real
+// weapon archetype so this panel always resolves a genuine backend-computed
+// envelope instead of inventing one — every number rendered below is
+// unmodified server output, this map only chooses which real envelope to
+// ask for. `pistol` -> `bow` also matches design intent: both are ranged
+// and report a zero parry window.
+const WEAPON_TO_FRAME_KIND: Record<string, string> = {
+  fist: 'fist',
+  blade: 'sword',
+  pistol: 'bow',
+  staff: 'staff',
+  greataxe: 'axe',
+};
 
 interface TelemetrySample {
   id: string;
@@ -39,7 +78,7 @@ interface TelemetryOverall {
 
 const HISTORY = 90; // frame-times kept for the rolling sparkline
 
-export function TelemetryOverlay() {
+export function TelemetryOverlay({ weaponId }: { weaponId?: string }) {
   const [recording, setRecording] = useState(false);
   const [liveFps, setLiveFps] = useState(0);
   const [liveFrameMs, setLiveFrameMs] = useState(0);
@@ -48,6 +87,9 @@ export function TelemetryOverlay() {
   const [overall, setOverall] = useState<TelemetryOverall | null>(null);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const [frameData, setFrameData] = useState<FrameData | null>(null);
+  const [frameStatus, setFrameStatus] = useState<FrameDataStatus>('idle');
 
   const rafRef = useRef<number | null>(null);
   const lastTsRef = useRef(0);
@@ -65,6 +107,41 @@ export function TelemetryOverlay() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Frame-data lookup: re-fetch the real backend envelope whenever the
+  // equipped weapon changes. No weapon selected -> honest idle state, never
+  // a fabricated/default frame table.
+  useEffect(() => {
+    if (!weaponId) {
+      setFrameStatus('idle');
+      setFrameData(null);
+      return;
+    }
+    const kind = WEAPON_TO_FRAME_KIND[weaponId] || weaponId;
+    let cancelled = false;
+    setFrameStatus('loading');
+    (async () => {
+      try {
+        const res = await api.get(`/api/combat/frame-data/${encodeURIComponent(kind)}`);
+        if (cancelled) return;
+        if (res.data?.ok && res.data.frameData) {
+          setFrameData(res.data.frameData as FrameData);
+          setFrameStatus('ready');
+        } else {
+          setFrameData(null);
+          setFrameStatus('error');
+        }
+      } catch {
+        if (!cancelled) {
+          setFrameData(null);
+          setFrameStatus('error');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [weaponId]);
 
   // Frame-time meter: always running so the live readout is honest; the
   // record buffer only fills while `recording` is true.
@@ -133,7 +210,89 @@ export function TelemetryOverlay() {
 
   const sparkData = history.map((ms, i) => ({ i, ms: Math.round(ms * 10) / 10 }));
 
+  const frameTotal = frameData ? frameData.startup_ms + frameData.active_ms + frameData.recovery_ms : 0;
+  const startupPct = frameTotal > 0 ? (frameData!.startup_ms / frameTotal) * 100 : 0;
+  const activePct = frameTotal > 0 ? (frameData!.active_ms / frameTotal) * 100 : 0;
+  const recoveryPct = frameTotal > 0 ? (frameData!.recovery_ms / frameTotal) * 100 : 0;
+
   return (
+    <>
+      {/* Street-Fighter-6/Tekken-practice-mode-style frame-data ruler for
+          the currently equipped weapon. Real numbers from the backend
+          envelope (server/lib/combat-frame-data.js) — no fabrication. */}
+      <div className="rounded-lg border border-slate-700/50 bg-slate-900/80 p-3 text-xs">
+        <div className="mb-2 flex items-center gap-1.5 font-semibold uppercase tracking-wide text-cyan-200">
+          <Zap className="h-3.5 w-3.5" /> Frame Data
+        </div>
+
+        {frameStatus === 'idle' ? (
+          <div className="rounded border border-dashed border-slate-700 px-2 py-2 text-center text-[10px] text-slate-400">
+            Equip a weapon to see its frame data.
+          </div>
+        ) : frameStatus === 'loading' ? (
+          <div
+            className="h-16 animate-pulse rounded bg-slate-800/50"
+            role="status"
+            aria-busy="true"
+            aria-label="Loading frame data"
+          />
+        ) : frameStatus === 'error' || !frameData ? (
+          <div
+            role="alert"
+            className="flex items-center gap-1.5 rounded border border-dashed border-rose-700/50 px-2 py-2 text-[10px] text-rose-300"
+          >
+            <AlertTriangle className="h-3 w-3 shrink-0" /> No frame data for this weapon.
+          </div>
+        ) : (
+          <div data-testid="frame-data-ready">
+            <div className="mb-1 flex items-center justify-between text-[10px] text-slate-400">
+              <span className="truncate text-slate-200">{frameData.name}</span>
+              <span className="shrink-0">lvl {frameData.level}</span>
+            </div>
+
+            {/* Timeline bar: startup / active / recovery, proportional widths. */}
+            <div
+              className="mb-1.5 flex h-4 w-full overflow-hidden rounded bg-slate-950"
+              role="img"
+              aria-label={`Startup ${frameData.startup_ms}ms, active ${frameData.active_ms}ms, recovery ${frameData.recovery_ms}ms`}
+            >
+              <div className="bg-cyan-500/70" style={{ width: `${startupPct}%` }} title={`Startup ${frameData.startup_ms}ms`} />
+              <div className="bg-amber-500/70" style={{ width: `${activePct}%` }} title={`Active ${frameData.active_ms}ms`} />
+              <div className="bg-rose-500/70" style={{ width: `${recoveryPct}%` }} title={`Recovery ${frameData.recovery_ms}ms`} />
+            </div>
+
+            <div className="mb-2 grid grid-cols-3 gap-1 text-center text-[9px] tabular-nums text-slate-300">
+              <div>
+                <span className="block text-sm font-bold text-cyan-300">{frameData.startup_ms}</span>startup ms
+              </div>
+              <div>
+                <span className="block text-sm font-bold text-amber-300">{frameData.active_ms}</span>active ms
+              </div>
+              <div>
+                <span className="block text-sm font-bold text-rose-300">{frameData.recovery_ms}</span>recovery ms
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5 text-[9px]">
+              <div className="rounded bg-slate-800/60 px-1.5 py-1 text-center">
+                <div className="uppercase text-emerald-300/70">parry window</div>
+                <div className="tabular-nums text-emerald-100">
+                  {frameData.parry_window_ms === 0 ? (
+                    <span className="text-slate-500" title="Ranged weapons cannot parry">none</span>
+                  ) : (
+                    `${frameData.parry_window_ms}ms`
+                  )}
+                </div>
+              </div>
+              <div className="rounded bg-slate-800/60 px-1.5 py-1 text-center">
+                <div className="uppercase text-violet-300/70">dodge window</div>
+                <div className="tabular-nums text-violet-100">{frameData.dodge_window_ms}ms</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
     <div className="rounded-lg border border-slate-700/50 bg-slate-900/80 p-3 text-xs">
       <div className="mb-2 flex items-center gap-1.5 font-semibold uppercase tracking-wide text-amber-200">
         <Activity className="h-3.5 w-3.5" /> Frame Telemetry
@@ -230,5 +389,6 @@ export function TelemetryOverlay() {
         </ul>
       )}
     </div>
+    </>
   );
 }

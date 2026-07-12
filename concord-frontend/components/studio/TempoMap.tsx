@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Gauge, Plus, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface Change { id: string; projectId: string; bpm: number; atBeats: number; timeSignatureNum: number; timeSignatureDen: number }
 
@@ -26,7 +27,8 @@ export function TempoMap({ projectId }: { projectId?: string }) {
   async function add() {
     if (!projectId) return;
     try {
-      await lensRun({ domain: 'studio', action: 'tempo-add', input: { projectId, bpm: Number(form.bpm), atBeats: Number(form.atBeats), timeSignatureNum: Number(form.tsNum), timeSignatureDen: Number(form.tsDen) } });
+      const res = await lensRun({ domain: 'studio', action: 'tempo-add', input: { projectId, bpm: Number(form.bpm), atBeats: Number(form.atBeats), timeSignatureNum: Number(form.tsNum), timeSignatureDen: Number(form.tsDen) } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'tempo-add', res.data.result?.change?.id, { bpm: Number(form.bpm), atBeats: Number(form.atBeats) });
       await refresh();
     } catch (e) { console.error('[Tempo] add', e); }
   }

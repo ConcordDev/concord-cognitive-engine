@@ -4,6 +4,46 @@
 
 This audit self-organized into 4 sub-agents covering: (1) Three.js resource disposal + object pools, (2) Rapier3D physics-body lifecycle + Web Audio node lifecycle, (3) socket lifecycle/event ordering/client-server sync, (4) React `useEffect`/lifecycle leaks. Their reports are synthesized below, worst-first.
 
+## Status update (2026-07-12)
+
+**All 15 numbered findings below are now CLOSED.** This audit's own
+Summary originally said "no code changes were made... given the scale and
+shared/high-traffic nature of the files involved" — a follow-up pass
+(mix of dedicated Wave 4 units and standalone fixes, commits below)
+subsequently fixed every one of them, including the two the Summary
+flagged as highest-risk (#1 effect-thrash, #6/#8 ragdoll leak + dead
+player-position global). Verified via `git log`/`git merge-base
+--is-ancestor` against this branch before writing this note — each
+commit hash below is a real ancestor of HEAD, not a doc claim taken on
+faith. Findings are left in place for historical record; only the triage
+line under each is updated.
+
+| # | Fix commit(s) |
+|---|---|
+| 1 (effect-thrash) | `3563714b` |
+| 2 (ambient noise leak) | `f7e86bec` |
+| 3 (`AudioContext.close()`) | `f7e86bec` |
+| 4 (window listeners + EffectComposer) | `1492b380` |
+| 5 (procedural building materials) | `a0122dd1` |
+| 6 (ragdoll never freed) | `fa16331e`, `1492b380` |
+| 7 (building collapse → physics) | `49783550` |
+| 8 (`window.__concordiaPlayerPos`) | `f7e86bec` |
+| 9 (character-controller race) | `fa16331e` |
+| 10 (`GameModesHotbarGroup` leak) | `e2978af9` |
+| 11 (6 polling HUDs stale `activeWorldId`) | `6e362f7e` |
+| 12 (crafting-minigame cancel-doesn't-cancel) | `ed445e3e` |
+| 13 (vehicle-renderer dispose) | `3890d2b9` |
+| 14 (`WaterRenderer` texture leak) | `de0980ec` |
+| 15 (duplicate `socket.io-client`) | `d7896339` |
+
+The "Lower severity" bullets (TreeLayer instance-pool dispose,
+uprising-crowd pole material, horror-tension stem oscillators, procedural
+music-layer intervals, `AvatarSystem3D`'s orphan-able subscribe,
+un-cleared toast timeouts, `CombatPolishHUD`'s churn, `LegendaryAnnouncement`
+key-uniqueness glitch) were **not** re-verified in this pass — no
+matching commits were found for them and they remain open, genuinely
+lower-priority residuals.
+
 ## Critical / High severity — real, confirmed bugs
 
 ### 1. AvatarSystem3D + ConcordiaScene: effect-thrash — the two heaviest 3D components fully tear down and rebuild on nearly every render during ordinary movement/combat
@@ -122,4 +162,14 @@ Object-pool reuse correctness was specifically checked and found sound: `instanc
 
 ## Summary
 
-No code changes were made during this audit — findings are documented, not fixed, given the scale and the shared/high-traffic nature of the files involved (`AvatarSystem3D.tsx`, `ConcordiaScene.tsx`, `SoundscapeEngine.tsx`, `physics-world.ts` are all load-bearing, frequently-touched files where a rushed fix under audit time pressure would be higher-risk than the bugs themselves). All 20 findings above are triaged ENGINEERING — this failure class is entirely internal-engineering, no external data dependency. Priority for a follow-up fix pass: findings #1–#3 (effect-thrash) first, since they're both the highest-severity bugs and the root cause that makes several of the "leak" findings fire far more often than they otherwise would; #6/#8 next (ragdoll leak, dead player-position global) since both have real, currently-broken gameplay consequences (Extract button, earshot gate); the rest are straightforward mechanical fixes once the pattern is understood.
+~~No code changes were made during this audit — findings are documented,
+not fixed...~~ **Superseded — see "Status update (2026-07-12)" at the top
+of this doc.** All 15 numbered findings are now closed by a follow-up fix
+pass across `AvatarSystem3D.tsx`, `ConcordiaScene.tsx`,
+`SoundscapeEngine.tsx`, and `physics-world.ts`, in the priority order this
+Summary originally recommended (effect-thrash first, then the ragdoll/
+player-position pair, then the mechanical fixes). Only the "Lower
+severity" bullets remain open. All findings were triaged ENGINEERING —
+this failure class was entirely internal-engineering, no external data
+dependency, which is exactly why a mechanical fix-pass was tractable
+without new research.

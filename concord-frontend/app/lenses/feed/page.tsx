@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HnFrontPage } from '@/components/feed/HnFrontPage';
 import { FeedToolsPanel } from '@/components/feed/FeedToolsPanel';
+import { BookmarkFolderPicker } from '@/components/feed/BookmarkFolderPicker';
 import { WaveformPlayer, type AudioAttachment } from './WaveformPlayer';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1548,6 +1549,7 @@ export default function FeedLensPage() {
                               )}
                             />
                           </button>
+                          <BookmarkFolderPicker postId={post.id} />
                           <button
                             onClick={() => shareMutation.mutate(post.id)}
                             className="p-1.5 rounded-full hover:bg-neon-cyan/15 hover:text-neon-cyan hover:scale-110 transition-all duration-200"

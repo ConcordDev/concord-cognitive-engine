@@ -127,6 +127,89 @@ event with a real, room-scoped, per-world `worldId` field per
 `server/lib/event-shapes.js:128-131`) is now genuinely reachable and
 correctly filtered to the world being spectated.
 
+**Update (Wave 4, 2026-07-12) — the upstream `worldId` gap named below is
+now CLOSED.** The four emit sites this section used to flag were re-verified
+against the live tree (line numbers had already drifted from the ones
+originally cited here) and fixed:
+
+- `combat:hit` (`server.js`'s `combat:attack` socket handler, ~line 9043) —
+  now stamps `worldId` from `cityPresence.getUserPosition(userId).worldId`.
+  Investigating this surfaced a real, separate, pre-existing bug: the
+  `cityPresence.getPlayerWorld` accessor this fix would naively have reused
+  (already called at 3 other sites in `server.js` — `combat:impact` right
+  below this one, plus two more) does not actually exist anywhere on
+  `lib/city-presence.js`'s exports, so every one of those calls was silently
+  `undefined` and fell back to the hardcoded `"concordia-hub"` default
+  regardless of the player's real world. The fix routes through
+  `getUserPosition(userId).worldId` instead — the real, populated field —
+  which also incidentally makes the sibling `combat:impact` emit's worldId
+  correct for the first time (same shared local variable, no logic change to
+  `combat:impact` itself). The other 3 dead `getPlayerWorld` call sites are
+  untouched (out of scope for this pass) and still silently default.
+- `dtu:promoted` (`server.js`'s `scope.promote` macro, ~line 37769) — now
+  stamps `worldId` **only** when the promoted DTU actually carries one
+  (`dtu.world_id ?? dtu.worldId ?? dtu.meta?.world_id ?? dtu.meta?.worldId`).
+  DTUs are cross-world by design (no formal `world_id` field on the
+  in-memory `dtu` object — see CLAUDE.md's DTU substrate notes), so this is
+  honestly absent for most promotions rather than invented as
+  `"concordia-hub"`.
+- `world:event:scheduled` — turned out to **already** carry `worldId` on
+  every emitted payload (`lib/world-event-scheduler.js#tick()` merges
+  `{ ...c, worldId }` onto each created event, confirmed via `git blame` to
+  be original code, not a recent fix) — the original claim above was stale.
+  The only real gap was that the event had no `event-shapes.js` entry at
+  all; it now does.
+- The three `faction:*` events (`lib/embodied/faction-strategy.js#applyMove`,
+  ~line 490) now stamp a best-effort `worldId` via a new
+  `resolveFactionWorldId(db, factionId)` export, resolved from the faction's
+  living NPCs — de-duplicated from an equivalent helper
+  (`resolveFactionWorld`) that already existed in
+  `emergent/faction-strategy-cycle.js` for a different, cosmetic purpose
+  (faction-war spawn metadata). Genuinely null (never invented) for a
+  faction with no seeded NPCs.
+
+`event-shapes.js` marks `worldId` **optional**, not required, on all four
+schemas — each has at least one legitimate emit path (a different
+`combat:hit` emitter in `lib/combat-netcode.js`, other `dtu:promoted` emit
+sites in `economy/global-gates.js` / `routes/sovereign.js`, DTUs with no
+world scope, factions with no seeded NPCs) that can't always supply it.
+
+The ticker's `push()` filter (unchanged from the original fix above) now
+genuinely exercises `worldId` for all six of these previously-unfiltered
+event types, and gained a `faction:truce-sought` subscription it never had
+before this pass. A spectator of `tunya` no longer sees `combat:hit` /
+`dtu:promoted` / `faction:*` events from other worlds whose payload carries
+a different world's id; an event with no resolvable `worldId` (a fair
+share of `dtu:promoted` traffic, by design) still surfaces, honest-signal-
+beats-no-signal, same as before.
+
+**Still open, out of scope for this pass:** `realtimeEmit`'s actual socket
+transport for these events is unchanged — `combat:hit`/`dtu:promoted`/
+`faction:*` are still `REALTIME.io.emit(...)` (a genuine platform-wide
+broadcast to every connected socket, not scoped to a `world:${worldId}`
+room), so every connected client still *receives* every world's traffic;
+what's fixed is that a per-world consumer can now correctly *filter* it
+client-side. Actually room-scoping the emit itself would be a larger,
+riskier change (every consumer — the world lens's own combat/VFX/audio
+bridges included — would need to join the right room to keep working) and
+was explicitly out of this task's scope. Other in-world consumers of
+`combat:hit` (`CombatVFXBridge.tsx`, `ImpactMomentumBridge.tsx`,
+`AdaptiveMusicBridge.tsx`, `TargetNameplate.tsx`, `WorldAudioBridge.tsx`,
+`app/lenses/world/page.tsx`) still receive every world's hits unfiltered —
+a real, related gap this pass surfaced but did not fix, since it touches
+gameplay-feel code outside this task's file scope.
+
+Tests: `server/tests/contract/heartbeat-emits.test.js` ("Wave 4 worldId
+stamping" describe block, faction events), `server/tests/world-event-
+scheduler.test.js` (`tick()` worldId describe block), `server/tests/
+wave4-event-worldid.test.js` (combat:hit's city-presence dependency +
+dtu:promoted's derivation formula + event-shapes round-trips),
+`concord-frontend/tests/lenses/spectate-worldid-ticker.test.tsx` (the
+ticker's filter behavior, end to end through the mocked socket layer).
+
+---
+
+**Original finding (superseded by the update above, kept for history):**
 **Honest residual, not fixed (out of scope for this pass — would require
 touching `server/server.js` combat/DTU/faction emit sites, off-limits per
 the task's file-scope constraint and shared by five other in-flight
@@ -240,6 +323,32 @@ wiring with real backend calls, never a fake success path.
 - `server/domains/spectate.js` — **not touched**; audited only. All 5
   macros were already correct, tested, and honestly shaped.
 
+**Wave 4 (2026-07-12) — closing the platform-wide `worldId` gap:**
+
+- `server/server.js` — `combat:hit` and the sibling `combat:impact` emit
+  (socket `combat:attack` handler) now derive a real `worldId` from
+  `cityPresence.getUserPosition(userId).worldId`; `scope.promote`'s
+  `dtu:promoted` emit now stamps `worldId` only when the DTU actually
+  carries one.
+- `server/lib/embodied/faction-strategy.js` — new exported
+  `resolveFactionWorldId(db, factionId)`; `applyMove`'s three
+  `faction:*` emits now include it (optional, omitted when unresolvable).
+- `server/emergent/faction-strategy-cycle.js` — its local
+  `resolveFactionWorld` duplicate removed in favor of importing the new
+  shared `resolveFactionWorldId`; one call site updated, no behavior change.
+- `server/lib/event-shapes.js` — added a `world:event:scheduled` entry
+  (previously unregistered); added `worldId` (optional) to `combat:hit`,
+  `dtu:promoted`, `faction:war-declared`, `faction:alliance-formed`,
+  `faction:truce-sought`.
+- `concord-frontend/app/lenses/spectate/[worldId]/page.tsx` — the ticker's
+  `combat:hit`/`dtu:promoted`/`faction:war-declared`/`faction:alliance-formed`
+  subscriptions now pass the payload's `worldId` into the existing `push()`
+  filter; added a `faction:truce-sought` subscription (was missing entirely).
+- New tests: `server/tests/contract/heartbeat-emits.test.js` (extended),
+  `server/tests/world-event-scheduler.test.js` (extended),
+  `server/tests/wave4-event-worldid.test.js` (new),
+  `concord-frontend/tests/lenses/spectate-worldid-ticker.test.tsx` (new).
+
 ## Verification
 
 - `cd concord-frontend && npx vitest run tests/lenses/spectate-page.test.tsx` — **7/7 passing** (pre-existing index-page test suite; the "My positions" addition doesn't change any of the four UX-state assertions since positions render conditionally and the tests never mock `spectate.my_positions`, so it resolves to the default unmocked rejection and the panel simply stays unmounted, exactly as the honest-empty-state design intends).
@@ -249,3 +358,19 @@ wiring with real backend calls, never a fake success path.
 - `node scripts/verify-lens-backends.mjs` — `{"WIRED":258,"NO-BACKEND-CALL":2}` total 260, matching the expected baseline; `spectate` does not appear in the `NO-BACKEND-CALL` list (only `narrative-walk` and `ux-suite` do), confirming it's still WIRED.
 - `node scripts/grade-ux-polish.mjs --honest` — `spectate`: `tier: "polished"`, `isGenericScaffold: false`, `honestCapped: false` (verified in `audit/ux-polish-honest.json`).
 - `audit/` transient outputs reverted via `git checkout -- audit/` after grading — never committed.
+
+**Wave 4 (2026-07-12) verification:**
+
+- `cd server && node --test tests/contract/heartbeat-emits.test.js tests/world-event-scheduler.test.js tests/wave4-event-worldid.test.js` — **44/44 passing**.
+- `cd server && node --test tests/embodied-faction-strategy.test.js tests/faction-cause-payload.test.js tests/event-shapes.test.js tests/synthetic-playtest.test.js tests/combat-impact-pvp-feel.test.js tests/socket-combat-damage-cap.test.js tests/combat-anti-cheat.test.js tests/conkay-macro-lifecycle.test.js` — **212/212 passing** (regression sweep of every test file that touches `applyMove`, `event-shapes.js`, or the socket combat path).
+- `cd server && node --check server.js lib/embodied/faction-strategy.js emergent/faction-strategy-cycle.js lib/event-shapes.js` — clean.
+- `cd server && npx eslint server.js lib/embodied/faction-strategy.js emergent/faction-strategy-cycle.js lib/event-shapes.js tests/contract/heartbeat-emits.test.js tests/world-event-scheduler.test.js tests/wave4-event-worldid.test.js` — **0 errors, 0 warnings**.
+- `cd server && node --test tests/boot.test.js` — boots clean.
+- `cd concord-frontend && npx vitest run tests/lenses/spectate-page.test.tsx tests/lenses/spectate-worldid-ticker.test.tsx tests/spectate-worldid-page.test.tsx` — **15/15 passing**.
+- `cd concord-frontend && npx eslint "tests/lenses/spectate-worldid-ticker.test.tsx" "app/lenses/spectate/[worldId]/page.tsx"` — 0 errors, the same 1 pre-existing `MarketCard` warning (not introduced by this pass).
+- `cd concord-frontend && npx tsc --noEmit -p .` — **0 errors project-wide**.
+- `node scripts/verify-lens-backends.mjs` — unchanged: `{"WIRED":258,"NO-BACKEND-CALL":2}` total 260.
+- Note: `app/spectate/[worldId]/page.tsx` (a separate, older route outside
+  `app/lenses/`, covered by `tests/spectate-worldid-page.test.tsx`) has no
+  live event ticker at all and was unaffected by this pass — confirmed by
+  reading it in full before excluding it.

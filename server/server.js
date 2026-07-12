@@ -8874,6 +8874,30 @@ async function tryInitWebSockets(server) {
         globalThis._concordCombatLimits = import("./lib/combat-limits.js");
       }
       const { clampBaseDamage, resolvedDamageCap } = await globalThis._concordCombatLimits;
+
+      // Wave 4 (Gap A/C) — this is the LIVE, socket-driven basic-attack path
+      // (system-affordances.ts dispatches combat:attack for both PvP and
+      // "Fight <hostile NPC>"), distinct from the DB-backed skill-cast REST
+      // route (routes/worlds.js#/combat/attack) which has its own copy of
+      // this same block. A player inside an active horde/roguelite run gets
+      // their accumulated damageMult folded into contextModifiers.damageMul
+      // (the existing hook this path already threads through applyAttack)
+      // and their critChance folded into applyAttack's new critChanceBonus
+      // param. Best-effort — no active run is a neutral pass-through.
+      let _critChanceBonus = 0;
+      try {
+        const { getActiveRunModifiers } = await import("./lib/run-modifiers.js");
+        const runMods = getActiveRunModifiers(db, userId);
+        const dmgMult = Number(runMods.modifiers?.damageMult) || 0;
+        _critChanceBonus = Number(runMods.modifiers?.critChance) || 0;
+        if (dmgMult !== 0) {
+          _contextModifiers = {
+            ...(_contextModifiers || {}),
+            damageMul: (Number(_contextModifiers?.damageMul ?? 1) || 1) * (1 + dmgMult),
+          };
+        }
+      } catch { /* run-modifier substrate optional — neutral pass-through */ }
+
       const result = cityPresence.applyAttack({
         attackerId: userId,
         targetId: _ffTargetId,
@@ -8882,6 +8906,7 @@ async function tryInitWebSockets(server) {
         armorPierce: Number(data.armorPierce) || 0,
         contextModifiers: _contextModifiers,
         maxDamage: resolvedDamageCap(),
+        critChanceBonus: _critChanceBonus,
       });
 
       // Ack back to attacker with full detail (damage, crit, kill)
@@ -9015,6 +9040,19 @@ async function tryInitWebSockets(server) {
             || null;
           _hitAttackerPos = cityPresence.getUserPosition?.(userId) || null;
         } catch { /* position lookup best-effort */ }
+        // Wave 4 — the socket combat:hit broadcast had no worldId, so every
+        // connected client (regardless of which world they're spectating/
+        // playing in) received every hit from every world. `cityPresence.
+        // getPlayerWorld` (used lower down for the sibling combat:impact
+        // emit, and at server.js:8830/8855/9232) does NOT actually exist on
+        // lib/city-presence.js's exports — it's always undefined, so every
+        // one of those call sites silently falls back to the hardcoded
+        // "concordia-hub" default regardless of the attacker's real world.
+        // getUserPosition(userId).worldId is the real, populated field
+        // (set by updateUserPosition — city-presence.js:415) so this uses
+        // that instead. Best-effort — never blocks the hit broadcast.
+        let _hitWorldId = "concordia-hub";
+        try { _hitWorldId = cityPresence.getUserPosition?.(userId)?.worldId ?? "concordia-hub"; } catch { /* world lookup best-effort */ }
         realtimeEmit("combat:hit", {
           attackerId: userId,
           targetId: data.targetId,
@@ -9025,6 +9063,7 @@ async function tryInitWebSockets(server) {
           targetKilled: result.targetKilled,
           targetPosition: _hitTargetPos,
           attackerPosition: _hitAttackerPos,
+          worldId: _hitWorldId,
           // BUG B fix — the socket combat path never set element/skill, so
           // CombatVFXBridge.normalizeElement fell back to 'physical' and the
           // element burst + per-skill VFX never fired here. Carry the cast's
@@ -9053,7 +9092,7 @@ async function tryInitWebSockets(server) {
             const { buildImpactPayload, derivePvpSeverity, pvpMomentumFromDamage } =
               await import("./lib/combat/impact-feel.js");
             const _heavy = data.heavy === true || data.style === "attack-heavy";
-            const _world = cityPresence.getPlayerWorld?.(userId) ?? "concordia-hub";
+            const _world = _hitWorldId;
             realtimeEmit("combat:impact", buildImpactPayload({
               worldId: _world,
               attackerId: userId,
@@ -11966,6 +12005,9 @@ council.reviewAndCommitQuiet = function reviewAndCommitQuiet(ctx, input={}){
 try {
   allowMacro("entity","terminal",{ roles:["owner","admin","member"], scopes:["*"] });
   allowMacro("entity","terminal_approve",{ roles:["owner","admin","council"], scopes:["*"] });
+  // Read-only listing for the same approval queue — same ACL shape as
+  // terminal_approve (mirrored intentionally; see the second call site too).
+  allowMacro("entity","terminal_pending",{ roles:["owner","admin","council"], scopes:["*"] });
 } catch {
   // allowMacro may not be defined yet in older builds; ignore (local-first default is open).
 }
@@ -12336,6 +12378,66 @@ const approvalRatio = decisiveVotes > 0 ? (approveCount / decisiveVotes) : 0;
   };
 }, {
   summary: "Vote on entity terminal request (council-gated)",
+  public: false
+});
+
+// ============================================================================
+// GA: COUNCIL APPROVAL QUEUE — READ-ONLY LISTING (Wave 4 gap-closure)
+// ============================================================================
+// terminal_approve had no way for a reviewer to discover what's awaiting
+// their vote — the queue was write-only (pushed by `terminal`, searched by
+// exact id by `terminal_approve`). This macro is a pure read: it does not
+// create, mutate, or execute anything, and never touches votes/status —
+// only `terminal_approve` (unmodified above) can do that. Same ACL as
+// `terminal_approve` (see both `allowMacro("entity","terminal_pending",...)`
+// call sites, which mirror the two `terminal_approve` registrations exactly).
+register("entity", "terminal_pending", async (ctx, _input={}) => {
+  ensureQueues();
+  const voterId = String(ctx?.actor?.userId || "");
+  const all = STATE.queues?.terminalRequests || [];
+
+  const summarize = (p) => {
+    const votes = p?.votes || { approve: [], deny: [], abstain: [] };
+    const myVote = (() => {
+      if (!voterId) return null;
+      if ((votes.approve || []).some(v => v?.id === voterId)) return "approve";
+      if ((votes.deny || []).some(v => v?.id === voterId)) return "deny";
+      if ((votes.abstain || []).some(v => v?.id === voterId)) return "abstain";
+      return null;
+    })();
+    return {
+      id: p?.id,
+      entityId: p?.entityId,
+      command: p?.command,
+      riskLevel: p?.riskLevel,
+      status: p?.status,
+      createdAt: p?.createdAt,
+      approvedAt: p?.approvedAt || null,
+      deniedAt: p?.deniedAt || null,
+      threshold: p?.threshold,
+      votes: {
+        approve: (votes.approve || []).length,
+        deny: (votes.deny || []).length,
+        abstain: (votes.abstain || []).length,
+      },
+      myVote,
+    };
+  };
+
+  const pending = all
+    .filter(p => p?.status === "pending")
+    .sort((a, b) => String(a?.createdAt || "").localeCompare(String(b?.createdAt || ""))) // oldest first: FIFO review queue
+    .map(summarize);
+
+  const recentHistory = all
+    .filter(p => p?.status && p.status !== "pending")
+    .sort((a, b) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || ""))) // newest first
+    .slice(0, 20)
+    .map(summarize);
+
+  return { ok: true, pending, recentHistory };
+}, {
+  summary: "List pending (and recent resolved) entity terminal council-approval proposals (read-only, council-gated)",
   public: false
 });
 
@@ -24840,11 +24942,28 @@ register("cortex", "anomalies", (ctx, input) => {
 }, { description: "Retrieve detected signal anomalies." });
 
 register("cortex", "classify", (ctx, input) => {
+  // Manual signal-submission entry point (Wave 4 gap-closure, 2026-07-12) —
+  // the ONE write path into the signal-cortex taxonomy store. Require the
+  // two fields a classification is meaningless without: frequency (what is
+  // being observed) and an origin location (where it was observed). Every
+  // other field on the signal shape (modulation/bandwidth/power/description/
+  // keywords) is optional enrichment that classifySignal() already defaults
+  // safely — see server/lib/atlas-signal-cortex.js#classifySignal.
+  const frequency = Number(input?.frequency);
+  if (!Number.isFinite(frequency) || frequency <= 0) {
+    return { ok: false, error: "frequency (MHz, > 0) is required" };
+  }
+  const origin = input?.origin;
+  const lat = Number(origin?.lat);
+  const lng = Number(origin?.lng);
+  if (!origin || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return { ok: false, error: "origin.lat and origin.lng (valid coordinates) are required" };
+  }
   // Wrap so the macro contract holds — cortexClassifySignal returns the
   // raw signal record, not the {ok, ...} envelope every other macro uses.
   const signal = cortexClassifySignal(input);
   return { ok: true, signal };
-}, { description: "Submit a signal for 5-property classification." });
+}, { description: "Submit a signal for 5-property classification. Requires frequency (MHz) and origin {lat, lng}." });
 
 register("cortex", "spectrum", (ctx, input) => {
   return getSpectralOccupancy();
@@ -25875,6 +25994,21 @@ registerHeartbeat("news-compose-cycle", {
 // from JWT_SECRET. Never returned to the frontend after save.
 import registerByoKeysMacros from "./domains/byo-keys.js";
 registerByoKeysMacros(register);
+
+// Wave 4 gap-closure — proactive spend alerts for BYO budgets
+// (docs/lens-specs/byo-keys-capability-map.md item #10). Sweeps every
+// user's monthly spend against their configured budget caps and
+// pushes a real in-app notification (via the existing social-layer
+// notification substrate) the first time a threshold is crossed —
+// see server/emergent/byo-budget-alert-cycle.js for the full design
+// note. Cross-user, process-global state (not per-world) -> scope
+// 'global'. Kill-switch: CONCORD_BYO_BUDGET_ALERTS=0.
+import { runByoBudgetAlertCycle } from "./emergent/byo-budget-alert-cycle.js";
+registerHeartbeat("byo-budget-alert-cycle", {
+  frequency: 20, // ~5 min
+  scope: "global",
+  handler: runByoBudgetAlertCycle,
+});
 
 // Sprint 10B+C — Expert mode (Perplexity-style cited answers) wired
 // to the BYO router + the revolving-door global-DTU pull. Free-tier
@@ -30890,6 +31024,9 @@ allowMacro("goals", "config", _ACL_OWNER);
 allowMacro("chicken3", "meta_propose", _ACL_OWNER);
 allowMacro("chicken3", "meta_commit_quiet", _ACL_OWNER);
 allowMacro("entity", "terminal_approve", _ACL_ADMIN);
+// Mirrors terminal_approve exactly (same override site, same rule) so the
+// read-only listing is governed by the identical ACL entry as the vote.
+allowMacro("entity", "terminal_pending", _ACL_ADMIN);
 allowMacro("grounding", "approve_action", _ACL_ADMIN);
 
 // Council: read operations are public; user-facing mutations are member-level.
@@ -36942,6 +37079,23 @@ register("marketplace", "list", async (ctx, input) => {
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "dtu_not_found" };
 
+  // Ownership + scope gate. Previously ANY authenticated caller could flip
+  // ANY dtuId (including one they don't own) into a marketplace listing —
+  // this macro had no frontend caller until the Creator lens's Listings tab
+  // was wired to it, so the gap was dormant, not exercised. Mirrors the
+  // check the old (still-present, now-orphaned) `/api/marketplace/submit`
+  // REST route already enforced for the same operation. Legacy DTUs with no
+  // ownerId fall through (matches dtu.update's "only gate DTUs that have a
+  // concrete foreign owner" convention) so old unowned seed content stays
+  // listable in single-user/local-first installs.
+  const userId = ctx?.actor?.userId || ctx?.actor?.id;
+  if (dtu.ownerId && dtu.ownerId !== userId) {
+    return { ok: false, error: "not_your_dtu" };
+  }
+  if (dtu.scope && dtu.scope !== "personal") {
+    return { ok: false, error: "can_only_list_personal_dtus" };
+  }
+
   dtu.scope = "marketplace";
   dtu.marketplace = {
     listed: true, listedAt: new Date().toISOString(),
@@ -36951,12 +37105,95 @@ register("marketplace", "list", async (ctx, input) => {
     description: description || "",
     tags: tags || dtu.meta?.tags || [],
     preview: preview || null,
-    seller: ctx?.actor?.userId || dtu.meta?.createdBy,
+    seller: userId || dtu.meta?.createdBy,
     purchases: 0, rating: null, reviews: [],
   };
 
   return { ok: true, listing: dtu.marketplace };
 }, { description: "List a DTU on the marketplace." });
+
+// Creator lens Listings tab — the seller's OWN view of their dtu.marketplace
+// listings (create/edit/withdraw/relist). Added alongside the ownership
+// gate above so the tab has a real, purchasable backing store instead of
+// the dead STATE.marketplaceListings map (see docs/lens-specs/creator-
+// capability-map.md finding #3). Purchases still flow through the existing,
+// unmodified `purchaseWithRoyalties` macro — nothing here touches money math.
+register("marketplace", "myListings", async (ctx, _input) => {
+  const userId = ctx?.actor?.userId || ctx?.actor?.id;
+  if (!userId) return { ok: false, error: "authentication_required" };
+  const listings = [];
+  for (const dtu of STATE.dtus.values()) {
+    if (dtu.ownerId !== userId || !dtu.marketplace) continue;
+    listings.push({
+      id: dtu.id,
+      sourceDtuId: dtu.id,
+      title: dtu.marketplace.title || dtu.title || "(untitled)",
+      description: dtu.marketplace.description || "",
+      price: dtu.marketplace.price || 0,
+      currency: dtu.marketplace.currency || "USD",
+      status: dtu.marketplace.listed ? "active" : "withdrawn",
+      downloads: dtu.marketplace.purchases || 0,
+      listedAt: dtu.marketplace.listedAt || dtu.createdAt || null,
+      tierPrices: dtu.marketplace.tierPrices || undefined,
+    });
+  }
+  listings.sort((a, b) => new Date(b.listedAt || 0) - new Date(a.listedAt || 0));
+  return { ok: true, listings };
+}, { description: "List the caller's own dtu.marketplace listings (active + withdrawn)." });
+
+register("marketplace", "updateListing", async (ctx, input) => {
+  const { dtuId, price, title, description, tierPrices } = input || {};
+  const userId = ctx?.actor?.userId || ctx?.actor?.id;
+  const dtu = STATE.dtus.get(dtuId);
+  if (!dtu) return { ok: false, error: "dtu_not_found" };
+  if (!dtu.marketplace) return { ok: false, error: "not_listed" };
+  if (dtu.ownerId && dtu.ownerId !== userId) return { ok: false, error: "not_listing_owner" };
+
+  if (typeof price === "number" && Number.isFinite(price) && price >= 0) dtu.marketplace.price = price;
+  if (typeof title === "string") dtu.marketplace.title = title.slice(0, 200);
+  if (typeof description === "string") dtu.marketplace.description = description.slice(0, 1000);
+  // tierPrices are informational metadata only, same as the pre-existing
+  // STATE.marketplaceListings PATCH handler — CLAUDE.md's finding #3 already
+  // documents that no purchase path enforces per-tier pricing anywhere in
+  // Concord today; relocating the field here doesn't change that status,
+  // it just stops it from being stored in a store nobody could ever buy from.
+  if (tierPrices && typeof tierPrices === "object" && !Array.isArray(tierPrices)) {
+    const clean = {};
+    for (const key of ["usage", "remix", "commercial"]) {
+      const v = Number(tierPrices[key]);
+      if (Number.isFinite(v) && v >= 0) clean[key] = Math.round(v * 100) / 100;
+    }
+    if (Object.keys(clean).length > 0) dtu.marketplace.tierPrices = clean;
+  } else if (tierPrices === null) {
+    delete dtu.marketplace.tierPrices;
+  }
+  dtu.marketplace.updatedAt = new Date().toISOString();
+  return { ok: true, listing: dtu.marketplace };
+}, { description: "Edit price/title/description/tierPrices on the caller's own marketplace listing." });
+
+register("marketplace", "unlist", async (ctx, input) => {
+  const { dtuId } = input || {};
+  const userId = ctx?.actor?.userId || ctx?.actor?.id;
+  const dtu = STATE.dtus.get(dtuId);
+  if (!dtu) return { ok: false, error: "dtu_not_found" };
+  if (!dtu.marketplace) return { ok: false, error: "not_listed" };
+  if (dtu.ownerId && dtu.ownerId !== userId) return { ok: false, error: "not_listing_owner" };
+  dtu.marketplace.listed = false;
+  dtu.marketplace.withdrawnAt = new Date().toISOString();
+  return { ok: true, listing: dtu.marketplace };
+}, { description: "Withdraw (unlist) the caller's own marketplace listing without losing purchase history." });
+
+register("marketplace", "relist", async (ctx, input) => {
+  const { dtuId } = input || {};
+  const userId = ctx?.actor?.userId || ctx?.actor?.id;
+  const dtu = STATE.dtus.get(dtuId);
+  if (!dtu) return { ok: false, error: "dtu_not_found" };
+  if (!dtu.marketplace) return { ok: false, error: "not_listed_before" };
+  if (dtu.ownerId && dtu.ownerId !== userId) return { ok: false, error: "not_listing_owner" };
+  dtu.marketplace.listed = true;
+  delete dtu.marketplace.withdrawnAt;
+  return { ok: true, listing: dtu.marketplace };
+}, { description: "Reactivate a previously-withdrawn marketplace listing." });
 
 register("marketplace", "purchase", async (ctx, input) => {
   const { dtuId } = input || {};
@@ -37557,7 +37794,19 @@ register("scope", "promote", async (ctx, input) => {
       } catch (_e) { logger.debug('server', 'silent', { error: _e?.message }); }
     }
 
-    realtimeEmit("dtu:promoted", { dtuId: dtu.id, targetScope, votes: reviewResult.votes });
+    // Wave 4 — DTUs are cross-world by design (no formal world_id field on
+    // the in-memory STATE.dtus object; see CLAUDE.md on the DTU substrate).
+    // Most promotions genuinely have no natural world scope. Stamp worldId
+    // ONLY when the DTU actually carries one (a caller-supplied meta.world_id
+    // on creation, or a rare top-level field) — never invent one. Consumers
+    // (spectate ticker, EmergentEventFeed) already treat worldId as optional
+    // and filter/display opportunistically when present.
+    const _promotedWorldId = dtu.world_id ?? dtu.worldId
+      ?? dtu.meta?.world_id ?? dtu.meta?.worldId ?? null;
+    realtimeEmit("dtu:promoted", {
+      dtuId: dtu.id, targetScope, votes: reviewResult.votes,
+      ...(_promotedWorldId ? { worldId: _promotedWorldId } : {}),
+    });
 
     // Event-to-DTU bridge: promotion events are knowledge worth preserving
     try {
@@ -52630,12 +52879,22 @@ app.post("/api/horde/:runId/wave", requireAuth(), asyncHandler(async (req, res) 
 
 app.post("/api/horde/:runId/upgrade", requireAuth(), asyncHandler(async (req, res) => {
   const { pickUpgrade } = await import("./lib/horde-mode.js");
-  res.json(pickUpgrade(db, req.params.runId, req.body?.upgradeId));
+  const userId = req.user?.id || req.user?.userId;
+  const r = pickUpgrade(db, req.params.runId, req.body?.upgradeId);
+  // Wave 4 — a picked boon must affect this player's very next hit, not wait
+  // out the modifier cache's TTL.
+  if (r.ok) {
+    try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  }
+  res.json(r);
 }));
 
 app.post("/api/horde/:runId/end", requireAuth(), asyncHandler(async (req, res) => {
   const { endHorde } = await import("./lib/horde-mode.js");
-  res.json(endHorde(db, req.params.runId, req.body || {}));
+  const userId = req.user?.id || req.user?.userId;
+  const r = endHorde(db, req.params.runId, req.body || {});
+  try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  res.json(r);
 }));
 
 app.get("/api/horde/active", requireAuth(), asyncHandler(async (req, res) => {
@@ -52648,12 +52907,37 @@ app.get("/api/horde/active", requireAuth(), asyncHandler(async (req, res) => {
 app.post("/api/roguelite/run/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startRun } = await import("./lib/roguelite.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(startRun(db, userId, req.body || {}));
+  const r = startRun(db, userId, req.body || {});
+  try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  res.json(r);
 }));
 
 app.post("/api/roguelite/run/:runId/end", requireAuth(), asyncHandler(async (req, res) => {
   const { endRun } = await import("./lib/roguelite.js");
-  res.json(endRun(db, req.params.runId, req.body || {}));
+  const userId = req.user?.id || req.user?.userId;
+  const r = endRun(db, req.params.runId, req.body || {});
+  try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  res.json(r);
+}));
+
+// Wave 4 (Gap B) — the in-run draft moment (mirrors horde's /wave). Advances
+// depth and offers a fresh structured boon draft; extraDraftPicks (an owned
+// meta-unlock) banks more than one pick per advance.
+app.post("/api/roguelite/run/:runId/advance", requireAuth(), asyncHandler(async (req, res) => {
+  const { advanceRun } = await import("./lib/roguelite.js");
+  res.json(advanceRun(db, req.params.runId, req.body || {}));
+}));
+
+// Wave 4 (Gap B) — spend a banked draft pick on a boon (mirrors horde's
+// /upgrade, but through the banked-picks accounting advanceRun grants).
+app.post("/api/roguelite/run/:runId/draft-pick", requireAuth(), asyncHandler(async (req, res) => {
+  const { pickDraftBoon } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = pickDraftBoon(db, req.params.runId, userId, req.body?.pickId);
+  if (r.ok) {
+    try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  }
+  res.json(r);
 }));
 
 app.get("/api/roguelite/balance", requireAuth(), asyncHandler(async (req, res) => {
@@ -52668,7 +52952,13 @@ app.post("/api/roguelite/unlock", requireAuth(), asyncHandler(async (req, res) =
   // Security fix — the price is looked up server-side from
   // META_UNLOCK_CATALOG inside purchaseUnlock; a client-supplied cost is
   // never read or forwarded here (see roguelite.js#purchaseUnlock).
-  res.json(purchaseUnlock(db, userId, req.body?.unlockId));
+  const r = purchaseUnlock(db, userId, req.body?.unlockId);
+  // Wave 4 — a newly-purchased meta-unlock (e.g. sharp_start's damageMult)
+  // should affect the player's CURRENT run's next hit if they have one.
+  if (r.ok) {
+    try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  }
+  res.json(r);
 }));
 
 app.get("/api/roguelite/unlocks", requireAuth(), asyncHandler(async (req, res) => {

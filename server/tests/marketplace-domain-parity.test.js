@@ -292,6 +292,64 @@ describe("marketplace — buyer-facing storefront (item 1)", () => {
     assert.equal(r.result.listingCount, 1);
     assert.equal(r.result.shop.id ? true : false, true);
   });
+
+  // Public cross-seller browse — docs/lens-specs/marketplace-capability-map.md
+  // had flagged this as "genuinely missing"; the macro (and its frontend
+  // wiring via StorefrontPanel) already existed. These pin the exact
+  // buyer-facing reciprocal-visibility + privacy contract the doc's
+  // "Genuinely missing" item called for, from a DIFFERENT seller's vantage
+  // point (ctxB), not just the creating seller's own re-read (ctxA) the
+  // pre-existing tests above already covered.
+  it("a published listing from seller A is visible to seller B via storefront-browse", () => {
+    const a = call("listings-create", ctxA, { title: "Alice mug", priceUsd: 18, kind: "physical_good" }).result.listing;
+    call("listings-publish", ctxA, { id: a.id });
+    // Called AS seller B — proves the catalog is genuinely public/global,
+    // not scoped to the calling user's own shop.
+    const r = call("storefront-browse", ctxB, {});
+    assert.equal(r.ok, true);
+    const seen = r.result.listings.find(l => l.listingId === a.id);
+    assert.ok(seen, "seller A's published listing is visible to seller B");
+    assert.equal(seen.sellerId, "seller_a");
+    assert.equal(seen.title, "Alice mug");
+  });
+
+  it("a draft (unpublished) listing from seller A is NEVER visible to seller B via storefront-browse", () => {
+    const draft = call("listings-create", ctxA, { title: "Alice unreleased glaze test", priceUsd: 9 }).result.listing;
+    // Deliberately never published.
+    const r = call("storefront-browse", ctxB, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total, 0);
+    assert.ok(r.result.listings.every(l => l.listingId !== draft.id));
+    assert.ok(r.result.listings.every(l => l.title !== "Alice unreleased glaze test"));
+  });
+
+  it("storefront-browse never leaks another seller's non-public listing fields", () => {
+    const a = call("listings-create", ctxA, { title: "Alice mug", priceUsd: 18, kind: "physical_good", tags: ["ceramic"] }).result.listing;
+    call("listings-publish", ctxA, { id: a.id });
+    const r = call("storefront-browse", ctxB, {});
+    const seen = r.result.listings.find(l => l.listingId === a.id);
+    assert.ok(seen);
+    // Only the documented public-catalog shape is present — no internal
+    // bookkeeping (createdAt/status/ownerId-as-such) leaks through.
+    const allowedKeys = new Set([
+      "listingId", "sellerId", "shopName", "number", "title", "kind",
+      "priceUsd", "currency", "description", "tags", "images", "stockQty",
+      "shippingCostUsd", "avgRating", "reviewCount", "salesCount", "publishedAt",
+    ]);
+    for (const key of Object.keys(seen)) assert.ok(allowedKeys.has(key), `unexpected field leaked: ${key}`);
+    assert.equal(Object.prototype.hasOwnProperty.call(seen, "status"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(seen, "createdAt"), false);
+  });
+
+  it("storefront-browse filters by kind (category) across sellers", () => {
+    const mug = call("listings-create", ctxA, { title: "Alice mug", priceUsd: 18, kind: "physical_good" }).result.listing;
+    call("listings-publish", ctxA, { id: mug.id });
+    const print = call("listings-create", ctxB, { title: "Bob print", priceUsd: 40, kind: "merch_print" }).result.listing;
+    call("listings-publish", ctxB, { id: print.id });
+    const r = call("storefront-browse", ctxA, { kind: "merch_print" });
+    assert.equal(r.result.total, 1);
+    assert.equal(r.result.listings[0].listingId, print.id);
+  });
 });
 
 describe("marketplace — reviews & ratings (item 2)", () => {

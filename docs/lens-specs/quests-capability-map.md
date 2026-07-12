@@ -34,8 +34,8 @@
 | `recordProgress` | `{ok}` — monotonic, capped, auto-completes | UNSURFACED by design — objective progress is a SERVER-side side effect of gameplay actions (combat kills, dialogue talk_to, gathering), not a player-invoked UI action. Correctly never called from the lens. |
 | `checkCompletion` | `{ok, completed}` | UNSURFACED — `recordProgress` already auto-calls this internally on every progress write; no standalone UI need |
 | `claimRewards` | `{ok, rewards:[{type,...}]}` or `{ok:false, error}`, idempotent (`player_quests.rewarded_at` gate) | **DESIGNED** *(wired this pass)* — "Claim" button on completed-but-unrewarded quests |
-| `addObjectives` | `{ok, count}` | WORLD-OWNED / authoring-only — called by the quest builder + lattice-born quest composer (`lattice-quest-composer.js`), never by a player-facing lens |
-| `addRewards` | `{ok, count}` | WORLD-OWNED / authoring-only — same as above |
+| `addObjectives` | `{ok, count}` | WORLD-OWNED / authoring-only, correctly never called by a player-facing lens — **correction (2026-07-12, see `docs/QUESTS_ENGINE_INVESTIGATION.md`): the "called by the quest builder + lattice-born quest composer" claim below was wrong.** `lattice-quest-composer.js` calls the emergent engine's `createQuest`, not this macro. Grepped: this macro has **zero production callers anywhere** — only test files call it directly. Every `world_quests` row that exists in production (procedural quest-emergence.js quests) has zero `quest_objectives` rows attached as a result. |
+| `addRewards` | `{ok, count}` | WORLD-OWNED / authoring-only — same correction as `addObjectives` above: zero production callers, so real `world_quests` rows also have zero `quest_rewards` rows. |
 
 ### Adjacent, correctly-separate REST surface (not this lens's macros, still real)
 
@@ -129,15 +129,34 @@ quest SUBSTRATE CLAUDE.md documents (`server/emergent/quest-engine.js`,
 `player_beats`) — see "Adjacent observation" below for why that's correct,
 not a gap. Of the 9: 3 are player-facing read/claim actions now all
 DESIGNED (`mine`, `completed`, `claimRewards`); 2 are authoring-only and
-correctly WORLD-OWNED (`addObjectives`/`addRewards`, called by content
-seeding + the lattice quest composer, never by a player); 3 are correctly
+correctly WORLD-OWNED (`addObjectives`/`addRewards` — correctly never
+called by a player, though per the 2026-07-12 follow-up they're also never
+called by content-seeding or the lattice quest composer in production
+either, which is itself part of the confirmed root cause — see the
+"Adjacent observation" update above); 3 are correctly
 UNSURFACED because they're either superseded (`active` by `mine`) or
 internal-only side-effect plumbing that fires from gameplay events, not UI
 buttons (`recordProgress`, `checkCompletion`). That's a coherent, complete
 surface for a "read my quest log + claim rewards" lens — there is no
 remaining real gap inside the `quests` domain itself.
 
-## Adjacent observation (out of scope, not fixed here — flagging for the record)
+## Adjacent observation — CONFIRMED by a dedicated 2026-07-12 follow-up investigation
+
+> **Update (2026-07-12):** the follow-up this section recommended has been
+> done. See `docs/QUESTS_ENGINE_INVESTIGATION.md` for the full trace,
+> file:line citations, an empirical DB-level confirmation, and 4 candidate
+> fix directions. Two corrections to what was written below at the time:
+> (1) it's **three** non-communicating quest stores, not two — a third,
+> `quest_progress`, backs the onboarding "First Cycle" tutorial and has zero
+> production writers, so that tutorial is *also* dead, for an unrelated
+> reason; (2) the claim two paragraphs down that `addObjectives`/
+> `addRewards` are "called by ... the lattice-born quest composer" is
+> **wrong** — `lattice-quest-composer.js` calls the emergent engine's
+> `createQuest`, not the SQL engine's `addQuestObjectives`/`addQuestRewards`,
+> which in fact have **zero** production callers anywhere (test-only). The
+> "most likely never reach players" hedge below is now a confirmed "never
+> reach players, verified against a live seeded DB" — not a probabilistic
+> read.
 
 While tracing where `questOffered` (the NPC-dialogue quest-accept popup)
 gets its data, this pass found a genuine architectural bifurcation that is
@@ -213,5 +232,14 @@ attempted (session token limit) but the lens was already close to real —
 one honest-empty-state tab was quietly dead and one macro was unsurfaced,
 both now real. No further rebuild needed. Recommend removing `quests` from
 any remaining Wave-1-retry backlog language in
-`docs/FRONTEND_REBUILD_PROGRAM.md`, and opening a small separate backend
-unit for the emergent-vs-SQL quest-engine bridging question above.
+`docs/FRONTEND_REBUILD_PROGRAM.md`.
+
+**Update (2026-07-12):** the "small separate backend unit" this section
+recommended was opened and completed as a Wave-4 gap-closure investigation.
+It confirmed the bridging gap is real (not hypothetical), found it's
+actually a three-way split with two additional break points, and concluded
+the fix needs an owner architectural decision rather than a small unit —
+see `docs/QUESTS_ENGINE_INVESTIGATION.md` for the full findings and 4
+candidate directions. This lens (`/lenses/quests`) itself remains correctly
+built against its real, if under-supplied, backend — no further lens work
+is implied by that finding.

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Music, Sliders, Plus, Trash2, Save, Volume2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 export interface Track {
   id: string;
@@ -92,7 +93,8 @@ function ProjectList({ onSelect }: { onSelect: (id: string) => void }) {
   const remove = async (id: string) => {
     if (!window.confirm('Delete this project?')) return;
     try {
-      await lensRun({ domain: 'studio', action: 'project-delete', input: { id } });
+      const res = await lensRun({ domain: 'studio', action: 'project-delete', input: { id } });
+      if (res.data?.ok) logStudioCollabEdit(id, 'project-delete', id);
       await refresh();
     } catch (e) { console.error(e); }
   };
@@ -157,28 +159,32 @@ function ProjectView({ projectId, onBack }: { projectId: string; onBack: () => v
 
   const addTrack = async (kind: Track['kind']) => {
     try {
-      await lensRun({ domain: 'studio', action: 'track-add', input: { projectId, kind } });
+      const res = await lensRun({ domain: 'studio', action: 'track-add', input: { projectId, kind } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'track-add', (res.data.result as { track?: Track } | undefined)?.track?.id, { kind });
       await refresh();
     } catch (e) { console.error(e); }
   };
 
   const updateTrack = async (trackId: string, patch: Partial<Track>) => {
     try {
-      await lensRun({ domain: 'studio', action: 'track-update', input: { projectId, trackId, ...patch } });
+      const res = await lensRun({ domain: 'studio', action: 'track-update', input: { projectId, trackId, ...patch } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'track-update', trackId, patch);
       await refresh();
     } catch (e) { console.error(e); }
   };
 
   const removeTrack = async (trackId: string) => {
     try {
-      await lensRun({ domain: 'studio', action: 'track-delete', input: { projectId, trackId } });
+      const res = await lensRun({ domain: 'studio', action: 'track-delete', input: { projectId, trackId } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'track-delete', trackId);
       await refresh();
     } catch (e) { console.error(e); }
   };
 
   const addEffect = async (trackId: string, kind: Effect['kind']) => {
     try {
-      await lensRun({ domain: 'studio', action: 'effect-add', input: { projectId, trackId, kind } });
+      const res = await lensRun({ domain: 'studio', action: 'effect-add', input: { projectId, trackId, kind } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'effect-add', trackId, { kind });
       await refresh();
     } catch (e) { console.error(e); }
   };

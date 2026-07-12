@@ -377,7 +377,7 @@ function CombatSandboxInner() {
         <LoadoutPicker onApply={setLoadout} />
         <DummyPresetPanel onApply={applyDummyConfig} />
         {/* @modal-escape-ok: TelemetryOverlay is a HUD on the control rail, not a trapping modal dialog. */}
-        <TelemetryOverlay />
+        <TelemetryOverlay weaponId={loadout.weaponId} />
         <ReplayPanel controllerRef={replayController} onPlayFrame={onPlayFrame} />
       </div>
 

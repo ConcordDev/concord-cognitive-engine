@@ -571,12 +571,17 @@ export default function registerLandscapingActions(registerLensAction) {
   // Builds a structured contractor proposal from line items: computes
   // labor + materials, applies overhead + margin, returns a renderable
   // proposal document object (markdown body + totals).
-  registerLensAction("landscaping", "proposal-build", (_ctx, _a, params = {}) => {
-  try {
+  //
+  // computeProposal is extracted so the invoice-from-proposal macro
+  // (Feature 10, below) can derive the same server-trusted totals from
+  // the same raw line items instead of trusting client-supplied totals —
+  // the invoice conversion re-runs the real math rather than echoing
+  // numbers the caller could tamper with in transit.
+  function computeProposal(params = {}) {
     const client = lsClean(params.client, 200) || "Client";
     const project = lsClean(params.project, 200) || "Landscaping project";
     const rawItems = Array.isArray(params.lineItems) ? params.lineItems : [];
-    if (!rawItems.length) return { ok: false, error: "lineItems required" };
+    if (!rawItems.length) return { error: "lineItems required" };
     const overheadPct = Math.max(0, Math.min(100, lsNum(params.overheadPct) || 15));
     const marginPct = Math.max(0, Math.min(100, lsNum(params.marginPct) || 20));
     const taxPct = Math.max(0, Math.min(30, lsNum(params.taxPct)));
@@ -598,6 +603,31 @@ export default function registerLandscapingActions(registerLensAction) {
     const preTax = subtotal + overhead + margin;
     const tax = Math.round(preTax * taxPct) / 100;
     const total = Math.round((preTax + tax) * 100) / 100;
+    return {
+      client, project, lineItems,
+      subtotal: Math.round(subtotal * 100) / 100,
+      overhead, margin, tax, total,
+      overheadPct, marginPct, taxPct,
+    };
+  }
+
+  registerLensAction("landscaping", "proposal-build", (ctx, _a, params = {}) => {
+  try {
+    // Optional clientId resolution (Feature 11, below) — only touches STATE
+    // when a clientId is actually supplied, so this macro stays pure-compute
+    // (no STATE dependency) on the free-text path exactly as it was before.
+    let effectiveParams = params;
+    let resolvedClientId = null;
+    if (lsClean(params.clientId, 64)) {
+      const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const ref = lsResolveClientRef(s, lsActor(ctx), params);
+      if (ref.error) return { ok: false, error: ref.error };
+      resolvedClientId = ref.clientId;
+      effectiveParams = { ...params, client: ref.client.name };
+    }
+    const computed = computeProposal(effectiveParams);
+    if (computed.error) return { ok: false, error: computed.error };
+    const { client, project, lineItems, subtotal, overhead, margin, tax, total, overheadPct, marginPct, taxPct } = computed;
     const md = [
       `# Landscaping Proposal`,
       ``,
@@ -631,6 +661,7 @@ export default function registerLandscapingActions(registerLensAction) {
         subtotal: Math.round(subtotal * 100) / 100,
         overhead, margin, tax, total,
         overheadPct, marginPct, taxPct,
+        clientId: resolvedClientId,
         proposalMarkdown: md,
         generatedAt: new Date().toISOString(),
       },
@@ -743,4 +774,347 @@ export default function registerLandscapingActions(registerLensAction) {
     saveLand();
     return { ok: true, result: { deleted: params.id } };
   });
+
+  // ─── Feature 9 — Job scheduling / dispatch board (field-service) ────
+  // Landscaping's design + calculation + record-keeping tools (beds,
+  // layouts, proposals, diary) didn't model an actual scheduled/dispatched
+  // job — this closes that gap with the same triple shape as plumbing's
+  // dispatchAssign/dispatchBoard/jobComplete (server/domains/plumbing.js),
+  // renamed to this file's hyphenated macro convention: job-schedule /
+  // job-list / job-complete. Scope note: unlike plumbing, this does NOT
+  // introduce a separate crew/tech entity substrate (techAdd/techList) —
+  // `crew` is a free-text assignee string on the job record, which is
+  // sufficient to group a real dispatch board into lanes without building
+  // a second CRUD surface the capability-map gap didn't ask for.
+  function lsJobs(s, userId) {
+    if (!(s.jobs instanceof Map)) s.jobs = new Map();
+    if (!s.jobs.has(userId)) s.jobs.set(userId, []);
+    return s.jobs.get(userId);
+  }
+  const JOB_STATUSES = ["scheduled", "in_progress", "completed", "cancelled"];
+
+  registerLensAction("landscaping", "job-schedule", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const title = lsClean(params.title, 120);
+    if (!title) return { ok: false, error: "job title required" };
+    const bedId = lsClean(params.bedId, 80) || null;
+    if (bedId && !lsBeds(s, userId).find((b) => b.id === bedId)) return { ok: false, error: "bed not found" };
+    // Optional clientId resolution (Feature 11, below) — resolves a saved
+    // client's name/address onto the job; omitting clientId preserves the
+    // original free-text client/address fields byte-for-byte.
+    const ref = lsResolveClientRef(s, userId, params);
+    if (ref.error) return { ok: false, error: ref.error };
+    const job = {
+      id: lsId("job"), title,
+      client: ref.client ? ref.client.name : (lsClean(params.client, 120) || ""),
+      clientId: ref.clientId,
+      address: lsClean(params.address, 200) || (ref.client ? (ref.client.address || "") : ""),
+      proposalId: lsClean(params.proposalId, 80) || null,
+      bedId,
+      crew: lsClean(params.crew, 120) || "",
+      date: lsClean(params.date, 16) || new Date().toISOString().slice(0, 10),
+      startHour: Math.min(23, Math.max(0, Math.round(lsNum(params.startHour)) || 8)),
+      durationHours: Math.min(24, Math.max(0.5, lsNum(params.durationHours) || 2)),
+      notes: lsClean(params.notes, 1000) || "",
+      status: "scheduled",
+      createdAt: new Date().toISOString(),
+    };
+    lsJobs(s, userId).push(job);
+    saveLand();
+    return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // job-list — the dispatch board: filterable by status/date range,
+  // grouped into per-crew lanes (+ an unassigned lane) so the frontend
+  // renders a real board, not a flat table.
+  registerLensAction("landscaping", "job-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const status = lsClean(params.status, 20);
+    if (status && !JOB_STATUSES.includes(status)) return { ok: false, error: "invalid status filter" };
+    let rows = lsJobs(s, lsActor(ctx)).slice();
+    if (status) rows = rows.filter((j) => j.status === status);
+    const dateFrom = lsClean(params.dateFrom, 16);
+    const dateTo = lsClean(params.dateTo, 16);
+    if (dateFrom) rows = rows.filter((j) => j.date >= dateFrom);
+    if (dateTo) rows = rows.filter((j) => j.date <= dateTo);
+    rows.sort((a, b) => a.date.localeCompare(b.date) || a.startHour - b.startHour);
+    const crews = [...new Set(rows.map((j) => j.crew).filter(Boolean))];
+    const lanes = crews.map((crew) => {
+      const crewJobs = rows.filter((j) => j.crew === crew);
+      return {
+        crew, jobs: crewJobs,
+        loadHours: crewJobs.filter((j) => j.status !== "cancelled")
+          .reduce((n, j) => n + j.durationHours, 0),
+      };
+    });
+    const unassigned = rows.filter((j) => !j.crew);
+    return {
+      ok: true,
+      result: {
+        jobs: rows, count: rows.length,
+        lanes, unassigned,
+        scheduledCount: rows.filter((j) => j.status === "scheduled").length,
+        inProgressCount: rows.filter((j) => j.status === "in_progress").length,
+        completedCount: rows.filter((j) => j.status === "completed").length,
+        cancelledCount: rows.filter((j) => j.status === "cancelled").length,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("landscaping", "job-complete", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const jobs = lsJobs(s, lsActor(ctx));
+    const job = jobs.find((j) => j.id === params.id);
+    if (!job) return { ok: false, error: "job not found" };
+    if (job.status === "completed") return { ok: false, error: "job already completed" };
+    if (job.status === "cancelled") return { ok: false, error: "cannot complete a cancelled job" };
+    job.status = "completed";
+    job.completedAt = new Date().toISOString();
+    job.completionNotes = lsClean(params.notes, 1000) || "";
+    saveLand();
+    return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ─── Feature 10 — Proposal → invoice status machine ──────────────────
+  // `proposal-build` (Feature 6) stops at a renderable document — there was
+  // no way to turn a built proposal into a tracked, payable invoice. This
+  // closes that gap the way plumbing's invoiceFromQuote/invoiceList/
+  // invoiceRecordPayment triple does (server/domains/plumbing.js), adapted
+  // to this file's hyphenated macro convention and to a real 4-state
+  // machine (plumbing's invoice is 2-state: issued -> partial/paid):
+  //   draft -> sent -> accepted -> paid
+  // invoice-from-proposal re-derives the totals from the same raw line
+  // items via computeProposal (Feature 6) rather than trusting
+  // client-supplied totals — a caller can't mint a fake total by tampering
+  // with the response before converting it. Transitions are strict: you
+  // cannot skip a state (e.g. draft -> accepted) and you cannot record a
+  // payment before the client has accepted the invoice.
+  function lsInvoices(s, userId) {
+    if (!(s.invoices instanceof Map)) s.invoices = new Map();
+    if (!s.invoices.has(userId)) s.invoices.set(userId, []);
+    return s.invoices.get(userId);
+  }
+  const INVOICE_STATUSES = ["draft", "sent", "accepted", "paid"];
+  const PAYMENT_METHODS = ["cash", "card", "check", "transfer"];
+
+  registerLensAction("landscaping", "invoice-from-proposal", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    // Optional clientId resolution (Feature 11, below) — resolves a saved
+    // client's name onto the invoice; omitting clientId preserves the
+    // original free-text client field byte-for-byte.
+    const ref = lsResolveClientRef(s, userId, params);
+    if (ref.error) return { ok: false, error: ref.error };
+    const computed = computeProposal(ref.client ? { ...params, client: ref.client.name } : params);
+    if (computed.error) return { ok: false, error: computed.error };
+    const invoices = lsInvoices(s, userId);
+    const seq = invoices.length + 1;
+    const invoice = {
+      id: lsId("inv"),
+      number: lsClean(params.number, 32) || `INV-${String(seq).padStart(4, "0")}`,
+      proposalRef: lsClean(params.proposalRef, 80) || null,
+      client: computed.client,
+      clientId: ref.clientId,
+      project: computed.project,
+      lineItems: computed.lineItems,
+      subtotal: computed.subtotal,
+      overhead: computed.overhead,
+      margin: computed.margin,
+      tax: computed.tax,
+      total: computed.total,
+      overheadPct: computed.overheadPct,
+      marginPct: computed.marginPct,
+      taxPct: computed.taxPct,
+      status: "draft",
+      amountPaid: 0,
+      payments: [],
+      dueDate: lsClean(params.dueDate, 16) || "",
+      createdAt: new Date().toISOString(),
+      sentAt: null,
+      acceptedAt: null,
+      paidAt: null,
+    };
+    invoices.push(invoice);
+    saveLand();
+    return { ok: true, result: { invoice } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // invoice-list — filterable by status; also returns per-status counts
+  // and outstanding/collected totals so the frontend can render a real
+  // AR summary, not just a flat table.
+  registerLensAction("landscaping", "invoice-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const status = lsClean(params.status, 20);
+    if (status && !INVOICE_STATUSES.includes(status)) return { ok: false, error: "invalid status filter" };
+    let rows = lsInvoices(s, lsActor(ctx)).slice();
+    if (status) rows = rows.filter((i) => i.status === status);
+    rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const outstanding = rows.filter((i) => i.status === "accepted")
+      .reduce((n, i) => n + (i.total - i.amountPaid), 0);
+    const collected = rows.reduce((n, i) => n + i.amountPaid, 0);
+    return {
+      ok: true,
+      result: {
+        invoices: rows, count: rows.length,
+        draftCount: rows.filter((i) => i.status === "draft").length,
+        sentCount: rows.filter((i) => i.status === "sent").length,
+        acceptedCount: rows.filter((i) => i.status === "accepted").length,
+        paidCount: rows.filter((i) => i.status === "paid").length,
+        outstanding: Math.round(outstanding * 100) / 100,
+        collected: Math.round(collected * 100) / 100,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // invoice-send — draft -> sent only.
+  registerLensAction("landscaping", "invoice-send", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = lsInvoices(s, lsActor(ctx)).find((i) => i.id === params.id);
+    if (!inv) return { ok: false, error: "invoice not found" };
+    if (inv.status !== "draft") {
+      return { ok: false, error: `cannot send an invoice with status "${inv.status}" — only a draft invoice can be sent` };
+    }
+    inv.status = "sent";
+    inv.sentAt = new Date().toISOString();
+    saveLand();
+    return { ok: true, result: { invoice: inv } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // invoice-accept — sent -> accepted only (records the client's
+  // acceptance; this is what unlocks payment recording below).
+  registerLensAction("landscaping", "invoice-accept", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = lsInvoices(s, lsActor(ctx)).find((i) => i.id === params.id);
+    if (!inv) return { ok: false, error: "invoice not found" };
+    if (inv.status !== "sent") {
+      return { ok: false, error: `cannot accept an invoice with status "${inv.status}" — only a sent invoice can be accepted` };
+    }
+    inv.status = "accepted";
+    inv.acceptedAt = new Date().toISOString();
+    saveLand();
+    return { ok: true, result: { invoice: inv } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // invoice-record-payment — only once accepted (or already partially
+  // paid); flips to "paid" once amountPaid reaches the total. Supports
+  // partial payments the same way plumbing's invoiceRecordPayment does.
+  registerLensAction("landscaping", "invoice-record-payment", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = lsInvoices(s, lsActor(ctx)).find((i) => i.id === params.id);
+    if (!inv) return { ok: false, error: "invoice not found" };
+    if (inv.status === "draft" || inv.status === "sent") {
+      return { ok: false, error: `cannot record payment before the invoice is accepted (current status "${inv.status}")` };
+    }
+    const amount = Math.max(0, lsNum(params.amount));
+    if (amount <= 0) return { ok: false, error: "payment amount required" };
+    const payment = {
+      id: lsId("pay"),
+      amount,
+      method: PAYMENT_METHODS.includes(params.method) ? params.method : "card",
+      at: new Date().toISOString(),
+    };
+    inv.payments.push(payment);
+    inv.amountPaid = Math.round((inv.amountPaid + amount) * 100) / 100;
+    if (inv.amountPaid >= inv.total) {
+      inv.status = "paid";
+      if (!inv.paidAt) inv.paidAt = new Date().toISOString();
+    }
+    saveLand();
+    return {
+      ok: true,
+      result: { invoice: inv, balanceDue: Math.max(0, Math.round((inv.total - inv.amountPaid) * 100) / 100) },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ─── Feature 11 — Persisted Client (CRM) entity ──────────────────────
+  // Closes the "no persisted Client entity" gap (docs/lens-specs/landscaping-
+  // capability-map.md): client name was previously a free-text field
+  // re-typed on every proposal-build/invoice-from-proposal/job-schedule
+  // call, so it never autocompleted future proposals and history didn't
+  // aggregate across documents for the same client. This mirrors plumbing's
+  // clientAdd/clientList/resolveClientRef (server/domains/plumbing.js) —
+  // the exact precedent this gap's capability-map entry names — adapted to
+  // this file's hyphenated macro-naming convention (client-add/client-list)
+  // and its globalThis._concordSTATE-backed Map pattern. A small, additive
+  // pair plus an OPTIONAL `clientId` accepted by proposal-build /
+  // invoice-from-proposal / job-schedule (the three macros that already
+  // took a free-text `client` field): passing `clientId` looks the client
+  // up and uses its name/address; omitting it preserves the original
+  // free-text behavior byte-for-byte.
+  function lsClients(s, userId) {
+    if (!(s.clients instanceof Map)) s.clients = new Map();
+    if (!s.clients.has(userId)) s.clients.set(userId, []);
+    return s.clients.get(userId);
+  }
+  function lsResolveClientRef(s, userId, params) {
+    const clientId = lsClean(params.clientId, 64) || null;
+    if (!clientId) return { clientId: null, client: null };
+    const found = lsClients(s, userId).find((c) => c.id === clientId);
+    if (!found) return { error: "client_not_found" };
+    return { clientId: found.id, client: found };
+  }
+
+  registerLensAction("landscaping", "client-add", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const name = lsClean(params.name, 80);
+    if (!name) return { ok: false, error: "name required" };
+    const client = {
+      id: lsId("client"), name,
+      phone: lsClean(params.phone, 40) || "",
+      email: lsClean(params.email, 120) || "",
+      address: lsClean(params.address, 200) || "",
+      notes: lsClean(params.notes, 400) || "",
+      createdAt: new Date().toISOString(),
+    };
+    lsClients(s, userId).push(client);
+    saveLand();
+    return { ok: true, result: { client } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // client-list — filterable by a substring `query`; enriches each client
+  // with real cross-document history (job count / invoice count / total
+  // billed) joined on clientId against the job + invoice stores above, the
+  // same way plumbing's clientList aggregates against dispatch + invoices.
+  registerLensAction("landscaping", "client-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const clients = lsClients(s, userId);
+    const jobs = lsJobs(s, userId);
+    const invoices = lsInvoices(s, userId);
+    const query = lsClean(params.query, 80).toLowerCase();
+    const filtered = query ? clients.filter((c) => c.name.toLowerCase().includes(query)) : clients;
+    const enriched = filtered.map((c) => {
+      const clientJobs = jobs.filter((j) => j.clientId === c.id);
+      const clientInvoices = invoices.filter((i) => i.clientId === c.id);
+      return {
+        ...c,
+        jobsCount: clientJobs.length,
+        invoiceCount: clientInvoices.length,
+        totalBilled: Math.round(clientInvoices.reduce((n, i) => n + i.total, 0) * 100) / 100,
+      };
+    });
+    return { ok: true, result: { clients: enriched, count: enriched.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

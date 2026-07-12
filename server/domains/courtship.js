@@ -133,15 +133,20 @@ export default function registerCourtshipMacros(register) {
   }, { note: "list the player's marriages + children" });
 
   /**
-   * courtship.dissolve — end a marriage (estranged / widowed).
+   * courtship.dissolve — end a marriage (estranged / widowed). Player-facing
+   * mutation, so the caller MUST be a party to the marriage — dissolveMarriage
+   * is given ctx.actor.userId as expectedUserId and rejects with
+   * `not_a_party` when the marriage row belongs to someone else.
    * input: { marriageId, reason? }
    */
   register("courtship", "dissolve", async (ctx, input = {}) => {
     const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
     if (!input?.marriageId) return { ok: false, reason: "missing_inputs" };
-    return dissolveMarriage(db, String(input.marriageId), String(input?.reason || "estranged"));
-  }, { note: "dissolve a marriage" });
+    return dissolveMarriage(db, String(input.marriageId), String(input?.reason || "estranged"), userId);
+  }, { note: "dissolve a marriage (caller must be a party)" });
 
   /**
    * courtship.conceive — start a pregnancy (requires an active marriage).

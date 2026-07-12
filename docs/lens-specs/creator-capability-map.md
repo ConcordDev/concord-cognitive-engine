@@ -81,34 +81,75 @@ persist.
 
 `server/server.js:47897-47921`.
 
-### 3. (Documented, not fixed — DATA-SOURCING/ENGINEERING triage) Tier pricing has no purchase-time enforcement
+### 3. (CLOSED 2026-07-12, Wave 4 gap-closure unit — see below) Listings tab pointed at a dead store with no purchase route
 
-Even after fix #2, `tierPrices` on a `STATE.marketplaceListings` entry is stored but
-never *read* anywhere — there is no purchase route for this listing type at all (see
-finding #1: nothing ever buys from `STATE.marketplaceListings`; the only consumers are
-display surfaces — `/api/world/bazaar` in-world stalls and `/api/marketplace/dream-
-promoted`). This is a pre-existing architectural fact, not something introduced or
-fixable in this pass: Concord currently has **five parallel "marketplace" listing
-stores** (`STATE.marketplaceListings`, `dtu.marketplace` + `purchaseWithRoyalties`,
-the plugin `PLUGIN_MARKETPLACE`, `STATE.economic.listings`, and the DB-backed
-`creative_artifacts` system), each with its own create/browse/buy surface, and only
-`dtu.marketplace`/`purchaseWithRoyalties` (the one carrying the constitutional 95%/5%
-royalty split documented in `CLAUDE.md`) and `creative_artifacts` (tier pricing +
-royalty cascade, used by `personal-locker.js`) have real buyer-facing purchase flows.
-**Triage: ENGINEERING** — wiring `STATE.marketplaceListings` into a real buy flow (or,
-more likely the right fix, retiring it in favor of pointing the Creator lens's Listings
-tab at the DTU royalty marketplace / `creative_artifacts`) is a defined, no-external-
-dependency backend task, but it touches money flow and multiple call sites across the
-app, which is out of scope for a single-lens pass and risks the constitutional fee/
-royalty invariants if rushed. Flagged for a dedicated follow-up rather than fixed
-silently here.
+**Original finding (superseded, kept for history):** `tierPrices` on a
+`STATE.marketplaceListings` entry was stored but never *read* anywhere — there was no
+purchase route for this listing type at all. Investigation re-confirmed finding #1's
+premise but found the store landscape was undercounted: Concord has **at least seven**
+parallel "marketplace"/listing subsystems, not five — `STATE.marketplaceListings`
+(dead), `dtu.marketplace` + `purchaseWithRoyalties` (real, constitutional 95%/5% split),
+the plugin `PLUGIN_MARKETPLACE` (out of scope — different content type), `STATE.economic.listings`
+(out of scope — different subsystem), the DB-backed `creative_artifacts` system used by
+`personal-locker.js` (real purchase flow, but see rejection reasoning below), a
+third Etsy/Bandcamp-shaped `STATE.marketplaceLens` shop/listings/orders system in
+`server/domains/marketplace.js` (`listings-create`/`-publish`/`-list`, physical goods
+with stock/shipping — a different product surface entirely), and a fourth, separate
+DB-backed listings/publish/purchase/entitlement system in `server/durable.js` (mounted,
+has its own `/api/marketplace/listings/:id` GET route that a different frontend
+component, `ArtifactDetailModal.tsx`, already calls). Redirecting to any store beyond
+the two genuinely money-real ones (`dtu.marketplace` and `creative_artifacts`) was ruled
+out immediately as scope creep unrelated to this finding.
+
+**Redirect-target decision.** `creative_artifacts` (`server/economy/creative-marketplace.js#publishArtifact`)
+was evaluated and rejected as the target: it requires a real uploaded file (`filePath`/
+`fileSize`/`fileHash`, not just a DTU record — the recipe-DTU virtual-path pattern in
+`personal-locker.js`'s `list-on-marketplace` route only covers three narrow types:
+`fighting_style_recipe`/`spell_recipe`/`blueprint`), a `type` from a fixed `ARTIFACT_TYPES`
+catalog, a 50-char minimum description, and — for tier pricing specifically —
+`license-tiers.js#validatePricing` requires *every* tier ID for that content type's full
+ladder to be priced (e.g. MUSIC needs `listen`/`download`/`remix`/`commercial`/`exclusive`/
+`stems` all present) and rejects unknown keys outright. The Creator lens's existing
+`{usage, remix, commercial}` shape doesn't validate against ANY content type's tier
+ladder — adopting `creative_artifacts` would have meant rebuilding the tab's UI, not
+redirecting its data source, so it was out of scope for "redirect a UI to a real store."
+
+**What was fixed.** The Creator lens's Listings tab (`concord-frontend/app/lenses/creator/page.tsx`)
+now reads/writes the real `dtu.marketplace` + `purchaseWithRoyalties` store instead —
+the one with the constitutional 95%/5% split and live buyer-facing callers elsewhere in
+the app already (`components/market/PurchaseButton.tsx`, `components/music/TrackCard.tsx`,
+the crafting/music lenses). Four new small macros were added in `server.js`
+(`marketplace.myListings` / `updateListing` / `unlist` / `relist` — none of them touch
+fee/royalty math, they only read/mutate `dtu.marketplace` metadata) because the
+pre-existing `marketplace.list`/`purchaseWithRoyalties` pair only covered create+buy, not
+a seller's own edit/withdraw/relist loop. While doing this, a real ownership+scope gap
+was found and closed: `marketplace.list` had **no ownership check at all** — any
+authenticated caller could flip any `dtuId` (including one they didn't own) into a
+listing. It had been dormant (zero frontend callers) until this pass gave it a real
+button; the fix mirrors the check the old (now-orphaned, kept in place) `/api/marketplace/submit`
+route already enforced. `server/lib/creator-dashboard.js#computeCreatorDashboard` and
+`#computeReputationLeaderboard` were also extended to read `dtu.marketplace` listings
+(merged with the legacy store, not replacing it) — otherwise the Overview tab's stat
+tiles and the leaderboard would have stayed frozen at the legacy store's numbers on the
+exact same page where the Listings tab now shows real, live sales.
+
+**What remains open (unchanged from before, correctly still deferred).** Tier-pricing
+enforcement at purchase time is still not built — `tierPrices` is stored as
+informational-only metadata on `dtu.marketplace.tierPrices` too, same non-enforcement
+status as before, just relocated to a store that's actually purchasable instead of one
+nobody could ever buy from. Building real enforcement needs a deliberate license-tier
+design decision (which tier ids? which capabilities do they gate?) — not something to
+silently default. `STATE.marketplaceListings`, `/api/marketplace/submit`,
+`/api/creator/listings`, and the `/api/marketplace/listings/:id` PATCH/withdraw/relist
+REST routes were deliberately left in place, unmodified, per the "don't rip out the old
+one" rule — they're now genuinely orphaned (zero frontend callers), same status
+`STATE.marketplaceListings` always had, just for a different reason.
 
 ## Verification
 
-- `npx eslint server/server.js` — clean (0 errors/warnings).
-- `npx eslint concord-frontend/app/lenses/creator/page.tsx` — clean.
+- `npx eslint server/server.js concord-frontend/app/lenses/creator/page.tsx server/lib/creator-dashboard.js server/tests/depth/marketplace-behavior.test.js server/tests/creator-dashboard-marketplace-merge.test.js` — clean (0 errors/warnings).
 - `node --check server/server.js` — clean.
-- `node --test server/tests/creator-domain-parity.test.js server/tests/creator-dashboard-ledger.test.js server/tests/creator-progression.test.js server/tests/dream-marketplace-bridge.test.js` — 57/57 passing (0 failures), none of the four suites touch the PATCH route directly but all pass unaffected.
-- `node scripts/verify-lens-backends.mjs` — `{"WIRED":258,"NO-BACKEND-CALL":2}` total 260 (unchanged from baseline).
-- `node scripts/grade-ux-polish.mjs --honest` — `creator`: `tier: "polished"`, `isGenericScaffold: false`, `importsGenericTrio: false` (unchanged — this lens was already polished; the fixes here are functional/honesty fixes, not a visual rebuild). Reverted `audit/ux-polish-honest*.json` after the run per the transient-artifact rule.
-- No `npx tsc --noEmit` run per the standing no-tsc rule for this session (prior batch OOM'd the container) — the new code was reviewed manually for type correctness (the `lensRun<T>` generic call site, the `MyListing.sourceDtuId` field addition, and JSX balance were all checked by hand) in addition to the clean eslint pass.
+- `node --test server/tests/creator-domain-parity.test.js server/tests/creator-dashboard-ledger.test.js server/tests/creator-progression.test.js server/tests/dream-marketplace-bridge.test.js server/tests/creator-dashboard-marketplace-merge.test.js server/tests/depth/marketplace-behavior.test.js server/tests/consolidation-pipeline.test.js server/tests/royalty-cascade.test.js server/tests/economy/ledger-conservation.test.js server/tests/economy/withdrawal-earned-policy.test.js` — 254/254 passing (0 failures), including 11 new ownership-gate/CRUD tests for the four new macros and 8 new dashboard-merge tests.
+- `node scripts/verify-lens-backends.mjs` — `{"WIRED":258,"NO-BACKEND-CALL":2}` total 260 (unchanged).
+- `node scripts/grade-ux-polish.mjs --honest` — `creator`: `tier: "polished"`, `importsGenericTrio: false` (unchanged — this was a data-source redirect, not a visual rebuild). Reverted `audit/ux-polish-honest*.json` after the run per the transient-artifact rule.
+- `cd concord-frontend && npx tsc --noEmit -p .` — 0 errors project-wide.

@@ -28,6 +28,13 @@ vi.mock('@/store/ui', () => ({
   useUIStore: (selector: (s: { addToast: typeof addToast }) => unknown) => selector({ addToast }),
 }));
 
+// ── auth: signed-out by default (no real /api/auth/me network call in tests).
+// Consumed by the page AND by the EmployerBrowser/ReputationGate components it
+// mounts (both import the same hook, so this one mock covers all three).
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: null, isLoading: false, isAuthenticated: false }),
+}));
+
 // ── headless shell: render-only stub ────────────────────────────────────────
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>

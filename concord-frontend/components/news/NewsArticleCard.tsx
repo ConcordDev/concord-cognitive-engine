@@ -8,6 +8,7 @@
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Bookmark, BookOpen, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react';
+import { useArticleDetail } from './ArticleDetailContext';
 
 export interface NewsArticle {
   id: string;
@@ -22,6 +23,7 @@ export interface NewsArticle {
 }
 
 export function NewsArticleCard({ article, onChange }: { article: NewsArticle; onChange: () => void }) {
+  const { openArticle } = useArticleDetail();
   const markRead = async () => {
     await lensRun('news', 'article-mark-read', { id: article.id, unread: article.read });
     onChange();
@@ -39,7 +41,16 @@ export function NewsArticleCard({ article, onChange }: { article: NewsArticle; o
     <li className={cn('bg-zinc-900/70 border rounded-xl p-3', article.read ? 'border-zinc-800/60' : 'border-zinc-800')}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className={cn('text-sm font-semibold', article.read ? 'text-zinc-400' : 'text-zinc-100')}>{article.title}</p>
+          <button
+            type="button"
+            onClick={() => openArticle(article.id)}
+            className={cn(
+              'text-left text-sm font-semibold hover:underline focus:outline-none focus:underline',
+              article.read ? 'text-zinc-400' : 'text-zinc-100',
+            )}
+          >
+            {article.title}
+          </button>
           <p className="text-[10px] text-zinc-400">
             {article.source} · <span className="capitalize">{article.topic}</span> · {String(article.publishedAt).slice(0, 10)}
           </p>

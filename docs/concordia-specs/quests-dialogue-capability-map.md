@@ -181,6 +181,95 @@ each built once).
 ## 3. REAL MECHANICAL DEFECT — `moral_branch` / `reputation_change` are
 authored but never consumed
 
+**PARTIALLY CLOSED (2026-07-12, `0c0c57e1`):** a new `quest.resolve_moral_branch`
+macro (`server.js`) applies a chosen option's `reputation_change` to the
+real reputation substrate (`character_opinions`/
+`player_faction_reputation_cache`) via `lib/quests/moral-branch.js`,
+idempotent per `(userId, worldId, questAuthoredId)`. This closes the
+backend "did the number move" half of the defect described below. It
+deliberately does NOT close the frontend half: there is still no UI
+surface that presents `moral_branch.options` as a choice to the player
+and no gameplay trigger that calls the macro automatically on quest-step
+completion — a caller (a future dialogue-choice UI, or an admin/manual
+path) must supply `optionId` explicitly. The rest of this section's trace
+and its "what's needed" list (a UI, a trigger, an events table) remain
+accurate for that still-open half.
+
+**Frontend half investigated 2026-07-12 (Wave 4 gap-closure unit), NOT
+built — genuinely unreachable, not a scope trim.** Before writing any UI
+this unit traced every candidate live attach point and, per
+`docs/QUESTS_ENGINE_INVESTIGATION.md`'s finding that Concord runs three
+non-communicating quest storage systems, independently re-ran that
+investigation's empirical check fresh (full real migration set via
+`migrate.js#runMigrations`, a real `seedContent({db})` call, direct DB
+inspection — not just trusting the prior doc):
+- **127 authored quests seed into System A's in-memory registry; `world_quests`
+  (System B — the only table `POST /:worldId/npcs/:npcId/dialogue`'s
+  quest-offer query and `QuestTracker`/`/lenses/quests` ever read) has zero
+  rows.** Of the 14 quest ids that actually carry a `moral_branch` (across
+  the 11 authored files — some files hold more than one branching quest:
+  `the_choice`, `warden_crackdown`, `broker_gambit`,
+  `the_merchants_dilemma`, `the_reckoning`, `faction_network_2`,
+  `southern_arc_05_choice`, `brackish_02_choice`, `sealed_04_choice`,
+  `crime_dahlia_03_destination`, `cyber_ghost_03_choice`,
+  `cyber_silver_02_choose`, `fantasy_seraphine_03_choice`,
+  `superhero_hex_03_meeting`), **all 14 are absent from `world_quests`.**
+  No in-game quest-offer, quest-accept, or objective-completion event can
+  ever fire for any of them.
+- **Checked the one mechanism that bypasses the broken System A/B split —
+  hand-authored dialogue trees (`content/dialogues/*.json`, 15 NPCs, "wins
+  over everything" per §4.1 below).** None of the 4 flagship main-arc
+  moral-branch quests' giver NPCs (`warden_voss` for `the_reckoning`,
+  `captain_rael` for `warden_crackdown`, `lorekeeper_yshe` for
+  `broker_gambit`, `factor_cade` for `the_merchants_dilemma`) has an
+  authored tree — confirmed live (`getAuthoredDialogue(npcId)` returns
+  `null`/false for each). Of the other 10 quests' giver NPCs, exactly 2
+  (`lady_seraphine_voss` → `fantasy_seraphine_03_choice`,
+  `broker_silver_vey` → `cyber_silver_02_choose`) DO have an authored
+  tree — but both trees are a
+  single generic `<npcId>:idle` entry (ambient chatter with no
+  quest/phase-specific node), not a tree that presents that quest's
+  specific choice. Attaching a reputation-altering climactic dilemma
+  ("Voss does not deny it… he asks you: 'Was I wrong?'"-tier prose, for the
+  quests that have it) to a generic idle greeting the player could trigger
+  with zero preceding narrative setup would misrepresent story causality —
+  a narrative-honesty problem in the same spirit as, if distinct in kind
+  from, CLAUDE.md's fabricated-data invariant. Coincidentally, an NPC named
+  `voss_seraphine` (unrelated — a different id, different character,
+  different sub-world) also has an idle-only tree; this was checked and
+  ruled out as a false lead, not a real link to `the_reckoning`'s
+  `warden_voss`.
+- **Checked whether narrative-bridge's LLM dialogue-generation path leaks
+  `moral_branch` content indirectly.** `buildQuestContext`
+  (`server/lib/narrative-bridge.js:476-498`) forwards only `questTitle` +
+  `questSummary` into the LLM prompt — never `moral_branch` — so even
+  free-text NPC chatter never references a branch's options today.
+- **Checked whether any already-shipped frontend surface reads System A's
+  quest registry at all** (the one place `moral_branch` genuinely is
+  reachable via a real macro — `quest.get`/`quest.list`, forwarded as
+  `moralBranch` on the quest object per
+  `content-seeder.js#seedQuestFile:526-533`). One does:
+  `concord-frontend/app/lenses/maker/page.tsx`'s "Quests" tab calls
+  `quest.list`/`.active`/`.metrics`/`.create`. But `/lenses/maker` is
+  explicitly self-described (its own header comment) as a Retool/Bubble
+  (apps) + Inkle/Twine (quest scripting) **world-builder/content-authoring
+  tool**, not a player-facing narrative surface. Wiring a player-choice UI
+  into a quest-authoring dashboard would misrepresent a builder/debug
+  feature as an in-story beat, not close the actual gap.
+
+**Conclusion: no UI was built.** Every reachable attach point either
+doesn't exist (System B has zero authored-quest rows; the 5 flagship NPCs
+have no authored dialogue) or exists but would be dishonest to use for this
+purpose (the 2 idle-only trees would present a climactic choice out of
+narrative context; the Maker lens is a builder tool, not a story surface).
+Forcing a UI onto any of these would either be unreachable in practice or
+misleading in effect — worse than documenting the gap. The trace below (the
+original audit's finding) and the "what's needed" list remain the accurate
+description of the still-open half; per `docs/QUESTS_ENGINE_INVESTIGATION.md`'s
+own recommendation, the real fix is option 1 there (bridge authored content
+into `world_quests` at seed time) — an architectural decision explicitly
+out of scope for a single gap-closure unit.
+
 This is a defect, not a design judgment, and is the most consequential
 finding of this audit.
 
@@ -442,7 +531,7 @@ equivalent, which is authoring work, not a missing mechanism.
 
 | # | Finding | Triage | Severity |
 |---|---|---|---|
-| 1 | `moral_branch` / `reputation_change` authored in 11 quest files, never read by any server or frontend code — the signature "meaningful choices" mechanic is inert | **ENGINEERING** | High — this is the single biggest gap between "the writing is Witcher-3-grade" and "the game plays like Witcher 3" |
+| 1 | ~~`moral_branch` / `reputation_change` authored in 11 quest files, never read by any server or frontend code — the signature "meaningful choices" mechanic is inert~~ **PARTIALLY CLOSED (`0c0c57e1`)** — backend apply-path now real (see §3); frontend choice UI + auto-trigger still open | **ENGINEERING** | High — this is the single biggest gap between "the writing is Witcher-3-grade" and "the game plays like Witcher 3" |
 | 2 | Only 15/136+ authored NPCs (and a much larger procedural population) have bespoke dialogue trees; the main arc's 5 key supporting characters (Maren/Rael/Cade/Sael/Voss) are not among them | **CURATION** | Medium-high — the best-written characters have no idle voice distinct from generic NPCs |
 | 3 | Grudge/desire/preoccupation template pools are 5/5/7 entries total for the entire game, with an unused content-override mechanism already built | **CURATION** | Medium — real system, thin content, will read as repetitive within normal play |
 | 4 | Last-words (5/5/4/3/3) and scheme-overhear snippets (6 total) pools are similarly narrow | **CURATION** | Low-medium — smaller-impact systems (death/overhear are rarer events than greetings) |

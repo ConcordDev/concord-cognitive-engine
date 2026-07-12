@@ -10,13 +10,20 @@
 //   careers.work     — PLAY a shift (skill-input → performance → sparks + XP)
 //   careers.contracts— my contracts
 //   careers.offer / accept / counter / reject — negotiation
+//   careers.employers   — NPC employer directory (which NPCs hire, at what
+//                          track/tier), read-only against world_npcs
+//   careers.myReputation — my reputation + which tiers it gates me out of
 
 import { CATEGORIES, TRACKS, ladderFor, activityFor, isTrack, tierInfo } from "../lib/professions.js";
 import { resolveSession, fidelityPayMultiplier, fidelityXpMultiplier } from "../lib/career-fidelity.js";
 import { shiftPay, promotionXp } from "../lib/career-engine.js";
 import { resolveMinigame, isMinigame } from "../lib/sport-minigames.js";
 import { creditSparks } from "../lib/sparks-service.js";
-import { offerContract, counterContract, acceptContract, rejectContract, listContractsFor } from "../lib/career-contracts.js";
+import {
+  offerContract, counterContract, acceptContract, rejectContract, listContractsFor,
+  reputationGateTier, reputationWageMultiplier, deriveWorkerReputation,
+} from "../lib/career-contracts.js";
+import { findEmployers } from "../lib/career-employers.js";
 
 function enabled() { return process.env.CONCORD_LIVING_CAREER !== "0"; }
 function gate(ctx) {
@@ -95,16 +102,59 @@ export default function registerCareerMacros(register) {
     const b = badNumericField(input, ["tier", "baseWage", "durationDays", "signingBonus", "workerReputation"]);
     if (b) return { ok: false, reason: `invalid_${b}` };
     // the player is one party; the other is supplied. offeredBy = the player.
+    const workerKind = input.workerKind || "npc";
+    const workerId = input.workerId;
+    // When the player IS the worker — the flow this lens drives: browse
+    // careers.employers, then offer YOURSELF to a discovered NPC employer —
+    // the reputation gate MUST be computed server-side from real history via
+    // the same deriveWorkerReputation/reputationGateTier offerContract uses
+    // internally. Trusting a client-supplied workerReputation here would let
+    // any client pass 100 and bypass the gate entirely. Any other worker (an
+    // NPC being hired, or a different player) has no equivalent
+    // server-computed source yet, so a caller-supplied workerReputation is
+    // still honored there (unchanged pre-existing behavior).
+    const workerReputation = (workerKind === "player" && workerId === uid)
+      ? deriveWorkerReputation(ctx.db, "player", uid, input.trackId)
+      : input.workerReputation;
     return offerContract(ctx.db, {
       worldId: input.worldId || "concordia-hub",
       employerKind: input.employerKind || "player", employerId: input.employerId || uid,
-      workerKind: input.workerKind || "npc", workerId: input.workerId,
+      workerKind, workerId,
       trackId: input.trackId, tier: input.tier || 1, role: input.role,
       baseWage: input.baseWage || 0, payModel: input.payModel, durationDays: input.durationDays,
       signingBonus: input.signingBonus || 0, bonuses: input.bonuses, clauses: input.clauses,
-      offeredByKind: "player", offeredById: uid, workerReputation: input.workerReputation,
+      offeredByKind: "player", offeredById: uid, workerReputation,
     });
   }, { note: "careers: offer a contract" });
+
+  // Employer discovery — which NPCs are hiring, at what track/tier, right
+  // now. Read-only against world_npcs; see lib/career-employers.js for the
+  // archetype → track derivation and why an unmapped archetype is honestly
+  // excluded rather than guessed.
+  register("careers", "employers", async (ctx, input = {}) => {
+    const g = gate(ctx); if (g) return g;
+    if (input.trackId != null && !isTrack(input.trackId)) return { ok: false, reason: "unknown_track" };
+    const worldId = input.worldId || "concordia-hub";
+    const employers = findEmployers(ctx.db, { worldId, trackId: input.trackId || null, limit: input.limit });
+    return { ok: true, worldId, trackId: input.trackId || null, employers };
+  }, { note: "careers: NPC employer directory (which NPCs hire for which track/tier)" });
+
+  // My reputation — the same reputationGateTier/reputationWageMultiplier the
+  // server enforces during offerContract, surfaced so a player can SEE the
+  // number and its tier-gate consequence before offering, instead of only
+  // discovering it after a rejected 'reputation_too_low' offer.
+  register("careers", "myReputation", async (ctx, input = {}) => {
+    const g = gate(ctx); if (g) return g;
+    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    if (input.trackId != null && !isTrack(input.trackId)) return { ok: false, reason: "unknown_track" };
+    const trackId = input.trackId || null;
+    const reputation = deriveWorkerReputation(ctx.db, "player", uid, trackId);
+    const gateTier = reputationGateTier(reputation);
+    const wageMultiplier = reputationWageMultiplier(reputation);
+    const gatedTiers = [];
+    for (let t = gateTier + 1; t <= 10; t++) gatedTiers.push(t);
+    return { ok: true, trackId, reputation, gateTier, wageMultiplier, gatedTiers };
+  }, { note: "careers: my reputation + which tiers it gates me out of" });
 
   register("careers", "accept", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;

@@ -783,3 +783,111 @@ describe("studio EXTEND — collaborative session lifecycle (shared ctx)", () =>
     assert.notEqual(get.result.session.hostUserId, host.actor.userId); // host transferred
   });
 });
+
+// Regression for the documented `docs/lens-specs/studio-capability-map.md`
+// "Real-time collaboration honestly doesn't grant real write access" repro:
+//
+//   host creates project P (owned by host_user)
+//   host starts a collab session on P
+//   guest calls collab-join(P) -> ok:true, guest appears in session.collaborators
+//   guest calls track-add({ projectId: P, ... }) -> {"ok":true,"result":{"ok":false,"error":"project not found"}}
+//   host's project P still has 0 tracks after the guest's "add"
+//   guest's own project list is still empty (no phantom project was created either)
+//
+// This suite proves the exact inverse: a joined guest's mutation now lands
+// on the HOST's real shared project (verified via the HOST's own
+// project-get), the guest's own project list stays empty (no phantom
+// project spun up), and a caller who never joined (nor owns the project)
+// still cannot mutate it either direction — before OR after another guest
+// has legitimately joined.
+describe("studio EXTEND — collaborator-aware write access (the collab-join write-scoping fix)", () => {
+  let host, guest, stranger, projectId;
+
+  before(async () => {
+    host = await depthCtx("studio-ext-writeaccess-host");
+    guest = await depthCtx("studio-ext-writeaccess-guest");
+    stranger = await depthCtx("studio-ext-writeaccess-stranger");
+    const proj = await lensRun("studio", "project-create", { params: { name: "Shared Session" } }, host);
+    projectId = proj.result.project.id;
+    await lensRun("studio", "collab-session-start", { params: { projectId, displayName: "Host" } }, host);
+  });
+
+  it("BEFORE collab-join: a non-collaborator's track-add fails cleanly and touches nothing", async () => {
+    const bad = await lensRun("studio", "track-add", { params: { projectId, kind: "audio", name: "Ghost Track" } }, stranger);
+    assert.equal(bad.result.ok, false);
+    assert.equal(bad.result.error, "project not found");
+    const hostProject = await lensRun("studio", "project-get", { params: { id: projectId } }, host);
+    assert.equal(hostProject.result.project.tracks.length, 0);
+  });
+
+  it("AFTER collab-join: guest's track-add lands on the HOST's real shared project, not a phantom of their own", async () => {
+    const join = await lensRun("studio", "collab-join", { params: { projectId, displayName: "Guest" } }, guest);
+    assert.equal(join.ok, true);
+
+    const add = await lensRun("studio", "track-add", { params: { projectId, kind: "midi", name: "Guest Lead" } }, guest);
+    assert.equal(add.ok, true, "guest track-add must succeed once they have joined");
+    const trackId = add.result.track.id;
+
+    // The new track shows up in the HOST's own project-get — proof the
+    // write landed on the real shared project, not an ephemeral echo
+    // handed back only to the guest.
+    const hostProject = await lensRun("studio", "project-get", { params: { id: projectId } }, host);
+    assert.equal(hostProject.result.project.tracks.length, 1);
+    assert.equal(hostProject.result.project.tracks[0].id, trackId);
+    assert.equal(hostProject.result.project.tracks[0].name, "Guest Lead");
+
+    // The guest's OWN project list is still empty — no phantom project
+    // was ever created under the guest's own userId.
+    const guestProjects = await lensRun("studio", "project-list", {}, guest);
+    assert.equal(guestProjects.result.projects.length, 0);
+  });
+
+  it("a joined guest's clips-create + markers-add also land on the host's shared project", async () => {
+    const hostProject = await lensRun("studio", "project-get", { params: { id: projectId } }, host);
+    const trackId = hostProject.result.project.tracks[0].id;
+
+    const clip = await lensRun("studio", "clips-create", { params: { projectId, trackId, name: "Guest clip", startBeats: 0, lengthBeats: 4 } }, guest);
+    assert.equal(clip.ok, true);
+
+    const marker = await lensRun("studio", "markers-add", { params: { projectId, name: "Guest marker", timeBeats: 8 } }, guest);
+    assert.equal(marker.ok, true);
+
+    // Read back through the HOST's own clips-list / markers-list (the
+    // host never joined anyone else's project — this is their own data).
+    const clipsList = await lensRun("studio", "clips-list", { params: { projectId, trackId } }, host);
+    assert.equal(clipsList.result.clips.length, 1);
+    assert.equal(clipsList.result.clips[0].name, "Guest clip");
+
+    const markersList = await lensRun("studio", "markers-list", { params: { projectId } }, host);
+    assert.equal(markersList.result.markers.length, 1);
+    assert.equal(markersList.result.markers[0].name, "Guest marker");
+
+    // The guest is joined, so their OWN read now resolves to the shared
+    // project too (same clip, not a duplicate second copy).
+    const guestClips = await lensRun("studio", "clips-list", { params: { projectId, trackId } }, guest);
+    assert.equal(guestClips.result.clips.length, 1);
+  });
+
+  it("a stranger who never joined still cannot mutate the project after the guest has (negative authorization, both directions)", async () => {
+    const bad = await lensRun("studio", "track-add", { params: { projectId, kind: "audio", name: "Stranger Track" } }, stranger);
+    assert.equal(bad.result.ok, false);
+    assert.equal(bad.result.error, "project not found");
+
+    const badMarker = await lensRun("studio", "markers-delete", { params: { id: "mk_doesnotmatter" } }, stranger);
+    assert.equal(badMarker.result.ok, false);
+
+    // The host's project must be unaffected by the stranger's attempts —
+    // still exactly the 1 track + 1 clip + 1 marker from the prior tests.
+    const hostProject = await lensRun("studio", "project-get", { params: { id: projectId } }, host);
+    assert.equal(hostProject.result.project.tracks.length, 1);
+    const markersList = await lensRun("studio", "markers-list", { params: { projectId } }, host);
+    assert.equal(markersList.result.markers.length, 1);
+  });
+
+  it("leaving the session revokes write access — a former collaborator's track-add fails again", async () => {
+    await lensRun("studio", "collab-leave", { params: { projectId } }, guest);
+    const add = await lensRun("studio", "track-add", { params: { projectId, kind: "audio", name: "Post-leave" } }, guest);
+    assert.equal(add.result.ok, false);
+    assert.equal(add.result.error, "project not found");
+  });
+});

@@ -214,9 +214,9 @@ what a bulk-op or a merge action must call to actually persist a change;
    after a real fetch), and no `Math.random()`/lorem placeholder exists
    anywhere in the tree.
 
-## 3. Durability caveat — honest, not fixed this session (out of edit scope)
+## 3. Durability caveat — ~~honest, not fixed this session (out of edit scope)~~ **CLOSED (2026-07-12, `2232d744`)**
 
-`dtus.saveView`/`listViews`/`deleteView` and `dtus.getLayers`/`updateLayers`
+~~`dtus.saveView`/`listViews`/`deleteView` and `dtus.getLayers`/`updateLayers`
 persist to `globalThis._concordSTATE.dtusLens` — **process-memory `Map`s
 keyed by userId**, per the domain file's own header comment ("survive within
 a session"). This is real and works correctly today, but a saved smart
@@ -228,7 +228,36 @@ new migration (e.g. `dtu_saved_views` + `dtu_layer_overlays` tables) and
 swapping the Map-backed store in `dtus.js` for DB-backed reads/writes with
 the exact same macro I/O contract (zero frontend change required). Not done
 this session because migrations are outside this rebuild's permitted file
-scope (`server/domains/dtus.js` only, no `server/migrations/*`).
+scope (`server/domains/dtus.js` only, no `server/migrations/*`).~~
+
+**CLOSED (2026-07-12)** — migration 361
+(`server/migrations/361_dtu_lens_persistence.js`) adds two real tables:
+`dtu_saved_views` (one row per saved view — `id`/`user_id`/`name`/
+`created_at` as real columns, `filter_json` as a TEXT blob since the
+facet-filter shape is caller-defined) and `dtu_layer_overlays` (one row per
+`(user_id, dtu_id)` composite primary key — the natural key mirrors the old
+`Map<userId, Map<dtuId, layers>>` shape one-for-one, with each of the 4
+layers as its own TEXT column so a partial edit doesn't need a JSON round
+trip). `server/domains/dtus.js`'s `saveView`/`listViews`/`deleteView` and
+`getLayers`/`updateLayers` now read/write through a db-or-memory `store(ctx)`
+facade (`dbStore`/`memStore`, the same pattern `domains/tournaments.js`/
+migration 360 and `domains/saved.js`/migration 356 use): when `ctx.db` is
+present and both tables exist, every macro is durable and survives a
+restart; the legacy in-memory `dtusLens` Maps remain only as the fallback
+for minimal/test builds with no DB handle, so the existing 22 macro-level
+tests in `dtus-domain-parity.test.js` (which construct a bare `ctx` with no
+`db`) keep passing unmodified against the same code path they always
+exercised. All 5 macros' response shapes are byte-identical — only the
+storage layer changed; none of the file's other macros (lineage/quality/
+citation-network/tier-recommendation/duplicate-detection/citationGraph/
+facets/facetedSearch/lineageTree/bulkOp/compareDtus/mergeDtus) were touched.
+New regression coverage in `server/tests/dtus-persistence.test.js` (12
+tests) proves the persistence is real by querying `dtu_saved_views`/
+`dtu_layer_overlays` directly via raw SQL (not through the macros' own
+readers), by opening a second independent `better-sqlite3` handle on the
+same file (restart-equivalence), by proving per-user scoping holds in the
+DB (no cross-user leakage on list/delete/overlay-read), and by proving the
+50-saved-view cap enforces against the real DB-backed count.
 
 ## 4. Security-adjacent finding — flagged, not acted on (route file out of scope)
 

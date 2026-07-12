@@ -227,3 +227,182 @@ describe("masonry — Feature 8: code-reference library", () => {
     assert.ok(r.result.references.every((c) => (c.tags || []).includes("mortar")));
   });
 });
+
+describe("masonry — Feature 10: job inspections", () => {
+  it("inspection-add rejects a missing jobId (not a free-floating record)", () => {
+    const r = call("inspection-add", ctxA, {
+      inspectionType: "footing_foundation", inspector: "Jane AHJ", scheduledDate: "2026-08-01",
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /jobId/);
+  });
+
+  it("inspection-add rejects an invalid inspectionType", () => {
+    const job = call("schedule-add", ctxA, { title: "Foundation pour", startDate: "2026-08-01", durationDays: 2 }).result;
+    const r = call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "not-a-real-type", inspector: "Jane AHJ", scheduledDate: "2026-08-03",
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /inspectionType/);
+  });
+
+  it("inspection-add rejects missing inspector or scheduledDate", () => {
+    const job = call("schedule-add", ctxA, { title: "Wall QA", startDate: "2026-08-01", durationDays: 1 }).result;
+    assert.equal(call("inspection-add", ctxA, { jobId: job.id, inspectionType: "final_walkthrough", scheduledDate: "2026-08-05" }).ok, false);
+    assert.equal(call("inspection-add", ctxA, { jobId: job.id, inspectionType: "final_walkthrough", inspector: "Jane" }).ok, false);
+  });
+
+  it("inspection-add on a real job links the job title; result starts pending", () => {
+    const job = call("schedule-add", ctxA, { title: "Retaining wall", startDate: "2026-08-10", durationDays: 3 }).result;
+    const r = call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "reinforcement_placement", inspector: "Jane AHJ", scheduledDate: "2026-08-11",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.number, "INSP-001");
+    assert.equal(r.result.jobId, job.id);
+    assert.equal(r.result.jobTitle, "Retaining wall");
+    assert.equal(r.result.jobFound, true);
+    assert.equal(r.result.result, "pending");
+  });
+
+  it("inspection-add against an unknown jobId still records honestly with jobFound:false (no fabricated title)", () => {
+    const r = call("inspection-add", ctxA, {
+      jobId: "sch_does_not_exist", inspectionType: "final_walkthrough", inspector: "Jane AHJ", scheduledDate: "2026-08-12",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.jobFound, false);
+    assert.equal(r.result.jobTitle, null);
+  });
+
+  it("inspection-update to fail requires deficiencyNotes and accepts a re-inspection date", () => {
+    const job = call("schedule-add", ctxA, { title: "Chimney", startDate: "2026-09-01", durationDays: 1 }).result;
+    const insp = call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "ahj_building_inspection", inspector: "Bob AHJ", scheduledDate: "2026-09-02",
+    }).result;
+    const rejected = call("inspection-update", ctxA, { id: insp.id, result: "fail" });
+    assert.equal(rejected.ok, false);
+    assert.match(rejected.error, /deficiencyNotes/);
+    const failed = call("inspection-update", ctxA, {
+      id: insp.id, result: "fail", deficiencyNotes: "Mortar joints undersized on north face", reInspectionDate: "2026-09-09",
+    });
+    assert.equal(failed.ok, true);
+    assert.equal(failed.result.result, "fail");
+    assert.equal(failed.result.deficiencyNotes, "Mortar joints undersized on north face");
+    assert.equal(failed.result.reInspectionDate, "2026-09-09");
+    assert.ok(failed.result.completedAt);
+  });
+
+  it("inspection-update to pass clears any prior deficiency notes and re-inspection date", () => {
+    const job = call("schedule-add", ctxA, { title: "Patio", startDate: "2026-09-10", durationDays: 1 }).result;
+    const insp = call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "grout_mortar_qa", inspector: "Bob AHJ", scheduledDate: "2026-09-11",
+    }).result;
+    call("inspection-update", ctxA, { id: insp.id, result: "fail", deficiencyNotes: "Grout slump too low", reInspectionDate: "2026-09-15" });
+    const passed = call("inspection-update", ctxA, { id: insp.id, result: "pass" });
+    assert.equal(passed.ok, true);
+    assert.equal(passed.result.result, "pass");
+    assert.equal(passed.result.deficiencyNotes, null);
+    assert.equal(passed.result.reInspectionDate, null);
+  });
+
+  it("inspection-update rejects an unknown id or an invalid result", () => {
+    assert.equal(call("inspection-update", ctxA, { id: "insp_missing", result: "pass" }).ok, false);
+    const job = call("schedule-add", ctxA, { title: "Steps", startDate: "2026-09-20", durationDays: 1 }).result;
+    const insp = call("inspection-add", ctxA, {
+      jobId: job.id, inspectionType: "final_walkthrough", inspector: "Bob", scheduledDate: "2026-09-21",
+    }).result;
+    assert.equal(call("inspection-update", ctxA, { id: insp.id, result: "maybe" }).ok, false);
+  });
+
+  it("inspection-list filters by jobId, isolates per user, and rolls up pass/fail/pending counts", () => {
+    const jobX = call("schedule-add", ctxA, { title: "Job X", startDate: "2026-10-01", durationDays: 1 }).result;
+    const jobY = call("schedule-add", ctxA, { title: "Job Y", startDate: "2026-10-02", durationDays: 1 }).result;
+    const i1 = call("inspection-add", ctxA, { jobId: jobX.id, inspectionType: "final_walkthrough", inspector: "A", scheduledDate: "2026-10-03" }).result;
+    call("inspection-add", ctxA, { jobId: jobY.id, inspectionType: "final_walkthrough", inspector: "A", scheduledDate: "2026-10-04" });
+    call("inspection-update", ctxA, { id: i1.id, result: "pass" });
+
+    const forJobX = call("inspection-list", ctxA, { jobId: jobX.id });
+    assert.equal(forJobX.ok, true);
+    assert.equal(forJobX.result.inspections.length, 1);
+    assert.equal(forJobX.result.passCount, 1);
+
+    const all = call("inspection-list", ctxA);
+    assert.equal(all.result.inspections.length, 2);
+    assert.equal(all.result.passCount, 1);
+    assert.equal(all.result.pendingCount, 1);
+
+    assert.equal(call("inspection-list", ctxB).result.inspections.length, 0);
+  });
+});
+
+describe("masonry — Feature 11: crew certifications", () => {
+  it("cert-add rejects missing crewMemberName, certType, or issuingBody", () => {
+    assert.equal(call("cert-add", ctxA, { certType: "OSHA 10-Hour Construction Safety", issuingBody: "OSHA" }).ok, false);
+    assert.equal(call("cert-add", ctxA, { crewMemberName: "Mike", issuingBody: "OSHA" }).ok, false);
+    assert.equal(call("cert-add", ctxA, { crewMemberName: "Mike", certType: "OSHA 10-Hour Construction Safety" }).ok, false);
+  });
+
+  it("cert-add stores a real record and computes expiryStatus/isExpired", () => {
+    const r = call("cert-add", ctxA, {
+      crewMemberName: "Mike Alvarez", certType: "OSHA 10-Hour Construction Safety",
+      issuingBody: "OSHA", licenseNumber: "OSHA10-4471", issueDate: "2024-01-10", expiryDate: "2099-01-10",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.crewMemberName, "Mike Alvarez");
+    assert.equal(r.result.certType, "OSHA 10-Hour Construction Safety");
+    assert.equal(r.result.expiryStatus, "valid");
+    assert.equal(r.result.isExpired, false);
+  });
+
+  it("cert-add with a past expiryDate reports expired; with no expiryDate reports no_expiry", () => {
+    const expired = call("cert-add", ctxA, {
+      crewMemberName: "Sam Reed", certType: "Confined Space Entry", issuingBody: "OSHA", expiryDate: "2000-01-01",
+    }).result;
+    assert.equal(expired.expiryStatus, "expired");
+    assert.equal(expired.isExpired, true);
+
+    const noExpiry = call("cert-add", ctxA, {
+      crewMemberName: "Sam Reed", certType: "NCMA Certified Mason", issuingBody: "NCMA",
+    }).result;
+    assert.equal(noExpiry.expiryStatus, "no_expiry");
+    assert.equal(noExpiry.isExpired, false);
+  });
+
+  it("cert-add within 30 days of expiry reports expiring_soon (amber, not red)", () => {
+    const soon = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+    const r = call("cert-add", ctxA, {
+      crewMemberName: "Dana Cruz", certType: "Forklift Operator Certification", issuingBody: "NCCCO", expiryDate: soon,
+    });
+    assert.equal(r.result.expiryStatus, "expiring_soon");
+    assert.equal(r.result.isExpired, false);
+  });
+
+  it("cert-list filters by crewMemberName, derives a sorted roster, and rolls up expired/expiring counts", () => {
+    call("cert-add", ctxA, { crewMemberName: "Ana Li", certType: "Silica Exposure Control Training", issuingBody: "OSHA", expiryDate: "2000-01-01" });
+    call("cert-add", ctxA, { crewMemberName: "Ben Cho", certType: "OSHA 30-Hour Construction Safety", issuingBody: "OSHA", expiryDate: "2099-01-01" });
+
+    const forAna = call("cert-list", ctxA, { crewMemberName: "Ana Li" });
+    assert.equal(forAna.ok, true);
+    assert.equal(forAna.result.certifications.length, 1);
+    assert.equal(forAna.result.certifications[0].crewMemberName, "Ana Li");
+
+    const all = call("cert-list", ctxA);
+    assert.equal(all.result.roster.includes("Ana Li"), true);
+    assert.equal(all.result.roster.includes("Ben Cho"), true);
+    assert.ok(all.result.expiredCount >= 1);
+  });
+
+  it("cert-list isolates per user", () => {
+    call("cert-add", ctxA, { crewMemberName: "Iso Test", certType: "OSHA 10-Hour Construction Safety", issuingBody: "OSHA" });
+    assert.equal(call("cert-list", ctxB).result.certifications.length, 0);
+  });
+
+  it("cert-remove deletes a certification; rejects an unknown id", () => {
+    const cert = call("cert-add", ctxA, { crewMemberName: "Remove Me", certType: "OSHA 10-Hour Construction Safety", issuingBody: "OSHA" }).result;
+    assert.equal(call("cert-remove", ctxA, { id: "cert_missing" }).ok, false);
+    const del = call("cert-remove", ctxA, { id: cert.id });
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, cert.id);
+    assert.equal(call("cert-list", ctxA, { crewMemberName: "Remove Me" }).result.certifications.length, 0);
+  });
+});

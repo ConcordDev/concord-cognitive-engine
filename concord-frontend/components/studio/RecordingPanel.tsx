@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Mic2, Loader2, Plus, Trash2, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface RecordConfig {
   id: string;
@@ -54,14 +55,18 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
     if (!projectId) return;
     try {
       const res = await lensRun('studio', 'record-config-set', { projectId, ...patch });
-      if (res.data?.ok) setConfig((res.data.result?.config ?? null) as RecordConfig | null);
+      if (res.data?.ok) {
+        setConfig((res.data.result?.config ?? null) as RecordConfig | null);
+        logStudioCollabEdit(projectId, 'record-config-set', projectId, patch);
+      }
     } catch (e) { console.error('[Recording] setCfg', e); }
   }
 
   async function addTake() {
     if (!projectId || !trackId) return;
     try {
-      await lensRun('studio', 'takes-add', { projectId, trackId, name: takeName || undefined, durationSec: Number(takeDur) });
+      const res = await lensRun('studio', 'takes-add', { projectId, trackId, name: takeName || undefined, durationSec: Number(takeDur) });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'takes-add', trackId, { name: takeName || undefined, durationSec: Number(takeDur) });
       setTakeName(''); setTakeDur('0');
       await refresh();
     } catch (e) { console.error('[Recording] addTake', e); }
@@ -69,14 +74,16 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
 
   async function selectTake(id: string) {
     try {
-      await lensRun('studio', 'takes-comp-select', { id });
+      const res = await lensRun('studio', 'takes-comp-select', { id });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'takes-comp-select', id);
       await refresh();
     } catch (e) { console.error('[Recording] selectTake', e); }
   }
 
   async function removeTake(id: string) {
     try {
-      await lensRun('studio', 'takes-delete', { id });
+      const res = await lensRun('studio', 'takes-delete', { id });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'takes-delete', id);
       await refresh();
     } catch (e) { console.error('[Recording] removeTake', e); }
   }

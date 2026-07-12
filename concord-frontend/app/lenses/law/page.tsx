@@ -12,6 +12,12 @@
  *
  * Honest-by-construction — every number on screen traces to a REAL macro:
  *   • case-law search      → law.courtlistener-search (CourtListener v4 API)
+ *   • docket/filing search → law.recap-docket-search / law.recap-docket-documents
+ *                            (CourtListener RECAP Archive — real federal
+ *                            docket search, separately scoped from case-law
+ *                            opinions; every filing discloses free-in-RECAP
+ *                            vs PACER-purchase-required vs unknown, never
+ *                            faked as fetched)
  *   • patent search        → law.uspto-patent-search  (USPTO PatentsView;
  *                            previously ZERO frontend callers — first surface)
  *   • recent opinions feed → law.feed                 (pull → DTU)
@@ -84,6 +90,7 @@ import { LawFeed } from '@/components/law/LawFeed';
 
 // New bespoke components built for this rebuild.
 import { PatentSearch } from '@/components/law/PatentSearch';
+import { RecapDocketSearch } from '@/components/law/RecapDocketSearch';
 import { CaseFiles } from '@/components/law/CaseFiles';
 import { CaseAnalytics } from '@/components/law/CaseAnalytics';
 import { LegalTextSearch } from '@/components/law/LegalTextSearch';
@@ -143,6 +150,9 @@ export default function LawLensPage() {
           <div className="space-y-4">
             <Panel title="Case law — CourtListener (9M+ opinions)">
               <LegalCaseSearch />
+            </Panel>
+            <Panel title="Dockets &amp; filings — CourtListener RECAP Archive">
+              <RecapDocketSearch />
             </Panel>
             <Panel title="Patent search — USPTO PatentsView">
               <PatentSearch />

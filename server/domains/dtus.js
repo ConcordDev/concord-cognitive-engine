@@ -8,10 +8,17 @@
 // editor backed by a persistent per-user overlay store.
 
 // ── Persistent per-user state ────────────────────────────────────────
-// Saved views and 4-layer editor overlays live in process-global Maps
-// keyed by userId. The DTU corpus itself is owned by the substrate; the
-// overlay store only holds user-authored metadata (collections + layer
-// edits) so the editor and saved-view features survive within a session.
+// Saved views and 4-layer editor overlays are durably stored (migration
+// 361 — dtu_saved_views + dtu_layer_overlays) when a live DB is reachable
+// via ctx.db, with a transparent fallback to the legacy process-global
+// Maps for minimal/test builds with no DB (same db-or-memory facade
+// pattern as domains/tournaments.js / migration 360 and domains/saved.js /
+// migration 356). The DTU corpus itself is owned by the substrate (the
+// main `dtus` table, already durable); this store only holds
+// user-authored metadata (saved-view collections + layer-editor edits) —
+// none of the other macros in this file (lineage/quality/citation-network/
+// tier-recommendation/duplicate-detection/citationGraph/facets/
+// facetedSearch/lineageTree/bulkOp/compareDtus/mergeDtus) touch it.
 function dtuStore() {
   const g = globalThis;
   if (!g._concordSTATE) g._concordSTATE = {};
@@ -20,7 +27,6 @@ function dtuStore() {
     STATE.dtusLens = {
       views: new Map(),   // userId -> Array<{ id, name, filter, createdAt }>
       layers: new Map(),  // userId -> Map<dtuId, { human, core, machine, artifact, updatedAt }>
-      seq: new Map(),     // userId -> { view }
     };
   }
   return STATE.dtusLens;
@@ -40,12 +46,113 @@ function ensureLayerMap(map, userId) {
   return map.get(userId);
 }
 
-function nextSeq(s, userId, key) {
-  if (!s.seq.has(userId)) s.seq.set(userId, { view: 1 });
-  const seq = s.seq.get(userId);
-  const n = seq[key] || 1;
-  seq[key] = n + 1;
-  return n;
+function newViewId() {
+  return `view_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+// ── DB store (migration 361) ───────────────────────────────────────
+// Returns a live better-sqlite3 handle iff one is reachable AND both
+// dtu_saved_views / dtu_layer_overlays tables exist; otherwise null →
+// callers fall back to the in-memory store.
+function getDb(ctx) {
+  const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+  if (!db) return null;
+  try {
+    db.prepare("SELECT 1 FROM dtu_saved_views LIMIT 1").get();
+    db.prepare("SELECT 1 FROM dtu_layer_overlays LIMIT 1").get();
+  } catch { return null; }
+  return db;
+}
+
+function safeParseObj(json) {
+  try {
+    const v = JSON.parse(json);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch { return {}; }
+}
+
+function rowToView(r) {
+  return { id: r.id, name: r.name, filter: safeParseObj(r.filter_json), createdAt: r.created_at };
+}
+
+function rowToLayers(r) {
+  return {
+    human: r.human || "",
+    core: r.core || "",
+    machine: r.machine || "",
+    artifact: r.artifact || "",
+    updatedAt: r.updated_at || null,
+  };
+}
+
+function dbStore(db) {
+  return {
+    listViews(userId) {
+      return db.prepare("SELECT * FROM dtu_saved_views WHERE user_id = ? ORDER BY rowid DESC")
+        .all(userId).map(rowToView);
+    },
+    countViews(userId) {
+      return db.prepare("SELECT COUNT(*) n FROM dtu_saved_views WHERE user_id = ?").get(userId).n;
+    },
+    insertView(userId, view) {
+      db.prepare(
+        "INSERT INTO dtu_saved_views (id, user_id, name, filter_json, created_at) VALUES (?, ?, ?, ?, ?)",
+      ).run(view.id, userId, view.name, JSON.stringify(view.filter || {}), view.createdAt);
+    },
+    deleteView(userId, id) {
+      const r = db.prepare("DELETE FROM dtu_saved_views WHERE user_id = ? AND id = ?").run(userId, id);
+      return r.changes > 0;
+    },
+    getLayerOverlay(userId, dtuId) {
+      const r = db.prepare("SELECT * FROM dtu_layer_overlays WHERE user_id = ? AND dtu_id = ?").get(userId, dtuId);
+      return r ? rowToLayers(r) : null;
+    },
+    putLayerOverlay(userId, dtuId, layers) {
+      db.prepare(`
+        INSERT INTO dtu_layer_overlays (user_id, dtu_id, human, core, machine, artifact, updated_at)
+        VALUES (@user_id, @dtu_id, @human, @core, @machine, @artifact, @updated_at)
+        ON CONFLICT(user_id, dtu_id) DO UPDATE SET
+          human = excluded.human, core = excluded.core, machine = excluded.machine,
+          artifact = excluded.artifact, updated_at = excluded.updated_at
+      `).run({
+        user_id: userId,
+        dtu_id: dtuId,
+        human: layers.human || "",
+        core: layers.core || "",
+        machine: layers.machine || "",
+        artifact: layers.artifact || "",
+        updated_at: layers.updatedAt,
+      });
+    },
+  };
+}
+
+function memStore() {
+  const s = dtuStore();
+  return {
+    listViews(userId) { return ensureList(s.views, userId); },
+    countViews(userId) { return ensureList(s.views, userId).length; },
+    insertView(userId, view) { ensureList(s.views, userId).unshift(view); },
+    deleteView(userId, id) {
+      const list = ensureList(s.views, userId);
+      const idx = list.findIndex((v) => v.id === id);
+      if (idx === -1) return false;
+      list.splice(idx, 1);
+      return true;
+    },
+    getLayerOverlay(userId, dtuId) {
+      const layerMap = ensureLayerMap(s.layers, userId);
+      return layerMap.has(dtuId) ? layerMap.get(dtuId) : null;
+    },
+    putLayerOverlay(userId, dtuId, layers) {
+      ensureLayerMap(s.layers, userId).set(dtuId, layers);
+    },
+  };
+}
+
+function store(ctx) {
+  const db = getDb(ctx);
+  return db ? dbStore(db) : memStore();
 }
 
 // Normalize an arbitrary DTU-shaped record into the fields the lens needs.
@@ -863,21 +970,20 @@ export default function registerDtusActions(registerLensAction) {
    */
   registerLensAction("dtus", "saveView", (ctx, artifact, params) => {
     try {
-      const s = dtuStore();
+      const st = store(ctx);
       const userId = actorId(ctx);
       const name = (params?.name || artifact.data?.name || "").trim();
       const filter = params?.filter || artifact.data?.filter || {};
       if (!name) return { ok: false, error: "name required" };
-      const list = ensureList(s.views, userId);
-      if (list.length >= 50) return { ok: false, error: "saved-view limit reached (50)" };
+      if (st.countViews(userId) >= 50) return { ok: false, error: "saved-view limit reached (50)" };
       const view = {
-        id: `view_${nextSeq(s, userId, "view")}`,
+        id: newViewId(),
         name,
         filter,
         createdAt: new Date().toISOString(),
       };
-      list.unshift(view);
-      return { ok: true, result: { view, totalViews: list.length } };
+      st.insertView(userId, view);
+      return { ok: true, result: { view, totalViews: st.countViews(userId) } };
     } catch (e) {
       return { ok: false, error: `saveView failed: ${e?.message || e}` };
     }
@@ -889,9 +995,9 @@ export default function registerDtusActions(registerLensAction) {
    */
   registerLensAction("dtus", "listViews", (ctx, _artifact, _params) => {
     try {
-      const s = dtuStore();
+      const st = store(ctx);
       const userId = actorId(ctx);
-      const views = ensureList(s.views, userId);
+      const views = st.listViews(userId);
       return { ok: true, result: { views, count: views.length } };
     } catch (e) {
       return { ok: false, error: `listViews failed: ${e?.message || e}` };
@@ -904,15 +1010,13 @@ export default function registerDtusActions(registerLensAction) {
    */
   registerLensAction("dtus", "deleteView", (ctx, artifact, params) => {
     try {
-      const s = dtuStore();
+      const st = store(ctx);
       const userId = actorId(ctx);
       const id = params?.viewId || params?.id || artifact.data?.viewId;
       if (!id) return { ok: false, error: "viewId required" };
-      const list = ensureList(s.views, userId);
-      const idx = list.findIndex(v => v.id === id);
-      if (idx === -1) return { ok: false, error: "view not found" };
-      list.splice(idx, 1);
-      return { ok: true, result: { deleted: id, remaining: list.length } };
+      const deleted = st.deleteView(userId, id);
+      if (!deleted) return { ok: false, error: "view not found" };
+      return { ok: true, result: { deleted: id, remaining: st.countViews(userId) } };
     } catch (e) {
       return { ok: false, error: `deleteView failed: ${e?.message || e}` };
     }
@@ -926,13 +1030,13 @@ export default function registerDtusActions(registerLensAction) {
    */
   registerLensAction("dtus", "getLayers", (ctx, artifact, params) => {
     try {
-      const s = dtuStore();
+      const st = store(ctx);
       const userId = actorId(ctx);
       const dtuId = params?.dtuId || params?.id || artifact.data?.dtuId;
       if (!dtuId) return { ok: false, error: "dtuId required" };
-      const layerMap = ensureLayerMap(s.layers, userId);
-      if (layerMap.has(dtuId)) {
-        return { ok: true, result: { dtuId, layers: layerMap.get(dtuId), source: "overlay" } };
+      const overlay = st.getLayerOverlay(userId, dtuId);
+      if (overlay) {
+        return { ok: true, result: { dtuId, layers: overlay, source: "overlay" } };
       }
       const src = normalizeDtu(params?.dtu || artifact.data?.dtu) || {};
       const layers = {
@@ -956,14 +1060,13 @@ export default function registerDtusActions(registerLensAction) {
    */
   registerLensAction("dtus", "updateLayers", (ctx, artifact, params) => {
     try {
-      const s = dtuStore();
+      const st = store(ctx);
       const userId = actorId(ctx);
       const dtuId = params?.dtuId || params?.id || artifact.data?.dtuId;
       const layers = params?.layers || artifact.data?.layers;
       if (!dtuId) return { ok: false, error: "dtuId required" };
       if (!layers || typeof layers !== "object") return { ok: false, error: "layers object required" };
-      const layerMap = ensureLayerMap(s.layers, userId);
-      const prev = layerMap.get(dtuId) || {};
+      const prev = st.getLayerOverlay(userId, dtuId) || {};
       const next = {
         human: typeof layers.human === "string" ? layers.human : (prev.human || ""),
         core: typeof layers.core === "string" ? layers.core : (prev.core || ""),
@@ -977,7 +1080,7 @@ export default function registerDtusActions(registerLensAction) {
         try { JSON.parse(next.machine); }
         catch { warnings.push("machine layer is not valid JSON"); }
       }
-      layerMap.set(dtuId, next);
+      st.putLayerOverlay(userId, dtuId, next);
       return { ok: true, result: { dtuId, layers: next, warnings } };
     } catch (e) {
       return { ok: false, error: `updateLayers failed: ${e?.message || e}` };

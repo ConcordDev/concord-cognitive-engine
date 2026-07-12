@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Shirt, Grid3x3, Layers, CalendarDays, Luggage, Loader2, Wand2, Sparkles, Users, Recycle, Package, TrendingUp } from 'lucide-react';
+import { Shirt, Grid3x3, Layers, CalendarDays, Luggage, Loader2, Wand2, Sparkles, Users, Recycle, Package, TrendingUp, Heart } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { FashionClosetPanel } from './FashionClosetPanel';
@@ -19,16 +19,18 @@ import { FashionSocialPanel } from './FashionSocialPanel';
 import { FashionResalePanel } from './FashionResalePanel';
 import { FashionCapsulePanel } from './FashionCapsulePanel';
 import { FashionTrendSandboxPanel } from './FashionTrendSandboxPanel';
+import { FashionWishlistPanel } from './FashionWishlistPanel';
 
 interface Dash {
   items: number; outfits: number; lookbooks: number; packingLists: number;
   wornThisMonth: number; closetValue: number; neverWorn: number;
 }
 export type FashionTabId =
-  | 'closet' | 'outfits' | 'calendar' | 'plan' | 'ai' | 'style' | 'social' | 'resale' | 'capsule' | 'trends';
+  | 'closet' | 'outfits' | 'calendar' | 'plan' | 'ai' | 'style' | 'social' | 'resale' | 'capsule' | 'trends' | 'wishlist';
 const TABS: { id: FashionTabId; label: string; icon: typeof Grid3x3 }[] = [
   { id: 'closet', label: 'Closet', icon: Grid3x3 },
   { id: 'outfits', label: 'Outfits', icon: Layers },
+  { id: 'wishlist', label: 'Wishlist', icon: Heart },
   { id: 'ai', label: 'AI Stylist', icon: Wand2 },
   { id: 'style', label: 'Style Quiz', icon: Sparkles },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
@@ -99,6 +101,7 @@ export function FashionClosetSection({ activeTab, onTabChange }: FashionClosetSe
       <div className="p-4">
         {tab === 'closet' && <FashionClosetPanel onChange={refreshDash} />}
         {tab === 'outfits' && <FashionOutfitsPanel onChange={refreshDash} />}
+        {tab === 'wishlist' && <FashionWishlistPanel onChange={refreshDash} />}
         {tab === 'ai' && <FashionAIStylistPanel onChange={refreshDash} />}
         {tab === 'style' && <FashionStyleQuizPanel />}
         {tab === 'calendar' && <FashionCalendarPanel onChange={refreshDash} />}

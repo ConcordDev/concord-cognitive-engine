@@ -1,6 +1,8 @@
 # News / Intelligence — Capability Map
 
-> Flagship rebuild (Phase 2, `docs/FRONTEND_REBUILD_PROGRAM.md`).
+> Flagship rebuild (Phase 2, `docs/FRONTEND_REBUILD_PROGRAM.md`), **Wave 4
+> gap-closure pass (2026-07-12)** added the personalized-reader half —
+> read below for what changed.
 > Identity: **research tool** — clean source attribution, skimmable
 > headlines, citation-forward. Derived, not asserted: every row below was
 > read from `server/domains/news.js` at rebuild time.
@@ -13,6 +15,20 @@
 > - **honest-empty** — designed, but shows an honest empty/connect state
 >   until the user produces substrate.
 > - **backlog** — real macro, not yet given a designed surface (next wave).
+>
+> **Wave 4 correction:** the Phase 2 pass below classified 34 macros
+> "backlog," reasoning that they were "only reachable through generic
+> strips." Re-auditing at Wave 4 found that framing was too generous: the
+> components implementing those 34 macros (`NewsReaderSection`,
+> `NewsParitySuite` and their children) were fully built and *correct*, but
+> were never imported by any mounted page — dead code, not generic-strip
+> code (`NewsActionPanel`, separately, *is* the generic-strip case, and is
+> also dead — see Retired). Wave 4 mounted the existing, correct components
+> as a real second desk (**My Reader**, `components/news/MyReaderDesk.tsx`)
+> reachable from `IntelDesk` via a header toggle, and closed the five
+> macros that had no component at all (`article-detail`, `article-search`,
+> `article-delete`, `channel-articles`, `topic-articles`). All 39 registered
+> `news` macros now have a designed surface.
 
 ## Data sources — what "live" means here
 
@@ -30,54 +46,62 @@ real. The honest failure state applies only when egress is unavailable.
 
 ## Macro surface (39 registered `news` macros)
 
-| # | Macro | Class | Surface in the rebuilt desk |
-|---|---|---|---|
-| 1 | `biasDetection` | **designed** | Analysis workbench → Bias (runs on the selected-headline set) |
-| 2 | `eventExtraction` | **designed** | Analysis workbench → Events |
-| 3 | `narrativeTracking` | **designed** | Analysis workbench → Narrative |
-| 4 | `headlines` | **designed** | Center live feed (category-driven GDELT query) |
-| 5 | `daily-briefing` | **designed** | Right rail → Daily briefing card |
-| 6 | `article-add` | backlog | (manual article entry — internal STATE) |
-| 7 | `article-list` | backlog | superseded by live GDELT feed for the primary view |
-| 8 | `article-detail` | backlog | |
-| 9 | `article-search` | backlog | (feed has client-side source filter; server search is backlog) |
-| 10 | `article-delete` | backlog | |
-| 11 | `channel-list` | honest-empty → **designed** (derived) | Left rail "Sources" is derived live from the current feed's source domains (the journalism attribution view); the STATE-backed channel-follow graph is backlog |
-| 12 | `channel-follow` | backlog | |
-| 13 | `channel-articles` | backlog | |
-| 14 | `topic-list` | backlog | (categories cover the primary topic axis) |
-| 15 | `topic-follow` | backlog | |
-| 16 | `topic-articles` | backlog | |
-| 17 | `feed` | backlog | personalized STATE feed — superseded by live GDELT for v1 |
-| 18 | `today-digest` | backlog | (daily-briefing covers the digest surface) |
-| 19 | `recommended` | backlog | |
-| 20 | `trending` | backlog | |
-| 21 | `article-save` | backlog | (pull→DTU is the canonical save; STATE save is backlog) |
-| 22 | `saved-list` | backlog | superseded by "Pulled intelligence" (DTU-backed) |
-| 23 | `article-mark-read` | backlog | |
-| 24 | `reading-history` | backlog | |
-| 25 | `reading-stats` | backlog | |
-| 26 | `article-react` | backlog | |
-| 27 | `interests` | backlog | |
-| 28 | `bias-spectrum` | backlog | (workbench covers per-source bias; spectrum viz is backlog) |
-| 29 | `story-clusters` | backlog | |
-| 30 | `article-audio` | backlog | |
-| 31 | `alert-subscribe` | backlog | |
-| 32 | `alert-list` | backlog | |
-| 33 | `alert-feed` | backlog | |
-| 34 | `offline-sync` | backlog | |
-| 35 | `offline-list` | backlog | |
-| 36 | `source-profile` | backlog | (left-rail source counts are a lightweight profile; full profile is backlog) |
-| 37 | `digest-schedule-set` | backlog | |
-| 38 | `digest-schedule-get` | backlog | |
-| 39 | `news-dashboard` | backlog | |
+Two desks now cover all 39. **Live Desk** (`IntelDesk`) is the GDELT
+research console described in the rest of this doc. **My Reader**
+(`MyReaderDesk`, reached via the header toggle) is the separate,
+STATE-backed personalized-reader + Ground News-shape media-literacy system.
+Pulling a live headline on the Live Desk also adds it to My Reader's
+directory (`news.article-add`, best-effort, non-blocking) so My Reader has
+real content without requiring manual entry.
 
-**Designed coverage this pass: 5 core macros + 1 derived (channel/source
-attribution)** — the live feed, briefing, and all three media-literacy
-engines. The long backlog tail (personalized STATE reader: follows, saves,
-reading-history, alerts, digest scheduling, offline sync) is real but was
-only ever reachable through generic strips; those are the ranked next-wave
-surfaces, not fabricated features hidden behind dead buttons.
+| # | Macro | Class | Surface |
+|---|---|---|---|
+| 1 | `biasDetection` | **designed** | Live Desk → Analysis workbench → Bias (runs on the selected-headline set) |
+| 2 | `eventExtraction` | **designed** | Live Desk → Analysis workbench → Events |
+| 3 | `narrativeTracking` | **designed** | Live Desk → Analysis workbench → Narrative |
+| 4 | `headlines` | **designed** | Live Desk center feed (category-driven GDELT query) |
+| 5 | `daily-briefing` | **designed** | Live Desk right rail → Daily briefing card |
+| 6 | `article-add` | **designed** | My Reader → Today tab "Add story" form; also auto-fired (best-effort) when a Live Desk headline is pulled |
+| 7 | `article-list` | **designed** | My Reader → Offline tab (sync candidates) and Audio Mode tab (article picker) both list the directory |
+| 8 | `article-detail` | **designed** | `ArticleDetailModal` — opened by clicking any article title anywhere in My Reader (search results, Today/For You/Saved cards, channel/topic drill-downs) |
+| 9 | `article-search` | **designed** | My Reader → persistent `NewsSearchBar` (debounced, real server-side search) |
+| 10 | `article-delete` | **designed** | `ArticleDetailModal` → Remove (contributor-only; server-enforced, honest error shown to non-owners) |
+| 11 | `channel-list` | **designed** | Live Desk left rail (derived, journalism attribution) AND My Reader → Following tab (STATE follow graph) — two distinct, real views |
+| 12 | `channel-follow` | **designed** | My Reader → Following tab |
+| 13 | `channel-articles` | **designed** | My Reader → Following tab, click a channel to drill into its articles |
+| 14 | `topic-list` | **designed** | My Reader → Following tab |
+| 15 | `topic-follow` | **designed** | My Reader → Following tab (topic chip's follow icon) |
+| 16 | `topic-articles` | **designed** | My Reader → Following tab, click a topic chip to drill into its articles |
+| 17 | `feed` | **designed** | My Reader → For You tab |
+| 18 | `today-digest` | **designed** | My Reader → Today tab (top stories + topic sections; distinct from `daily-briefing`, which is a GDELT-sourced LLM-optional briefing) |
+| 19 | `recommended` | **designed** | My Reader → For You tab |
+| 20 | `trending` | **designed** | My Reader → Today tab |
+| 21 | `article-save` | **designed** | Article cards' bookmark icon + `ArticleDetailModal` (STATE save; distinct from Pull→DTU, which is the Live Desk's citation-bound save) |
+| 22 | `saved-list` | **designed** | My Reader → Saved tab |
+| 23 | `article-mark-read` | **designed** | Article cards + `ArticleDetailModal` |
+| 24 | `reading-history` | **designed** | My Reader → Saved tab |
+| 25 | `reading-stats` | **designed** | My Reader → Saved tab (stat tiles) |
+| 26 | `article-react` | **designed** | Article cards + `ArticleDetailModal` (More/Less, feeds `interests`) |
+| 27 | `interests` | **designed** | My Reader → Following tab |
+| 28 | `bias-spectrum` | **designed** | My Reader → Media-literacy tools → Bias Spectrum (Ground News-shape left/center/right columns over the STATE directory; complements, doesn't duplicate, the Live Desk's `biasDetection` engine, which runs on the selected live-headline set) |
+| 29 | `story-clusters` | **designed** | My Reader → Media-literacy tools → Story Clusters |
+| 30 | `article-audio` | **designed** | My Reader → Media-literacy tools → Audio Mode (article picker) AND `ArticleDetailModal` → Listen (inline, same article) |
+| 31 | `alert-subscribe` | **designed** | My Reader → Media-literacy tools → Alerts |
+| 32 | `alert-list` | **designed** | My Reader → Media-literacy tools → Alerts |
+| 33 | `alert-feed` | **designed** | My Reader → Media-literacy tools → Alerts |
+| 34 | `offline-sync` | **designed** | My Reader → Media-literacy tools → Offline |
+| 35 | `offline-list` | **designed** | My Reader → Media-literacy tools → Offline |
+| 36 | `source-profile` | **designed** | My Reader → Media-literacy tools → Source Transparency |
+| 37 | `digest-schedule-set` | **designed** | My Reader → Media-literacy tools → Digest Schedule |
+| 38 | `digest-schedule-get` | **designed** | My Reader → Media-literacy tools → Digest Schedule |
+| 39 | `news-dashboard` | **designed** | My Reader → Reader mode stat strip (`NewsReaderSection`) |
+
+**Coverage: 39/39 macros have a designed surface** (Wave 4, 2026-07-12).
+`eventExtraction`/`narrativeTracking` were deliberately *not* forced onto
+`story-clusters` — the analysis-workbench engines run on the Live Desk's
+user-selected live-headline set, while story clusters group the STATE
+directory; different data pools, each already a real designed feature,
+so a fake connection wasn't added just to satisfy a surface-count.
 
 ## Pull → DTU → Remix flow (the citation spine)
 
@@ -113,7 +137,30 @@ surfaces, not fabricated features hidden behind dead buttons.
 The old page stacked eight parity components (`NewsReaderSection`,
 `GdeltHeadlines`, `HeadlineFeed`, `NewsBriefing`, `NewsActionPanel`,
 `NewsParitySuite`, plus `ManifestActionBar` + `AutoActionStrip` +
-`RecentMineCard` + `CrossLensRecentsPanel`). The rebuild composes the same
-real backend surface into one designed console; those component files remain
-on disk (not deleted — some are imported elsewhere) but are no longer the
-lens's front door.
+`RecentMineCard` + `CrossLensRecentsPanel`). The Phase 2 rebuild composed the
+GDELT surface into one designed console (`IntelDesk`) and stopped mounting
+the rest.
+
+**Wave 4 update:** `NewsReaderSection` and `NewsParitySuite` (and their
+children — `NewsTodayPanel`, `NewsForYouPanel`, `NewsFollowingPanel`,
+`NewsSavedPanel`, `NewsBiasSpectrum`, `NewsStoryClusters`,
+`NewsSourceTransparency`, `NewsAudioMode`, `NewsAlerts`, `NewsOfflineSync`,
+`NewsDigestSchedule`, `NewsArticleCard`) were re-audited macro-by-macro and
+found to be correctly wired to their respective STATE-backed macros — they
+were dead code, not broken code. They are now mounted for real as **My
+Reader** (`components/news/MyReaderDesk.tsx`), reached from `IntelDesk` via
+a header toggle. `NewsFollowingPanel` gained channel/topic drill-down
+(`channel-articles`/`topic-articles`); a new `NewsSearchBar`
+(`article-search`) and `ArticleDetailModal` (`article-detail`,
+`article-delete`, plus the same-article mark-read/save/react/listen actions)
+were added to close the remaining gaps.
+
+`NewsActionPanel` (the true generic-strip case — a `biasDetection`/
+`eventExtraction`/`narrativeTracking`/`daily-briefing` button wall) and
+`GdeltHeadlines`/`HeadlineFeed`/`NewsBriefing` (superseded by `IntelDesk`'s
+own feed + `BriefingCard`) remain retired and unmounted. `NewsActionPanel`
+additionally calls `biasDetection`/`eventExtraction`/`narrativeTracking`
+with the wrong input shape (`{ text, headline }` instead of `{ articles }`),
+so every call there silently returns the macro's "no articles" branch — a
+latent bug, harmless only because the component is unreachable. Left as-is
+(out of this pass's scope); do not mount it without fixing that shape first.

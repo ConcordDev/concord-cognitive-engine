@@ -297,6 +297,34 @@ describe("alliance — collaboration CRUD round-trips + validation (shared ctx)"
     assert.match(bad.result.error, /yes\|no\|abstain/);
   });
 
+  it("message-search: finds matches across a shared channel, rejects an outsider, and validates query bounds", async () => {
+    const al = await lensRun("alliance", "alliance-create", { params: { name: "Search Org" } }, ctx);
+    const channelId = al.result.defaultChannel.id;
+    await lensRun("alliance", "message-send", { params: { channelId, content: "the launch is scheduled for Tuesday" } }, ctx);
+    await lensRun("alliance", "message-send", { params: { channelId, content: "coffee run in 5" } }, ctx);
+    await lensRun("alliance", "message-send", { params: { channelId, content: "LAUNCH checklist attached" } }, ctx);
+
+    const found = await lensRun("alliance", "message-search", { params: { channelId, query: "launch" } }, ctx);
+    assert.equal(found.ok, true);
+    assert.equal(found.result.count, 2);
+    assert.ok(found.result.messages.every((m) => /launch/i.test(m.content)));
+
+    // a non-member of this alliance cannot search its channel
+    const outsiderCtx = await depthCtx("alliance-search-outsider");
+    const blocked = await lensRun("alliance", "message-search", { params: { channelId, query: "launch" } }, outsiderCtx);
+    assert.equal(blocked.result.ok, false);
+    assert.match(blocked.result.error, /not a member/);
+
+    // query bounds mirror cross-lens-discovery's [2,200] window
+    const tooShort = await lensRun("alliance", "message-search", { params: { channelId, query: "a" } }, ctx);
+    assert.equal(tooShort.result.ok, false);
+    assert.match(tooShort.result.error, /too short/);
+
+    const tooLong = await lensRun("alliance", "message-search", { params: { channelId, query: "z".repeat(201) } }, ctx);
+    assert.equal(tooLong.result.ok, false);
+    assert.match(tooLong.result.error, /too long/);
+  });
+
   it("member-set-role: only the owner can promote; non-owner is rejected", async () => {
     const al = await lensRun("alliance", "alliance-create", { params: { name: "Role Org" } }, ctx);
     const allianceId = al.result.alliance.id;

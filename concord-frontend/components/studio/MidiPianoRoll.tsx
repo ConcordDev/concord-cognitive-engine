@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Music, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface Note { id: string; clipId: string; pitch: number; velocity: number; startBeats: number; lengthBeats: number }
 
 const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 function noteName(p: number): string { return `${NAMES[p % 12]}${Math.floor(p / 12) - 1}`; }
 
-export function MidiPianoRoll({ clipId }: { clipId?: string }) {
+export function MidiPianoRoll({ projectId, clipId }: { projectId?: string; clipId?: string }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ pitch: '60', velocity: '96', startBeats: '0', lengthBeats: '0.5' });
@@ -29,14 +30,16 @@ export function MidiPianoRoll({ clipId }: { clipId?: string }) {
   async function add() {
     if (!clipId) return;
     try {
-      await lensRun({ domain: 'studio', action: 'midi-notes-add', input: { clipId, pitch: Number(form.pitch), velocity: Number(form.velocity), startBeats: Number(form.startBeats), lengthBeats: Number(form.lengthBeats) } });
+      const res = await lensRun({ domain: 'studio', action: 'midi-notes-add', input: { clipId, pitch: Number(form.pitch), velocity: Number(form.velocity), startBeats: Number(form.startBeats), lengthBeats: Number(form.lengthBeats) } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'midi-notes-add', clipId, { pitch: Number(form.pitch), startBeats: Number(form.startBeats) });
       await refresh();
     } catch (e) { console.error('[MIDI] add', e); }
   }
 
   async function remove(id: string) {
     try {
-      await lensRun({ domain: 'studio', action: 'midi-notes-delete', input: { id } });
+      const res = await lensRun({ domain: 'studio', action: 'midi-notes-delete', input: { id } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'midi-notes-delete', id, { clipId });
       setNotes(prev => prev.filter(n => n.id !== id));
     } catch (e) { console.error('[MIDI] delete', e); }
   }

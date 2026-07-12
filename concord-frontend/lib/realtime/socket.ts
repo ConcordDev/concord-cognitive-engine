@@ -507,6 +507,10 @@ export type SocketEvent =
   | 'horror:state'
   | 'theme-park:state'
   | 'roguelite:run-state'
+  // Wave 4 (Gap C) — fired by routes/worlds.js's combat/npc-attack route and
+  // lib/npc-simulator.js's autonomous NPC attacks when a purchased
+  // `second_chance` meta-unlock revive charge prevents a death.
+  | 'roguelite:revived'
   | 'nemesis:nearby'
   | 'lfg:board-update'
   | 'tracking:footprints-updated'

@@ -503,18 +503,50 @@ export default function registerLawActions(registerLensAction) {
    * env (free at courtlistener.com/help/api/rest/).
    *
    * params: { query: string, court?: court code (e.g. "scotus"|"ca9"|"cal-1"),
-   *           dateAfter?: "YYYY-MM-DD", dateBefore?: "YYYY-MM-DD", limit?: 1-50 }
+   *           dateAfter?: "YYYY-MM-DD", dateBefore?: "YYYY-MM-DD", limit?: 1-50,
+   *           semantic?: boolean — natural-language mode, see below }
+   *
+   * Semantic mode (2026-07-12, closes docs/lens-specs/law-capability-map.md's
+   * "Semantic / natural-language search" gap): CourtListener's v4 Search API
+   * added real semantic search on 2025-11-05 (Free Law Project, "Semantic
+   * Search API Now Live!"). The GET-request shape (the one this macro already
+   * uses) is: add `semantic=true` to the query string — CourtListener embeds
+   * the query server-side and returns conceptually-similar opinions even when
+   * no keyword overlaps, instead of requiring the caller to POST a
+   * pre-computed embedding vector. Verified directly against CourtListener's
+   * own open-source Django source (network access to courtlistener.com /
+   * free.law itself is blocked in this environment, so this was NOT taken on
+   * faith from the blog post alone — cross-checked against the real code):
+   *   - github.com/freelawproject/courtlistener: cl/search/forms.py — the
+   *     `SearchForm` used by `SearchV4ViewSet.list` (the exact GET `/search/`
+   *     view this macro calls) declares `semantic = forms.BooleanField(...)`.
+   *   - cl/search/api_views.py — the sibling embedding-POST path explicitly
+   *     restricts semantic search to `SEARCH_TYPES.OPINION` ("Semantic search
+   *     is only supported for type 'o'"), which this macro already hardcodes
+   *     (`type: "o"`), so the restriction is satisfied by construction.
+   *   - cl/search/api_serializers.py — `MainDocumentMetaDataSerializer
+   *     .get_score()` returns `SemanticSearchScoreSerializer` (fields `bm25`
+   *     + `semantic`, both floats) instead of the plain `ScoreDataSerializer`
+   *     (`bm25` only) when `request.GET.get("semantic")` is truthy — so a
+   *     semantic-mode result carries a `meta.score.semantic` relevance score
+   *     alongside the always-present `meta.score.bm25`.
+   * Additive only: when `params.semantic` is not set, the outgoing query
+   * string is byte-identical to the pre-existing keyword-only request (no
+   * `semantic` key is added at all) — existing keyword-search callers are
+   * unaffected.
    */
   registerLensAction("law", "courtlistener-search", async (_ctx, _artifact, params = {}) => {
     const query = String(params.query || "").trim();
     if (!query) return { ok: false, error: "query required" };
     const limit = Math.max(1, Math.min(50, Number(params.limit) || 10));
+    const semantic = params.semantic === true || params.semantic === "true";
     const token = process.env.COURTLISTENER_API_TOKEN;
     const qs = new URLSearchParams({ q: query, type: "o" });  // type=o = opinions
     if (params.court) qs.set("court", String(params.court));
     if (params.dateAfter) qs.set("filed_after", String(params.dateAfter));
     if (params.dateBefore) qs.set("filed_before", String(params.dateBefore));
     qs.set("page_size", String(limit));
+    if (semantic) qs.set("semantic", "true");
     try {
       const headers = token ? { Authorization: `Token ${token}` } : {};
       const r = await fetch(`${COURTLISTENER_BASE}/search/?${qs.toString()}`, { headers });
@@ -536,15 +568,187 @@ export default function registerLawActions(registerLensAction) {
         docketNumber: o.docketNumber,
         judges: o.judge,
         author: o.author,
+        // meta.score.bm25 is present on scored results regardless of mode;
+        // meta.score.semantic is added by CourtListener only when semantic
+        // search was requested. Read defensively (optional chaining) — an
+        // older/unscored result shape degrades to null, never fabricated.
+        bm25Score: o.meta?.score?.bm25 ?? null,
+        semanticScore: o.meta?.score?.semantic ?? null,
       }));
       return {
         ok: true,
         result: {
           query,
+          semantic,
           results, count: results.length,
           totalHits: data.count,
           authenticatedWithToken: !!token,
           source: "courtlistener",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * recap-docket-search — Real federal court DOCKET search via
+   * CourtListener's RECAP Archive (Free Law Project). RECAP hosts millions
+   * of PACER docket entries + documents that have been "bought once, freed
+   * for everyone" by the RECAP browser-extension community — searchable
+   * and readable with NO PACER login required. This is docket/filing
+   * search, separately scoped from `courtlistener-search` (case-law
+   * opinions) per docs/WAVE4_INVENTORY.md's "law: No RECAP/PACER docket
+   * search" gap.
+   *
+   * Same free-unauthenticated / COURTLISTENER_API_TOKEN-for-higher-limits
+   * tiering as `courtlistener-search`, and hits the SAME `/search/`
+   * endpoint with `type=r` (RECAP) instead of `type=o` (opinions) — the
+   * v4 REST API documents `type` as the search-kind selector over a
+   * shared query surface (q / court / filed_after / filed_before /
+   * page_size). Verified via CourtListener's own Django source
+   * (github.com/freelawproject/courtlistener: cl/search/filters.py
+   * DocketFilter + RECAPDocumentFilter, cl/search/models.py Docket +
+   * RECAPDocument) — network access to courtlistener.com itself was
+   * blocked in this environment, so field names below are read
+   * defensively (multiple fallback keys) rather than assumed exact; an
+   * unrecognized field degrades to `null`, never a fabricated value.
+   *
+   * A RECAP hit is a DOCKET (a case); each hit nests up to 3
+   * `recap_documents` (the search API's own cap — `moreDocsAvailable`
+   * flags when there are more; page the rest with
+   * `recap-docket-documents`).
+   *
+   * HONESTY: not every docket entry has a document freely readable here.
+   * RECAPDocument's `is_available` field ("True if the item is available
+   * in RECAP" — i.e. already purchased-and-freed) is surfaced per
+   * document as `freelyAvailable: true|false`; when the API response
+   * omits the field we report `freelyAvailable: null` ("unknown — verify
+   * on CourtListener") rather than guessing either way. Concord performs
+   * NO PACER purchase — a `freelyAvailable: false` document is disclosed,
+   * never silently rendered as if it were fetched.
+   *
+   * params: { query?: string, docketNumber?: string, court?: string,
+   *           dateAfter?: "YYYY-MM-DD", dateBefore?: "YYYY-MM-DD", limit?: 1-50 }
+   * requires query OR docketNumber.
+   */
+  registerLensAction("law", "recap-docket-search", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || "").trim();
+    const docketNumber = String(params.docketNumber || "").trim();
+    if (!query && !docketNumber) return { ok: false, error: "query or docketNumber required" };
+    const limit = Math.max(1, Math.min(50, Number(params.limit) || 10));
+    const token = process.env.COURTLISTENER_API_TOKEN;
+    const qs = new URLSearchParams({ type: "r" });
+    qs.set("q", query || `docketNumber:"${docketNumber}"`);
+    if (params.court) qs.set("court", String(params.court));
+    if (params.dateAfter) qs.set("filed_after", String(params.dateAfter));
+    if (params.dateBefore) qs.set("filed_before", String(params.dateBefore));
+    qs.set("page_size", String(limit));
+    try {
+      const headers = token ? { Authorization: `Token ${token}` } : {};
+      const r = await fetch(`${COURTLISTENER_BASE}/search/?${qs.toString()}`, { headers });
+      if (!r.ok) {
+        if (r.status === 429) return { ok: false, error: "courtlistener rate limit — set COURTLISTENER_API_TOKEN env" };
+        throw new Error(`courtlistener ${r.status}`);
+      }
+      const data = await r.json();
+      const results = (data.results || []).map((d) => {
+        const docs = Array.isArray(d.recap_documents) ? d.recap_documents : [];
+        const absoluteUrl = d.docket_absolute_url || d.absolute_url || null;
+        return {
+          docketId: d.id ?? d.docket_id ?? null,
+          caseName: d.caseName || d.case_name || null,
+          court: d.court || null,
+          courtId: d.court_id || null,
+          docketNumber: d.docketNumber || d.docket_number || null,
+          dateFiled: d.dateFiled || d.date_filed || null,
+          dateTerminated: d.dateTerminated || d.date_terminated || null,
+          assignedTo: d.assignedTo || d.assigned_to || null,
+          suitNature: d.suitNature || d.nature_of_suit || null,
+          absoluteUrl: absoluteUrl ? `https://www.courtlistener.com${absoluteUrl}` : null,
+          documentCount: docs.length,
+          moreDocsAvailable: !!d.more_docs,
+          documents: docs.map((doc) => {
+            const docUrl = doc.filepath_local || doc.absolute_url || null;
+            return {
+              id: doc.id ?? null,
+              description: doc.description || doc.short_description || null,
+              documentNumber: doc.document_number ?? null,
+              attachmentNumber: doc.attachment_number ?? null,
+              freelyAvailable: typeof doc.is_available === "boolean" ? doc.is_available : null,
+              documentUrl: docUrl ? `https://www.courtlistener.com${docUrl}` : null,
+            };
+          }),
+        };
+      });
+      return {
+        ok: true,
+        result: {
+          query: query || docketNumber,
+          results, count: results.length,
+          totalHits: data.count,
+          authenticatedWithToken: !!token,
+          source: "courtlistener-recap",
+          disclosure: "RECAP results are federal dockets already purchased-once and freed by the RECAP community. Per-document `freelyAvailable` (true/false/unknown) tells you whether THAT filing is free to read here — Concord performs no PACER purchase, so a false/unknown document is disclosed, never faked as fetched.",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * recap-docket-documents — page a single docket's full RECAP document
+   * list (a `recap-docket-search` hit caps at 3 nested docs +
+   * `moreDocsAvailable`). Real network call to CourtListener's
+   * `/recap-documents/` list endpoint, filtered to one docket via the
+   * RECAPDocumentFilter's `docket_entry` -> DocketEntryFilter -> `docket`
+   * related-filter chain (verified against CourtListener's own
+   * cl/search/filters.py source — RECAPDocumentFilter.docket_entry,
+   * DocketEntryFilter.docket).
+   *
+   * Same honest `freelyAvailable` disclosure as recap-docket-search.
+   * `onlyAvailable: true` restricts to documents CourtListener itself
+   * marks free (`is_available=true` server-side filter); default is
+   * unfiltered so paid-only filings are disclosed, not hidden.
+   *
+   * params: { docketId: number, limit?: 1-100, onlyAvailable?: boolean }
+   */
+  registerLensAction("law", "recap-docket-documents", async (_ctx, _artifact, params = {}) => {
+    const docketId = Number(params.docketId);
+    if (!docketId || !Number.isFinite(docketId)) return { ok: false, error: "docketId required" };
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 25));
+    const token = process.env.COURTLISTENER_API_TOKEN;
+    const qs = new URLSearchParams({ docket_entry__docket: String(docketId), page_size: String(limit) });
+    if (params.onlyAvailable) qs.set("is_available", "true");
+    try {
+      const headers = token ? { Authorization: `Token ${token}` } : {};
+      const r = await fetch(`${COURTLISTENER_BASE}/recap-documents/?${qs.toString()}`, { headers });
+      if (!r.ok) {
+        if (r.status === 429) return { ok: false, error: "courtlistener rate limit — set COURTLISTENER_API_TOKEN env" };
+        throw new Error(`courtlistener ${r.status}`);
+      }
+      const data = await r.json();
+      const documents = (data.results || []).map((doc) => {
+        const docUrl = doc.filepath_local || doc.absolute_url || null;
+        return {
+          id: doc.id ?? null,
+          description: doc.description || doc.short_description || null,
+          documentNumber: doc.document_number ?? null,
+          attachmentNumber: doc.attachment_number ?? null,
+          pageCount: doc.page_count ?? null,
+          dateUpload: doc.date_upload || null,
+          freelyAvailable: typeof doc.is_available === "boolean" ? doc.is_available : null,
+          documentUrl: docUrl ? `https://www.courtlistener.com${docUrl}` : null,
+        };
+      });
+      return {
+        ok: true,
+        result: {
+          docketId, documents, count: documents.length,
+          totalHits: data.count,
+          authenticatedWithToken: !!token,
+          source: "courtlistener-recap",
         },
       };
     } catch (e) {

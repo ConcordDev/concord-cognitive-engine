@@ -148,16 +148,32 @@ concepts on the same page. In its place:
 
 ## Investigated and honestly deferred
 
-- **Gallagher index needs a `results` (seat-share) map** the
-  `fairnessCheck` macro accepts but the Ballot Analysis Lab doesn't
-  currently collect from the UI — the lab shows the honest "no seat/result
-  shares supplied" empty state for that one sub-metric rather than fake a
-  seat map. **ENGINEERING** (small, deferred): a seat-allocation input
-  would need its own bespoke editor; the other majority-criterion +
-  strategic-voting metrics work fully without it.
 - **`opinion-cluster`** was already wired in `GovernanceWorkbench` (the
   "Opinion Clusters" view toggle) — confirmed real and unchanged, not
   re-audited in depth this pass beyond the field-shape spot-check above.
+
+## Wave 4 gap closure (2026-07-12)
+
+The Gallagher-index seat-allocation gap listed above (ENGINEERING, per
+`docs/WAVE4_INVENTORY.md`) is now closed. `BallotAnalysisLab.tsx` has a
+bespoke "Seat allocation (optional — Gallagher index)" editor: one row per
+detected candidate with a seats-won number input. On "Fairness Check" it
+sends `results: { [candidate]: seats }` (raw seat counts, not pre-divided
+shares — `fairnessCheck` normalizes by the sum itself,
+`server/domains/vote.js:196-199`) only when at least one seat has been
+entered, so an untouched editor preserves the honest "no seat data" empty
+state instead of sending a spurious all-zero map. The seat count is
+genuine external real-world data (who actually won which seats in the
+election/body being analyzed) that the system has no way to derive on its
+own — manual entry here is legitimate, not fabrication, the same way the
+ballot rankings themselves are manually entered. Real vote totals continue
+to come from the same ballot set already entered in the lab; only the seat
+figure is user-supplied. Contract-tested at
+`server/tests/vote-domain-parity.test.js` (`vote.fairnessCheck` describe
+block): the N/A sentinel with no seat map, an exact-proportional
+allocation producing a ~0 Gallagher index, a winner-take-all allocation
+producing the hand-verified 57.158 disproportional index, and a candidate
+omitted from the seat map correctly defaulting to zero seats.
 
 ## Category-leadership caliber judgment (fourth invariant)
 

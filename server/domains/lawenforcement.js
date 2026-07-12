@@ -35,6 +35,7 @@ function store() {
       warrants: new Map(),  // userId -> Map(warrantId  -> warrant + attempts[])
       reports: new Map(),   // userId -> Map(reportId   -> narrative report)
       bookings: new Map(),  // userId -> Map(bookingId  -> field-interview/arrest)
+      cases: new Map(),     // userId -> Map(caseId     -> case record) — in-memory fallback only (migration 362)
     };
   }
   return STATE._lawEnforcement;
@@ -897,6 +898,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
         id,
         kind,
         bookingNumber: `BK-${crypto.randomBytes(3).toString("hex").toUpperCase()}`,
+        caseNumber: str(p.caseNumber),
         subjectName,
         dob: str(p.dob),
         sex: str(p.sex),
@@ -946,6 +948,309 @@ export default function registerLawEnforcementActions(registerLensAction) {
           total: list.length,
           arrests: list.filter((b) => b.kind === "arrest").length,
           fieldInterviews: list.filter((b) => b.kind === "field_interview").length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ======================================================================
+  // Case management — a genuine persisted "Case" entity (migration 362).
+  //
+  // Status lifecycle, assigned detective, and real linkage to the
+  // reports/evidence/bookings buckets above by matching `caseNumber`
+  // (case-insensitive, trimmed). See migration 362's header for why the
+  // linkage is a string-match join rather than a foreign key: those
+  // buckets aren't DB-backed rows to reference in the first place.
+  //
+  // Persistence: DURABLE per-officer relational store (migration 362 —
+  // le_cases) reached via ctx.db, falling back to the same
+  // Map<userId, Map<id, record>> in-memory bucket shape every other
+  // collection in this file uses when ctx.db is absent/table-missing
+  // (bare-unit-test/minimal builds). The running server always has
+  // ctx.db, so cases survive a restart.
+  // ======================================================================
+  const CASE_STATUSES = ["open", "under_investigation", "closed", "cold"];
+  const CASE_TRANSITIONS = {
+    open: ["under_investigation", "closed"],
+    under_investigation: ["closed", "cold", "open"],
+    closed: ["open"],
+    cold: ["under_investigation", "closed"],
+  };
+
+  function normalizeCaseNumber(v) {
+    return str(v).toUpperCase();
+  }
+
+  function getCaseDb(ctx) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+    if (!db) return null;
+    try {
+      db.prepare("SELECT 1 FROM le_cases LIMIT 1").get();
+    } catch {
+      return null;
+    }
+    return db;
+  }
+
+  function rowToCase(r) {
+    return {
+      id: r.id,
+      caseNumber: r.case_number,
+      title: r.title,
+      synopsis: r.synopsis,
+      status: r.status,
+      assignedDetective: r.assigned_detective,
+      openedAt: r.opened_at,
+      closedAt: r.closed_at,
+      closureReason: r.closure_reason,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    };
+  }
+
+  function caseToRow(c, userId) {
+    return {
+      id: c.id,
+      user_id: userId,
+      case_number: c.caseNumber,
+      title: c.title,
+      synopsis: c.synopsis || "",
+      status: c.status,
+      assigned_detective: c.assignedDetective || "",
+      opened_at: c.openedAt,
+      closed_at: c.closedAt ?? null,
+      closure_reason: c.closureReason ?? null,
+      created_at: c.createdAt,
+      updated_at: c.updatedAt,
+    };
+  }
+
+  const UPSERT_CASE_SQL = `
+    INSERT INTO le_cases
+      (id, user_id, case_number, title, synopsis, status, assigned_detective,
+       opened_at, closed_at, closure_reason, created_at, updated_at)
+    VALUES
+      (@id, @user_id, @case_number, @title, @synopsis, @status, @assigned_detective,
+       @opened_at, @closed_at, @closure_reason, @created_at, @updated_at)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title, synopsis = excluded.synopsis, status = excluded.status,
+      assigned_detective = excluded.assigned_detective, closed_at = excluded.closed_at,
+      closure_reason = excluded.closure_reason, updated_at = excluded.updated_at
+  `;
+
+  function caseDbStore(db) {
+    return {
+      listForUser(userId) {
+        return db
+          .prepare("SELECT * FROM le_cases WHERE user_id = ? ORDER BY opened_at DESC")
+          .all(userId)
+          .map(rowToCase);
+      },
+      getById(userId, id) {
+        const r = db.prepare("SELECT * FROM le_cases WHERE user_id = ? AND id = ?").get(userId, id);
+        return r ? rowToCase(r) : null;
+      },
+      getByCaseNumber(userId, caseNumber) {
+        const r = db
+          .prepare("SELECT * FROM le_cases WHERE user_id = ? AND case_number = ?")
+          .get(userId, caseNumber);
+        return r ? rowToCase(r) : null;
+      },
+      put(userId, c) {
+        db.prepare(UPSERT_CASE_SQL).run(caseToRow(c, userId));
+      },
+    };
+  }
+
+  function caseMemStore(ctx) {
+    const cases = userMap("cases", actorId(ctx));
+    return {
+      listForUser() {
+        return [...cases.values()];
+      },
+      getById(_userId, id) {
+        return cases.get(id) || null;
+      },
+      getByCaseNumber(_userId, caseNumber) {
+        for (const c of cases.values()) if (c.caseNumber === caseNumber) return c;
+        return null;
+      },
+      put(_userId, c) {
+        cases.set(c.id, c);
+      },
+    };
+  }
+
+  function caseStore(ctx) {
+    const db = getCaseDb(ctx);
+    return db ? caseDbStore(db) : caseMemStore(ctx);
+  }
+
+  registerLensAction("law-enforcement", "caseCreate", (ctx, _artifact, params) => {
+    try {
+      const p = params || {};
+      const title = str(p.title);
+      if (!title) return { ok: false, error: "title is required" };
+      const uidActor = actorId(ctx);
+      const cs = caseStore(ctx);
+      const requestedNumber = normalizeCaseNumber(p.caseNumber);
+      const caseNumber = requestedNumber || `CASE-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+      if (cs.getByCaseNumber(uidActor, caseNumber)) {
+        return { ok: false, error: `case number ${caseNumber} already exists for this officer` };
+      }
+      const now = nowISO();
+      const rec = {
+        id: uid("case"),
+        caseNumber,
+        title,
+        synopsis: str(p.synopsis),
+        status: "open",
+        assignedDetective: str(p.assignedDetective),
+        openedAt: now,
+        closedAt: null,
+        closureReason: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      cs.put(uidActor, rec);
+      return { ok: true, result: { case: rec } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("law-enforcement", "caseGet", (ctx, _artifact, params) => {
+    try {
+      const p = params || {};
+      const uidActor = actorId(ctx);
+      const cs = caseStore(ctx);
+      const id = str(p.id);
+      const caseNumber = normalizeCaseNumber(p.caseNumber);
+      const rec = id ? cs.getById(uidActor, id) : caseNumber ? cs.getByCaseNumber(uidActor, caseNumber) : null;
+      if (!rec) return { ok: false, error: "case not found" };
+      return { ok: true, result: { case: rec } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("law-enforcement", "caseList", (ctx, _artifact, params) => {
+    try {
+      const p = params || {};
+      const uidActor = actorId(ctx);
+      let list = caseStore(ctx).listForUser(uidActor);
+      const statusFilter = str(p.status);
+      if (statusFilter) list = list.filter((c) => c.status === statusFilter);
+      const q = str(p.search).toLowerCase();
+      if (q) list = list.filter((c) => `${c.title} ${c.caseNumber} ${c.assignedDetective}`.toLowerCase().includes(q));
+      list = [...list].sort((a, b) => b.openedAt.localeCompare(a.openedAt));
+      const byStatus = {};
+      for (const c of list) byStatus[c.status] = (byStatus[c.status] || 0) + 1;
+      return {
+        ok: true,
+        result: {
+          cases: list,
+          total: list.length,
+          open: list.filter((c) => c.status === "open").length,
+          byStatus: Object.entries(byStatus).map(([status, count]) => ({ status, count })),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("law-enforcement", "caseUpdate", (ctx, _artifact, params) => {
+    try {
+      const p = params || {};
+      const uidActor = actorId(ctx);
+      const cs = caseStore(ctx);
+      const id = str(p.id);
+      if (!id) return { ok: false, error: "id is required" };
+      const rec = cs.getById(uidActor, id);
+      if (!rec) return { ok: false, error: "case not found" };
+
+      if (p.status !== undefined) {
+        const nextStatus = str(p.status);
+        if (!CASE_STATUSES.includes(nextStatus)) {
+          return { ok: false, error: `status must be one of ${CASE_STATUSES.join(", ")}` };
+        }
+        if (nextStatus !== rec.status) {
+          const allowed = CASE_TRANSITIONS[rec.status] || [];
+          if (!allowed.includes(nextStatus)) {
+            return {
+              ok: false,
+              error: `invalid transition ${rec.status} -> ${nextStatus} (allowed: ${allowed.join(", ") || "none"})`,
+            };
+          }
+          rec.status = nextStatus;
+          if (nextStatus === "closed") {
+            rec.closedAt = nowISO();
+            rec.closureReason = str(p.closureReason) || rec.closureReason;
+          } else {
+            // Reopening or moving off `closed` clears the closure stamp.
+            rec.closedAt = null;
+            rec.closureReason = null;
+          }
+        }
+      }
+      if (p.title !== undefined) {
+        const nextTitle = str(p.title);
+        if (!nextTitle) return { ok: false, error: "title cannot be blank" };
+        rec.title = nextTitle;
+      }
+      if (p.synopsis !== undefined) rec.synopsis = str(p.synopsis);
+      if (p.assignedDetective !== undefined) rec.assignedDetective = str(p.assignedDetective);
+      if (p.closureReason !== undefined && rec.status === "closed") rec.closureReason = str(p.closureReason);
+
+      rec.updatedAt = nowISO();
+      cs.put(uidActor, rec);
+      return { ok: true, result: { case: rec } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("law-enforcement", "caseLinked", (ctx, _artifact, params) => {
+    try {
+      const p = params || {};
+      const uidActor = actorId(ctx);
+      const cs = caseStore(ctx);
+      const id = str(p.id);
+      const caseNumberParam = normalizeCaseNumber(p.caseNumber);
+      const rec = id ? cs.getById(uidActor, id) : caseNumberParam ? cs.getByCaseNumber(uidActor, caseNumberParam) : null;
+      if (!rec) return { ok: false, error: "case not found" };
+      const targetNumber = normalizeCaseNumber(rec.caseNumber);
+
+      const reports = [...userMap("reports", uidActor).values()].filter(
+        (r) => normalizeCaseNumber(r.caseNumber) === targetNumber
+      );
+      const evidence = [...userMap("evidence", uidActor).values()].filter(
+        (e) => normalizeCaseNumber(e.caseNumber) === targetNumber
+      );
+      const bookings = [...userMap("bookings", uidActor).values()].filter(
+        (b) => normalizeCaseNumber(b.caseNumber) === targetNumber
+      );
+      const warrants = [...userMap("warrants", uidActor).values()].filter(
+        (w) => normalizeCaseNumber(w.caseNumber) === targetNumber
+      );
+
+      return {
+        ok: true,
+        result: {
+          case: rec,
+          reports,
+          evidence,
+          bookings,
+          warrants,
+          counts: {
+            reports: reports.length,
+            evidence: evidence.length,
+            bookings: bookings.length,
+            warrants: warrants.length,
+          },
         },
       };
     } catch (e) {

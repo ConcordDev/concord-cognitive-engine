@@ -189,6 +189,82 @@ describe("courtship domain macros", () => {
     assert.ok(after < before, `affinity should drop: ${before} → ${after}`);
   });
 
+  it("dissolve ends an active marriage the caller is a party to", async () => {
+    await raiseAffinityTo(macros, db, "u1", ROMANCE_CONSTANTS.MARRY_THRESHOLD);
+    await macros.get("propose")(ctxFor(db, "u1"), { partnerKind: PK, partnerId: PID });
+    const wedded = await macros.get("wed")(ctxFor(db, "u1"), { partnerKind: PK, partnerId: PID });
+    assert.equal(wedded.ok, true);
+
+    const beforeActive = await macros.get("marriages")(ctxFor(db, "u1"), {});
+    assert.equal(beforeActive.marriages.length, 1);
+
+    const dissolved = await macros.get("dissolve")(ctxFor(db, "u1"), {
+      marriageId: wedded.marriageId,
+      reason: "estranged",
+    });
+    assert.equal(dissolved.ok, true);
+    assert.equal(dissolved.dissolvedReason, "estranged");
+    assert.equal(dissolved.courtStatus, "estranged");
+
+    // Real DB row transition, not just a flag in the return value.
+    const row = db.prepare("SELECT dissolved_at, dissolved_reason FROM player_marriages WHERE id = ?")
+      .get(wedded.marriageId);
+    assert.ok(row.dissolved_at, "dissolved_at should be stamped");
+    assert.equal(row.dissolved_reason, "estranged");
+
+    // Disappears from the active marriages list…
+    const afterActive = await macros.get("marriages")(ctxFor(db, "u1"), {});
+    assert.equal(afterActive.marriages.length, 0);
+    // …but is still queryable via activeOnly:false (the "past marriages" read).
+    const allMarriages = await macros.get("marriages")(ctxFor(db, "u1"), { activeOnly: false });
+    assert.equal(allMarriages.marriages.length, 1);
+    assert.equal(allMarriages.marriages[0].id, wedded.marriageId);
+    assert.ok(allMarriages.marriages[0].dissolved_at);
+  });
+
+  it("dissolve rejects when the caller isn't a party to the marriage", async () => {
+    await raiseAffinityTo(macros, db, "u1", ROMANCE_CONSTANTS.MARRY_THRESHOLD);
+    await macros.get("propose")(ctxFor(db, "u1"), { partnerKind: PK, partnerId: PID });
+    const wedded = await macros.get("wed")(ctxFor(db, "u1"), { partnerKind: PK, partnerId: PID });
+    assert.equal(wedded.ok, true);
+
+    // A different user tries to dissolve u1's marriage.
+    const intruder = await macros.get("dissolve")(ctxFor(db, "u2"), {
+      marriageId: wedded.marriageId,
+    });
+    assert.equal(intruder.ok, false);
+    assert.equal(intruder.reason, "not_a_party");
+
+    // The marriage is untouched — still active.
+    const row = db.prepare("SELECT dissolved_at FROM player_marriages WHERE id = ?").get(wedded.marriageId);
+    assert.equal(row.dissolved_at, null);
+    const stillActive = await macros.get("marriages")(ctxFor(db, "u1"), {});
+    assert.equal(stillActive.marriages.length, 1);
+  });
+
+  it("dissolve rejects a nonexistent marriage and an already-dissolved one", async () => {
+    const missing = await macros.get("dissolve")(ctxFor(db, "u1"), { marriageId: "marriage_nope" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.reason, "marriage_not_found");
+
+    await raiseAffinityTo(macros, db, "u1", ROMANCE_CONSTANTS.MARRY_THRESHOLD);
+    await macros.get("propose")(ctxFor(db, "u1"), { partnerKind: PK, partnerId: PID });
+    const wedded = await macros.get("wed")(ctxFor(db, "u1"), { partnerKind: PK, partnerId: PID });
+
+    const first = await macros.get("dissolve")(ctxFor(db, "u1"), { marriageId: wedded.marriageId });
+    assert.equal(first.ok, true);
+
+    const second = await macros.get("dissolve")(ctxFor(db, "u1"), { marriageId: wedded.marriageId });
+    assert.equal(second.ok, false);
+    assert.equal(second.reason, "already_dissolved");
+  });
+
+  it("dissolve guards: no db / no user / missing marriageId", async () => {
+    assert.equal((await macros.get("dissolve")({}, { marriageId: "x" })).reason, "no_db");
+    assert.equal((await macros.get("dissolve")(ctxFor(db, null), { marriageId: "x" })).reason, "no_user");
+    assert.equal((await macros.get("dissolve")(ctxFor(db, "u1"), {})).reason, "missing_inputs");
+  });
+
   it("get returns a real courtship and no_courtship for an unknown partner", async () => {
     await macros.get("interact")(ctxFor(db, "u1"), { partnerKind: PK, partnerId: PID, sentiment: 1 });
     const got = await macros.get("get")(ctxFor(db, "u1"), { partnerKind: PK, partnerId: PID });

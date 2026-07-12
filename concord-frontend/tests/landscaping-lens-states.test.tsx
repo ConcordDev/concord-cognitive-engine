@@ -1,13 +1,17 @@
 /**
  * /lenses/landscaping — tab-navigation contract for the Landscaping lens.
  *
- * The lens page is a thin router onto four real, bespoke, macro-backed
- * components (GardenStudio / GardenBeds / PlantFinder / ProLandscape) — it
- * carries NO generic artifact-CRUD state of its own (a prior version wired a
- * fabricated 8-tab Jobs/Estimates/Codes/Materials/Clients/Invoices/
- * Inspections/Certs dashboard on the generic `useLensData`/`useRunArtifact`
- * artifact store, which had no backing `landscaping.*` macro and duplicated
- * nothing real — see `docs/lens-specs/landscaping-capability-map.md`).
+ * The lens page is a thin router onto five real, bespoke, macro-backed
+ * components (GardenStudio / GardenBeds / PlantFinder / ProLandscape /
+ * JobDispatchBoard) — it carries NO generic artifact-CRUD state of its own
+ * (a prior version wired a fabricated 8-tab Jobs/Estimates/Codes/Materials/
+ * Clients/Invoices/Inspections/Certs dashboard on the generic
+ * `useLensData`/`useRunArtifact` artifact store, which had no backing
+ * `landscaping.*` macro and duplicated nothing real — see
+ * `docs/lens-specs/landscaping-capability-map.md`). The Jobs tab (added
+ * 2026-07-12, closing that capability-map gap) is the one exception that IS
+ * real: it's backed by the `job-schedule`/`job-list`/`job-complete` macro
+ * triple, not the old fabricated dashboard.
  *
  * This test pins: (1) the default tab mounts Garden Studio, (2) each tab
  * button switches to its own real component and only that component, (3)
@@ -60,6 +64,7 @@ vi.mock('@/components/landscaping/ProLandscape', () => ({ ProLandscape: () => Re
 vi.mock('@/components/landscaping/GardenStudio', () => ({ GardenStudio: () => React.createElement('div', { 'data-testid': 'garden-studio' }) }));
 vi.mock('@/components/landscaping/GardenBeds', () => ({ GardenBeds: () => React.createElement('div', { 'data-testid': 'garden-beds' }) }));
 vi.mock('@/components/landscaping/PlantFinder', () => ({ PlantFinder: () => React.createElement('div', { 'data-testid': 'plant-finder' }) }));
+vi.mock('@/components/landscaping/JobDispatchBoard', () => ({ JobDispatchBoard: () => React.createElement('div', { 'data-testid': 'job-dispatch-board' }) }));
 vi.mock('lucide-react', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   const make = (name: string) => {
@@ -82,6 +87,7 @@ describe('landscaping lens — real-component tab routing', () => {
     expect(queryByTestId('garden-beds')).not.toBeInTheDocument();
     expect(queryByTestId('plant-finder')).not.toBeInTheDocument();
     expect(queryByTestId('pro-landscape')).not.toBeInTheDocument();
+    expect(queryByTestId('job-dispatch-board')).not.toBeInTheDocument();
   });
 
   it('TAB SWITCH: Garden Beds tab mounts GardenBeds exclusively', () => {
@@ -105,17 +111,24 @@ describe('landscaping lens — real-component tab routing', () => {
     expect(queryByTestId('garden-studio')).not.toBeInTheDocument();
   });
 
+  it('TAB SWITCH: Jobs tab mounts JobDispatchBoard exclusively', () => {
+    const { getByText, getByTestId, queryByTestId } = render(<LandscapingLensPage />);
+    fireEvent.click(getByText('Jobs'));
+    expect(getByTestId('job-dispatch-board')).toBeInTheDocument();
+    expect(queryByTestId('garden-studio')).not.toBeInTheDocument();
+  });
+
   it('DISCOVERABILITY: every tab shows a kbd chip for its keyboard shortcut', () => {
     const { getByText } = render(<LandscapingLensPage />);
     // one kbd chip per numbered shortcut, visible next to its tab label
-    ['1', '2', '3', '4'].forEach((n) => expect(getByText(n)).toBeInTheDocument());
+    ['1', '2', '3', '4', '5'].forEach((n) => expect(getByText(n)).toBeInTheDocument());
   });
 
-  it('WIRING: keyboard commands are registered on the landscaping lens id and all four are reachable', () => {
+  it('WIRING: keyboard commands are registered on the landscaping lens id and all five are reachable', () => {
     render(<LandscapingLensPage />);
     expect(lastLensId).toBe('landscaping');
-    expect(registeredCommands).toHaveLength(4);
-    expect(registeredCommands.map((c) => c.keys).sort()).toEqual(['1', '2', '3', '4']);
+    expect(registeredCommands).toHaveLength(5);
+    expect(registeredCommands.map((c) => c.keys).sort()).toEqual(['1', '2', '3', '4', '5']);
     // each command actually flips the visible tab (fluidity: functional, not decorative)
   });
 });

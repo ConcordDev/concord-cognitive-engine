@@ -165,6 +165,54 @@ capability-parity pass against those specific reference apps is out of scope
 here and would be a **CURATION/ENGINEERING** triage for a future session, not
 a rebuild-loop defect.
 
+**CLOSED (2026-07-12, Wave 4 gap-closure):** the two items named above are
+now real, not deferred. Before building, this pass re-audited both claims
+against the live tree and found they were each partially stale:
+
+- **Spaced repetition was not "missing platform-wide"** — Concord already
+  has a full, real, Anki/FSRS-parity deck-and-card SRS at the separate `srs`
+  lens (`server/domains/srs.js`, 957 LOC — decks, cards, cloze/image-
+  occlusion/templated card types, FSRS-4.5 + modern-SM2 schedulers, review
+  heatmap/forecast, `.apkg`-shape import/export). What was genuinely missing
+  was RemNote's specific differentiator: reviewing the *notes themselves* in
+  place, without leaving the note tool to author separate flashcards. Built:
+  a note-level `srs` sub-object (`enabled`/`state`/`ease`/`interval`/`reps`/
+  `lapses`/`dueAt`/`lastReviewedAt`) plus `understanding.review` (submits a
+  0-5 recall-quality rating, schedules the next `dueAt` via the classic
+  textbook SM-2 algorithm — Wozniak 1987, chosen deliberately over
+  duplicating the srs lens's more sophisticated FSRS engine, since the point
+  here is proving notes are reviewable in place, not re-solving a harder
+  problem that's already solved elsewhere) and `understanding.due` (the
+  review queue). Frontend: `components/understanding/ReviewQueue.tsx` (real
+  due-queue UI, reveal-then-grade flow, 4 Anki-style grade buttons mapped to
+  real 0-5 quality values) + a review-queue toggle and live ease/interval/
+  due-date readout in `NotesWorkbench.tsx`'s note editor.
+- **Nested/outline structure was genuinely missing** and is now real. Built
+  on the *existing* `link`/`unlink` substrate via a reserved relation name
+  (`"outline-child"`, from=parent to=child) rather than a parallel
+  substrate — exactly the reuse the original triage note suggested checking
+  for. New macros `understanding.move` (set/change a note's outline parent;
+  enforces single-parent + no-cycle, which a free-form link graph doesn't)
+  and `understanding.reorder` (sibling position) and `understanding.outline`
+  (nested tree — one subtree or the full root forest). The generic `link`
+  macro now refuses to create the reserved relation directly, so every
+  outline edit is forced through the invariant-checked path. Outline edges
+  are excluded from `graph()`/`backlinks()` output (they get their own
+  dedicated tree view) so "structural parent" and "semantic relation" stay
+  visually distinct concepts. Frontend: `components/understanding/
+  OutlineView.tsx` — a real interactive tree (expand/collapse, indent/
+  outdent, move up/down), all real macro calls, no client-invented nesting.
+
+Both surfaces are new tabs on the lens (`Outline`, `Review`, keyboard `o`/
+`r`), and the stats strip now shows `In review` / `Due now` counts (from a
+correspondingly extended `understanding.overview`). Tests:
+`server/tests/understanding-domain-parity.test.js` gained 19 new cases
+covering outline move/reorder/outline (cycle rejection, re-parent replaces
+not adds, root-level reordering, generic-link refusal, delete-detaches-not-
+deletes-children) and SM-2 review scheduling (a hand-verified 4-step
+quality sequence with exact expected ease/interval values, the 1.3 ease
+floor, quality clamping, and due-queue filtering) — 36/36 passing.
+
 ## Verification
 
 - `node --check server/domains/understanding.js` — clean (file untouched

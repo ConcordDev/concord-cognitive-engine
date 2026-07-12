@@ -181,6 +181,45 @@ describe("poetry — poem workspace CRUD round-trips + validation (shared ctx)",
     assert.equal(summary.lineCount, 3);
   });
 
+  it("poem-list: `query` searches BOTH title and body, not just title", async () => {
+    const s = await depthCtx("poetry-search");
+    const byTitle = await lensRun("poetry", "poem-create", {
+      params: { title: "Nightingale's Lament", body: "the garden sleeps beneath the moon" },
+    }, s);
+    const byBody = await lensRun("poetry", "poem-create", {
+      params: { title: "Untitled Fragment", body: "a nightingale sings in the dark" },
+    }, s);
+    const unrelated = await lensRun("poetry", "poem-create", {
+      params: { title: "Winter Roads", body: "snow falls on the empty highway" },
+    }, s);
+
+    // A term that only appears in the body of the second poem must still
+    // match it — this is the real fix: search is no longer title-only.
+    const bodyMatch = await lensRun("poetry", "poem-list", { params: { query: "nightingale" } }, s);
+    const bodyMatchIds = bodyMatch.result.poems.map((p) => p.id);
+    assert.equal(bodyMatchIds.includes(byTitle.result.poem.id), true); // matches via title
+    assert.equal(bodyMatchIds.includes(byBody.result.poem.id), true);  // matches via body only
+    assert.equal(bodyMatchIds.includes(unrelated.result.poem.id), false);
+
+    // Case-insensitive.
+    const upper = await lensRun("poetry", "poem-list", { params: { query: "NIGHTINGALE" } }, s);
+    assert.equal(upper.result.poems.length, bodyMatch.result.poems.length);
+
+    // Title-only matching still works (no regression).
+    const titleOnly = await lensRun("poetry", "poem-list", { params: { query: "Winter Roads" } }, s);
+    assert.equal(titleOnly.result.poems.length, 1);
+    assert.equal(titleOnly.result.poems[0].id, unrelated.result.poem.id);
+
+    // The list response never carries the full body — filtering happens
+    // server-side, but the slim shape is unchanged.
+    for (const p of bodyMatch.result.poems) assert.equal("body" in p, false);
+
+    // No match anywhere → empty result, not an error.
+    const none = await lensRun("poetry", "poem-list", { params: { query: "xyzzy-nonexistent-term" } }, s);
+    assert.equal(none.ok, true);
+    assert.equal(none.result.poems.length, 0);
+  });
+
   it("poem-create: a missing title is rejected", async () => {
     const bad = await lensRun("poetry", "poem-create", { params: { body: "untitled" } }, ctx);
     assert.equal(bad.result.ok, false);

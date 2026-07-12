@@ -606,3 +606,46 @@ describe("whiteboard — reactions / live cursors", () => {
     assert.equal(list.result.selfId, "u");
   });
 });
+
+// whiteboard.vision was previously UNSURFACED — real backend delegating to
+// server/lib/vision-inference.js#callVision/callVisionUrl, with no frontend
+// caller (see docs/lens-specs/whiteboard-capability-map.md). The macro reads
+// imageB64/imageUrl from `artifact.data` (not the `params` positional arg,
+// unlike most whiteboard macros), so these tests build the artifact directly
+// instead of using the shared `call()` helper — this mirrors exactly how
+// /api/lens/run's real dispatcher constructs the artifact in server.js
+// (`virtualArtifact = { id: null, domain, type: "domain_action", data: rest, meta: {} }`,
+// `lensHandler(ctx, virtualArtifact, rest)` — both `artifact.data` and `params`
+// are the same object).
+describe("whiteboard — vision", () => {
+  function callVision(data = {}) {
+    const fn = ACTIONS.get("whiteboard.vision");
+    return fn(ctxA, { id: null, data, meta: {} }, data);
+  }
+
+  it("rejects with neither imageB64 nor imageUrl supplied", async () => {
+    const r = await callVision({});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /imageB64 or imageUrl required/);
+  });
+
+  it("imageB64 path delegates to the vision brain and returns an honest failure when it's unreachable (never a fabricated description)", async () => {
+    const r = await callVision({ imageB64: "ZmFrZS1pbWFnZS1ieXRlcw==" });
+    assert.equal(r.ok, false);
+    assert.equal(r.source, "ollama_llava");
+    assert.ok(r.error);
+  });
+
+  it("imageUrl path is SSRF-guarded before any vision call is attempted", async () => {
+    const r = await callVision({ imageUrl: "http://127.0.0.1/board.png" });
+    assert.equal(r.ok, false);
+    assert.equal(r.source, "ssrf_guard");
+    assert.match(r.error, /Blocked URL/);
+  });
+
+  it("imageUrl path rejects a cloud-metadata URL the same way (defense in depth, not just loopback)", async () => {
+    const r = await callVision({ imageUrl: "http://169.254.169.254/latest/meta-data/" });
+    assert.equal(r.ok, false);
+    assert.equal(r.source, "ssrf_guard");
+  });
+});

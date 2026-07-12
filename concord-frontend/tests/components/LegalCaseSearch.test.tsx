@@ -169,4 +169,64 @@ describe('LegalCaseSearch', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Search$/ }));
     await waitFor(() => expect(screen.getAllByText(/COURTLISTENER_API_TOKEN/).length).toBeGreaterThanOrEqual(1));
   });
+
+  describe('semantic search toggle', () => {
+    it('defaults to Keyword mode and omits `semantic` from the macro params', async () => {
+      runDomain.mockResolvedValue({ data: { ok: true, result: { ok: true, result: {
+        query: 'x', semantic: false, results: [], count: 0, totalHits: 0,
+        authenticatedWithToken: false, source: 'courtlistener',
+      } } } });
+      renderWithQuery(<LegalCaseSearch />);
+      expect(screen.getByRole('radio', { name: /Keyword/i })).toHaveAttribute('aria-checked', 'true');
+      expect(screen.getByRole('radio', { name: /Semantic/i })).toHaveAttribute('aria-checked', 'false');
+
+      fireEvent.change(screen.getByPlaceholderText(/Brown v\. Board/), { target: { value: 'x' } });
+      fireEvent.click(screen.getByRole('button', { name: /^Search$/ }));
+      await waitFor(() => expect(runDomain).toHaveBeenCalled());
+      const input = (runDomain.mock.calls[0][2] as { input?: Record<string, unknown> }).input;
+      expect(input).not.toHaveProperty('semantic');
+    });
+
+    it('clicking Semantic sends semantic:true and swaps the placeholder to a natural-language hint', async () => {
+      runDomain.mockResolvedValue({ data: { ok: true, result: { ok: true, result: {
+        query: 'excessive force during a routine stop', semantic: true,
+        results: [{ ...MOCK_HIT, semanticScore: 0.87, bm25Score: 4.2 }],
+        count: 1, totalHits: 1, authenticatedWithToken: false, source: 'courtlistener',
+      } } } });
+      renderWithQuery(<LegalCaseSearch />);
+
+      fireEvent.click(screen.getByRole('radio', { name: /Semantic/i }));
+      expect(screen.getByRole('radio', { name: /Semantic/i })).toHaveAttribute('aria-checked', 'true');
+      expect(screen.getByRole('radio', { name: /Keyword/i })).toHaveAttribute('aria-checked', 'false');
+      expect(screen.getByPlaceholderText(/Describe what you.re looking for/i)).toBeInTheDocument();
+
+      fireEvent.change(
+        screen.getByPlaceholderText(/Describe what you.re looking for/i),
+        { target: { value: 'excessive force during a routine stop' } }
+      );
+      fireEvent.click(screen.getByRole('button', { name: /^Search$/ }));
+
+      await waitFor(() => expect(runDomain).toHaveBeenCalled());
+      const input = (runDomain.mock.calls[0][2] as { input?: Record<string, unknown> }).input;
+      expect(input?.semantic).toBe(true);
+      expect(input?.query).toBe('excessive force during a routine stop');
+
+      // Result carries the real semantic-mode badge + per-hit relevance score.
+      await waitFor(() => expect(screen.getByText('Brown v. Board of Education')).toBeInTheDocument());
+      expect(screen.getByText(/·\s*semantic/)).toBeInTheDocument();
+      expect(screen.getByText('87% match')).toBeInTheDocument();
+    });
+
+    it('does not render a match-score badge when the backend omits semanticScore (keyword results)', async () => {
+      runDomain.mockResolvedValue({ data: { ok: true, result: { ok: true, result: {
+        query: 'x', semantic: false, results: [MOCK_HIT], count: 1, totalHits: 1,
+        authenticatedWithToken: false, source: 'courtlistener',
+      } } } });
+      renderWithQuery(<LegalCaseSearch />);
+      fireEvent.change(screen.getByPlaceholderText(/Brown v\. Board/), { target: { value: 'x' } });
+      fireEvent.click(screen.getByRole('button', { name: /^Search$/ }));
+      await waitFor(() => expect(screen.getByText('Brown v. Board of Education')).toBeInTheDocument());
+      expect(screen.queryByText(/% match/)).not.toBeInTheDocument();
+    });
+  });
 });

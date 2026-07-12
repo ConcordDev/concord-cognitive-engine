@@ -82,10 +82,10 @@ hand-off notes and added one correction:
 | `nominatim-reverse` | Live OSM Nominatim reverse geocode | **DESIGNED** — Quick-actions bench |
 | `overpass-poi` | Live Overpass POI search in a bbox | **DESIGNED** — Explore's category-chip POI discovery, Quick-actions bench |
 | `places-list`/`places-save`/`places-delete` | Saved-places CRUD (STATE-backed) | **DESIGNED** — Places tab |
-| `places-update` | Edit an existing saved place | **GENUINELY MISSING — DEFERRED.** No create/edit-in-place UI exists (only create+delete); was true before this rebuild too. Small scoped build: ~40 LOC form + wiring in `PlacesPanel`. |
+| `places-update` | Edit an existing saved place | ~~**GENUINELY MISSING — DEFERRED.** No create/edit-in-place UI exists (only create+delete); was true before this rebuild too. Small scoped build: ~40 LOC form + wiring in `PlacesPanel`.~~ **CLOSED (2026-07-12, `f4a90d4e`).** `PlacesPanel` now has a pencil-icon edit affordance per place row that opens a real inline form (name/category/rating/address/notes) and calls `places-update` with only the changed fields (rating omitted when blank, matching the backend's `Number.isFinite` gate). See `concord-frontend/components/atlas/AtlasSection.tsx` + `concord-frontend/tests/components/atlas/AtlasSection.test.tsx`. |
 | `lists-list`/`lists-create`/`lists-add-place`/`lists-remove-place`/`lists-delete` | Named place-list CRUD | **DESIGNED** — Lists tab (+ optional graph view via `PlacesGraph`) |
 | `trips-list`/`trips-create`/`trips-add-stop`/`trips-remove-stop`/`trips-delete` | Multi-day trip CRUD | **DESIGNED** — Trips tab |
-| `trips-reorder-stops` | Reorder a trip's stop sequence | **GENUINELY MISSING — DEFERRED.** No drag/reorder UI exists (was also true pre-rebuild). Scoped build: up/down or drag handles in the Trips stop list, ~30 LOC. |
+| `trips-reorder-stops` | Reorder a trip's stop sequence | ~~**GENUINELY MISSING — DEFERRED.** No drag/reorder UI exists (was also true pre-rebuild). Scoped build: up/down or drag handles in the Trips stop list, ~30 LOC.~~ **CLOSED (2026-07-12, `f4a90d4e`).** `TripsPanel`'s stop list now has up/down chevron buttons (boundary-disabled at each end) that call `trips-reorder-stops` with the full reordered `stopIds` array, matching the macro's exact-once-per-stop contract (`server/domains/atlas.js:916` rejects a partial list). See `concord-frontend/components/atlas/AtlasSection.tsx` + `concord-frontend/tests/components/atlas/AtlasSection.test.tsx`. |
 | `directions` | Real OSRM 2-point routing, summary only (no steps) | **UNSURFACED-BY-DESIGN (intentional consolidation).** No frontend caller remains — superseded by `directions-multimodal`, a strict superset (same OSRM engine, plus per-maneuver steps, plus native multi-waypoint support). Keeping both wired would be exactly the kind of redundant-surface duplication this rebuild exists to remove. |
 | `directions-multimodal` | Real OSRM routing with full turn-by-turn steps, native multi-waypoint | **DESIGNED** — Directions tab's Route sub-tab (now the sole directions macro in use) |
 | `route-stops` | "Ask Maps"-style stop suggestion near a route midpoint | **DESIGNED** — Directions tab's "Add a stop" sub-tab |
@@ -131,17 +131,20 @@ hand-off notes and added one correction:
 | `anomalies` | `GET /api/atlas/signals/anomalies` | **DESIGNED** — Signal Tomography mode, Anomalies tab |
 | `spectrum` | `GET /api/atlas/signals/spectrum` | **DESIGNED** — Signal Tomography mode, Signals tab (spectrum sub-view) |
 | `unknown` | `GET /api/atlas/signals/unknown` | **GENUINELY MISSING — DEFERRED.** No frontend caller. Deferred with the rest of the tomography power-tools. |
-| `classify` | `POST /api/atlas/signals/classify` | **GENUINELY MISSING — DEFERRED, but flagged as the highest-value future build in this whole subsystem.** This is the ONE write path into the signal-cortex store — a manually-submitted signal classification. Building a form here (device/frequency/location/measurement fields → `POST`) would be the single cheapest way to give Signal Tomography mode a legitimate path to non-empty data in THIS deployment, without waiting on a real mesh-network integration. Scoped size: ~1 form component + wiring, well under 150 LOC. Recorded here for the next session, not built now (out of this session's scope — the task was to consolidate/rebuild the existing surface honestly, not add new backend-adjacent submission flows without a UX spec for what a "signal" even looks like to a human submitter). |
+| `classify` | `POST /api/atlas/signals/classify` | ~~**GENUINELY MISSING — DEFERRED, but flagged as the highest-value future build in this whole subsystem.** This is the ONE write path into the signal-cortex store — a manually-submitted signal classification. Building a form here (device/frequency/location/measurement fields → `POST`) would be the single cheapest way to give Signal Tomography mode a legitimate path to non-empty data in THIS deployment, without waiting on a real mesh-network integration. Scoped size: ~1 form component + wiring, well under 150 LOC.~~ **CLOSED (2026-07-12, `336cbc95`).** Verified the macro's real input contract first (`server/lib/atlas-signal-cortex.js#classifySignal` — no strictly-required fields, everything defaults) and added server-side validation for the two fields a classification is meaningless without: `frequency` (MHz, finite, > 0) and `origin` (`{lat, lng}`, valid coordinate range) — see the guard clauses at the top of `register("cortex", "classify", ...)` in `server.js`. Built `concord-frontend/components/atlas/SignalClassifyForm.tsx`, a real designed form (frequency / modulation select / lat+lng / bandwidth / power / description / keywords — the macro's actual identity+location+measurement fields, not invented ones, and not a raw JSON-paste textarea) mounted at the top of the Signal Tomography "Signals" tab (`app/lenses/atlas/page.tsx`). A successful submission calls `apiHelpers.atlasTomography.signalsClassify` (new helper in `lib/api/client.ts`) and invalidates the `atlas-taxonomy`/`atlas-spectrum`/`atlas-anomalies` react-query keys so the existing `AtlasSignalView` taxonomy + spectrum panels on the same tab pick it up without a hard refresh. Backend behavioral coverage: `server/tests/depth/atlas-signal-classify-behavior.test.js` (14/14 — exact 5-property classification round-trip, safety-frequency ADJUST_FORBIDDEN override, rejection for missing/invalid frequency, rejection for missing/out-of-range origin, no taxonomy write on a rejected submission, retrieval via `taxonomy`/`spectrum`/`unknown`). Frontend coverage: `concord-frontend/tests/components/atlas/SignalClassifyForm.test.tsx` (5/5 — designed-form field render, client + server validation-error display with no false success state, real payload shape asserted on submit). |
 | `privacy.zones`/`privacy.verify`/`privacy.stats` | `GET/POST /api/atlas/privacy/*` | **GENUINELY MISSING — DEFERRED.** A privacy-zone map/verification surface (ABSOLUTE/RESTRICTED/CONTROLLED/OPEN zone visualization). Real, well-designed backend (interior-never-generated guarantee for residential/medical/religious zones) with zero frontend surface. Deferred — meaningful future work, but a full zone-map UI is a multi-panel build in its own right, not a same-session addition to a geography-lens consolidation pass. |
 | `metrics` | (macro dispatch) | **GENUINELY MISSING — DEFERRED**, same reasoning as the Foundation Atlas `metrics`. |
 
 **Coverage summary:** 60 real macros across the lens's 4 in-scope registration
-sites (41 + 1 + 9 + 9). **34 DESIGNED** (up from an estimated ~26 pre-rebuild
-— `geocode`, `regionStats`, and `atlas-dashboard-summary` newly wired this
-session), **1 UNSURFACED-BY-DESIGN backend duplicate** (`live_geocode`),
+sites (41 + 1 + 9 + 9). **35 DESIGNED** (up from an estimated ~26 pre-rebuild
+— `geocode`, `regionStats`, and `atlas-dashboard-summary` newly wired earlier
+this session, `classify` closed 2026-07-12 per §1d above — note this count
+does not yet reflect the same-day `places-update`/`trips-reorder-stops`
+closures at §1a, a pre-existing staleness in this paragraph out of scope for
+this pass), **1 UNSURFACED-BY-DESIGN backend duplicate** (`live_geocode`),
 **1 macro superseded and intentionally retired from frontend use**
-(`directions`), **13 GENUINELY MISSING** (all explicitly dispositioned above
-— 2 real small deferred features on the map/trips side, 11 on the
+(`directions`), **12 GENUINELY MISSING** (all explicitly dispositioned above
+— 2 real small deferred features on the map/trips side, 10 on the
 tomography side where 7 are low-priority given the empty substrate, 3 are a
 meaningful privacy/classification UI deferred as multi-panel future work,
 and 1 [`change`] is deliberately never wired because wiring it would violate
@@ -276,13 +279,12 @@ is an honest, disclosed data-source gap, not a feature gap.
 | 13 | Recent searches | **ALREADY REAL** | Recent tab |
 | 14 | Route/stop optimizer for multi-point trips | **ALREADY REAL** | `routeOptimize`/`distanceMatrix` — Tools tab |
 | 15 | At-a-glance account summary (places/lists/trips counts) | **BACKEND-CAPABLE-BUT-UNSURFACED → WIRED THIS SESSION** | `atlas-dashboard-summary` had zero callers; now a snapshot strip in the Recent tab |
-| 16 | Edit a saved place in place | **GENUINELY MISSING — DEFERRED** | `places-update` has no UI; see §1a |
-| 17 | Reorder trip stops | **GENUINELY MISSING — DEFERRED** | `trips-reorder-stops` has no UI; see §1a |
+| 16 | Edit a saved place in place | ~~**GENUINELY MISSING — DEFERRED**~~ **CLOSED (2026-07-12, `f4a90d4e`)** | `places-update` now has a real edit-in-place UI; see §1a |
+| 17 | Reorder trip stops | ~~**GENUINELY MISSING — DEFERRED**~~ **CLOSED (2026-07-12, `f4a90d4e`)** | `trips-reorder-stops` now has a real up/down reorder UI; see §1a |
 | 18 | Business reviews/ratings | **GENUINELY MISSING — HONEST, NO CHANGE NEEDED** | No OSM-sourced review data exists to surface; not fabricated |
 
-**Coverage: 15 of 18 already real (2 fixed this session, 1 newly wired this
-session), 2 explicitly deferred with named scope, 1 honestly out of scope.
-No silent gaps.**
+**Coverage: 17 of 18 already real (2 fixed this session, 1 newly wired this
+session, 2 more closed 2026-07-12), 1 honestly out of scope. No silent gaps.**
 
 ### 3b. Signal tomography — reference: **commercial InSAR ground-deformation
 platforms** (Capella Space's Taskable InSAR, IonQ's automated InSAR
@@ -311,12 +313,12 @@ needs to know, and it's now stated on-screen (§0.2, §4).
 | 4 | Spectral occupancy / multi-band fusion | **ALREADY REAL (honestly empty)** | `cortex.spectrum` — Signals tab spectrum sub-view |
 | 5 | Material/subsurface classification | **BACKEND-CAPABLE, UI-DEFERRED** | `material`/`subsurface` macros exist; no dedicated UI (§1c) — deferred, empty substrate makes it low-value right now |
 | 6 | Displacement/change-over-time maps | **GENUINELY MISSING — DELIBERATELY NOT WIRED** | `change` macro's `layers_affected`/`magnitude` are self-disclosed-simulated in the backend source; surfacing them would violate honest-by-construction (§0.2, §1c) |
-| 7 | Manual sensor/signal submission (the one real write path) | **BACKEND-CAPABLE-BUT-UNSURFACED — FLAGGED FOR NEXT SESSION** | `cortex.classify` — the only way this deployment could get non-empty data without a mesh-network integration; scoped, not built this session (§1d) |
+| 7 | Manual sensor/signal submission (the one real write path) | ~~**BACKEND-CAPABLE-BUT-UNSURFACED — FLAGGED FOR NEXT SESSION**~~ **CLOSED (2026-07-12, `336cbc95`)** | `cortex.classify` — `SignalClassifyForm` now gives this deployment a legitimate non-empty-data path without a mesh-network integration; see §1d |
 | 8 | Privacy-zone-aware redaction | **BACKEND-CAPABLE-BUT-UNSURFACED, DEFERRED** | `cortex.privacy.*` — a real, carefully-designed guarantee (interior data for ABSOLUTE zones is architecturally never generated) with no UI; deferred as multi-panel future work (§1d) |
 | 9 | Honest disclosure of data-source status | **FIXED THIS SESSION** | New banner in Signal Tomography mode explicitly states no mesh-ingestion pipeline is wired — see §4 |
 
-**Coverage: 4 of 9 already real; 1 explicitly and permanently not wired
-(honesty rule); 1 newly-flagged highest-value next step; 2 deferred with
+**Coverage: 5 of 9 already real; 1 explicitly and permanently not wired
+(honesty rule); 1 closed 2026-07-12 (manual submission form); 1 deferred with
 named scope; 1 (disclosure itself) fixed this session. No silent gaps.**
 
 ## 4. What this rebuild changed — architecture summary

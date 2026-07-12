@@ -118,12 +118,21 @@ export default function SpectatorWorldPage() {
   // Live event ticker — real socket.io events, not decorative. `npc:conversation-bid`
   // is emitted room-scoped to `world:${worldId}` (npc-conversation-initiator.js), so we
   // join that room via the same `room:join` socket handler every other lens uses
-  // (useLensRealtime's `rooms` option) to actually receive it. combat:hit / dtu:promoted /
-  // world:event:scheduled / faction:war-declared / faction:alliance-formed are today
-  // emitted as platform-wide broadcasts with no worldId field (a real gap in the
-  // upstream emit sites, not something this lens can fix) — we still surface them
-  // since they're honest signal, and filter to this world whenever a payload does
-  // carry a worldId.
+  // (useLensRealtime's `rooms` option) to actually receive it.
+  //
+  // Wave 4 (docs/lens-specs/spectate-capability-map.md "Honest residual" closure):
+  // combat:hit / dtu:promoted / faction:war-declared / faction:alliance-formed /
+  // faction:truce-sought are still emitted as platform-wide broadcasts (io.emit,
+  // not room-scoped — changing that is a larger cross-cutting change out of scope
+  // here), but their upstream emit sites now stamp a best-effort worldId on the
+  // payload (server.js combat:attack handler for combat:hit; scope.promote for
+  // dtu:promoted, only when the DTU actually carries one — DTUs are cross-world
+  // by design so this is frequently absent; applyMove's resolveFactionWorldId for
+  // the three faction:* events). world:event:scheduled already carried worldId
+  // (lib/world-event-scheduler.js#tick merges it in) — the `push` filter below
+  // was already exercising that field correctly before this pass. All six now
+  // filter to the world being spectated whenever the payload carries one, same
+  // as npc:conversation-bid always has.
   useEffect(() => {
     if (!worldId) return;
     joinRoom(`world:${worldId}`);
@@ -138,27 +147,33 @@ export default function SpectatorWorldPage() {
         'npc:conversation-bid',
         (d) => push('npc:conversation-bid', d.opener || `${d.npcA ?? 'an NPC'} and ${d.npcB ?? 'an NPC'} start talking`, d.worldId),
       ),
-      subscribe<{ attackerId?: string; targetId?: string; damage?: number; targetKilled?: boolean }>(
+      subscribe<{ worldId?: string; attackerId?: string; targetId?: string; damage?: number; targetKilled?: boolean }>(
         'combat:hit',
         (d) => push('combat:hit', d.targetKilled
           ? `${d.attackerId ?? '?'} defeated ${d.targetId ?? '?'}`
-          : `${d.attackerId ?? '?'} hit ${d.targetId ?? '?'} for ${d.damage ?? '?'}`),
+          : `${d.attackerId ?? '?'} hit ${d.targetId ?? '?'} for ${d.damage ?? '?'}`, d.worldId),
       ),
-      subscribe<{ dtuId?: string; dtu?: { id?: string; tier?: string } }>(
+      subscribe<{ worldId?: string; dtuId?: string; dtu?: { id?: string; tier?: string } }>(
         'dtu:promoted',
-        (d) => push('dtu:promoted', `DTU ${d.dtuId ?? d.dtu?.id ?? ''} promoted`),
+        (d) => push('dtu:promoted', `DTU ${d.dtuId ?? d.dtu?.id ?? ''} promoted`, d.worldId),
       ),
       subscribe<{ worldId?: string; type?: string; districtId?: string }>(
         'world:event:scheduled',
         (d) => push('world:event:scheduled', `${d.type ?? 'event'} scheduled${d.districtId ? ` in ${d.districtId}` : ''}`, d.worldId),
       ),
-      subscribe<{ factionId?: string; targetFactionId?: string; summary?: string }>(
+      subscribe<{ worldId?: string; factionId?: string; targetFactionId?: string; summary?: string }>(
         'faction:war-declared',
-        (d) => push('faction:war-declared', d.summary || `${d.factionId ?? '?'} declared war on ${d.targetFactionId ?? '?'}`),
+        (d) => push('faction:war-declared', d.summary || `${d.factionId ?? '?'} declared war on ${d.targetFactionId ?? '?'}`, d.worldId),
       ),
-      subscribe<{ factionId?: string; targetFactionId?: string; summary?: string }>(
+      subscribe<{ worldId?: string; factionId?: string; targetFactionId?: string; summary?: string }>(
         'faction:alliance-formed',
-        (d) => push('faction:alliance-formed', d.summary || `${d.factionId ?? '?'} allied with ${d.targetFactionId ?? '?'}`),
+        (d) => push('faction:alliance-formed', d.summary || `${d.factionId ?? '?'} allied with ${d.targetFactionId ?? '?'}`, d.worldId),
+      ),
+      // Was never subscribed pre-Wave-4 — the third faction move class the
+      // capability-map doc names alongside war-declared/alliance-formed.
+      subscribe<{ worldId?: string; factionId?: string; targetFactionId?: string; summary?: string }>(
+        'faction:truce-sought',
+        (d) => push('faction:truce-sought', d.summary || `${d.factionId ?? '?'} sought truce with ${d.targetFactionId ?? '?'}`, d.worldId),
       ),
     ];
 

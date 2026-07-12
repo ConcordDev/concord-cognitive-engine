@@ -13,12 +13,20 @@
  * send a hardcoded `officer: 'badge-1138'` value as if it were real data;
  * that field is now a genuine (optional) operator input that falls back to
  * the authenticated caller's id server-side when left blank.
+ *
+ * The "Case ID" field used to be pure free text with nothing behind it
+ * (docs/lens-specs/law-enforcement-capability-map.md, "No persisted
+ * 'Case' record type exists server-side"). Now that migration 362 gives
+ * the lens a genuine persisted Case entity, this field debounce-resolves
+ * against `law-enforcement.caseGet` (by caseNumber) and shows whether it
+ * actually links to a case on file in the new Cases tab — an honest
+ * lookup, not a fabricated match.
  */
 
-import { useState } from 'react';
-import { Shield, MapPin, FileText, BarChart3, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Plus, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Shield, MapPin, FileText, BarChart3, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Plus, X, FolderSearch } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 
@@ -36,6 +44,7 @@ type ActionId = 'case' | 'patrol' | 'report' | 'stats' | 'mint' | 'dm' | 'publis
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
 interface CaseResult { caseId?: string; evidenceCount: number; witnessCount: number; suspectCount: number; caseStrength: number; prosecutable: boolean; status: string; nextSteps: string[] }
+interface ResolvedCase { id: string; caseNumber: string; title: string; status: string; assignedDetective: string }
 interface ZoneRec { zone: string; crimeRate: number; population: number; currentPatrols: number; recommended: number }
 interface PatrolResult { zones: ZoneRec[]; totalUnitsNeeded: number; totalCurrentUnits: number; hotspots: string[] }
 interface ReportResult { reportId: string; complete: boolean; missingFields: string[]; type: string; date: string; location: string; severity: string; status: string }
@@ -103,6 +112,26 @@ export function LawEnforcementActionPanel() {
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
+
+  // Case ID lookup — debounce-resolves the free-text field against a real
+  // persisted case (migration 362) instead of leaving it as an inert string.
+  const [resolvedCase, setResolvedCase] = useState<ResolvedCase | null>(null);
+  const [caseLookupState, setCaseLookupState] = useState<'idle' | 'checking' | 'found' | 'not-found'>('idle');
+  const caseLookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (caseLookupTimer.current) clearTimeout(caseLookupTimer.current);
+    const trimmed = caseId.trim();
+    if (!trimmed) { setCaseLookupState('idle'); setResolvedCase(null); return; }
+    caseLookupTimer.current = setTimeout(async () => {
+      setCaseLookupState('checking');
+      try {
+        const r = await lensRun<{ case: ResolvedCase }>('law-enforcement', 'caseGet', { caseNumber: trimmed });
+        if (r.data?.ok && r.data.result?.case) { setResolvedCase(r.data.result.case); setCaseLookupState('found'); }
+        else { setResolvedCase(null); setCaseLookupState('not-found'); }
+      } catch { setResolvedCase(null); setCaseLookupState('not-found'); }
+    }, 450);
+    return () => { if (caseLookupTimer.current) clearTimeout(caseLookupTimer.current); };
+  }, [caseId]);
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
@@ -249,6 +278,20 @@ export function LawEnforcementActionPanel() {
         <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-2.5 space-y-2">
           <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Case strength</div>
           <RowInput value={caseId} onChange={setCaseId} placeholder="Case ID (optional)" className="w-full" />
+          {caseLookupState !== 'idle' && (
+            <div className={cn(
+              'flex items-center gap-1 text-[10px]',
+              caseLookupState === 'checking' ? 'text-zinc-500' : caseLookupState === 'found' ? 'text-emerald-300' : 'text-amber-300',
+            )}>
+              {caseLookupState === 'checking' && <><Loader2 className="w-2.5 h-2.5 animate-spin" /> Checking case board…</>}
+              {caseLookupState === 'found' && resolvedCase && (
+                <><FolderSearch className="w-2.5 h-2.5" /> Linked to &quot;{resolvedCase.title}&quot; ({resolvedCase.status.replace(/_/g, ' ')}{resolvedCase.assignedDetective ? ` · ${resolvedCase.assignedDetective}` : ''})</>
+              )}
+              {caseLookupState === 'not-found' && (
+                <><FolderSearch className="w-2.5 h-2.5" /> No case on file for this ID — open one in the Cases tab to link it.</>
+              )}
+            </div>
+          )}
 
           <div>
             <span className="text-[9px] uppercase tracking-wider text-zinc-500">Evidence</span>

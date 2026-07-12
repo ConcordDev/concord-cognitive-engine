@@ -16,6 +16,7 @@
 import { ollamaChat } from "./inference/ollama-client.js";
 import { providerChat, BYO_PROVIDERS } from "./byo-providers.js";
 import { decryptKey } from "./byo-crypto.js";
+import { consumeRateLimitToken } from "./byo-rate-limit.js";
 
 /**
  * Look up an override row for a (user, slot).
@@ -75,6 +76,24 @@ export async function brainChat({ db, userId, slot, messages, opts = {} }) {
   // 1) Override path — user has plugged in a frontier-model API key.
   const override = userId ? getOverride(db, userId, slot) : null;
   if (override && override.provider && override.provider !== "concord_default" && override.provider !== "ollama") {
+    // Requests-per-minute throttle (Wave 4 gap-closure, item #9 of
+    // docs/lens-specs/byo-keys-capability-map.md). This is a SEPARATE
+    // control from the monthly $/token budget cap (byo_keys.budget_check)
+    // — it caps burst rate, not spend. Gate BEFORE decrypting the key or
+    // contacting the provider: a blocked call must never touch the
+    // network, both to actually protect the user's provider account from
+    // a runaway loop and to avoid burning an unnecessary decrypt cycle.
+    // Fail-open when no limit is configured for this (user, slot).
+    const rl = consumeRateLimitToken(userId, slot);
+    if (!rl.allowed) {
+      return {
+        ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0,
+        provider: override.provider,
+        model: override.model_id || BYO_PROVIDERS.defaultModels[override.provider]?.[slot] || override.provider,
+        error: "rate_limited",
+        retryAfterMs: rl.retryAfterMs,
+      };
+    }
     const apiKey = await decryptKey(userId, override.encrypted_key);
     if (apiKey) {
       const r = await providerChat({

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Grid3x3, Loader2, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { getAudioContext, resumeAudioContext } from '@/lib/daw/engine';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface Pad {
   index: number;
@@ -74,7 +75,8 @@ export function DrumRackPanel({ projectId }: { projectId?: string }) {
   async function create() {
     if (!projectId || !name.trim()) return;
     try {
-      await lensRun('studio', 'drumrack-create', { projectId, name, kind, padCount: Number(padCount) });
+      const res = await lensRun('studio', 'drumrack-create', { projectId, name, kind, padCount: Number(padCount) });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'drumrack-create', res.data.result?.rack?.id, { name, kind, padCount: Number(padCount) });
       setName('');
       await refresh();
     } catch (e) { console.error('[DrumRack] create', e); }
@@ -82,14 +84,16 @@ export function DrumRackPanel({ projectId }: { projectId?: string }) {
 
   async function remove(id: string) {
     try {
-      await lensRun('studio', 'drumrack-delete', { id });
+      const res = await lensRun('studio', 'drumrack-delete', { id });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'drumrack-delete', id);
       await refresh();
     } catch (e) { console.error('[DrumRack] delete', e); }
   }
 
   async function assignPad(rackId: string, padIndex: number, patch: Record<string, unknown>) {
     try {
-      await lensRun('studio', 'drumrack-pad-assign', { rackId, padIndex, ...patch });
+      const res = await lensRun('studio', 'drumrack-pad-assign', { rackId, padIndex, ...patch });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'drumrack-pad-assign', rackId, { padIndex, ...patch });
       await refresh();
     } catch (e) { console.error('[DrumRack] assign', e); }
   }

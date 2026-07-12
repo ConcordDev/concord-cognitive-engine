@@ -150,6 +150,16 @@ export default function registerPoetryActions(registerLensAction) {
     let poems = [...poList(s, poActor(ctx))];
     if (params.form) poems = poems.filter((p) => p.form === String(params.form).toLowerCase());
     if (params.status) poems = poems.filter((p) => p.status === params.status);
+    // Server-side search across BOTH title and body — matches on real poem
+    // content, not just the title. The response shape below stays slim
+    // (no `body` field returned); the full text is only ever read here, in
+    // memory, to decide inclusion, never sent back over the wire. That
+    // keeps the list endpoint cheap while making the search box actually
+    // search the poem, not just its title.
+    if (params.query) {
+      const q = poClean(params.query, 200).toLowerCase();
+      if (q) poems = poems.filter((p) => p.title.toLowerCase().includes(q) || p.body.toLowerCase().includes(q));
+    }
     poems.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     const out = poems.map((p) => ({
       id: p.id, title: p.title, form: p.form, status: p.status,

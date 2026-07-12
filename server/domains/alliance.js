@@ -732,6 +732,47 @@ export default function registerAllianceActions(registerLensAction) {
     }
   });
 
+  /**
+   * message-search
+   * LIKE-scan over a channel's message content, same shape as
+   * cross-lens-discovery.js's searchDtus (query length bounds [2,200],
+   * bounded result count) but scoped to the caller's own alliance
+   * membership — a non-member of the channel's alliance gets the same
+   * "forbidden: not a member" rejection message-list uses.
+   * params.channelId, params.query, params.limit? (default 30, max 100)
+   */
+  registerLensAction("alliance", "message-search", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const channelId = String(params.channelId || "");
+      let parentAlliance = null;
+      for (const [allianceId, list] of s.channels.entries()) {
+        if (list.some((c) => c.id === channelId)) { parentAlliance = s.alliances.get(allianceId); break; }
+      }
+      if (!parentAlliance) return { ok: false, error: "channel not found" };
+      if (!roleOf(parentAlliance, userId)) return { ok: false, error: "forbidden: not a member" };
+      const q = String(params.query || "").trim();
+      if (q.length < 2) return { ok: false, error: "query too short (min 2 chars)" };
+      if (q.length > 200) return { ok: false, error: "query too long (max 200 chars)" };
+      const limit = Math.min(100, Math.max(1, Number(params.limit) || 30));
+      const needle = q.toLowerCase();
+      const all = listFor(s.messages, channelId);
+      // `all` is already chronological ascending (push order at send time);
+      // reverse (not sort — createdAt ms-resolution ties are common when
+      // messages land in the same tick) so ties keep the later send first.
+      const matches = all
+        .filter((m) => (m.content || "").toLowerCase().includes(needle))
+        .slice()
+        .reverse()
+        .slice(0, limit);
+      return { ok: true, result: { messages: matches, query: q, count: matches.length, totalInChannel: all.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   // ── Member invites + roles ─────────────────────────────────────
 
   registerLensAction("alliance", "invite-create", (ctx, _a, params = {}) => {

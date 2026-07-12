@@ -34,6 +34,13 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/lib/hooks/use-lens-data', () => ({
   useLensData: () => ({ items: [], create: vi.fn(), remove: vi.fn() }),
 }));
+// The page also reads a `?id=` deep-link param (Wave 4 gap-closure); no
+// permalink is exercised by this state-gate file, so the id is always absent.
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => ({ get: () => null }),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  usePathname: () => '/lenses/codex',
+}));
 
 import CodexLensPage from '@/app/lenses/codex/page';
 

@@ -30,6 +30,7 @@ export default function registerPlumbingActions(registerLensAction) {
     if (!(s.parts instanceof Map)) s.parts = new Map();         // userId -> Array<partStock>
     if (!(s.notices instanceof Map)) s.notices = new Map();     // userId -> Array<notification>
     if (!(s.workflows instanceof Map)) s.workflows = new Map(); // assignmentId -> workflow
+    if (!(s.clients instanceof Map)) s.clients = new Map();     // userId -> Array<client>
     return s;
   }
   function savePlumb() {
@@ -57,12 +58,29 @@ export default function registerPlumbingActions(registerLensAction) {
         phone: clean(params.phone, 40),
         baseColor: clean(params.baseColor, 16) || "#38bdf8",
         active: params.active !== false,
+        certifications: [], // formal license/cert records — see techCertAdd. Distinct
+        // from `skills` above: skills is a freeform capability tag list used for
+        // quick dispatch matching, certifications is a structured record with an
+        // issuing body + license number + expiry, used for compliance tracking.
         createdAt: new Date().toISOString(),
       };
       techs.push(tech); savePlumb();
       return { ok: true, result: { tech } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
+  // Certifications past their expiryDate are flagged, not deleted — an expired
+  // license is still a real (lapsed) record a shop owner needs to see and
+  // renew, not something that should silently disappear. Computed at read
+  // time (no background sweep) since expiry here doesn't cascade into any
+  // other domain — mirrors the "simple is fine" guidance for this kind of
+  // derived flag (contrast with hr.js's I-9 sweep, which needs a stored
+  // status because I-9 verification blocks downstream actions).
+  function isCertExpired(expiryDate) {
+    if (!expiryDate) return false;
+    return expiryDate < new Date().toISOString().slice(0, 10);
+  }
+  function withExpiry(cert) { return { ...cert, isExpired: isCertExpired(cert.expiryDate) }; }
+  function certsOf(t) { return Array.isArray(t.certifications) ? t.certifications : (t.certifications = []); }
   registerLensAction("plumbing", "techList", (ctx) => {
     try {
       const g = guard(); if (g.error) return g.error;
@@ -71,10 +89,15 @@ export default function registerPlumbingActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          techs: techs.map(t => ({
-            ...t,
-            openJobs: dispatch.filter(d => d.techId === t.id && d.status !== "completed" && d.status !== "cancelled").length,
-          })),
+          techs: techs.map(t => {
+            const certifications = certsOf(t).map(withExpiry);
+            return {
+              ...t,
+              certifications,
+              expiredCertCount: certifications.filter(c => c.isExpired).length,
+              openJobs: dispatch.filter(d => d.techId === t.id && d.status !== "completed" && d.status !== "cancelled").length,
+            };
+          }),
           count: techs.length,
         },
       };
@@ -91,6 +114,130 @@ export default function registerPlumbingActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // ── Technician certifications (formal license records) ──────────────
+  // Closes the "Certs" gap (docs/lens-specs/plumbing-capability-map.md):
+  // techAdd's `skills` field was a freeform tag list, not a formal
+  // certification record with issuing body + license number + expiry date.
+  // This is a distinct, additive `certifications` array per tech — `skills`
+  // is untouched and keeps serving quick dispatch-matching.
+  registerLensAction("plumbing", "techCertAdd", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const techs = list(g.s.techs, actor(ctx));
+      const techId = clean(params.techId, 64);
+      if (!techId) return { ok: false, error: "techId_required" };
+      const tech = techs.find(t => t.id === techId);
+      if (!tech) return { ok: false, error: "tech_not_found" };
+      const name = clean(params.name, 120);
+      if (!name) return { ok: false, error: "name_required" };
+      const issuingBody = clean(params.issuingBody, 120);
+      if (!issuingBody) return { ok: false, error: "issuingBody_required" };
+      const cert = {
+        id: pid("cert"), name, issuingBody,
+        licenseNumber: clean(params.licenseNumber, 60),
+        issueDate: clean(params.issueDate, 16) || null,
+        expiryDate: clean(params.expiryDate, 16) || null,
+        createdAt: new Date().toISOString(),
+      };
+      certsOf(tech).push(cert); savePlumb();
+      return { ok: true, result: { certification: withExpiry(cert), techId } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "techCertList", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const techs = list(g.s.techs, actor(ctx));
+      const techId = clean(params.techId, 64);
+      if (!techId) return { ok: false, error: "techId_required" };
+      const tech = techs.find(t => t.id === techId);
+      if (!tech) return { ok: false, error: "tech_not_found" };
+      const certifications = certsOf(tech).map(withExpiry);
+      return {
+        ok: true,
+        result: {
+          certifications, count: certifications.length,
+          expiredCount: certifications.filter(c => c.isExpired).length,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "techCertRemove", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const techs = list(g.s.techs, actor(ctx));
+      const techId = clean(params.techId, 64);
+      if (!techId) return { ok: false, error: "techId_required" };
+      const tech = techs.find(t => t.id === techId);
+      if (!tech) return { ok: false, error: "tech_not_found" };
+      const certs = certsOf(tech);
+      const idx = certs.findIndex(c => c.id === params.certId);
+      if (idx < 0) return { ok: false, error: "certification_not_found" };
+      certs.splice(idx, 1); savePlumb();
+      return { ok: true, result: { removed: params.certId, techId } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Clients (persisted CRM entity) ───────────────────────────────
+  // Closes the "no persisted Client entity" gap (docs/lens-specs/plumbing-
+  // capability-map.md): client name/contact was previously a free-text field
+  // re-typed on every dispatchAssign/invoiceFromQuote/planCreate call, so it
+  // never autocompleted and history didn't aggregate across documents. This
+  // is a small, additive pair — clientAdd/clientList — plus an OPTIONAL
+  // `clientId` accepted by the three document macros below. Passing
+  // `clientId` looks the client up and uses its name/address; omitting it
+  // preserves the original free-text behavior byte-for-byte.
+  function resolveClientRef(g, userId, params) {
+    const clientId = clean(params.clientId, 64) || null;
+    if (!clientId) return { clientId: null, client: null };
+    const found = list(g.s.clients, userId).find(c => c.id === clientId);
+    if (!found) return { error: "client_not_found" };
+    return { clientId: found.id, client: found };
+  }
+  registerLensAction("plumbing", "clientAdd", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const clients = list(g.s.clients, actor(ctx));
+      const name = clean(params.name, 80);
+      if (!name) return { ok: false, error: "name_required" };
+      const client = {
+        id: pid("client"), name,
+        phone: clean(params.phone, 40),
+        email: clean(params.email, 120),
+        address: clean(params.address, 200),
+        notes: clean(params.notes, 400),
+        createdAt: new Date().toISOString(),
+      };
+      clients.push(client); savePlumb();
+      return { ok: true, result: { client } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "clientList", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const userId = actor(ctx);
+      const clients = list(g.s.clients, userId);
+      const dispatch = list(g.s.dispatch, userId);
+      const invoices = list(g.s.invoices, userId);
+      const query = clean(params.query, 80).toLowerCase();
+      const filtered = query ? clients.filter(c => c.name.toLowerCase().includes(query)) : clients;
+      // Aggregate real cross-document history per client — the second half
+      // of the documented gap ("doesn't aggregate history across documents
+      // for the same client"), derived from the same dispatch/invoice
+      // stores the free-text fields used to write into, now joined on id.
+      const enriched = filtered.map(c => {
+        const jobs = dispatch.filter(d => d.clientId === c.id);
+        const clientInvoices = invoices.filter(i => i.clientId === c.id);
+        return {
+          ...c,
+          jobsCount: jobs.length,
+          invoiceCount: clientInvoices.length,
+          totalBilled: Math.round(clientInvoices.reduce((s, i) => s + i.total, 0) * 100) / 100,
+        };
+      });
+      return { ok: true, result: { clients: enriched, count: enriched.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ── Job scheduling + dispatch board ──────────────────────────────
   registerLensAction("plumbing", "dispatchAssign", (ctx, _artifact, params = {}) => {
     try {
@@ -102,12 +249,16 @@ export default function registerPlumbingActions(registerLensAction) {
       if (!jobTitle) return { ok: false, error: "jobTitle_required" };
       const techId = clean(params.techId, 64) || null;
       if (techId && !techs.find(t => t.id === techId)) return { ok: false, error: "tech_not_found" };
+      const ref = resolveClientRef(g, userId, params);
+      if (ref.error) return { ok: false, error: ref.error };
+      const clientName = ref.client ? ref.client.name : clean(params.client, 80);
+      const address = clean(params.address, 200) || (ref.client ? (ref.client.address || "") : "");
       const date = clean(params.date, 16) || new Date().toISOString().slice(0, 10);
       const startHour = Math.min(23, Math.max(0, num(params.startHour) || 8));
       const durationHours = Math.min(12, Math.max(0.5, num(params.durationHours) || 2));
       const assignment = {
         id: pid("disp"), jobTitle, jobId: clean(params.jobId, 64) || null,
-        client: clean(params.client, 80), address: clean(params.address, 200),
+        client: clientName, clientId: ref.clientId, address,
         techId, date, startHour, durationHours,
         priority: ["low", "normal", "high", "emergency"].includes(params.priority) ? params.priority : "normal",
         status: "scheduled",
@@ -252,11 +403,14 @@ export default function registerPlumbingActions(registerLensAction) {
       const tax = Math.round(subtotal * taxPct / 100 * 100) / 100;
       const total = Math.round((subtotal + tax) * 100) / 100;
       const seq = invoices.length + 1;
+      const ref = resolveClientRef(g, userId, params);
+      if (ref.error) return { ok: false, error: ref.error };
+      const clientName = ref.client ? ref.client.name : clean(params.client, 80);
       const invoice = {
         id: pid("inv"),
         number: clean(params.number, 32) || `INV-${String(seq).padStart(4, "0")}`,
         quoteRef: clean(params.quoteRef, 64) || null,
-        client: clean(params.client, 80),
+        client: clientName, clientId: ref.clientId,
         lines: norm, subtotal, taxPct, tax, total,
         status: "issued", amountPaid: 0,
         dueDate: clean(params.dueDate, 16),
@@ -367,13 +521,16 @@ export default function registerPlumbingActions(registerLensAction) {
   registerLensAction("plumbing", "planCreate", (ctx, _artifact, params = {}) => {
     try {
       const g = guard(); if (g.error) return g.error;
-      const plans = list(g.s.plans, actor(ctx));
-      const client = clean(params.client, 80);
+      const userId = actor(ctx);
+      const plans = list(g.s.plans, userId);
+      const ref = resolveClientRef(g, userId, params);
+      if (ref.error) return { ok: false, error: ref.error };
+      const client = ref.client ? ref.client.name : clean(params.client, 80);
       if (!client) return { ok: false, error: "client_required" };
       const cadence = ["weekly", "monthly", "quarterly", "biannual", "annual"].includes(params.cadence) ? params.cadence : "annual";
       const start = clean(params.startDate, 16) || new Date().toISOString().slice(0, 10);
       const plan = {
-        id: pid("plan"), client,
+        id: pid("plan"), client, clientId: ref.clientId,
         title: clean(params.title, 120) || "Maintenance Plan",
         cadence, fee: Math.max(0, num(params.fee)),
         startDate: start, nextVisit: nextDue(start, cadence),

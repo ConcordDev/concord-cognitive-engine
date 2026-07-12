@@ -187,7 +187,8 @@ export default function UnifiedSelfLensPage() {
     unlocked: boolean;
     progress: number;
     target: number;
-    unlockDate?: string;
+    /** ISO-8601 first-unlock timestamp from server/lib/world-progression.js#getAchievements; null/absent when not yet unlocked. */
+    earnedAt?: string | null;
     worldImpact?: string;
   };
   type FrontendAch = {
@@ -237,7 +238,10 @@ export default function UnifiedSelfLensPage() {
           rarity: 'common',
           category: CATEGORY_MAP[a.category] ?? 'Creation',
           unlocked: a.unlocked,
-          unlockDate: a.unlockDate,
+          // Real earned-at timestamp (server/lib/world-progression.js), formatted
+          // to match the convention AchievementSystem already uses for its own
+          // fetched achievements (see fmtDate there).
+          unlockDate: a.earnedAt ? new Date(a.earnedAt).toLocaleDateString() : undefined,
           worldImpact: a.worldImpact,
         }));
         const progress: FrontendProgress[] = list.map((a) => ({

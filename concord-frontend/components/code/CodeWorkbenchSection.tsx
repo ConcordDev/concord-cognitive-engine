@@ -5,6 +5,7 @@ import { AlertCircle, AlertTriangle, Folder, FileCode2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { CodeWorkbenchShell, CodeNav } from './CodeWorkbenchShell';
 import { ProjectSwitcher } from './ProjectSwitcher';
+import { useCodeProject } from './CodeProjectContext';
 import { FileExplorer } from './FileExplorer';
 import { OutlinePanel } from './OutlinePanel';
 import { SearchPanel } from './SearchPanel';
@@ -16,7 +17,9 @@ import { EditorPane } from './EditorPane';
 
 export function CodeWorkbenchSection() {
   const [nav, setNav] = useState<CodeNav>('files');
-  const [projectId, setProjectId] = useState<string | null>(null);
+  // Shared across the quick-script tabs + CodeAdvancedPanel via
+  // CodeProjectContext — see that file's header comment.
+  const { projectId, setProjectId } = useCodeProject();
   const [openPath, setOpenPath] = useState<string | null>(null);
   const [openLine, setOpenLine] = useState<number | null>(null);
   const [branch, setBranch] = useState<string>('main');

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Cable, Loader2, Plus, Trash2, Radio } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface MidiMap {
   id: string;
@@ -79,11 +80,12 @@ export function MidiMapPanel({ projectId }: { projectId?: string }) {
   async function add() {
     if (!projectId || !target.trim()) return;
     try {
-      await lensRun('studio', 'midi-map-add', {
+      const res = await lensRun('studio', 'midi-map-add', {
         projectId, target, msgType,
         controller: Number(controller), channel: Number(channel),
         rangeMin: Number(rangeMin), rangeMax: Number(rangeMax), deviceName: device,
       });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'midi-map-add', res.data.result?.map?.id, { target, msgType });
       setTarget('');
       await refresh();
     } catch (e) { console.error('[MidiMap] add', e); }
@@ -91,7 +93,8 @@ export function MidiMapPanel({ projectId }: { projectId?: string }) {
 
   async function remove(id: string) {
     try {
-      await lensRun('studio', 'midi-map-delete', { id });
+      const res = await lensRun('studio', 'midi-map-delete', { id });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'midi-map-delete', id);
       setMaps((prev) => prev.filter((m) => m.id !== id));
     } catch (e) { console.error('[MidiMap] delete', e); }
   }

@@ -1,19 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Plus, Trash2, Loader2, Search, Star, ChevronDown, ChevronRight, Play, FileText, Clock } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Loader2, Search, Star, ChevronDown, ChevronRight, Play, FileText, Clock, Lock, Users } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface Lesson {
   id: string; title: string; videoUrl: string; durationMin: number;
   kind: 'video' | 'reading' | 'quiz' | 'assignment' | 'discussion'; order: number;
 }
 export interface Course {
-  id: string; title: string; description: string; category: string;
+  id: string; authorId: string; title: string; description: string; category: string;
   level: 'beginner' | 'intermediate' | 'advanced';
   durationHours: number; instructor: string; institution: string;
   kind: 'course' | 'specialization' | 'certificate' | 'guided_project';
+  status: 'draft' | 'published';
   lessons: Lesson[];
   enrollmentCount: number; rating: number;
 }
@@ -26,13 +28,18 @@ const LESSON_KIND_ICON: Record<string, typeof Play> = { video: Play, reading: Bo
 const emptyLessonForm = { title: '', videoUrl: '', durationMin: '', kind: 'video' as (typeof LESSON_KINDS)[number] };
 
 export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) => void; onEnroll?: (c: Course) => void }) {
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrolledIds, setEnrolledIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('');
-  const [form, setForm] = useState({ title: '', description: '', category: 'general', level: 'beginner', kind: 'course', durationHours: '', instructor: '', institution: '' });
+  // The catalog is now a shared multi-tenant surface (any published course
+  // from any author) — "Mine" narrows to courses this user authored,
+  // including their own unpublished drafts.
+  const [mineOnly, setMineOnly] = useState(false);
+  const [form, setForm] = useState({ title: '', description: '', category: 'general', level: 'beginner', kind: 'course', durationHours: '', instructor: '', institution: '', status: 'published' as 'draft' | 'published' });
 
   // Course detail (courses-get) + lesson authoring (lessons-create)
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -43,7 +50,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
   const [savingLesson, setSavingLesson] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { refresh(); }, [filterCategory]);
+  useEffect(() => { refresh(); }, [filterCategory, mineOnly]);
 
   async function refresh() {
     setLoading(true);
@@ -51,7 +58,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
       const [a, b] = await Promise.all([
         searchQuery.trim()
           ? lensRun({ domain: 'education', action: 'courses-search', input: { query: searchQuery } })
-          : lensRun({ domain: 'education', action: 'courses-list', input: filterCategory ? { category: filterCategory } : {} }),
+          : lensRun({ domain: 'education', action: 'courses-list', input: { ...(filterCategory ? { category: filterCategory } : {}), ...(mineOnly ? { mine: true } : {}) } }),
         lensRun({ domain: 'education', action: 'enrollments-list', input: {} }),
       ]);
       setCourses((a.data?.result?.courses || a.data?.result?.matches || []) as Course[]);
@@ -68,7 +75,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
         domain: 'education', action: 'courses-create',
         input: { ...form, durationHours: Number(form.durationHours) || 0 },
       });
-      setForm({ title: '', description: '', category: 'general', level: 'beginner', kind: 'course', durationHours: '', instructor: '', institution: '' });
+      setForm({ title: '', description: '', category: 'general', level: 'beginner', kind: 'course', durationHours: '', instructor: '', institution: '', status: 'published' });
       setCreating(false);
       await refresh();
     } catch (e) { console.error('[Courses] add failed', e); }
@@ -145,6 +152,14 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
           <option value="">All categories</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
+        <button
+          onClick={() => setMineOnly(v => !v)}
+          title={mineOnly ? 'Showing only courses you authored (incl. drafts)' : 'Show only courses you authored'}
+          className={cn('px-2 py-1 text-[10px] rounded border uppercase tracking-wider transition-colors',
+            mineOnly ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300' : 'border-lattice-border text-gray-400 hover:text-white')}
+        >
+          Mine
+        </button>
       </div>
 
       {creating && (
@@ -158,7 +173,13 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
           <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.instructor} onChange={e => setForm({ ...form, instructor: e.target.value })} placeholder="Instructor" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.institution} onChange={e => setForm({ ...form, institution: e.target.value })} placeholder="Institution" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <button onClick={add} className="col-span-6 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Add course</button>
+          <label className="col-span-2 flex items-center gap-1.5 text-[11px] text-gray-400 px-1">
+            <input type="checkbox" checked={form.status === 'draft'} onChange={e => setForm({ ...form, status: e.target.checked ? 'draft' : 'published' })} className="accent-cyan-500" />
+            Save as draft (private until you publish it)
+          </label>
+          <button onClick={add} className="col-span-4 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">
+            {form.status === 'draft' ? 'Save draft' : 'Publish to catalog'}
+          </button>
         </div>
       )}
 
@@ -173,6 +194,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
               const enrolled = enrolledIds.has(c.id);
               const expanded = expandedId === c.id;
               const detail = detailById[c.id];
+              const isOwner = !!user && c.authorId === user.id;
               return (
                 <li key={c.id} className="hover:bg-white/[0.03] group">
                   <div className="px-3 py-3 flex items-start gap-3">
@@ -185,6 +207,12 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                         <span className="text-sm font-medium text-white truncate">{c.title}</span>
                         <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{c.kind.replace('_', ' ')}</span>
                         <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', c.level === 'advanced' ? 'bg-rose-500/15 text-rose-300' : c.level === 'intermediate' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300')}>{c.level}</span>
+                        {c.status === 'draft' && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300"><Lock className="w-2.5 h-2.5" />Draft</span>
+                        )}
+                        {isOwner && (
+                          <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300">Yours</span>
+                        )}
                       </div>
                       <div className="text-[11px] text-gray-400 line-clamp-1 ml-5">{c.description}</div>
                       <div className="mt-1 ml-5 flex items-center gap-3 text-[10px] text-gray-400">
@@ -192,6 +220,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                         {c.institution && <span>· {c.institution}</span>}
                         {c.durationHours > 0 && <span>· {c.durationHours}h</span>}
                         <span>· {c.lessons?.length || 0} lessons</span>
+                        <span className="inline-flex items-center gap-0.5"><Users className="w-2.5 h-2.5" />{c.enrollmentCount || 0}</span>
                         {c.rating > 0 && <span className="inline-flex items-center gap-0.5 text-amber-400"><Star className="w-2.5 h-2.5 fill-amber-400" />{c.rating.toFixed(1)}</span>}
                       </div>
                     </div>
@@ -200,7 +229,9 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                     ) : (
                       <button onClick={() => enroll(c)} className="px-2.5 py-1 text-[11px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Enroll</button>
                     )}
-                    <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    {isOwner && (
+                      <button aria-label="Delete" title="Only you (the author) can delete this course" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    )}
                   </div>
 
                   {expanded && (
@@ -228,25 +259,29 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                               })}
                             </ul>
                           )}
-                          {addingLesson ? (
-                            <div className="mt-2 space-y-1.5 pb-2">
-                              <div className="grid grid-cols-4 gap-1.5">
-                                <input value={lessonForm.title} onChange={e => setLessonForm({ ...lessonForm, title: e.target.value })} placeholder="Lesson title" className="col-span-2 px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
-                                <select value={lessonForm.kind} onChange={e => setLessonForm({ ...lessonForm, kind: e.target.value as (typeof LESSON_KINDS)[number] })} className="px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white">
-                                  {LESSON_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
-                                </select>
-                                <input type="number" value={lessonForm.durationMin} onChange={e => setLessonForm({ ...lessonForm, durationMin: e.target.value })} placeholder="Min" className="px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                          {isOwner ? (
+                            addingLesson ? (
+                              <div className="mt-2 space-y-1.5 pb-2">
+                                <div className="grid grid-cols-4 gap-1.5">
+                                  <input value={lessonForm.title} onChange={e => setLessonForm({ ...lessonForm, title: e.target.value })} placeholder="Lesson title" className="col-span-2 px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                                  <select value={lessonForm.kind} onChange={e => setLessonForm({ ...lessonForm, kind: e.target.value as (typeof LESSON_KINDS)[number] })} className="px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white">
+                                    {LESSON_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                                  </select>
+                                  <input type="number" value={lessonForm.durationMin} onChange={e => setLessonForm({ ...lessonForm, durationMin: e.target.value })} placeholder="Min" className="px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                                </div>
+                                <input value={lessonForm.videoUrl} onChange={e => setLessonForm({ ...lessonForm, videoUrl: e.target.value })} placeholder="Video URL (optional)" className="w-full px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                                <div className="flex items-center gap-2">
+                                  <button disabled={savingLesson} onClick={() => addLesson(c.id)} className="px-2.5 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center gap-1">
+                                    {savingLesson && <Loader2 className="w-2.5 h-2.5 animate-spin" />}Add lesson
+                                  </button>
+                                  <button onClick={() => { setAddingLesson(false); setLessonForm(emptyLessonForm); }} className="px-2 py-1 text-[10px] text-gray-400">Cancel</button>
+                                </div>
                               </div>
-                              <input value={lessonForm.videoUrl} onChange={e => setLessonForm({ ...lessonForm, videoUrl: e.target.value })} placeholder="Video URL (optional)" className="w-full px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
-                              <div className="flex items-center gap-2">
-                                <button disabled={savingLesson} onClick={() => addLesson(c.id)} className="px-2.5 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center gap-1">
-                                  {savingLesson && <Loader2 className="w-2.5 h-2.5 animate-spin" />}Add lesson
-                                </button>
-                                <button onClick={() => { setAddingLesson(false); setLessonForm(emptyLessonForm); }} className="px-2 py-1 text-[10px] text-gray-400">Cancel</button>
-                              </div>
-                            </div>
+                            ) : (
+                              <button onClick={() => setAddingLesson(true)} className="mt-1.5 mb-2 text-[11px] text-cyan-300 hover:text-cyan-200">+ Add lesson</button>
+                            )
                           ) : (
-                            <button onClick={() => setAddingLesson(true)} className="mt-1.5 mb-2 text-[11px] text-cyan-300 hover:text-cyan-200">+ Add lesson</button>
+                            <div className="mt-1.5 mb-2 text-[10px] text-gray-500 inline-flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Only {c.instructor || 'the author'} can add lessons</div>
                           )}
                         </>
                       )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
@@ -25,11 +25,10 @@ import {
   Plus, X, Edit2, Trash2, Bell, Repeat, Users,
   Search, Settings, Check, Video,
   ExternalLink, Rocket, CalendarDays, Megaphone, BookOpen, CheckSquare,
-  Play, Timer, Loader2, XCircle, Zap, BarChart3, AlertTriangle
+  Play, Timer, Loader2, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -63,9 +62,10 @@ interface CalendarEvent {
     frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
     interval: number;
     endDate?: Date;
-    daysOfWeek?: number[];
   };
   artworkColor?: string;
+  /** Real calendar (calendars-list) this event lives on — multi-calendar support. */
+  calendarId?: string;
 }
 
 interface CalendarCategory {
@@ -127,10 +127,6 @@ const CategoryIcon = ({ type, className }: { type: EventType; className?: string
   }
 };
 
-const generateInitialEvents = (_currentDate: Date): CalendarEvent[] => {
-  return [];
-};
-
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -138,6 +134,168 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// ---------------------------------------------------------------------------
+// Real-engine wiring — the main grid persists through the STATE-backed
+// calendar.events-* macros (server/domains/calendar.js), not a generic
+// artifact-CRUD store. The engine's event shape (title/description/location/
+// start/end/allDay/recurrence/reminders(minutes[])/attendees/calendarId) is
+// narrower than this lens's release-planning UI (eventType/platforms/
+// collaborators/linkedProject/artworkColor) — those extra, genuinely-distinct
+// fields round-trip inside `description` as a trailing JSON block (a real,
+// persisted encoding, not fabricated data) so nothing is lost. `collaborators`
+// maps onto the engine's native `attendees` field; `url` maps onto its native
+// `conferenceLink` field — no encoding needed for either.
+// ---------------------------------------------------------------------------
+
+interface BackendCalendar {
+  id: string;
+  number: string;
+  name: string;
+  color: string;
+  visible: boolean;
+  isDefault: boolean;
+}
+
+interface BackendRecurrence {
+  freq: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number;
+  count: number | null;
+  until: string | null;
+}
+
+interface BackendEvent {
+  id: string;
+  number: string;
+  calendarId: string;
+  title: string;
+  description: string;
+  location: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  recurrence: BackendRecurrence | null;
+  reminders: number[];
+  attendees: string[];
+  conferenceLink: string;
+  createdAt: string;
+  occurrenceStart?: string;
+  occurrenceEnd?: string;
+}
+
+interface BackendConflict { eventId: string; title: string; start: string; end: string }
+
+const EVENT_META_DELIM_OPEN = '\n\n<!--concord-cal-meta:';
+const EVENT_META_DELIM_CLOSE = '-->';
+
+interface EncodedEventMeta {
+  eventType: EventType;
+  category: string;
+  platforms?: string[];
+  linkedProject?: string;
+  color?: string;
+  artworkColor?: string;
+}
+
+function encodeEventDescription(plain: string, meta: EncodedEventMeta): string {
+  return `${plain || ''}${EVENT_META_DELIM_OPEN}${JSON.stringify(meta)}${EVENT_META_DELIM_CLOSE}`;
+}
+
+function decodeEventDescription(raw: string): { plain: string; meta: EncodedEventMeta } {
+  const fallback: EncodedEventMeta = { eventType: 'session', category: EVENT_TYPE_META.session.label };
+  const idx = (raw || '').indexOf(EVENT_META_DELIM_OPEN);
+  if (idx === -1) return { plain: raw || '', meta: fallback };
+  const plain = raw.slice(0, idx);
+  const jsonStr = raw.slice(idx + EVENT_META_DELIM_OPEN.length, raw.length - EVENT_META_DELIM_CLOSE.length);
+  try {
+    const parsed = JSON.parse(jsonStr) as Partial<EncodedEventMeta>;
+    const eventType = (parsed.eventType && EVENT_TYPE_META[parsed.eventType]) ? parsed.eventType : 'session';
+    return {
+      plain,
+      meta: {
+        eventType,
+        category: parsed.category || EVENT_TYPE_META[eventType].label,
+        platforms: parsed.platforms,
+        linkedProject: parsed.linkedProject,
+        color: parsed.color,
+        artworkColor: parsed.artworkColor,
+      },
+    };
+  } catch {
+    return { plain: raw, meta: fallback };
+  }
+}
+
+const REMINDER_UNIT_MINUTES: Record<string, number> = { minutes: 1, hours: 60, days: 1440, weeks: 10080 };
+
+function remindersToMinutes(reminders?: { time: number; unit: 'minutes' | 'hours' | 'days' | 'weeks' }[]): number[] {
+  return (reminders || []).map((r) => Math.max(0, Math.round(r.time * (REMINDER_UNIT_MINUTES[r.unit] || 1))));
+}
+
+function minutesToReminders(mins?: number[]): { time: number; unit: 'minutes' | 'hours' | 'days' | 'weeks' }[] {
+  return (mins || []).map((m) => {
+    if (m > 0 && m % 10080 === 0) return { time: m / 10080, unit: 'weeks' as const };
+    if (m > 0 && m % 1440 === 0) return { time: m / 1440, unit: 'days' as const };
+    if (m > 0 && m % 60 === 0) return { time: m / 60, unit: 'hours' as const };
+    return { time: m, unit: 'minutes' as const };
+  });
+}
+
+/** Backend occurrence (from events-list, or the master row from events-create/update) → UI CalendarEvent. */
+function fromBackendEvent(e: BackendEvent): CalendarEvent {
+  const { plain, meta } = decodeEventDescription(e.description || '');
+  const typeMeta = EVENT_TYPE_META[meta.eventType];
+  return {
+    id: e.id,
+    title: e.title,
+    description: plain,
+    startDate: new Date(e.occurrenceStart || e.start),
+    endDate: new Date(e.occurrenceEnd || e.end),
+    allDay: e.allDay,
+    color: meta.color || typeMeta.color,
+    category: meta.category || typeMeta.label,
+    eventType: meta.eventType,
+    location: e.location || undefined,
+    url: e.conferenceLink || undefined,
+    collaborators: e.attendees && e.attendees.length ? e.attendees : undefined,
+    platforms: meta.platforms,
+    linkedProject: meta.linkedProject,
+    reminders: minutesToReminders(e.reminders),
+    recurrence: e.recurrence
+      ? { frequency: e.recurrence.freq, interval: e.recurrence.interval, endDate: e.recurrence.until ? new Date(e.recurrence.until) : undefined }
+      : undefined,
+    artworkColor: meta.artworkColor,
+    calendarId: e.calendarId,
+  };
+}
+
+/** UI CalendarEvent → events-create/events-update params. */
+function toBackendEventParams(ev: CalendarEvent): Record<string, unknown> {
+  const meta: EncodedEventMeta = {
+    eventType: ev.eventType,
+    category: ev.category,
+    platforms: ev.platforms,
+    linkedProject: ev.linkedProject,
+    color: ev.color,
+    artworkColor: ev.artworkColor,
+  };
+  const params: Record<string, unknown> = {
+    title: ev.title,
+    description: encodeEventDescription(ev.description || '', meta),
+    location: ev.location || '',
+    start: ev.startDate.toISOString(),
+    end: ev.endDate.toISOString(),
+    allDay: !!ev.allDay,
+    reminders: remindersToMinutes(ev.reminders),
+    attendees: ev.collaborators || [],
+    conferenceLink: ev.url || '',
+    recurrence: ev.recurrence
+      ? { freq: ev.recurrence.frequency, interval: ev.recurrence.interval, until: ev.recurrence.endDate ? ev.recurrence.endDate.toISOString() : null }
+      : null,
+  };
+  if (ev.calendarId) params.calendarId = ev.calendarId;
+  return params;
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -152,14 +310,31 @@ export default function CalendarLensPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [categories, setCategories] = useState<CalendarCategory[]>([]);
+  const [calendars, setCalendars] = useState<BackendCalendar[]>([]);
 
-  const { isLoading, isError: isError, error: error, refetch: refetch, items: eventItems, create: createEvent, update: updateEvent, remove: removeEvent } = useLensData<CalendarEvent>('calendar', 'event', {
-    seed: [],
+  // Categories are the event-type filter (Launches/Work Sessions/Deadlines/…) —
+  // a fixed, always-real set derived from EVENT_TYPE_META. (Previously this read
+  // a generic 'category' artifact list that nothing ever wrote to, so the
+  // sidebar's category filter always rendered "No categories yet" and the
+  // per-day visibility filter silently no-op'd. Deriving from the same table
+  // the event-type picker already uses makes the filter genuinely work.)
+  const [categoryVisibility, setCategoryVisibility] = useState<Record<EventType, boolean>>({
+    release: true, session: true, deadline: true, collab: true, marketing: true, learning: true,
   });
-  const { isError: isError2, error: error2, refetch: refetch2, items: catItems } = useLensData<CalendarCategory>('calendar', 'category', {
-    seed: [],
-  });
+  const categories: CalendarCategory[] = useMemo(
+    () => (Object.keys(EVENT_TYPE_META) as EventType[]).map((type) => ({
+      id: type,
+      name: EVENT_TYPE_META[type].label,
+      color: EVENT_TYPE_META[type].color,
+      visible: categoryVisibility[type] ?? true,
+      icon: type,
+    })),
+    [categoryVisibility],
+  );
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState<{ message: string } | null>(null);
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -176,7 +351,7 @@ export default function CalendarLensPage() {
     endDate: new Date(),
     allDay: false,
     color: COLORS[0].value,
-    category: 'Release Dates',
+    category: EVENT_TYPE_META.release.label,
     eventType: 'release',
     platforms: [],
     collaborators: [],
@@ -194,35 +369,72 @@ export default function CalendarLensPage() {
 
   const [collaboratorInput, setCollaboratorInput] = useState('');
 
-  // Action panel state
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const runAction = useRunArtifact('calendar');
+  // Live conflict check against the real, STATE-backed calendar.conflicts-check
+  // macro — recomputed (debounced) whenever the composer's start/end changes.
+  // A feature the generic artifact-CRUD store could never offer (it had no
+  // notion of "my other real events").
+  const [conflicts, setConflicts] = useState<BackendConflict[]>([]);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
 
-  // Sync backend event data into local state when available
-  useEffect(() => {
-    if (eventItems.length > 0) {
-      const backendEvents: CalendarEvent[] = eventItems.map(i => {
-        const d = i.data as unknown as CalendarEvent;
-        return {
-          ...d,
-          id: i.id,
-          startDate: new Date(d.startDate),
-          endDate: new Date(d.endDate),
-        };
-      });
-      setEvents(backendEvents);
-    } else {
-      setEvents(generateInitialEvents(currentDate));
+  // Fetch real calendars + events from the STATE-backed engine (calendars-list /
+  // events-list — server/domains/calendar.js). Range spans 2 months back
+  // through 4 months forward from the visible month: enough for month/week/day
+  // navigation without a refetch on every click, and enough for the agenda
+  // view's "upcoming events" list to have real substance.
+  const monthKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setIsError(false);
+    setError(null);
+    try {
+      const base = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const rangeStart = new Date(base.getFullYear(), base.getMonth() - 2, 1).toISOString();
+      const rangeEnd = new Date(base.getFullYear(), base.getMonth() + 4, 1).toISOString();
+      const [calRes, evRes] = await Promise.all([
+        lensRun({ domain: 'calendar', action: 'calendars-list', input: {} }),
+        lensRun({ domain: 'calendar', action: 'events-list', input: { rangeStart, rangeEnd } }),
+      ]);
+      if (calRes.data.ok === false) throw new Error(calRes.data.error || 'Failed to load calendars');
+      if (evRes.data.ok === false) throw new Error(evRes.data.error || 'Failed to load events');
+      const backendCalendars = (calRes.data.result as { calendars?: BackendCalendar[] } | null)?.calendars || [];
+      const backendEvents = (evRes.data.result as { events?: BackendEvent[] } | null)?.events || [];
+      setCalendars(backendCalendars);
+      setEvents(backendEvents.map(fromBackendEvent));
+    } catch (e) {
+      setIsError(true);
+      setError({ message: e instanceof Error ? e.message : 'Failed to load calendar' });
+    } finally {
+      setIsLoading(false);
     }
-  }, [eventItems, currentDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthKey]);
 
-  // Sync backend category data into local state when available
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Debounced live conflict check while the composer is open.
   useEffect(() => {
-    if (catItems.length > 0) {
-      setCategories(catItems.map(i => i.data as unknown as CalendarCategory));
-    }
-  }, [catItems]);
+    if (!showCreateModal || !newEvent.startDate || !newEvent.endDate) { setConflicts([]); return; }
+    const start = newEvent.startDate;
+    const end = newEvent.endDate;
+    let cancelled = false;
+    setCheckingConflicts(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await lensRun({
+          domain: 'calendar',
+          action: 'conflicts-check',
+          input: { start: start.toISOString(), end: end.toISOString(), excludeEventId: editingEventId || undefined },
+        });
+        if (cancelled) return;
+        setConflicts(r.data.ok === false ? [] : ((r.data.result as { conflicts?: BackendConflict[] } | null)?.conflicts || []));
+      } catch {
+        if (!cancelled) setConflicts([]);
+      } finally {
+        if (!cancelled) setCheckingConflicts(false);
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [showCreateModal, newEvent.startDate, newEvent.endDate, editingEventId]);
 
   // Derive project list from event data, seeded with INITIAL_PROJECTS defaults
   const projects: string[] = useMemo(() => {
@@ -279,6 +491,8 @@ export default function CalendarLensPage() {
       const eventStart = new Date(event.startDate);
       const categoryVisible = categories.find((c) => c.name === event.category)?.visible ?? true;
       if (!categoryVisible) return false;
+      const calVisible = calendars.find((c) => c.id === event.calendarId)?.visible ?? true;
+      if (!calVisible) return false;
       return isSameDay(eventStart, date);
     });
   };
@@ -371,18 +585,34 @@ export default function CalendarLensPage() {
     setNewEvent({ ...newEvent, collaborators: (newEvent.collaborators || []).filter((c) => c !== tag) });
   };
 
-  const handleCreateEvent = () => {
+  const defaultNewEventForm = (): Partial<CalendarEvent> => ({
+    title: '',
+    description: '',
+    startDate: new Date(),
+    endDate: new Date(),
+    allDay: false,
+    color: COLORS[0].value,
+    category: EVENT_TYPE_META.release.label,
+    eventType: 'release',
+    platforms: [],
+    collaborators: [],
+    linkedProject: '',
+    reminders: [],
+  });
+
+  const handleCreateEvent = async () => {
     if (!newEvent.title) return;
+    const defaultCalId = calendars.find((c) => c.isDefault)?.id || calendars[0]?.id;
 
     const event: CalendarEvent = {
-      id: editingEventId || Date.now().toString(),
+      id: editingEventId || `pending_${Date.now()}`,
       title: newEvent.title,
       description: newEvent.description,
       startDate: newEvent.startDate || new Date(),
       endDate: newEvent.endDate || new Date(),
       allDay: newEvent.allDay || false,
       color: newEvent.color || COLORS[0].value,
-      category: newEvent.category || 'Release Dates',
+      category: newEvent.category || EVENT_TYPE_META.release.label,
       eventType: newEvent.eventType || 'release',
       location: newEvent.location,
       url: newEvent.url,
@@ -390,39 +620,35 @@ export default function CalendarLensPage() {
       collaborators: newEvent.collaborators,
       linkedProject: newEvent.linkedProject,
       reminders: newEvent.reminders,
+      recurrence: newEvent.recurrence,
+      artworkColor: newEvent.artworkColor,
+      calendarId: newEvent.calendarId || defaultCalId,
     };
 
-    const payload = {
-      title: event.title,
-      data: event as unknown as Record<string, unknown>,
-      meta: { status: 'active', eventType: event.eventType },
-    };
-
-    if (editingEventId) {
-      // Update existing event in local state and backend
-      setEvents(events.map(e => e.id === editingEventId ? event : e));
-      updateEvent(editingEventId, payload);
-    } else {
-      // Create new event in local state and backend
-      setEvents([...events, event]);
-      createEvent(payload);
-    }
+    // Optimistic UI: show the end state immediately, reconcile (or roll back)
+    // once the real events-create/events-update call lands.
+    const wasEditing = editingEventId;
+    const previousEvents = events;
+    setEvents((prev) => (wasEditing ? prev.map((e) => (e.id === wasEditing ? event : e)) : [...prev, event]));
     setEditingEventId(null);
     setShowCreateModal(false);
-    setNewEvent({
-      title: '',
-      description: '',
-      startDate: new Date(),
-      endDate: new Date(),
-      allDay: false,
-      color: COLORS[0].value,
-      category: 'Release Dates',
-      eventType: 'release',
-      platforms: [],
-      collaborators: [],
-      linkedProject: '',
-      reminders: [],
-    });
+    setNewEvent(defaultNewEventForm());
+
+    try {
+      const params = toBackendEventParams(event);
+      if (wasEditing) {
+        (params as Record<string, unknown>).id = wasEditing;
+        const r = await lensRun({ domain: 'calendar', action: 'events-update', input: params });
+        if (r.data.ok === false) throw new Error(r.data.error || 'Failed to update event');
+      } else {
+        const r = await lensRun({ domain: 'calendar', action: 'events-create', input: params });
+        if (r.data.ok === false) throw new Error(r.data.error || 'Failed to create event');
+      }
+      await fetchData();
+    } catch (e) {
+      setEvents(previousEvents);
+      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to save event' });
+    }
   };
 
   // Lens-scoped keyboard commands. Standard calendar verbs (Google
@@ -467,58 +693,83 @@ export default function CalendarLensPage() {
     { lensId: 'calendar' }
   );
 
-  const handleBookSession = () => {
+  const handleBookSession = async () => {
     const start = new Date(bookSession.date);
     start.setHours(bookSession.hour, 0, 0, 0);
     const end = new Date(start);
     end.setMinutes(start.getMinutes() + bookSession.duration * 60);
+    const defaultCalId = calendars.find((c) => c.isDefault)?.id || calendars[0]?.id;
 
     const event: CalendarEvent = {
-      id: Date.now().toString(),
+      id: `pending_${Date.now()}`,
       title: `${bookSession.sessionType} Session`,
       startDate: start,
       endDate: end,
       allDay: false,
-      color: '#06b6d4',
-      category: 'Work Sessions',
+      color: EVENT_TYPE_META.session.color,
+      category: EVENT_TYPE_META.session.label,
       eventType: 'session',
       location: '',
       reminders: [{ time: 1, unit: 'hours' }],
+      calendarId: defaultCalId,
     };
 
-    setEvents([...events, event]);
-    createEvent({
-      title: event.title,
-      data: event as unknown as Record<string, unknown>,
-      meta: { status: 'active', eventType: event.eventType },
-    });
+    const previousEvents = events;
+    setEvents((prev) => [...prev, event]);
     setShowBookingModal(false);
+
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'events-create', input: toBackendEventParams(event) });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Failed to book session');
+      await fetchData();
+    } catch (e) {
+      setEvents(previousEvents);
+      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to book session' });
+    }
   };
 
-  const handleDeleteEvent = (eventId: string) => {
-    setEvents(events.filter((e) => e.id !== eventId));
-    removeEvent(eventId);
+  const handleDeleteEvent = async (eventId: string) => {
+    const previousEvents = events;
+    setEvents((prev) => prev.filter((e) => e.id !== eventId));
     setSelectedEvent(null);
     setShowEventModal(false);
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'events-delete', input: { id: eventId } });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Failed to delete event');
+    } catch (e) {
+      setEvents(previousEvents);
+      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to delete event' });
+    }
   };
 
   const toggleCategoryVisibility = (categoryId: string) => {
-    setCategories(
-      categories.map((c) =>
-        c.id === categoryId ? { ...c, visible: !c.visible } : c
-      )
-    );
+    setCategoryVisibility((prev) => ({ ...prev, [categoryId]: !(prev[categoryId as EventType] ?? true) }));
   };
 
-  const handleCalendarAction = async (action: string) => {
-    const targetId = eventItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
+  // Multi-calendar filter/picker — real calendars-list/calendars-update/
+  // calendars-create, a feature the generic artifact-CRUD store had no
+  // concept of at all.
+  const toggleCalendarVisibility = async (cal: BackendCalendar) => {
+    setCalendars((prev) => prev.map((c) => (c.id === cal.id ? { ...c, visible: !c.visible } : c)));
     try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setIsRunning(null);
+      const r = await lensRun({ domain: 'calendar', action: 'calendars-update', input: { id: cal.id, visible: !cal.visible } });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Failed to update calendar');
+    } catch (e) {
+      setCalendars((prev) => prev.map((c) => (c.id === cal.id ? { ...c, visible: cal.visible } : c)));
+      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to update calendar' });
+    }
+  };
+
+  const handleAddCalendar = async () => {
+    const name = typeof window !== 'undefined' ? window.prompt('New calendar name?') : null;
+    if (!name?.trim()) return;
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'calendars-create', input: { name: name.trim() } });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Failed to create calendar');
+      await fetchData();
+    } catch (e) {
+      useUIStore.getState().addToast({ type: 'error', message: e instanceof Error ? e.message : 'Failed to create calendar' });
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -1101,13 +1352,52 @@ export default function CalendarLensPage() {
               Schedule Event
             </button>
 
+            {/* Calendars — real calendars-list/calendars-update multi-calendar
+                filter + calendars-create, distinct from the event-type
+                categories below (a "which real calendar" filter vs. a
+                "which kind of event" filter). */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium">Calendars</h4>
+                <button
+                  onClick={handleAddCalendar}
+                  className="p-1 rounded hover:bg-lattice-elevated text-gray-400 hover:text-white"
+                  aria-label="Add calendar"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {calendars.length === 0 && (
+                  <p className="text-xs text-gray-400 py-2">Loading calendars…</p>
+                )}
+                {calendars.map((cal) => (
+                  <button
+                    key={cal.id}
+                    onClick={() => toggleCalendarVisibility(cal)}
+                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-lattice-elevated transition-colors"
+                  >
+                    <div
+                      className={cn(
+                        'w-4 h-4 rounded flex items-center justify-center',
+                        cal.visible ? 'opacity-100' : 'opacity-30'
+                      )}
+                      style={{ backgroundColor: cal.color }}
+                    >
+                      {cal.visible && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className={cn('text-sm', !cal.visible && 'text-gray-400')}>
+                      {cal.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Categories */}
             <div>
               <h4 className="text-sm font-medium mb-3">Categories</h4>
               <div className="space-y-2">
-                {categories.length === 0 && (
-                  <p className="text-xs text-gray-400 py-2">No categories yet. Create events to see categories here.</p>
-                )}
                 {categories.map((category) => (
                   <button
                     key={category.id}
@@ -1189,10 +1479,10 @@ export default function CalendarLensPage() {
     );
   }
 
-  if (isError || isError2) {
+  if (isError) {
     return (
       <div className="flex items-center justify-center h-full p-8" role="alert" aria-live="assertive">
-        <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); }} />
+        <ErrorState error={error?.message} onRetry={() => { fetchData(); }} />
       </div>
     );
   }
@@ -1310,184 +1600,6 @@ export default function CalendarLensPage() {
           {viewMode === 'week' && renderWeekView()}
           {viewMode === 'day' && renderDayView()}
           {viewMode === 'agenda' && renderAgendaView()}
-
-          {/* Calendar Action Panel */}
-          <div className="border-t border-lattice-border bg-lattice-surface/60 px-4 py-3 flex-shrink-0">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-4 h-4 text-neon-cyan" />
-              <span className="text-xs font-semibold text-neon-cyan uppercase tracking-wider">Calendar Actions</span>
-              {!eventItems[0]?.id && (
-                <span className="text-xs text-yellow-400 ml-2">(Add an event to enable actions)</span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => handleCalendarAction('detectConflicts')}
-                disabled={!eventItems[0]?.id || isRunning !== null}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
-                  'border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 disabled:opacity-40 disabled:cursor-not-allowed'
-                )}
-              >
-                {isRunning === 'detectConflicts'
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <AlertTriangle className="w-3.5 h-3.5" />}
-                Detect Conflicts
-              </button>
-              <button
-                onClick={() => handleCalendarAction('findAvailability')}
-                disabled={!eventItems[0]?.id || isRunning !== null}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
-                  'border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 disabled:opacity-40 disabled:cursor-not-allowed'
-                )}
-              >
-                {isRunning === 'findAvailability'
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <Clock className="w-3.5 h-3.5" />}
-                Find Availability
-              </button>
-              <button
-                onClick={() => handleCalendarAction('expandRecurring')}
-                disabled={!eventItems[0]?.id || isRunning !== null}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
-                  'border-purple-500/40 text-purple-400 hover:bg-purple-500/10 disabled:opacity-40 disabled:cursor-not-allowed'
-                )}
-              >
-                {isRunning === 'expandRecurring'
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <Repeat className="w-3.5 h-3.5" />}
-                Expand Recurring
-              </button>
-              <button
-                onClick={() => handleCalendarAction('scheduleOptimize')}
-                disabled={!eventItems[0]?.id || isRunning !== null}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
-                  'border-green-500/40 text-green-400 hover:bg-green-500/10 disabled:opacity-40 disabled:cursor-not-allowed'
-                )}
-              >
-                {isRunning === 'scheduleOptimize'
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <Rocket className="w-3.5 h-3.5" />}
-                Schedule Optimize
-              </button>
-            </div>
-
-            {/* Action result display */}
-            <AnimatePresence>
-              {actionResult && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-3 relative rounded-lg border border-lattice-border bg-lattice-deep p-3 text-xs overflow-hidden"
-                >
-                  <button
-                    onClick={() => setActionResult(null)}
-                    className="absolute top-2 right-2 text-gray-400 hover:text-gray-300"
-                    aria-label="Dismiss result"
-                  >
-                    <XCircle className="w-4 h-4" />
-                  </button>
-
-                  {/* Detect Conflicts */}
-                  {!!actionResult.conflicts && (
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2 text-yellow-400 font-semibold">
-                        <AlertTriangle className="w-3.5 h-3.5" /> Conflict Report
-                      </div>
-                      {(actionResult.conflicts as Array<{ event1: string; event2: string; overlapMinutes?: number }>).length === 0
-                        ? <p className="text-gray-400">No scheduling conflicts found.</p>
-                        : (actionResult.conflicts as Array<{ event1: string; event2: string; overlapMinutes?: number }>).map((c, i) => (
-                          <div key={i} className="mb-1 text-yellow-300">
-                            <span className="font-medium">{c.event1}</span>
-                            <span className="text-gray-400 mx-1">&#x2715;</span>
-                            <span className="font-medium">{c.event2}</span>
-                            {c.overlapMinutes !== undefined && <span className="text-gray-400 ml-1">({c.overlapMinutes} min)</span>}
-                          </div>
-                        ))
-                      }
-                    </div>
-                  )}
-
-                  {/* Find Availability */}
-                  {!!actionResult.availableSlots && (
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2 text-cyan-400 font-semibold">
-                        <Clock className="w-3.5 h-3.5" /> Available Slots
-                      </div>
-                      {(actionResult.availableSlots as Array<{ start: string; end: string; minutes: number }>).length === 0
-                        ? <p className="text-gray-400">No availability windows found.</p>
-                        : (actionResult.availableSlots as Array<{ start: string; end: string; minutes: number }>).map((s, i) => (
-                          <div key={i} className="mb-1 text-cyan-300">
-                            {s.start} &ndash; {s.end}
-                            {s.minutes !== undefined && (
-                              <span className="ml-2 text-gray-400">{s.minutes} min</span>
-                            )}
-                          </div>
-                        ))
-                      }
-                    </div>
-                  )}
-
-                  {/* Expand Recurring */}
-                  {!!actionResult.occurrences && (
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2 text-purple-400 font-semibold">
-                        <Repeat className="w-3.5 h-3.5" /> Expanded Events
-                      </div>
-                      {(actionResult.occurrences as Array<{ occurrence: number; date: string; dayOfWeek: string }>).length === 0
-                        ? <p className="text-gray-400">No recurring events to expand.</p>
-                        : (actionResult.occurrences as Array<{ occurrence: number; date: string; dayOfWeek: string }>).map((e, i) => (
-                          <div key={i} className="mb-1 text-purple-300">
-                            <span className="font-medium">{e.dayOfWeek}</span>
-                            <span className="text-gray-400 ml-2">{e.date}</span>
-                          </div>
-                        ))
-                      }
-                    </div>
-                  )}
-
-                  {/* Schedule Optimize */}
-                  {!!actionResult.optimizedOrder && (
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2 text-green-400 font-semibold">
-                        <BarChart3 className="w-3.5 h-3.5" /> Optimized Order
-                      </div>
-                      {(actionResult.optimizedOrder as Array<string>).length === 0
-                        ? <p className="text-gray-400">Schedule looks optimal.</p>
-                        : (actionResult.optimizedOrder as Array<string>).map((s, i) => (
-                          <div key={i} className="mb-1 text-green-300">
-                            &bull; {s}
-                          </div>
-                        ))
-                      }
-                    </div>
-                  )}
-
-                  {/* Fallback */}
-                  {!actionResult.conflicts && !actionResult.availableSlots && !actionResult.occurrences && !actionResult.optimizedOrder && (
-                    <div className="text-sm text-gray-400">
-                      {actionResult.message ? (
-                        <p>{actionResult.message as string}</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {Object.entries(actionResult).map(([key, val]) => (
-                            <div key={key} className="flex justify-between p-2 bg-lattice-deep rounded text-xs">
-                              <span className="text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                              <span className="text-white font-medium">{typeof val === 'object' ? `${Object.keys(val as Record<string, unknown>).length} items` : String(val)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
           {/* Book Session floating button */}
           <motion.button
@@ -1759,6 +1871,108 @@ export default function CalendarLensPage() {
                       className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                     />
                   </div>
+                </div>
+
+                {/* Live conflict check — real STATE-backed calendar.conflicts-check
+                    against the user's actual saved events, not a pasted scratch pad. */}
+                {checkingConflicts && (
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking for conflicts…
+                  </div>
+                )}
+                {!checkingConflicts && conflicts.length > 0 && (
+                  <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 text-xs text-yellow-300">
+                    <div className="flex items-center gap-1.5 font-semibold mb-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Conflicts with {conflicts.length} existing event{conflicts.length === 1 ? '' : 's'}
+                    </div>
+                    {conflicts.map((c) => (
+                      <div key={`${c.eventId}-${c.start}`} className="text-yellow-200/80">
+                        {c.title} — {new Date(c.start).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Calendar (multi-calendar support — real calendars-list) */}
+                {calendars.length > 0 && (
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Calendar</label>
+                    <select
+                      value={newEvent.calendarId || calendars.find((c) => c.isDefault)?.id || calendars[0]?.id || ''}
+                      onChange={(e) => setNewEvent({ ...newEvent, calendarId: e.target.value })}
+                      className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
+                    >
+                      {calendars.map((cal) => (
+                        <option key={cal.id} value={cal.id}>{cal.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Repeat (real RRULE-lite recurrence — calendar.expandRecurring via
+                    events-list) — the generic artifact store had no way to do this. */}
+                <div>
+                  <label className="text-xs text-gray-400 mb-2 block flex items-center gap-1.5">
+                    <Repeat className="w-3.5 h-3.5" /> Repeat
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={newEvent.recurrence?.frequency || 'none'}
+                      onChange={(e) => {
+                        const freq = e.target.value;
+                        if (freq === 'none') { setNewEvent({ ...newEvent, recurrence: undefined }); return; }
+                        setNewEvent({
+                          ...newEvent,
+                          recurrence: {
+                            frequency: freq as 'daily' | 'weekly' | 'monthly' | 'yearly',
+                            interval: newEvent.recurrence?.interval || 1,
+                            endDate: newEvent.recurrence?.endDate,
+                          },
+                        });
+                      }}
+                      className="bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
+                    >
+                      <option value="none">Does not repeat</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
+                    </select>
+                    {newEvent.recurrence && (
+                      <>
+                        <span className="text-xs text-gray-400">every</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={newEvent.recurrence.interval}
+                          onChange={(e) => setNewEvent({
+                            ...newEvent,
+                            recurrence: { ...newEvent.recurrence!, interval: Math.max(1, parseInt(e.target.value, 10) || 1) },
+                          })}
+                          className="w-16 bg-lattice-deep rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-1 focus:ring-neon-cyan"
+                        />
+                        <span className="text-xs text-gray-400">
+                          {{ daily: 'day(s)', weekly: 'week(s)', monthly: 'month(s)', yearly: 'year(s)' }[newEvent.recurrence.frequency]}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {newEvent.recurrence && (
+                    <div className="mt-2">
+                      <label className="text-xs text-gray-400 mb-1 block">Ends (optional)</label>
+                      <input
+                        type="date"
+                        value={newEvent.recurrence.endDate ? newEvent.recurrence.endDate.toISOString().slice(0, 10) : ''}
+                        onChange={(e) => setNewEvent({
+                          ...newEvent,
+                          recurrence: { ...newEvent.recurrence!, endDate: e.target.value ? new Date(e.target.value) : undefined },
+                        })}
+                        className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Link to Project */}

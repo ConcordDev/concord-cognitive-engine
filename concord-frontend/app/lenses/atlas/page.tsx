@@ -22,6 +22,7 @@ import AtlasPublicView from '@/components/chat/AtlasPublicView';
 import AtlasResearchView from '@/components/chat/AtlasResearchView';
 import AtlasSignalView from '@/components/chat/AtlasSignalView';
 import AtlasOverlay from '@/components/chat/AtlasOverlay';
+import { SignalClassifyForm } from '@/components/atlas/SignalClassifyForm';
 
 // Leaflet requires dynamic import (no SSR)
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -330,6 +331,7 @@ function SignalTomography() {
 
         {tab === 'signals' && (
           <>
+            <SignalClassifyForm />
             <AtlasSignalView
               data={taxonomyData ? { ok: true, view: 'taxonomy', taxonomy: taxonomyData } : null}
               loading={taxonomyLoading}

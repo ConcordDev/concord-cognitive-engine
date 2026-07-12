@@ -7,6 +7,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerReposActions from "../domains/repos.js";
+import { clearExternalFetchCache } from "../lib/external-fetch.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -23,6 +24,7 @@ before(() => { registerReposActions(register); });
 beforeEach(() => {
   globalThis._concordSTATE = {};
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
+  clearExternalFetchCache();
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
@@ -239,20 +241,84 @@ describe("repos — CI workflow runs + logs", () => {
 });
 
 describe("repos — security scan", () => {
-  it("security-scan flags hardcoded secrets via code scanning", () => {
+  it("security-scan flags hardcoded secrets via code scanning", async () => {
+    // No package.json in this repo → osvScanDependencies short-circuits
+    // before ever touching fetch, so the default network-disabled mock
+    // (see beforeEach) is fine here.
     const id = freshRepo();
     call("file-save", ctxA, { repoId: id, path: "src/leak.ts", content: 'const password = "hunter2";\n' });
-    const r = call("security-scan", ctxA, { repoId: id });
+    const r = await call("security-scan", ctxA, { repoId: id });
     assert.equal(r.ok, true);
     assert.ok(r.result.codeScanning.some((a) => a.rule === "hardcoded-secret"));
   });
 
-  it("security-scan flags vulnerable dependencies via Dependabot DB", () => {
+  it("security-scan flags vulnerable dependencies via a real OSV.dev lookup", async () => {
     const id = freshRepo();
     call("file-save", ctxA, { repoId: id, path: "package.json", content: JSON.stringify({ dependencies: { lodash: "4.17.11" } }) });
-    const r = call("security-scan", ctxA, { repoId: id });
+    // Mock OSV's two-step contract: POST /v1/querybatch (minimal id+modified
+    // hits only, per OSV's own docs) then GET /v1/vulns/{id} per hit for the
+    // full advisory (severity, summary, fixed version).
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes("/v1/querybatch")) {
+        return {
+          ok: true, status: 200,
+          json: async () => ({ results: [{ vulns: [{ id: "GHSA-test-lodash", modified: "2020-01-01T00:00:00Z" }] }] }),
+        };
+      }
+      if (u.includes("/v1/vulns/GHSA-test-lodash")) {
+        return {
+          ok: true, status: 200,
+          json: async () => ({
+            id: "GHSA-test-lodash",
+            summary: "Prototype pollution in lodash",
+            affected: [{
+              package: { name: "lodash", ecosystem: "npm" },
+              ranges: [{ type: "SEMVER", events: [{ introduced: "0" }, { fixed: "4.17.12" }] }],
+            }],
+            database_specific: { severity: "HIGH" },
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch in test: ${u}`);
+    };
+    const r = await call("security-scan", ctxA, { repoId: id });
     assert.equal(r.ok, true);
-    assert.ok(r.result.dependabot.some((a) => a.package === "lodash"));
+    assert.equal(r.result.dependencySource, "osv.dev");
+    assert.equal(r.result.dependencyScanUnreachable, false);
+    const hit = r.result.dependabot.find((a) => a.package === "lodash");
+    assert.ok(hit, "expected a lodash dependency alert from the OSV mock");
+    assert.equal(hit.version, "4.17.11");
+    assert.equal(hit.severity, "high");
+    assert.equal(hit.fixedIn, "4.17.12");
+    assert.equal(hit.osvId, "GHSA-test-lodash");
+  });
+
+  it("security-scan fails honestly (no fabricated findings) when OSV is unreachable", async () => {
+    const id = freshRepo();
+    call("file-save", ctxA, { repoId: id, path: "package.json", content: JSON.stringify({ dependencies: { lodash: "4.17.11" } }) });
+    globalThis.fetch = async () => { throw new Error("network unreachable"); };
+    const r = await call("security-scan", ctxA, { repoId: id });
+    assert.equal(r.ok, true); // the macro itself still succeeds — code scanning is unaffected
+    assert.equal(r.result.dependencyScanUnreachable, true);
+    assert.equal(r.result.dependabot.length, 0);
+    assert.ok(r.result.dependencyScanError);
+  });
+
+  it("security-scan reports a clean dependency list when OSV has no known vulns", async () => {
+    const id = freshRepo();
+    call("file-save", ctxA, { repoId: id, path: "package.json", content: JSON.stringify({ dependencies: { "totally-safe-pkg": "1.0.0" } }) });
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes("/v1/querybatch")) {
+        return { ok: true, status: 200, json: async () => ({ results: [{}] }) };
+      }
+      throw new Error(`unexpected fetch in test: ${u}`);
+    };
+    const r = await call("security-scan", ctxA, { repoId: id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.dependencyScanUnreachable, false);
+    assert.equal(r.result.dependabot.length, 0);
   });
 });
 

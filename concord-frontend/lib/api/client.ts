@@ -2280,6 +2280,7 @@ export const apiHelpers = {
     signalsUnknown: (limit = 50) => api.get('/api/atlas/signals/unknown', { params: { limit } }),
     signalsAnomalies: (limit = 50) => api.get('/api/atlas/signals/anomalies', { params: { limit } }),
     signalsSpectrum: () => api.get('/api/atlas/signals/spectrum'),
+    signalsClassify: (payload: Record<string, unknown>) => api.post('/api/atlas/signals/classify', payload),
   },
 
   /** Qualia — Sensory / Body / Presence */

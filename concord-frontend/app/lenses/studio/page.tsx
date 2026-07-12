@@ -3134,9 +3134,9 @@ function DawWorkbenchSection() {
       <div>
         {active === 'clips' && <ClipsTimelinePanel projectId={projectId || undefined} trackId={trackId || undefined} />}
         {active === 'clipEdit' && <ClipEditorPanel projectId={projectId || undefined} trackId={trackId || undefined} />}
-        {active === 'midi' && <MidiPianoRoll clipId={clipId || undefined} />}
-        {active === 'quantize' && <QuantizePanel clipId={clipId || undefined} />}
-        {active === 'automation' && <AutomationLanesPanel trackId={trackId || undefined} />}
+        {active === 'midi' && <MidiPianoRoll projectId={projectId || undefined} clipId={clipId || undefined} />}
+        {active === 'quantize' && <QuantizePanel projectId={projectId || undefined} clipId={clipId || undefined} />}
+        {active === 'automation' && <AutomationLanesPanel projectId={projectId || undefined} trackId={trackId || undefined} />}
         {active === 'drumRack' && <DrumRackPanel projectId={projectId || undefined} />}
         {active === 'fxRack' && <FxRackPanel />}
         {active === 'midiMap' && <MidiMapPanel projectId={projectId || undefined} />}

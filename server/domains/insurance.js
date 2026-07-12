@@ -304,7 +304,7 @@ export default function registerInsuranceActions(register) {
     const s = STATE.insLens;
     for (const k of [
       "policies", "claims", "documents", "payments", "agents",
-      "reminders", "beneficiaries", "assets",
+      "reminders", "beneficiaries", "assets", "clients",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -315,6 +315,87 @@ export default function registerInsuranceActions(register) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
+
+  // ── Clients (persisted CRM entity) ───────────────────────────────────
+  // Closes the "no persisted Client entity" gap (docs/lens-specs/insurance-
+  // capability-map.md): an insured's contact record was never persisted —
+  // policies/claims/certificates only ever took free-text carrier/
+  // description/certificateHolder fields with no reusable per-client record
+  // backing them, so nothing autocompleted and nothing aggregated a
+  // client's book (their linked policies) across documents. This mirrors
+  // plumbing's clientAdd/clientList/resolveClientRef (server/domains/
+  // plumbing.js) and landscaping's client-add/client-list — the exact
+  // precedent this gap's capability-map entry names — adapted to this
+  // file's hyphenated macro-naming + STATE-backed (globalThis._concordSTATE)
+  // Map convention. A small, additive pair plus an OPTIONAL `clientId`
+  // wired into policy-add / claim-file / certificate-issue (the macros
+  // that already take insured-identifying free-text fields, below):
+  // passing `clientId` resolves the saved client's name onto the document;
+  // omitting it preserves the original free-text behavior byte-for-byte.
+  function resolveClientRef(state, userId, params) {
+    const clientId = String(params.clientId || "").trim().slice(0, 64) || null;
+    if (!clientId) return { clientId: null, client: null };
+    const found = (state.clients.get(userId) || []).find((c) => c.id === clientId);
+    if (!found) return { error: "client_not_found" };
+    return { clientId: found.id, client: found };
+  }
+
+  registerLensAction("insurance", "client-add", (ctx, _artifact, params = {}) => {
+    try {
+      const state = getInsState(); if (!state) return { ok: false, error: "STATE unavailable" };
+      const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+      const name = String(params.name || "").trim().slice(0, 120);
+      if (!name) return { ok: false, error: "name required" };
+      if (!state.clients.has(userId)) state.clients.set(userId, []);
+      const riskProfile = ["low", "standard", "elevated", "high"].includes(String(params.riskProfile || "").toLowerCase())
+        ? String(params.riskProfile).toLowerCase() : "standard";
+      const client = {
+        id: `cli_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name,
+        phone: String(params.phone || "").trim().slice(0, 40) || null,
+        email: String(params.email || "").trim().slice(0, 120) || null,
+        address: String(params.address || "").trim().slice(0, 200) || null,
+        dob: String(params.dob || "").trim().slice(0, 10) || null,
+        riskProfile,
+        referralSource: String(params.referralSource || "").trim().slice(0, 120) || null,
+        notes: String(params.notes || "").trim().slice(0, 400) || null,
+        createdAt: new Date().toISOString(),
+      };
+      state.clients.get(userId).push(client);
+      saveInsState();
+      return { ok: true, result: { client } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // client-list — filterable by a substring `query`; enriches each client
+  // with real cross-document history (linked policy count / active policy
+  // count / claim count / total active annual premium) joined on clientId
+  // against the policies + claims stores above, the same way plumbing's
+  // clientList aggregates against dispatch + invoices.
+  registerLensAction("insurance", "client-list", (ctx, _artifact, params = {}) => {
+    try {
+      const state = getInsState(); if (!state) return { ok: false, error: "STATE unavailable" };
+      const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+      const clients = state.clients.get(userId) || [];
+      const policies = state.policies.get(userId) || [];
+      const claims = state.claims.get(userId) || [];
+      const query = String(params.query || "").trim().slice(0, 80).toLowerCase();
+      const filtered = query ? clients.filter((c) => c.name.toLowerCase().includes(query)) : clients;
+      const enriched = filtered.map((c) => {
+        const clientPolicies = policies.filter((p) => p.clientId === c.id);
+        const clientClaims = claims.filter((cl) => cl.clientId === c.id);
+        const activePolicies = clientPolicies.filter((p) => p.status === "active");
+        return {
+          ...c,
+          policyCount: clientPolicies.length,
+          activePolicyCount: activePolicies.length,
+          claimCount: clientClaims.length,
+          totalAnnualPremium: Math.round(activePolicies.reduce((sum, p) => sum + (Number(p.annualPremium) || 0), 0) * 100) / 100,
+        };
+      });
+      return { ok: true, result: { clients: enriched, count: enriched.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 
   registerLensAction("insurance", "policy-list", (ctx, _artifact, _params = {}) => {
     const state = getInsState(); if (!state) return { ok: false, error: "STATE unavailable" };
@@ -330,6 +411,12 @@ export default function registerInsuranceActions(register) {
     if (!carrier || !policyNumber) return { ok: false, error: "carrier and policyNumber required" };
     const badNum = badNumericField(params, ["annualPremium", "deductible", "liabilityLimit"]);
     if (badNum) return { ok: false, error: `invalid_${badNum}` };
+    // Optional clientId resolution (persisted Client/CRM entity, above) —
+    // looks up a saved client's name and stamps it onto the policy as
+    // `insuredName`; omitting clientId preserves the original behavior
+    // byte-for-byte (no insured-name field was ever written before this).
+    const ref = resolveClientRef(state, userId, params);
+    if (ref.error) return { ok: false, error: ref.error };
     if (!state.policies.has(userId)) state.policies.set(userId, []);
     const policy = {
       id: `pol_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -341,6 +428,8 @@ export default function registerInsuranceActions(register) {
       effectiveDate: params.effectiveDate || new Date().toISOString().slice(0, 10),
       renewalDate: params.renewalDate || new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
       status: "active", documents: 0,
+      clientId: ref.clientId,
+      insuredName: ref.client ? ref.client.name : (String(params.insuredName || "").trim() || null),
       createdAt: new Date().toISOString(),
     };
     state.policies.get(userId).push(policy);
@@ -367,6 +456,12 @@ export default function registerInsuranceActions(register) {
     if (!carrier || !description) return { ok: false, error: "carrier and description required" };
     const badNum = badNumericField(params, ["claimAmount"]);
     if (badNum) return { ok: false, error: `invalid_${badNum}` };
+    // Optional clientId resolution (persisted Client/CRM entity, above) —
+    // stamps the claim with the saved client it belongs to; omitting
+    // clientId preserves the original behavior byte-for-byte (no clientId
+    // field was ever written before this).
+    const ref = resolveClientRef(state, userId, params);
+    if (ref.error) return { ok: false, error: ref.error };
     if (!state.claims.has(userId)) state.claims.set(userId, []);
     const claim = {
       id: `clm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -378,6 +473,7 @@ export default function registerInsuranceActions(register) {
       status: "submitted",
       claimAmount: Math.max(0, Number(params.claimAmount) || 0),
       documents: 0,
+      clientId: ref.clientId,
     };
     state.claims.get(userId).push(claim);
     saveInsState();
@@ -1604,7 +1700,15 @@ export default function registerInsuranceActions(register) {
     const userId = insAid(ctx);
     const policy = findPolicy(ins, userId, params.policyId);
     if (!policy) return { ok: false, error: "policy not found" };
-    const holder = insClean(params.certificateHolder, 200);
+    // Optional clientId resolution (persisted Client/CRM entity) — when
+    // supplied, defaults certificateHolder/insuredName from the saved
+    // client ONLY where the caller didn't already supply that specific
+    // field explicitly. Omitting clientId preserves the original
+    // certificateHolder-required / insuredName-optional behavior
+    // byte-for-byte.
+    const ref = resolveClientRef(ins, userId, params);
+    if (ref.error) return { ok: false, error: ref.error };
+    const holder = insClean(params.certificateHolder, 200) || (ref.client ? ref.client.name : "");
     if (!holder) return { ok: false, error: "certificateHolder required" };
     const form = ["ACORD_25", "ACORD_27", "ACORD_28"].includes(params.formType)
       ? params.formType : "ACORD_25";
@@ -1613,8 +1717,9 @@ export default function registerInsuranceActions(register) {
       formType: form,
       policyId: policy.id, policyNumber: policy.policyNumber,
       carrier: policy.carrier, lineOfBusiness: policy.kind,
-      insured: insClean(params.insuredName, 200) || null,
+      insured: insClean(params.insuredName, 200) || (ref.client ? ref.client.name : null),
       certificateHolder: holder,
+      clientId: ref.clientId,
       description: insClean(params.description, 400) || null,
       coverages: {
         effectiveDate: policy.effectiveDate,

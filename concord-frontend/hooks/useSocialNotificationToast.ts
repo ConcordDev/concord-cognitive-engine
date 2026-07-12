@@ -38,6 +38,11 @@ const TYPE_TO_TONE: Record<string, 'success' | 'info' | 'warning' | 'error'> = {
   follow: 'info',
   mention: 'info',
   dm: 'info',
+  // BYO-keys spend alerts (server/emergent/byo-budget-alert-cycle.js):
+  // 'warning' at the sub-cap threshold, escalated to 'error' by the
+  // wording once a cap is fully hit — the toast tone itself doesn't
+  // need to distinguish the two since the message text already does.
+  budget_alert: 'warning',
 };
 
 export function useSocialNotificationToast() {

@@ -102,9 +102,11 @@ divergent policy/claim data model** running in parallel with the real one:
 - **Three tabs (`Calculator`/`Quote`, `Clients`/`InsuredClient`,
   `Compliance`/`ComplianceItem`) invented entire agency-management
   sub-products with zero backend support anywhere in the 71 macros** — no
-  macro persists an arbitrary "quote" record, a client/CRM contact record,
-  or a CE-credit/license-renewal compliance record. These are **genuinely
-  missing capabilities** (see below), not just a field-shape bug.
+  macro persisted an arbitrary "quote" record, a client/CRM contact record,
+  or a CE-credit/license-renewal compliance record at the time of this
+  removal pass. Quote/Compliance are still genuinely missing (see below);
+  the client/CRM record is **no longer missing — CLOSED (2026-07-12,
+  `ddbd111f`)**, see below.
 - **`Documents`** duplicated the real, policy-scoped `policy-document-add`/
   `policy-document-list` macros with an untied, generic document library
   (arbitrary `fileName`/`category`, no `policyId`).
@@ -311,16 +313,70 @@ Real Applied Epic / EZLynx agency-management capabilities with **zero
 backend macro** anywhere in the 71-macro surface — these were the concepts
 the removed fake `Clients`/`Compliance` tabs were standing in for, and per
 the honesty invariant they're relabeled as deferred rather than faked:
-- **Client/CRM record management** — a persisted contact record per insured
-  client (phone/email/address/DOB/risk-profile/referral-source, linked to
-  their policies). No `insurance.*` macro creates or lists such a record.
+- ~~**Client/CRM record management** — a persisted contact record per
+  insured client (phone/email/address/DOB/risk-profile/referral-source,
+  linked to their policies). No `insurance.*` macro creates or lists such
+  a record.~~ **CLOSED (2026-07-12, `ddbd111f`).** Built the
+  `client-add`/`client-list` macro pair this row called for:
+  `server/domains/insurance.js` gained `client-add` / `client-list` (this
+  file's own hyphenated macro-naming convention) plus a `resolveClientRef(
+  state, userId, params)` helper, following plumbing's `clientAdd`/
+  `clientList`/`resolveClientRef` (`server/domains/plumbing.js`) and
+  landscaping's `client-add`/`client-list` — the exact precedent this row
+  named — adapted to this domain's STATE-backed `insLens` bucket
+  (`globalThis._concordSTATE.insLens.clients`, a per-user Map added
+  alongside the existing `policies`/`claims`/`documents`/… buckets in
+  `getInsState()`). `client-add` validates a required `name` plus optional
+  `phone`/`email`/`address`/`dob`/`riskProfile` (low/standard/elevated/high,
+  defaulting to `standard` on an invalid value)/`referralSource`/`notes` —
+  the exact field set this row named. `client-list` supports a `query`
+  substring filter (case-insensitive) and enriches each client with real
+  cross-document history — `policyCount`/`activePolicyCount`/`claimCount`/
+  `totalAnnualPremium` — joined on `clientId` against the existing
+  `policies` + `claims` stores, closing the "linked to their policies" half
+  of the gap. An optional `clientId` was wired additively into the three
+  macros that already take insured-identifying free-text fields —
+  `policy-add` (stamps `insuredName` + `clientId` onto the policy),
+  `claim-file` (stamps `clientId` onto the claim), and `certificate-issue`
+  (defaults `certificateHolder`/`insured` from the resolved client only
+  where the caller didn't already supply that specific field explicitly) —
+  resolving the saved client's name onto the document; an unknown
+  `clientId` is rejected with `client_not_found`; omitting `clientId`
+  entirely preserves each macro's original behavior byte-for-byte
+  (regression-tested). New `concord-frontend/components/insurance/
+  ClientAutocomplete.tsx` (mirrors plumbing's/landscaping's
+  `ClientAutocomplete.tsx` design — combobox, type-to-search, arrow-key
+  navigate, Enter to select, inline "add as new client" when no match —
+  restyled to this lens's own blue palette, not a literal cross-lens
+  import) is wired into `InsurancePoliciesPanel`'s "Add policy" form and
+  `InsuranceClaimsPanel`'s "File claim" form; a new "Clients" tab
+  (`InsuranceClientsPanel.tsx`) was added to `InsuranceWalletSection`
+  (browse/search/add clients, showing each client's aggregated policy/claim
+  book). Tests: 18 new cases in `server/tests/insurance-client-crm.test.js`
+  (add/list round-trip, name-required rejection, riskProfile default/
+  validation, substring query filter, per-user scoping, `clientId`
+  resolution + unknown-`clientId` rejection on `policy-add`/`claim-file`/
+  `certificate-issue`, explicit REGRESSION cases proving the no-`clientId`
+  path is byte-identical to the pre-change behavior on all three wired
+  macros, and cross-document `policyCount`/`activePolicyCount`/
+  `claimCount`/`totalAnnualPremium` aggregation including an
+  active-vs-lapsed exclusion case), plus 7 new cases in
+  `concord-frontend/tests/components/InsuranceClientAutocomplete.test.tsx`
+  (placeholder render, substring-filtered dropdown with contact info +
+  policy count, click-to-select, free-text edit clears the link, keyboard
+  nav, inline create wired through `insurance.client-add`, and exact-match
+  suppresses the "add new" option). All pre-existing insurance suites
+  (`insurance-lens-macros`, `insurance-domain-parity`,
+  `insurance-death-pact-macros`, `death-insurance-lens-macros`,
+  `depth/insurance-behavior`) still pass in full (120/120 combined with the
+  new file) — the change is additive, not a rewrite.
 - **Producer compliance tracking** — CE-credit progress, license renewal
   dates, E&O insurance status, carrier-appointment tracking. No backend
   macro tracks any of this.
 
-Both would need new `domains/insurance.js` macros (out of scope for a
-frontend-only pass — "do not invent new backend behavior") before a real,
-designed UI could be built for them.
+Producer compliance tracking would still need new `domains/insurance.js`
+macros (out of scope for a frontend-only pass — "do not invent new backend
+behavior") before a real, designed UI could be built for it.
 
 ## Verification
 
@@ -337,6 +393,28 @@ designed UI could be built for them.
 - `npx tsc --noEmit` (from `concord-frontend/`) — zero new errors; the only
   errors in the full-repo run are pre-existing, in unrelated lenses
   (`components/ethics/DecisionToolkit.tsx`, `components/events/EventOps.tsx`).
+
+### 2026-07-12 update — Client/CRM closure verification
+
+This pass DID touch the backend (`server/domains/insurance.js`), unlike the
+frontend-only pass the block above describes:
+
+- `node --check server/domains/insurance.js` — clean.
+- `cd server && npx eslint domains/insurance.js tests/insurance-client-crm.test.js`
+  — 0 errors/warnings.
+- `cd server && DB_PATH=/tmp/insurance-verify-<ts>.db NODE_ENV=test node --test
+  tests/insurance-lens-macros.test.js tests/insurance-domain-parity.test.js
+  tests/insurance-death-pact-macros.test.js tests/death-insurance-lens-macros.test.js
+  tests/insurance-client-crm.test.js` — **120/120 pass** (102 pre-existing +
+  18 new; 0 regressions). `tests/depth/insurance-behavior.test.js` (real
+  server boot) also re-run clean at 17/17, unmodified.
+- `cd concord-frontend && npx vitest run tests/components/InsuranceClientAutocomplete.test.tsx`
+  — **7/7 pass**.
+- `cd concord-frontend && npx eslint components/insurance/ClientAutocomplete.tsx
+  components/insurance/InsuranceClientsPanel.tsx components/insurance/InsuranceWalletSection.tsx
+  components/insurance/InsurancePoliciesPanel.tsx components/insurance/InsuranceClaimsPanel.tsx
+  tests/components/InsuranceClientAutocomplete.test.tsx` — 0 errors/warnings.
+- `cd concord-frontend && npx tsc --noEmit -p .` — **0 errors project-wide.**
 - `node scripts/verify-lens-backends.mjs` (from repo root) —
   `{"WIRED":258,"NO-BACKEND-CALL":2}` total 260, matching the expected
   post-pass baseline (insurance was already WIRED and stays WIRED).

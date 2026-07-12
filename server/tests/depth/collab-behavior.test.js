@@ -14,7 +14,7 @@
 // macros below remain fully deterministic under no-egress.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, load } from "./_harness.js";
 
 describe("collab — facilitation calc contracts (exact computed values)", () => {
   it("sessionAnalytics: computes per-participant share + Gini balance rating", async () => {
@@ -435,5 +435,77 @@ describe("collab — CRDT Y.Doc snapshot / list / restore (shared ctx)", () => {
     const bad = await lensRun("collab", "docCrdtRestore", { params: { docId: c.result.id, snapshotId: "csnap_nope" } }, ctx);
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /snapshot not found/);
+  });
+});
+
+// ── APPENDED depth coverage: session rooms — live participant roster sync ──
+// Closes the "Live participant join/leave with real roster sync" gap
+// (docs/lens-specs/collab-capability-map.md): sessions are generic
+// cross-user lens artifacts (domain='collab', type='session') in
+// STATE.lensArtifacts — a DIFFERENT store from the CRDT doc engine above.
+// sessionJoin/sessionLeave/sessionRoster track the genuinely-live joined
+// set. This suite boots the real server (via lensRun/load) and drives the
+// macros with two independently-scoped users, verifying user B's join is
+// visible through user A's own, separately-issued sessionRoster read — not
+// just B's own join-call echo.
+describe("collab — session rooms (live participant join/leave roster sync)", () => {
+  let ctxA, ctxB, ctxC, STATE;
+
+  before(async () => {
+    const harness = await load();
+    STATE = harness.STATE;
+    ctxA = await depthCtx("collab-roster-a");
+    ctxB = await depthCtx("collab-roster-b");
+    ctxC = await depthCtx("collab-roster-c");
+  });
+
+  function seedRealSession(id) {
+    STATE.lensArtifacts.set(id, {
+      id, domain: "collab", type: "session",
+      ownerId: ctxA.actor.userId,
+      title: "Depth-test session",
+      data: { name: "Depth-test session", participants: [] },
+      meta: { tags: [], status: "draft", visibility: "private" },
+    });
+  }
+
+  it("user A creates a session; user B joins and becomes a REAL tracked participant, verified via A's own independent roster read", async () => {
+    const sessionId = "depth-collab-sess-1";
+    seedRealSession(sessionId);
+    const join = await lensRun("collab", "sessionJoin", { params: { sessionId } }, ctxB);
+    assert.equal(join.result.count, 1);
+    assert.equal(join.result.participants[0].userId, ctxB.actor.userId);
+    // Independent read, issued by a DIFFERENT user (A), not the joiner's own echo.
+    const roster = await lensRun("collab", "sessionRoster", { params: { sessionId } }, ctxA);
+    assert.equal(roster.result.count, 1);
+    assert.equal(roster.result.participants[0].userId, ctxB.actor.userId);
+  });
+
+  it("user B leaves; the roster no longer contains them", async () => {
+    const sessionId = "depth-collab-sess-2";
+    seedRealSession(sessionId);
+    await lensRun("collab", "sessionJoin", { params: { sessionId } }, ctxB);
+    const leave = await lensRun("collab", "sessionLeave", { params: { sessionId } }, ctxB);
+    assert.equal(leave.result.count, 0);
+    const roster = await lensRun("collab", "sessionRoster", { params: { sessionId } }, ctxA);
+    assert.equal(roster.result.count, 0);
+  });
+
+  it("multiple concurrent joiners are all reflected in the roster at once", async () => {
+    const sessionId = "depth-collab-sess-3";
+    seedRealSession(sessionId);
+    await lensRun("collab", "sessionJoin", { params: { sessionId } }, ctxA);
+    await lensRun("collab", "sessionJoin", { params: { sessionId } }, ctxB);
+    await lensRun("collab", "sessionJoin", { params: { sessionId } }, ctxC);
+    const roster = await lensRun("collab", "sessionRoster", { params: { sessionId } }, ctxA);
+    assert.equal(roster.result.count, 3);
+    const ids = roster.result.participants.map((p) => p.userId).sort();
+    assert.deepEqual(ids, [ctxA.actor.userId, ctxB.actor.userId, ctxC.actor.userId].sort());
+  });
+
+  it("validation: sessionJoin against a session id that was never created is rejected, not silently accepted", async () => {
+    const bad = await lensRun("collab", "sessionJoin", { params: { sessionId: "depth-collab-sess-ghost" } }, ctxA);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /not found/);
   });
 });
