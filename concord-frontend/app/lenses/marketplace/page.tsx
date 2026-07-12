@@ -2438,30 +2438,60 @@ export default function MarketplaceLensPage() {
                   <span className="text-sm text-gray-400">{formatPrice(p.price)}</span>
                   <button
                     onClick={async () => {
+                      // The only real fulfillment path in this domain is the
+                      // plugin marketplace's install macro (server.js
+                      // register("marketplace", "install", ...)) — it looks
+                      // items up in PLUGIN_MARKETPLACE.listings, keyed by
+                      // pluginId. Purchases in this tab come from the
+                      // *artistry* marketplace (beat/stems/sample-pack/
+                      // artwork — see LISTING_TYPE_TO_ITEM_TYPE above) and
+                      // that domain has no byte-download endpoint at all —
+                      // /api/artistry/blobs/:id only ever returns blob
+                      // metadata, never the stored data. Don't call a macro
+                      // that can only ever fail for these types; say so.
+                      if (p.item.type !== 'plugin') {
+                        useUIStore.getState().addToast({
+                          type: 'info',
+                          message: `${p.item.title} doesn't have automated delivery yet — this item type has no fulfillment path wired up. Reach out to ${p.item.creator.name} for the files.`,
+                        });
+                        return;
+                      }
                       useUIStore.getState().addToast({
                         type: 'info',
-                        message: `Preparing download: ${p.item.title}...`,
+                        message: `Installing ${p.item.title}...`,
                       });
                       try {
-                        const res = await api.get(`/api/marketplace/install`, {
-                          params: { id: p.item.id },
+                        // The install macro reads `pluginId` from the body,
+                        // but the route's zod schema (schemas.marketplaceInstall)
+                        // separately requires `listingId` to be present or the
+                        // request 400s before the macro ever runs. Send both
+                        // so each independently-defined contract is satisfied.
+                        const res = await api.post('/api/marketplace/install', {
+                          pluginId: p.item.id,
+                          listingId: p.item.id,
                         });
-                        if (res.data?.ok) {
+                        if (res.data?.ok === true) {
                           useUIStore.getState().addToast({
                             type: 'success',
                             message: `${p.item.title} installed successfully`,
                           });
                         } else {
                           useUIStore.getState().addToast({
-                            type: 'success',
-                            message: `${p.item.title} added to your library`,
+                            type: 'error',
+                            message: res.data?.error
+                              ? `Failed to install ${p.item.title}: ${res.data.error}`
+                              : `Failed to install ${p.item.title}`,
                           });
                         }
                       } catch (e) {
                         console.error('Marketplace install failed:', e);
+                        const backendMsg = (e as { response?: { data?: { error?: string } } })
+                          ?.response?.data?.error;
                         useUIStore.getState().addToast({
                           type: 'error',
-                          message: `Failed to install ${p.item.title}`,
+                          message: backendMsg
+                            ? `Failed to install ${p.item.title}: ${backendMsg}`
+                            : `Failed to install ${p.item.title}`,
                         });
                       }
                     }}
