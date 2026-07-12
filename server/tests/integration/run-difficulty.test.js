@@ -16,6 +16,9 @@ import Database from "better-sqlite3";
 
 import { up as up241 } from "../../migrations/241_difficulty_tiers.js";
 import { up as up245 } from "../../migrations/245_roguelite_runs.js";
+// Wave 4 — startRun now reads/writes hp_bonus_applied, revives_remaining,
+// draft_picks_available (migration 359); apply it so those columns exist.
+import { up as up359 } from "../../migrations/359_run_mode_modifiers.js";
 import {
   resolveRunDifficulty, scaleRunEncounter, recordRunClear, runEncounterId,
 } from "../../lib/run-difficulty.js";
@@ -23,7 +26,7 @@ import { startRun } from "../../lib/roguelite.js";
 
 function freshDb() {
   const db = new Database(":memory:");
-  up241(db); up245(db);
+  up241(db); up245(db); up359(db);
   db.prepare(`INSERT INTO roguelite_meta_currency (user_id, balance, lifetime) VALUES ('u1', 0, 0)`).run();
   return db;
 }
