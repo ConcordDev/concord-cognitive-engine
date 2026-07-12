@@ -62,6 +62,7 @@ const PAIRS = [
   "root.evaluate",
   "system.synthesize",
   "teaching.evaluate",
+  "understanding.review",
   "voice-tts.synthesize",
 ];
 const CASES = PAIRS.map(p => {
