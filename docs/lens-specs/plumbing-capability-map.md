@@ -1,12 +1,13 @@
 # Plumbing — capability map (Wave 3, Frontend Rebuild Program)
 
-Audited 2026-07-10. Backend: `server/domains/plumbing.js`, 29 macros
-registered via `registerLensAction("plumbing", ...)`, no shadowing
-re-registration in `server.js`
-(`grep -n 'register.*"plumbing"' server/server.js` → no hits). Repro:
-`grep -n 'registerLensAction("plumbing"' server/domains/plumbing.js | wc -l` → `29`.
+Audited 2026-07-10. Backend: `server/domains/plumbing.js`, **31 macros**
+(was 29 at the original audit; `clientAdd`/`clientList` added 2026-07-12
+closing the Client-CRM gap below) registered via
+`registerLensAction("plumbing", ...)`, no shadowing re-registration in
+`server.js` (`grep -n 'register.*"plumbing"' server/server.js` → no hits).
+Repro: `grep -n 'registerLensAction("plumbing"' server/domains/plumbing.js | wc -l` → `31`.
 
-## Backend surface (29 macros, all real)
+## Backend surface (31 macros, all real)
 
 **Engineering calculators (4)** — IPC/UPC-grounded, not client-side arithmetic:
 - `pipeSize` — GPM/velocity → pipe diameter via the standard flow relation
@@ -19,8 +20,10 @@ re-registration in `server.js`
 - `fixtureCount` — fixture list → WSFU total (Water Supply Fixture Units
   per IPC/UPC) and recommended meter/supply-line size.
 
-**Field-service substrate (25)**, per-user `STATE`-backed:
+**Field-service substrate (27)**, per-user `STATE`-backed:
 - Technicians: `techAdd`, `techList`, `techRemove`.
+- Clients (CRM, added 2026-07-12): `clientAdd`, `clientList` — see
+  "Investigated and honestly deferred" below for the full closure writeup.
 - Dispatch board: `dispatchAssign`, `dispatchBoard`, `dispatchUpdate`.
 - Price book with markup: `priceItemAdd`, `priceBookList`,
   `priceItemUpdate`, `priceItemRemove`.
@@ -34,12 +37,13 @@ re-registration in `server.js`
   used, reports shortages).
 - Dashboard rollup: `opsSummary`.
 
-All 29 macros carry real behavioral tests in
+All 31 macros carry real behavioral tests in
 `server/tests/depth/plumbing-behavior.test.js` (exact engineering values —
 e.g. `pipeSize(10 GPM, 5 ft/s) → 0.9" calculated, 1" nominal` — plus CRUD
 round-trips and validation-rejection assertions). Verified green before and
-after this pass: `node --test server/tests/depth/plumbing-behavior.test.js`
-→ 1/1 pass.
+after the original pass and again after the 2026-07-12 Client-CRM addition:
+`node --test server/domains... ` — see the closure entry's own Verification
+note for the exact re-run.
 
 ## What was already real/wired
 
@@ -126,7 +130,7 @@ per capability, using the DATA-SOURCING / ENGINEERING / CURATION triage:
 | **Estimates** | `invoiceFromQuote` already models "quote → invoice" as one step (an issued invoice with `status:"issued"`, payable via `invoiceRecordPayment`). | Substantially covered — not deferred. A true pre-approval *Estimate* stage (separate from an issued invoice, with an accept/decline step) is a real but minor product gap. **ENGINEERING** — a small addition to `invoiceFromQuote`'s status machine (`draft`→`sent`→`accepted`→invoiced), not undertaken here to keep this pass surgical to the found defect. |
 | **Codes** (IPC/UPC reference library) | The four calculators *cite* code sections in their output (e.g. `drainSlope`'s `ipcCode` field), but there's no standalone, searchable code-reference macro. | **GENUINELY MISSING — CURATION.** A real code library needs licensed/curated IPC/UPC text (the current calculators encode only the specific numeric thresholds they need, not the full code). Building this without a real, rights-clear source would mean either fabricating code text (a honesty violation) or scraping a source we don't have rights to reproduce — deferred pending a real source. |
 | **Materials** (catalog/reference, distinct from stock) | `partStock`/`partList` already track on-hand inventory + reorder points — a real, wired parts system, just framed as *stock*, not a browsable materials *catalog* (SKUs/spec sheets independent of what's currently stocked). | **GENUINELY MISSING — CURATION.** A distinct material catalog (spec sheets, manufacturer part numbers) needs sourced reference data this domain doesn't have. The parts-inventory system already covers the operational need (what's on the truck); deferred. |
-| **Clients (CRM)** | Client name is a field on `dispatchAssign`/`invoiceFromQuote`/`planCreate`, but there's no persisted Client entity (so a phone/email/address typed once doesn't autocomplete future jobs for the same client). | **GENUINELY MISSING — ENGINEERING.** A real fix is a small new `clientAdd`/`clientList` macro pair plus autocomplete wiring in `FieldServiceConsole`'s job/invoice/plan forms. Out of scope for this surgical defect-removal pass; flagged for a future ENGINEERING unit. |
+| **Clients (CRM)** | ~~Client name is a field on `dispatchAssign`/`invoiceFromQuote`/`planCreate`, but there's no persisted Client entity (so a phone/email/address typed once doesn't autocomplete future jobs for the same client).~~ **CLOSED (2026-07-12, pending commit).** `server/domains/plumbing.js` gained a persisted `clients` store (`STATE.plumbingLens.clients`, per-user Map like every other substrate in this domain) plus the exact small pair the disposition called for: `clientAdd` (name required; phone/email/address/notes optional — the only fields the three document macros ever actually captured) and `clientList` (returns the caller's own clients, optionally filtered by a case-insensitive `query` substring, each enriched with real `jobsCount`/`invoiceCount`/`totalBilled` aggregated by joining on `clientId` across `dispatch`/`invoices` — closing the "doesn't aggregate history across documents" half of the gap too). `dispatchAssign`/`invoiceFromQuote`/`planCreate` all gained an OPTIONAL `clientId` param via a shared `resolveClientRef` helper: passing a real `clientId` resolves the client's name (and, for `dispatchAssign`, backfills `address` when the caller didn't supply one) and stamps `clientId` onto the created record; passing an unknown `clientId` fails honestly with `client_not_found` rather than silently falling through; omitting `clientId` entirely preserves the original free-text `client` field behavior byte-for-byte (regression-pinned). Frontend: new `concord-frontend/components/plumbing/ClientAutocomplete.tsx` is a genuinely designed combobox (not a raw `<select>`, not a JSON form) — type to search the caller's existing clients (name + phone/email/address + job count shown per row), full keyboard nav (arrow keys, Enter, Escape, `role="combobox"`/`role="listbox"`/`aria-activedescendant`), or add the typed name as a brand-new client inline via `clientAdd` when there's no exact match. Wired into `FieldServiceConsole`'s Dispatch (job), Quote → Invoice, and Service Plans forms (the exact three forms the disposition named); the Notifications form's client field is untouched free text — the capability-map's own framing named only "job/invoice/plan forms," and a fourth mount wasn't part of the identified gap. Selecting a client with a saved address auto-fills the job form's address field (only when the field is still empty, so it never clobbers a manually-typed address). Tests: 12 new behavioral cases in `server/tests/depth/plumbing-behavior.test.js` (add/list round-trip, name_required rejection, substring search, per-user isolation, clientId resolution on all three document macros, explicit `client_not_found` rejection, and a dedicated regression case per document macro proving the no-`clientId` path is byte-identical to the pre-change behavior) plus 7 new cases in `concord-frontend/tests/components/ClientAutocomplete.test.tsx` (render, filtered dropdown with contact info, click-to-select, free-text-clears-selection, keyboard nav, inline-create wiring through `clientAdd`, and the no-"add new"-on-exact-match case). All pre-existing plumbing suites (`plumbing-domain-parity`, `plumbing-lens-macros`, `plumbing-calculators`, `depth/plumbing-behavior`) still pass in full (99/99) — the change is additive, not a rewrite. |
 | **Inspections** | The tech workflow (`workflowStart`/`workflowUpdate`) covers on-site checklist + photo + signature, but not municipal inspection scheduling or pass/fail records against a jurisdiction. | **GENUINELY MISSING — ENGINEERING.** No macro, no table. Deferred. |
 | **Certs** | `techAdd`'s `skills` field is a freeform tag list (e.g. `["drain","gas"]`), not a formal certification record with issuing body + expiry date. | **GENUINELY MISSING — ENGINEERING.** Deferred. |
 | **Map** (job-site locations) | Dispatch assignments carry `address` (a string) but no `lat`/`lng` — there's no geocoding step anywhere in the domain. | **GENUINELY MISSING — ENGINEERING** (needs a geocoding integration, e.g. an address→coordinates macro backed by a real geocoding API/key). Deferred — faking coordinates from an address string would be a direct honesty violation. |
@@ -168,7 +172,13 @@ capabilities exist when they don't.
   non-lens-specific chrome primitives (used across ~250+ lenses), not an
   instance of this lens's defect pattern; removing them would be
   unrelated scope creep.
-- `server/domains/plumbing.js` — no changes. All 29 macros were already
+- `server/domains/plumbing.js` — no changes as of the original 2026-07-10
+  pass this section describes. All 29 macros at that time were already
   correct and already carried real behavioral tests before this pass
   (including a prior fix to the `pipeSize`/`waterHeaterSize` formulas
-  recorded in the file's own inline comments).
+  recorded in the file's own inline comments). **Superseded 2026-07-12:**
+  both `server/domains/plumbing.js` and `FieldServiceConsole.tsx` DID
+  change in the later Client-CRM pass — see the "Clients (CRM)" row in
+  "Investigated and honestly deferred" above for the closure writeup. This
+  bullet is kept for historical accuracy about the 2026-07-10 pass, not as
+  a live claim that these two files are still untouched.

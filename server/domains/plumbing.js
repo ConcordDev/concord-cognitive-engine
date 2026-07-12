@@ -30,6 +30,7 @@ export default function registerPlumbingActions(registerLensAction) {
     if (!(s.parts instanceof Map)) s.parts = new Map();         // userId -> Array<partStock>
     if (!(s.notices instanceof Map)) s.notices = new Map();     // userId -> Array<notification>
     if (!(s.workflows instanceof Map)) s.workflows = new Map(); // assignmentId -> workflow
+    if (!(s.clients instanceof Map)) s.clients = new Map();     // userId -> Array<client>
     return s;
   }
   function savePlumb() {
@@ -91,6 +92,67 @@ export default function registerPlumbingActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // ── Clients (persisted CRM entity) ───────────────────────────────
+  // Closes the "no persisted Client entity" gap (docs/lens-specs/plumbing-
+  // capability-map.md): client name/contact was previously a free-text field
+  // re-typed on every dispatchAssign/invoiceFromQuote/planCreate call, so it
+  // never autocompleted and history didn't aggregate across documents. This
+  // is a small, additive pair — clientAdd/clientList — plus an OPTIONAL
+  // `clientId` accepted by the three document macros below. Passing
+  // `clientId` looks the client up and uses its name/address; omitting it
+  // preserves the original free-text behavior byte-for-byte.
+  function resolveClientRef(g, userId, params) {
+    const clientId = clean(params.clientId, 64) || null;
+    if (!clientId) return { clientId: null, client: null };
+    const found = list(g.s.clients, userId).find(c => c.id === clientId);
+    if (!found) return { error: "client_not_found" };
+    return { clientId: found.id, client: found };
+  }
+  registerLensAction("plumbing", "clientAdd", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const clients = list(g.s.clients, actor(ctx));
+      const name = clean(params.name, 80);
+      if (!name) return { ok: false, error: "name_required" };
+      const client = {
+        id: pid("client"), name,
+        phone: clean(params.phone, 40),
+        email: clean(params.email, 120),
+        address: clean(params.address, 200),
+        notes: clean(params.notes, 400),
+        createdAt: new Date().toISOString(),
+      };
+      clients.push(client); savePlumb();
+      return { ok: true, result: { client } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "clientList", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const userId = actor(ctx);
+      const clients = list(g.s.clients, userId);
+      const dispatch = list(g.s.dispatch, userId);
+      const invoices = list(g.s.invoices, userId);
+      const query = clean(params.query, 80).toLowerCase();
+      const filtered = query ? clients.filter(c => c.name.toLowerCase().includes(query)) : clients;
+      // Aggregate real cross-document history per client — the second half
+      // of the documented gap ("doesn't aggregate history across documents
+      // for the same client"), derived from the same dispatch/invoice
+      // stores the free-text fields used to write into, now joined on id.
+      const enriched = filtered.map(c => {
+        const jobs = dispatch.filter(d => d.clientId === c.id);
+        const clientInvoices = invoices.filter(i => i.clientId === c.id);
+        return {
+          ...c,
+          jobsCount: jobs.length,
+          invoiceCount: clientInvoices.length,
+          totalBilled: Math.round(clientInvoices.reduce((s, i) => s + i.total, 0) * 100) / 100,
+        };
+      });
+      return { ok: true, result: { clients: enriched, count: enriched.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ── Job scheduling + dispatch board ──────────────────────────────
   registerLensAction("plumbing", "dispatchAssign", (ctx, _artifact, params = {}) => {
     try {
@@ -102,12 +164,16 @@ export default function registerPlumbingActions(registerLensAction) {
       if (!jobTitle) return { ok: false, error: "jobTitle_required" };
       const techId = clean(params.techId, 64) || null;
       if (techId && !techs.find(t => t.id === techId)) return { ok: false, error: "tech_not_found" };
+      const ref = resolveClientRef(g, userId, params);
+      if (ref.error) return { ok: false, error: ref.error };
+      const clientName = ref.client ? ref.client.name : clean(params.client, 80);
+      const address = clean(params.address, 200) || (ref.client ? (ref.client.address || "") : "");
       const date = clean(params.date, 16) || new Date().toISOString().slice(0, 10);
       const startHour = Math.min(23, Math.max(0, num(params.startHour) || 8));
       const durationHours = Math.min(12, Math.max(0.5, num(params.durationHours) || 2));
       const assignment = {
         id: pid("disp"), jobTitle, jobId: clean(params.jobId, 64) || null,
-        client: clean(params.client, 80), address: clean(params.address, 200),
+        client: clientName, clientId: ref.clientId, address,
         techId, date, startHour, durationHours,
         priority: ["low", "normal", "high", "emergency"].includes(params.priority) ? params.priority : "normal",
         status: "scheduled",
@@ -252,11 +318,14 @@ export default function registerPlumbingActions(registerLensAction) {
       const tax = Math.round(subtotal * taxPct / 100 * 100) / 100;
       const total = Math.round((subtotal + tax) * 100) / 100;
       const seq = invoices.length + 1;
+      const ref = resolveClientRef(g, userId, params);
+      if (ref.error) return { ok: false, error: ref.error };
+      const clientName = ref.client ? ref.client.name : clean(params.client, 80);
       const invoice = {
         id: pid("inv"),
         number: clean(params.number, 32) || `INV-${String(seq).padStart(4, "0")}`,
         quoteRef: clean(params.quoteRef, 64) || null,
-        client: clean(params.client, 80),
+        client: clientName, clientId: ref.clientId,
         lines: norm, subtotal, taxPct, tax, total,
         status: "issued", amountPaid: 0,
         dueDate: clean(params.dueDate, 16),
@@ -367,13 +436,16 @@ export default function registerPlumbingActions(registerLensAction) {
   registerLensAction("plumbing", "planCreate", (ctx, _artifact, params = {}) => {
     try {
       const g = guard(); if (g.error) return g.error;
-      const plans = list(g.s.plans, actor(ctx));
-      const client = clean(params.client, 80);
+      const userId = actor(ctx);
+      const plans = list(g.s.plans, userId);
+      const ref = resolveClientRef(g, userId, params);
+      if (ref.error) return { ok: false, error: ref.error };
+      const client = ref.client ? ref.client.name : clean(params.client, 80);
       if (!client) return { ok: false, error: "client_required" };
       const cadence = ["weekly", "monthly", "quarterly", "biannual", "annual"].includes(params.cadence) ? params.cadence : "annual";
       const start = clean(params.startDate, 16) || new Date().toISOString().slice(0, 10);
       const plan = {
-        id: pid("plan"), client,
+        id: pid("plan"), client, clientId: ref.clientId,
         title: clean(params.title, 120) || "Maintenance Plan",
         cadence, fee: Math.max(0, num(params.fee)),
         startDate: start, nextVisit: nextDue(start, cadence),

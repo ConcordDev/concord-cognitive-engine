@@ -13,6 +13,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit, TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
+import { ClientAutocomplete } from '@/components/plumbing/ClientAutocomplete';
+import type { ClientRecord } from '@/components/plumbing/ClientAutocomplete';
 import {
   Calendar, Users, BookOpen, Receipt, ClipboardCheck, RefreshCw,
   Bell, Boxes, Plus, Trash2, Loader2, Check, AlertTriangle, Send,
@@ -24,7 +26,7 @@ type Section =
 
 interface Tech { id: string; name: string; skills: string[]; phone: string; baseColor: string; active: boolean; openJobs?: number; }
 interface Assignment {
-  id: string; jobTitle: string; client: string; address: string;
+  id: string; jobTitle: string; client: string; clientId?: string | null; address: string;
   techId: string | null; date: string; startHour: number; durationHours: number;
   priority: string; status: string; partsUsed?: { name: string; deducted: number }[];
 }
@@ -32,7 +34,7 @@ interface Lane { techId: string; techName: string; baseColor: string; assignment
 interface PriceItem { id: string; name: string; kind: string; unit: string; cost: number; markupPct: number; price: number; sku: string; }
 interface InvoiceLine { priceItemId: string | null; name: string; quantity: number; unitPrice: number; total: number; }
 interface Invoice {
-  id: string; number: string; client: string; lines: InvoiceLine[];
+  id: string; number: string; client: string; clientId?: string | null; lines: InvoiceLine[];
   subtotal: number; taxPct: number; tax: number; total: number;
   status: string; amountPaid: number; dueDate: string;
   payments: { id: string; amount: number; method: string; at: string }[];
@@ -45,7 +47,7 @@ interface Workflow {
   startedAt: string; completedAt: string | null;
 }
 interface ServicePlan {
-  id: string; client: string; title: string; cadence: string; fee: number;
+  id: string; client: string; clientId?: string | null; title: string; cadence: string; fee: number;
   startDate: string; nextVisit: string; visitsCompleted: number; active: boolean;
 }
 interface Notice { id: string; client: string; kind: string; channel: string; message: string; status: string; sentAt: string; }
@@ -91,6 +93,7 @@ export function FieldServiceConsole() {
 
   const [ops, setOps] = useState<OpsSummary | null>(null);
   const [techs, setTechs] = useState<Tech[]>([]);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [unassigned, setUnassigned] = useState<Assignment[]>([]);
   const [emergencyCount, setEmergencyCount] = useState(0);
@@ -116,6 +119,7 @@ export function FieldServiceConsole() {
   const [techPhone, setTechPhone] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [jobClient, setJobClient] = useState('');
+  const [jobClientId, setJobClientId] = useState<string | null>(null);
   const [jobAddr, setJobAddr] = useState('');
   const [jobTech, setJobTech] = useState('');
   const [jobDate, setJobDate] = useState(new Date().toISOString().slice(0, 10));
@@ -131,6 +135,7 @@ export function FieldServiceConsole() {
   const [piSku, setPiSku] = useState('');
 
   const [invClient, setInvClient] = useState('');
+  const [invClientId, setInvClientId] = useState<string | null>(null);
   const [invTax, setInvTax] = useState('0');
   const [invDue, setInvDue] = useState('');
   const [invLines, setInvLines] = useState<{ name: string; quantity: string; unitPrice: string; priceItemId: string | null }[]>([
@@ -142,6 +147,7 @@ export function FieldServiceConsole() {
   const [wfSignedBy, setWfSignedBy] = useState('');
 
   const [planClient, setPlanClient] = useState('');
+  const [planClientId, setPlanClientId] = useState<string | null>(null);
   const [planTitle, setPlanTitle] = useState('');
   const [planCadence, setPlanCadence] = useState('annual');
   const [planFee, setPlanFee] = useState('');
@@ -180,6 +186,11 @@ export function FieldServiceConsole() {
     if (b) { setLanes(b.lanes); setUnassigned(b.unassigned); setEmergencyCount(b.emergencyCount); }
   }, [boardDate]);
 
+  const refreshClients = useCallback(async () => {
+    const r = await run<{ clients: ClientRecord[] }>('clientList');
+    if (r) setClients(r.clients);
+  }, []);
+
   const refreshPriceBook = useCallback(async () => {
     const r = await run<{ items: PriceItem[]; avgMarginPct: number }>('priceBookList');
     if (r) { setPriceItems(r.items); setAvgMargin(r.avgMarginPct); }
@@ -208,9 +219,15 @@ export function FieldServiceConsole() {
   const refreshAll = useCallback(async () => {
     await Promise.all([
       refreshOps(), refreshDispatch(), refreshPriceBook(),
-      refreshInvoices(), refreshPlans(), refreshNotices(), refreshParts(),
+      refreshInvoices(), refreshPlans(), refreshNotices(), refreshParts(), refreshClients(),
     ]);
-  }, [refreshOps, refreshDispatch, refreshPriceBook, refreshInvoices, refreshPlans, refreshNotices, refreshParts]);
+  }, [refreshOps, refreshDispatch, refreshPriceBook, refreshInvoices, refreshPlans, refreshNotices, refreshParts, refreshClients]);
+
+  // Shared inline-create handler for all three ClientAutocomplete mounts —
+  // a client created from any form is immediately searchable from the others.
+  const handleClientCreated = useCallback((client: ClientRecord) => {
+    setClients((cs) => (cs.some((c) => c.id === client.id) ? cs : [...cs, client]));
+  }, []);
 
   useEffect(() => {
     void refreshAll();
@@ -243,14 +260,20 @@ export function FieldServiceConsole() {
   const assignJob = () => guarded(async () => {
     if (!jobTitle.trim()) { setErr('Job title required'); return; }
     const r = await run('dispatchAssign', {
-      jobTitle, client: jobClient, address: jobAddr,
+      jobTitle, client: jobClient, clientId: jobClientId || undefined, address: jobAddr,
       techId: jobTech || undefined, date: jobDate,
       startHour: Number(jobHour), durationHours: Number(jobDur), priority: jobPriority,
     });
     if (!r) { setErr('dispatchAssign failed'); return; }
-    setJobTitle(''); setJobClient(''); setJobAddr('');
+    setJobTitle(''); setJobClient(''); setJobClientId(null); setJobAddr('');
     await Promise.all([refreshDispatch(), refreshOps()]);
   });
+
+  const selectJobClient = (client: ClientRecord | null, text: string) => {
+    setJobClientId(client ? client.id : null);
+    setJobClient(text);
+    if (client?.address && !jobAddr.trim()) setJobAddr(client.address);
+  };
 
   const updateAssignment = (id: string, patch: Record<string, unknown>) => guarded(async () => {
     await run('dispatchUpdate', { assignmentId: id, ...patch });
@@ -294,11 +317,18 @@ export function FieldServiceConsole() {
       .filter((l) => l.name.trim())
       .map((l) => ({ name: l.name, quantity: Number(l.quantity) || 1, unitPrice: Number(l.unitPrice) || 0, priceItemId: l.priceItemId }));
     if (lines.length === 0) { setErr('Add at least one line item'); return; }
-    const r = await run('invoiceFromQuote', { client: invClient, taxPct: Number(invTax) || 0, dueDate: invDue, lines });
+    const r = await run('invoiceFromQuote', {
+      client: invClient, clientId: invClientId || undefined, taxPct: Number(invTax) || 0, dueDate: invDue, lines,
+    });
     if (!r) { setErr('invoiceFromQuote failed'); return; }
-    setInvClient(''); setInvDue(''); setInvLines([{ name: '', quantity: '1', unitPrice: '', priceItemId: null }]);
+    setInvClient(''); setInvClientId(null); setInvDue(''); setInvLines([{ name: '', quantity: '1', unitPrice: '', priceItemId: null }]);
     await Promise.all([refreshInvoices(), refreshOps()]);
   });
+
+  const selectInvClient = (client: ClientRecord | null, text: string) => {
+    setInvClientId(client ? client.id : null);
+    setInvClient(text);
+  };
 
   const recordPayment = (id: string, balance: number) => guarded(async () => {
     const amtStr = window.prompt('Payment amount', String(balance));
@@ -348,15 +378,20 @@ export function FieldServiceConsole() {
   });
 
   const createPlan = () => guarded(async () => {
-    if (!planClient.trim()) { setErr('Client required'); return; }
+    if (!planClient.trim() && !planClientId) { setErr('Client required'); return; }
     const r = await run('planCreate', {
-      client: planClient, title: planTitle, cadence: planCadence,
+      client: planClient, clientId: planClientId || undefined, title: planTitle, cadence: planCadence,
       fee: Number(planFee) || 0, startDate: planStart,
     });
     if (!r) { setErr('planCreate failed'); return; }
-    setPlanClient(''); setPlanTitle(''); setPlanFee('');
+    setPlanClient(''); setPlanClientId(null); setPlanTitle(''); setPlanFee('');
     await Promise.all([refreshPlans(), refreshOps()]);
   });
+
+  const selectPlanClient = (client: ClientRecord | null, text: string) => {
+    setPlanClientId(client ? client.id : null);
+    setPlanClient(text);
+  };
 
   const logVisit = (id: string) => guarded(async () => {
     await run('planLogVisit', { planId: id });
@@ -488,7 +523,7 @@ export function FieldServiceConsole() {
               <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-white"><Calendar className="h-3.5 w-3.5 text-blue-400" /> Schedule a Job</h4>
               <div className="grid grid-cols-2 gap-2">
                 <input className={`${inputCls} col-span-2`} placeholder="Job title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
-                <input className={inputCls} placeholder="Client" value={jobClient} onChange={(e) => setJobClient(e.target.value)} />
+                <ClientAutocomplete clients={clients} value={jobClient} clientId={jobClientId} onSelect={selectJobClient} onCreated={handleClientCreated} />
                 <input className={inputCls} placeholder="Address" value={jobAddr} onChange={(e) => setJobAddr(e.target.value)} />
                 <select className={inputCls} value={jobTech} onChange={(e) => setJobTech(e.target.value)}>
                   <option value="">Unassigned</option>
@@ -592,7 +627,7 @@ export function FieldServiceConsole() {
           <div className={cardCls}>
             <h4 className="mb-2 text-xs font-semibold text-white">Build Quote → Invoice</h4>
             <div className="mb-2 grid grid-cols-3 gap-2">
-              <input className={inputCls} placeholder="Client" value={invClient} onChange={(e) => setInvClient(e.target.value)} />
+              <ClientAutocomplete clients={clients} value={invClient} clientId={invClientId} onSelect={selectInvClient} onCreated={handleClientCreated} />
               <input type="number" className={inputCls} placeholder="Tax %" value={invTax} onChange={(e) => setInvTax(e.target.value)} />
               <input type="date" className={inputCls} value={invDue} onChange={(e) => setInvDue(e.target.value)} title="Due date" />
             </div>
@@ -702,7 +737,7 @@ export function FieldServiceConsole() {
           <div className={cardCls}>
             <h4 className="mb-2 text-xs font-semibold text-white">New Maintenance Plan · ${planRevenue.toLocaleString()} recurring · {planDueSoon} due soon</h4>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-              <input className={inputCls} placeholder="Client" value={planClient} onChange={(e) => setPlanClient(e.target.value)} />
+              <ClientAutocomplete clients={clients} value={planClient} clientId={planClientId} onSelect={selectPlanClient} onCreated={handleClientCreated} />
               <input className={inputCls} placeholder="Plan title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} />
               <select className={inputCls} value={planCadence} onChange={(e) => setPlanCadence(e.target.value)}>
                 {['weekly', 'monthly', 'quarterly', 'biannual', 'annual'].map((c) => <option key={c} value={c}>{c}</option>)}
