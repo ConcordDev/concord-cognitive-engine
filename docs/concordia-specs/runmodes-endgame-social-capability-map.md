@@ -42,9 +42,13 @@ every mode that has one:
   (`server/lib/run-draft.js`) — structured effects, synergy combos,
   deterministic seeded rolls — has zero callers anywhere in the frontend.**
   It was explicitly built to serve exactly the gap above and was never wired.
-- **Time-loop is functionally broken for players**, not just under-designed:
-  3 of its 5 HTTP routes are unreachable due to a route-registration typo,
-  so the HUD never renders and a loop can never be ended from the UI.
+- ~~**Time-loop is functionally broken for players**, not just
+  under-designed: 3 of its 5 HTTP routes are unreachable due to a
+  route-registration typo, so the HUD never renders and a loop can never
+  be ended from the UI.~~ **CLOSED (2026-07-12) — see §2.4.** The "3
+  broken routes" half of this claim didn't reproduce (never actually
+  broken in this codebase's history); the "no way to end a loop from the
+  UI" half was real and is now fixed with an "End loop" button.
 - **Party-combat's "ability" action has no ability catalog** — the server
   trusts a client-supplied `damage` number capped only at the 500 hard cap,
   and the frontend sends none, so every "ability" click deals a flat,
@@ -187,7 +191,34 @@ This is the system that should be powering horde's per-wave pick (closing
 finding 2.1) and roguelite's missing in-run boon layer — it was built and
 never connected.
 
-### 2.4 Time-loop: 3 of 5 HTTP routes are unreachable (route-registration bug)
+### 2.4 Time-loop: no "end loop" UI affordance — CLOSED (2026-07-12)
+
+**Correction to this section's original claim:** the "3 of 5 HTTP routes
+are unreachable (missing `/` before each path param)" finding below did
+NOT reproduce against the actual codebase — `grep -n
+"app\.\(get\|post\)(\"/api/time-loop" server/server.js` shows all 5 routes
+correctly slashed (`/api/time-loop/:sessionId/end`,
+`/api/time-loop/memories/:worldId`, `/api/time-loop/active/:worldId`), and
+`git log --all -S'"/api/time-loop:sessionId/end"'` (the broken string this
+section quoted) returns **zero commits** in this repository's entire
+history — that exact route string never existed. `TimeLoopHUD` was never
+actually broken; it renders correctly whenever `GET
+/api/time-loop/active/:worldId` returns an active session. The "verified
+live against an isolated Express instance" claim below was not
+reproducible and should be treated as a research error in the original
+audit, not a real regression that was later fixed.
+
+**What WAS real and is now fixed:** there was genuinely no frontend call
+site for `POST /api/time-loop/:sessionId/end` anywhere — a player could
+start a loop but had no way to end one manually from the UI (only via
+`timeout`/`death`, server-side). `TimeLoopHUD.tsx` now has an "End loop"
+button that POSTs `{ reason: 'manual_exit' }` to the real route (one of
+the 4 reasons `endLoop` accepts) and clears the HUD only on a confirmed
+`ok:true`; a failure leaves the loop state untouched and surfaces an
+honest toast instead of assuming success. 2 new tests
+(`tests/components/TimeLoopHUD-end-loop.test.tsx`) pin both paths.
+
+Original (inaccurate) finding text, kept for record:
 `server/server.js:52115-52136` registers:
 ```
 app.post("/api/time-loop:sessionId/end", ...)
@@ -201,19 +232,6 @@ POST /api/time-loop/sess1/end        -> 404
 GET  /api/time-loop/memories/tunya   -> 404
 GET  /api/time-loop/active/tunya     -> 404
 ```
-The frontend calls the correctly-slashed shape it was presumably meant to
-match: `TimeLoopHUD.tsx:35` fetches `/api/time-loop/active/${worldId}`,
-`:87` links to `/api/time-loop/memories/${worldId}` — both always 404 against
-the current route table. Consequence: `TimeLoopHUD` never renders (`refresh()`
-always sets `loop` to `null` from the failed fetch, and the component
-`return`s `null` whenever `!loop`, line 60) — the entire HUD is invisible
-even during an active loop. There is also no "end loop" call site anywhere
-in the frontend, so even fixing the route wouldn't currently let a player
-end a loop from the UI — only `/api/time-loop/start` and the POST-body
-`/api/time-loop/memory` (no path param) are reachable and used. This is a
-small, mechanical, high-confidence bug (a missing `/` in three route
-strings) — flagged for follow-up per the read-only scope of this audit, not
-fixed here.
 
 ### 2.5 Dungeon instances: real engine, 2 encounters, zero frontend, and an unbounded damage report
 `server/lib/dungeon-instance.js:15-34` — `DUNGEON_ENCOUNTERS` has exactly 2
@@ -348,10 +366,12 @@ wide margin.
    deterministic rolls; horde's dead `UPGRADE_CATALOG`/`pickUpgrade` path
    (2.1) should be replaced by a call to `run_draft.offer`/`.pick`, and
    roguelite should gain an in-run draft moment using the same macros.
-2. **[High] Fix the 3 broken time-loop routes** (2.4) — add the missing
+2. ~~**[High] Fix the 3 broken time-loop routes** (2.4) — add the missing
    `/` before `:sessionId`/`:worldId` in the three route registrations, and
-   wire an "end loop" call from the frontend (currently absent even from the
-   correct route shape).
+   wire an "end loop" call from the frontend (currently absent even from
+   the correct route shape).~~ **CLOSED (2026-07-12)** — see §2.4: the
+   routes were never actually broken; the missing "end loop" UI is now
+   built.
 3. **[High] Reconcile the two roguelite unlock catalogs** (2.2) — either
    fold `content/roguelite-unlocks.json`'s 6 ids into `META_UNLOCK_CATALOG`
    with real effects and server-side prices, or stop serving the JSON
@@ -423,10 +443,12 @@ endgame content, or social systems.
 
 ## 5. Reproduction notes
 
-- Route-registration bug (2.4): reproduced live against an isolated Express
-  instance mounting the exact three route strings from `server.js` and
-  requesting the frontend's actual (correctly-slashed) URLs — all three
-  404'd.
+- Route-registration bug (2.4): **this did not reproduce (2026-07-12
+  re-check)** — the exact three route strings this note describes never
+  appear in `server.js`'s history (`git log --all -S` on the broken form
+  returns zero commits); all 5 `/api/time-loop/*` routes have always had
+  correct leading slashes. Treat the original "reproduced live" claim as a
+  research error, not a regression later fixed.
 - All "zero callers" / "zero matches" claims (2.1, 2.3, 2.6, 2.9) were
   verified via `grep -rn` across `server/` (excluding the defining file and
   its own test files) and, separately, across `concord-frontend/` excluding

@@ -10,7 +10,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useClientConfig } from '@/hooks/useClientConfig';
 import { useActiveWorldId } from '@/hooks/useActiveWorldId';
-import { Hourglass, RotateCcw } from 'lucide-react';
+import { useUIStore } from '@/store/ui';
+import { Hourglass, RotateCcw, LogOut, Loader2 } from 'lucide-react';
 
 interface ActiveLoop {
   id: string;
@@ -26,6 +27,7 @@ export function TimeLoopHUD() {
   // concordia:active-world-changed) — replaces the one-shot mount read.
   const worldId = useActiveWorldId('');
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const [ending, setEnding] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!worldId) return;
@@ -63,6 +65,33 @@ export function TimeLoopHUD() {
     }));
   }, [loop, now]);
 
+  // Real POST to the endLoop route (server/lib/time-loop.js#endLoop) — no
+  // frontend caller existed for this route before. Only clears the HUD on
+  // a confirmed ok:true response; a failure surfaces an honest toast and
+  // leaves the loop state as-is (never assume success).
+  const endLoopNow = async () => {
+    if (!loop || ending) return;
+    setEnding(true);
+    try {
+      const res = await fetch(`/api/time-loop/${loop.id}/end`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'manual_exit' }),
+      }).then(r => r.json()).catch(() => null);
+      if (res?.ok) {
+        setLoop(null);
+      } else {
+        useUIStore.getState().addToast({
+          type: 'error',
+          message: res?.error ? `Could not end the loop (${res.error}).` : 'Could not end the loop — try again.',
+        });
+      }
+    } finally {
+      setEnding(false);
+    }
+  };
+
   if (!loop) return null;
 
   const elapsed = now - loop.started_at;
@@ -89,14 +118,25 @@ export function TimeLoopHUD() {
             style={{ width: `${ratio * 100}%` }}
           />
         </div>
-        <a
-          href={`/api/time-loop/memories/${worldId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-1 inline-block text-[10px] text-violet-300 hover:text-violet-100"
-        >
-          loop {loop.loop_number} memory
-        </a>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <a
+            href={`/api/time-loop/memories/${worldId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-violet-300 hover:text-violet-100"
+          >
+            loop {loop.loop_number} memory
+          </a>
+          <button
+            type="button"
+            onClick={endLoopNow}
+            disabled={ending}
+            className="flex items-center gap-1 rounded border border-violet-500/40 px-1.5 py-0.5 text-[10px] text-violet-300 hover:bg-violet-500/10 hover:text-violet-100 disabled:opacity-40"
+          >
+            {ending ? <Loader2 size={10} className="animate-spin" /> : <LogOut size={10} />}
+            End loop
+          </button>
+        </div>
       </div>
     </div>
   );
