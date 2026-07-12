@@ -10,13 +10,25 @@
 // lifecycle filters, a check-in window with auto-forfeit, spectator view
 // with shareable links, team rosters, and prize-distribution computation.
 //
-// Persistent per-user state lives in globalThis._concordSTATE.tournamentsLens
-// as Maps keyed by userId. All handlers return { ok, result?, error? } and
-// never throw (try/catch on every macro).
+// Persistence: a DURABLE per-organizer relational store (migration 360 —
+// bracket_tournaments) reached via ctx.db. When ctx.db is absent or the
+// table doesn't exist (minimal/test builds), the store transparently falls
+// back to the legacy in-memory globalThis._concordSTATE.tournamentsLens Maps
+// — the same db-or-memory facade pattern domains/saved.js (mig 356) and
+// domains/ar.js (mig 332) use. The running server always has ctx.db, so
+// tournaments survive a restart; the in-memory path only backs bare-unit-
+// test/minimal builds. Either way the store exposes an identical interface
+// (listForUser / get / getByShareSlugAnyUser / put) so every handler's
+// bracket-generation / standings / payout logic below is byte-identical
+// across both backends — none of that logic reads or writes storage
+// directly; it all flows through `store(ctx)`.
+//
+// All handlers return { ok, result?, error? } and never throw (try/catch on
+// every macro).
 
 export default function registerTournamentsActions(registerLensAction) {
-  // ─── state ──────────────────────────────────────────────────────────
-  function getState() {
+  // ─── in-memory fallback state ──────────────────────────────────────
+  function getMemState() {
     const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
     if (!STATE.tournamentsLens) STATE.tournamentsLens = {};
     const s = STATE.tournamentsLens;
@@ -28,6 +40,156 @@ export default function registerTournamentsActions(registerLensAction) {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
       try { globalThis._concordSaveStateDebounced(); } catch { /* best effort */ }
     }
+  }
+
+  // ─── DB store (migration 360) ──────────────────────────────────────
+  // Returns a live better-sqlite3 handle iff one is reachable AND the
+  // bracket_tournaments table exists; otherwise null → in-memory fallback.
+  function getDb(ctx) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+    if (!db) return null;
+    try { db.prepare("SELECT 1 FROM bracket_tournaments LIMIT 1").get(); }
+    catch { return null; }
+    return db;
+  }
+
+  function safeParseArray(json) {
+    try { const v = JSON.parse(json); return Array.isArray(v) ? v : []; }
+    catch { return []; }
+  }
+
+  function rowToTournament(r) {
+    return {
+      id: r.id,
+      title: r.title,
+      game: r.game,
+      format: r.format,
+      mode: r.mode,
+      teamSize: r.team_size,
+      maxEntrants: r.max_entrants,
+      prizePoolCc: r.prize_pool_cc,
+      payoutSplit: safeParseArray(r.payout_split_json),
+      swissRounds: r.swiss_rounds,
+      status: r.status,
+      createdAt: r.created_at,
+      startsAt: r.starts_at,
+      checkinOpensAt: r.checkin_opens_at,
+      startedAt: r.started_at,
+      completedAt: r.completed_at,
+      shareSlug: r.share_slug,
+      entrants: safeParseArray(r.entrants_json),
+      matches: safeParseArray(r.matches_json),
+      standings: safeParseArray(r.standings_json),
+      winnerId: r.winner_id,
+      payouts: safeParseArray(r.payouts_json),
+      locked: !!r.locked,
+      log: safeParseArray(r.log_json),
+    };
+  }
+
+  function tournamentToParams(t, userId) {
+    return {
+      id: t.id,
+      user_id: userId,
+      title: t.title,
+      game: t.game ?? null,
+      format: t.format,
+      mode: t.mode,
+      team_size: t.teamSize,
+      max_entrants: t.maxEntrants,
+      prize_pool_cc: t.prizePoolCc,
+      payout_split_json: JSON.stringify(Array.isArray(t.payoutSplit) ? t.payoutSplit : []),
+      swiss_rounds: t.swissRounds,
+      status: t.status,
+      created_at: t.createdAt,
+      starts_at: t.startsAt ?? null,
+      checkin_opens_at: t.checkinOpensAt ?? null,
+      started_at: t.startedAt ?? null,
+      completed_at: t.completedAt ?? null,
+      share_slug: t.shareSlug,
+      winner_id: t.winnerId ?? null,
+      locked: t.locked ? 1 : 0,
+      entrants_json: JSON.stringify(Array.isArray(t.entrants) ? t.entrants : []),
+      matches_json: JSON.stringify(Array.isArray(t.matches) ? t.matches : []),
+      standings_json: JSON.stringify(Array.isArray(t.standings) ? t.standings : []),
+      payouts_json: JSON.stringify(Array.isArray(t.payouts) ? t.payouts : []),
+      log_json: JSON.stringify(Array.isArray(t.log) ? t.log : []),
+    };
+  }
+
+  const UPSERT_TOURNAMENT_SQL = `
+    INSERT INTO bracket_tournaments
+      (id, user_id, title, game, format, mode, team_size, max_entrants, prize_pool_cc,
+       payout_split_json, swiss_rounds, status, created_at, starts_at, checkin_opens_at,
+       started_at, completed_at, share_slug, winner_id, locked, entrants_json, matches_json,
+       standings_json, payouts_json, log_json)
+    VALUES
+      (@id, @user_id, @title, @game, @format, @mode, @team_size, @max_entrants, @prize_pool_cc,
+       @payout_split_json, @swiss_rounds, @status, @created_at, @starts_at, @checkin_opens_at,
+       @started_at, @completed_at, @share_slug, @winner_id, @locked, @entrants_json, @matches_json,
+       @standings_json, @payouts_json, @log_json)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title, game = excluded.game, format = excluded.format, mode = excluded.mode,
+      team_size = excluded.team_size, max_entrants = excluded.max_entrants,
+      prize_pool_cc = excluded.prize_pool_cc, payout_split_json = excluded.payout_split_json,
+      swiss_rounds = excluded.swiss_rounds, status = excluded.status,
+      starts_at = excluded.starts_at, checkin_opens_at = excluded.checkin_opens_at,
+      started_at = excluded.started_at, completed_at = excluded.completed_at,
+      winner_id = excluded.winner_id, locked = excluded.locked,
+      entrants_json = excluded.entrants_json, matches_json = excluded.matches_json,
+      standings_json = excluded.standings_json, payouts_json = excluded.payouts_json,
+      log_json = excluded.log_json
+  `;
+
+  function dbStore(db) {
+    return {
+      listForUser(userId) {
+        return db.prepare("SELECT * FROM bracket_tournaments WHERE user_id = ? ORDER BY rowid DESC")
+          .all(userId).map(rowToTournament);
+      },
+      get(userId, id) {
+        const r = db.prepare("SELECT * FROM bracket_tournaments WHERE user_id = ? AND id = ?").get(userId, id);
+        return r ? rowToTournament(r) : null;
+      },
+      getByShareSlugAnyUser(slug) {
+        const r = db.prepare("SELECT * FROM bracket_tournaments WHERE share_slug = ?").get(slug);
+        return r ? rowToTournament(r) : null;
+      },
+      put(userId, t) {
+        db.prepare(UPSERT_TOURNAMENT_SQL).run(tournamentToParams(t, userId));
+      },
+    };
+  }
+
+  function memStore() {
+    const s = getMemState();
+    return {
+      listForUser(userId) {
+        if (!s.tournaments.has(userId)) s.tournaments.set(userId, []);
+        return s.tournaments.get(userId);
+      },
+      get(userId, id) {
+        return (s.tournaments.get(userId) || []).find((t) => t.id === id) || null;
+      },
+      getByShareSlugAnyUser(slug) {
+        for (const arr of s.tournaments.values()) {
+          const hit = arr.find((x) => x.shareSlug === slug);
+          if (hit) return hit;
+        }
+        return null;
+      },
+      put(userId, t) {
+        const arr = this.listForUser(userId);
+        const idx = arr.findIndex((x) => x.id === t.id);
+        if (idx >= 0) arr[idx] = t;
+        else arr.unshift(t);
+      },
+    };
+  }
+
+  function store(ctx) {
+    const db = getDb(ctx);
+    return db ? dbStore(db) : memStore();
   }
 
   // ─── helpers ────────────────────────────────────────────────────────
@@ -43,10 +205,6 @@ export default function registerTournamentsActions(registerLensAction) {
   // NaN/Infinity → def, so this catches the finite-absurd injection path.
   const CC_MAX = 1e6;
   const isSaneCc = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= CC_MAX; };
-  const list = (s, userId) => { if (!s.tournaments.has(userId)) s.tournaments.set(userId, []); return s.tournaments.get(userId); };
-  function find(s, userId, id) {
-    return (s.tournaments.get(userId) || []).find((t) => t.id === id) || null;
-  }
 
   const FORMATS = ["single_elimination", "double_elimination", "round_robin", "swiss"];
   const STATUSES = ["upcoming", "checkin", "in_progress", "completed", "cancelled"];
@@ -333,7 +491,7 @@ export default function registerTournamentsActions(registerLensAction) {
   // create — organizer spins up a tournament (any format).
   registerLensAction("tournaments", "create", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
       // Fail-CLOSED on any poisoned CC amount before persisting anything.
@@ -344,8 +502,8 @@ export default function registerTournamentsActions(registerLensAction) {
         return { ok: false, error: "invalid_payout_split" };
       }
       const t = emptyTournament(p);
-      list(s, userId).unshift(t);
       pushLog(t, `Created ${t.format} tournament "${t.title}"`);
+      st.put(userId, t);
       saveState();
       return { ok: true, result: { tournament: publicView(t) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -354,14 +512,15 @@ export default function registerTournamentsActions(registerLensAction) {
   // list — status-filtered list for the organizer (lifecycle archive).
   registerLensAction("tournaments", "list", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      let rows = list(s, userId);
+      const all = st.listForUser(userId);
+      let rows = all;
       if (p.status && STATUSES.includes(p.status)) rows = rows.filter((t) => t.status === p.status);
       if (p.format && FORMATS.includes(p.format)) rows = rows.filter((t) => t.format === p.format);
-      const counts = STATUSES.reduce((acc, st) => {
-        acc[st] = (s.tournaments.get(userId) || []).filter((t) => t.status === st).length;
+      const counts = STATUSES.reduce((acc, s) => {
+        acc[s] = all.filter((t) => t.status === s).length;
         return acc;
       }, {});
       return {
@@ -374,16 +533,11 @@ export default function registerTournamentsActions(registerLensAction) {
   // get — full detail (also used for spectator via shareSlug).
   registerLensAction("tournaments", "get", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      let t = p.id ? find(s, userId, p.id) : null;
-      if (!t && p.shareSlug) {
-        for (const arr of s.tournaments.values()) {
-          const hit = arr.find((x) => x.shareSlug === p.shareSlug);
-          if (hit) { t = hit; break; }
-        }
-      }
+      let t = p.id ? st.get(userId, p.id) : null;
+      if (!t && p.shareSlug) t = st.getByShareSlugAnyUser(p.shareSlug);
       if (!t) return { ok: false, error: "tournament_not_found" };
       return { ok: true, result: { tournament: publicView(t) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -392,10 +546,10 @@ export default function registerTournamentsActions(registerLensAction) {
   // addEntrant — register a solo entrant or a team (with roster).
   registerLensAction("tournaments", "addEntrant", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      const t = find(s, userId, p.id);
+      const t = st.get(userId, p.id);
       if (!t) return { ok: false, error: "tournament_not_found" };
       if (t.locked || t.status !== "upcoming") return { ok: false, error: "registration_closed" };
       if (t.entrants.length >= t.maxEntrants) return { ok: false, error: "tournament_full" };
@@ -416,6 +570,7 @@ export default function registerTournamentsActions(registerLensAction) {
       };
       t.entrants.push(entrant);
       pushLog(t, `${name} registered (${t.entrants.length}/${t.maxEntrants})`);
+      st.put(userId, t);
       saveState();
       return { ok: true, result: { entrant, tournament: publicView(t) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -424,10 +579,10 @@ export default function registerTournamentsActions(registerLensAction) {
   // removeEntrant — drop an entrant before lock.
   registerLensAction("tournaments", "removeEntrant", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      const t = find(s, userId, p.id);
+      const t = st.get(userId, p.id);
       if (!t) return { ok: false, error: "tournament_not_found" };
       if (t.locked) return { ok: false, error: "bracket_locked" };
       const before = t.entrants.length;
@@ -435,6 +590,7 @@ export default function registerTournamentsActions(registerLensAction) {
       if (t.entrants.length === before) return { ok: false, error: "entrant_not_found" };
       t.entrants.forEach((e, i) => { e.seed = i + 1; });
       pushLog(t, `Entrant removed`);
+      st.put(userId, t);
       saveState();
       return { ok: true, result: { tournament: publicView(t) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -443,10 +599,10 @@ export default function registerTournamentsActions(registerLensAction) {
   // seed — manual reorder or rating-based auto-seeding (pre-lock).
   registerLensAction("tournaments", "seed", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      const t = find(s, userId, p.id);
+      const t = st.get(userId, p.id);
       if (!t) return { ok: false, error: "tournament_not_found" };
       if (t.locked) return { ok: false, error: "bracket_locked" };
       if (p.mode === "rating") {
@@ -471,6 +627,7 @@ export default function registerTournamentsActions(registerLensAction) {
       } else {
         return { ok: false, error: "seed_args_invalid" };
       }
+      st.put(userId, t);
       saveState();
       return { ok: true, result: { tournament: publicView(t) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -479,10 +636,10 @@ export default function registerTournamentsActions(registerLensAction) {
   // openCheckin — open the check-in window before start.
   registerLensAction("tournaments", "openCheckin", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      const t = find(s, userId, p.id);
+      const t = st.get(userId, p.id);
       if (!t) return { ok: false, error: "tournament_not_found" };
       if (t.status !== "upcoming") return { ok: false, error: "wrong_status" };
       if (t.entrants.length < 2) return { ok: false, error: "need_2_entrants" };
@@ -490,6 +647,7 @@ export default function registerTournamentsActions(registerLensAction) {
       t.locked = true;
       t.checkinOpensAt = now();
       pushLog(t, `Check-in window opened`);
+      st.put(userId, t);
       saveState();
       return { ok: true, result: { tournament: publicView(t) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -498,16 +656,17 @@ export default function registerTournamentsActions(registerLensAction) {
   // checkIn — mark an entrant present during the check-in window.
   registerLensAction("tournaments", "checkIn", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      const t = find(s, userId, p.id);
+      const t = st.get(userId, p.id);
       if (!t) return { ok: false, error: "tournament_not_found" };
       if (t.status !== "checkin") return { ok: false, error: "checkin_not_open" };
       const e = t.entrants.find((x) => x.id === p.entrantId);
       if (!e) return { ok: false, error: "entrant_not_found" };
       e.checkedIn = true;
       pushLog(t, `${e.name} checked in`);
+      st.put(userId, t);
       saveState();
       return { ok: true, result: { tournament: publicView(t) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -516,10 +675,10 @@ export default function registerTournamentsActions(registerLensAction) {
   // start — close check-in, auto-forfeit no-shows, generate the bracket.
   registerLensAction("tournaments", "start", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      const t = find(s, userId, p.id);
+      const t = st.get(userId, p.id);
       if (!t) return { ok: false, error: "tournament_not_found" };
       if (t.status !== "upcoming" && t.status !== "checkin") {
         return { ok: false, error: "wrong_status" };
@@ -548,6 +707,7 @@ export default function registerTournamentsActions(registerLensAction) {
       pushLog(t, forfeited
         ? `Started — ${forfeited} no-show(s) auto-forfeited`
         : `Bracket generated and locked`);
+      st.put(userId, t);
       saveState();
       return { ok: true, result: { tournament: publicView(t), forfeited } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -556,10 +716,10 @@ export default function registerTournamentsActions(registerLensAction) {
   // reportMatch — submit a match result; auto-advance the bracket.
   registerLensAction("tournaments", "reportMatch", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      const t = find(s, userId, p.id);
+      const t = st.get(userId, p.id);
       if (!t) return { ok: false, error: "tournament_not_found" };
       if (t.status !== "in_progress") return { ok: false, error: "tournament_not_running" };
       const m = t.matches.find((x) => x.id === p.matchId);
@@ -586,6 +746,7 @@ export default function registerTournamentsActions(registerLensAction) {
       pushLog(t, `${a?.name || "?"} ${scoreA}–${scoreB} ${b?.name || "?"}`);
       t.standings = computeStandings(t);
       maybeComplete(t);
+      st.put(userId, t);
       saveState();
       return { ok: true, result: { tournament: publicView(t) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -594,10 +755,10 @@ export default function registerTournamentsActions(registerLensAction) {
   // payouts — compute (or re-read) prize distribution on completion.
   registerLensAction("tournaments", "payouts", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      const t = find(s, userId, p.id);
+      const t = st.get(userId, p.id);
       if (!t) return { ok: false, error: "tournament_not_found" };
       if (t.status !== "completed") return { ok: false, error: "tournament_not_completed" };
       if (Array.isArray(p.payoutSplit) && p.payoutSplit.length) {
@@ -607,6 +768,7 @@ export default function registerTournamentsActions(registerLensAction) {
         t.payoutSplit = p.payoutSplit.map((x) => Math.max(0, num(x, 0)));
       }
       t.payouts = computePayouts(t);
+      st.put(userId, t);
       saveState();
       return {
         ok: true,
@@ -633,14 +795,15 @@ export default function registerTournamentsActions(registerLensAction) {
   // cancel — organizer cancels an un-started tournament.
   registerLensAction("tournaments", "cancel", (ctx, artifact, params) => {
     try {
-      const s = getState();
+      const st = store(ctx);
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      const t = find(s, userId, p.id);
+      const t = st.get(userId, p.id);
       if (!t) return { ok: false, error: "tournament_not_found" };
       if (t.status === "completed") return { ok: false, error: "already_completed" };
       t.status = "cancelled";
       pushLog(t, `Tournament cancelled`);
+      st.put(userId, t);
       saveState();
       return { ok: true, result: { tournament: publicView(t) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
