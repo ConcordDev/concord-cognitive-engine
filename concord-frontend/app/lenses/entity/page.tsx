@@ -10,11 +10,12 @@ import { WikidataSearch } from '@/components/entity/WikidataSearch';
 import { KnowledgeGraphWorkbench } from '@/components/entity/KnowledgeGraphWorkbench';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useState } from 'react';
-import { Users, Plus, Terminal, GitFork, Activity, Play, Brain, X, Cpu, Bot, Search, Loader2 } from 'lucide-react';
+import { Users, Plus, Terminal, GitFork, Activity, Play, Brain, X, Cpu, Bot, Search, Loader2, ShieldAlert, CheckCircle2, XCircle, MinusCircle, Lock } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -41,9 +42,40 @@ interface Entity {
   lastActive: string;
 }
 
+// entity.terminal_approve is council-gated (server.js allowMacro("entity",
+// "terminal_approve", { roles: ["owner","admin","council"], ... })). The new
+// entity.terminal_pending listing macro is registered with the identical ACL
+// (same two call sites, mirrored) so the same roles that can vote can see
+// the queue. This client-side check is a UX honesty gate only — it decides
+// whether to even attempt the read/vote calls, never a substitute for the
+// server-side ACL.
+const COUNCIL_ROLES = new Set(['owner', 'admin', 'council']);
+
+interface TerminalProposalSummary {
+  id: string;
+  entityId: string;
+  command: string;
+  riskLevel: 'low' | 'medium' | 'high' | string;
+  status: 'pending' | 'approved' | 'denied' | string;
+  createdAt: string;
+  approvedAt: string | null;
+  deniedAt: string | null;
+  threshold: number;
+  votes: { approve: number; deny: number; abstain: number };
+  myVote: 'approve' | 'deny' | 'abstain' | null;
+}
+
+const riskColors: Record<string, string> = {
+  low: 'text-neon-green bg-neon-green/10 border-neon-green/30',
+  medium: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
+  high: 'text-neon-pink bg-neon-pink/10 border-neon-pink/30',
+};
+
 export default function EntityLensPage() {
   useLensNav('entity');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('entity');
+  const { user: currentUser, isAuthenticated } = useAuth();
+  const isCouncilEligible = isAuthenticated && !!currentUser?.role && COUNCIL_ROLES.has(currentUser.role);
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [newEntityName, setNewEntityName] = useState('');
@@ -144,6 +176,45 @@ export default function EntityLensPage() {
     },
   });
 
+  // Council approval queue — read-only listing via the new entity.terminal_pending
+  // macro. Never fetched for a caller who doesn't look council-eligible (honest
+  // gate, not just a hidden panel: we don't attempt the call and then swallow a
+  // permission error).
+  const {
+    data: pendingApprovals,
+    isLoading: pendingApprovalsLoading,
+    isError: pendingApprovalsErrored,
+  } = useQuery({
+    queryKey: ['entity-terminal-pending'],
+    queryFn: () => apiHelpers.lens.runDomain('entity', 'terminal_pending', {}).then(r => r.data?.result ?? r.data),
+    enabled: isCouncilEligible,
+    refetchInterval: isCouncilEligible ? 15000 : false,
+  });
+
+  const voteOnProposal = useMutation({
+    mutationFn: async (data: { proposalId: string; vote: 'approve' | 'deny' | 'abstain' }) => {
+      const res = await apiHelpers.lens.runDomain('entity', 'terminal_approve', data);
+      return res.data?.result ?? res.data;
+    },
+    onSuccess: (data) => {
+      // terminal_approve can honestly fail in-band (disabled flag, vote
+      // rejected, proposal already resolved) even on an HTTP 200 — surface
+      // that, never treat it as a silent success.
+      if (!data || data.ok === false) {
+        useUIStore.getState().addToast({ type: 'error', message: data?.error || 'Vote was rejected.' });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ['entity-terminal-pending'] });
+      const msg = data.status === 'pending'
+        ? `Vote recorded (${data.votes?.approve ?? 0} approve / ${data.votes?.deny ?? 0} deny / ${data.votes?.abstain ?? 0} abstain).`
+        : `Proposal ${data.status}${data.executionResult ? ` — exit ${data.executionResult.exitCode}` : ''}.`;
+      useUIStore.getState().addToast({ type: 'success', message: msg });
+    },
+    onError: (err: Record<string, unknown>) => {
+      useUIStore.getState().addToast({ type: 'error', message: (err?.message as string) || 'Vote failed to submit.' });
+    },
+  });
+
   const typeColors = {
     worker: 'text-neon-blue bg-neon-blue/20',
     researcher: 'text-neon-purple bg-neon-purple/20',
@@ -229,6 +300,102 @@ export default function EntityLensPage() {
           </div>
         ))}
       </div>
+
+      {/* Council Approval Queue — entity.terminal_pending (read-only listing)
+          + entity.terminal_approve (vote). Only ever fetched/rendered for a
+          council-eligible caller (owner/admin/council); a non-eligible user
+          sees nothing here, not an attempted-then-swallowed permission error. */}
+      {isCouncilEligible && (
+        <div className="panel p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-neon-pink" />
+              Council Approval Queue
+            </h3>
+            {pendingApprovals?.pending?.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded bg-neon-pink/10 text-neon-pink">
+                {pendingApprovals.pending.length} pending
+              </span>
+            )}
+          </div>
+
+          {pendingApprovalsLoading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading queue…
+            </div>
+          ) : pendingApprovalsErrored ? (
+            <p className="text-sm text-neon-pink">Failed to load the approval queue.</p>
+          ) : !pendingApprovals?.pending?.length ? (
+            <p className="text-sm text-gray-400">No terminal-execution proposals awaiting council review.</p>
+          ) : (
+            <div className="space-y-2">
+              {(pendingApprovals.pending as TerminalProposalSummary[]).map((p) => (
+                <div key={p.id} className="rounded-lg border border-white/10 bg-black/20 p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-mono text-sm text-white truncate">{p.command}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        entity {p.entityId} · requested {new Date(p.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 text-xs px-2 py-0.5 rounded-full border ${riskColors[p.riskLevel] || riskColors.medium}`}
+                    >
+                      {p.riskLevel} risk
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-gray-400">
+                      {p.votes.approve} approve · {p.votes.deny} deny · {p.votes.abstain} abstain
+                      {' '}(threshold {Math.round(p.threshold * 100)}%)
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      {(['approve', 'deny', 'abstain'] as const).map((vote) => {
+                        const Icon = vote === 'approve' ? CheckCircle2 : vote === 'deny' ? XCircle : MinusCircle;
+                        const isMine = p.myVote === vote;
+                        return (
+                          <button
+                            key={vote}
+                            onClick={() => voteOnProposal.mutate({ proposalId: p.id, vote })}
+                            disabled={voteOnProposal.isPending}
+                            title={isMine ? `You voted ${vote}` : `Vote ${vote}`}
+                            className={`flex items-center gap-1 rounded px-2 py-1 text-xs disabled:opacity-50 ${
+                              isMine
+                                ? 'bg-white/15 text-white'
+                                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            {vote}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!!pendingApprovals?.recentHistory?.length && (
+            <details className="text-xs text-gray-500">
+              <summary className="cursor-pointer hover:text-gray-300">
+                Recent decisions ({pendingApprovals.recentHistory.length})
+              </summary>
+              <div className="mt-2 space-y-1">
+                {(pendingApprovals.recentHistory as TerminalProposalSummary[]).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 py-1 border-t border-white/5">
+                    <span className="font-mono truncate">{p.command}</span>
+                    <span className={p.status === 'approved' ? 'text-neon-green' : 'text-neon-pink'}>
+                      {p.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
 
       {/* Entity Lifecycle Timeline Visualization */}
       <EntityLifecycleViz />
@@ -329,6 +496,111 @@ export default function EntityLensPage() {
               <Play className="w-4 h-4" />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Council Approval Queue — entity.terminal_pending (read-only listing) +
+          entity.terminal_approve (unmodified vote macro). Medium/high-risk
+          terminal commands from the modal above land here pending a 3-vote
+          council quorum. Only rendered/queried for a council-eligible user —
+          an ineligible or logged-out visitor gets an honest access message,
+          never a silently-swallowed permission error. */}
+      {isAuthenticated && (
+        <div className="panel p-4 space-y-4 border-2 border-yellow-500/30">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-yellow-400" />
+              Council Approval Queue
+            </h3>
+            {isCouncilEligible && Array.isArray(pendingApprovals?.pending) && (
+              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+                {pendingApprovals.pending.length} pending
+              </span>
+            )}
+          </div>
+
+          {!isCouncilEligible ? (
+            <p className="text-sm text-gray-400 flex items-center gap-2">
+              <Lock className="w-4 h-4 shrink-0" />
+              You don&apos;t have council access to the terminal approval queue (requires owner, admin, or council role).
+            </p>
+          ) : pendingApprovalsLoading ? (
+            <p className="text-sm text-gray-400 flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading pending proposals...
+            </p>
+          ) : pendingApprovalsErrored || pendingApprovals?.ok === false ? (
+            <p className="text-sm text-neon-pink">
+              Failed to load the approval queue{pendingApprovals?.error ? `: ${pendingApprovals.error}` : '.'}
+            </p>
+          ) : (
+            <>
+              {!pendingApprovals?.pending || pendingApprovals.pending.length === 0 ? (
+                <p className="text-sm text-gray-400">No pending terminal-command proposals.</p>
+              ) : (
+                <div className="space-y-3">
+                  {pendingApprovals.pending.map((p: TerminalProposalSummary) => (
+                    <div key={p.id} className={`rounded border p-3 space-y-2 ${riskColors[p.riskLevel] || 'border-lattice-border'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-400">
+                            Entity {p.entityId} · {new Date(p.createdAt).toLocaleString()}
+                          </p>
+                          <code className="text-sm font-mono text-white break-all">{p.command}</code>
+                        </div>
+                        <span className="text-xs uppercase font-semibold shrink-0">{p.riskLevel} risk</span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+                        <span>
+                          {p.votes.approve} approve · {p.votes.deny} deny · {p.votes.abstain} abstain
+                          {' '}(needs {Math.round(p.threshold * 100)}% of decisive votes, min 3 total)
+                        </span>
+                        {p.myVote && <span className="text-neon-cyan">your vote: {p.myVote}</span>}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => voteOnProposal.mutate({ proposalId: p.id, vote: 'approve' })}
+                          disabled={voteOnProposal.isPending}
+                          className="btn-neon green text-xs flex items-center gap-1 px-3 py-1.5"
+                        >
+                          <CheckCircle2 className="w-3 h-3" /> Approve
+                        </button>
+                        <button
+                          onClick={() => voteOnProposal.mutate({ proposalId: p.id, vote: 'deny' })}
+                          disabled={voteOnProposal.isPending}
+                          className="btn-neon pink text-xs flex items-center gap-1 px-3 py-1.5"
+                        >
+                          <XCircle className="w-3 h-3" /> Deny
+                        </button>
+                        <button
+                          onClick={() => voteOnProposal.mutate({ proposalId: p.id, vote: 'abstain' })}
+                          disabled={voteOnProposal.isPending}
+                          className="btn-neon text-xs flex items-center gap-1 px-3 py-1.5"
+                        >
+                          <MinusCircle className="w-3 h-3" /> Abstain
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {Array.isArray(pendingApprovals?.recentHistory) && pendingApprovals.recentHistory.length > 0 && (
+                <details className="text-xs text-gray-400">
+                  <summary className="cursor-pointer hover:text-white">
+                    Recently resolved ({pendingApprovals.recentHistory.length})
+                  </summary>
+                  <div className="mt-2 space-y-1">
+                    {pendingApprovals.recentHistory.map((p: TerminalProposalSummary) => (
+                      <div key={p.id} className="flex items-center justify-between gap-2">
+                        <code className="font-mono truncate">{p.command}</code>
+                        <span className={p.status === 'approved' ? 'text-neon-green' : 'text-neon-pink'}>{p.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </>
+          )}
         </div>
       )}
 
