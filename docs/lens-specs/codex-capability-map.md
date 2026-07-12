@@ -70,7 +70,7 @@ interactive.
   shareable-permalink feature is ever prioritized (`/lenses/codex?id=...`
   resolving via `lore.get`).~~
 
-  **CLOSED (2026-07-12, pending commit) — Wave 4 gap-closure.** Built the
+  **CLOSED (2026-07-12, `9f7f4d8e`) — Wave 4 gap-closure.** Built the
   scoped permalink/deep-link feature exactly as flagged, ENGINEERING class
   (no external data dependency, no backend change needed — `lore.get` was
   already real and already returned the correct shape; verified by
