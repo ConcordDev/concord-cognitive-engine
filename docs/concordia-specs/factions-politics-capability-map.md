@@ -137,26 +137,33 @@ is dark in practice:
    `faction_war` market resolving from `faction_strategy_state.kind`
    transitioning to `'war'` — parimutuel, substrate-is-the-oracle, no real
    money, no way to influence the outcome by betting.
-4. **Join-and-fight-for-a-side combat (real code, effectively
-   unreachable — a genuine gap).** `server/lib/combat/faction-war.js` +
+4. **~~Join-and-fight-for-a-side combat (real code, effectively
+   unreachable — a genuine gap).~~ CLOSED (2026-07-12, commit
+   `4bd4327a`):** `server/lib/combat/faction-war.js` +
    `server/routes/faction-war.js` is a complete system: it spawns NPCs on
    two sides, players who join slot into the regular `combat:attack` path,
    and their kills count toward `faction_wars.side_a_wins`/`side_b_wins`.
-   **But `spawnFactionWar` has exactly one caller in the entire codebase
-   outside its own module and tests: `POST /api/faction-war/spawn`, which
-   its own route-file header comment labels "admin/test."** Grep confirms
-   zero calls from `faction-strategy-cycle.js`'s `DECLARE_WAR`/`RAID`
-   handling, zero calls from `world-event-scheduler.js`, zero calls from
-   `world-events.js`'s 11 event types. Migration 301's own comment claims
-   it's "a complete, wired producer... ticked inline in governorTick" —
-   true for the *tick* (`tickAllFactionWars` does run on the heartbeat) but
-   **not for the spawn**: nothing autonomous ever creates a joinable
-   faction-war combat event. `StrategicWarBanner`/`FactionWarIntel` can
-   only ever show "0 wars active" outside of an admin manually POSTing to
-   `/spawn`. This is the single biggest "player agency" gap found — the
-   wiring for a genuinely CK3-into-BG3 moment (autonomous political war →
-   player physically fights in it) is 90% built and the last connector is
-   missing.
+   `faction-strategy-cycle.js` now calls `spawnFactionWar` right after
+   `applyMove` persists a `DECLARE_WAR`/`RAID` move with a target, gated by
+   a DB-backed `findActiveWarBetween()` idempotency check so a faction
+   already at war with a rival doesn't spawn a duplicate encounter every
+   heartbeat tick (kill-switch `CONCORD_FACTION_WAR_SPAWN`, default on,
+   never throws back into the cycle). `POST /api/faction-war/spawn`
+   remains reachable as the admin/test entry point it always was — it's
+   now a second caller alongside the autonomous one, not the only one.
+   `StrategicWarBanner`/`FactionWarIntel` can now show a real live war
+   without any admin action. Original finding kept for history below.
+
+   Original text, for record: `spawnFactionWar` had exactly one caller in
+   the entire codebase outside its own module and tests: `POST
+   /api/faction-war/spawn`, which its own route-file header comment
+   labelled "admin/test." Grep confirmed zero calls from
+   `faction-strategy-cycle.js`'s `DECLARE_WAR`/`RAID` handling, zero calls
+   from `world-event-scheduler.js`, zero calls from `world-events.js`'s 11
+   event types. Migration 301's own comment claimed it was "a complete,
+   wired producer... ticked inline in governorTick" — true for the *tick*
+   (`tickAllFactionWars` did run on the heartbeat) but not for the spawn:
+   nothing autonomous ever created a joinable faction-war combat event.
 5. **What does NOT exist:** no macro to directly propose an alliance,
    declare a war, sway a stance, bribe, or sabotage on a faction's behalf.
    `faction_strategy.witness_next_move` (`server/domains/faction-strategy.js`)
@@ -197,8 +204,22 @@ RAID/WITHDRAW/DECLARE_REBUILD`). Real depth signals, verified in code:
   hostile moves / rewarding cooperative ones — off by default, so today's
   live behavior doesn't include it, but the seam is real.
 
-**The confirmed bug: `pickMove`'s own relation-awareness is dead code.**
-`server/lib/embodied/faction-strategy.js:516-522`:
+**~~The confirmed bug: `pickMove`'s own relation-awareness is dead code.~~
+CLOSED (2026-07-12, commit `5be60991`):** `getRelationScore(db, a, b)`
+(`server/lib/embodied/faction-strategy.js:535-542`) now reads the real
+per-pair score via the existing `getRelation(db, a, b)` /
+`faction_relations` machinery when a live `db` handle is threaded in —
+`faction-strategy-cycle.js`'s heartbeat passes `{ db, ...ethicsBias }`
+into `pickMove` (line 159) specifically so this resolves for real. The
+neutral `0` default is preserved ONLY when no `db` is supplied (the large
+majority of the existing contract-test suite calls `pickMove` without
+one, deliberately, to keep their pinned deterministic-RNG assertions
+unchanged) — this is an honest fallback, not a silent stub. The original
+finding below is kept for history; it no longer describes production
+behavior.
+
+Original text, for record:
+`server/lib/embodied/faction-strategy.js:516-522` (pre-fix):
 ```js
 function getRelationScore(_a, _b) {
   // The applyMove caller passes in peerStates; pickMove gets relations
@@ -208,9 +229,9 @@ function getRelationScore(_a, _b) {
   return 0;
 }
 ```
-This function is never overridden, monkey-patched, or passed as a
-parameter anywhere in the codebase (`grep -rn "getRelationScore"` returns
-only its own definition and its two call sites) — it is hard-coded to
+This function was never overridden, monkey-patched, or passed as a
+parameter anywhere in the codebase (`grep -rn "getRelationScore"` returned
+only its own definition and its two call sites) — it was hard-coded to
 return `0` in production. Its two call sites:
 - Line 319 (`consolidate` stance): `peers.find(p => getRelationScore(...) >
   0.3)` — since the score is always `0`, `0 > 0.3` is always `false`, so
@@ -431,23 +452,10 @@ policy, not a dice roll.
 
 ### ENGINEERING (code-only, no external data dependency)
 
-1. **P0 — Wire `DECLARE_WAR`/`RAID` moves to `spawnFactionWar`.** The
-   single highest-leverage fix for "player influences politics": when
-   `faction-strategy-cycle.js` picks `DECLARE_WAR` or `RAID` (lines
-   114-149), call `spawnFactionWar(db, {sideA, sideB, ...})` so the
-   autonomous political decision actually produces a joinable combat event
-   players can tip. Currently only reachable via an admin/test-only REST
-   endpoint (§3.4) — the wiring on both ends is complete, only the
-   connector between them is missing.
-2. **P0 — Fix `getRelationScore`'s dead-code stub** (§4). Thread real
-   per-pair `faction_relations` data from the cycle (which already holds
-   `db`) into `pickMove`, replacing the hardcoded `return 0`. This single
-   fix would make `PROPOSE_ALLIANCE` reachable from `consolidate` (currently
-   dead) and make `DECLARE_WAR`'s target selection actually relation-gated
-   as documented (currently a no-op). Deliberately not done in this pass —
-   it changes a widely-tested function's signature/behavior and deserves
-   its own scoped pass with updated tests, not a drive-by inside a
-   read-only audit.
+1. ~~**P0 — Wire `DECLARE_WAR`/`RAID` moves to `spawnFactionWar`.**~~
+   **CLOSED (2026-07-12, commit `4bd4327a`)** — see §3.4.
+2. ~~**P0 — Fix `getRelationScore`'s dead-code stub** (§4).~~
+   **CLOSED (2026-07-12, commit `5be60991`)** — see §4.
 3. **P1 — Faction relation decay.** Add a lightweight heartbeat (or fold
    into the existing `faction-strategy-cycle`) that drifts `score` back
    toward 0 over time absent new events, so old wars/alliances don't stay
