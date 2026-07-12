@@ -140,7 +140,7 @@ so "Course catalog" / course discussions / cohorts are honestly a
 *personal* authoring + tracking surface (you create courses, you enroll
 yourself, you discuss your own courses), not a multi-tenant Coursera
 marketplace where other users' courses appear.~~ **CLOSED (2026-07-12,
-pending commit).** Built the genuine multi-tenant catalog: migration 363
+`9aac6a7a`).** Built the genuine multi-tenant catalog: migration 363
 (`edu_courses` / `edu_discussions` / `edu_cohorts`) adds an `author_id`
 column to each and switches all three from per-user `Map<userId, T[]>`
 keying to one shared row per item, reached through a `courseStore(ctx,
