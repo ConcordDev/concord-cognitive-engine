@@ -503,18 +503,50 @@ export default function registerLawActions(registerLensAction) {
    * env (free at courtlistener.com/help/api/rest/).
    *
    * params: { query: string, court?: court code (e.g. "scotus"|"ca9"|"cal-1"),
-   *           dateAfter?: "YYYY-MM-DD", dateBefore?: "YYYY-MM-DD", limit?: 1-50 }
+   *           dateAfter?: "YYYY-MM-DD", dateBefore?: "YYYY-MM-DD", limit?: 1-50,
+   *           semantic?: boolean — natural-language mode, see below }
+   *
+   * Semantic mode (2026-07-12, closes docs/lens-specs/law-capability-map.md's
+   * "Semantic / natural-language search" gap): CourtListener's v4 Search API
+   * added real semantic search on 2025-11-05 (Free Law Project, "Semantic
+   * Search API Now Live!"). The GET-request shape (the one this macro already
+   * uses) is: add `semantic=true` to the query string — CourtListener embeds
+   * the query server-side and returns conceptually-similar opinions even when
+   * no keyword overlaps, instead of requiring the caller to POST a
+   * pre-computed embedding vector. Verified directly against CourtListener's
+   * own open-source Django source (network access to courtlistener.com /
+   * free.law itself is blocked in this environment, so this was NOT taken on
+   * faith from the blog post alone — cross-checked against the real code):
+   *   - github.com/freelawproject/courtlistener: cl/search/forms.py — the
+   *     `SearchForm` used by `SearchV4ViewSet.list` (the exact GET `/search/`
+   *     view this macro calls) declares `semantic = forms.BooleanField(...)`.
+   *   - cl/search/api_views.py — the sibling embedding-POST path explicitly
+   *     restricts semantic search to `SEARCH_TYPES.OPINION` ("Semantic search
+   *     is only supported for type 'o'"), which this macro already hardcodes
+   *     (`type: "o"`), so the restriction is satisfied by construction.
+   *   - cl/search/api_serializers.py — `MainDocumentMetaDataSerializer
+   *     .get_score()` returns `SemanticSearchScoreSerializer` (fields `bm25`
+   *     + `semantic`, both floats) instead of the plain `ScoreDataSerializer`
+   *     (`bm25` only) when `request.GET.get("semantic")` is truthy — so a
+   *     semantic-mode result carries a `meta.score.semantic` relevance score
+   *     alongside the always-present `meta.score.bm25`.
+   * Additive only: when `params.semantic` is not set, the outgoing query
+   * string is byte-identical to the pre-existing keyword-only request (no
+   * `semantic` key is added at all) — existing keyword-search callers are
+   * unaffected.
    */
   registerLensAction("law", "courtlistener-search", async (_ctx, _artifact, params = {}) => {
     const query = String(params.query || "").trim();
     if (!query) return { ok: false, error: "query required" };
     const limit = Math.max(1, Math.min(50, Number(params.limit) || 10));
+    const semantic = params.semantic === true || params.semantic === "true";
     const token = process.env.COURTLISTENER_API_TOKEN;
     const qs = new URLSearchParams({ q: query, type: "o" });  // type=o = opinions
     if (params.court) qs.set("court", String(params.court));
     if (params.dateAfter) qs.set("filed_after", String(params.dateAfter));
     if (params.dateBefore) qs.set("filed_before", String(params.dateBefore));
     qs.set("page_size", String(limit));
+    if (semantic) qs.set("semantic", "true");
     try {
       const headers = token ? { Authorization: `Token ${token}` } : {};
       const r = await fetch(`${COURTLISTENER_BASE}/search/?${qs.toString()}`, { headers });
@@ -536,11 +568,18 @@ export default function registerLawActions(registerLensAction) {
         docketNumber: o.docketNumber,
         judges: o.judge,
         author: o.author,
+        // meta.score.bm25 is present on scored results regardless of mode;
+        // meta.score.semantic is added by CourtListener only when semantic
+        // search was requested. Read defensively (optional chaining) — an
+        // older/unscored result shape degrades to null, never fabricated.
+        bm25Score: o.meta?.score?.bm25 ?? null,
+        semanticScore: o.meta?.score?.semantic ?? null,
       }));
       return {
         ok: true,
         result: {
           query,
+          semantic,
           results, count: results.length,
           totalHits: data.count,
           authenticatedWithToken: !!token,

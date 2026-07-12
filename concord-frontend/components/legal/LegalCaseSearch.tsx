@@ -8,13 +8,22 @@
  *
  * A legal case-search surface.
  *
- *   • Search box with filter chips (court / date-after / date-before
- *     / natural-language vs terms-and-connectors mode hint)
+ *   • Search box with filter chips (court / date-after / date-before)
+ *     plus a real Keyword vs. Semantic (natural-language) mode toggle
  *   • Multi-line result cards: case name + court + date + cited-by
  *     count + judge + snippet preview with query-term highlighting
  *   • Per-result Save-as-DTU (source: "courtlistener") + Clip-to-Folder
  *     (in-memory v1) + open-on-courtlistener external link
  *   • No-result state with broad-search retry hint
+ *
+ * Semantic mode (2026-07-12): sends `semantic: true` to the
+ * `law.courtlistener-search` macro, which forwards CourtListener's real v4
+ * `semantic=true` query param — natural-language queries return
+ * conceptually-similar opinions even with no keyword overlap, instead of
+ * plain BM25 keyword ranking. Off by default (byte-identical to the prior
+ * keyword-only request). When a semantic score is present on a hit, it's
+ * shown as a relevance percentage next to the precedential-status pill —
+ * never fabricated when the backend doesn't return one.
  *
  * The "signal flag" proxy (Good Law / Caution / Negative-Treatment)
  * mentioned in research requires CourtListener's `cited_by` data which
@@ -27,7 +36,7 @@ import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Loader2, Search, ExternalLink, Calendar, Bookmark, BookmarkCheck,
-  Scale, ChevronDown, Filter, X,
+  Scale, ChevronDown, Filter, X, Sparkles, Hash,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
@@ -45,10 +54,13 @@ interface SearchHit {
   docketNumber: string | null;
   judges: string | null;
   author: string | null;
+  bm25Score: number | null;
+  semanticScore: number | null;
 }
 
 interface SearchResult {
   query: string;
+  semantic: boolean;
   results: SearchHit[];
   count: number;
   totalHits: number;
@@ -86,6 +98,7 @@ export function LegalCaseSearch() {
   const [court, setCourt] = useState('');
   const [dateAfter, setDateAfter] = useState('');
   const [dateBefore, setDateBefore] = useState('');
+  const [semantic, setSemantic] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -110,6 +123,7 @@ export function LegalCaseSearch() {
     if (court.trim()) params.court = court.trim();
     if (dateAfter) params.dateAfter = dateAfter;
     if (dateBefore) params.dateBefore = dateBefore;
+    if (semantic) params.semantic = true;
     searchQuery.mutate(params);
   };
 
@@ -137,6 +151,7 @@ export function LegalCaseSearch() {
         {result && (
           <span className="text-[11px] text-zinc-400">
             {result.results.length} of {result.totalHits?.toLocaleString() || '?'} hits
+            {result.semantic && <span className="ml-2 text-violet-300/80">· semantic</span>}
             {result.authenticatedWithToken && <span className="ml-2 text-cyan-300/80">· authenticated</span>}
           </span>
         )}
@@ -150,9 +165,45 @@ export function LegalCaseSearch() {
               type="text"
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
-              placeholder='Brown v. Board · "qualified immunity" · 4th amendment search'
+              placeholder={
+                semantic
+                  ? 'Describe what you’re looking for, e.g. "a police officer used excessive force during a routine stop"'
+                  : 'Brown v. Board · "qualified immunity" · 4th amendment search'
+              }
               className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none"
             />
+          </div>
+          <div
+            role="radiogroup"
+            aria-label="Search mode"
+            className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-zinc-800 bg-zinc-950 p-0.5"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!semantic}
+              onClick={() => setSemantic(false)}
+              title="Keyword search — exact terms, boolean connectors"
+              className={`inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+                !semantic ? 'bg-cyan-500/15 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              <Hash className="h-3 w-3" />
+              Keyword
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={semantic}
+              onClick={() => setSemantic(true)}
+              title="Semantic search — natural language, CourtListener v4 semantic=true"
+              className={`inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+                semantic ? 'bg-violet-500/15 text-violet-200' : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              <Sparkles className="h-3 w-3" />
+              Semantic
+            </button>
           </div>
           <button
             type="button"
@@ -273,6 +324,12 @@ export function LegalCaseSearch() {
         <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-400">
           Search 9M+ federal and state court opinions via the CourtListener REST API.
           Free without a key; <code className="text-cyan-300">COURTLISTENER_API_TOKEN</code> env unlocks higher rate limits.
+          <br />
+          <span className="text-zinc-500">
+            <strong className="text-zinc-400">Keyword</strong> matches exact terms and boolean connectors;{' '}
+            <strong className="text-violet-300/80">Semantic</strong> understands a plain-language description of the
+            case even when it shares no words with the opinion.
+          </span>
         </div>
       )}
 
@@ -350,6 +407,17 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
                   : 'bg-zinc-800 text-zinc-400'
               }`}>
                 {hit.precedentialStatus}
+              </span>
+            )}
+            {/* Only rendered when CourtListener actually returned a semantic score
+                (semantic-mode searches) — never fabricated for keyword results. */}
+            {hit.semanticScore != null && (
+              <span
+                className="inline-flex items-center gap-1 rounded bg-violet-500/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-violet-300"
+                title="CourtListener semantic relevance score"
+              >
+                <Sparkles className="h-2.5 w-2.5" />
+                {Math.round(hit.semanticScore * 100)}% match
               </span>
             )}
           </div>

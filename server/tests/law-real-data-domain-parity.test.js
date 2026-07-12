@@ -150,6 +150,87 @@ describe("law.courtlistener-search (CourtListener)", () => {
     assert.equal(r.ok, false);
     assert.match(r.error, /rate limit.*COURTLISTENER_API_TOKEN/);
   });
+
+  // Semantic / natural-language search (closes docs/lens-specs/law-capability-map.md's
+  // "Semantic / natural-language search" gap). CourtListener v4's real GET-mode
+  // param is `semantic=true` — verified against freelawproject/courtlistener's
+  // open-source Django code (cl/search/forms.py's SearchForm.semantic field,
+  // cl/search/api_serializers.py's SemanticSearchScoreSerializer) since
+  // courtlistener.com/free.law itself is network-blocked in this environment.
+  describe("semantic mode", () => {
+    it("keyword-mode request is byte-identical to the pre-semantic behavior (no `semantic` key at all)", async () => {
+      let capturedUrl = "";
+      globalThis.fetch = async (url) => {
+        capturedUrl = url;
+        return { ok: true, json: async () => ({ count: 0, results: [] }) };
+      };
+      const r = await call("courtlistener-search", ctxA, { query: "qualified immunity" });
+      assert.equal(r.ok, true);
+      // Exact byte-for-byte query string — same param set/order as before this change.
+      assert.equal(capturedUrl, "https://www.courtlistener.com/api/rest/v4/search/?q=qualified+immunity&type=o&page_size=10");
+      assert.equal(r.result.semantic, false);
+    });
+
+    it("semantic mode (params.semantic: true) adds the real `semantic=true` param", async () => {
+      let capturedUrl = "";
+      globalThis.fetch = async (url) => {
+        capturedUrl = url;
+        return { ok: true, json: async () => ({ count: 0, results: [] }) };
+      };
+      const r = await call("courtlistener-search", ctxA, { query: "excessive force by police", semantic: true });
+      assert.equal(r.ok, true);
+      assert.match(capturedUrl, /[?&]semantic=true(&|$)/);
+      assert.match(capturedUrl, /type=o/);  // semantic search is opinion-only on CourtListener's side too
+      assert.equal(r.result.semantic, true);
+    });
+
+    it("semantic mode also accepts the string 'true' (macro params travel over JSON/HTTP)", async () => {
+      globalThis.fetch = async (url) => {
+        assert.match(url, /semantic=true/);
+        return { ok: true, json: async () => ({ results: [] }) };
+      };
+      const r = await call("courtlistener-search", ctxA, { query: "x", semantic: "true" });
+      assert.equal(r.result.semantic, true);
+    });
+
+    it("parses meta.score.{bm25,semantic} defensively for both modes", async () => {
+      const scoredOpinion = (score) => ({
+        id: 1, caseName: "Doe v. Roe", court: "N.D. Cal.", court_id: "cand",
+        dateFiled: "2024-01-01", absolute_url: "/opinion/1/doe-v-roe/",
+        snippet: "s", citation: ["1 F.4th 1"], status: "Published",
+        docketNumber: "1", judge: "J", author: "A",
+        meta: { score, timestamp: "2024-01-01T00:00:00Z" },
+      });
+
+      // Keyword mode: CourtListener only ever returns a bm25 score.
+      globalThis.fetch = async () => ({
+        ok: true,
+        json: async () => ({ count: 1, results: [scoredOpinion({ bm25: 4.2 })] }),
+      });
+      const kw = await call("courtlistener-search", ctxA, { query: "x" });
+      assert.equal(kw.result.results[0].bm25Score, 4.2);
+      assert.equal(kw.result.results[0].semanticScore, null);
+
+      // Semantic mode: CourtListener adds a semantic score alongside bm25.
+      globalThis.fetch = async () => ({
+        ok: true,
+        json: async () => ({ count: 1, results: [scoredOpinion({ bm25: 4.2, semantic: 0.87 })] }),
+      });
+      const sem = await call("courtlistener-search", ctxA, { query: "x", semantic: true });
+      assert.equal(sem.result.results[0].bm25Score, 4.2);
+      assert.equal(sem.result.results[0].semanticScore, 0.87);
+
+      // Degrade gracefully — no meta at all (older/unscored shape) never throws, never fabricates.
+      globalThis.fetch = async () => ({
+        ok: true,
+        json: async () => ({ count: 1, results: [{ id: 2, caseName: "No Meta" }] }),
+      });
+      const noMeta = await call("courtlistener-search", ctxA, { query: "x" });
+      assert.equal(noMeta.ok, true);
+      assert.equal(noMeta.result.results[0].bm25Score, null);
+      assert.equal(noMeta.result.results[0].semanticScore, null);
+    });
+  });
 });
 
 describe("law.recap-docket-search (CourtListener RECAP Archive)", () => {
