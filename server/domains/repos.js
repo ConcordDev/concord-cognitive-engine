@@ -4,7 +4,125 @@
 // real GitHub API lookups (commits, issues, language breakdown).
 // Free at 60 req/hr; GITHUB_TOKEN env raises to 5000/hr.
 
+import { cachedFetchJson, fetchJsonWithTimeout } from "../lib/external-fetch.js";
+
 const GITHUB_API_REPOS = "https://api.github.com";
+
+// ── OSV.dev — free, keyless vulnerability feed for security-scan's
+// Dependabot-style dependency alerts. Docs: https://osv.dev/docs/.
+// No API key, no per-user auth — a plain public data feed (unlike the
+// connector-fetch chokepoint, which is for user-authenticated 3rd-party
+// accounts). Two-step lookup because OSV's batch endpoint intentionally
+// returns only {id, modified} per hit (to keep the batch response small);
+// full advisory text/severity needs a follow-up per-id GET.
+const OSV_API_BASE = "https://api.osv.dev/v1";
+const OSV_BATCH_TIMEOUT_MS = 10000;
+const OSV_DETAIL_TTL_MS = 6 * 60 * 60 * 1000; // advisory records change rarely
+const OSV_MAX_QUERIES = 200; // defensive cap — OSV allows up to 1000/batch
+const OSV_MAX_DETAIL_FETCHES = 40; // cap per-id fan-out on a pathological package.json
+
+/**
+ * osvSeverityBucket — map an OSV vulnerability record onto Concord's
+ * 4-bucket severity scale (critical/high/moderate/low). GitHub Security
+ * Advisories — OSV's largest npm source — publish exactly this scale via
+ * `database_specific.severity`. When a record has no explicit rating
+ * (uncommon for npm/GHSA-sourced entries) it's labeled "moderate" rather
+ * than inventing a number — the same convention `npm audit` uses for an
+ * unrated advisory. The underlying finding is still real; only its
+ * severity bucket is an honest best-effort default.
+ */
+function osvSeverityBucket(vuln) {
+  const raw = vuln?.database_specific?.severity
+    || vuln?.affected?.find((a) => a?.database_specific?.severity)?.database_specific?.severity;
+  if (raw) {
+    const lc = String(raw).toLowerCase();
+    if (lc === "medium") return "moderate"; // some non-GHSA sources use CVSS "MEDIUM"
+    if (["critical", "high", "moderate", "low"].includes(lc)) return lc;
+  }
+  return "moderate";
+}
+
+/** osvFixedVersion — earliest "fixed" SEMVER-range event for pkgName in a vuln record. */
+function osvFixedVersion(vuln, pkgName) {
+  for (const a of vuln?.affected || []) {
+    if (String(a?.package?.name || "").toLowerCase() !== String(pkgName).toLowerCase()) continue;
+    for (const range of a?.ranges || []) {
+      if (range?.type !== "SEMVER" && range?.type !== "ECOSYSTEM") continue;
+      const fixed = (range.events || []).find((e) => e?.fixed)?.fixed;
+      if (fixed) return fixed;
+    }
+  }
+  return null;
+}
+
+/**
+ * osvScanDependencies — real OSV.dev lookup for an npm dependency map
+ * (`{ name: declaredVersionRange }`, e.g. parsed from package.json).
+ * Returns `{ dependabot, source, unreachable, error?, truncated? }`.
+ * Honest on failure: network/timeout errors surface `unreachable: true`
+ * with an empty `dependabot` list — never a fabricated finding. Packages
+ * OSV has no record for are legitimately clean; they simply produce no
+ * entry, which is not an error.
+ */
+async function osvScanDependencies(depVersions) {
+  const entries = Object.entries(depVersions || {})
+    .map(([name, ver]) => ({ name, version: String(ver).replace(/^[^0-9]*/, "") }))
+    .filter((d) => d.name && d.version)
+    .slice(0, OSV_MAX_QUERIES);
+  if (entries.length === 0) return { dependabot: [], source: "osv.dev", unreachable: false };
+
+  let batchResults;
+  try {
+    const body = {
+      queries: entries.map((d) => ({ package: { name: d.name, ecosystem: "npm" }, version: d.version })),
+    };
+    // Not routed through cachedFetchJson: the batch endpoint's URL is
+    // constant while the POST body (the dependency set) varies per repo,
+    // and cachedFetchJson keys its TTL cache by URL alone — caching here
+    // would serve one repo's scan results to a different repo's request.
+    const data = await fetchJsonWithTimeout(
+      `${OSV_API_BASE}/querybatch`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+      OSV_BATCH_TIMEOUT_MS,
+    );
+    batchResults = data?.results || [];
+  } catch (e) {
+    return { dependabot: [], source: "osv.dev", unreachable: true, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  const hitsByPkg = entries.map((d, i) => ({ ...d, ids: (batchResults[i]?.vulns || []).map((v) => v.id).filter(Boolean) }));
+  const allIds = [...new Set(hitsByPkg.flatMap((h) => h.ids))];
+  const idsToFetch = allIds.slice(0, OSV_MAX_DETAIL_FETCHES);
+  const truncated = idsToFetch.length < allIds.length;
+
+  // Per-id GET is a stable URL per advisory, so this leg fits
+  // cachedFetchJson's URL-keyed TTL cache correctly.
+  const detailById = new Map();
+  await Promise.all(idsToFetch.map(async (id) => {
+    try {
+      const vuln = await cachedFetchJson(`${OSV_API_BASE}/vulns/${encodeURIComponent(id)}`, { ttlMs: OSV_DETAIL_TTL_MS });
+      detailById.set(id, vuln);
+    } catch (_e) { /* one advisory failing to resolve doesn't fail the whole scan */ }
+  }));
+
+  const dependabot = [];
+  for (const h of hitsByPkg) {
+    for (const id of h.ids) {
+      const vuln = detailById.get(id);
+      if (!vuln) continue; // truncated or failed detail fetch — omit, never fabricate
+      dependabot.push({
+        kind: "dependency",
+        package: h.name,
+        version: h.version,
+        severity: osvSeverityBucket(vuln),
+        summary: vuln.summary || vuln.id,
+        fixedIn: osvFixedVersion(vuln, h.name),
+        osvId: vuln.id,
+      });
+    }
+  }
+  return { dependabot, source: "osv.dev", unreachable: false, truncated };
+}
 
 export default function registerReposActions(registerLensAction) {
   /**
@@ -1159,14 +1277,7 @@ export default function registerReposActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
-  // ── [S] Security tab — Dependabot + code scanning ──────────────────
-  const RP_VULN_DB = [
-    { pkg: "lodash", version: "4.17.11", severity: "high", advisory: "Prototype pollution (CVE-2019-10744)", fixed: "4.17.12" },
-    { pkg: "minimist", version: "1.2.0", severity: "moderate", advisory: "Prototype pollution (CVE-2020-7598)", fixed: "1.2.3" },
-    { pkg: "node-fetch", version: "2.6.0", severity: "high", advisory: "Information exposure (CVE-2022-0235)", fixed: "2.6.7" },
-    { pkg: "ws", version: "7.0.0", severity: "critical", advisory: "ReDoS (CVE-2024-37890)", fixed: "7.5.10" },
-    { pkg: "axios", version: "0.21.0", severity: "moderate", advisory: "SSRF (CVE-2021-3749)", fixed: "0.21.4" },
-  ];
+  // ── [S] Security tab — Dependabot (real OSV.dev feed) + code scanning ──
   const RP_SCAN_RULES = [
     { rx: /eval\s*\(/, rule: "no-eval", severity: "high", message: "Use of eval() — code injection risk" },
     { rx: /password\s*=\s*['"][^'"]+['"]/i, rule: "hardcoded-secret", severity: "critical", message: "Hardcoded credential detected" },
@@ -1174,12 +1285,13 @@ export default function registerReposActions(registerLensAction) {
     { rx: /http:\/\//, rule: "insecure-transport", severity: "low", message: "Insecure http:// URL" },
     { rx: /TODO|FIXME/, rule: "tracked-debt", severity: "low", message: "Unresolved TODO/FIXME marker" },
   ];
-  registerLensAction("repos", "security-scan", (ctx, _a, params = {}) => {
+  registerLensAction("repos", "security-scan", async (ctx, _a, params = {}) => {
     try {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
       if (!repo) return { ok: false, error: "repo not found" };
-      // Dependabot alerts — parse package.json deps and match the vuln DB.
+      // Dependabot alerts — parse package.json deps and check them against
+      // OSV.dev, a real free/keyless vulnerability feed (osv.dev/docs).
       const pkgFile = repo.files.find((f) => f.path === "package.json");
       let depVersions = {};
       if (pkgFile) {
@@ -1188,12 +1300,8 @@ export default function registerReposActions(registerLensAction) {
           depVersions = { ...(parsed.dependencies || {}), ...(parsed.devDependencies || {}) };
         } catch (_e) { /* malformed package.json — no dependency alerts */ }
       }
-      const dependabot = [];
-      for (const [name, ver] of Object.entries(depVersions)) {
-        const clean = String(ver).replace(/^[^0-9]*/, "");
-        const hit = RP_VULN_DB.find((v) => v.pkg === name && v.version === clean);
-        if (hit) dependabot.push({ kind: "dependency", package: name, version: clean, severity: hit.severity, summary: hit.advisory, fixedIn: hit.fixed });
-      }
+      const osv = await osvScanDependencies(depVersions);
+      const dependabot = osv.dependabot;
       // Code scanning — regex rules over every text file.
       const codeScanning = [];
       for (const f of repo.files) {
@@ -1219,6 +1327,10 @@ export default function registerReposActions(registerLensAction) {
           dependabot, codeScanning,
           total: all.length, bySeverity,
           alerts: all.sort((a, b) => (sevRank[b.severity] || 0) - (sevRank[a.severity] || 0)),
+          dependencySource: "osv.dev",
+          dependencyScanUnreachable: osv.unreachable,
+          ...(osv.unreachable ? { dependencyScanError: osv.error } : {}),
+          ...(osv.truncated ? { dependencyScanTruncated: true } : {}),
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
