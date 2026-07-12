@@ -33,6 +33,7 @@ import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
 import { UsageSpendPanel } from '@/components/byo-keys/UsageSpendPanel';
 import { BudgetPanel } from '@/components/byo-keys/BudgetPanel';
+import { RateLimitPanel } from '@/components/byo-keys/RateLimitPanel';
 import { FallbackChainPanel } from '@/components/byo-keys/FallbackChainPanel';
 import { KeyHealthPanel } from '@/components/byo-keys/KeyHealthPanel';
 import { OrgKeysPanel } from '@/components/byo-keys/OrgKeysPanel';
@@ -357,8 +358,9 @@ export default function ByoKeysLens() {
           <UsageSpendPanel />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <BudgetPanel />
-            <KeyHealthPanel />
+            <RateLimitPanel />
           </div>
+          <KeyHealthPanel />
           <FallbackChainPanel />
           <OrgKeysPanel />
         </div>

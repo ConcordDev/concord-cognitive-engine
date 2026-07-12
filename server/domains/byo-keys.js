@@ -21,6 +21,7 @@ import {
 } from "../lib/byo-keys.js";
 import { BYO_PROVIDERS } from "../lib/byo-providers.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { setRateLimit, getRateLimitStatus, ensureByoKeysLensState } from "../lib/byo-rate-limit.js";
 
 const VALID_SLOTS = new Set(["conscious", "subconscious", "utility", "repair", "vision"]);
 
@@ -30,20 +31,15 @@ const VALID_SLOTS = new Set(["conscious", "subconscious", "utility", "repair", "
 // the parity tests (which reset globalThis._concordSTATE per case)
 // always see a fresh, isolated namespace.
 
+// The `_concordSTATE.byoKeysLens` object's shape (usage/budgets/
+// fallback/health/orgKeys/alerts/rateLimits) is defined ONCE, canonically,
+// in server/lib/byo-rate-limit.js#ensureByoKeysLensState — shared with
+// this file so the enforcement gate stays reachable from
+// server/lib/byo-router.js (which cannot import from server/domains/*.js;
+// no server/lib/*.js file does anywhere in this codebase) without two
+// independent lazy-init sites racing each other to create the object.
 function stateRoot() {
-  const s = globalThis._concordSTATE;
-  if (!s) return null;
-  if (!s.byoKeysLens) {
-    s.byoKeysLens = {
-      usage: new Map(),     // userId -> Map<slot, { events:[], totals:{} }>
-      budgets: new Map(),   // userId -> Map<slot, { monthlyUsdCap, monthlyTokenCap }>
-      fallback: new Map(),  // userId -> Map<slot, string[]>  (ordered fallback slots)
-      health: new Map(),    // userId -> Map<slot, { lastError, lastErrorAt, lastOkAt, status }>
-      orgKeys: new Map(),   // orgId  -> { ownerId, label, provider, members:Map<userId,role> }
-      alerts: new Map(),    // userId -> Map<slot, { month, threshold }>  (spend-alert dedupe, see checkSpendAlerts)
-    };
-  }
-  return s.byoKeysLens;
+  return ensureByoKeysLensState();
 }
 
 function userMap(branch, userId) {
@@ -286,6 +282,35 @@ export default function registerByoKeysMacros(register) {
       },
     };
   }, { note: "Enforcement check — returns allowed:false when the slot's monthly cap is hit." });
+
+  // ── Per-key rate limiting (Wave 4 gap-closure, docs/lens-specs/byo-
+  // keys-capability-map.md item #9) ──────────────────────────────
+  //
+  // `budget_check` above enforces a monthly $/token CEILING; this is a
+  // separate, orthogonal control — a requests-per-minute THROTTLE, so a
+  // runaway loop can't burn through a whole month's budget (or hammer a
+  // provider) in seconds even while comfortably under the monthly cap.
+  // Real token-bucket state lives in server/lib/byo-rate-limit.js (not
+  // in this file's own `_concordSTATE.byoKeysLens` branches above)
+  // because the enforcement gate (`consumeRateLimitToken`) must be
+  // import-safe from server/lib/byo-router.js#brainChat — the actual
+  // outbound-call dispatch chokepoint for every BYO-key inference — and
+  // no server/lib/*.js file imports from server/domains/*.js anywhere
+  // in this codebase. `setRateLimit`/`getRateLimitStatus` are re-used
+  // as-is here so the macro layer and the router enforcement layer are
+  // provably the same code, not two implementations that could drift.
+
+  register("byo_keys", "rate_limit_set", async (ctx, input = {}) => {
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_actor" };
+    return setRateLimit(userId, input?.slot, input?.maxPerMinute);
+  }, { note: "Set or clear a per-slot requests-per-minute cap. Enforced token-bucket style by the BYO router (server/lib/byo-router.js#brainChat) on every outbound call through that slot's override, BEFORE the key is decrypted or the provider is contacted." });
+
+  register("byo_keys", "rate_limit_status", async (ctx) => {
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_actor" };
+    return getRateLimitStatus(userId);
+  }, { note: "Current token-bucket state per rate-limited slot: requests remaining in the rolling 1-minute window + time until the next token refills. Read-only — does not consume a token." });
 
   // ── [M] Model picker per slot from the provider's live model list ──
 
