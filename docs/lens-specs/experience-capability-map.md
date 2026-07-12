@@ -202,21 +202,37 @@ separate macro clusters, not variations on one.
 
 ## Known, documented, unfixed gap
 
-`surveyNext` (branching-logic resolver) remains genuinely unsurfaced —
-`UXResearchSuite.tsx`'s `SurveyPanel` renders every question in a survey
-flat rather than one-at-a-time with branch-aware navigation, so it never
-calls `surveyNext`. The survey feature is fully functional without it
-(linear flow, real NPS/CSAT/CES scoring, real response persistence) — this
-is a real-but-currently-unused capability, not a broken one, the same
-disposition as `eco.sustainabilityScore`: build target for a future
-"branching survey" UI pass, not a defect in what exists today.
+*(Closed 2026-07-12 — see below. No other known gap remains.)*
+
+## Wave 4 follow-up (2026-07-12): branch-aware survey UI
+
+`surveyNext` (branching-logic resolver) was genuinely unsurfaced — the old
+`UXResearchSuite.tsx#SurveyPanel` rendered every question in a survey flat
+rather than one-at-a-time with branch-aware navigation, so it never called
+`surveyNext`. Fixed: `SurveyPanel`'s taking flow now asks one question at a
+time and calls `surveyNext({ surveyId, questionId, answer })` after every
+answer — the branch (`question.branch[answer]` lookup, else fall through
+to `questions[idx+1]`) is resolved server-side, not guessed client-side.
+Added a custom survey builder (Template vs. Custom+branching toggle) with
+a per-answer branch editor, since the pre-existing NPS/CSAT/CES templates
+never populate `branch` — without it there was no way to author a
+branching survey through the UI at all. Also fixed a latent bug where
+`kind: 'multi'` questions had no input case in the old flat renderer.
+
+3 new behavioral tests (`server/tests/depth/experience-behavior.test.js`):
+a 4-question survey where one path branches straight to the last question
+(skipping two) and the other falls through in array order; an unknown
+`questionId` rejected vs. an unknown answer value falling through instead
+of erroring; and a full two-respondent branch-aware take→submit→results
+round trip asserting only the traversed path's answers are persisted and
+scored (`avgScore`/`samples`/`answered` counts differ per respondent based
+on which questions they actually reached).
 
 ## Verification
 
-- `cd concord-frontend && npx eslint app/lenses/experience/page.tsx components/experience/AnalysisTools.tsx components/experience/CareerPortfolio.tsx` — clean, exit 0.
-- `cd concord-frontend && npx tsc --noEmit -p .` — no errors attributable to any of the 3 touched/new files (checked via `grep "experience/"` against the full type-check output).
-- `node scripts/lens-unsurfaced.mjs --lens experience` → `1/31 macros never referenced` (`surveyNext`, documented above and pre-existing — unrelated to this pass's changes; unchanged before/after).
+- `cd concord-frontend && npx eslint app/lenses/experience/page.tsx components/experience/AnalysisTools.tsx components/experience/CareerPortfolio.tsx components/experience/UXResearchSuite.tsx` — clean, exit 0.
+- `cd concord-frontend && npx tsc --noEmit -p .` — 0 errors project-wide.
+- `node scripts/lens-unsurfaced.mjs --lens experience` → `0/31 macros never referenced` (was `1/31` — `surveyNext` is now referenced).
 - `node scripts/verify-lens-backends.mjs` → experience lens still `WIRED`; overall `{"WIRED":258,"NO-BACKEND-CALL":2}` unaffected.
-- `cd server && node --test tests/experience-domain-parity.test.js` → `11 pass / 0 fail` (pre-existing, unaffected).
-- `cd server && node --test tests/depth/experience-career-portfolio-behavior.test.js` → new file, all assertions pass.
-- `cd server && npx eslint tests/depth/experience-career-portfolio-behavior.test.js` — clean, exit 0.
+- `cd server && node --test tests/experience-domain-parity.test.js tests/depth/experience-behavior.test.js tests/depth/experience-career-portfolio-behavior.test.js tests/llm-hint-macros-contract.test.js` → `74 pass / 0 fail`.
+- `cd server && npx eslint tests/depth/experience-behavior.test.js tests/llm-hint-macros-contract.test.js` — clean, exit 0.
