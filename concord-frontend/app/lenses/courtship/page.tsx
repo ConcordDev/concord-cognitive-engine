@@ -14,6 +14,12 @@
 //   POST /api/lens/run courtship.constants → ROMANCE_CONSTANTS (threshold source)
 //   POST /api/lens/run courtship.conceive  → conceive (start a pregnancy; married only)
 //   POST /api/lens/run courtship.birth     → birthChild (from a due pregnancy)
+//   POST /api/lens/run courtship.dissolve  → dissolveMarriage (end a marriage;
+//                                             server-enforced: caller must be
+//                                             a party to the marriage)
+//   POST /api/lens/run courtship.marriages {activeOnly:false} → past
+//                                             (dissolved) marriages, for the
+//                                             "Past marriages" section below
 //
 // The propose/marry floors are NOT duplicated here — they come from the
 // engine via courtship.constants so the lens can never drift from the
@@ -37,6 +43,7 @@ import { Heart, Crown, Baby, Loader2, AlertTriangle, RefreshCw, Sparkles } from 
 import { useUIStore } from '@/store/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { HeartEventModal, type HeartEventScene } from '@/components/courtship/HeartEventModal';
+import { ConfirmDissolveModal } from '@/components/courtship/ConfirmDissolveModal';
 import {
   loadCachedPregnancies,
   addCachedPregnancy,
@@ -58,6 +65,8 @@ interface Marriage {
   partner_id: string;
   married_at: number;
   status?: string;
+  dissolved_at?: number | null;
+  dissolved_reason?: string | null;
 }
 // Matches the real player_children columns (migration 206).
 interface Child {
@@ -87,6 +96,8 @@ export default function CourtshipLensPage() {
   const [marryThreshold, setMarryThreshold] = useState(DEFAULT_MARRY_THRESHOLD);
   const [heartEvent, setHeartEvent] = useState<{ scene: HeartEventScene; partnerLabel: string } | null>(null);
   const [pregnancies, setPregnancies] = useState<CachedPregnancy[]>([]);
+  const [pastMarriages, setPastMarriages] = useState<Marriage[]>([]);
+  const [dissolveTarget, setDissolveTarget] = useState<Marriage | null>(null);
   const addToast = useUIStore((s) => s.addToast);
   const { user } = useAuth();
 
@@ -120,6 +131,33 @@ export default function CourtshipLensPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Past (dissolved) marriages come from the macro dispatcher — the REST
+  // route only ever returns active marriages — via courtship.marriages with
+  // activeOnly:false, then filtered to rows that actually carry a
+  // dissolved_at. Best-effort: a failure here never blocks the core ready
+  // state, it just leaves the "Past marriages" section showing what it had.
+  const loadPastMarriages = useCallback(async () => {
+    try {
+      const r = await fetch('/api/lens/run', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'courtship',
+          name: 'marriages',
+          input: { activeOnly: false },
+        }),
+      });
+      const j = await r.json().catch(() => ({ ok: false }));
+      const result = j?.result ?? j;
+      if (result?.ok) {
+        setPastMarriages((result.marriages || []).filter((m: Marriage) => !!m.dissolved_at));
+      }
+    } catch {
+      /* best-effort supplementary view — see comment above */
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     setLoadState((s) => (s === 'ready' ? 'ready' : 'loading'));
     setErrorMsg(null);
@@ -138,12 +176,13 @@ export default function CourtshipLensPage() {
         setChildren(mJ.children || []);
       }
       setLoadState('ready');
+      loadPastMarriages();
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Could not load your courtships.');
       setLoadState('error');
       addToast({ type: 'error', message: 'Could not load your courtships' });
     }
-  }, [addToast]);
+  }, [addToast, loadPastMarriages]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -285,6 +324,42 @@ export default function CourtshipLensPage() {
     }
   }, [user?.id, addToast, refresh]);
 
+  // dissolve goes through the macro dispatcher (courtship.dissolve) — same
+  // reasoning as conceive/birth above. Confirmed via ConfirmDissolveModal
+  // before this ever fires; the server independently re-checks that the
+  // caller is a party to the marriage (courtship.js `dissolve`).
+  const confirmDissolve = useCallback(async () => {
+    if (!dissolveTarget) return;
+    setPending(true);
+    try {
+      const r = await fetch('/api/lens/run', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'courtship',
+          name: 'dissolve',
+          input: { marriageId: dissolveTarget.id, reason: 'estranged' },
+        }),
+      });
+      const j = await r.json().catch(() => ({ ok: false }));
+      const result = j?.result ?? j;
+      if (result?.ok) {
+        addToast({ type: 'success', message: 'The marriage has ended.' });
+        setDissolveTarget(null);
+        await refresh();
+      } else {
+        setErrorMsg(result?.reason ? `Could not end marriage: ${result.reason}` : 'Could not end marriage.');
+        addToast({ type: 'error', message: 'Action failed' });
+      }
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Action failed.');
+      addToast({ type: 'error', message: 'Action failed' });
+    } finally {
+      setPending(false);
+    }
+  }, [dissolveTarget, refresh, addToast]);
+
   const engagePct = Math.round(engageThreshold * 100);
 
   return (
@@ -409,29 +484,60 @@ export default function CourtshipLensPage() {
               {marriages.length === 0 ? (
                 <p className="text-xs text-zinc-500">No active marriages.</p>
               ) : (
-                <ul className="space-y-1">
+                <ul data-testid="marriage-list" className="space-y-1">
                   {marriages.map((m) => (
                     <li key={m.id} className="flex flex-col gap-1 rounded border border-amber-500/30 bg-amber-950/30 p-2 text-xs sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex flex-col">
                         <span className="font-mono text-amber-100">{m.partner_kind}:{m.partner_id.slice(0, 14)}</span>
                         <span className="text-amber-300/70">since {new Date(m.married_at * 1000).toLocaleDateString()}</span>
                       </div>
-                      {pregnancies.length === 0 && (
+                      <div className="flex gap-1 self-start sm:self-auto">
+                        {pregnancies.length === 0 && (
+                          <button
+                            type="button"
+                            aria-label={`Try for a child with ${m.partner_id}`}
+                            onClick={() => conceive(m)}
+                            disabled={pending}
+                            className="rounded bg-emerald-500/30 px-2 py-1 text-[10px] text-emerald-100 hover:bg-emerald-500/50 disabled:opacity-50"
+                          >
+                            Try for a child
+                          </button>
+                        )}
                         <button
                           type="button"
-                          aria-label={`Try for a child with ${m.partner_id}`}
-                          onClick={() => conceive(m)}
+                          aria-label={`End marriage to ${m.partner_id}`}
+                          onClick={() => setDissolveTarget(m)}
                           disabled={pending}
-                          className="self-start rounded bg-emerald-500/30 px-2 py-1 text-[10px] text-emerald-100 hover:bg-emerald-500/50 disabled:opacity-50 sm:self-auto"
+                          className="rounded bg-red-500/20 px-2 py-1 text-[10px] text-red-300 hover:bg-red-500/40 hover:text-red-100 disabled:opacity-50"
                         >
-                          Try for a child
+                          End Marriage
                         </button>
-                      )}
+                      </div>
                     </li>
                   ))}
                 </ul>
               )}
             </section>
+
+            {pastMarriages.length > 0 && (
+              <section className="space-y-2" aria-labelledby="past-marriages-heading">
+                <h2 id="past-marriages-heading" className="text-sm font-semibold text-zinc-400">
+                  Past marriages ({pastMarriages.length})
+                </h2>
+                <ul data-testid="past-marriage-list" className="space-y-1">
+                  {pastMarriages.map((m) => (
+                    <li key={m.id} className="flex flex-col gap-0.5 rounded border border-zinc-700/50 bg-zinc-900/40 p-2 text-xs">
+                      <span className="font-mono text-zinc-300">{m.partner_kind}:{m.partner_id.slice(0, 14)}</span>
+                      <span className="text-zinc-500">
+                        {new Date(m.married_at * 1000).toLocaleDateString()}
+                        {m.dissolved_at ? ` – ${new Date(m.dissolved_at * 1000).toLocaleDateString()}` : ''}
+                        {m.dissolved_reason ? ` (${m.dissolved_reason})` : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             {pregnancies.length > 0 && (
               <section className="space-y-2" aria-labelledby="pregnancies-heading">
@@ -499,6 +605,15 @@ export default function CourtshipLensPage() {
           scene={heartEvent.scene}
           partnerLabel={heartEvent.partnerLabel}
           onClose={() => setHeartEvent(null)}
+        />
+      )}
+
+      {dissolveTarget && (
+        <ConfirmDissolveModal
+          partnerLabel={`${dissolveTarget.partner_kind}:${dissolveTarget.partner_id.slice(0, 14)}`}
+          pending={pending}
+          onConfirm={confirmDissolve}
+          onCancel={() => setDissolveTarget(null)}
         />
       )}
     </LensShell>

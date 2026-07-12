@@ -114,9 +114,15 @@ export function wed(db, playerUserId, partnerKind, partnerId) {
   return { ok: true, marriageId, status: "married" };
 }
 
-export function dissolveMarriage(db, marriageId, reason = "estranged") {
+// `expectedUserId`, when passed, enforces that the caller is a party to the
+// marriage (the row's `player_user_id`). Optional for back-compat with
+// internal/system callers (e.g. spouse-death cascades) that already know the
+// marriage is theirs to close and don't have a player actor in context —
+// player-facing callers (the courtship/romance macros) MUST pass it.
+export function dissolveMarriage(db, marriageId, reason = "estranged", expectedUserId = null) {
   const m = db.prepare("SELECT * FROM player_marriages WHERE id = ?").get(marriageId);
   if (!m) return { ok: false, reason: "marriage_not_found" };
+  if (expectedUserId && m.player_user_id !== expectedUserId) return { ok: false, reason: "not_a_party" };
   if (m.dissolved_at) return { ok: false, reason: "already_dissolved" };
   db.prepare(`
     UPDATE player_marriages SET dissolved_at = unixepoch(), dissolved_reason = ?
