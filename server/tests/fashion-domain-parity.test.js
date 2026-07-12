@@ -53,6 +53,71 @@ describe("fashion.item-* wardrobe", () => {
   });
 });
 
+// Stylebook capability-map #20 — laundry/availability status.
+describe("fashion.item laundry status", () => {
+  it("defaults to clean on a freshly-added item", () => {
+    const item = newItem();
+    assert.equal(item.laundryStatus, "clean");
+    assert.equal(call("item-list", ctxA, {}).result.items[0].laundryStatus, "clean");
+  });
+
+  it("back-compat: an item persisted before this field existed reads as clean", () => {
+    const item = newItem();
+    // Simulate a pre-existing item from before laundryStatus was introduced
+    // by deleting the field off the stored record directly.
+    delete item.laundryStatus;
+    const listed = call("item-list", ctxA, {}).result.items[0];
+    assert.equal(listed.laundryStatus, "clean");
+  });
+
+  it("item-update sets a valid laundry status and it persists across reads", () => {
+    const item = newItem();
+    const r = call("item-update", ctxA, { id: item.id, laundryStatus: "dirty" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.item.laundryStatus, "dirty");
+    assert.equal(call("item-list", ctxA, {}).result.items[0].laundryStatus, "dirty");
+  });
+
+  it("item-update accepts each of the four documented statuses", () => {
+    const item = newItem();
+    for (const status of ["clean", "dirty", "at_cleaner", "lent_out"]) {
+      const r = call("item-update", ctxA, { id: item.id, laundryStatus: status });
+      assert.equal(r.ok, true, `expected ${status} to be accepted`);
+      assert.equal(r.result.item.laundryStatus, status);
+    }
+  });
+
+  it("item-update is case-insensitive on laundryStatus", () => {
+    const item = newItem();
+    const r = call("item-update", ctxA, { id: item.id, laundryStatus: "DIRTY" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.item.laundryStatus, "dirty");
+  });
+
+  it("rejects an invalid laundry status and applies no partial update", () => {
+    const item = newItem(ctxA, { cost: 30 });
+    const r = call("item-update", ctxA, { id: item.id, laundryStatus: "incinerated", cost: 999 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /invalid laundryStatus/);
+    // The cost passed alongside the bad status must NOT have been applied.
+    const stillThere = call("item-list", ctxA, {}).result.items[0];
+    assert.equal(stillThere.cost, 30);
+    assert.equal(stillThere.laundryStatus, "clean");
+  });
+
+  it("item-list filters by laundryStatus", () => {
+    const a = newItem(ctxA, { name: "Clean shirt" });
+    const b = newItem(ctxA, { name: "Dirty jeans" });
+    call("item-update", ctxA, { id: b.id, laundryStatus: "dirty" });
+    const cleanOnly = call("item-list", ctxA, { laundryStatus: "clean" }).result.items;
+    assert.equal(cleanOnly.length, 1);
+    assert.equal(cleanOnly[0].id, a.id);
+    const dirtyOnly = call("item-list", ctxA, { laundryStatus: "dirty" }).result.items;
+    assert.equal(dirtyOnly.length, 1);
+    assert.equal(dirtyOnly[0].id, b.id);
+  });
+});
+
 describe("fashion.outfit-*", () => {
   it("create outfit from items, wearing cascades to items", () => {
     const top = newItem(ctxA, { name: "Shirt" });

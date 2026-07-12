@@ -80,11 +80,16 @@ export default function registerFashionActions(registerLensAction) {
   const findOutfit = (s, userId, id) => (s.outfits.get(userId) || []).find((o) => o.id === id) || null;
 
   const CATEGORIES = ["top", "bottom", "dress", "outerwear", "shoes", "accessory", "bag", "activewear", "underwear"];
+  // Stylebook-parity laundry/availability status (capability-map #20).
+  // "clean" is the default for both newly-added items and back-compat
+  // reads of items persisted before this field existed.
+  const LAUNDRY_STATUSES = ["clean", "dirty", "at_cleaner", "lent_out"];
 
   function itemView(item) {
     const cpw = item.timesWorn > 0 ? Math.round((item.cost / item.timesWorn) * 100) / 100 : null;
     return {
       ...item,
+      laundryStatus: LAUNDRY_STATUSES.includes(item.laundryStatus) ? item.laundryStatus : "clean",
       costPerWear: cpw,
       valueRating: cpw == null ? "unworn"
         : cpw < 5 ? "excellent" : cpw < 15 ? "good" : cpw < 30 ? "moderate" : "poor",
@@ -110,6 +115,7 @@ export default function registerFashionActions(registerLensAction) {
       photo: fsClean(params.photo, 500) || null,
       archived: false,
       lastWorn: null,
+      laundryStatus: "clean",
       createdAt: fsNow(),
     };
   }
@@ -130,6 +136,10 @@ export default function registerFashionActions(registerLensAction) {
     if (!params.includeArchived) items = items.filter((i) => !i.archived);
     if (params.category) items = items.filter((i) => i.category === String(params.category).toLowerCase());
     if (params.season) items = items.filter((i) => i.season === String(params.season).toLowerCase() || i.season === "all");
+    if (params.laundryStatus) {
+      const want = String(params.laundryStatus).toLowerCase();
+      items = items.filter((i) => (LAUNDRY_STATUSES.includes(i.laundryStatus) ? i.laundryStatus : "clean") === want);
+    }
     items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { items: items.map(itemView), count: items.length } };
   });
@@ -138,6 +148,15 @@ export default function registerFashionActions(registerLensAction) {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const item = findItem(s, fsAid(ctx), params.id);
     if (!item) return { ok: false, error: "item not found" };
+    // Validate laundryStatus BEFORE mutating anything else, so an invalid
+    // value rejects the whole call rather than partially applying other
+    // fields and then failing.
+    let nextLaundryStatus = null;
+    if (params.laundryStatus != null) {
+      const ls = String(params.laundryStatus).toLowerCase();
+      if (!LAUNDRY_STATUSES.includes(ls)) return { ok: false, error: `invalid laundryStatus (must be one of ${LAUNDRY_STATUSES.join(", ")})` };
+      nextLaundryStatus = ls;
+    }
     if (params.name != null) { const n = fsClean(params.name, 120); if (n) item.name = n; }
     if (params.brand != null) item.brand = fsClean(params.brand, 80) || null;
     if (params.color != null) item.color = fsClean(params.color, 40).toLowerCase() || null;
@@ -146,6 +165,7 @@ export default function registerFashionActions(registerLensAction) {
       item.category = String(params.category).toLowerCase();
     }
     if (params.archived != null) item.archived = params.archived === true;
+    if (nextLaundryStatus != null) item.laundryStatus = nextLaundryStatus;
     saveFashionState();
     return { ok: true, result: { item: itemView(item) } };
   });
