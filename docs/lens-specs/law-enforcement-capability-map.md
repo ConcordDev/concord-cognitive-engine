@@ -215,7 +215,7 @@ classification above.
   than growing the backend. Left as an honest gap: the "Case ID" field in
   the rebuilt Quick Analysis form is caller-supplied free text, not a
   foreign key into anything.~~
-  **CLOSED (2026-07-12, pending commit)** — migration 362
+  **CLOSED (2026-07-12, `a68778e4`)** — migration 362
   (`server/migrations/362_law_enforcement_cases.js`) adds a real `le_cases`
   table: id/user_id/case_number/title/synopsis/status/assigned_detective/
   opened_at/closed_at/closure_reason, unique-indexed on
