@@ -3,6 +3,7 @@
 // source credibility scoring, and compound claim decomposition.
 
 import { ingestProtocol } from "../lib/provenance-ingest.js";
+import { cachedFetchJson } from "../lib/external-fetch.js";
 
 // ── Misinformation provenance shield (docs/NEXT_ARC_PLAN.md §D.2) ──────────
 // `sourceCredibility` (below) previously trusted a caller-supplied `type`
@@ -632,6 +633,41 @@ export default function registerGroundingActions(registerLensAction) {
     return { domain: d, lean: "unrated", leanScore: null, reliability: "unrated", factuality: null, known: false };
   }
 
+  // Shared stance-inference word lists — used by both aggregateEvidence
+  // (caller-supplied evidence text) and discoverCoverage (GDELT article
+  // titles) so a "supports"/"contradicts"/"neutral" call means the same
+  // thing regardless of which macro produced the evidence.
+  const EVIDENCE_SUPPORT_WORDS = ["confirmed", "verified", "proven", "true", "correct", "accurate", "supports", "demonstrates", "shows", "found that"];
+  const EVIDENCE_CONTRADICT_WORDS = ["false", "incorrect", "wrong", "disproven", "debunked", "myth", "inaccurate", "misleading", "no evidence", "contrary"];
+  function inferStance(text) {
+    const lc = String(text || "").toLowerCase();
+    const sup = EVIDENCE_SUPPORT_WORDS.filter((w) => lc.includes(w)).length;
+    const con = EVIDENCE_CONTRADICT_WORDS.filter((w) => lc.includes(w)).length;
+    return sup > con ? "supports" : con > sup ? "contradicts" : "neutral";
+  }
+
+  // Generic English stopwords stripped when turning a free-text claim into
+  // a GDELT keyword query (discoverCoverage) — keeps the query focused on
+  // the substantive terms instead of ANDing every grammatical filler word,
+  // which tends to zero out results on a full sentence-shaped claim.
+  const COVERAGE_STOP_WORDS = new Set([
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have",
+    "has", "had", "do", "does", "did", "will", "would", "to", "of", "in",
+    "for", "on", "with", "at", "by", "from", "as", "and", "but", "or",
+    "not", "so", "if", "that", "this", "it", "its", "i", "we", "you",
+    "they", "he", "she", "what", "which", "who", "how", "where", "why",
+    "claims", "claim", "said", "says", "according",
+  ]);
+  function buildCoverageQuery(claim) {
+    const words = String(claim || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !COVERAGE_STOP_WORDS.has(w));
+    const keywords = words.slice(0, 12);
+    return keywords.length > 0 ? keywords.join(" ") : String(claim || "").trim();
+  }
+
   /**
    * aggregateEvidence
    * Multi-source evidence aggregation per claim. Combines each piece of
@@ -646,19 +682,11 @@ export default function registerGroundingActions(registerLensAction) {
       if (!claim) return { ok: false, error: "claim text required" };
       if (evidence.length === 0) return { ok: false, error: "at least one evidence item required" };
 
-      const supportWords = ["confirmed", "verified", "proven", "true", "correct", "accurate", "supports", "demonstrates", "shows", "found that"];
-      const contradictWords = ["false", "incorrect", "wrong", "disproven", "debunked", "myth", "inaccurate", "misleading", "no evidence", "contrary"];
-
       const citations = evidence.map((ev, i) => {
         const text = gClean(ev.text, 1000);
-        const lc = text.toLowerCase();
         const bias = biasFor(ev.sourceUrl);
         let stance = ev.stance && ["supports", "contradicts", "neutral"].includes(ev.stance) ? ev.stance : null;
-        if (!stance) {
-          const sup = supportWords.filter((w) => lc.includes(w)).length;
-          const con = contradictWords.filter((w) => lc.includes(w)).length;
-          stance = sup > con ? "supports" : con > sup ? "contradicts" : "neutral";
-        }
+        if (!stance) stance = inferStance(text);
         // Source weight: factuality (0-1) blended with reliability tier.
         const relTier = { "very-high": 1.0, high: 0.85, medium: 0.6, low: 0.35, unrated: 0.5 };
         const fact = bias && bias.factuality != null ? bias.factuality / 100 : 0.5;
@@ -721,6 +749,95 @@ export default function registerGroundingActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e && e.message || e) };
     }
+  });
+
+  /**
+   * discoverCoverage
+   * Multi-source story discovery for a claim/topic — the Ground-News-parity
+   * step `aggregateEvidence` was missing: instead of requiring the caller
+   * to hand-type every source, this queries GDELT's free, keyless global
+   * news index (DOC 2.0 API, no API key, no auth) for real articles
+   * covering the claim across outlets worldwide, and labels each hit with
+   * the same `biasFor()` lean/reliability/factuality metadata
+   * `aggregateEvidence`'s citations carry. `evidenceCandidates` in the
+   * result is pre-shaped to drop straight into `aggregateEvidence`'s
+   * `evidence[]` param.
+   *
+   * Honest-by-construction: GDELT unreachable/timeout -> honest
+   * `{ ok:false, reason:'gdelt_unreachable' }` (never a fabricated article
+   * list); zero matching articles -> a legitimate `{ ok:true, result:{
+   * articles:[], count:0 } }`, not an error.
+   *
+   * This does NOT change aggregateEvidence's existing contract — that
+   * macro still only rates evidence the caller supplies. This is an
+   * additive discovery step a caller (or the frontend) can chain in front
+   * of it.
+   *
+   * params: { claim, maxRecords? (1-50, default 20), language? (ISO 639-1, optional GDELT sourcelang filter) }
+   */
+  registerLensAction("grounding", "discoverCoverage", async (_ctx, _a, params = {}) => {
+    const claim = gClean(params.claim, 1000);
+    if (!claim) return { ok: false, error: "claim text required" };
+    const maxRecords = Math.max(1, Math.min(50, Math.round(Number(params.maxRecords) || 20)));
+    const keywordQuery = buildCoverageQuery(claim);
+    const langCode = params.language ? String(params.language).toLowerCase().replace(/[^a-z]/g, "").slice(0, 20) : "";
+    const fullQuery = langCode ? `${keywordQuery} sourcelang:${langCode}` : keywordQuery;
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(fullQuery)}&mode=ArtList&maxrecords=${maxRecords}&format=json&sort=DateDesc`;
+
+    let data;
+    try {
+      data = await cachedFetchJson(url, { ttlMs: 10 * 60 * 1000, timeoutMs: 8000 });
+    } catch (e) {
+      return { ok: false, reason: "gdelt_unreachable", error: `GDELT unreachable: ${String(e && e.message || e)}` };
+    }
+
+    const rawArticles = Array.isArray(data?.articles) ? data.articles : [];
+    const articles = rawArticles.slice(0, maxRecords).map((a, i) => {
+      const bias = biasFor(a.url || a.domain);
+      const title = gClean(a.title, 400);
+      let publishedAt = null;
+      const seendate = a.seendate ? String(a.seendate) : "";
+      if (/^\d{8}T\d{6}Z?$/.test(seendate)) {
+        publishedAt = `${seendate.slice(0, 4)}-${seendate.slice(4, 6)}-${seendate.slice(6, 8)}T${seendate.slice(9, 11)}:${seendate.slice(11, 13)}:${seendate.slice(13, 15)}Z`;
+      }
+      return {
+        index: i,
+        title,
+        url: gClean(a.url, 600),
+        sourceName: gClean(a.domain, 160) || (bias ? bias.domain : "unknown"),
+        sourceCountry: a.sourcecountry || null,
+        language: a.language || null,
+        publishedAt,
+        stance: inferStance(title),
+        bias: bias ? { lean: bias.lean, leanScore: bias.leanScore, reliability: bias.reliability, factuality: bias.factuality, known: bias.known } : null,
+      };
+    });
+
+    const knownSources = articles.filter((a) => a.bias && a.bias.known).length;
+    const leanScores = articles.filter((a) => a.bias && a.bias.leanScore != null).map((a) => a.bias.leanScore);
+    const leanSpread = leanScores.length > 1 ? Math.max(...leanScores) - Math.min(...leanScores) : 0;
+
+    return {
+      ok: true,
+      result: {
+        claim,
+        query: fullQuery,
+        source: "GDELT Project (real-time global news index, no key required)",
+        count: articles.length,
+        knownSourceCount: knownSources,
+        spectrumCoverage: articles.length === 0 ? "no-coverage-found" : leanSpread >= 4 ? "broad" : leanSpread >= 2 ? "moderate" : "narrow",
+        articles,
+        // Pre-shaped for `aggregateEvidence`'s `evidence[]` param — the
+        // frontend can pass this array straight through (optionally
+        // filtered/edited by the user first).
+        evidenceCandidates: articles.map((a) => ({
+          text: a.title,
+          sourceUrl: a.url,
+          sourceName: a.sourceName,
+          stance: a.stance,
+        })),
+      },
+    };
   });
 
   /**

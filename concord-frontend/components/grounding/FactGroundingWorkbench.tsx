@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Layers, Gauge, Scale, History, Flame, Share2, GitFork,
-  Loader2, Plus, Trash2, Link2, Copy, Check, AlertTriangle, TrendingUp,
+  Loader2, Plus, Trash2, Link2, Copy, Check, AlertTriangle, TrendingUp, Globe2, PlusCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
@@ -83,6 +83,16 @@ interface Rebuttal {
   counterClaim: string; stance: string;
   counterEvidence: Array<{ text: string; sourceUrl: string }>; linkedAt: string;
 }
+interface DiscoveredArticle {
+  index: number; title: string; url: string; sourceName: string;
+  sourceCountry: string | null; language: string | null; publishedAt: string | null;
+  stance: string; bias: BiasInfo | null;
+}
+interface DiscoverResult {
+  claim: string; query: string; source: string; count: number; knownSourceCount: number;
+  spectrumCoverage: string; articles: DiscoveredArticle[];
+  evidenceCandidates: Array<{ text: string; sourceUrl: string; sourceName: string; stance: string }>;
+}
 
 type EvidenceRow = { text: string; sourceUrl: string; sourceName: string };
 type Tab = 'aggregate' | 'bias' | 'trending' | 'trail' | 'rebuttals';
@@ -123,6 +133,10 @@ export function FactGroundingWorkbench() {
   const [card, setCard] = useState<FactCheckCard | null>(null);
   const [copied, setCopied] = useState(false);
   const [savedNote, setSavedNote] = useState<string | null>(null);
+
+  // auto-discovery (GDELT coverage cluster) — feeds the evidence rows above
+  const [discovered, setDiscovered] = useState<DiscoverResult | null>(null);
+  const [addedUrls, setAddedUrls] = useState<Set<string>>(new Set());
 
   // bias
   const [biasUrls, setBiasUrls] = useState('');
@@ -201,6 +215,32 @@ export function FactGroundingWorkbench() {
     });
     if (conf.data.ok && conf.data.result) setConfidence(conf.data.result);
     setBusy(null);
+  }
+
+  // -- auto-discovery: find real coverage of the claim across outlets
+  //    worldwide via GDELT (grounding.discoverCoverage) instead of
+  //    requiring every source to be hand-typed. ------------------------------
+  async function runDiscoverCoverage() {
+    const cleanClaim = claim.trim();
+    if (!cleanClaim) { fail('Enter a claim to find coverage for.'); return; }
+    setBusy('discover'); setError(null); setDiscovered(null); setAddedUrls(new Set());
+    const r = await lensRun<DiscoverResult>('grounding', 'discoverCoverage', {
+      claim: cleanClaim, maxRecords: 12,
+    });
+    if (r.data.ok && r.data.result) setDiscovered(r.data.result);
+    else fail(r.data.error || 'coverage discovery failed');
+    setBusy(null);
+  }
+
+  function pullDiscoveredIntoEvidence(articles: DiscoveredArticle[]) {
+    const fresh = articles.filter((a) => a.url && !addedUrls.has(a.url));
+    if (fresh.length === 0) return;
+    setEvidence((rows) => {
+      const nonEmpty = rows.filter((r) => r.text.trim() || r.sourceUrl.trim());
+      const newRows = fresh.map((a) => ({ text: a.title, sourceUrl: a.url, sourceName: a.sourceName }));
+      return [...nonEmpty, ...newRows];
+    });
+    setAddedUrls((s) => new Set([...s, ...fresh.map((a) => a.url)]));
   }
 
   // -- 4. record into the audit trail ---------------------------------------
@@ -354,14 +394,83 @@ export function FactGroundingWorkbench() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Evidence sources</span>
-              <button
-                type="button"
-                onClick={() => setEvidence((e) => [...e, { text: '', sourceUrl: '', sourceName: '' }])}
-                className="flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-700"
-              >
-                <Plus className="h-3 w-3" /> Add source
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={runDiscoverCoverage}
+                  disabled={busy === 'discover'}
+                  title="Search GDELT's global news index for real coverage of this claim"
+                  className="flex items-center gap-1 rounded bg-cyan-900/40 px-2 py-1 text-[10px] text-cyan-300 hover:bg-cyan-900/60 disabled:opacity-50"
+                >
+                  {busy === 'discover' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe2 className="h-3 w-3" />}
+                  Find coverage
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEvidence((e) => [...e, { text: '', sourceUrl: '', sourceName: '' }])}
+                  className="flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-700"
+                >
+                  <Plus className="h-3 w-3" /> Add source
+                </button>
+              </div>
             </div>
+
+            {/* discovered coverage — auto-found via GDELT, pull into evidence rows */}
+            {discovered && (
+              <div className="space-y-1.5 rounded border border-cyan-500/20 bg-cyan-950/10 p-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[10px] text-zinc-400">
+                    <Globe2 className="mr-1 inline h-3 w-3 text-cyan-400" />
+                    {discovered.count === 0
+                      ? 'No coverage found for this claim yet — try a shorter/more distinctive claim.'
+                      : `${discovered.count} article(s) found · ${discovered.knownSourceCount} rated · spectrum: ${discovered.spectrumCoverage}`}
+                  </p>
+                  {discovered.count > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => pullDiscoveredIntoEvidence(discovered.articles)}
+                      className="flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-cyan-300 hover:bg-zinc-700"
+                    >
+                      <PlusCircle className="h-3 w-3" /> Add all to evidence
+                    </button>
+                  )}
+                </div>
+                {discovered.articles.map((a) => {
+                  const added = addedUrls.has(a.url);
+                  return (
+                    <div key={a.index} className="flex items-start justify-between gap-2 rounded border border-zinc-800 bg-zinc-950 p-2 text-[11px]">
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-zinc-200">{a.title}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px]">
+                          <span className="text-zinc-400">{a.sourceName}</span>
+                          {a.sourceCountry && <span className="text-zinc-500">· {a.sourceCountry}</span>}
+                          <span className={`rounded px-1.5 py-0.5 ${
+                            a.stance === 'supports' ? 'bg-emerald-500/15 text-emerald-300'
+                            : a.stance === 'contradicts' ? 'bg-rose-500/15 text-rose-300'
+                            : 'bg-zinc-700/40 text-zinc-400'
+                          }`}>{a.stance}</span>
+                          {a.bias && (
+                            <span
+                              className="rounded px-1.5 py-0.5 font-semibold text-zinc-950"
+                              style={{ backgroundColor: LEAN_COLOR[a.bias.lean] || '#52525b' }}
+                            >{a.bias.lean}</span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={added}
+                        onClick={() => pullDiscoveredIntoEvidence([a])}
+                        className="flex shrink-0 items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                      >
+                        {added ? <Check className="h-3 w-3 text-emerald-400" /> : <Plus className="h-3 w-3" />}
+                        {added ? 'Added' : 'Add'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {evidence.map((row, i) => (
               <div key={i} className="rounded border border-zinc-800 bg-zinc-900/40 p-2 space-y-1.5">
                 <textarea

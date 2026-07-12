@@ -6,6 +6,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerGroundingActions from "../domains/grounding.js";
+import { clearExternalFetchCache } from "../lib/external-fetch.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -23,6 +24,7 @@ beforeEach(() => {
   // fresh STATE per test so per-user Maps don't leak
   globalThis._concordSTATE = {};
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
+  clearExternalFetchCache();
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
@@ -179,5 +181,113 @@ describe("grounding.linkRebuttal + rebuttalsFor", () => {
   it("rejects a rebuttal to a non-existent check", () => {
     const r = call("linkRebuttal", ctxA, { checkId: "nope", counterClaim: "x" });
     assert.equal(r.ok, false);
+  });
+});
+
+describe("grounding.discoverCoverage (real GDELT)", () => {
+  it("rejects an empty claim", async () => {
+    const r = await call("discoverCoverage", ctxA, { claim: "" });
+    assert.equal(r.ok, false);
+  });
+
+  it("returns an honest failure when GDELT is unreachable (hermetic default)", async () => {
+    // beforeEach already sets globalThis.fetch to throw "network disabled".
+    const r = await call("discoverCoverage", ctxA, { claim: "renewable energy capacity doubled" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "gdelt_unreachable");
+    assert.match(r.error, /GDELT unreachable/);
+  });
+
+  it("discovers real coverage, bias-labels each hit, and shapes evidenceCandidates for aggregateEvidence", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        json: async () => ({
+          articles: [
+            {
+              title: "Renewable energy capacity doubled, report confirmed",
+              url: "https://reuters.com/energy/renewables-double",
+              domain: "reuters.com",
+              language: "English",
+              sourcecountry: "United Kingdom",
+              seendate: "20260701T120000Z",
+              socialimage: "https://reuters.com/img.jpg",
+            },
+            {
+              title: "Skeptics say renewable growth figures are misleading",
+              url: "https://breitbart.com/energy/skeptics",
+              domain: "breitbart.com",
+              language: "English",
+              sourcecountry: "United States",
+              seendate: "20260701T130000Z",
+            },
+            {
+              title: "Unrated blog covers the story too",
+              url: "https://some-obscure-blog.example/post",
+              domain: "some-obscure-blog.example",
+              language: "English",
+              sourcecountry: "Germany",
+              seendate: "20260701T140000Z",
+            },
+          ],
+        }),
+      };
+    };
+
+    const r = await call("discoverCoverage", ctxA, { claim: "renewable energy capacity doubled", maxRecords: 10 });
+    assert.equal(r.ok, true);
+    assert.match(capturedUrl, /api\.gdeltproject\.org\/api\/v2\/doc\/doc/);
+    assert.match(capturedUrl, /mode=ArtList/);
+    assert.match(capturedUrl, /maxrecords=10/);
+
+    assert.equal(r.result.count, 3);
+    assert.equal(r.result.source, "GDELT Project (real-time global news index, no key required)");
+
+    const reutersHit = r.result.articles.find((a) => a.sourceName === "reuters.com");
+    assert.ok(reutersHit);
+    assert.equal(reutersHit.bias.known, true);
+    assert.equal(reutersHit.bias.lean, "center");
+    assert.equal(reutersHit.stance, "supports"); // title contains "confirmed"
+    assert.equal(reutersHit.publishedAt, "2026-07-01T12:00:00Z");
+    assert.equal(reutersHit.sourceCountry, "United Kingdom");
+
+    const breitbartHit = r.result.articles.find((a) => a.sourceName === "breitbart.com");
+    assert.equal(breitbartHit.bias.lean, "far-right");
+    assert.equal(breitbartHit.stance, "contradicts"); // title contains "misleading"
+
+    const unratedHit = r.result.articles.find((a) => a.sourceName === "some-obscure-blog.example");
+    assert.equal(unratedHit.bias.known, false);
+
+    assert.equal(r.result.knownSourceCount, 2);
+    assert.ok(["broad", "moderate", "narrow"].includes(r.result.spectrumCoverage));
+
+    // Pre-shaped for a direct pass-through into aggregateEvidence's evidence[] param.
+    assert.equal(r.result.evidenceCandidates.length, 3);
+    assert.deepEqual(Object.keys(r.result.evidenceCandidates[0]).sort(), ["sourceName", "sourceUrl", "stance", "text"].sort());
+
+    const agg = call("aggregateEvidence", ctxA, {
+      claim: "renewable energy capacity doubled",
+      evidence: r.result.evidenceCandidates,
+    });
+    assert.equal(agg.ok, true);
+    assert.equal(agg.result.sourceCount, 3);
+  });
+
+  it("returns a legitimate empty result (not an error) when GDELT has zero matches", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ articles: [] }) });
+    const r = await call("discoverCoverage", ctxA, { claim: "an extremely obscure and specific niche claim" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 0);
+    assert.deepEqual(r.result.articles, []);
+    assert.equal(r.result.spectrumCoverage, "no-coverage-found");
+  });
+
+  it("returns an honest failure on an HTTP error status, not fabricated articles", async () => {
+    globalThis.fetch = async () => ({ ok: false, status: 503, json: async () => ({}) });
+    const r = await call("discoverCoverage", ctxA, { claim: "some claim" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "gdelt_unreachable");
   });
 });
