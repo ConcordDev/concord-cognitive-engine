@@ -23,9 +23,10 @@ import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Radio, RefreshCw, ExternalLink, Plus, Check, Globe2, Newspaper,
-  Sun, Sparkles, ChevronDown, Quote,
+  Sun, Sparkles, ChevronDown, Quote, BookOpenText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { lensRun } from '@/lib/api/client';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { StatTile } from '@/components/ui/StatTile';
 import { DensityToggle } from '@/components/ui/DensityToggle';
@@ -35,10 +36,13 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { AnalysisWorkbench } from './AnalysisWorkbench';
 import { CitationChainPanel } from './CitationChainPanel';
+import { MyReaderDesk } from '../MyReaderDesk';
 import {
   fetchHeadlines, fetchDailyBriefing, NEWS_CATEGORIES,
   type NewsCategory, type Headline,
 } from './intel-api';
+
+type DeskMode = 'live' | 'reader';
 
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -51,6 +55,7 @@ function relTime(iso: string): string {
 }
 
 export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsCategory } = {}) {
+  const [mode, setMode] = useState<DeskMode>('live');
   const [category, setCategory] = useState<NewsCategory>(initialCategory);
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -110,6 +115,24 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
     });
   }
 
+  // A pulled headline becomes a DTU (provenance-carrying, citable) AND a row
+  // in the personalized-reader directory (`news.article-add`) — so "My
+  // Reader"'s follows/saves/search/clusters/bias-spectrum have real content
+  // sourced from real Pull actions instead of requiring manual entry.
+  // Best-effort: the DTU save is the primary honest artifact; if the
+  // directory add fails (e.g. STATE unavailable) the pull itself still
+  // succeeded, so this never blocks or fakes success.
+  function addPulledHeadlineToDirectory(h: Headline) {
+    void lensRun('news', 'article-add', {
+      title: h.title,
+      source: h.source || 'unknown',
+      topic: h.category,
+      summary: null,
+      url: h.url,
+      publishedAt: h.publishedAt,
+    }).catch(() => { /* directory add is best-effort; the DTU pull already succeeded */ });
+  }
+
   return (
     <div data-lens-theme="news" className="flex flex-col gap-4 p-4 md:p-6">
       {/* ── Header ─────────────────────────────────────────────── */}
@@ -124,25 +147,53 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <StatusDot
-            state={feedError ? 'error' : feed.isFetching ? 'connecting' : isLive ? 'live' : 'idle'}
-            label={feedError ? 'Feed offline' : feed.isFetching ? 'Fetching' : isLive ? 'GDELT live' : 'Idle'}
-            showLabel
-          />
-          <DensityToggle variant="segmented" showLabels={false} />
-          <button
-            type="button"
-            onClick={() => feed.refetch()}
-            disabled={feed.isFetching}
-            className="rounded-md border border-zinc-800 p-1.5 text-zinc-400 transition-colors hover:border-cyan-500/40 hover:text-cyan-300 disabled:opacity-50"
-            title="Refresh feed"
-            aria-label="Refresh feed"
-          >
-            <RefreshCw className={cn('h-4 w-4', feed.isFetching && 'animate-spin')} />
-          </button>
+          <nav className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-950/60 p-0.5">
+            <button
+              type="button"
+              onClick={() => setMode('live')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500',
+                mode === 'live' ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300',
+              )}
+            >
+              <Radio className="h-3.5 w-3.5" /> Live Desk
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('reader')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500',
+                mode === 'reader' ? 'bg-rose-500/20 text-rose-200' : 'text-zinc-500 hover:text-zinc-300',
+              )}
+            >
+              <BookOpenText className="h-3.5 w-3.5" /> My Reader
+            </button>
+          </nav>
+          {mode === 'live' && (
+            <>
+              <StatusDot
+                state={feedError ? 'error' : feed.isFetching ? 'connecting' : isLive ? 'live' : 'idle'}
+                label={feedError ? 'Feed offline' : feed.isFetching ? 'Fetching' : isLive ? 'GDELT live' : 'Idle'}
+                showLabel
+              />
+              <DensityToggle variant="segmented" showLabels={false} />
+              <button
+                type="button"
+                onClick={() => feed.refetch()}
+                disabled={feed.isFetching}
+                className="rounded-md border border-zinc-800 p-1.5 text-zinc-400 transition-colors hover:border-cyan-500/40 hover:text-cyan-300 disabled:opacity-50"
+                title="Refresh feed"
+                aria-label="Refresh feed"
+              >
+                <RefreshCw className={cn('h-4 w-4', feed.isFetching && 'animate-spin')} />
+              </button>
+            </>
+          )}
         </div>
       </header>
 
+      {mode === 'reader' ? <MyReaderDesk /> : (
+      <>
       {/* ── Stat strip ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatTile label="Headlines" value={headlines.length} icon={<Newspaper className="h-4 w-4" />} size="sm" />
@@ -304,7 +355,7 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
                           content={`Title: ${h.title}\nSource: ${h.source} (${h.sourceCountry || '—'})\nPublished: ${h.publishedAt}\nURL: ${h.url}\nCategory: ${h.category}`}
                           extraTags={['news', 'gdelt', h.category, (h.sourceCountry || 'us').toLowerCase()]}
                           rawData={h}
-                          onSaved={() => setPullCount((n) => n + 1)}
+                          onSaved={() => { setPullCount((n) => n + 1); addPulledHeadlineToDirectory(h); }}
                         />
                         <a
                           href={h.url}
@@ -343,6 +394,8 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
           </div>
         </aside>
       </div>
+      </>
+      )}
     </div>
   );
 }
