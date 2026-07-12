@@ -4,7 +4,7 @@
 // The /lenses/civic-bonds lens runs these through POST /api/lens/run.
 // All gated behind CONCORD_CIVIC_BONDS (off → { ok:false, reason:'disabled' }).
 //
-//   read:  civic_bonds.list / get / spillover / ledger
+//   read:  civic_bonds.list / get / spillover / scopes / ledger
 //   write: create / open / vote / pledge / unpledge / fund / complete_milestone
 //          / complete / fail   (require ctx.actor.userId)
 
@@ -13,6 +13,13 @@ import {
   checkQuorum, pledgeToBond, unpledge, fundBond, completeMilestone, completeBond,
   failBond, getSpillover, raidBondEscrow,
 } from "../lib/civic-bonds.js";
+// GOVERNANCE_SCOPES is the canonical town->city->county->state->national->
+// international hierarchy (the same single conceptual source the migration
+// 305 `civic_bonds.scope` column comment points at: "-- GOVERNANCE_SCOPES").
+// It lives on the legacy in-memory sibling engine; reused here read-only so
+// the lens's scope picker is fed by real structured data, not a free-text
+// field or an invented list.
+import { GOVERNANCE_SCOPES } from "../emergent/microbond-governance.js";
 
 function gate(ctx) {
   if (!civicBondsEnabled()) return { ok: false, reason: "disabled" };
@@ -54,6 +61,14 @@ export default function registerCivicBondsMacros(register) {
     const g = gate(ctx); if (g) return g;
     return { ok: true, amount: getSpillover(ctx.db, input.scope || "city", input.worldId) };
   }, { note: "restricted spillover fund by scope+world (public read)" });
+
+  // The natural per-scope selector for the spillover query above: the fixed
+  // town->city->county->state->national->international governance hierarchy
+  // (GOVERNANCE_SCOPES), not an arbitrary client-typed string.
+  register("civic_bonds", "scopes", async (ctx) => {
+    const g = gate(ctx); if (g) return g;
+    return { ok: true, scopes: GOVERNANCE_SCOPES };
+  }, { note: "the valid GOVERNANCE_SCOPES tiers, for the spillover scope picker (public read)" });
 
   // The public ledger = the bond's full pledge + payout audit trail (transparency).
   register("civic_bonds", "ledger", async (ctx, input = {}) => {

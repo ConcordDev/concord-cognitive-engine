@@ -18,6 +18,16 @@ import { LensShell } from '@/components/lens/LensShell';
  *   READY   — real active bonds with pledge/vote/fund controls
  * a11y: every input + button carries an accessible name; controls are native
  * <button> elements. Presentation is mobile-first Tailwind + reduced-motion-aware.
+ *
+ * Restricted spillover fund (checklist item 7, docs/lens-specs/civic-bonds-
+ * capability-map.md): `spillover` takes an arbitrary `scope` string, so the
+ * natural selector is the real GOVERNANCE_SCOPES tier hierarchy (town->city->
+ * county->state->national->international — the same canonical list migration
+ * 305's `civic_bonds.scope` column comment points at), fetched from the new
+ * `civic_bonds.scopes` macro — never a free-text field or an invented list.
+ * The panel only renders once real scopes have loaded; a disabled backend or
+ * a failed fetch means zero scopes, which honestly hides the panel instead of
+ * showing a broken empty picker.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -68,6 +78,10 @@ export default function CivicBondsLens() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [ledgers, setLedgers] = useState<Record<string, Ledger>>({});
   const [ledgerLoading, setLedgerLoading] = useState<Record<string, boolean>>({});
+  const [scopes, setScopes] = useState<string[]>([]);
+  const [selectedScope, setSelectedScope] = useState<string>('');
+  const [spilloverAmount, setSpilloverAmount] = useState<number | null>(null);
+  const [spilloverLoading, setSpilloverLoading] = useState(false);
   const addToast = useUIStore((s) => s.addToast);
 
   const refresh = useCallback(async () => {
@@ -82,6 +96,32 @@ export default function CivicBondsLens() {
   }, [worldId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // The real per-scope selector for the spillover balance: fetch the
+  // canonical GOVERNANCE_SCOPES tiers (never invented, never free-text).
+  const fetchScopes = useCallback(async () => {
+    try {
+      const r = (await lensRun<{ ok: boolean; scopes?: string[] }>('civic_bonds', 'scopes', {})).data.result;
+      const list = r?.ok && Array.isArray(r.scopes) ? r.scopes : [];
+      setScopes(list);
+      setSelectedScope((prev) => (prev && list.includes(prev) ? prev : (list.includes('city') ? 'city' : (list[0] || ''))));
+    } catch { setScopes([]); }
+  }, []);
+
+  useEffect(() => { void fetchScopes(); }, [fetchScopes]);
+
+  // Restricted spillover fund balance for the selected scope + this world.
+  const fetchSpillover = useCallback(async () => {
+    if (!selectedScope) { setSpilloverAmount(null); return; }
+    setSpilloverLoading(true);
+    try {
+      const r = (await lensRun<{ ok: boolean; amount?: number }>('civic_bonds', 'spillover', { scope: selectedScope, worldId })).data.result;
+      setSpilloverAmount(r?.ok ? (r.amount ?? 0) : null);
+    } catch { setSpilloverAmount(null); }
+    finally { setSpilloverLoading(false); }
+  }, [selectedScope, worldId]);
+
+  useEffect(() => { void fetchSpillover(); }, [fetchSpillover]);
 
   const act = useCallback(async (action: string, input: Record<string, unknown>) => {
     setNote(null);
@@ -138,6 +178,46 @@ export default function CivicBondsLens() {
       </header>
 
       {note && <div role="status" aria-live="polite" className="mb-3 text-sm text-amber-300">{note}</div>}
+
+      {/* Restricted spillover fund — real GOVERNANCE_SCOPES picker, hidden
+          honestly (not with a fake empty dropdown) when no scopes loaded. */}
+      {scopes.length > 0 && (
+        <section
+          aria-label="Restricted spillover fund"
+          data-testid="civic-bonds-spillover"
+          className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] p-4"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <label htmlFor="spillover-scope" className="text-sm text-gray-300">Restricted spillover fund</label>
+              <select
+                id="spillover-scope"
+                aria-label="Spillover fund scope"
+                value={selectedScope}
+                onChange={(e) => setSelectedScope(e.target.value)}
+                className="px-2 py-1 rounded bg-black/30 border border-white/10 text-sm"
+              >
+                {scopes.map((s) => (
+                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <div data-testid="civic-bonds-spillover-balance" className="text-sm">
+              {spilloverLoading ? (
+                <span role="status" aria-live="polite" className="text-gray-400">Loading…</span>
+              ) : spilloverAmount === null ? (
+                <span className="text-gray-500">Unavailable</span>
+              ) : (
+                <span className="text-amber-200 font-medium">{spilloverAmount.toLocaleString()} sparks</span>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Restricted residue from completed bond closeouts at this scope, held for the next
+            project in {worldId}.
+          </p>
+        </section>
+      )}
 
       {/* STATE 1 — error */}
       {error && (

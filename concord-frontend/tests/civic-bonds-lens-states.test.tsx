@@ -177,4 +177,80 @@ describe('civic-bonds lens — four UX states', () => {
     await act(async () => { fireEvent.click(view!.getByLabelText('Retry loading civic bonds')); });
     expect(calls).toBeGreaterThan(before);
   });
+
+  // Checklist item 7 (docs/lens-specs/civic-bonds-capability-map.md): the
+  // restricted spillover fund needs a real per-scope selector, fed by the
+  // civic_bonds.scopes macro (the canonical GOVERNANCE_SCOPES hierarchy),
+  // not a free-text field or an invented list.
+  const SPILLOVER_BY_SCOPE: Record<string, number> = {
+    town: 120, city: 4500, county: 900, state: 0, national: 15000, international: 2,
+  };
+  const GOVERNANCE_SCOPES = ['town', 'city', 'county', 'state', 'national', 'international'];
+
+  function mockScopedSpillover() {
+    lensRunMock.mockImplementation((_d: string, action: string, input?: Record<string, unknown>) => {
+      if (action === 'list') return Promise.resolve({ data: { result: { ok: true, bonds: [BOND] } } });
+      if (action === 'scopes') return Promise.resolve({ data: { result: { ok: true, scopes: GOVERNANCE_SCOPES } } });
+      if (action === 'spillover') {
+        const scope = String(input?.scope);
+        return Promise.resolve({ data: { result: { ok: true, amount: SPILLOVER_BY_SCOPE[scope] ?? 0 } } });
+      }
+      return Promise.resolve({ data: { result: { ok: true } } });
+    });
+  }
+
+  it('SPILLOVER: renders a real GOVERNANCE_SCOPES picker and the real balance for the default scope', async () => {
+    mockScopedSpillover();
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<CivicBondsLens />); });
+    await waitFor(() => expect(view!.getByTestId('civic-bonds-spillover')).toBeInTheDocument());
+
+    const select = view!.getByLabelText('Spillover fund scope') as HTMLSelectElement;
+    // every option is a real GOVERNANCE_SCOPES tier — no invented values.
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toEqual(GOVERNANCE_SCOPES);
+
+    // defaults to 'city' (present in the fetched scopes) and shows its real balance.
+    expect(select.value).toBe('city');
+    await waitFor(() =>
+      expect(view!.getByTestId('civic-bonds-spillover-balance').textContent).toMatch(/4,500 sparks/),
+    );
+  });
+
+  it('SPILLOVER: changing scope re-queries the real macro and updates the displayed balance', async () => {
+    mockScopedSpillover();
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<CivicBondsLens />); });
+    await waitFor(() => expect(view!.getByTestId('civic-bonds-spillover')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(view!.getByTestId('civic-bonds-spillover-balance').textContent).toMatch(/4,500 sparks/),
+    );
+
+    const select = view!.getByLabelText('Spillover fund scope') as HTMLSelectElement;
+    await act(async () => { fireEvent.change(select, { target: { value: 'town' } }); });
+
+    await waitFor(() =>
+      expect(lensRunMock.mock.calls.some((c) => c[1] === 'spillover' && c[2]?.scope === 'town')).toBe(true),
+    );
+    await waitFor(() =>
+      expect(view!.getByTestId('civic-bonds-spillover-balance').textContent).toMatch(/120 sparks/),
+    );
+    // a scope with a genuinely zero balance renders the real zero, not a placeholder.
+    await act(async () => { fireEvent.change(select, { target: { value: 'state' } }); });
+    await waitFor(() =>
+      expect(view!.getByTestId('civic-bonds-spillover-balance').textContent).toMatch(/0 sparks/),
+    );
+  });
+
+  it('SPILLOVER: hides the panel honestly (no fake picker) when the scopes fetch is disabled', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'list') return Promise.resolve({ data: { result: { ok: true, bonds: [BOND] } } });
+      if (action === 'scopes') return Promise.resolve({ data: { result: { ok: false, reason: 'disabled' } } });
+      return Promise.resolve({ data: { result: { ok: true } } });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<CivicBondsLens />); });
+    await waitFor(() => expect(view!.getByTestId('civic-bonds-list')).toBeInTheDocument());
+    expect(view!.queryByTestId('civic-bonds-spillover')).not.toBeInTheDocument();
+  });
 });
