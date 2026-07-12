@@ -417,3 +417,97 @@ describe("organ — comp-rollup + scenario + snapshot (shared ctx)", () => {
     assert.equal(r.result.ok, false);
   });
 });
+
+describe("organ — roster role/demographics fields feed a real Belbin + diversity read (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("organ-role-demo"); });
+
+  it("roster-set normalizes role to a valid lowercase Belbin bucket and drops an invalid one", async () => {
+    const set = await lensRun("organ", "roster-set", {
+      params: { employees: [
+        { id: "p1", name: "Ann", role: "Plant", demographics: { gender: "woman", ageBand: "25-34" } },
+        { id: "p2", name: "Bo", role: "Shaper" },
+        { id: "p3", name: "Cy", role: "not-a-real-role" },
+        { id: "p4", name: "Di" }, // no role/demographics at all — must not crash or fabricate
+      ] },
+    }, ctx);
+    assert.equal(set.ok, true);
+    const byId = Object.fromEntries(set.result.employees.map((e) => [e.id, e]));
+    assert.equal(byId.p1.role, "plant");
+    assert.deepEqual(byId.p1.demographics, { gender: "woman", ageBand: "25-34" });
+    assert.equal(byId.p2.role, "shaper");
+    // invalid Belbin value normalizes to "" (unset), same as omitted
+    assert.equal(byId.p3.role, "");
+    assert.equal(byId.p4.role, "");
+    assert.equal(byId.p4.demographics, undefined);
+  });
+
+  it("roster-list round-trips role + demographics unchanged", async () => {
+    const list = await lensRun("organ", "roster-list", {}, ctx);
+    assert.equal(list.ok, true);
+    const p1 = list.result.employees.find((e) => e.id === "p1");
+    assert.equal(p1.role, "plant");
+    assert.deepEqual(p1.demographics, { gender: "woman", ageBand: "25-34" });
+  });
+
+  it("employee-upsert persists role + demographics on create and update", async () => {
+    const add = await lensRun("organ", "employee-upsert", {
+      params: { name: "Newcomer", role: "coordinator", demographics: { region: "apac" } },
+    }, ctx);
+    assert.equal(add.ok, true);
+    assert.equal(add.result.employee.role, "coordinator");
+    assert.deepEqual(add.result.employee.demographics, { region: "apac" });
+
+    const upd = await lensRun("organ", "employee-upsert", {
+      params: { id: add.result.employee.id, role: "teamworker", demographics: { region: "emea" } },
+    }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.employee.role, "teamworker");
+    assert.deepEqual(upd.result.employee.demographics, { region: "emea" });
+  });
+
+  it("demographics bag is capped at 8 keys and trims/cleans key+value strings", async () => {
+    const raw = {};
+    for (let i = 0; i < 12; i++) raw[` key${i} `] = ` val${i} `;
+    const r = await lensRun("organ", "employee-upsert", {
+      params: { name: "Capped", demographics: raw },
+    }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(Object.keys(r.result.employee.demographics).length, 8);
+    // trimmed, not the padded raw values
+    const firstKey = Object.keys(r.result.employee.demographics)[0];
+    assert.equal(firstKey, firstKey.trim());
+  });
+
+  it("roster fed into teamComposition (the OrgAnalysisPanel wiring) computes a real Belbin balance + diversity index, not 'not offered'", async () => {
+    // Mirrors concord-frontend/app/lenses/organ/page.tsx's runTeamComp mapping:
+    // employees.map(e => ({ name, skills, role: e.role, demographics: e.demographics })).
+    const list = await lensRun("organ", "roster-list", {}, ctx);
+    const team = list.result.employees.map((e) => ({
+      name: e.name, skills: e.skills || [], role: e.role, demographics: e.demographics,
+    }));
+    const r = await lensRun("organ", "teamComposition", { data: { team } });
+    assert.equal(r.ok, true);
+    // p1=plant, p2=shaper, upsert final=teamworker → 3 distinct filled roles
+    assert.ok(r.result.belbinRoleBalance.filledRoles >= 3);
+    assert.ok(r.result.belbinRoleBalance.score > 0);
+    // demographics keys accumulated from p1 (gender/ageBand) + the upserted region key
+    assert.ok(Object.keys(r.result.demographics).length > 0);
+    assert.ok("gender" in r.result.demographics);
+    assert.ok(typeof r.result.demographics.gender.simpsonDiversity === "number");
+  });
+
+  it("degrades gracefully (no crash, all-zero/empty read) when the roster carries no role/demographics at all", async () => {
+    const r = await lensRun("organ", "teamComposition", {
+      data: { team: [
+        { name: "Only", skills: ["js"] },
+        { name: "Skills", skills: ["sql"] },
+      ] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.belbinRoleBalance.filledRoles, 0);
+    assert.equal(r.result.belbinRoleBalance.score, 0);
+    assert.equal(r.result.belbinRoleBalance.missingRoles.length, 9);
+    assert.deepEqual(r.result.demographics, {});
+  });
+});

@@ -126,14 +126,64 @@ graph macro against it.
   user-supplied paste, same shape as any real network-analysis tool (Culture
   Amp / Microsoft Viva Insights) that requires an imported log. Not a gap to
   close later — this is the correct permanent shape.
-- **Team `role` (Belbin) / `demographics` fields** — the roster schema
+- ~~**Team `role` (Belbin) / `demographics` fields** — the roster schema
   (`normEmployee` in `server/domains/organ.js`) has no `role` or
   `demographics` columns, so `teamComposition`'s Belbin-role-balance and
   Simpson's-diversity-index sections will always read as "not offered" when
   fed from the roster. Triaged **ENGINEERING** (two optional roster fields +
   two form inputs in `OrgDesigner`'s `EmployeeModal`) — small, real,
   deferred out of this pass's scope (the rebuild's defect was the panel
-  being entirely dead, not this secondary richness gap).
+  being entirely dead, not this secondary richness gap).~~
+
+  **CLOSED (2026-07-12, pending commit, Wave 4 gap-closure pass).** The
+  deferred build shipped for real, using the exact field names
+  `teamComposition`'s already-existing Belbin/Simpson's-diversity logic was
+  already reading (`member.role` against a 9-entry lowercase-hyphenated
+  Belbin set, `member.demographics[key]` as a categorical label) — verified
+  by reading that computation before touching anything, so no field-name
+  guessing:
+  - `server/domains/organ.js` — `BELBIN_ROLES` hoisted to a shared
+    module-level const (previously redeclared inline inside
+    `teamComposition`) so `normEmployee` and `teamComposition` can't drift
+    out of sync. `normEmployee` now normalizes an optional `role` (must
+    match one of the 9 Belbin buckets or is dropped to `""`, same as
+    unset) and an optional `demographics` bag via a new `normDemographics()`
+    helper — trims/cleans each key+value string, caps at 8 keys, and omits
+    the field entirely (not an empty object) when nothing was supplied, so
+    old rosters round-trip byte-identical through `roster-set`/
+    `roster-list`/`employee-upsert`.
+  - `concord-frontend/components/organ/OrgDesigner.tsx` — `EmployeeModal`
+    gained a "Team role (Belbin)" `<select>` (9 named options, matching the
+    backend's exact lowercase-hyphenated values) and a "Demographics"
+    section with two closed `<select>` dropdowns (Gender, Age band) rather
+    than free text, so Simpson's diversity index groups real categories
+    instead of fragmenting on typos/casing. Both pre-fill correctly when
+    editing an existing employee. While touching this file, the pre-existing
+    `Field`/new `SelectField` helpers were given proper `htmlFor`/`id`
+    association (via `useId()`) for real accessibility + testability — they
+    had none before.
+  - `concord-frontend/app/lenses/organ/page.tsx` — `OrgAnalysisPanel`'s
+    `runTeamComp` now forwards `role`/`demographics` from the live roster
+    into the `teamComposition` macro call (previously only `name`/`skills`
+    were mapped through, so even a roster with the fields set would never
+    have reached the computation). `TeamCompResult` extended with the real
+    `belbinRoleBalance`/`demographics` shapes, and the results panel now
+    renders both sections — a real score/distribution/missing-roles list
+    and a per-attribute diversity readout when data exists, or an honest
+    "Not offered — no roster member has a Belbin team role/demographics
+    set" line (not a silent no-op) when it doesn't.
+  - Tests: `server/tests/depth/organ-behavior.test.js` gained 6 new
+    behavioral cases (roster-set role normalization + invalid-role
+    rejection, roster-list round-trip, employee-upsert create/update
+    persistence, the 8-key demographics cap, the full roster→teamComposition
+    pipeline producing a real non-zero Belbin score + diversity index, and
+    a no-crash/all-zero degrade check for old rosters with neither field) —
+    33/33 pass alongside the pre-existing 33/33 (no regressions).
+    `concord-frontend/components/organ/OrgDesigner.employeeModal.test.tsx`
+    (new, 3 tests) pins render of both new field groups, a full
+    add-person → `employee-upsert` submit round-trip asserting the exact
+    `role`/`demographics` payload shape, the backward-compatible
+    both-fields-empty submit, and pre-fill on edit — 3/3 pass.
 
 ## Verification performed
 
@@ -149,3 +199,24 @@ graph macro against it.
   `tier: "polished"`, `isGenericScaffold: false`, `bespokeRatio: 0.559`
   (`bespokeComponentLoc: 1077` across `OrgDesigner.tsx` +
   `AnatomyExplorer.tsx`, unaffected by this pass since neither was touched).
+
+## Verification performed (Wave 4 gap-closure pass, 2026-07-12 — role/demographics)
+
+- `node --check server/domains/organ.js` → OK.
+- `cd server && npx eslint domains/organ.js tests/organ-domain-parity.test.js
+  tests/depth/organ-behavior.test.js` → 0 problems.
+- `DB_PATH=<isolated tmp path> NODE_ENV=test node --test --test-force-exit
+  server/tests/organ-domain-parity.test.js` → 29/29 pass (no regressions —
+  this file wasn't touched, re-run to confirm the pre-existing roster
+  CRUD contract still holds against the changed `normEmployee`).
+- `DB_PATH=<isolated tmp path> NODE_ENV=test node --test --test-force-exit
+  server/tests/depth/organ-behavior.test.js` → 33/33 pass (27 pre-existing +
+  6 new role/demographics cases).
+- `cd concord-frontend && npx vitest run
+  components/organ/OrgDesigner.employeeModal.test.tsx` → 3/3 pass.
+- `cd concord-frontend && npx eslint components/organ/OrgDesigner.tsx
+  components/organ/OrgDesigner.employeeModal.test.tsx
+  app/lenses/organ/page.tsx` → 0 problems.
+- `cd concord-frontend && npx tsc --noEmit -p .` → 0 errors, project-wide.
+- `node scripts/verify-lens-backends.mjs` →
+  `{"WIRED":258,"NO-BACKEND-CALL":2}` total 260, unchanged.

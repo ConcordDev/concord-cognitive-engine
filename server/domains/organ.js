@@ -3,6 +3,15 @@
 // team composition evaluation, and communication flow modeling.
 
 export default function registerOrganActions(registerLensAction) {
+  // Canonical Belbin team-role set (lowercase, hyphenated) — shared by the
+  // roster normalizer (normEmployee) and teamComposition's role-balance
+  // scoring so a role stored on an employee always matches a bucket the
+  // analysis actually counts.
+  const BELBIN_ROLES = [
+    "plant", "monitor-evaluator", "coordinator", "resource-investigator",
+    "implementer", "completer-finisher", "teamworker", "shaper", "specialist",
+  ];
+
   /**
    * orgChart
    * Analyze org chart structure from artifact.data.employees:
@@ -187,10 +196,7 @@ export default function registerOrganActions(registerLensAction) {
     const skillDiversityIndex = maxEntropy > 0 ? skillEntropy / maxEntropy : 0;
 
     // Belbin role balance scoring
-    const belbinRoles = [
-      "plant", "monitor-evaluator", "coordinator", "resource-investigator",
-      "implementer", "completer-finisher", "teamworker", "shaper", "specialist",
-    ];
+    const belbinRoles = BELBIN_ROLES;
     const roleMapping = {};
     for (const role of belbinRoles) roleMapping[role] = 0;
     for (const member of team) {
@@ -494,8 +500,31 @@ export default function registerOrganActions(registerLensAction) {
     return oRound((Date.now() - ms) / (365.25 * 24 * 3600 * 1000));
   }
 
+  // Normalize an optional demographics bag into a small, clean categorical
+  // record. teamComposition reads member.demographics[key] as a category
+  // label (Simpson's diversity index over the distinct values per key), so
+  // keys/values are trimmed strings, not free text blobs. Caps to a handful
+  // of keys/short values so a pasted-in mess can't blow up the diversity
+  // computation with one-off unique values.
+  function normDemographics(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const out = {};
+    let n = 0;
+    for (const key of Object.keys(raw)) {
+      if (n >= 8) break;
+      const k = oClean(key, 40);
+      const v = oClean(raw[key], 60);
+      if (!k || !v) continue;
+      out[k] = v;
+      n++;
+    }
+    return n > 0 ? out : undefined;
+  }
+
   // Normalize a raw employee record into the canonical roster shape.
   function normEmployee(raw, existingId) {
+    const demographics = normDemographics(raw.demographics);
+    const roleClean = oClean(raw.role, 40).toLowerCase();
     return {
       id: existingId || oClean(raw.id, 80) || oId("emp"),
       name: oClean(raw.name, 160) || "Unnamed",
@@ -513,6 +542,14 @@ export default function registerOrganActions(registerLensAction) {
         : (typeof raw.skills === "string" && raw.skills
             ? raw.skills.split(/[;,|]/).map((s) => oClean(s, 60)).filter(Boolean).slice(0, 40)
             : []),
+      // Optional Belbin team role — feeds teamComposition's role-balance
+      // score. "" means unset (kept out of roleMapping, same as absent).
+      role: BELBIN_ROLES.includes(roleClean) ? roleClean : "",
+      // Optional categorical demographics bag — feeds teamComposition's
+      // per-attribute Simpson's diversity index. Omitted (not an empty
+      // object) when nothing was supplied so old rosters round-trip
+      // byte-identical through roster-set/roster-list.
+      ...(demographics ? { demographics } : {}),
     };
   }
 

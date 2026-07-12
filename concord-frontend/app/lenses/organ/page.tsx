@@ -75,6 +75,8 @@ interface RosterEmployee {
   title: string;
   managerId: string | null;
   skills: string[];
+  role?: string;
+  demographics?: Record<string, string>;
 }
 interface OrgChartResult {
   totalEmployees: number;
@@ -88,6 +90,17 @@ interface TeamCompResult {
   teamSize: number;
   uniqueSkills: number;
   gaps: string[];
+  // Belbin role-balance + Simpson's-diversity-index sections — real numbers
+  // only when the roster carries `role`/`demographics` (organ-capability-map
+  // "role/demographics" gap closure); reads as "not offered" otherwise.
+  belbinRoleBalance?: {
+    score: number;
+    filledRoles: number;
+    totalRoles: number;
+    missingRoles: string[];
+    distribution: Record<string, number>;
+  };
+  demographics?: Record<string, { groups: Record<string, number>; simpsonDiversity: number; uniqueValues: number }>;
   message?: string;
 }
 interface CommsResult {
@@ -698,7 +711,7 @@ function OrgAnalysisPanel() {
     setIsRunning('teamComposition'); setErrorMsg(null);
     const employees = await loadRoster();
     if (!employees || employees.length === 0) { setErrorMsg('No roster yet — add people in the Org Chart tab above first.'); setIsRunning(null); return; }
-    const team = employees.map((e) => ({ name: e.name, skills: e.skills || [] }));
+    const team = employees.map((e) => ({ name: e.name, skills: e.skills || [], role: e.role, demographics: e.demographics }));
     const r = await lensRun<TeamCompResult>('organ', 'teamComposition', { team });
     if (r.data.ok && r.data.result) setTeamResult(r.data.result); else setErrorMsg(r.data.error || 'Team composition analysis failed');
     setIsRunning(null);
@@ -784,6 +797,42 @@ function OrgAnalysisPanel() {
                   </div>
                 </div>
               )}
+              <div>
+                <p className="text-xs text-neon-purple font-semibold mb-1">Belbin Role Balance</p>
+                {teamResult.belbinRoleBalance && teamResult.belbinRoleBalance.filledRoles > 0 ? (
+                  <>
+                    <span className="text-xs text-gray-400">
+                      {teamResult.belbinRoleBalance.filledRoles}/{teamResult.belbinRoleBalance.totalRoles} roles filled
+                      {' '}(<span className="text-neon-cyan">{(teamResult.belbinRoleBalance.score * 100).toFixed(0)}%</span>)
+                    </span>
+                    {teamResult.belbinRoleBalance.missingRoles.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {teamResult.belbinRoleBalance.missingRoles.map((r, i) => (
+                          <span key={i} className="text-xs bg-lattice-surface border border-lattice-border rounded px-2 py-0.5 text-gray-500">{r}</span>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-500">Not offered — no roster member has a Belbin team role set. Add one via Edit Person.</p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-neon-purple font-semibold mb-1">Demographic Diversity (Simpson&apos;s index)</p>
+                {teamResult.demographics && Object.keys(teamResult.demographics).length > 0 ? (
+                  <div className="space-y-1">
+                    {Object.entries(teamResult.demographics).map(([key, d]) => (
+                      <div key={key} className="flex items-center gap-2 text-xs">
+                        <span className="text-gray-400 w-20 shrink-0">{key}</span>
+                        <span className="text-neon-cyan">{d.simpsonDiversity.toFixed(2)}</span>
+                        <span className="text-gray-500">({d.uniqueValues} groups)</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">Not offered — no roster member has demographics set. Add via Edit Person.</p>
+                )}
+              </div>
             </>
           )}
         </div>
