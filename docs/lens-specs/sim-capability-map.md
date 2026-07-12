@@ -159,14 +159,33 @@ through the correct dispatch path. This lens genuinely earns its
 
 ## Honestly-deferred / not touched this session
 
-- **`monteCarlo`'s RNG is `Math.random()`, not seeded.** Unlike
+- ~~**`monteCarlo`'s RNG is `Math.random()`, not seeded.** Unlike
   `agentBased`/`discreteEvent` (which use a seeded `makeRng`),
   `monteCarlo` results aren't reproducible run-to-run. This is a
   pre-existing property of the macro, not a regression — flagging it
   as a candidate for a future `seed` param, ENGINEERING triage (no
   external dependency, a small deterministic-RNG swap), not urgent
   enough to bundle into this defect-fix session since it doesn't
-  affect honesty (no fabricated numbers, just non-reproducible ones).
+  affect honesty (no fabricated numbers, just non-reproducible ones).~~
+  **CLOSED (2026-07-12, pending commit)** — `monteCarlo` now accepts an
+  optional `seed` (via `params.seed`, preferred, or a persisted
+  `artifact.data.seed`), reusing the same `makeRng` mulberry32 PRNG
+  `agentBased`/`discreteEvent` already use. When a seed is given, every
+  draw (uniform and Box-Muller normal) routes through it, so re-running
+  with the same seed reproduces a byte-identical result object — pinned
+  by `server/tests/sim-domain-parity.test.js`'s new "sim.monteCarlo —
+  seeded reproducibility" suite (same-seed deep-equal, different-seed
+  divergence at 8,000 trials, `seed:0` counted as explicit not omitted,
+  `params.seed` taking precedence over `artifact.data.seed`). Omitting
+  the seed is a byte-for-byte no-op — `rng` is literally `Math.random`
+  itself in that branch, so the original non-reproducible path is
+  unchanged for every existing caller. The result now also reports
+  `seeded`/`seed` so a caller can tell which path ran. Frontend:
+  `concord-frontend/components/sim/SimToolkit.tsx`'s Monte Carlo tool
+  gained an optional "Fixed seed (reproducible)" checkbox + seed input,
+  and shows a "Reproducible — seed N" note when a run was seeded. The
+  client-side `runMonteCarloChunked` engine (next bullet) is unrelated
+  and untouched.
 - **The client-side Monte Carlo engine in `page.tsx`
   (`runMonteCarloChunked`) and the backend `sim.monteCarlo` macro are
   two independent, non-unified implementations** (client: 6

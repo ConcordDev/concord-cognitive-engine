@@ -390,21 +390,35 @@ export default function registerSimActions(registerLensAction) {
     return { ok: true, result: { parameter: param, sweepRange: { min, max, step }, runsCompleted: results.length, stepsPerRun: steps, results: results.map(r => ({ [param]: r.paramValue, outcome: r.finalState[outputField] })), bestOutcome: results.sort((a, b) => (parseFloat(b.finalState[outputField]) || 0) - (parseFloat(a.finalState[outputField]) || 0))[0] } };
   });
 
-  registerLensAction("sim", "monteCarlo", (ctx, artifact, _params) => {
+  registerLensAction("sim", "monteCarlo", (ctx, artifact, params) => {
     const trials = Math.min(parseInt(artifact.data?.trials) || 1000, 10000);
     const variables = artifact.data?.variables || [];
     const formula = artifact.data?.formula || "sum";
     if (variables.length === 0) return { ok: true, result: { message: "Provide variables with {name, min, max} or {name, mean, stddev} for Monte Carlo." } };
+    // Optional reproducibility (docs/lens-specs/sim-capability-map.md "Honestly
+    // deferred" item, closed 2026-07-12): an explicit seed — from either the
+    // caller's `params.seed` (preferred, matching the agentBased/discreteEvent
+    // merge convention) or a persisted `artifact.data.seed` — routes every draw
+    // through the shared mulberry32 PRNG (`makeRng`, already used by
+    // agentBased/discreteEvent above) so re-running with the same seed produces
+    // byte-identical results. Omitting the seed is a no-op: `rng` is `Math.random`
+    // itself, so the pre-existing non-deterministic path is unchanged bit-for-bit.
+    const seedCandidate = (params && params.seed !== undefined && params.seed !== null && params.seed !== "")
+      ? params.seed
+      : artifact.data?.seed;
+    const seeded = seedCandidate !== undefined && seedCandidate !== null && seedCandidate !== "";
+    const seed = seeded ? (parseInt(seedCandidate, 10) || 0) : null;
+    const rng = seeded ? makeRng(seed) : Math.random;
     const results = [];
     for (let t = 0; t < trials; t++) {
       const vals = {};
       variables.forEach(v => {
         if (v.mean !== undefined && v.stddev !== undefined) {
-          const u1 = Math.random(), u2 = Math.random();
+          const u1 = rng(), u2 = rng();
           vals[v.name] = parseFloat(v.mean) + parseFloat(v.stddev) * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
         } else {
           const min = parseFloat(v.min) || 0, max = parseFloat(v.max) || 1;
-          vals[v.name] = min + Math.random() * (max - min);
+          vals[v.name] = min + rng() * (max - min);
         }
       });
       let outcome;
@@ -423,7 +437,7 @@ export default function registerSimActions(registerLensAction) {
     const p50 = results[Math.floor(trials * 0.50)];
     const p75 = results[Math.floor(trials * 0.75)];
     const p95 = results[Math.floor(trials * 0.95)];
-    return { ok: true, result: { trials, formula, mean: Math.round(mean * 1000) / 1000, stddev: Math.round(Math.sqrt(variance) * 1000) / 1000, min: Math.round(results[0] * 1000) / 1000, max: Math.round(results[trials - 1] * 1000) / 1000, percentiles: { p5: Math.round(p5 * 1000) / 1000, p25: Math.round(p25 * 1000) / 1000, p50: Math.round(p50 * 1000) / 1000, p75: Math.round(p75 * 1000) / 1000, p95: Math.round(p95 * 1000) / 1000 }, confidenceInterval90: { lower: Math.round(p5 * 1000) / 1000, upper: Math.round(p95 * 1000) / 1000 } } };
+    return { ok: true, result: { trials, formula, seeded, seed, mean: Math.round(mean * 1000) / 1000, stddev: Math.round(Math.sqrt(variance) * 1000) / 1000, min: Math.round(results[0] * 1000) / 1000, max: Math.round(results[trials - 1] * 1000) / 1000, percentiles: { p5: Math.round(p5 * 1000) / 1000, p25: Math.round(p25 * 1000) / 1000, p50: Math.round(p50 * 1000) / 1000, p75: Math.round(p75 * 1000) / 1000, p95: Math.round(p95 * 1000) / 1000 }, confidenceInterval90: { lower: Math.round(p5 * 1000) / 1000, upper: Math.round(p95 * 1000) / 1000 } } };
   });
 
   registerLensAction("sim", "sensitivityAnalysis", (ctx, artifact, _params) => {

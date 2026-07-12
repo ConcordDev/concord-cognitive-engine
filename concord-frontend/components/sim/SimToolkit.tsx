@@ -724,6 +724,8 @@ interface MonteCarloBackendResult {
   message?: string;
   trials: number;
   formula: string;
+  seeded?: boolean;
+  seed?: number | null;
   mean: number;
   stddev: number;
   min: number;
@@ -736,6 +738,8 @@ function MonteCarloBackendTool() {
   const [trials, setTrials] = useState(2000);
   const [formula, setFormula] = useState<'sum' | 'product' | 'max' | 'min'>('sum');
   const [varsText, setVarsText] = useState('revenue 80000 120000\ncost 40000 70000');
+  const [useSeed, setUseSeed] = useState(false);
+  const [seed, setSeed] = useState(42);
   const [res, setRes] = useState<MonteCarloBackendResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -752,11 +756,13 @@ function MonteCarloBackendTool() {
       if (kind === 'normal') variables.push({ name, mean: Number(a), stddev: Number(b) });
       else variables.push({ name, min: Number(a), max: Number(b) });
     }
-    const r = await lensRun<MonteCarloBackendResult>('sim', 'monteCarlo', { trials, variables, formula });
+    const input: Record<string, unknown> = { trials, variables, formula };
+    if (useSeed) input.seed = seed;
+    const r = await lensRun<MonteCarloBackendResult>('sim', 'monteCarlo', input);
     if (r.data.ok && r.data.result) { setRes(r.data.result); }
     else { setRes(null); setError(r.data.error || 'Monte Carlo failed'); }
     setBusy(false);
-  }, [trials, varsText, formula]);
+  }, [trials, varsText, formula, useSeed, seed]);
 
   return (
     <div className={cn(ds.panel, 'space-y-3')}>
@@ -788,6 +794,18 @@ function MonteCarloBackendTool() {
           {'<name> <min> <max>'} for uniform, or {'<name> <mean> <stddev> normal'} for a normal draw.
         </p>
       </div>
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer select-none">
+          <input type="checkbox" checked={useSeed} onChange={(e) => setUseSeed(e.target.checked)}
+            className="accent-orange-500" />
+          Fixed seed (reproducible)
+        </label>
+        {useSeed && (
+          <input type="number" className={cn(ds.input, 'w-28 py-1')} value={seed}
+            onChange={(e) => setSeed(parseInt(e.target.value, 10) || 0)}
+            aria-label="Monte Carlo seed" />
+        )}
+      </div>
       <button onClick={run} disabled={busy} className={ds.btnPrimary}>
         {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shuffle className="w-4 h-4" />} Run
       </button>
@@ -796,6 +814,11 @@ function MonteCarloBackendTool() {
         <p className="text-sm text-gray-400">{res.message}</p>
       ) : (
         <div className="space-y-3">
+          {res.seeded && (
+            <p className="text-[10px] text-orange-300/80 font-mono">
+              Reproducible — seed {res.seed}. Re-running with this seed yields identical results.
+            </p>
+          )}
           <div className="grid grid-cols-3 gap-3">
             <CmpStat label="Mean" value={res.mean} />
             <CmpStat label="Std Dev" value={res.stddev} />
