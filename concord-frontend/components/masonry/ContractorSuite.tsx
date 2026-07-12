@@ -16,6 +16,11 @@
  *  8. Code library        — code-search / code-for-check
  *  9. Client CRM          — client-add / client-list / client-delete (cross-referenced
  *                            against proposals + invoices by client name for real revenue totals)
+ * 10. Inspections         — inspection-add / inspection-list / inspection-update (AHJ/QA
+ *                            inspections scheduled against a real schedule job; pass/fail/
+ *                            pending result with deficiency notes + re-inspection date)
+ * 11. Certifications      — cert-add / cert-list / cert-remove (crew OSHA/lift/confined-space/
+ *                            silica/mason-tier license records with a read-time expiry badge)
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -23,6 +28,7 @@ import {
   Ruler, FileText, CalendarDays, Camera, ClipboardEdit, BookOpen,
   Receipt, Library, Plus, Trash2, Loader2, X, CheckCircle2,
   CloudRain, DollarSign, Copy, Users, Phone, Mail, MapPin,
+  ClipboardCheck, ShieldCheck, ShieldAlert, AlertTriangle,
 } from 'lucide-react';
 import Image from 'next/image';
 import { lensRun } from '@/lib/api/client';
@@ -31,7 +37,8 @@ import { TimelineView, type TimelineEvent } from '@/components/viz';
 
 type SuiteTab =
   | 'takeoff' | 'proposals' | 'schedule' | 'photos'
-  | 'changeOrders' | 'pricebook' | 'invoices' | 'codes' | 'clients';
+  | 'changeOrders' | 'pricebook' | 'invoices' | 'codes' | 'clients'
+  | 'inspections' | 'certifications';
 
 const TABS: { id: SuiteTab; label: string; icon: typeof Ruler }[] = [
   { id: 'takeoff', label: 'Takeoff', icon: Ruler },
@@ -43,6 +50,8 @@ const TABS: { id: SuiteTab; label: string; icon: typeof Ruler }[] = [
   { id: 'invoices', label: 'Invoices', icon: Receipt },
   { id: 'codes', label: 'Code Library', icon: Library },
   { id: 'clients', label: 'Clients', icon: Users },
+  { id: 'inspections', label: 'Inspections', icon: ClipboardCheck },
+  { id: 'certifications', label: 'Certifications', icon: ShieldCheck },
 ];
 
 async function run<T = any>(action: string, input: Record<string, unknown> = {}): Promise<T | null> {
@@ -895,6 +904,314 @@ function ClientsTab() {
   );
 }
 
+// ───────────────────────── 10. Inspections ─────────────────────────
+interface SchedJobRef { id: string; title: string; }
+interface Inspection {
+  id: string; number: string; jobId: string; jobTitle: string | null; jobFound: boolean;
+  inspectionType: string; inspector: string; scheduledDate: string;
+  result: 'pending' | 'pass' | 'fail'; deficiencyNotes: string | null; reInspectionDate: string | null;
+  notes: string; completedAt: string | null;
+}
+
+const INSPECTION_TYPES: { value: string; label: string }[] = [
+  { value: 'footing_foundation', label: 'Footing / Foundation' },
+  { value: 'reinforcement_placement', label: 'Reinforcement Placement' },
+  { value: 'grout_mortar_qa', label: 'Grout / Mortar QA (IBC 2105)' },
+  { value: 'wall_tie_spacing', label: 'Wall Tie Spacing' },
+  { value: 'pre_pour_grout_cells', label: 'Pre-Pour Grout Cells' },
+  { value: 'flashing_weatherproofing', label: 'Flashing / Weatherproofing' },
+  { value: 'ahj_building_inspection', label: 'AHJ Building Inspection' },
+  { value: 'final_walkthrough', label: 'Final Walkthrough' },
+];
+const inspectionTypeLabel = (v: string) => INSPECTION_TYPES.find((t) => t.value === v)?.label || v;
+
+function InspectionsTab() {
+  const [jobId, setJobId] = useState('');
+  const [inspectionType, setInspectionType] = useState(INSPECTION_TYPES[0].value);
+  const [inspector, setInspector] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [jobs, setJobs] = useState<SchedJobRef[]>([]);
+  const [list, setList] = useState<Inspection[]>([]);
+  const [counts, setCounts] = useState({ passCount: 0, failCount: 0, pendingCount: 0 });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [resultFor, setResultFor] = useState<Inspection | null>(null);
+  const [resultChoice, setResultChoice] = useState<'pass' | 'fail'>('pass');
+  const [deficiencyNotes, setDeficiencyNotes] = useState('');
+  const [reInspectionDate, setReInspectionDate] = useState('');
+
+  const load = useCallback(async () => {
+    const [insp, sched] = await Promise.all([
+      run<{ inspections: Inspection[]; passCount: number; failCount: number; pendingCount: number }>('inspection-list'),
+      run<{ jobs: SchedJobRef[] }>('schedule-list'),
+    ]);
+    if (insp) { setList(insp.inspections || []); setCounts({ passCount: insp.passCount, failCount: insp.failCount, pendingCount: insp.pendingCount }); }
+    if (sched) setJobs(sched.jobs || []);
+  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
+
+  const add = async () => {
+    setErr(null);
+    setBusy(true);
+    const r = await run<Inspection>('inspection-add', { jobId, inspectionType, inspector, scheduledDate, notes });
+    setBusy(false);
+    if (r) { setInspector(''); setScheduledDate(''); setNotes(''); await load(); }
+    else setErr('Could not schedule the inspection — check the job, inspector, and date.');
+  };
+
+  const openResult = (i: Inspection) => {
+    setResultFor(i);
+    setResultChoice(i.result === 'fail' ? 'fail' : 'pass');
+    setDeficiencyNotes(i.deficiencyNotes || '');
+    setReInspectionDate(i.reInspectionDate || '');
+  };
+  const saveResult = async () => {
+    if (!resultFor) return;
+    setBusy(true);
+    const r = await run('inspection-update', {
+      id: resultFor.id, result: resultChoice,
+      deficiencyNotes: resultChoice === 'fail' ? deficiencyNotes : undefined,
+      reInspectionDate: resultChoice === 'fail' ? reInspectionDate : undefined,
+    });
+    setBusy(false);
+    if (r) { setResultFor(null); await load(); }
+  };
+
+  const badge = (i: Inspection) => {
+    if (i.result === 'pass') return <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] uppercase text-emerald-300">Pass</span>;
+    if (i.result === 'fail') return <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] uppercase text-rose-300">Fail</span>;
+    return <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] uppercase text-amber-300">Pending</span>;
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+      <div className={card}>
+        <h4 className="mb-3 text-sm font-semibold text-white">Schedule an inspection</h4>
+        <label className={lbl}>Job</label>
+        <select className={inp} value={jobId} onChange={(e) => setJobId(e.target.value)} aria-label="Job">
+          <option value="">Select a scheduled job…</option>
+          {jobs.map((j) => <option key={j.id} value={j.id}>{j.title}</option>)}
+        </select>
+        {jobs.length === 0 && <p className="mt-1 text-[10px] text-zinc-500">No jobs on the Schedule tab yet — add one there first.</p>}
+        <label className={`${lbl} mt-3`}>Inspection type</label>
+        <select className={inp} value={inspectionType} onChange={(e) => setInspectionType(e.target.value)} aria-label="Inspection type">
+          {INSPECTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div><label className={lbl}>Inspector</label><input className={inp} value={inspector} onChange={(e) => setInspector(e.target.value)} placeholder="Jane AHJ" /></div>
+          <div><label className={lbl}>Scheduled date</label><input type="date" className={inp} value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} aria-label="Scheduled date" /></div>
+        </div>
+        <label className={`${lbl} mt-3`}>Notes</label>
+        <textarea className={inp} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <button className={`${btnP} mt-4`} onClick={add} disabled={busy || !jobId || !inspector.trim() || !scheduledDate}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardCheck className="h-3.5 w-3.5" />}Schedule inspection
+        </button>
+        {err && <p className="mt-2 text-[11px] text-rose-400">{err}</p>}
+      </div>
+
+      <div className={card}>
+        <div className="mb-2 flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-white">Inspections ({list.length})</h4>
+          <span className="text-[10px] text-zinc-400">{counts.passCount} pass · {counts.failCount} fail · {counts.pendingCount} pending</span>
+        </div>
+        {list.length === 0 && <p className="text-xs text-zinc-400">No inspections scheduled yet.</p>}
+        {list.map((i) => (
+          <div key={i.id} className="mt-2 rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-white">{i.number} · {inspectionTypeLabel(i.inspectionType)}</p>
+              {badge(i)}
+            </div>
+            <p className="mt-0.5 text-[10px] text-zinc-400">
+              {i.jobFound ? i.jobTitle : <span className="text-amber-400">job no longer on schedule</span>} · {i.inspector} · {i.scheduledDate}
+            </p>
+            {i.result === 'fail' && (
+              <div className="mt-1.5 rounded bg-rose-500/10 px-2 py-1 text-[10px] text-rose-300">
+                <AlertTriangle className="mr-1 inline h-3 w-3" />
+                {i.deficiencyNotes}
+                {i.reInspectionDate && <span className="text-rose-400"> · re-inspect {i.reInspectionDate}</span>}
+              </div>
+            )}
+            <div className="mt-1.5">
+              <button className={btnS} onClick={() => openResult(i)}><CheckCircle2 className="h-3 w-3" />Record result</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {resultFor && (
+        <Modal title={`Record result — ${resultFor.number}`} onClose={() => setResultFor(null)}>
+          <label className={lbl}>Result</label>
+          <select className={inp} value={resultChoice} onChange={(e) => setResultChoice(e.target.value as 'pass' | 'fail')} aria-label="Result">
+            <option value="pass">Pass</option>
+            <option value="fail">Fail</option>
+          </select>
+          {resultChoice === 'fail' && (
+            <>
+              <label className={`${lbl} mt-3`}>Deficiency notes</label>
+              <textarea className={inp} rows={3} value={deficiencyNotes} onChange={(e) => setDeficiencyNotes(e.target.value)} placeholder="What failed and why" />
+              <label className={`${lbl} mt-3`}>Re-inspection date</label>
+              <input type="date" className={inp} value={reInspectionDate} onChange={(e) => setReInspectionDate(e.target.value)} aria-label="Re-inspection date" />
+            </>
+          )}
+          <button className={`${btnP} mt-4`} onClick={saveResult} disabled={busy || (resultChoice === 'fail' && !deficiencyNotes.trim())}>
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}Save result
+          </button>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ───────────────────────── 11. Certifications ─────────────────────────
+interface CrewCert {
+  id: string; crewMemberName: string; certType: string; issuingBody: string;
+  licenseNumber: string; issueDate: string | null; expiryDate: string | null;
+  expiryStatus: 'no_expiry' | 'valid' | 'expiring_soon' | 'expired'; isExpired: boolean;
+}
+
+// Real masonry-trade certification categories — not generic placeholders.
+// "Other" falls through to a free-text field, mirroring the plumbing lens's
+// TechCertifications picker convention.
+const CERT_CATEGORIES = [
+  'OSHA 10-Hour Construction Safety',
+  'OSHA 30-Hour Construction Safety',
+  'Forklift Operator Certification',
+  'Scissor Lift Operator Certification',
+  'Boom Lift Operator Certification',
+  'Confined Space Entry',
+  'Silica Exposure Control Training',
+  'Scaffold Competent Person',
+  'Fall Protection Certification',
+  'NCMA Certified Mason',
+  'MCAA Journeyman Mason Certification',
+  'First Aid / CPR',
+  'Other',
+] as const;
+
+function certBadge(c: CrewCert) {
+  if (c.expiryStatus === 'expired') return <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-medium text-rose-300">EXPIRED</span>;
+  if (c.expiryStatus === 'expiring_soon') return <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-medium text-amber-300">EXPIRING SOON</span>;
+  return null;
+}
+
+function CertificationsTab() {
+  const [list, setList] = useState<CrewCert[]>([]);
+  const [roster, setRoster] = useState<string[]>([]);
+  const [stats, setStats] = useState({ expiredCount: 0, expiringSoonCount: 0 });
+  const [crewMemberName, setCrewMemberName] = useState('');
+  const [category, setCategory] = useState<string>(CERT_CATEGORIES[0]);
+  const [customType, setCustomType] = useState('');
+  const [issuingBody, setIssuingBody] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [issueDate, setIssueDate] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const r = await run<{ certifications: CrewCert[]; roster: string[]; expiredCount: number; expiringSoonCount: number }>('cert-list');
+    if (r) { setList(r.certifications || []); setRoster(r.roster || []); setStats({ expiredCount: r.expiredCount, expiringSoonCount: r.expiringSoonCount }); }
+  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
+
+  const add = async () => {
+    const certType = category === 'Other' ? customType.trim() : category;
+    if (!crewMemberName.trim()) { setErr('Crew member name required'); return; }
+    if (!certType) { setErr('Certification type required'); return; }
+    if (!issuingBody.trim()) { setErr('Issuing body required'); return; }
+    setErr(null);
+    setBusy(true);
+    const r = await run('cert-add', {
+      crewMemberName: crewMemberName.trim(), certType, issuingBody: issuingBody.trim(),
+      licenseNumber: licenseNumber.trim(), issueDate: issueDate || undefined, expiryDate: expiryDate || undefined,
+    });
+    setBusy(false);
+    if (r) {
+      setCrewMemberName(''); setCategory(CERT_CATEGORIES[0]); setCustomType('');
+      setIssuingBody(''); setLicenseNumber(''); setIssueDate(''); setExpiryDate('');
+      await load();
+    } else setErr('Could not save the certification.');
+  };
+  const remove = async (id: string) => { await run('cert-remove', { id }); await load(); };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Stat label="Crew on file" value={String(roster.length)} />
+        <Stat label="Expiring soon" value={String(stats.expiringSoonCount)} />
+        <Stat label="Expired" value={String(stats.expiredCount)} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+        <div className={card}>
+          <h4 className="mb-3 text-sm font-semibold text-white">Add crew certification</h4>
+          <label className={lbl}>Crew member</label>
+          <input className={inp} value={crewMemberName} onChange={(e) => setCrewMemberName(e.target.value)} placeholder="Mike Alvarez" list="masonry-cert-roster" />
+          <datalist id="masonry-cert-roster">
+            {roster.map((n) => <option key={n} value={n} />)}
+          </datalist>
+          <label className={`${lbl} mt-3`}>Certification type</label>
+          <select className={inp} value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Certification type">
+            {CERT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          {category === 'Other' && (
+            <input className={`${inp} mt-1.5`} placeholder="Certification name" value={customType} onChange={(e) => setCustomType(e.target.value)} />
+          )}
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div><label className={lbl}>Issuing body</label><input className={inp} value={issuingBody} onChange={(e) => setIssuingBody(e.target.value)} placeholder="OSHA" /></div>
+            <div><label className={lbl}>License #</label><input className={inp} value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} /></div>
+            <div><label className={lbl}>Issue date</label><input type="date" className={inp} value={issueDate} onChange={(e) => setIssueDate(e.target.value)} aria-label="Issue date" /></div>
+            <div><label className={lbl}>Expiry date</label><input type="date" className={inp} value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} aria-label="Expiry date" /></div>
+          </div>
+          <button className={`${btnP} mt-4`} onClick={add} disabled={busy}>
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}Add certification
+          </button>
+          {err && <p className="mt-2 text-[11px] text-rose-400">{err}</p>}
+        </div>
+
+        <div className={card}>
+          <h4 className="mb-2 text-sm font-semibold text-white">Crew roster ({list.length} certifications)</h4>
+          {list.length === 0 && <p className="text-xs text-zinc-400">No certifications on file yet.</p>}
+          {roster.map((name) => {
+            const certs = list.filter((c) => c.crewMemberName === name);
+            const hasExpired = certs.some((c) => c.isExpired);
+            return (
+              <div key={name} className="mt-2 rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
+                <div className="flex items-center gap-1.5">
+                  {hasExpired ? <ShieldAlert className="h-3.5 w-3.5 text-rose-400" /> : <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />}
+                  <span className="text-xs font-medium text-white">{name}</span>
+                  <span className="text-[10px] text-zinc-500">({certs.length})</span>
+                </div>
+                <ul className="mt-1.5 space-y-1">
+                  {certs.map((c) => (
+                    <li key={c.id} className={`flex items-center justify-between gap-2 rounded border px-2 py-1 text-[11px] ${c.isExpired ? 'border-rose-500/30 bg-rose-500/5' : c.expiryStatus === 'expiring_soon' ? 'border-amber-500/30 bg-amber-500/5' : 'border-zinc-800'}`}>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-zinc-200">{c.certType}</span>
+                          {certBadge(c)}
+                        </div>
+                        <div className="truncate text-zinc-500">
+                          {c.issuingBody}{c.licenseNumber ? ` · #${c.licenseNumber}` : ''}
+                          {c.expiryDate ? ` · exp ${c.expiryDate}` : ' · no expiry on file'}
+                        </div>
+                      </div>
+                      <button onClick={() => remove(c.id)} className="shrink-0 text-zinc-600 hover:text-rose-400" aria-label={`Remove ${c.certType} certification for ${name}`}>
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ───────────────────────── Modal helper ─────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
@@ -933,6 +1250,8 @@ export function ContractorSuite() {
       {tab === 'invoices' && <InvoicesTab />}
       {tab === 'codes' && <CodesTab />}
       {tab === 'clients' && <ClientsTab />}
+      {tab === 'inspections' && <InspectionsTab />}
+      {tab === 'certifications' && <CertificationsTab />}
     </div>
   );
 }
