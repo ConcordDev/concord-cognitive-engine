@@ -328,8 +328,17 @@ export default function SecurityLensPage() {
     await remove(id);
   };
 
+  // Domain Actions target — the four legacy action buttons run a security.*
+  // macro against a specific artifact (`/api/lens/security/:id/run` always
+  // requires a real, owned artifact id to route through, even for macros
+  // like accessAudit that don't read the artifact's data). On a fresh
+  // account with zero artifacts in the current tab there is no honest id to
+  // send, so the UI must say that plainly instead of the button doing
+  // nothing on click.
+  const domainActionTargetId = editingItem?.id || filtered[0]?.id;
+
   const handleAction = async (action: string, artifactId?: string) => {
-    const targetId = artifactId || editingItem?.id || filtered[0]?.id;
+    const targetId = artifactId || domainActionTargetId;
     if (!targetId) return;
     try {
       const result = await runAction.mutateAsync({ id: targetId, action });
@@ -1083,20 +1092,47 @@ export default function SecurityLensPage() {
 
       {/* Domain Actions */}
       {mode !== 'Dashboard' && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => handleAction('vulnerabilityScan')} className={ds.btnSecondary}>
-            <Scan className="w-4 h-4" /> Vulnerability Scan
-          </button>
-          <button onClick={() => handleAction('incidentEscalate')} className={ds.btnSecondary}>
-            <AlertCircle className="w-4 h-4" /> Incident Escalate
-          </button>
-          <button onClick={() => handleAction('accessAudit')} className={ds.btnSecondary}>
-            <BadgeCheck className="w-4 h-4" /> Access Audit
-          </button>
-          <button onClick={() => handleAction('threatAssessment')} className={ds.btnSecondary}>
-            <Target className="w-4 h-4" /> Threat Assessment
-          </button>
-          {runAction.isPending && <span className="text-xs text-neon-blue animate-pulse">Running...</span>}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => handleAction('vulnerabilityScan')}
+              disabled={!domainActionTargetId}
+              title={domainActionTargetId ? undefined : `No ${currentType} yet — create one to run a vulnerability scan against it`}
+              className={ds.btnSecondary}
+            >
+              <Scan className="w-4 h-4" /> Vulnerability Scan
+            </button>
+            <button
+              onClick={() => handleAction('incidentEscalate')}
+              disabled={!domainActionTargetId}
+              title={domainActionTargetId ? undefined : `No ${currentType} yet — create one to run an incident escalation against it`}
+              className={ds.btnSecondary}
+            >
+              <AlertCircle className="w-4 h-4" /> Incident Escalate
+            </button>
+            <button
+              onClick={() => handleAction('accessAudit')}
+              disabled={!domainActionTargetId}
+              title={domainActionTargetId ? undefined : `No ${currentType} yet — create one first (the audit reads your real SIEM/vuln state, but the action still needs a record to run against)`}
+              className={ds.btnSecondary}
+            >
+              <BadgeCheck className="w-4 h-4" /> Access Audit
+            </button>
+            <button
+              onClick={() => handleAction('threatAssessment')}
+              disabled={!domainActionTargetId}
+              title={domainActionTargetId ? undefined : `No ${currentType} yet — create one to run a threat assessment against it`}
+              className={ds.btnSecondary}
+            >
+              <Target className="w-4 h-4" /> Threat Assessment
+            </button>
+            {runAction.isPending && <span className="text-xs text-neon-blue animate-pulse">Running...</span>}
+          </div>
+          {!domainActionTargetId && (
+            <p className={cn(ds.textMuted, 'text-xs')}>
+              These actions run against a {currentType} record — add one to enable them.
+            </p>
+          )}
         </div>
       )}
 
