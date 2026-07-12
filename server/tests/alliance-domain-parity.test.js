@@ -159,6 +159,81 @@ describe("alliance messaging — threads, reactions, attachments", () => {
   });
 });
 
+describe("alliance message-search", () => {
+  it("matches messages whose content contains the query (case-insensitive), excludes non-matching ones", () => {
+    const { channelId } = bootstrapAlliance();
+    call("message-send", ctxOwner, {}, { channelId, content: "the deployment window opens Friday" });
+    call("message-send", ctxMember, {}, { channelId, content: "unrelated chatter about lunch" });
+    call("message-send", ctxOwner, {}, { channelId, content: "DEPLOYMENT rollback plan attached" });
+
+    const r = call("message-search", ctxOwner, {}, { channelId, query: "deployment" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 2);
+    assert.equal(r.result.messages.length, 2);
+    assert.ok(r.result.messages.every((m) => /deployment/i.test(m.content)));
+    assert.ok(!r.result.messages.some((m) => /lunch/i.test(m.content)));
+    assert.equal(r.result.totalInChannel, 3);
+  });
+
+  it("returns an empty match set (not an error) when nothing matches", () => {
+    const { channelId } = bootstrapAlliance();
+    call("message-send", ctxOwner, {}, { channelId, content: "hello team" });
+    const r = call("message-search", ctxOwner, {}, { channelId, query: "xyzzy" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 0);
+    assert.deepEqual(r.result.messages, []);
+  });
+
+  it("respects alliance-membership scoping — an outsider cannot search another alliance's channel", () => {
+    const { channelId } = bootstrapAlliance();
+    call("message-send", ctxOwner, {}, { channelId, content: "secret roadmap details" });
+    const r = call("message-search", ctxOutsider, {}, { channelId, query: "roadmap" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not a member/);
+  });
+
+  it("rejects a nonexistent channel", () => {
+    const r = call("message-search", ctxOwner, {}, { channelId: "chn_nope", query: "anything" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /channel not found/);
+  });
+
+  it("rejects a too-short query", () => {
+    const { channelId } = bootstrapAlliance();
+    const r = call("message-search", ctxOwner, {}, { channelId, query: "a" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /too short/);
+  });
+
+  it("rejects a too-long query", () => {
+    const { channelId } = bootstrapAlliance();
+    const r = call("message-search", ctxOwner, {}, { channelId, query: "x".repeat(201) });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /too long/);
+  });
+
+  it("clamps an oversized limit to the 100 cap and honors a smaller explicit limit", () => {
+    const { channelId } = bootstrapAlliance();
+    for (let i = 0; i < 5; i++) {
+      call("message-send", ctxOwner, {}, { channelId, content: `ping number ${i}` });
+    }
+    const capped = call("message-search", ctxOwner, {}, { channelId, query: "ping", limit: 999 });
+    assert.equal(capped.ok, true);
+    assert.equal(capped.result.count, 5);
+    const limited = call("message-search", ctxOwner, {}, { channelId, query: "ping", limit: 2 });
+    assert.equal(limited.result.count, 2);
+  });
+
+  it("sorts matches most-recent-first", () => {
+    const { channelId } = bootstrapAlliance();
+    call("message-send", ctxOwner, {}, { channelId, content: "first match" });
+    call("message-send", ctxOwner, {}, { channelId, content: "second match" });
+    const r = call("message-search", ctxOwner, {}, { channelId, query: "match" });
+    assert.equal(r.result.messages[0].content, "second match");
+    assert.equal(r.result.messages[1].content, "first match");
+  });
+});
+
 describe("alliance invites + roles", () => {
   it("invite-create / invite-respond brings a new member in", () => {
     const created = call("alliance-create", ctxOwner, {}, { name: "Joinable" });

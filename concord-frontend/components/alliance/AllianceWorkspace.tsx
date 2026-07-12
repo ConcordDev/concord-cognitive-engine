@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   Hash, Plus, Send, MessageSquare, Users, Mail, FileText, CheckCircle2,
   XCircle, Loader2, Crown, Shield, UserPlus, Bell, ChevronRight, CornerDownRight,
-  ThumbsUp, Paperclip, Vote,
+  ThumbsUp, Paperclip, Vote, Search,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -53,6 +53,12 @@ export function AllianceWorkspace() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
+
+  // ── Channel search ──
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Message[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchErr, setSearchErr] = useState<string | null>(null);
 
   // ── UI state ──
   const [tab, setTab] = useState<'chat' | 'proposals' | 'members'>('chat');
@@ -109,6 +115,14 @@ export function AllianceWorkspace() {
     if (r.ok && r.result) setMessages(r.result.messages || []);
   }, []);
 
+  const searchMessages = useCallback(async (channelId: string, query: string) => {
+    setSearching(true);
+    const r = await run<{ messages: Message[]; count: number }>('message-search', { channelId, query, limit: 50 });
+    if (r.ok && r.result) { setSearchResults(r.result.messages || []); setSearchErr(null); }
+    else { setSearchResults([]); setSearchErr(r.error || 'search failed'); }
+    setSearching(false);
+  }, []);
+
   const loadProposals = useCallback(async (allianceId: string) => {
     const r = await run<{ proposals: Proposal[] }>('proposal-list', { allianceId });
     if (r.ok && r.result) setProposals(r.result.proposals || []);
@@ -134,10 +148,21 @@ export function AllianceWorkspace() {
 
   // ── Channel selection cascade ──
   useEffect(() => {
+    setSearchQuery(''); setSearchResults(null); setSearchErr(null);
     if (!selChannel) { setMessages([]); return; }
     loadMessages(selChannel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selChannel]);
+
+  // ── Debounced channel search — fires 300ms after the query settles at 2+ chars ──
+  useEffect(() => {
+    if (!selChannel) return;
+    const q = searchQuery.trim();
+    if (q.length < 2) { setSearchResults(null); setSearchErr(null); return; }
+    const id = setTimeout(() => { searchMessages(selChannel, q); }, 300);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, selChannel]);
 
   // ── Live poll: notifications + active channel messages ──
   useEffect(() => {
@@ -429,11 +454,61 @@ export function AllianceWorkspace() {
                             <CheckCircle2 className="w-3 h-3" /> Mark read
                           </button>
                         </div>
+                        {/* Search this channel */}
+                        <div className="relative mb-2">
+                          <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                          <input
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search this channel…"
+                            aria-label="Search channel messages"
+                            className="input-lattice w-full text-xs pl-7 pr-7"
+                          />
+                          {searching && <Loader2 className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 animate-spin text-neon-cyan" />}
+                          {!searching && searchQuery && (
+                            <button
+                              onClick={() => setSearchQuery('')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                              aria-label="Clear search"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                         <div className="flex-1 space-y-2 max-h-80 overflow-auto pr-1">
-                          {messages.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No messages yet</p>}
-                          {messages.map((m) => (
-                            <MessageBubble key={m.id} m={m} onReact={react} onReply={setReplyTo} busy={busy} />
-                          ))}
+                          {searchQuery.trim().length >= 2 ? (
+                            <>
+                              {searchErr && <p className="text-xs text-red-400 py-2">{searchErr}</p>}
+                              {!searchErr && searchResults !== null && (
+                                <p className="text-[11px] text-gray-400 pb-0.5">
+                                  {searchResults.length === 0 ? 'No matches' : `${searchResults.length} match${searchResults.length !== 1 ? 'es' : ''}`} for “{searchQuery.trim()}”
+                                </p>
+                              )}
+                              {searchResults?.map((m) => (
+                                <div key={m.id} className="bg-lattice-deep p-2 rounded">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <span className="text-sm font-medium text-neon-cyan">{m.displayName}</span>
+                                    <span className="text-[11px] text-gray-400">{new Date(m.createdAt).toLocaleTimeString()}</span>
+                                    {m.parentId && (
+                                      <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                                        <CornerDownRight className="w-2.5 h-2.5" /> reply
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-200 whitespace-pre-wrap">
+                                    <HighlightedMessage text={m.content} query={searchQuery.trim()} />
+                                  </p>
+                                </div>
+                              ))}
+                            </>
+                          ) : (
+                            <>
+                              {messages.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No messages yet</p>}
+                              {messages.map((m) => (
+                                <MessageBubble key={m.id} m={m} onReact={react} onReply={setReplyTo} busy={busy} />
+                              ))}
+                            </>
+                          )}
                         </div>
                         {/* Composer */}
                         <div className="mt-2 space-y-1.5">
@@ -562,6 +637,33 @@ export function AllianceWorkspace() {
       </div>
     </div>
   );
+}
+
+// ── Query-term highlight for channel search results ──
+function HighlightedMessage({ text, query }: { text: string; query: string }) {
+  const terms = useMemo(
+    () => query.split(/\s+/).map((t) => t.trim()).filter((t) => t.length >= 2),
+    [query]
+  );
+  if (terms.length === 0) return <>{text}</>;
+  const re = new RegExp(`(${terms.map(escapeRegex).join('|')})`, 'gi');
+  // Odd indices are the captured (matched) group — split() with a capturing
+  // group interleaves [nonmatch, match, nonmatch, match, ...] deterministically,
+  // so index parity is safer than re-testing a stateful `g`-flagged regex.
+  const parts = text.split(re);
+  return (
+    <>
+      {parts.map((part, i) => (
+        i % 2 === 1
+          ? <mark key={i} className="rounded-sm bg-neon-cyan/25 text-neon-cyan px-0.5">{part}</mark>
+          : <span key={i}>{part}</span>
+      ))}
+    </>
+  );
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // ── Message bubble with threads, reactions, attachments ──
