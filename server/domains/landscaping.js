@@ -571,12 +571,17 @@ export default function registerLandscapingActions(registerLensAction) {
   // Builds a structured contractor proposal from line items: computes
   // labor + materials, applies overhead + margin, returns a renderable
   // proposal document object (markdown body + totals).
-  registerLensAction("landscaping", "proposal-build", (_ctx, _a, params = {}) => {
-  try {
+  //
+  // computeProposal is extracted so the invoice-from-proposal macro
+  // (Feature 10, below) can derive the same server-trusted totals from
+  // the same raw line items instead of trusting client-supplied totals —
+  // the invoice conversion re-runs the real math rather than echoing
+  // numbers the caller could tamper with in transit.
+  function computeProposal(params = {}) {
     const client = lsClean(params.client, 200) || "Client";
     const project = lsClean(params.project, 200) || "Landscaping project";
     const rawItems = Array.isArray(params.lineItems) ? params.lineItems : [];
-    if (!rawItems.length) return { ok: false, error: "lineItems required" };
+    if (!rawItems.length) return { error: "lineItems required" };
     const overheadPct = Math.max(0, Math.min(100, lsNum(params.overheadPct) || 15));
     const marginPct = Math.max(0, Math.min(100, lsNum(params.marginPct) || 20));
     const taxPct = Math.max(0, Math.min(30, lsNum(params.taxPct)));
@@ -598,6 +603,19 @@ export default function registerLandscapingActions(registerLensAction) {
     const preTax = subtotal + overhead + margin;
     const tax = Math.round(preTax * taxPct) / 100;
     const total = Math.round((preTax + tax) * 100) / 100;
+    return {
+      client, project, lineItems,
+      subtotal: Math.round(subtotal * 100) / 100,
+      overhead, margin, tax, total,
+      overheadPct, marginPct, taxPct,
+    };
+  }
+
+  registerLensAction("landscaping", "proposal-build", (_ctx, _a, params = {}) => {
+  try {
+    const computed = computeProposal(params);
+    if (computed.error) return { ok: false, error: computed.error };
+    const { client, project, lineItems, subtotal, overhead, margin, tax, total, overheadPct, marginPct, taxPct } = computed;
     const md = [
       `# Landscaping Proposal`,
       ``,
@@ -842,6 +860,161 @@ export default function registerLandscapingActions(registerLensAction) {
     job.completionNotes = lsClean(params.notes, 1000) || "";
     saveLand();
     return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ─── Feature 10 — Proposal → invoice status machine ──────────────────
+  // `proposal-build` (Feature 6) stops at a renderable document — there was
+  // no way to turn a built proposal into a tracked, payable invoice. This
+  // closes that gap the way plumbing's invoiceFromQuote/invoiceList/
+  // invoiceRecordPayment triple does (server/domains/plumbing.js), adapted
+  // to this file's hyphenated macro convention and to a real 4-state
+  // machine (plumbing's invoice is 2-state: issued -> partial/paid):
+  //   draft -> sent -> accepted -> paid
+  // invoice-from-proposal re-derives the totals from the same raw line
+  // items via computeProposal (Feature 6) rather than trusting
+  // client-supplied totals — a caller can't mint a fake total by tampering
+  // with the response before converting it. Transitions are strict: you
+  // cannot skip a state (e.g. draft -> accepted) and you cannot record a
+  // payment before the client has accepted the invoice.
+  function lsInvoices(s, userId) {
+    if (!(s.invoices instanceof Map)) s.invoices = new Map();
+    if (!s.invoices.has(userId)) s.invoices.set(userId, []);
+    return s.invoices.get(userId);
+  }
+  const INVOICE_STATUSES = ["draft", "sent", "accepted", "paid"];
+  const PAYMENT_METHODS = ["cash", "card", "check", "transfer"];
+
+  registerLensAction("landscaping", "invoice-from-proposal", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const computed = computeProposal(params);
+    if (computed.error) return { ok: false, error: computed.error };
+    const invoices = lsInvoices(s, userId);
+    const seq = invoices.length + 1;
+    const invoice = {
+      id: lsId("inv"),
+      number: lsClean(params.number, 32) || `INV-${String(seq).padStart(4, "0")}`,
+      proposalRef: lsClean(params.proposalRef, 80) || null,
+      client: computed.client,
+      project: computed.project,
+      lineItems: computed.lineItems,
+      subtotal: computed.subtotal,
+      overhead: computed.overhead,
+      margin: computed.margin,
+      tax: computed.tax,
+      total: computed.total,
+      overheadPct: computed.overheadPct,
+      marginPct: computed.marginPct,
+      taxPct: computed.taxPct,
+      status: "draft",
+      amountPaid: 0,
+      payments: [],
+      dueDate: lsClean(params.dueDate, 16) || "",
+      createdAt: new Date().toISOString(),
+      sentAt: null,
+      acceptedAt: null,
+      paidAt: null,
+    };
+    invoices.push(invoice);
+    saveLand();
+    return { ok: true, result: { invoice } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // invoice-list — filterable by status; also returns per-status counts
+  // and outstanding/collected totals so the frontend can render a real
+  // AR summary, not just a flat table.
+  registerLensAction("landscaping", "invoice-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const status = lsClean(params.status, 20);
+    if (status && !INVOICE_STATUSES.includes(status)) return { ok: false, error: "invalid status filter" };
+    let rows = lsInvoices(s, lsActor(ctx)).slice();
+    if (status) rows = rows.filter((i) => i.status === status);
+    rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const outstanding = rows.filter((i) => i.status === "accepted")
+      .reduce((n, i) => n + (i.total - i.amountPaid), 0);
+    const collected = rows.reduce((n, i) => n + i.amountPaid, 0);
+    return {
+      ok: true,
+      result: {
+        invoices: rows, count: rows.length,
+        draftCount: rows.filter((i) => i.status === "draft").length,
+        sentCount: rows.filter((i) => i.status === "sent").length,
+        acceptedCount: rows.filter((i) => i.status === "accepted").length,
+        paidCount: rows.filter((i) => i.status === "paid").length,
+        outstanding: Math.round(outstanding * 100) / 100,
+        collected: Math.round(collected * 100) / 100,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // invoice-send — draft -> sent only.
+  registerLensAction("landscaping", "invoice-send", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = lsInvoices(s, lsActor(ctx)).find((i) => i.id === params.id);
+    if (!inv) return { ok: false, error: "invoice not found" };
+    if (inv.status !== "draft") {
+      return { ok: false, error: `cannot send an invoice with status "${inv.status}" — only a draft invoice can be sent` };
+    }
+    inv.status = "sent";
+    inv.sentAt = new Date().toISOString();
+    saveLand();
+    return { ok: true, result: { invoice: inv } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // invoice-accept — sent -> accepted only (records the client's
+  // acceptance; this is what unlocks payment recording below).
+  registerLensAction("landscaping", "invoice-accept", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = lsInvoices(s, lsActor(ctx)).find((i) => i.id === params.id);
+    if (!inv) return { ok: false, error: "invoice not found" };
+    if (inv.status !== "sent") {
+      return { ok: false, error: `cannot accept an invoice with status "${inv.status}" — only a sent invoice can be accepted` };
+    }
+    inv.status = "accepted";
+    inv.acceptedAt = new Date().toISOString();
+    saveLand();
+    return { ok: true, result: { invoice: inv } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // invoice-record-payment — only once accepted (or already partially
+  // paid); flips to "paid" once amountPaid reaches the total. Supports
+  // partial payments the same way plumbing's invoiceRecordPayment does.
+  registerLensAction("landscaping", "invoice-record-payment", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const inv = lsInvoices(s, lsActor(ctx)).find((i) => i.id === params.id);
+    if (!inv) return { ok: false, error: "invoice not found" };
+    if (inv.status === "draft" || inv.status === "sent") {
+      return { ok: false, error: `cannot record payment before the invoice is accepted (current status "${inv.status}")` };
+    }
+    const amount = Math.max(0, lsNum(params.amount));
+    if (amount <= 0) return { ok: false, error: "payment amount required" };
+    const payment = {
+      id: lsId("pay"),
+      amount,
+      method: PAYMENT_METHODS.includes(params.method) ? params.method : "card",
+      at: new Date().toISOString(),
+    };
+    inv.payments.push(payment);
+    inv.amountPaid = Math.round((inv.amountPaid + amount) * 100) / 100;
+    if (inv.amountPaid >= inv.total) {
+      inv.status = "paid";
+      if (!inv.paidAt) inv.paidAt = new Date().toISOString();
+    }
+    saveLand();
+    return {
+      ok: true,
+      result: { invoice: inv, balanceDue: Math.max(0, Math.round((inv.total - inv.amountPaid) * 100) / 100) },
+    };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 }

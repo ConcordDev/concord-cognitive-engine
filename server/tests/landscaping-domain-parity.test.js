@@ -382,3 +382,174 @@ describe("landscaping — job scheduling / dispatch board", () => {
     assert.match(r.error, /cancelled/);
   });
 });
+
+// ─── Feature 10 — proposal -> invoice status machine ────────────────
+describe("landscaping — invoice-from-proposal", () => {
+  const lineItems = [
+    { description: "Labor", category: "labor", unit: "hr", quantity: 10, unitCost: 50 },
+    { description: "Mulch", category: "materials", unit: "yd", quantity: 4, unitCost: 35 },
+  ];
+
+  it("rejects conversion with no lineItems", () => {
+    const r = call("invoice-from-proposal", ctxA, { client: "X" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /lineItems/);
+  });
+
+  it("converts a proposal's raw inputs into a draft invoice with server-derived totals", () => {
+    const r = call("invoice-from-proposal", ctxA, {
+      client: "Jane Doe",
+      project: "Front yard refresh",
+      overheadPct: 10,
+      marginPct: 20,
+      taxPct: 5,
+      lineItems,
+      proposalRef: "prop_abc",
+    });
+    assert.equal(r.ok, true);
+    const inv = r.result.invoice;
+    assert.ok(inv.id);
+    assert.match(inv.number, /^INV-\d{4}$/);
+    assert.equal(inv.status, "draft");
+    assert.equal(inv.client, "Jane Doe");
+    assert.equal(inv.proposalRef, "prop_abc");
+    // same math proposal-build computes for the identical inputs
+    assert.equal(inv.subtotal, 640);
+    assert.equal(inv.overhead, 64);
+    assert.equal(inv.margin, 140.8);
+    assert.equal(inv.total > inv.subtotal, true);
+    assert.equal(inv.amountPaid, 0);
+    assert.deepEqual(inv.payments, []);
+    assert.equal(inv.sentAt, null);
+    assert.equal(inv.acceptedAt, null);
+    assert.equal(inv.paidAt, null);
+  });
+
+  it("assigns sequential invoice numbers per user", () => {
+    const a = call("invoice-from-proposal", ctxA, { lineItems }).result.invoice;
+    const b = call("invoice-from-proposal", ctxA, { lineItems }).result.invoice;
+    assert.notEqual(a.number, b.number);
+  });
+});
+
+describe("landscaping — invoice-list", () => {
+  it("lists only the caller's invoices with status counts + outstanding/collected totals", () => {
+    const lineItems = [{ description: "Labor", quantity: 2, unitCost: 100 }];
+    call("invoice-from-proposal", ctxA, { lineItems });
+    call("invoice-from-proposal", ctxB, { lineItems });
+    const a = call("invoice-list", ctxA, {});
+    assert.equal(a.ok, true);
+    assert.equal(a.result.count, 1);
+    assert.equal(a.result.draftCount, 1);
+    assert.equal(a.result.sentCount, 0);
+    assert.equal(a.result.outstanding, 0);
+    assert.equal(a.result.collected, 0);
+  });
+
+  it("filters by status and rejects an invalid status filter", () => {
+    const lineItems = [{ description: "Labor", quantity: 1, unitCost: 100 }];
+    const inv = call("invoice-from-proposal", ctxA, { lineItems }).result.invoice;
+    call("invoice-send", ctxA, { id: inv.id });
+    call("invoice-from-proposal", ctxA, { lineItems }); // stays draft
+
+    const sent = call("invoice-list", ctxA, { status: "sent" });
+    assert.equal(sent.ok, true);
+    assert.equal(sent.result.count, 1);
+    assert.equal(sent.result.invoices[0].id, inv.id);
+
+    assert.equal(call("invoice-list", ctxA, { status: "bogus" }).ok, false);
+  });
+});
+
+describe("landscaping — invoice status transitions (draft -> sent -> accepted -> paid)", () => {
+  function freshInvoice(ctx = ctxA) {
+    return call("invoice-from-proposal", ctx, {
+      lineItems: [{ description: "Labor", quantity: 10, unitCost: 50 }], // subtotal 500
+    }).result.invoice;
+  }
+
+  it("walks the full happy path", () => {
+    const inv = freshInvoice();
+    const sent = call("invoice-send", ctxA, { id: inv.id });
+    assert.equal(sent.ok, true);
+    assert.equal(sent.result.invoice.status, "sent");
+    assert.ok(sent.result.invoice.sentAt);
+
+    const accepted = call("invoice-accept", ctxA, { id: inv.id });
+    assert.equal(accepted.ok, true);
+    assert.equal(accepted.result.invoice.status, "accepted");
+    assert.ok(accepted.result.invoice.acceptedAt);
+
+    const paid = call("invoice-record-payment", ctxA, { id: inv.id, amount: accepted.result.invoice.total, method: "check" });
+    assert.equal(paid.ok, true);
+    assert.equal(paid.result.invoice.status, "paid");
+    assert.ok(paid.result.invoice.paidAt);
+    assert.equal(paid.result.balanceDue, 0);
+    assert.equal(paid.result.invoice.payments.length, 1);
+    assert.equal(paid.result.invoice.payments[0].method, "check");
+  });
+
+  it("supports partial payments before flipping to paid", () => {
+    const inv = freshInvoice();
+    call("invoice-send", ctxA, { id: inv.id });
+    call("invoice-accept", ctxA, { id: inv.id });
+    const half = Math.round((inv.total / 2) * 100) / 100;
+    const partial = call("invoice-record-payment", ctxA, { id: inv.id, amount: half });
+    assert.equal(partial.ok, true);
+    assert.equal(partial.result.invoice.status, "accepted");
+    assert.equal(partial.result.balanceDue > 0, true);
+    const rest = call("invoice-record-payment", ctxA, { id: inv.id, amount: partial.result.balanceDue });
+    assert.equal(rest.ok, true);
+    assert.equal(rest.result.invoice.status, "paid");
+    assert.equal(rest.result.balanceDue, 0);
+  });
+
+  it("rejects sending a non-draft invoice", () => {
+    const inv = freshInvoice();
+    call("invoice-send", ctxA, { id: inv.id });
+    const again = call("invoice-send", ctxA, { id: inv.id });
+    assert.equal(again.ok, false);
+    assert.match(again.error, /only a draft invoice/);
+  });
+
+  it("rejects accepting an invoice that hasn't been sent (cannot skip draft -> accepted)", () => {
+    const inv = freshInvoice();
+    const r = call("invoice-accept", ctxA, { id: inv.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /only a sent invoice/);
+  });
+
+  it("rejects recording payment before acceptance (draft and sent both blocked)", () => {
+    const draftInv = freshInvoice();
+    const draftPay = call("invoice-record-payment", ctxA, { id: draftInv.id, amount: 100 });
+    assert.equal(draftPay.ok, false);
+    assert.match(draftPay.error, /before the invoice is accepted/);
+
+    const sentInv = freshInvoice();
+    call("invoice-send", ctxA, { id: sentInv.id });
+    const sentPay = call("invoice-record-payment", ctxA, { id: sentInv.id, amount: 100 });
+    assert.equal(sentPay.ok, false);
+    assert.match(sentPay.error, /before the invoice is accepted/);
+  });
+
+  it("rejects a zero/negative/missing payment amount", () => {
+    const inv = freshInvoice();
+    call("invoice-send", ctxA, { id: inv.id });
+    call("invoice-accept", ctxA, { id: inv.id });
+    assert.equal(call("invoice-record-payment", ctxA, { id: inv.id }).ok, false);
+    assert.equal(call("invoice-record-payment", ctxA, { id: inv.id, amount: 0 }).ok, false);
+    assert.equal(call("invoice-record-payment", ctxA, { id: inv.id, amount: -50 }).ok, false);
+  });
+
+  it("rejects unknown invoice ids on every transition macro", () => {
+    assert.equal(call("invoice-send", ctxA, { id: "nope" }).ok, false);
+    assert.equal(call("invoice-accept", ctxA, { id: "nope" }).ok, false);
+    assert.equal(call("invoice-record-payment", ctxA, { id: "nope", amount: 10 }).ok, false);
+  });
+
+  it("scopes invoices per-user — a transition macro can't reach another user's invoice", () => {
+    const inv = freshInvoice(ctxA);
+    const r = call("invoice-send", ctxB, { id: inv.id });
+    assert.equal(r.ok, false, "user B must not be able to transition user A's invoice");
+  });
+});
