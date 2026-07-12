@@ -44,8 +44,11 @@ type PoemForm = 'free-verse' | 'sonnet' | 'haiku' | 'limerick' | 'villanelle' | 
 // Backed by the real poetry.poem-* macros (server/domains/poetry.js) —
 // STATE.poetryLens.poems, the same per-user notebook substrate the
 // PoetryWorkshop / PoetryStudio / PoetryDiscovery panels read from.
-// poem-list intentionally omits body text (list vs. detail separation);
-// poem-detail carries the full `body`.
+// poem-list's response shape still omits body text (list vs. detail
+// separation, keeps the endpoint cheap); poem-detail carries the full
+// `body`. poem-list DOES accept a `query` param that searches server-side
+// across both title and body — the body is only ever read in memory to
+// decide inclusion, never returned in the list response.
 interface PoemMeta {
   id: string;
   title: string;
@@ -288,10 +291,18 @@ export default function PoetryPage() {
   const [isError, setIsError] = useState(false);
   const [loadErrorMsg, setLoadErrorMsg] = useState<string | null>(null);
 
-  const refetch = useCallback(async () => {
+  // Search runs server-side (poetry.poem-list `query` param matches BOTH
+  // title and body, per-domain) so the search box genuinely searches poem
+  // content, not just titles — the response itself still stays slim (no
+  // body field), the full text is only read in memory on the backend to
+  // decide inclusion.
+  const refetch = useCallback(async (query?: string) => {
     setIsLoading(true);
     try {
-      const r = await lensRun('poetry', 'poem-list', {});
+      const params: Record<string, unknown> = {};
+      const q = query?.trim();
+      if (q) params.query = q;
+      const r = await lensRun('poetry', 'poem-list', params);
       if (r.data?.ok) {
         setPoems((r.data.result?.poems as PoemMeta[]) || []);
         setIsError(false);
@@ -306,7 +317,6 @@ export default function PoetryPage() {
     }
     setIsLoading(false);
   }, []);
-  useEffect(() => { void refetch(); }, [refetch]);
 
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [activeAction, setActiveAction] = useState<string | null>(null);
@@ -345,6 +355,14 @@ export default function PoetryPage() {
   const [readingMode, setReadingMode] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(true);
 
+  // Debounced: re-run the server-side search (title + body) as the user
+  // types. 250ms keeps it snappy without a request per keystroke; fires
+  // immediately (with no query) on mount to load the initial collection.
+  useEffect(() => {
+    const t = setTimeout(() => { void refetch(searchQuery); }, searchQuery ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [searchQuery, refetch]);
+
   // Composer state
   const [composingPoem, setComposingPoem] = useState<PoemDetail | null>(null);
   const [compTitle, setCompTitle] = useState('');
@@ -374,17 +392,14 @@ export default function PoetryPage() {
     }
   }, [compContent, compForm]);
 
-  // poem-list omits body text (list vs. detail separation) — search is
-  // over titles only. Open a poem (poem-detail) to search/read its body.
+  // Text search already happened server-side (poem-list `query` param,
+  // matched against both title AND body — see the refetch effect above).
+  // `poems` here is already the search-filtered set; only the form filter
+  // still needs to apply client-side.
   const filteredPoems = useMemo(() => {
-    let result = poems;
-    if (formFilter) result = result.filter(p => p.form === formFilter);
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(p => p.title?.toLowerCase().includes(q));
-    }
-    return result;
-  }, [poems, formFilter, searchQuery]);
+    if (!formFilter) return poems;
+    return poems.filter(p => p.form === formFilter);
+  }, [poems, formFilter]);
 
   const startNew = useCallback(() => {
     setComposingPoem(null);
@@ -412,12 +427,12 @@ export default function PoetryPage() {
     try {
       await lensRun('poetry', 'poem-delete', { id });
       if (composingPoem?.id === id) startNew();
-      await refetch();
+      await refetch(searchQuery);
     } catch (err) {
       console.error('[Poetry] Failed to delete poem:', err);
       useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete poem' });
     }
-  }, [composingPoem, startNew, refetch]);
+  }, [composingPoem, startNew, refetch, searchQuery]);
 
   const mintPoem = useCallback(async (id: string) => {
     const detail = await lensRun('poetry', 'poem-detail', { id });
@@ -450,8 +465,8 @@ export default function PoetryPage() {
     if (!composingPoem) return;
     await lensRun('poetry', 'poem-update', { id: composingPoem.id, status });
     setComposingPoem({ ...composingPoem, status: status as PoemDetail['status'] });
-    await refetch();
-  }, [composingPoem, refetch]);
+    await refetch(searchQuery);
+  }, [composingPoem, refetch, searchQuery]);
 
   const savePoem = useCallback(async () => {
     setIsSaving(true);
@@ -468,12 +483,12 @@ export default function PoetryPage() {
           setComposingPoem(r.data.result.poem as PoemDetail);
         }
       }
-      await refetch();
+      await refetch(searchQuery);
     } catch (err) {
       console.error('Save failed:', err instanceof Error ? err.message : err);
     }
     setIsSaving(false);
-  }, [compTitle, compContent, compForm, composingPoem, refetch]);
+  }, [compTitle, compContent, compForm, composingPoem, refetch, searchQuery]);
 
   // Use creative generation for AI-assisted poetry
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -632,7 +647,7 @@ export default function PoetryPage() {
           ))}
         </div>
 
-        {isError && <ErrorState error={loadErrorMsg || undefined} onRetry={refetch} />}
+        {isError && <ErrorState error={loadErrorMsg || undefined} onRetry={() => refetch(searchQuery)} />}
 
         {/* Collection */}
         {tab === 'collection' && (
