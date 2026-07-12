@@ -35,6 +35,17 @@ vi.mock('@/lib/hooks/use-lens-data', () => ({
   }),
 }));
 
+// The page reads a `?id=` deep-link param via next/navigation. Mutable so
+// individual tests can simulate arriving with a permalink already in the URL
+// (mirrors the same mutable-closure pattern `bookmarksState` uses above).
+let mockDeepLinkId: string | null = null;
+const routerReplace = vi.fn();
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => ({ get: (key: string) => (key === 'id' ? mockDeepLinkId : null) }),
+  useRouter: () => ({ replace: (...a: unknown[]) => routerReplace(...a), push: vi.fn() }),
+  usePathname: () => '/lenses/codex',
+}));
+
 import CodexLensPage from '@/app/lenses/codex/page';
 
 // ── fixtures (test-only mock payloads) ───────────────────────────
@@ -60,12 +71,19 @@ const LIST_OK = { ok: true, result: { events: [EVENT] }, error: null };
 const LIST_EMPTY = { ok: true, result: { events: [] }, error: null };
 const LIST_ERR = { ok: false, result: null, error: 'records unreachable' };
 
-function routeLensRun(listResponse: unknown) {
+const GET_OK = { ok: true, result: { event: EVENT }, error: null };
+const GET_ERR = { ok: false, result: null, error: 'lens error' };
+
+function routeLensRun(listResponse: unknown, getResponse?: unknown) {
   lensRun.mockImplementation((domain: string, action: string) => {
     expect(domain).toBe('lore'); // the page must call the REAL lore domain
     if (action === 'facets') return Promise.resolve({ data: FACETS });
     if (action === 'spine') return Promise.resolve({ data: SPINE });
     if (action === 'list') return Promise.resolve({ data: listResponse });
+    if (action === 'get') {
+      if (getResponse === undefined) throw new Error('unexpected lore.get call');
+      return Promise.resolve({ data: getResponse });
+    }
     throw new Error(`unexpected lore action: ${action}`);
   });
 }
@@ -74,7 +92,9 @@ beforeEach(() => {
   lensRun.mockReset();
   createBookmark.mockReset();
   removeBookmark.mockReset();
+  routerReplace.mockReset();
   bookmarksState = [];
+  mockDeepLinkId = null;
 });
 
 describe('Codex lens — wiring', () => {
@@ -194,5 +214,68 @@ describe('Codex lens — grouping', () => {
     await waitFor(() => expect(screen.getByText('The Founding Compact')).toBeTruthy());
     const section = screen.getByRole('region', { name: 'Canon of concordia-hub' });
     expect(within(section).getByText('The Founding Compact')).toBeTruthy();
+  });
+});
+
+// Wave 4 gap-closure: docs/lens-specs/codex-capability-map.md's `lore.get`
+// permalink/deep-link feature — /lenses/codex?id=<loreId> resolves via the
+// real lore.get macro, and every entry can produce that link.
+describe('Codex lens — deep link (?id=…) resolves via lore.get', () => {
+  it('shows the linked entry in a detail dialog fetched via lore.get', async () => {
+    mockDeepLinkId = 'lore_founding_compact';
+    routeLensRun(LIST_OK, GET_OK);
+    render(<CodexLensPage />);
+    const dialog = await screen.findByRole('dialog', { name: 'Codex entry detail' });
+    expect(within(dialog).getByText('The Founding Compact')).toBeTruthy();
+    expect(within(dialog).getByText('The pact that bound the worlds.')).toBeTruthy();
+    // called the real macro with the id from the URL, not a phantom endpoint
+    expect(lensRun).toHaveBeenCalledWith('lore', 'get', { id: 'lore_founding_compact' });
+  });
+
+  it('shows an honest error inside the dialog when the id does not resolve', async () => {
+    mockDeepLinkId = 'nonexistent-id';
+    routeLensRun(LIST_OK, GET_ERR);
+    render(<CodexLensPage />);
+    const dialog = await screen.findByRole('dialog', { name: 'Codex entry detail' });
+    await waitFor(() => expect(within(dialog).getByRole('alert')).toBeTruthy());
+    expect(within(dialog).getByText('lens error')).toBeTruthy();
+  });
+
+  it('closing the dialog strips the id param via router.replace', async () => {
+    mockDeepLinkId = 'lore_founding_compact';
+    routeLensRun(LIST_OK, GET_OK);
+    render(<CodexLensPage />);
+    const dialog = await screen.findByRole('dialog', { name: 'Codex entry detail' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close entry detail' }));
+    await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/lenses/codex', { scroll: false }));
+  });
+});
+
+describe('Codex lens — copy permalink', () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+
+  beforeEach(() => {
+    writeText.mockClear();
+    Object.assign(navigator, { clipboard: { writeText } });
+  });
+
+  it('copies a URL containing the entry id when its share control is clicked', async () => {
+    routeLensRun(LIST_OK);
+    render(<CodexLensPage />);
+    const btn = await screen.findByRole('button', { name: 'Copy permalink for The Founding Compact' });
+    fireEvent.click(btn);
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const url = writeText.mock.calls[0][0] as string;
+    expect(url).toContain('/lenses/codex?id=lore_founding_compact');
+  });
+
+  it('offers a copy-permalink control from inside the deep-link dialog itself', async () => {
+    mockDeepLinkId = 'lore_founding_compact';
+    routeLensRun(LIST_OK, GET_OK);
+    render(<CodexLensPage />);
+    const dialog = await screen.findByRole('dialog', { name: 'Codex entry detail' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Copy permalink' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(writeText.mock.calls[0][0] as string).toContain('/lenses/codex?id=lore_founding_compact');
   });
 });

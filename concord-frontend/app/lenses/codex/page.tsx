@@ -23,10 +23,19 @@
  * entry's tag narrows the canon to every other entry that shares it — the
  * "related entries" pattern a compendium reader (Destiny 2's Lore Book, Hades'
  * Codex) is expected to have.
+ *
+ * Wave 4 gap-closure (docs/lens-specs/codex-capability-map.md — `lore.get`):
+ * `/lenses/codex?id=<loreId>` resolves that one entry via the real `lore.get`
+ * macro and shows it in a dedicated detail modal — independent of whatever
+ * browse filters happen to be active, so a shared link always resolves even
+ * if the linked entry would otherwise be filtered out of view. Every entry
+ * also gets a "Copy permalink" control so the link is actually producible,
+ * not just consumable.
  */
 
 import { LensShell } from '@/components/lens/LensShell';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Suspense, useEffect, useMemo, useState, useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 
@@ -57,7 +66,13 @@ const COLORS = {
   errorBorder: 'rgba(200,60,60,0.3)',
 };
 
-export default function CodexLensPage() {
+function CodexLensInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  // Deep-link id, e.g. /lenses/codex?id=lore_founding_compact.
+  const deepLinkId = searchParams.get('id');
+
   const [facets, setFacets] = useState<Facets | null>(null);
   const [spine, setSpine] = useState<LoreEvent[]>([]);
   const [events, setEvents] = useState<LoreEvent[]>([]);
@@ -104,6 +119,49 @@ export default function CodexLensPage() {
       setSaveErr(err instanceof Error ? err.message : 'Sign in to keep a codex of your own.');
     }
   }, [bookmarkByLoreId, createBookmark, removeBookmark]);
+
+  // Deep-link resolve: ?id=<loreId> fetches that one entry via the real
+  // `lore.get` macro, independent of the current browse filters — a shared
+  // link must resolve even when the linked entry wouldn't otherwise show up
+  // in the (possibly filtered) list below.
+  const [deepLink, setDeepLink] = useState<{ loading: boolean; error: string | null; event: LoreEvent | null }>(
+    { loading: false, error: null, event: null },
+  );
+
+  useEffect(() => {
+    if (!deepLinkId) { setDeepLink({ loading: false, error: null, event: null }); return; }
+    let cancelled = false;
+    setDeepLink({ loading: true, error: null, event: null });
+    (async () => {
+      const r = await lensRun('lore', 'get', { id: deepLinkId });
+      if (cancelled) return;
+      const event = r.data.ok ? ((r.data.result as { event?: LoreEvent } | null)?.event ?? null) : null;
+      if (event) {
+        setDeepLink({ loading: false, error: null, event });
+      } else {
+        setDeepLink({ loading: false, error: r.data.error || 'No entry matches this link.', event: null });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [deepLinkId]);
+
+  const closeDeepLink = useCallback(() => {
+    router.replace(pathname, { scroll: false });
+  }, [router, pathname]);
+
+  // Copy-permalink: the producing side of the deep-link feature. Every entry
+  // (list row + the deep-link modal itself) can generate its own shareable URL.
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copyPermalink = useCallback((id: string) => {
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${base}${pathname}?id=${encodeURIComponent(id)}`;
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopiedId(id);
+        setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
+      }).catch(() => { /* clipboard permission denied — link is still valid, just not auto-copied */ });
+    }
+  }, [pathname]);
 
   // Cosmology header + filter facets — fetched once.
   useEffect(() => {
@@ -156,6 +214,66 @@ export default function CodexLensPage() {
   return (
     <LensShell lensId="codex">
     <div className="w-full max-w-[980px] mx-auto px-4 sm:px-6 py-6" style={{ color: COLORS.fg }}>
+      {/* Deep-link detail modal — /lenses/codex?id=<loreId>, resolved via lore.get. */}
+      {deepLinkId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Codex entry detail"
+          style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(0,0,0,0.6)' }}
+          onClick={closeDeepLink}
+        >
+          <div
+            style={{ maxWidth: 640, width: '100%', maxHeight: '82vh', overflowY: 'auto', borderRadius: 12, padding: 20, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }}
+            onClick={(ev) => ev.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{deepLink.event?.title ?? 'Codex entry'}</h2>
+              <button
+                onClick={closeDeepLink}
+                aria-label="Close entry detail"
+                style={{ background: 'none', border: 'none', color: COLORS.fg, opacity: 0.6, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0 }}>
+                ✕
+              </button>
+            </div>
+            {deepLink.loading ? (
+              <p role="status" style={{ opacity: 0.6, marginTop: 10 }}>Consulting the records…</p>
+            ) : deepLink.error ? (
+              <div role="alert" style={{ marginTop: 12, padding: 12, borderRadius: 8, color: COLORS.error, background: COLORS.errorBg, border: `1px solid ${COLORS.errorBorder}` }}>
+                {deepLink.error}
+              </div>
+            ) : deepLink.event ? (
+              <div style={{ marginTop: 10 }}>
+                <p style={{ opacity: 0.5, fontSize: 13, margin: '0 0 10px' }}>
+                  {deepLink.event.type} · {deepLink.event.era}{deepLink.event.world_id ? ` · ${deepLink.event.world_id}` : ''}
+                </p>
+                <p style={{ opacity: 0.85, margin: 0, lineHeight: 1.55 }}>{deepLink.event.description}</p>
+                {deepLink.event.significance && (
+                  <p style={{ opacity: 0.75, margin: '10px 0 0', lineHeight: 1.5, fontStyle: 'italic', borderLeft: `2px solid ${COLORS.accentBorder}`, paddingLeft: 10 }}>
+                    {deepLink.event.significance}
+                  </p>
+                )}
+                {(deepLink.event.factions_involved && deepLink.event.factions_involved.length > 0) && (
+                  <p style={{ margin: '10px 0 0', fontSize: 13, opacity: 0.7 }}>
+                    <strong style={{ opacity: 0.85 }}>Factions:</strong> {deepLink.event.factions_involved.join(', ')}
+                  </p>
+                )}
+                {(deepLink.event.known_by && deepLink.event.known_by.length > 0) && (
+                  <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.7 }}>
+                    <strong style={{ opacity: 0.85 }}>Known by:</strong> {deepLink.event.known_by.join(', ')}
+                  </p>
+                )}
+                <button
+                  onClick={() => copyPermalink(deepLink.event!.id)}
+                  style={{ marginTop: 14, padding: '6px 14px', borderRadius: 8, background: COLORS.input, border: `1px solid ${COLORS.inputBorder}`, color: COLORS.fg, cursor: 'pointer', fontSize: 13 }}>
+                  {copiedId === deepLink.event.id ? 'Copied!' : 'Copy permalink'}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>The Codex</h1>
       <p style={{ opacity: 0.7, marginBottom: 20 }}>
         The canon of Concordia — {facets?.count ?? '…'} recorded truths across {facets?.worlds.length ?? '…'} worlds.
@@ -254,6 +372,14 @@ export default function CodexLensPage() {
                           <span style={{ opacity: 0.5, fontSize: 13, whiteSpace: 'nowrap', marginLeft: 8 }}>{e.type} · {e.era}</span>
                         </button>
                         <button
+                          aria-label={`Copy permalink for ${e.title}`}
+                          onClick={() => copyPermalink(e.id)}
+                          title="Copy permalink"
+                          className="transition-colors"
+                          style={{ background: 'none', border: 'none', color: copiedId === e.id ? '#8fe0a8' : COLORS.fg, opacity: copiedId === e.id ? 1 : 0.45, cursor: 'pointer', fontSize: 15, lineHeight: 1 }}>
+                          {copiedId === e.id ? '✓' : '🔗'}
+                        </button>
+                        <button
                           aria-label={isBookmarked ? `Remove ${e.title} from your codex` : `Bookmark ${e.title} to your codex`}
                           aria-pressed={isBookmarked}
                           onClick={() => toggleBookmark(e)}
@@ -311,5 +437,13 @@ export default function CodexLensPage() {
       </div>
     </div>
     </LensShell>
+  );
+}
+
+export default function CodexLensPage() {
+  return (
+    <Suspense fallback={null}>
+      <CodexLensInner />
+    </Suspense>
   );
 }

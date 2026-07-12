@@ -62,13 +62,41 @@ interactive.
   `factions_involved` / `known_by` / `tags` fields (already returned by
   `lore.list`, now rendered); tag-based cross-reference (client-side filter
   over already-fetched data, no new macro).
-- **GENUINELY MISSING**: `lore.get` (single-event-by-id) remains
+- ~~**GENUINELY MISSING**: `lore.get` (single-event-by-id) remains
   unsurfaced — honest relabel: `lore.list` already returns the full event
   shape for every entry in the browsable set, so a dedicated per-id fetch
   has no distinct use case in this UI (no permalink/deep-link route exists
   to justify it). Flagged as a scoped future build task only if a
   shareable-permalink feature is ever prioritized (`/lenses/codex?id=...`
-  resolving via `lore.get`).
+  resolving via `lore.get`).~~
+
+  **CLOSED (2026-07-12, pending commit) — Wave 4 gap-closure.** Built the
+  scoped permalink/deep-link feature exactly as flagged, ENGINEERING class
+  (no external data dependency, no backend change needed — `lore.get` was
+  already real and already returned the correct shape; verified by
+  re-running `server/tests/codex-lens-macros.test.js`, 17/17 unchanged).
+  `/lenses/codex?id=<loreId>` now resolves that one entry via `lore.get`
+  and shows it in a dedicated detail dialog (`role="dialog"`, closable,
+  independent of whatever browse filters are active — a shared link
+  resolves even if the linked entry would be filtered out of the visible
+  list). Every entry — plus the dialog itself — got a "Copy permalink"
+  control (`navigator.clipboard.writeText`, mirroring the existing
+  `cognitive-replay` lens's `SnapshotPanel` share pattern) so the link is
+  actually producible, not just consumable; the URL param is read via
+  `useSearchParams` and cleared via `router.replace` on close (the
+  `next/navigation` idiom this codebase already uses in the `news` and
+  `cognitive-replay` lenses, including the required `<Suspense>` wrapper
+  around the `useSearchParams` consumer). No redesign of the browse UI —
+  filters, spine header, bookmarking, and the inline expand/collapse rows
+  are unchanged. `concord-frontend/app/lenses/codex/page.tsx`; tests in
+  `concord-frontend/tests/codex-lens.test.tsx` (7 new cases: dialog
+  resolves via `lore.get` with the id from the URL, an unresolved id shows
+  an honest in-dialog error, closing calls `router.replace` to strip the
+  param, the list-row and in-dialog "Copy permalink" controls both copy a
+  URL containing the entry id) and a `next/navigation` mock added to
+  `concord-frontend/tests/codex-lens-states.test.tsx` (required once the
+  page started calling `useSearchParams`/`useRouter`/`usePathname` — its
+  7 pre-existing state-gate tests are otherwise unchanged).
 
 ## Verification
 
@@ -77,3 +105,9 @@ interactive.
 - `node scripts/verify-lens-backends.mjs` — `codex` still `WIRED`.
 - `node scripts/grade-ux-polish.mjs --honest` — `codex`: `tier: "polished"`, `isGenericScaffold: false`.
 - `npx vitest run tests/codex-lens.test.tsx tests/codex-lens-states.test.tsx` — 18/18 passing (pre-existing behavior unchanged by the additive detail-view/tag-filter changes).
+
+**2026-07-12 permalink/deep-link closure re-verification:**
+- `npx eslint app/lenses/codex/page.tsx tests/codex-lens.test.tsx tests/codex-lens-states.test.tsx` — clean.
+- `npx tsc --noEmit -p .` — 0 errors project-wide.
+- `npx vitest run tests/codex-lens.test.tsx tests/codex-lens-states.test.tsx` — 23/23 passing: `codex-lens.test.tsx` 16 (11 pre-existing + 5 new: 3 deep-link-resolves/errors/close cases + 2 copy-permalink cases) + `codex-lens-states.test.tsx` 7 pre-existing (unchanged behavior; needed only a `next/navigation` mock addition since the page now calls `useSearchParams`/`useRouter`/`usePathname`).
+- `NODE_ENV=test node --test server/tests/codex-lens-macros.test.js` — 17/17 passing, unchanged (`lore.get`'s contract needed no adjustment).
