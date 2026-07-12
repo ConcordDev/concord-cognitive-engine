@@ -198,6 +198,32 @@ describe("productivity recurring tasks", () => {
     assert.ok(c.result.spawned);
     assert.equal(c.result.spawned.recurring, "monthly");
   });
+
+  it("task-update edits recurrence on an existing task, normalizing the value", () => {
+    const t = call("task-add", ctxA, { content: "No repeat yet", dueDate: today() }).result.task;
+    assert.equal(t.recurring, null);
+    const up = call("task-update", ctxA, { id: t.id, recurring: "every 5 days" });
+    assert.equal(up.ok, true);
+    assert.equal(up.result.task.recurring, "every_5_days");
+    // Completing now spawns using the newly-set recurrence.
+    const c = call("task-complete", ctxA, { id: t.id });
+    assert.equal(c.result.spawned.dueDate, dayOffset(5));
+  });
+
+  it("task-update rejects an unrecognized recurrence pattern", () => {
+    const t = call("task-add", ctxA, { content: "Bad pattern" }).result.task;
+    const up = call("task-update", ctxA, { id: t.id, recurring: "every fortnight" });
+    assert.equal(up.ok, false);
+    assert.equal(call("task-detail", ctxA, { id: t.id }).result.task.recurring, null);
+  });
+
+  it("task-update clears recurrence with an empty string", () => {
+    const t = call("task-add", ctxA, { content: "Was recurring", recurring: "weekly" }).result.task;
+    assert.equal(t.recurring, "weekly");
+    const up = call("task-update", ctxA, { id: t.id, recurring: "" });
+    assert.equal(up.ok, true);
+    assert.equal(up.result.task.recurring, null);
+  });
 });
 
 describe("productivity reminders + notifications", () => {

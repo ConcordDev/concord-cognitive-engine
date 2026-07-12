@@ -240,6 +240,17 @@ export default function registerProductivityActions(registerLensAction) {
     if (Array.isArray(params.labels)) {
       task.labels = [...new Set(params.labels.map((l) => pdClean(l, 40).toLowerCase()).filter(Boolean))].slice(0, 20);
     }
+    if (params.recurring !== undefined) {
+      // "" / null clears the recurrence; anything else must normalize to a
+      // supported kind or the update is rejected (never silently drop it).
+      if (params.recurring === null || params.recurring === "") {
+        task.recurring = null;
+      } else {
+        const r = normRecurring(params.recurring);
+        if (!r) return { ok: false, error: "unrecognized recurrence pattern" };
+        task.recurring = r;
+      }
+    }
     saveProdState();
     return { ok: true, result: { task } };
   });
