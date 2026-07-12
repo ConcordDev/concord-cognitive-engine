@@ -54,7 +54,7 @@ of touching all three simultaneously. **Flagged as a scoped future build
 task**: thread a single shared `projectId` through all three via lifted
 state or a small context, no backend changes needed.~~
 
-**CLOSED (2026-07-12, pending commit) — Wave 4 gap-closure.** Built the
+**CLOSED (2026-07-12, `220fd971`) — Wave 4 gap-closure.** Built the
 small-context option (matching the codebase's existing pattern for this
 exact shape, e.g. `components/news/ArticleDetailContext.tsx`): a new
 `CodeProjectContext`/`useCodeProject` hook
@@ -156,7 +156,7 @@ page:
 - ~~**Flagged as a scoped future build task**: unify the three project-picker
   states across the page's three sub-systems (see "Honest observation"
   above) — presentation-only, no backend work.~~ **CLOSED (2026-07-12,
-  pending commit)** — see the "Honest observation" section above for the
+  `220fd971`)** — see the "Honest observation" section above for the
   full writeup.
 
 ## Verification
@@ -168,7 +168,7 @@ page:
 - `node scripts/lens-unsurfaced.mjs --lens code` — 6/80 → 1/80 (only the honestly-relabeled `refactor-suggest` remains).
 - `npx vitest run tests/editor-pane-ctrlk-race.test.tsx` — 2/2 passing (the new Explain/Tests/Blame state doesn't interfere with the existing Ctrl+K capture-phase race fix).
 
-**Project-picker unification verification (2026-07-12, pending commit):**
+**Project-picker unification verification (2026-07-12, `220fd971`):**
 - `npx vitest run tests/code-project-context.test.tsx` — 3/3 passing.
 - `npx eslint app/lenses/code/page.tsx components/code/ProjectSwitcher.tsx components/code/CodeWorkbenchSection.tsx components/code/CodeAdvancedPanel.tsx components/code/CodeProjectContext.tsx components/code/QuickScriptProjectBadge.tsx` — clean.
 - `npx tsc --noEmit -p .` — 0 errors project-wide.
