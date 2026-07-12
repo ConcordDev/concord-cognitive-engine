@@ -11,14 +11,17 @@
 // Reads:
 //   /api/creator/dashboard, /api/creator/leaderboard,
 //   /api/creator/trending-citations, /api/creator/influence-drift,
-//   /api/creator/listings, /api/creator/withdrawal-status,
-//   /api/creator/cascade/:dtuId,
+//   /api/creator/withdrawal-status, /api/creator/cascade/:dtuId,
 //   /api/social/profile, /api/social/followers/:id, /api/social/following/:id,
-//   /api/lens/creator (useArtifacts), lensRun('dtu', 'list', { mine: true }).
+//   /api/lens/creator (useArtifacts), lensRun('dtu', 'list', { mine: true }),
+//   lensRun('marketplace', 'myListings') — the caller's own dtu.marketplace
+//   listings (NOT /api/creator/listings, which only ever read the dead
+//   STATE.marketplaceListings store nobody could purchase from — see
+//   docs/lens-specs/creator-capability-map.md finding #3).
 // Writes:
-//   /api/economy/withdraw, /api/marketplace/submit (list a personal DTU),
-//   /api/marketplace/listings/:id (PATCH / withdraw / relist),
-//   /api/social/profile (upsert), /api/lens/creator (POST broadcast).
+//   /api/economy/withdraw, /api/social/profile (upsert),
+//   /api/lens/creator (POST broadcast),
+//   lensRun('marketplace', 'list' | 'updateListing' | 'unlist' | 'relist').
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
@@ -166,10 +169,14 @@ export default function CreatorDashboardPage() {
     setProfile(p?.ok && p.profile ? (p.profile as SocialProfile) : null);
   }, []);
 
+  // Reads the caller's own dtu.marketplace listings (the real, purchasable
+  // royalty-cascade marketplace) via the marketplace.myListings macro — NOT
+  // /api/creator/listings, which only ever read STATE.marketplaceListings,
+  // a store nobody could ever buy from (see docs/lens-specs/creator-
+  // capability-map.md finding #3).
   const refreshListings = useCallback(() => {
-    fetch('/api/creator/listings', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => setMyListings((d?.listings ?? []) as MyListing[]))
+    lensRun<{ listings?: MyListing[] }>('marketplace', 'myListings', {})
+      .then((r) => setMyListings(r.data?.result?.listings ?? []))
       .catch(() => {});
   }, []);
 
@@ -481,27 +488,23 @@ function ListingsTab({
     URL.revokeObjectURL(url);
   }, [listings]);
 
+  // id === the listing's sourceDtuId (dtu.marketplace lives on the DTU
+  // itself — there's no separate listing row). See marketplace.updateListing
+  // / marketplace.unlist / marketplace.relist in server.js.
   const updateListing = useCallback(async (id: string, patch: Partial<MyListing>) => {
-    await fetch(`/api/marketplace/listings/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(patch),
+    await lensRun('marketplace', 'updateListing', {
+      dtuId: id, price: patch.price, title: patch.title, tierPrices: patch.tierPrices,
     });
     onChanged();
   }, [onChanged]);
 
   const withdrawListing = useCallback(async (id: string) => {
-    await fetch(`/api/marketplace/listings/${encodeURIComponent(id)}/withdraw`, {
-      method: 'POST', credentials: 'include',
-    });
+    await lensRun('marketplace', 'unlist', { dtuId: id });
     onChanged();
   }, [onChanged]);
 
   const relistListing = useCallback(async (id: string) => {
-    await fetch(`/api/marketplace/listings/${encodeURIComponent(id)}/relist`, {
-      method: 'POST', credentials: 'include',
-    });
+    await lensRun('marketplace', 'relist', { dtuId: id });
     onChanged();
   }, [onChanged]);
 
@@ -610,12 +613,15 @@ function ListingsTab({
   );
 }
 
-// List a personal DTU on the marketplace. Without this, `myListings` was
-// permanently empty for every real user — `/api/marketplace/submit` (the
-// only route that ever writes STATE.marketplaceListings) had no frontend
-// caller anywhere in the app, so the whole Listings tab (search / sort /
-// CSV export / edit / withdraw / relist) was fully built against a
-// listing type nobody could ever create. This form closes that loop.
+// List a personal DTU on the marketplace via the marketplace.list macro —
+// the real, purchasable dtu.marketplace + purchaseWithRoyalties system (95%
+// creator / 5% platform, royalty cascade to ancestors) that already has live
+// buyer-facing callers elsewhere in the app (PurchaseButton, TrackCard,
+// crafting/music lenses). This form previously posted to
+// `/api/marketplace/submit`, which only ever wrote STATE.marketplaceListings
+// — an in-memory store with no purchase route anywhere in Concord, so every
+// listing created there was permanently unsellable. See
+// docs/lens-specs/creator-capability-map.md finding #3.
 function NewListingForm({
   existingListings, onListed,
 }: { existingListings: MyListing[]; onListed: () => void }) {
@@ -662,15 +668,9 @@ function NewListingForm({
     if (!Number.isFinite(amount) || amount < 0) { setError('Enter a valid price (0 or more CC).'); return; }
     setSubmitting(true);
     try {
-      const res = await fetch('/api/marketplace/submit', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dtuId, price: amount }),
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok || body?.ok === false) {
-        setError(body?.error || `Listing failed (${res.status}).`);
+      const res = await lensRun('marketplace', 'list', { dtuId, price: amount });
+      if (!res.data.ok) {
+        setError(res.data.error || 'Listing failed.');
         return;
       }
       setPrice('');

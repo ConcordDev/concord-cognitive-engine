@@ -11,7 +11,10 @@
  *   • computeInfluenceDrift(STATE)
  *       — creators whose share of total citations is rising or falling fastest
  *
- * All four are read-only views over STATE.dtus + STATE.marketplaceListings.
+ * All four are read-only views over STATE.dtus (including each DTU's own
+ * .marketplace listing, when present) + the legacy STATE.marketplaceListings
+ * map (kept for any pre-existing data; no longer written to — see
+ * docs/lens-specs/creator-capability-map.md finding #3).
  */
 
 import { CREDIT_ROW_PREDICATE } from "../economy/balances.js";
@@ -79,12 +82,37 @@ export function computeCreatorDashboard(userId, STATE) {
   }
 
   // Listings + earnings + downloads.
+  // Legacy store — kept for any pre-existing data, but it has had no
+  // frontend writer since the Creator lens's Listings tab was redirected to
+  // the real dtu.marketplace store (docs/lens-specs/creator-capability-map.md
+  // finding #3), so new listings never land here anymore.
   for (const l of (STATE.marketplaceListings?.values?.() ?? [])) {
     if (l.sellerId === userId) {
       myListings.push(l);
       totalDownloads += l.downloads || 0;
       totalEarnings += (l.downloads || 0) * (l.price || 0);
     }
+  }
+  // dtu.marketplace listings — the real, purchasable store every listing
+  // created through the Creator lens now lives in. Merged into the same
+  // shape so the Overview tab's stat tiles stay coherent with the Listings
+  // tab on the same page (both read the same underlying data now).
+  for (const dtu of (STATE.dtus?.values?.() ?? [])) {
+    if (dtu.ownerId !== userId || !dtu.marketplace) continue;
+    const downloads = dtu.marketplace.purchases || 0;
+    const price = dtu.marketplace.price || 0;
+    myListings.push({
+      id: dtu.id,
+      sourceDtuId: dtu.id,
+      sellerId: userId,
+      title: dtu.marketplace.title || dtu.title,
+      price,
+      downloads,
+      listedAt: dtu.marketplace.listedAt,
+      promotionSource: null,
+    });
+    totalDownloads += downloads;
+    totalEarnings += downloads * price;
   }
 
   // Reputation score: weighted combination.
@@ -162,6 +190,14 @@ export function computeReputationLeaderboard(STATE, opts = {}) {
   for (const l of (STATE.marketplaceListings?.values?.() ?? [])) {
     const t = totals.get(l.sellerId);
     if (t) t.downloads += l.downloads || 0;
+  }
+  // dtu.marketplace listings — see computeCreatorDashboard's matching
+  // comment. Keeps the leaderboard coherent with real sales.
+  for (const dtu of (STATE.dtus?.values?.() ?? [])) {
+    if (!dtu.marketplace) continue;
+    const owner = dtu.ownerId || dtu.creatorId;
+    const t = totals.get(owner);
+    if (t) t.downloads += dtu.marketplace.purchases || 0;
   }
 
   const creators = [...totals.entries()].map(([userId, t]) => ({

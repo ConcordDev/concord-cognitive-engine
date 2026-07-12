@@ -37033,6 +37033,23 @@ register("marketplace", "list", async (ctx, input) => {
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "dtu_not_found" };
 
+  // Ownership + scope gate. Previously ANY authenticated caller could flip
+  // ANY dtuId (including one they don't own) into a marketplace listing —
+  // this macro had no frontend caller until the Creator lens's Listings tab
+  // was wired to it, so the gap was dormant, not exercised. Mirrors the
+  // check the old (still-present, now-orphaned) `/api/marketplace/submit`
+  // REST route already enforced for the same operation. Legacy DTUs with no
+  // ownerId fall through (matches dtu.update's "only gate DTUs that have a
+  // concrete foreign owner" convention) so old unowned seed content stays
+  // listable in single-user/local-first installs.
+  const userId = ctx?.actor?.userId || ctx?.actor?.id;
+  if (dtu.ownerId && dtu.ownerId !== userId) {
+    return { ok: false, error: "not_your_dtu" };
+  }
+  if (dtu.scope && dtu.scope !== "personal") {
+    return { ok: false, error: "can_only_list_personal_dtus" };
+  }
+
   dtu.scope = "marketplace";
   dtu.marketplace = {
     listed: true, listedAt: new Date().toISOString(),
@@ -37042,12 +37059,95 @@ register("marketplace", "list", async (ctx, input) => {
     description: description || "",
     tags: tags || dtu.meta?.tags || [],
     preview: preview || null,
-    seller: ctx?.actor?.userId || dtu.meta?.createdBy,
+    seller: userId || dtu.meta?.createdBy,
     purchases: 0, rating: null, reviews: [],
   };
 
   return { ok: true, listing: dtu.marketplace };
 }, { description: "List a DTU on the marketplace." });
+
+// Creator lens Listings tab — the seller's OWN view of their dtu.marketplace
+// listings (create/edit/withdraw/relist). Added alongside the ownership
+// gate above so the tab has a real, purchasable backing store instead of
+// the dead STATE.marketplaceListings map (see docs/lens-specs/creator-
+// capability-map.md finding #3). Purchases still flow through the existing,
+// unmodified `purchaseWithRoyalties` macro — nothing here touches money math.
+register("marketplace", "myListings", async (ctx, _input) => {
+  const userId = ctx?.actor?.userId || ctx?.actor?.id;
+  if (!userId) return { ok: false, error: "authentication_required" };
+  const listings = [];
+  for (const dtu of STATE.dtus.values()) {
+    if (dtu.ownerId !== userId || !dtu.marketplace) continue;
+    listings.push({
+      id: dtu.id,
+      sourceDtuId: dtu.id,
+      title: dtu.marketplace.title || dtu.title || "(untitled)",
+      description: dtu.marketplace.description || "",
+      price: dtu.marketplace.price || 0,
+      currency: dtu.marketplace.currency || "USD",
+      status: dtu.marketplace.listed ? "active" : "withdrawn",
+      downloads: dtu.marketplace.purchases || 0,
+      listedAt: dtu.marketplace.listedAt || dtu.createdAt || null,
+      tierPrices: dtu.marketplace.tierPrices || undefined,
+    });
+  }
+  listings.sort((a, b) => new Date(b.listedAt || 0) - new Date(a.listedAt || 0));
+  return { ok: true, listings };
+}, { description: "List the caller's own dtu.marketplace listings (active + withdrawn)." });
+
+register("marketplace", "updateListing", async (ctx, input) => {
+  const { dtuId, price, title, description, tierPrices } = input || {};
+  const userId = ctx?.actor?.userId || ctx?.actor?.id;
+  const dtu = STATE.dtus.get(dtuId);
+  if (!dtu) return { ok: false, error: "dtu_not_found" };
+  if (!dtu.marketplace) return { ok: false, error: "not_listed" };
+  if (dtu.ownerId && dtu.ownerId !== userId) return { ok: false, error: "not_listing_owner" };
+
+  if (typeof price === "number" && Number.isFinite(price) && price >= 0) dtu.marketplace.price = price;
+  if (typeof title === "string") dtu.marketplace.title = title.slice(0, 200);
+  if (typeof description === "string") dtu.marketplace.description = description.slice(0, 1000);
+  // tierPrices are informational metadata only, same as the pre-existing
+  // STATE.marketplaceListings PATCH handler — CLAUDE.md's finding #3 already
+  // documents that no purchase path enforces per-tier pricing anywhere in
+  // Concord today; relocating the field here doesn't change that status,
+  // it just stops it from being stored in a store nobody could ever buy from.
+  if (tierPrices && typeof tierPrices === "object" && !Array.isArray(tierPrices)) {
+    const clean = {};
+    for (const key of ["usage", "remix", "commercial"]) {
+      const v = Number(tierPrices[key]);
+      if (Number.isFinite(v) && v >= 0) clean[key] = Math.round(v * 100) / 100;
+    }
+    if (Object.keys(clean).length > 0) dtu.marketplace.tierPrices = clean;
+  } else if (tierPrices === null) {
+    delete dtu.marketplace.tierPrices;
+  }
+  dtu.marketplace.updatedAt = new Date().toISOString();
+  return { ok: true, listing: dtu.marketplace };
+}, { description: "Edit price/title/description/tierPrices on the caller's own marketplace listing." });
+
+register("marketplace", "unlist", async (ctx, input) => {
+  const { dtuId } = input || {};
+  const userId = ctx?.actor?.userId || ctx?.actor?.id;
+  const dtu = STATE.dtus.get(dtuId);
+  if (!dtu) return { ok: false, error: "dtu_not_found" };
+  if (!dtu.marketplace) return { ok: false, error: "not_listed" };
+  if (dtu.ownerId && dtu.ownerId !== userId) return { ok: false, error: "not_listing_owner" };
+  dtu.marketplace.listed = false;
+  dtu.marketplace.withdrawnAt = new Date().toISOString();
+  return { ok: true, listing: dtu.marketplace };
+}, { description: "Withdraw (unlist) the caller's own marketplace listing without losing purchase history." });
+
+register("marketplace", "relist", async (ctx, input) => {
+  const { dtuId } = input || {};
+  const userId = ctx?.actor?.userId || ctx?.actor?.id;
+  const dtu = STATE.dtus.get(dtuId);
+  if (!dtu) return { ok: false, error: "dtu_not_found" };
+  if (!dtu.marketplace) return { ok: false, error: "not_listed_before" };
+  if (dtu.ownerId && dtu.ownerId !== userId) return { ok: false, error: "not_listing_owner" };
+  dtu.marketplace.listed = true;
+  delete dtu.marketplace.withdrawnAt;
+  return { ok: true, listing: dtu.marketplace };
+}, { description: "Reactivate a previously-withdrawn marketplace listing." });
 
 register("marketplace", "purchase", async (ctx, input) => {
   const { dtuId } = input || {};
