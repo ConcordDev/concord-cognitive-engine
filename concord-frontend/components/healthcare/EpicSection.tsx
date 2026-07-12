@@ -21,6 +21,7 @@ import { DeviceDataPanel } from './DeviceDataPanel';
 import { InsurancePanel } from './InsurancePanel';
 import { RecordSharingPanel } from './RecordSharingPanel';
 import { CdsOrderCheckPanel } from './CdsOrderCheckPanel';
+import { ProtocolsPanel } from './ProtocolsPanel';
 
 interface Patient { id: string; firstName: string; lastName: string; mrn: string }
 
@@ -72,6 +73,7 @@ export function EpicSection() {
       {nav === 'chart'        && (patientId ? <PatientChartPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'orders'       && (patientId ? <OrdersPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'cds'          && (patientId ? <CdsOrderCheckPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
+      {nav === 'protocols'    && <ProtocolsPanel patientId={patientId} />}
       {nav === 'care'         && (patientId ? <CareManagementPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'encounters'   && (patientId ? <EncountersPanel patientId={patientId} /> : <NoPatient onJump={() => setNav('patients')} />)}
       {nav === 'schedule'     && <ScheduleHint />}

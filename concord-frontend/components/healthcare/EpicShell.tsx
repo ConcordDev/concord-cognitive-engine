@@ -10,7 +10,7 @@ import React from 'react';
 import {
   LayoutDashboard, Users, Calendar, ClipboardList, Mail, Pill,
   Activity, FileSearch, Stethoscope, Sparkles, Database, FlaskConical, HeartPulse,
-  Video, Watch, ShieldCheck, ShieldAlert, Share2,
+  Video, Watch, ShieldCheck, ShieldAlert, Share2, BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,7 @@ export type EpicNav =
   | 'chart'
   | 'orders'
   | 'cds'
+  | 'protocols'
   | 'care'
   | 'encounters'
   | 'schedule'
@@ -48,6 +49,7 @@ const NAV: NavItem[] = [
   { id: 'chart',        label: 'Chart',        icon: Stethoscope,     group: 'clinical' },
   { id: 'orders',       label: 'Orders',       icon: FlaskConical,    group: 'clinical' },
   { id: 'cds',          label: 'Order Check',  icon: ShieldAlert,     group: 'clinical' },
+  { id: 'protocols',    label: 'Protocols',    icon: BookOpen,        group: 'clinical' },
   { id: 'care',         label: 'Care',         icon: HeartPulse,      group: 'clinical' },
   { id: 'encounters',   label: 'Encounters',   icon: ClipboardList,   group: 'clinical' },
   { id: 'schedule',     label: 'Schedule',     icon: Calendar,        group: 'clinical' },

@@ -1,0 +1,273 @@
+[
+  {
+    "id": "t2dm-ada-2024",
+    "name": "Type 2 Diabetes Mellitus — Management",
+    "specialty": "Endocrinology",
+    "source": "American Diabetes Association, Standards of Care in Diabetes — 2024",
+    "triggerConditions": ["E11.9"],
+    "triggerConditionLabels": { "E11.9": "Type 2 diabetes mellitus without complications" },
+    "steps": [
+      "Start with comprehensive lifestyle therapy (medical nutrition therapy, physical activity, weight management) for every patient.",
+      "Metformin remains first-line pharmacotherapy unless contraindicated (eGFR too low, acute illness) or not tolerated.",
+      "Individualize glycemic target — generally A1C < 7% for most nonpregnant adults, less stringent for limited life expectancy or high hypoglycemia risk.",
+      "Add a GLP-1 receptor agonist or SGLT2 inhibitor with demonstrated cardiovascular/renal benefit for patients with established ASCVD, heart failure, or CKD, independent of A1C.",
+      "Screen annually for diabetic kidney disease with urine albumin-to-creatinine ratio and eGFR.",
+      "Refer for a comprehensive dilated eye exam and a comprehensive foot exam at least annually.",
+      "Target blood pressure < 130/80 mmHg and assess statin eligibility based on ASCVD risk.",
+      "Reassess A1C at least every 3–6 months, more often when off target or therapy is adjusted."
+    ]
+  },
+  {
+    "id": "htn-acc-aha-2017",
+    "name": "Essential Hypertension — Management",
+    "specialty": "Cardiology",
+    "source": "2017 ACC/AHA/AAPA/ABC/ACPM/AGS/APhA/ASH/ASPC/NMA/PCNA Guideline for the Prevention, Detection, Evaluation, and Management of High Blood Pressure in Adults",
+    "triggerConditions": ["I10"],
+    "triggerConditionLabels": { "I10": "Essential (primary) hypertension" },
+    "steps": [
+      "Confirm the diagnosis with properly measured, out-of-office blood pressure readings (home or ambulatory monitoring) before committing to lifelong therapy.",
+      "Recommend for every patient: DASH-pattern diet, sodium restriction, weight loss if overweight, regular aerobic activity, and limited alcohol intake.",
+      "Target blood pressure < 130/80 mmHg for most adults.",
+      "First-line pharmacologic classes: thiazide (or thiazide-like) diuretic, ACE inhibitor, ARB, or calcium channel blocker.",
+      "Let compelling indications guide drug choice (e.g., ACE inhibitor or ARB preferred with diabetic albuminuria or CKD).",
+      "Start combination therapy (two first-line agents from different classes) when BP is >20/10 mmHg above goal.",
+      "Reassess and titrate roughly monthly until the target is reached, then routine follow-up."
+    ]
+  },
+  {
+    "id": "cap-outpatient-atsidsa-2019",
+    "name": "Community-Acquired Pneumonia — Outpatient Management",
+    "specialty": "Pulmonology / Infectious Disease",
+    "source": "American Thoracic Society / Infectious Diseases Society of America, Clinical Practice Guidelines for Community-Acquired Pneumonia in Adults — 2019",
+    "triggerConditions": ["J18.9"],
+    "triggerConditionLabels": { "J18.9": "Pneumonia, unspecified organism" },
+    "steps": [
+      "Confirm the diagnosis with chest imaging when clinically suspected.",
+      "Use a validated severity assessment (CURB-65 or Pneumonia Severity Index) to decide outpatient vs. inpatient site of care.",
+      "Healthy outpatients with no comorbidities and no recent antibiotic exposure: amoxicillin, or doxycycline, or a macrolide where local pneumococcal resistance is low.",
+      "Outpatients with comorbidities (chronic heart/lung/liver/renal disease, diabetes, alcoholism, malignancy, asplenia): combination beta-lactam + macrolide, or respiratory fluoroquinolone monotherapy.",
+      "Routine sputum and blood cultures are not recommended for most outpatients.",
+      "Reassess at 48–72 hours; escalate site of care or broaden coverage if not improving."
+    ]
+  },
+  {
+    "id": "sepsis-ssc-2021",
+    "name": "Sepsis / Septic Shock — Hour-1 Bundle",
+    "specialty": "Critical Care / Emergency Medicine",
+    "source": "Surviving Sepsis Campaign: International Guidelines for Management of Sepsis and Septic Shock — 2021",
+    "triggerConditions": ["A41.9"],
+    "triggerConditionLabels": { "A41.9": "Sepsis, unspecified organism" },
+    "steps": [
+      "Measure a lactate level immediately; remeasure if the initial value is elevated (> 2 mmol/L).",
+      "Obtain blood cultures before starting antibiotics, without delaying antibiotic administration.",
+      "Administer broad-spectrum antibiotics within 1 hour of sepsis recognition.",
+      "Begin rapid administration of 30 mL/kg IV crystalloid for hypotension or lactate ≥ 4 mmol/L.",
+      "Apply vasopressors (norepinephrine first-line) during or after fluid resuscitation if the patient remains hypotensive, to maintain MAP ≥ 65 mmHg.",
+      "Reassess volume status and tissue perfusion frequently and adjust the plan."
+    ]
+  },
+  {
+    "id": "asthma-exacerbation-gina-2023",
+    "name": "Acute Asthma Exacerbation — Management",
+    "specialty": "Pulmonology",
+    "source": "Global Initiative for Asthma (GINA), Global Strategy for Asthma Management and Prevention — 2023 Report",
+    "triggerConditions": ["J45.901"],
+    "triggerConditionLabels": { "J45.901": "Unspecified asthma with (acute) exacerbation" },
+    "steps": [
+      "Assess exacerbation severity (mild/moderate vs. severe/life-threatening) at presentation.",
+      "Give repeated short-acting beta2-agonist (e.g., albuterol) via pMDI+spacer or nebulizer.",
+      "Add ipratropium bromide for moderate-to-severe exacerbations.",
+      "Start systemic corticosteroids early (oral prednisone or IV equivalent) for moderate-to-severe exacerbations.",
+      "Give supplemental oxygen titrated to an SpO2 of 93–95% in adults.",
+      "Reassess response at about 1 hour; consider IV magnesium sulfate for severe exacerbations not responding to initial therapy.",
+      "Arrange follow-up within days and step up controller (maintenance) therapy before discharge."
+    ]
+  },
+  {
+    "id": "stemi-acc-aha-2013",
+    "name": "ST-Elevation Myocardial Infarction — Reperfusion Pathway",
+    "specialty": "Cardiology",
+    "source": "2013 ACCF/AHA Guideline for the Management of ST-Elevation Myocardial Infarction",
+    "triggerConditions": ["I21.3"],
+    "triggerConditionLabels": { "I21.3": "ST elevation (STEMI) myocardial infarction of unspecified site" },
+    "steps": [
+      "Obtain and interpret a 12-lead ECG within 10 minutes of first medical contact.",
+      "Give chewable non-enteric-coated aspirin (162–325 mg) immediately unless contraindicated.",
+      "Activate the cardiac catheterization lab for primary PCI, with a door-to-balloon goal of 90 minutes at a PCI-capable facility.",
+      "If timely PCI is not available (goal not achievable within 120 minutes), give fibrinolytic therapy with a door-to-needle goal of 30 minutes, absent contraindications.",
+      "Add a P2Y12 inhibitor and parenteral anticoagulation per institutional protocol.",
+      "Start a beta-blocker and high-intensity statin as tolerated once the patient is hemodynamically stable.",
+      "Give supplemental oxygen only if SpO2 < 90%."
+    ]
+  },
+  {
+    "id": "uti-uncomplicated-idsa-2011",
+    "name": "Uncomplicated Urinary Tract Infection (Cystitis) — Management",
+    "specialty": "Infectious Disease / Primary Care",
+    "source": "Infectious Diseases Society of America / European Society for Microbiology and Infectious Diseases, Clinical Practice Guideline for Acute Uncomplicated Cystitis and Pyelonephritis — 2011",
+    "triggerConditions": ["N39.0"],
+    "triggerConditionLabels": { "N39.0": "Urinary tract infection, site not specified" },
+    "steps": [
+      "First-line empiric therapy: nitrofurantoin monohydrate/macrocrystals 100 mg twice daily for 5 days.",
+      "Alternative first-line: trimethoprim-sulfamethoxazole DS twice daily for 3 days, if local resistance prevalence is below about 20%.",
+      "Alternative first-line: fosfomycin trometamol 3 g as a single dose.",
+      "Avoid fluoroquinolones as first-line therapy for uncomplicated cystitis; reserve for when other options are unsuitable.",
+      "Routine urine culture is not required for an otherwise healthy, non-pregnant woman with typical uncomplicated symptoms.",
+      "Obtain a urine culture for treatment failure, recurrent infection, or if pyelonephritis is suspected, and reassess if symptoms persist beyond 48–72 hours."
+    ]
+  },
+  {
+    "id": "migraine-acute-ahs-2021",
+    "name": "Migraine — Acute Treatment",
+    "specialty": "Neurology",
+    "source": "American Headache Society, Consensus Statement: Integrating New Migraine Treatments Into Clinical Practice — 2021 (building on AAN/AHS acute-treatment guidance)",
+    "triggerConditions": ["G43.909"],
+    "triggerConditionLabels": { "G43.909": "Migraine, unspecified, not intractable, without status migrainosus" },
+    "steps": [
+      "Treat as early as possible in the attack for best response.",
+      "For mild-to-moderate attacks, first-line: an NSAID or acetaminophen.",
+      "For moderate-to-severe attacks, or when simple analgesics fail, first-line: a migraine-specific triptan.",
+      "Consider combining a triptan with an NSAID for attacks that respond poorly to either alone.",
+      "Add an antiemetic for associated nausea.",
+      "Avoid opioid and butalbital-containing medications as first-line therapy given overuse and dependence risk.",
+      "Limit acute medication use to fewer than 10 days/month (triptans, combination analgesics) or 15 days/month (simple analgesics) to avoid medication-overuse headache.",
+      "Consider starting preventive therapy for patients with frequent attacks (roughly ≥4 monthly headache days) or significant disability."
+    ]
+  },
+  {
+    "id": "copd-exacerbation-gold-2024",
+    "name": "COPD Exacerbation — Management",
+    "specialty": "Pulmonology",
+    "source": "Global Initiative for Chronic Obstructive Lung Disease (GOLD), Global Strategy for Prevention, Diagnosis and Management of COPD — 2024 Report",
+    "triggerConditions": ["J44.1"],
+    "triggerConditionLabels": { "J44.1": "Chronic obstructive pulmonary disease with (acute) exacerbation" },
+    "steps": [
+      "Increase the dose and/or frequency of short-acting bronchodilators (SABA, with or without a short-acting antimuscarinic).",
+      "Give systemic corticosteroids (e.g., prednisone 40 mg/day for 5 days) to shorten recovery time and improve lung function.",
+      "Add antibiotics when the patient has increased sputum purulence together with increased sputum volume and/or increased dyspnea, or requires mechanical ventilation.",
+      "Use controlled oxygen therapy targeting SpO2 88–92% in patients at risk of hypercapnic respiratory failure.",
+      "Consider noninvasive ventilation for acute or impending respiratory failure.",
+      "Assess severity to decide on hospitalization versus outpatient management.",
+      "Arrange follow-up and reassess maintenance inhaler therapy after the exacerbation resolves."
+    ]
+  },
+  {
+    "id": "afib-acc-aha-accp-hrs-2023",
+    "name": "Atrial Fibrillation — Rate Control, Anticoagulation, and Rhythm Strategy",
+    "specialty": "Cardiology",
+    "source": "2023 ACC/AHA/ACCP/HRS Guideline for the Diagnosis and Management of Atrial Fibrillation",
+    "triggerConditions": ["I48.91"],
+    "triggerConditionLabels": { "I48.91": "Unspecified atrial fibrillation" },
+    "steps": [
+      "Assess hemodynamic stability first; unstable patients need urgent cardioversion.",
+      "Start rate control (a beta-blocker or non-dihydropyridine calcium channel blocker) as the initial strategy for most patients.",
+      "Estimate stroke risk with the CHA2DS2-VASc score.",
+      "Anticoagulate with a direct oral anticoagulant (preferred over warfarin for most patients without mechanical valve or moderate-to-severe mitral stenosis) when CHA2DS2-VASc indicates elevated risk.",
+      "Consider a rhythm-control strategy (cardioversion, antiarrhythmic drug therapy, or catheter ablation), particularly for symptomatic patients or those with heart failure.",
+      "Address modifiable risk factors: obesity, hypertension, obstructive sleep apnea, and alcohol use."
+    ]
+  },
+  {
+    "id": "low-back-pain-acp-2017",
+    "name": "Acute / Subacute Nonspecific Low Back Pain — Management",
+    "specialty": "Primary Care / Musculoskeletal",
+    "source": "American College of Physicians, Noninvasive Treatments for Acute, Subacute, and Chronic Low Back Pain — 2017 Clinical Practice Guideline",
+    "triggerConditions": ["M54.50"],
+    "triggerConditionLabels": { "M54.50": "Low back pain, unspecified" },
+    "steps": [
+      "Reassure the patient that acute low back pain typically improves substantially within weeks regardless of specific treatment.",
+      "Recommend staying active and avoiding prolonged bed rest.",
+      "Offer first-line nonpharmacologic therapy: superficial heat, massage, acupuncture, or spinal manipulation.",
+      "If pharmacologic therapy is needed, NSAIDs are first-line.",
+      "Avoid opioids as first-line therapy given the unfavorable risk/benefit balance.",
+      "Reserve imaging (MRI/CT) for patients with red-flag findings (progressive neurologic deficit, suspected cauda equina syndrome, infection, malignancy, major trauma) rather than routine imaging."
+    ]
+  },
+  {
+    "id": "aom-pediatric-aap-2013",
+    "name": "Acute Otitis Media (Pediatric) — Diagnosis and Management",
+    "specialty": "Pediatrics",
+    "source": "American Academy of Pediatrics, Clinical Practice Guideline: The Diagnosis and Management of Acute Otitis Media — 2013",
+    "triggerConditions": ["H66.90"],
+    "triggerConditionLabels": { "H66.90": "Otitis media, unspecified, unspecified ear" },
+    "steps": [
+      "Confirm diagnosis: moderate-to-severe tympanic membrane bulging, or new-onset otorrhea not from otitis externa, or mild bulging with recent-onset ear pain or erythema.",
+      "First-line antibiotic: high-dose amoxicillin (80–90 mg/kg/day) unless amoxicillin was used in the past 30 days, there is concurrent purulent conjunctivitis, or the child has a penicillin allergy history.",
+      "Use amoxicillin-clavulanate when high-dose amoxicillin is not appropriate per the above criteria.",
+      "An observation option (initial pain management without antibiotics, with close follow-up and a plan to start antibiotics if not improving) may be appropriate for select children ≥ 6 months with non-severe, unilateral disease, guided by shared decision-making.",
+      "Give appropriate analgesia (acetaminophen or ibuprofen) for ear pain regardless of the antibiotic decision.",
+      "Reassess if symptoms worsen or fail to improve within 48–72 hours."
+    ]
+  },
+  {
+    "id": "acute-ischemic-stroke-aha-asa-2019",
+    "name": "Acute Ischemic Stroke — Early Management",
+    "specialty": "Neurology / Emergency Medicine",
+    "source": "2019 AHA/ASA Guidelines for the Early Management of Patients With Acute Ischemic Stroke",
+    "triggerConditions": ["I63.9"],
+    "triggerConditionLabels": { "I63.9": "Cerebral infarction, unspecified" },
+    "steps": [
+      "Obtain an emergent noncontrast CT (or MRI) of the head immediately to exclude hemorrhage before any thrombolytic decision.",
+      "Establish the last-known-well time.",
+      "Assess eligibility for IV alteplase within 4.5 hours of symptom onset against inclusion/exclusion criteria; target door-to-needle time of 60 minutes or less.",
+      "Assess eligibility for mechanical thrombectomy in patients with large-vessel occlusion, which may extend up to 24 hours from last-known-well in carefully selected patients based on imaging criteria.",
+      "Keep blood pressure below 185/110 mmHg before thrombolysis; avoid aggressively lowering blood pressure outside that context unless otherwise indicated.",
+      "Start aspirin within 24–48 hours of onset once hemorrhage is excluded (delayed roughly 24 hours if thrombolytic given).",
+      "Screen for dysphagia before any oral intake."
+    ]
+  },
+  {
+    "id": "hfref-aha-acc-hfsa-2022",
+    "name": "Heart Failure with Reduced Ejection Fraction — Guideline-Directed Medical Therapy",
+    "specialty": "Cardiology",
+    "source": "2022 AHA/ACC/HFSA Guideline for the Management of Heart Failure",
+    "triggerConditions": ["I50.22"],
+    "triggerConditionLabels": { "I50.22": "Chronic systolic (congestive) heart failure" },
+    "steps": [
+      "Initiate the four pillars of guideline-directed medical therapy: an ACE inhibitor/ARB/ARNI, an evidence-based beta-blocker (bisoprolol, carvedilol, or sustained-release metoprolol succinate), a mineralocorticoid receptor antagonist, and an SGLT2 inhibitor.",
+      "Up-titrate each agent to target or maximally tolerated doses, monitoring renal function and potassium.",
+      "Use loop diuretics as needed for volume management and symptom relief; they do not replace the four pillars.",
+      "Reassess ejection fraction and evaluate for device therapy (ICD and/or CRT) once on optimized GDMT if EF remains ≤ 35%.",
+      "Educate on daily weight monitoring and dietary sodium/fluid guidance.",
+      "Avoid NSAIDs and non-dihydropyridine calcium channel blockers, which can worsen HFrEF."
+    ]
+  },
+  {
+    "id": "anaphylaxis-wao-2020",
+    "name": "Anaphylaxis — Emergency Management",
+    "specialty": "Allergy/Immunology / Emergency Medicine",
+    "source": "World Allergy Organization, Anaphylaxis Guidance — 2020 update (consistent with NIAID-sponsored 2010 practice parameters)",
+    "triggerConditions": ["T78.2XXA"],
+    "triggerConditionLabels": { "T78.2XXA": "Anaphylactic reaction, unspecified, initial encounter" },
+    "steps": [
+      "Give intramuscular epinephrine (0.3–0.5 mg of 1:1000 concentration, anterolateral thigh) immediately as first-line treatment — do not delay for antihistamines or corticosteroids.",
+      "Call for emergency assistance and prepare for advanced airway management if needed.",
+      "Place the patient supine with legs elevated (unless respiratory distress makes this intolerable) and give high-flow oxygen.",
+      "Establish IV access and give a crystalloid fluid bolus for hypotension.",
+      "Repeat epinephrine every 5–15 minutes if there is an inadequate response.",
+      "Use H1-antihistamines and corticosteroids only as adjunctive therapy, never as a substitute for epinephrine.",
+      "Observe for a biphasic reaction for at least 4–6 hours (longer after a severe reaction) before discharge.",
+      "Prescribe an epinephrine auto-injector and refer to allergy/immunology on discharge."
+    ]
+  },
+  {
+    "id": "diabetes-ckd-kdigo-2022",
+    "name": "Diabetes Management in Chronic Kidney Disease",
+    "specialty": "Endocrinology / Nephrology",
+    "source": "KDIGO (Kidney Disease: Improving Global Outcomes) 2022 Clinical Practice Guideline for Diabetes Management in Chronic Kidney Disease, co-aligned with ADA Standards of Care",
+    "triggerConditions": ["E11.9", "N18.9"],
+    "triggerConditionLabels": {
+      "E11.9": "Type 2 diabetes mellitus without complications",
+      "N18.9": "Chronic kidney disease, unspecified"
+    },
+    "steps": [
+      "Preferentially add an SGLT2 inhibitor (for patients with eGFR ≥ 20 mL/min/1.73m²) for kidney and cardiovascular protection, in addition to metformin as tolerated.",
+      "Use an ACE inhibitor or ARB at the maximum tolerated dose for patients with hypertension and albuminuria; do not combine an ACE inhibitor and ARB.",
+      "Consider adding a nonsteroidal mineralocorticoid receptor antagonist (e.g., finerenone) if albuminuria persists despite an ACE inhibitor/ARB and SGLT2 inhibitor.",
+      "Individualize glycemic targets — generally around 7% A1C, less stringent as eGFR declines and hypoglycemia risk rises.",
+      "Start statin therapy for cardiovascular risk reduction.",
+      "Monitor eGFR and urine albumin-to-creatinine ratio at least annually, more frequently at higher CKD stages.",
+      "Provide comprehensive lifestyle guidance: moderated protein intake, sodium restriction, weight management, physical activity, and smoking cessation."
+    ]
+  }
+]
