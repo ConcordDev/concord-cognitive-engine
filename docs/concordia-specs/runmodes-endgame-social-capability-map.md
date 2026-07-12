@@ -355,7 +355,53 @@ GET  /api/time-loop/memories/tunya   -> 404
 GET  /api/time-loop/active/tunya     -> 404
 ```
 
-### 2.5 Dungeon instances: real engine, 2 encounters, zero frontend, and an unbounded damage report
+### 2.5 Dungeon instances: real engine, 2 encounters, zero frontend, and an unbounded damage report — CLOSED (2026-07-12, Wave 4 gap-closure unit)
+
+**What was fixed.** `concord-frontend/components/world/DungeonHUD.tsx` is a
+new real frontend consumer of the `dungeon.*` macros: a persistent
+"Dungeons" launcher (bottom-right, next to `MountHud`) opens an encounter
+browser (`dungeon.encounters` + `dungeon.lockouts`, showing a real "Locked
+Nh" badge sourced from the actual `dungeon_lockouts` row, not a guess) and
+starts an instance via `dungeon.open`. Once joined, the HUD polls
+`dungeon.active` (a new macro — see below) and renders the boss's real
+hp%/phase, every participant's real `damage_dealt` + share of total, a
+downed indicator, a "Strike" button (`dungeon.hit`) and a "Downed" button
+(`dungeon.down`). On clear/wipe it pulls the instance's final state via
+`dungeon.state` and shows the real loot share/rolls from
+`dungeon_participants.loot_json` — never a fabricated result. Discoverable
+via Ctrl/Cmd+K → "Dungeons" (`mode:dungeon` palette entry, which opens the
+encounter browser directly rather than reusing `GameModesHotbarGroup`'s
+single-`start()` shape, since dungeon needs an encounter *pick*, not a
+single confirm).
+
+Two new macros back the HUD's ability to discover an in-progress raid
+without persisting an instanceId client-side: `dungeon.active` (the
+caller's live active instance, world-scoped) and `dungeon.lockouts` (the
+caller's active lockouts with real expiry timestamps), both backed by new
+`getActiveInstanceForUser`/`getLockoutsForUser` helpers in
+`dungeon-instance.js`.
+
+**The damage cap is fixed.** `recordHit` (`dungeon-instance.js`) now imports
+the shared `resolvedDamageCap()` from `lib/combat-limits.js` (the same
+ceiling `routes/worlds.js#_validateDamageCap` holds the real combat route
+to) and **rejects** — not clamps — any report above it:
+`{ ok:false, reason:'damage_cap_exceeded', cap, requested }`, leaving boss
+HP and the reporting participant's `damage_dealt` completely untouched. A
+report exactly at the cap is accepted normally. This closes the
+one-hit-clears-any-instance exploit path described below. Content-authoring
+(more than 2 encounters) remains explicitly out of scope, per the original
+finding.
+
+Tests: `server/tests/integration/dungeon-instance.test.js` (9/9, including 4
+new Wave 4 cases: reject-over-cap leaves HP untouched + accept-at-cap +
+`getActiveInstanceForUser` + `getLockoutsForUser`) +
+`server/tests/dungeon-domain.test.js` (new, 10/10, pinning the macro
+wrappers including the cap-rejection path through `dungeon.hit` and the
+`dungeon.active`/`dungeon.lockouts` contracts) +
+`concord-frontend/components/world/DungeonHUD.test.tsx` (new, 6/6).
+
+Original finding text, kept for record:
+
 `server/lib/dungeon-instance.js:15-34` — `DUNGEON_ENCOUNTERS` has exactly 2
 authored bosses (`hollow_warden`, `tide_colossus`), each with 3 phases.
 Grep for any `dungeon` reference in `concord-frontend` (excluding build

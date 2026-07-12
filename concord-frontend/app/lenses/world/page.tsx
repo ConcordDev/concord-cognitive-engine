@@ -291,6 +291,15 @@ const ExtractionRunHUD = dynamic(
     })),
   { ssr: false }
 );
+// Wave 4 gap-closure — instanced dungeon/raid HUD (server/lib/dungeon-instance.js
+// had a real phase-gated boss engine with zero frontend consumer).
+const DungeonHUD = dynamic(
+  () =>
+    import('@/components/world/DungeonHUD').then((m) => ({
+      default: m.DungeonHUD,
+    })),
+  { ssr: false }
+);
 const CourtshipProgressOverlay = dynamic(
   () =>
     import('@/components/world/CourtshipProgressOverlay').then((m) => ({
@@ -6725,6 +6734,11 @@ export default function WorldLensPage() {
       {/* Mount HUD (bottom-right; summon/dismiss + live stamina/care bar).
           Renders nothing when the player has no mounts. */}
       <MountHud worldId={currentWorldId} />
+
+      {/* Wave 4 gap-closure — Dungeon instance HUD (bottom-right, above the
+          mount HUD). Always shows a "Dungeons" launcher; swaps to a live
+          boss hp%/phase/damage-share panel once an instance is joined. */}
+      <DungeonHUD worldId={currentWorldId} />
 
       {/* MMO completeness — combat/character QoL HUDs. AbilityCooldownHud polls
           world.combat-prefs-get (renders nothing with no bound abilities);

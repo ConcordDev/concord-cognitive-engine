@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, CornerDownLeft, ArrowUp, ArrowDown, Sparkles, LayoutPanelLeft,
-  Dice5, Zap, Crosshair, Ghost, Hourglass, Swords,
+  Dice5, Zap, Crosshair, Ghost, Hourglass, Swords, Skull,
 } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import {
@@ -236,6 +236,23 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
         order: 915,
         keywords: ['mode', 'brawl', 'pvp', 'matchmaker'],
       },
+      // Wave 4 gap-closure — dungeon instances (server/lib/dungeon-instance.js)
+      // need an encounter picker rather than a single confirm-and-POST flow,
+      // so this doesn't reuse GameModesHotbarGroup's single-`start()` shape.
+      // It opens DungeonHUD's own encounter browser instead (see the
+      // `mode:dungeon` special-case in navigateToLens below).
+      {
+        id: 'mode:dungeon',
+        name: 'Dungeons — browse encounters',
+        icon: Skull,
+        description: 'Phased boss instances. Party damage share + loot by contribution.',
+        category: 'world',
+        showInSidebar: false,
+        showInCommandPalette: true,
+        path: '',
+        order: 916,
+        keywords: ['mode', 'dungeon', 'raid', 'boss', 'instance'],
+      },
     ];
     return [conkay, ...getCommandPaletteLenses(), ...panelEntries, ...modeEntries];
   }, []);
@@ -342,6 +359,13 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
       // (GlobalPanelHost) instead of navigating away.
       if (lens.id.startsWith('panel:') && typeof window !== 'undefined') {
         openPanel(lens.id.slice('panel:'.length));
+        return;
+      }
+      // `mode:dungeon` opens DungeonHUD's own encounter browser (multiple
+      // encounters to pick from, not a single confirm-and-POST) rather than
+      // going through the DA4 hotbar's single-`start()` shape.
+      if (lens.id === 'mode:dungeon' && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('concordia:open-dungeon-hud'));
         return;
       }
       // A `mode:<id>` entry (DA4 run modes) dispatches the same

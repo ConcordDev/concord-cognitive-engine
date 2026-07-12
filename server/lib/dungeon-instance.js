@@ -10,6 +10,16 @@
 
 import crypto from "node:crypto";
 import { resolveRunDifficulty, recordRunClear } from "./run-difficulty.js";
+// Wave 4 gap-closure — reuse the shared combat damage ceiling instead of a
+// dungeon-local magic number. `recordHit` used to accept `input.damage` from
+// any authenticated caller with no upper bound (Math.max(0, Number(damage))
+// only floors it); a malicious client could report arbitrary boss damage and
+// clear any instance (and its loot-by-damage-share) in one hit. This mirrors
+// the discipline `routes/worlds.js#_validateDamageCap` applies to the real
+// combat route: REJECT a report over the ceiling rather than silently
+// clamping it, so a bogus report does zero damage instead of a diminished-
+// but-still-wrong amount.
+import { resolvedDamageCap } from "./combat-limits.js";
 
 // Authored encounters — real phased bosses with role-relevant mechanics.
 export const DUNGEON_ENCOUNTERS = Object.freeze({
@@ -113,7 +123,18 @@ export function recordHit(db, instanceId, userId, damage) {
   const part = db.prepare(`SELECT 1 FROM dungeon_participants WHERE instance_id = ? AND user_id = ?`).get(instanceId, userId);
   if (!part) return { ok: false, reason: "not_a_participant" };
 
-  const dmg = Math.max(0, Number(damage) || 0);
+  // Server-authoritative damage ceiling (Wave 4 gap-closure). No skill
+  // context reaches this macro today, so this uses the no-skill hard cap
+  // (COMBAT_DAMAGE_HARD_CAP, currently 500) — the same ceiling a world-combat
+  // hit without an authored `max_damage` would be held to. A report above the
+  // cap is rejected outright (boss HP is untouched) rather than clamped, so a
+  // hostile client can't grind out max-cap hits faster than a real attacker.
+  const requested = Number(damage) || 0;
+  const cap = resolvedDamageCap();
+  if (requested > cap) {
+    return { ok: false, reason: "damage_cap_exceeded", cap, requested };
+  }
+  const dmg = Math.max(0, requested);
   const enc = DUNGEON_ENCOUNTERS[inst.encounter_id];
   const newHp = Math.max(0, inst.boss_hp - dmg);
   const hpPct = inst.boss_max_hp > 0 ? newHp / inst.boss_max_hp : 0;
@@ -177,4 +198,47 @@ export function getInstance(db, instanceId) {
   if (!inst) return null;
   const participants = db.prepare(`SELECT user_id, role, damage_dealt, downed, loot_json FROM dungeon_participants WHERE instance_id = ?`).all(instanceId);
   return { ...inst, participants };
+}
+
+/**
+ * Wave 4 gap-closure — the live instance a user is currently participating
+ * in (if any), so a frontend HUD can reconnect to an in-progress raid
+ * without needing to remember an instanceId across reloads/party members.
+ * Scoped to the most recently opened active instance when a user is
+ * (unusually) in more than one — `openInstance` doesn't prevent a leader
+ * from opening a second instance, so this is a defensive ORDER BY, not an
+ * assumed invariant.
+ */
+export function getActiveInstanceForUser(db, userId, worldId) {
+  if (!db || !userId) return null;
+  if (!tableExists(db, "dungeon_instances")) return null;
+  const row = worldId
+    ? db.prepare(`
+        SELECT di.id FROM dungeon_instances di
+        JOIN dungeon_participants dp ON dp.instance_id = di.id
+        WHERE dp.user_id = ? AND di.status = 'active' AND di.world_id = ?
+        ORDER BY di.started_at DESC LIMIT 1
+      `).get(userId, worldId)
+    : db.prepare(`
+        SELECT di.id FROM dungeon_instances di
+        JOIN dungeon_participants dp ON dp.instance_id = di.id
+        WHERE dp.user_id = ? AND di.status = 'active'
+        ORDER BY di.started_at DESC LIMIT 1
+      `).get(userId);
+  return row ? getInstance(db, row.id) : null;
+}
+
+/**
+ * Wave 4 gap-closure — a user's currently-active dungeon lockouts (encounter
+ * + tier + until timestamp), so the HUD can show "locked N hours" instead of
+ * only surfacing the failure after a rejected `open` call.
+ */
+export function getLockoutsForUser(db, userId, now = Math.floor(Date.now() / 1000)) {
+  if (!db || !userId || !tableExists(db, "dungeon_lockouts")) return [];
+  try {
+    return db.prepare(`
+      SELECT encounter_id, tier, locked_until FROM dungeon_lockouts
+      WHERE user_id = ? AND locked_until > ?
+    `).all(userId, now).map((r) => ({ encounterId: r.encounter_id, tier: r.tier, lockedUntil: r.locked_until }));
+  } catch { return []; }
 }

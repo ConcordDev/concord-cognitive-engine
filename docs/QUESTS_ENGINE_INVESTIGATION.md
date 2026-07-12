@@ -359,3 +359,24 @@ own scoped unit rather than folding into a lens-rebuild pass.
   `addObjectives`/`addRewards` calls to `lattice-quest-composer.js`, which
   actually calls System A's `createQuest`). Updated to point here with the
   confirmed finding and the correction.
+
+## Addendum (2026-07-12) — moral_branch frontend-attach-point check
+
+A later Wave 4 unit (closing `docs/concordia-specs/quests-dialogue-capability-map.md`
+§3's still-open frontend half) independently re-ran this doc's empirical
+check with the full real migration set and confirmed it holds exactly:
+127 authored quests in System A, zero rows in `world_quests`. It also
+extended the trace one level further, specifically for the 14
+`moral_branch`-bearing quests, and found a detail this doc didn't need at
+the time: **exactly 2 of those 14 quests' giver NPCs
+(`lady_seraphine_voss`, `broker_silver_vey`) have an authored dialogue
+tree** (the one mechanism that bypasses the System A/B split entirely —
+see Finding 1's context). Both trees turned out to be a single generic
+`<npcId>:idle` entry with no quest-specific node, so this doesn't open a
+safe attach point — presenting a climactic reputation-altering choice on a
+generic idle greeting, with no preceding quest content ever having been
+offered or tracked, would misrepresent the player's story progress. Noting
+it here so a future session pursuing Option 1 (bridge authored content
+into `world_quests`) knows these 2 NPCs already have *some* authored
+dialogue infrastructure to build on, even though it isn't quest-specific
+yet. Full trace: `docs/concordia-specs/quests-dialogue-capability-map.md` §3.
