@@ -239,15 +239,31 @@ describe("self lens — achievements (REST surface backing)", () => {
       assert.equal(typeof a.id, "string");
       assert.equal(typeof a.name, "string");
       assert.equal(a.unlocked, false);
+      // Not-yet-unlocked achievements carry no earned timestamp.
+      assert.equal(a.earnedAt, null);
       assert.ok(a.progress <= a.target);
     }
   });
 
   it("unlock is idempotent on (user_id, achievement_id) — the MMO invariant", () => {
     const u = "self_ach_idem_" + Date.now();
+    const beforeMs = Date.now();
     // first_dtu unlocks at dtu_created count 1.
     const first = trackAction(u, "dtu_created", 1);
-    assert.ok(first.some((a) => a.id === "first_dtu"), "first_dtu should unlock");
+    const afterMs = Date.now();
+    const unlockEvent = first.find((a) => a.id === "first_dtu");
+    assert.ok(unlockEvent, "first_dtu should unlock");
+
+    // The newly-unlocked event carries a real, recent ISO-8601 timestamp.
+    assert.equal(typeof unlockEvent.earnedAt, "string");
+    const earnedMs = Date.parse(unlockEvent.earnedAt);
+    assert.ok(Number.isFinite(earnedMs), "earnedAt must be a parseable timestamp");
+    assert.ok(earnedMs >= beforeMs && earnedMs <= afterMs, "earnedAt must be recent (bracketed by the unlock call)");
+
+    // The read view surfaces the same earned-at timestamp.
+    const viewAfterFirstUnlock = getAchievements(u);
+    const firstDtuView = viewAfterFirstUnlock.find((a) => a.id === "first_dtu");
+    assert.equal(firstDtuView.earnedAt, unlockEvent.earnedAt);
 
     // Re-tracking the same action must NOT re-emit the already-held unlock.
     const second = trackAction(u, "dtu_created", 1);
@@ -257,10 +273,13 @@ describe("self lens — achievements (REST surface backing)", () => {
     const re = checkAchievements(u);
     assert.ok(!re.some((a) => a.id === "first_dtu"));
 
-    // The achievement remains unlocked in the read view exactly once.
+    // The achievement remains unlocked in the read view exactly once, and its
+    // earnedAt is UNCHANGED by the repeat unlock-check calls (idempotent —
+    // first-unlock time is never overwritten on re-check).
     const view = getAchievements(u);
     const unlockedFirstDtu = view.filter((a) => a.id === "first_dtu" && a.unlocked);
     assert.equal(unlockedFirstDtu.length, 1);
+    assert.equal(unlockedFirstDtu[0].earnedAt, unlockEvent.earnedAt);
   });
 
   it("rank-based achievements unlock from real XP, isolated per user", () => {

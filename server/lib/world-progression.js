@@ -372,7 +372,12 @@ const ACHIEVEMENTS = [
   { id: "rank_grandmaster", name: "Legend",                description: "Reach Grandmaster rank",                     category: "mastery", requirement: { rank: 6 } },
 ];
 
-/** @type {Map<string, Set<string>>} userId → set of unlocked achievement IDs */
+/**
+ * @type {Map<string, Map<string, string>>} userId → Map of unlocked
+ * achievement ID → ISO-8601 earned timestamp (first-unlock time, never
+ * overwritten by later re-checks). In-memory only, process-lifetime —
+ * no persistence layer to keep in sync (see getAchievements/checkAchievements).
+ */
 const userAchievements = new LruMap();
 
 /** @type {Map<string, Map<string, number>>} userId → action → count */
@@ -397,7 +402,7 @@ export function trackAction(userId, action, count = 1) {
  */
 export function checkAchievements(userId) {
   if (!userAchievements.has(userId)) {
-    userAchievements.set(userId, new Set());
+    userAchievements.set(userId, new Map());
   }
 
   const unlocked = userAchievements.get(userId);
@@ -420,12 +425,14 @@ export function checkAchievements(userId) {
     }
 
     if (earned) {
-      unlocked.add(ach.id);
+      const earnedAt = new Date().toISOString();
+      unlocked.set(ach.id, earnedAt);
       newlyUnlocked.push({
         id: ach.id,
         name: ach.name,
         description: ach.description,
         category: ach.category,
+        earnedAt,
       });
     }
   }
@@ -437,7 +444,7 @@ export function checkAchievements(userId) {
  * Get all achievements with unlock status for a user.
  */
 export function getAchievements(userId) {
-  const unlocked = userAchievements.get(userId) || new Set();
+  const unlocked = userAchievements.get(userId) || new Map();
   const counters = actionCounters.get(userId) || new Map();
   const profile = getMasteryProfile(userId);
 
@@ -456,6 +463,7 @@ export function getAchievements(userId) {
     return {
       ...ach,
       unlocked: unlocked.has(ach.id),
+      earnedAt: unlocked.get(ach.id) || null,
       progress: Math.min(progress, target),
       target,
       percent: Math.min(100, Math.round((progress / target) * 100)),
