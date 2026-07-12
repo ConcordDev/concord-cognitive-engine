@@ -123,7 +123,7 @@ schema — only the basic-tier price carries over. Fully unifying the 4-tier
 license form with the single-price listing model is still open (a genuine
 product-shape question, not triaged here). The other half of the original
 sentence here — "building a public cross-seller browse macro for
-`s.listings`" — is **CLOSED (2026-07-12, pending commit)**: it turned out to
+`s.listings`" — is **CLOSED (2026-07-12, `78337966`)**: it turned out to
 already exist (`storefront-browse`, wired into `StorefrontPanel` inside
 `ShopfrontSection`'s "Storefront" nav item, which is mounted at the very top
 of the marketplace lens, always visible). See the corrected "Genuinely
@@ -203,8 +203,8 @@ optimistic-forever.
   they're only visible in the creating seller's own My Shop tab. A
   `listings-browse-all` macro (paginate across all users' published
   listings) would let "New Listing" (fixed this pass to publish into this
-  store) actually surface in Browse too.~~ **CLOSED (2026-07-12, pending
-  commit) — was already shipped, this entry was stale.** Re-audited before
+  store) actually surface in Browse too.~~ **CLOSED (2026-07-12,
+  `78337966`) — was already shipped, this entry was stale.** Re-audited before
   building anything: the macro this bullet asked for already existed under
   the name `storefront-browse` (`server/domains/marketplace.js:721`) —
   aggregates every seller's `status === 'published'` listings into one
