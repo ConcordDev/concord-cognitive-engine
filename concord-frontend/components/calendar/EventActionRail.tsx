@@ -8,10 +8,25 @@
  *   1. Save to substrate   → dtu.create (private + tagged)
  *   2. Publish publicly    → POST /api/dtus/:id/publish (federation picks up)
  *   3. Send invites        → /api/social/dm per collaborator
- *   4. Schedule reminder   → calendar.remind via useRunArtifact
+ *   4. Schedule reminder   → calendar.events-update (appends a reminder-minutes
+ *                            entry onto the event's real, STATE-backed
+ *                            reminders array — reminders-due/reminders-
+ *                            acknowledge pick it up on the heartbeat tick)
  *   5. Prep with agent     → chat_agent.do (LLM tool-use loop)
- *   6. Check conflicts     → calendar.resolve_conflicts
- *   7. Download .ics       → calendar.ical-export
+ *   6. Check conflicts     → calendar.conflicts-check against the user's real
+ *                            saved events (STATE-backed, not a pasted array)
+ *   7. Download .ics       → calendar.ical-export (params.events — no
+ *                            generic-artifact id needed)
+ *
+ * `event.id` is a real calendar.events-* engine id (server/domains/
+ * calendar.js) — NOT a generic lens-artifact id. Actions 4/6/7 used to run
+ * through the generic `/api/lens/calendar/:id/run` artifact-scoped macros
+ * (calendar.remind / calendar.resolve_conflicts / calendar.ical-export in
+ * server.js), which required `event.id` to resolve to a generic CRUD
+ * artifact whose `.data` held an ad-hoc `events[]` array — a shape a single
+ * calendar event never had, so resolve_conflicts/ical-export always
+ * silently no-op'd even before the main grid moved off that store. Now
+ * wired directly against the real STATE-backed engine.
  *
  * Inviting (3) attaches the minted DTU id so the recipient has a citable
  * handle. Publishing (2) requires minting (1) first — the rail enforces
@@ -25,7 +40,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 
 interface EventLite {
@@ -38,6 +52,12 @@ interface EventLite {
   location?: string;
   collaborators?: string[];
   url?: string;
+  reminders?: { time: number; unit: 'minutes' | 'hours' | 'days' | 'weeks' }[];
+}
+
+const REMINDER_UNIT_MINUTES: Record<string, number> = { minutes: 1, hours: 60, days: 1440, weeks: 10080 };
+function reminderMinutesOf(reminders?: { time: number; unit: string }[]): number[] {
+  return (reminders || []).map((r) => Math.max(0, Math.round(r.time * (REMINDER_UNIT_MINUTES[r.unit] || 1))));
 }
 
 interface DtuRef { id: string; published: boolean; }
@@ -60,7 +80,6 @@ export function EventActionRail({ event }: { event: EventLite }) {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [inviteStatus, setInviteStatus] = useState<Record<string, InviteState>>({});
   const [agentFindings, setAgentFindings] = useState<string | null>(null);
-  const runAction = useRunArtifact('calendar');
 
   const collabCount = event.collaborators?.length ?? 0;
 
@@ -164,19 +183,17 @@ export function EventActionRail({ event }: { event: EventLite }) {
     setBusy('remind'); setFeedback(null);
     try {
       const minutesBefore = 60;
-      const reminderAt = new Date(event.startDate.getTime() - minutesBefore * 60 * 1000).toISOString();
-      const r = await runAction.mutateAsync({
-        id: event.id,
-        action: 'remind',
-        params: {
-          at: reminderAt,
-          message: `Reminder: ${event.title} in ${minutesBefore} minutes`,
-        },
+      const existing = reminderMinutesOf(event.reminders);
+      const reminders = existing.includes(minutesBefore) ? existing : [...existing, minutesBefore];
+      const r = await lensRun({
+        domain: 'calendar',
+        action: 'events-update',
+        input: { id: event.id, reminders },
       });
-      if (r?.ok !== false) {
+      if (r.data?.ok !== false) {
         ok(`Reminder set for ${minutesBefore}m before.`);
       } else {
-        err('Reminder failed.');
+        err(r.data?.error || 'Reminder failed.');
       }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -213,16 +230,14 @@ export function EventActionRail({ event }: { event: EventLite }) {
   async function resolveConflicts() {
     setBusy('conflict'); setFeedback(null);
     try {
-      const r = await runAction.mutateAsync({
-        id: event.id,
-        action: 'resolve_conflicts',
-        params: {},
+      const r = await lensRun({
+        domain: 'calendar',
+        action: 'conflicts-check',
+        input: { start: event.startDate.toISOString(), end: event.endDate.toISOString(), excludeEventId: event.id },
       });
-      // calendar.resolve_conflicts (server.js inline) returns { ok, conflicts, count }
-      // at the TOP LEVEL — it does NOT wrap in a `result` envelope.
-      const rr = r as { conflicts?: unknown[] } | undefined;
-      const conflicts = rr?.conflicts ?? [];
-      if (Array.isArray(conflicts) && conflicts.length === 0) {
+      if (r.data?.ok === false) { err(r.data?.error || 'Conflict check failed.'); return; }
+      const conflicts = (r.data?.result as { conflicts?: unknown[] } | undefined)?.conflicts ?? [];
+      if (conflicts.length === 0) {
         ok('No conflicts detected.');
       } else {
         ok(`${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'} flagged.`);
@@ -234,12 +249,22 @@ export function EventActionRail({ event }: { event: EventLite }) {
   async function exportIcal() {
     setBusy('ical'); setFeedback(null);
     try {
-      const r = await runAction.mutateAsync({
-        id: event.id,
+      const r = await lensRun({
+        domain: 'calendar',
         action: 'ical-export',
-        params: {},
+        input: {
+          events: [{
+            uid: event.id,
+            summary: event.title,
+            description: event.description,
+            start: event.startDate.toISOString(),
+            end: event.endDate.toISOString(),
+            location: event.location,
+            url: event.url,
+          }],
+        },
       });
-      const result = r?.result as { ics?: string; data?: string } | undefined;
+      const result = r.data?.result as { ics?: string; data?: string } | undefined;
       const ics = result?.ics ?? result?.data;
       if (ics && typeof ics === 'string') {
         const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
