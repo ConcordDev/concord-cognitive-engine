@@ -153,7 +153,7 @@ assert on `prizePoolCc`/`payoutSplit`/`payouts`/`unallocated`).
   not a defect this pass introduced or is positioned to fix; a durable
   DB-backed rewrite would be a much larger CURATION/ENGINEERING project
   (new migration + table design) outside a frontend-rebuild pass's remit.~~
-  **CLOSED (2026-07-12, `<pending commit>`)** — migration 360
+  **CLOSED (2026-07-12, `f688402f`)** — migration 360
   (`server/migrations/360_bracket_tournaments.js`) adds a real
   `bracket_tournaments` table (one denormalized row per tournament: scalar
   columns for id/user_id/title/format/mode/status/prizePoolCc/shareSlug/etc,
