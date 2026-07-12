@@ -189,5 +189,242 @@ describe("understanding.overview", () => {
     assert.equal(r.result.manualLinkCount, 1);
     assert.equal(r.result.wikiLinkCount, 1);
     assert.equal(r.result.tagCount, 2);
+    assert.equal(r.result.reviewEnabledCount, 0);
+    assert.equal(r.result.dueForReviewCount, 0);
+  });
+});
+
+// ── Outline structure (nested parent/child, built on the link substrate) ──
+
+describe("understanding.move + outline + reorder", () => {
+  it("creates a note as a child via move, surfaced in outline()", () => {
+    const parent = mk(ctxA, "Parent", "root topic");
+    const child = mk(ctxA, "Child", "sub topic");
+    const m = call("move", ctxA, { id: child.id, parentId: parent.id });
+    assert.equal(m.ok, true);
+    assert.equal(m.result.parentId, parent.id);
+    assert.equal(m.result.order, 0);
+
+    const o = call("outline", ctxA, {});
+    assert.equal(o.ok, true);
+    // Parent is a root (child is no longer a root since it has a parent).
+    assert.equal(o.result.forest.length, 1);
+    assert.equal(o.result.forest[0].id, parent.id);
+    assert.equal(o.result.forest[0].childCount, 1);
+    assert.equal(o.result.forest[0].children[0].id, child.id);
+  });
+
+  it("rejects a note becoming its own parent", () => {
+    const a = mk(ctxA, "A", "x");
+    assert.equal(call("move", ctxA, { id: a.id, parentId: a.id }).ok, false);
+  });
+
+  it("rejects a move that would create a cycle", () => {
+    const a = mk(ctxA, "A", "x");
+    const b = mk(ctxA, "B", "y");
+    const c = mk(ctxA, "C", "z");
+    // A -> B -> C
+    assert.equal(call("move", ctxA, { id: b.id, parentId: a.id }).ok, true);
+    assert.equal(call("move", ctxA, { id: c.id, parentId: b.id }).ok, true);
+    // Making A a child of C (its own descendant) must fail.
+    const bad = call("move", ctxA, { id: a.id, parentId: c.id });
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /cycle/);
+  });
+
+  it("re-parenting replaces the previous parent edge, not adds a second one", () => {
+    const p1 = mk(ctxA, "P1", "");
+    const p2 = mk(ctxA, "P2", "");
+    const child = mk(ctxA, "Child", "");
+    call("move", ctxA, { id: child.id, parentId: p1.id });
+    call("move", ctxA, { id: child.id, parentId: p2.id });
+    const t1 = call("outline", ctxA, { rootId: p1.id });
+    const t2 = call("outline", ctxA, { rootId: p2.id });
+    assert.equal(t1.result.tree.childCount, 0);
+    assert.equal(t2.result.tree.childCount, 1);
+    assert.equal(t2.result.tree.children[0].id, child.id);
+  });
+
+  it("detaching to root (parentId omitted) restores a root-level note", () => {
+    const parent = mk(ctxA, "Parent", "");
+    const child = mk(ctxA, "Child", "");
+    call("move", ctxA, { id: child.id, parentId: parent.id });
+    const back = call("move", ctxA, { id: child.id, parentId: "" });
+    assert.equal(back.ok, true);
+    assert.equal(back.result.parentId, null);
+    const o = call("outline", ctxA, {});
+    assert.equal(o.result.forest.length, 2);
+  });
+
+  it("reorders siblings by index", () => {
+    const parent = mk(ctxA, "Parent", "");
+    const c1 = mk(ctxA, "C1", "");
+    const c2 = mk(ctxA, "C2", "");
+    const c3 = mk(ctxA, "C3", "");
+    call("move", ctxA, { id: c1.id, parentId: parent.id });
+    call("move", ctxA, { id: c2.id, parentId: parent.id });
+    call("move", ctxA, { id: c3.id, parentId: parent.id });
+    // Default order after 3 appends: c1, c2, c3.
+    let tree = call("outline", ctxA, { rootId: parent.id }).result.tree;
+    assert.deepEqual(tree.children.map((c) => c.id), [c1.id, c2.id, c3.id]);
+    // Move c3 to index 0 -> c3, c1, c2.
+    const r = call("reorder", ctxA, { id: c3.id, index: 0 });
+    assert.equal(r.ok, true);
+    tree = call("outline", ctxA, { rootId: parent.id }).result.tree;
+    assert.deepEqual(tree.children.map((c) => c.id), [c3.id, c1.id, c2.id]);
+  });
+
+  it("reorders root-level notes too", () => {
+    const a = mk(ctxA, "RootA", "");
+    const b = mk(ctxA, "RootB", "");
+    // a was created first (rootOrder 0), b second (rootOrder 1).
+    let forest = call("outline", ctxA, {}).result.forest;
+    assert.deepEqual(forest.map((n) => n.id), [a.id, b.id]);
+    call("reorder", ctxA, { id: b.id, index: 0 });
+    forest = call("outline", ctxA, {}).result.forest;
+    assert.deepEqual(forest.map((n) => n.id), [b.id, a.id]);
+  });
+
+  it("generic link() refuses the reserved outline-child relation", () => {
+    const a = mk(ctxA, "A", "");
+    const b = mk(ctxA, "B", "");
+    const r = call("link", ctxA, { from: a.id, to: b.id, relation: "outline-child" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /understanding\.move/);
+  });
+
+  it("deleting a parent note detaches its children rather than deleting them", () => {
+    const parent = mk(ctxA, "Parent", "");
+    const child = mk(ctxA, "Child", "");
+    call("move", ctxA, { id: child.id, parentId: parent.id });
+    call("remove", ctxA, { id: parent.id });
+    const list = call("list", ctxA, {});
+    assert.ok(list.result.notes.some((n) => n.id === child.id));
+    const outline = call("outline", ctxA, {});
+    assert.ok(outline.result.forest.some((n) => n.id === child.id));
+  });
+
+  it("outline structural edges are excluded from graph() and backlinks()", () => {
+    const parent = mk(ctxA, "Parent", "");
+    const child = mk(ctxA, "Child", "");
+    call("move", ctxA, { id: child.id, parentId: parent.id });
+    const g = call("graph", ctxA, {});
+    assert.equal(g.result.edgeCount, 0);
+    const bl = call("backlinks", ctxA, { id: child.id });
+    assert.equal(bl.result.backlinkCount, 0);
+  });
+});
+
+// ── Spaced repetition (SM-2, hand-verified against the textbook formula) ──
+
+describe("understanding.review + due (SM-2 spaced repetition)", () => {
+  it("a fresh note starts unreviewed / not enrolled", () => {
+    const n = mk(ctxA, "Fresh", "body");
+    const got = call("get", ctxA, { id: n.id });
+    assert.equal(got.result.note.srs.enabled, false);
+    assert.equal(got.result.note.srs.state, "new");
+    assert.equal(got.result.note.srs.ease, 2.5);
+    assert.equal(got.result.note.srs.reps, 0);
+  });
+
+  it("rejects a missing quality and an out-of-range/non-numeric quality gracefully", () => {
+    const n = mk(ctxA, "N", "");
+    assert.equal(call("review", ctxA, { id: n.id }).ok, false);
+    assert.equal(call("review", ctxA, { id: n.id, quality: "not-a-number" }).ok, false);
+  });
+
+  it("hand-verified SM-2 sequence: good, easy, hard(pass), fail", () => {
+    // Hand-computed against the canonical SM-2 algorithm (Wozniak 1987):
+    //   q<3: reps=0, interval=1
+    //   q>=3: reps==0 -> interval=1; reps==1 -> interval=6; else interval=round(prevInterval*EF); reps+=1
+    //   EF' = EF + (0.1 - (5-q)*(0.08 + (5-q)*0.02)), floored at 1.3
+    const n = mk(ctxA, "Card", "front/back content");
+
+    // Review 1: q=4 (good). reps 0->1, interval=1, EF stays 2.5.
+    //   EF' = 2.5 + (0.1 - 1*(0.08+1*0.02)) = 2.5 + (0.1-0.10) = 2.5
+    let r = call("review", ctxA, { id: n.id, quality: 4 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.nextReviewInDays, 1);
+    assert.equal(r.result.srs.ease, 2.5);
+    assert.equal(r.result.srs.reps, 1);
+    assert.equal(r.result.srs.lapses, 0);
+
+    // Review 2: q=5 (easy). reps 1->2, interval=6.
+    //   EF' = 2.5 + (0.1 - 0*(0.08+0*0.02)) = 2.6
+    r = call("review", ctxA, { id: n.id, quality: 5 });
+    assert.equal(r.result.nextReviewInDays, 6);
+    assert.equal(r.result.srs.ease, 2.6);
+    assert.equal(r.result.srs.reps, 2);
+
+    // Review 3: q=3 (hard pass). reps 2->3, interval=round(6*2.6)=round(15.6)=16.
+    //   EF' = 2.6 + (0.1 - 2*(0.08+2*0.02)) = 2.6 + (0.1 - 2*0.12) = 2.6 - 0.14 = 2.46
+    r = call("review", ctxA, { id: n.id, quality: 3 });
+    assert.equal(r.result.nextReviewInDays, 16);
+    assert.equal(r.result.srs.ease, 2.46);
+    assert.equal(r.result.srs.reps, 3);
+
+    // Review 4: q=2 (fail). reps resets to 0, interval=1, lapses+=1.
+    //   EF' = 2.46 + (0.1 - 3*(0.08+3*0.02)) = 2.46 + (0.1 - 3*0.14) = 2.46 - 0.32 = 2.14
+    r = call("review", ctxA, { id: n.id, quality: 2 });
+    assert.equal(r.result.nextReviewInDays, 1);
+    assert.equal(r.result.srs.ease, 2.14);
+    assert.equal(r.result.srs.reps, 0);
+    assert.equal(r.result.srs.lapses, 1);
+    assert.equal(r.result.srs.state, "relearning");
+  });
+
+  it("ease factor floors at 1.3 and never goes lower", () => {
+    const n = mk(ctxA, "Hard card", "");
+    // Repeated blackouts (q=0) each apply EF' = EF + (0.1 - 5*(0.08+5*0.02)) = EF + (0.1-0.9) = EF-0.8
+    let r = call("review", ctxA, { id: n.id, quality: 0 }); // 2.5-0.8=1.7
+    assert.equal(r.result.srs.ease, 1.7);
+    r = call("review", ctxA, { id: n.id, quality: 0 }); // 1.7-0.8=0.9 -> floored to 1.3
+    assert.equal(r.result.srs.ease, 1.3);
+    r = call("review", ctxA, { id: n.id, quality: 0 }); // stays floored
+    assert.equal(r.result.srs.ease, 1.3);
+  });
+
+  it("clamps out-of-range quality into [0,5]", () => {
+    const n = mk(ctxA, "Clamp", "");
+    const r = call("review", ctxA, { id: n.id, quality: 99 });
+    assert.equal(r.result.quality, 5);
+    assert.equal(r.result.nextReviewInDays, 1); // treated as q=5, reps 0->1 => interval=1
+  });
+
+  it("due() only returns review-enabled notes whose dueAt has passed, sorted soonest-first", () => {
+    const a = mk(ctxA, "A", "");
+    const b = mk(ctxA, "B", "");
+    const c = mk(ctxA, "C not enrolled", "");
+    // a and b are reviewed now, both immediately due-in-the-past is false
+    // (interval pushes dueAt into the future) — enroll them without ever
+    // pushing the date out, using edit(reviewEnabled) so dueAt stays at
+    // creation time (now), i.e. already due.
+    call("edit", ctxA, { id: a.id, reviewEnabled: true });
+    call("edit", ctxA, { id: b.id, reviewEnabled: true });
+    const due = call("due", ctxA, {});
+    assert.equal(due.ok, true);
+    const ids = due.result.due.map((n) => n.id);
+    assert.ok(ids.includes(a.id));
+    assert.ok(ids.includes(b.id));
+    assert.ok(!ids.includes(c.id));
+  });
+
+  it("a review pushes the note out of the immediate due queue when interval > 0 days", () => {
+    const n = mk(ctxA, "Scheduled", "");
+    call("edit", ctxA, { id: n.id, reviewEnabled: true });
+    assert.ok(call("due", ctxA, {}).result.due.some((d) => d.id === n.id));
+    // q=5 gives interval=1 day, so dueAt moves ~24h into the future.
+    call("review", ctxA, { id: n.id, quality: 5 });
+    const due = call("due", ctxA, {});
+    assert.ok(!due.result.due.some((d) => d.id === n.id));
+  });
+
+  it("reviewing a note enrolls it in the queue even without an explicit reviewEnabled toggle", () => {
+    const n = mk(ctxA, "AutoEnroll", "");
+    const got0 = call("get", ctxA, { id: n.id });
+    assert.equal(got0.result.note.srs.enabled, false);
+    call("review", ctxA, { id: n.id, quality: 4 });
+    const got1 = call("get", ctxA, { id: n.id });
+    assert.equal(got1.result.note.srs.enabled, true);
   });
 });

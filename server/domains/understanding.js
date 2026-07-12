@@ -7,11 +7,32 @@
 // layer the feature-gap spec called for: user-authored notes with
 // full-text search, tagging, manual linking (wiki-links + relations),
 // backlinks, inline editing with revision history + diff, an
-// interactive linked-knowledge graph, and markdown / DTU-pack export.
+// interactive linked-knowledge graph, markdown / DTU-pack export, a real
+// nested/outline note hierarchy, and a real note-level spaced-repetition
+// review queue.
 //
 // All state is per-user, persisted in globalThis._concordSTATE Maps
 // keyed by ctx.userId. No seed / demo / mock data — every note is real
 // user input. Empty states return empty arrays.
+//
+// Outline structure (parent/child) is built on the SAME manual-link
+// mechanism `link`/`unlink` already provide, using a reserved relation
+// name `"outline-child"` (from = parent, to = child) plus an `order`
+// field for sibling position — not a parallel substrate. The generic
+// `link` macro refuses to create that relation directly (see below) so
+// every outline edit goes through `move`/`reorder`, which enforce the
+// single-parent + no-cycle invariants a free-form link graph doesn't.
+//
+// Spaced repetition here schedules the *notes themselves* (RemNote's
+// "any note can be a reviewable rem" model), not separately-authored
+// flashcards — that's already a full, real, Anki/FSRS-parity system at
+// `server/domains/srs.js` (deck/card/study substrate). Duplicating that
+// engine here would be redundant; this schedules review dates directly
+// on a note via the classic textbook SM-2 algorithm (Wozniak 1987) —
+// deliberately the simpler, well-understood algorithm, since the harder
+// "modern scheduler" problem is already solved by the srs domain and
+// this lens's job is proving notes are reviewable in place, in the
+// knowledge tool, without leaving to build a separate deck.
 
 export default function registerUnderstandingActions(registerLensAction) {
   // ── State plumbing ────────────────────────────────────────────────
@@ -70,8 +91,28 @@ export default function registerUnderstandingActions(registerLensAction) {
     return out;
   }
 
+  // Lazily backfill the srs sub-object for notes created before this
+  // field existed (state persisted from an older build). Safe to call on
+  // every read — idempotent, never overwrites an existing schedule.
+  function ensureSrs(note) {
+    if (!note.srs || typeof note.srs !== "object") {
+      note.srs = {
+        enabled: false,
+        state: "new",
+        ease: 2.5,
+        reps: 0,
+        lapses: 0,
+        interval: 0,
+        dueAt: note.createdAt || now(),
+        lastReviewedAt: null,
+      };
+    }
+    return note.srs;
+  }
+
   // Public projection of a note (everything except deep revision bodies).
   function shapeNote(n) {
+    const srs = ensureSrs(n);
     return {
       id: n.id,
       title: n.title,
@@ -81,6 +122,16 @@ export default function registerUnderstandingActions(registerLensAction) {
       updatedAt: n.updatedAt,
       revisionCount: n.revisions.length,
       wordCount: n.body.trim() ? n.body.trim().split(/\s+/).length : 0,
+      srs: {
+        enabled: !!srs.enabled,
+        state: srs.state || "new",
+        ease: typeof srs.ease === "number" ? srs.ease : 2.5,
+        interval: srs.interval || 0,
+        reps: srs.reps || 0,
+        lapses: srs.lapses || 0,
+        dueAt: srs.dueAt || null,
+        lastReviewedAt: srs.lastReviewedAt || null,
+      },
     };
   }
 
@@ -90,6 +141,81 @@ export default function registerUnderstandingActions(registerLensAction) {
       if (n.title.trim().toLowerCase() === want) return n;
     }
     return null;
+  }
+
+  // ── Outline (nested parent/child) helpers ─────────────────────────
+  // Built on top of the same `links` array `link`/`unlink` use, via a
+  // reserved relation name. See file header for why this reuses the
+  // link mechanism instead of a parallel substrate.
+  const OUTLINE_RELATION = "outline-child";
+
+  function outlineChildLinks(links, parentId) {
+    return links
+      .filter((l) => l.relation === OUTLINE_RELATION && l.from === parentId)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }
+  function outlineParentLink(links, childId) {
+    return links.find((l) => l.relation === OUTLINE_RELATION && l.to === childId) || null;
+  }
+  // True when `nodeId` is `ancestorId` itself or lies anywhere in its
+  // outline subtree — used to reject a `move` that would create a cycle.
+  function isOutlineDescendant(links, ancestorId, nodeId) {
+    if (ancestorId === nodeId) return true;
+    const stack = outlineChildLinks(links, ancestorId).map((l) => l.to);
+    const seen = new Set();
+    while (stack.length) {
+      const cur = stack.pop();
+      if (cur === nodeId) return true;
+      if (seen.has(cur)) continue;
+      seen.add(cur);
+      for (const l of outlineChildLinks(links, cur)) stack.push(l.to);
+    }
+    return false;
+  }
+  function buildOutlineNode(links, notes, id, depth, seen) {
+    if (depth > 64 || seen.has(id)) return null; // defensive cycle/depth guard
+    seen.add(id);
+    const note = notes.get(id);
+    if (!note) return null;
+    const children = outlineChildLinks(links, id)
+      .map((l) => buildOutlineNode(links, notes, l.to, depth + 1, seen))
+      .filter(Boolean);
+    return {
+      id: note.id,
+      title: note.title,
+      tags: note.tags,
+      updatedAt: note.updatedAt,
+      srsEnabled: !!ensureSrs(note).enabled,
+      childCount: children.length,
+      children,
+    };
+  }
+
+  // ── Spaced repetition (SM-2, Wozniak 1987) ─────────────────────────
+  // quality is an integer 0-5: 0 = complete blackout ... 5 = perfect
+  // recall. q >= 3 counts as a correct/passing response. This is the
+  // textbook algorithm, unmodified — see file header for why.
+  function sm2Schedule(srs, quality) {
+    const q = Math.max(0, Math.min(5, Math.round(Number(quality))));
+    let ease = typeof srs.ease === "number" ? srs.ease : 2.5;
+    let reps = srs.reps || 0;
+    let interval;
+
+    if (q < 3) {
+      reps = 0;
+      interval = 1;
+    } else {
+      if (reps === 0) interval = 1;
+      else if (reps === 1) interval = 6;
+      else interval = Math.round((srs.interval || 1) * ease);
+      reps += 1;
+    }
+
+    ease = ease + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
+    if (ease < 1.3) ease = 1.3;
+    ease = Math.round(ease * 100) / 100;
+
+    return { ease, reps, interval, lapsed: q < 3 };
   }
 
   // ── create — author a new note ────────────────────────────────────
@@ -110,6 +236,8 @@ export default function registerUnderstandingActions(registerLensAction) {
       createdAt: ts,
       updatedAt: ts,
       revisions: [{ at: ts, body, title }],
+      rootOrder: notes.size, // append at the end of the root-level outline order
+      srs: { enabled: false, state: "new", ease: 2.5, reps: 0, lapses: 0, interval: 0, dueAt: ts, lastReviewedAt: null },
     };
     notes.set(note.id, note);
     save();
@@ -169,6 +297,9 @@ export default function registerUnderstandingActions(registerLensAction) {
       if (note.revisions.length > 50) note.revisions.splice(0, note.revisions.length - 50);
     }
     if (params.tags != null) note.tags = cleanTags(params.tags);
+    if (params.reviewEnabled != null) {
+      ensureSrs(note).enabled = !!params.reviewEnabled;
+    }
     save();
     return { ok: true, result: { note: shapeNote(note), changed } };
   });
@@ -243,6 +374,9 @@ export default function registerUnderstandingActions(registerLensAction) {
     if (!notes.has(from) || !notes.has(to)) return { ok: false, error: "note not found" };
     const relation = String(params.relation || "relates-to").trim().toLowerCase().slice(0, 40)
       || "relates-to";
+    if (relation === OUTLINE_RELATION) {
+      return { ok: false, error: "use understanding.move to manage outline structure" };
+    }
     const links = linksFor(s, userId);
     const existing = links.find((l) => l.from === from && l.to === to && l.relation === relation);
     if (existing) return { ok: true, result: { link: existing, created: false } };
@@ -289,9 +423,10 @@ export default function registerUnderstandingActions(registerLensAction) {
     if (!target) return { ok: false, error: "note not found" };
     const links = linksFor(s, userId);
 
-    // Manual links pointing at this note.
+    // Manual links pointing at this note (outline structural edges are
+    // surfaced via the dedicated `outline` macro, not mixed in here).
     const manual = links
-      .filter((l) => l.to === id)
+      .filter((l) => l.to === id && l.relation !== OUTLINE_RELATION)
       .map((l) => {
         const src = notes.get(l.from);
         return {
@@ -317,7 +452,7 @@ export default function registerUnderstandingActions(registerLensAction) {
 
     // Outbound: links + wiki-links FROM this note.
     const outboundManual = links
-      .filter((l) => l.from === id)
+      .filter((l) => l.from === id && l.relation !== OUTLINE_RELATION)
       .map((l) => ({
         linkId: l.id,
         kind: "manual",
@@ -345,6 +480,187 @@ export default function registerUnderstandingActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // ── move — set/change a note's outline parent (nested structure) ──
+  // Reuses the link substrate with the reserved "outline-child" relation.
+  // Enforces the two invariants a free-form link graph doesn't: at most
+  // one outline parent per note, and no cycles.
+
+  registerLensAction("understanding", "move", (ctx, _a, params = {}) => {
+  try {
+    const s = getState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const notes = notesFor(s, userId);
+    const id = String(params.id || "");
+    const note = notes.get(id);
+    if (!note) return { ok: false, error: "note not found" };
+    const links = linksFor(s, userId);
+    const rawParentId = params.parentId != null ? String(params.parentId).trim() : "";
+
+    // Detach any existing outline-parent edge first (a note has at most
+    // one — re-parenting always replaces, never adds a second edge).
+    const existing = outlineParentLink(links, id);
+    if (existing) {
+      const idx = links.indexOf(existing);
+      if (idx >= 0) links.splice(idx, 1);
+    }
+
+    if (!rawParentId) {
+      // Detach to root level; append at the end of the root order.
+      const rootIds = [...notes.values()].filter((n) => !outlineParentLink(links, n.id) && n.id !== id);
+      note.rootOrder = rootIds.length;
+      save();
+      return { ok: true, result: { id, parentId: null } };
+    }
+    if (rawParentId === id) return { ok: false, error: "a note cannot be its own parent" };
+    if (!notes.has(rawParentId)) return { ok: false, error: "parent note not found" };
+    if (isOutlineDescendant(links, id, rawParentId)) {
+      return { ok: false, error: "move would create a cycle" };
+    }
+    const siblingOrders = outlineChildLinks(links, rawParentId).map((l) => l.order ?? 0);
+    const nextOrder = siblingOrders.length ? Math.max(...siblingOrders) + 1 : 0;
+    links.push({
+      id: uid("lnk"),
+      from: rawParentId,
+      to: id,
+      relation: OUTLINE_RELATION,
+      order: nextOrder,
+      note: "",
+      createdAt: now(),
+    });
+    save();
+    return { ok: true, result: { id, parentId: rawParentId, order: nextOrder } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ── reorder — change a note's position among its outline siblings ──
+
+  registerLensAction("understanding", "reorder", (ctx, _a, params = {}) => {
+  try {
+    const s = getState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const notes = notesFor(s, userId);
+    const id = String(params.id || "");
+    if (!notes.has(id)) return { ok: false, error: "note not found" };
+    const links = linksFor(s, userId);
+    const parentLink = outlineParentLink(links, id);
+    const parentId = parentLink ? parentLink.from : null;
+
+    const siblingIds = parentId
+      ? outlineChildLinks(links, parentId).map((l) => l.to)
+      : [...notes.values()]
+          .filter((n) => !outlineParentLink(links, n.id))
+          .sort((a, b) => (a.rootOrder ?? 0) - (b.rootOrder ?? 0))
+          .map((n) => n.id);
+
+    const withoutId = siblingIds.filter((sid) => sid !== id);
+    const targetIndex = Math.max(0, Math.min(withoutId.length, parseInt(params.index, 10) || 0));
+    withoutId.splice(targetIndex, 0, id);
+
+    withoutId.forEach((sid, i) => {
+      if (parentId) {
+        const l = links.find((x) => x.relation === OUTLINE_RELATION && x.from === parentId && x.to === sid);
+        if (l) l.order = i;
+      } else {
+        const n = notes.get(sid);
+        if (n) n.rootOrder = i;
+      }
+    });
+    save();
+    return { ok: true, result: { id, parentId, order: withoutId } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ── outline — nested tree (one subtree, or the full root forest) ──
+
+  registerLensAction("understanding", "outline", (ctx, _a, params = {}) => {
+  try {
+    const s = getState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actor(ctx);
+    const notes = notesFor(s, userId);
+    const links = linksFor(s, userId);
+
+    if (params.rootId) {
+      const rootId = String(params.rootId);
+      if (!notes.has(rootId)) return { ok: false, error: "note not found" };
+      const tree = buildOutlineNode(links, notes, rootId, 0, new Set());
+      return { ok: true, result: { tree } };
+    }
+
+    const rootIds = [...notes.values()]
+      .filter((n) => !outlineParentLink(links, n.id))
+      .sort((a, b) => (a.rootOrder ?? 0) - (b.rootOrder ?? 0))
+      .map((n) => n.id);
+    const forest = rootIds
+      .map((id) => buildOutlineNode(links, notes, id, 0, new Set()))
+      .filter(Boolean);
+    return { ok: true, result: { forest, rootCount: forest.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ── review — submit a recall-quality rating; schedules the next due
+  //    date via SM-2. Enrolls the note in the review queue if it wasn't
+  //    already (reviewing a note is itself an opt-in signal). ──────────
+
+  registerLensAction("understanding", "review", (ctx, _a, params = {}) => {
+  try {
+    const s = getState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const notes = notesFor(s, actor(ctx));
+    const note = notes.get(String(params.id || ""));
+    if (!note) return { ok: false, error: "note not found" };
+    if (params.quality == null || params.quality === "") return { ok: false, error: "quality (0-5) required" };
+    const quality = Number(params.quality);
+    if (!Number.isFinite(quality)) return { ok: false, error: "quality must be a number 0-5" };
+
+    const srs = ensureSrs(note);
+    const sched = sm2Schedule(srs, quality);
+    srs.enabled = true;
+    srs.ease = sched.ease;
+    srs.reps = sched.reps;
+    srs.interval = sched.interval;
+    srs.lapses = (srs.lapses || 0) + (sched.lapsed ? 1 : 0);
+    srs.state = sched.lapsed ? "relearning" : sched.reps >= 3 ? "review" : "learning";
+    srs.lastReviewedAt = now();
+    srs.dueAt = new Date(Date.now() + sched.interval * 86400000).toISOString();
+    save();
+    return {
+      ok: true,
+      result: {
+        noteId: note.id,
+        quality: Math.max(0, Math.min(5, Math.round(quality))),
+        nextReviewInDays: sched.interval,
+        srs: { ...srs },
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ── due — notes enrolled in review whose dueAt has passed ──────────
+
+  registerLensAction("understanding", "due", (ctx, _a, params = {}) => {
+  try {
+    const s = getState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const notes = notesFor(s, actor(ctx));
+    const nowMs = Date.now();
+    const rows = [];
+    for (const n of notes.values()) {
+      const srs = ensureSrs(n);
+      if (!srs.enabled) continue;
+      const dueMs = srs.dueAt ? new Date(srs.dueAt).getTime() : 0;
+      if (dueMs <= nowMs) {
+        rows.push({ ...shapeNote(n), overdueDays: Math.max(0, Math.floor((nowMs - dueMs) / 86400000)) });
+      }
+    }
+    rows.sort((a, b) => String(a.srs.dueAt || "").localeCompare(String(b.srs.dueAt || "")));
+    const limit = Math.max(1, Math.min(200, parseInt(params.limit, 10) || 50));
+    return { ok: true, result: { due: rows.slice(0, limit), count: rows.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // ── graph — interactive linked-knowledge graph (nodes + edges) ────
 
   registerLensAction("understanding", "graph", (ctx, _a, _params = {}) => {
@@ -359,8 +675,10 @@ export default function registerUnderstandingActions(registerLensAction) {
     const bump = (id) => degree.set(id, (degree.get(id) || 0) + 1);
     const edges = [];
 
-    // Manual link edges.
+    // Manual link edges (outline structural edges have their own view —
+    // see the `outline` macro — so they're excluded from this graph).
     for (const l of links) {
+      if (l.relation === OUTLINE_RELATION) continue;
       if (!notes.has(l.from) || !notes.has(l.to)) continue;
       edges.push({ id: l.id, from: l.from, to: l.to, relation: l.relation, kind: "manual" });
       bump(l.from); bump(l.to);
@@ -549,19 +867,29 @@ export default function registerUnderstandingActions(registerLensAction) {
     const links = linksFor(s, userId);
     let wikiEdges = 0;
     const tagSet = new Set();
+    let reviewEnabledCount = 0;
+    let dueForReviewCount = 0;
+    const nowMs = Date.now();
     for (const n of notes.values()) {
       for (const t of n.tags) tagSet.add(t);
       for (const t of extractWikiLinks(n.body)) {
         if (findNoteByTitle(notes, t)) wikiEdges++;
+      }
+      const srs = ensureSrs(n);
+      if (srs.enabled) {
+        reviewEnabledCount++;
+        if (srs.dueAt && new Date(srs.dueAt).getTime() <= nowMs) dueForReviewCount++;
       }
     }
     return {
       ok: true,
       result: {
         noteCount: notes.size,
-        manualLinkCount: links.length,
+        manualLinkCount: links.filter((l) => l.relation !== OUTLINE_RELATION).length,
         wikiLinkCount: wikiEdges,
         tagCount: tagSet.size,
+        reviewEnabledCount,
+        dueForReviewCount,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

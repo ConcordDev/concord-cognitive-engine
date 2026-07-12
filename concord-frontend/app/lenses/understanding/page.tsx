@@ -36,10 +36,12 @@ import { api, lensRun } from '@/lib/api/client';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { NotesWorkbench } from '@/components/understanding/NotesWorkbench';
 import { KnowledgeGraph } from '@/components/understanding/KnowledgeGraph';
+import { OutlineView } from '@/components/understanding/OutlineView';
+import { ReviewQueue } from '@/components/understanding/ReviewQueue';
 import {
   Lightbulb, Search, Loader2, Plus, Sparkles, GitBranch, TrendingUp,
   RefreshCw, X, ChevronRight, AlertCircle, Layers,
-  Clock, BarChart3, Zap, BookOpen, FileText, Network,
+  Clock, BarChart3, Zap, BookOpen, FileText, Network, ListTree,
 } from 'lucide-react';
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -75,6 +77,8 @@ interface NotesOverview {
   manualLinkCount?: number;
   wikiLinkCount?: number;
   tagCount?: number;
+  reviewEnabledCount?: number;
+  dueForReviewCount?: number;
 }
 
 interface PromotionEval {
@@ -100,7 +104,7 @@ interface LineageNode {
   composedAt?: string | number;
 }
 
-type Tab = 'notes' | 'graph' | 'browse' | 'compose' | 'evolution' | 'lineage';
+type Tab = 'notes' | 'outline' | 'review' | 'graph' | 'browse' | 'compose' | 'evolution' | 'lineage';
 
 // ── Page ────────────────────────────────────────────────────────────
 
@@ -121,6 +125,8 @@ export default function UnderstandingPage() {
   useLensCommand(
     [
       { id: 'tab-notes',     keys: 'n', description: 'Notes',     category: 'navigation', action: () => setTab('notes') },
+      { id: 'tab-outline',   keys: 'o', description: 'Outline',   category: 'navigation', action: () => setTab('outline') },
+      { id: 'tab-review',    keys: 'r', description: 'Review',    category: 'navigation', action: () => setTab('review') },
       { id: 'tab-graph',     keys: 'g', description: 'Graph',     category: 'navigation', action: () => setTab('graph') },
       { id: 'tab-browse',    keys: 'b', description: 'Browse',    category: 'navigation', action: () => setTab('browse') },
       { id: 'tab-compose',   keys: 'c', description: 'Compose',   category: 'navigation', action: () => setTab('compose') },
@@ -188,6 +194,8 @@ export default function UnderstandingPage() {
 
         <nav className="flex gap-2 mt-5 mb-5 border-b border-white/10 pb-3 overflow-x-auto">
           <TabButton current={tab} value="notes"     label="Notes"     onClick={() => setTab('notes')}     icon={<FileText  className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="outline"   label="Outline"   onClick={() => setTab('outline')}   icon={<ListTree  className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="review"    label="Review"    onClick={() => setTab('review')}    icon={<Clock     className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="graph"     label="Graph"     onClick={() => setTab('graph')}     icon={<Network   className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="browse"    label="Browse"    onClick={() => setTab('browse')}    icon={<Search    className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="compose"   label="Compose"   onClick={() => setTab('compose')}   icon={<Plus      className="w-3.5 h-3.5" />} />
@@ -196,6 +204,8 @@ export default function UnderstandingPage() {
         </nav>
 
         {tab === 'notes'     && <NotesWorkbench key={pendingNoteId ?? 'workbench'} initialNoteId={pendingNoteId} onChanged={refreshHeader} />}
+        {tab === 'outline'   && <OutlineView onOpenNote={openNoteInWorkbench} />}
+        {tab === 'review'    && <ReviewQueue onOpenNote={openNoteInWorkbench} onChanged={refreshHeader} />}
         {tab === 'graph'     && <KnowledgeGraph onOpenNote={openNoteInWorkbench} />}
         {tab === 'browse'    && <BrowseTab subjectKinds={subjectKinds} />}
         {tab === 'compose'   && <ComposeTab subjectKinds={subjectKinds} onComposed={refreshHeader} />}
@@ -221,10 +231,12 @@ function StatsStrip({
     ? (notesOverview.manualLinkCount ?? 0) + (notesOverview.wikiLinkCount ?? 0)
     : null;
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
       <StatCard label="Notes" value={String(notesOverview?.noteCount ?? '—')} icon={<FileText className="w-3.5 h-3.5 text-violet-300" />} />
       <StatCard label="Links" value={linkTotal != null ? String(linkTotal) : '—'} icon={<Network className="w-3.5 h-3.5 text-cyan-300" />} />
       <StatCard label="Tags" value={String(notesOverview?.tagCount ?? '—')} icon={<BookOpen className="w-3.5 h-3.5 text-rose-300" />} />
+      <StatCard label="In review" value={String(notesOverview?.reviewEnabledCount ?? '—')} icon={<Clock className="w-3.5 h-3.5 text-amber-300" />} />
+      <StatCard label="Due now" value={String(notesOverview?.dueForReviewCount ?? '—')} icon={<Clock className="w-3.5 h-3.5 text-rose-300" />} />
       <StatCard label="Composed" value={String(stats?.totalUnderstandings ?? '—')} icon={<Lightbulb className="w-3.5 h-3.5 text-amber-300" />} />
       <StatCard label="Promoted" value={String(stats?.promotedCount ?? '—')} icon={<TrendingUp className="w-3.5 h-3.5 text-emerald-300" />} />
       <StatCard label="Subject kinds" value={String(subjectKindsCount)} icon={<Layers className="w-3.5 h-3.5 text-blue-300" />} />
