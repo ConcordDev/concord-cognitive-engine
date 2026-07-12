@@ -223,7 +223,7 @@ subsystem doc confirmed already fixed or false-positive — see the source docs 
 | law | Contract dashboard lacks deeper trend analytics | Ironclad | ENGINEERING | "flagged future" | law-capability-map.md |
 | law | ~~`law.draft`/`law.cite` exist but need id-scoped UI wiring~~ **CLOSED (`38bfe84c`)** | Ironclad | ENGINEERING | "no backend work needed" | law-capability-map.md |
 | law | No real-time multi-party collaborative redlining | Ironclad | ENGINEERING | "large scope — flagged future" | law-capability-map.md |
-| law-enforcement | No persisted "Case" record type server-side | none stated | ENGINEERING | "a new macro group... out of scope for this pass" | law-enforcement-capability-map.md |
+| law-enforcement | ~~No persisted "Case" record type server-side~~ **CLOSED (2026-07-12, pending commit)** — migration 362 `le_cases` + `caseCreate`/`caseGet`/`caseList`/`caseUpdate`/`caseLinked` macros + `CaseManagementPanel.tsx` Cases tab | none stated | ENGINEERING | "a new macro group... out of scope for this pass" | law-enforcement-capability-map.md |
 | legal | No cross-jurisdiction, state-specific court procedural rules (FRCP-only) | Clio (implied) | DATA-SOURCING | "no honest free source found... an honest scope limit" | legal-capability-map.md |
 | literary | ~~`crystallize` (resonance-salience passage ranking) has no UI~~ **CLOSED (`bc1e820f`)** | none stated | ENGINEERING | "real, cheap reads with no external dependency" | literary-capability-map.md |
 | lock | Sovereignty "invariants" are frozen-constant, not a live runtime-checked pass/fail history | none stated | ENGINEERING | "not fixed in this pass" | lock-capability-map.md |
