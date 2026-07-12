@@ -11966,6 +11966,9 @@ council.reviewAndCommitQuiet = function reviewAndCommitQuiet(ctx, input={}){
 try {
   allowMacro("entity","terminal",{ roles:["owner","admin","member"], scopes:["*"] });
   allowMacro("entity","terminal_approve",{ roles:["owner","admin","council"], scopes:["*"] });
+  // Read-only listing for the same approval queue — same ACL shape as
+  // terminal_approve (mirrored intentionally; see the second call site too).
+  allowMacro("entity","terminal_pending",{ roles:["owner","admin","council"], scopes:["*"] });
 } catch {
   // allowMacro may not be defined yet in older builds; ignore (local-first default is open).
 }
@@ -12336,6 +12339,66 @@ const approvalRatio = decisiveVotes > 0 ? (approveCount / decisiveVotes) : 0;
   };
 }, {
   summary: "Vote on entity terminal request (council-gated)",
+  public: false
+});
+
+// ============================================================================
+// GA: COUNCIL APPROVAL QUEUE — READ-ONLY LISTING (Wave 4 gap-closure)
+// ============================================================================
+// terminal_approve had no way for a reviewer to discover what's awaiting
+// their vote — the queue was write-only (pushed by `terminal`, searched by
+// exact id by `terminal_approve`). This macro is a pure read: it does not
+// create, mutate, or execute anything, and never touches votes/status —
+// only `terminal_approve` (unmodified above) can do that. Same ACL as
+// `terminal_approve` (see both `allowMacro("entity","terminal_pending",...)`
+// call sites, which mirror the two `terminal_approve` registrations exactly).
+register("entity", "terminal_pending", async (ctx, _input={}) => {
+  ensureQueues();
+  const voterId = String(ctx?.actor?.userId || "");
+  const all = STATE.queues?.terminalRequests || [];
+
+  const summarize = (p) => {
+    const votes = p?.votes || { approve: [], deny: [], abstain: [] };
+    const myVote = (() => {
+      if (!voterId) return null;
+      if ((votes.approve || []).some(v => v?.id === voterId)) return "approve";
+      if ((votes.deny || []).some(v => v?.id === voterId)) return "deny";
+      if ((votes.abstain || []).some(v => v?.id === voterId)) return "abstain";
+      return null;
+    })();
+    return {
+      id: p?.id,
+      entityId: p?.entityId,
+      command: p?.command,
+      riskLevel: p?.riskLevel,
+      status: p?.status,
+      createdAt: p?.createdAt,
+      approvedAt: p?.approvedAt || null,
+      deniedAt: p?.deniedAt || null,
+      threshold: p?.threshold,
+      votes: {
+        approve: (votes.approve || []).length,
+        deny: (votes.deny || []).length,
+        abstain: (votes.abstain || []).length,
+      },
+      myVote,
+    };
+  };
+
+  const pending = all
+    .filter(p => p?.status === "pending")
+    .sort((a, b) => String(a?.createdAt || "").localeCompare(String(b?.createdAt || ""))) // oldest first: FIFO review queue
+    .map(summarize);
+
+  const recentHistory = all
+    .filter(p => p?.status && p.status !== "pending")
+    .sort((a, b) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || ""))) // newest first
+    .slice(0, 20)
+    .map(summarize);
+
+  return { ok: true, pending, recentHistory };
+}, {
+  summary: "List pending (and recent resolved) entity terminal council-approval proposals (read-only, council-gated)",
   public: false
 });
 
@@ -30890,6 +30953,9 @@ allowMacro("goals", "config", _ACL_OWNER);
 allowMacro("chicken3", "meta_propose", _ACL_OWNER);
 allowMacro("chicken3", "meta_commit_quiet", _ACL_OWNER);
 allowMacro("entity", "terminal_approve", _ACL_ADMIN);
+// Mirrors terminal_approve exactly (same override site, same rule) so the
+// read-only listing is governed by the identical ACL entry as the vote.
+allowMacro("entity", "terminal_pending", _ACL_ADMIN);
 allowMacro("grounding", "approve_action", _ACL_ADMIN);
 
 // Council: read operations are public; user-facing mutations are member-level.
