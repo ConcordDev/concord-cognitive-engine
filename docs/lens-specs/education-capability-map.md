@@ -133,23 +133,79 @@ from the free, keyless Open Trivia Database (opentdb.com) as visible DTUs,
 deduped by question text. Surfaced via `<LensFeedButton domain="education"
 label="Live quiz feed" />` at the bottom of the workbench.
 
-The `courses-*` / `discussions-*` / `cohorts-*` buckets are scoped
+~~The `courses-*` / `discussions-*` / `cohorts-*` buckets are scoped
 per-`userId` (in-memory `Map<userId, T[]>`, persisted via
 `_concordSaveStateDebounced`) rather than being a shared global catalog —
 so "Course catalog" / course discussions / cohorts are honestly a
 *personal* authoring + tracking surface (you create courses, you enroll
 yourself, you discuss your own courses), not a multi-tenant Coursera
-marketplace where other users' courses appear. This is a real, working
-design choice (nothing fabricated — enrollment counts, discussion posts,
-etc. are all genuinely computed from real actions) but it does cap how far
-the Khan/Coursera parity claim can go without a shared-catalog substrate.
-Flagged here as a disposition, not fixed: **ENGINEERING** if a genuine
-multi-tenant catalog is wanted later (drop the per-user Map keying for
-`courses`/`discussions`/`cohorts`, add an `authorId` field, gate
-mutation-only actions by ownership) — no external data dependency, just a
-backend storage-model change or migration to SQLite tables. Out of scope
-for this pass; not a fabrication or a broken wire, so it's not a Wave-3
-defect, just a noted ceiling.
+marketplace where other users' courses appear.~~ **CLOSED (2026-07-12,
+pending commit).** Built the genuine multi-tenant catalog: migration 363
+(`edu_courses` / `edu_discussions` / `edu_cohorts`) adds an `author_id`
+column to each and switches all three from per-user `Map<userId, T[]>`
+keying to one shared row per item, reached through a `courseStore(ctx,
+s)` / `discussionStore(ctx, s)` / `cohortStore(ctx, s)` db-or-memory
+facade — the same pattern `domains/tournaments.js` (migration 360)
+established this session. **Both cross-user visibility AND cross-restart
+durability are solved**, not just visibility: when `ctx.db` is reachable
+(the always-true case for the running server) every read/write goes
+through real SQL, so the catalog survives a restart; the in-memory
+fallback (bare unit-test/minimal builds) keeps the same Maps but re-keyed
+as `Map<id, item>` (global, not per-user), so cross-user visibility holds
+in both modes.
+
+- **Courses** (`courses-list` / `courses-search`) now return every
+  `status: "published"` course from every author, plus the caller's own
+  drafts — `params.mine: true` narrows to "courses I authored" (any
+  status), the view an instructor needs for their own catalog including
+  unpublished drafts. `courses-create` defaults `status: "published"`
+  (backward-compatible: create → immediately catalog-visible, matching
+  every pre-existing test's assumption); pass `status: "draft"` to stage a
+  course privately first. A draft is invisible to `courses-get`/
+  `courses-list`/`courses-search` for anyone but its author — the
+  draft/publish split this doc's prior text flagged as unresolved.
+- **Mutation is ownership-gated.** New `courses-update` macro (title/
+  description/category/level/durationHours/instructor/institution/kind/
+  rating/status, whitelisted) and the existing `courses-delete` both
+  reject any caller whose `userId !== course.authorId` with
+  `{ok:false, error:"not authorized: ..."}` — the same shape of boundary
+  `domains/studio.js`'s collaborator-aware fix (`508399c7`, this session)
+  established for a different domain. `lessons-create` is gated the same
+  way (only the course author can add lessons to it); `enrollments-enroll`
+  now looks the course up in the shared catalog so a learner can enroll in
+  *anyone's* published course, not just their own.
+- **Discussions and cohorts are genuinely shared, open-participation
+  surfaces** — a course discussion thread now shows every user's posts
+  (previously each user saw only their own posts as a private list, which
+  made a "forum" that never had more than one participant); cohorts are
+  listable/joinable/leavable by anyone, with `cohorts-set-status`
+  (the scheduled → live → ended transition) gated to the scheduling
+  author only, so a roster member can't hijack another instructor's
+  session state.
+- `dashboard-summary`'s `totalCourses` now means "courses I authored"
+  (computed by filtering the shared catalog by `authorId === caller`)
+  rather than "the length of my private course bucket" — same number for
+  the common case, but now honestly reflects "mine" now that the
+  underlying store is global.
+- Frontend: `components/education/CoursesCatalog.tsx` gained a "Mine"
+  toggle (`courses-list` with `mine: true`), an author-badge (`Yours`) +
+  draft-lock badge, a live enrollment-count display, a
+  draft/publish checkbox on course creation, and ownership-gated
+  delete/add-lesson affordances (a non-author sees "Only {instructor} can
+  add lessons" instead of the mutation UI, matching the backend's real
+  rejection rather than showing a button that would silently 403).
+- Regression coverage: `server/tests/education-domain-parity.test.js`
+  gained a `multi-tenant catalog: cross-user visibility + ownership-gated
+  mutation` describe block (cross-visibility, ownership-gated update/
+  delete/lessons-create, draft-privacy round-trip); new
+  `server/tests/education-catalog-persistence.test.js` (6 cases) proves
+  the DB path specifically — real rows in `edu_courses`/`edu_discussions`/
+  `edu_cohorts` (checked via raw SQL against a second, independent
+  `better-sqlite3` handle to the same file — restart-equivalence), cross-
+  user visibility through the DB store, and ownership-gated mutation with
+  the row provably unchanged on disk after a rejected non-author attempt;
+  new `concord-frontend/components/education/CoursesCatalog.test.tsx` (3
+  cases) pins the frontend ownership-gating UI.
 
 ## Verification performed
 
@@ -157,7 +213,14 @@ defect, just a noted ceiling.
   server/tests/education-domain-parity.test.js
   server/tests/education-lens-macros.test.js` → **80/80 pass, 0 fail**
   (unchanged by this fix — these tests hit the macros directly, not through
-  the buggy frontend wrapper).
+  the buggy frontend wrapper). **Update (2026-07-12, multi-tenant catalog
+  close-out):** the same three files, re-run against a fresh isolated
+  `DB_PATH`, are now **140/140 pass, 0 fail** (up from 107 — the delta is
+  the new multi-tenant-catalog describe blocks in
+  `education-domain-parity.test.js` and the `cohorts-list`/`courses-list`
+  assertion updates, not a regression); adding the new
+  `education-catalog-persistence.test.js` (6 DB-path-specific cases)
+  brings the four-file total to **146/146 pass, 0 fail**.
 - Booted the real server in-process (`server/tests/depth/_harness.js`) and
   called `gradeCalculation` with both the old buggy shape and the fixed
   shape — confirmed `studentsGraded: 0` (all-zero stats) vs `studentsGraded:

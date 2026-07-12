@@ -454,13 +454,204 @@ export default function registerEducationActions(registerLensAction) {
   function getEduState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
-    if (!STATE.educationLens) {
-      STATE.educationLens = {
-        decks: new Map(),   // userId → deck[]
-        cards: new Map(),   // userId → card[]
-      };
-    }
-    return STATE.educationLens;
+    if (!STATE.educationLens) STATE.educationLens = {};
+    const s = STATE.educationLens;
+    // decks/cards (flashcards) are genuinely personal — stay userId → item[].
+    if (!(s.decks instanceof Map)) s.decks = new Map();   // userId → deck[]
+    if (!(s.cards instanceof Map)) s.cards = new Map();   // userId → card[]
+    // courses/discussions/cohorts are the shared multi-tenant catalog
+    // (migration 363) — in-memory fallback keeps them GLOBAL (id → item),
+    // never per-user, so cross-user visibility holds even without ctx.db.
+    // Defensively re-initialized per-key (not just "if no educationLens at
+    // all") because several test files pre-seed a partial
+    // `educationLens: { decks, cards }` object directly.
+    if (!(s.courses instanceof Map)) s.courses = new Map();
+    if (!(s.discussions instanceof Map)) s.discussions = new Map();
+    if (!(s.cohorts instanceof Map)) s.cohorts = new Map();
+    return s;
+  }
+
+  // ─── Shared multi-tenant catalog store (migration 363) ────────────
+  // Courses/discussions/cohorts are the ONE shared surface in this domain —
+  // a real cross-user catalog with ownership-gated mutation. Everything
+  // else in this file (decks, skills, enrollments, notes, exercises, ...)
+  // stays a personal per-user bucket via ensureEduBucket below; this is a
+  // closed, deliberate scope, not an oversight (see docs/lens-specs/
+  // education-capability-map.md, "per-user Map keying").
+  //
+  // Same db-or-memory facade pattern as domains/tournaments.js (mig 360):
+  // when ctx.db is reachable and the edu_courses table exists, every
+  // read/write goes through real SQL (durable across restarts); otherwise
+  // a process-global (not per-user) in-memory Map backs the same
+  // interface, so cross-user visibility holds in both modes — only
+  // restart-durability differs.
+  function getEduDb(ctx) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
+    if (!db) return null;
+    try { db.prepare("SELECT 1 FROM edu_courses LIMIT 1").get(); }
+    catch { return null; }
+    return db;
+  }
+  function safeParseArrayEdu(json) {
+    try { const v = JSON.parse(json); return Array.isArray(v) ? v : []; }
+    catch { return []; }
+  }
+
+  // ── courses ─────────────────────────────────────────────────────
+  function rowToCourse(r) {
+    return {
+      id: r.id, authorId: r.author_id, title: r.title,
+      description: r.description || "", category: r.category || "general",
+      level: r.level || "beginner", durationHours: r.duration_hours || 0,
+      instructor: r.instructor || "", institution: r.institution || "",
+      kind: r.kind || "course", status: r.status || "published",
+      lessons: safeParseArrayEdu(r.lessons_json),
+      enrollmentCount: r.enrollment_count || 0, rating: r.rating || 0,
+      createdAt: r.created_at,
+    };
+  }
+  function courseToParams(c) {
+    return {
+      id: c.id, author_id: c.authorId, title: c.title,
+      description: c.description || "", category: c.category || "general",
+      level: c.level || "beginner", duration_hours: Number(c.durationHours) || 0,
+      instructor: c.instructor || "", institution: c.institution || "",
+      kind: c.kind || "course", status: c.status || "published",
+      enrollment_count: Number(c.enrollmentCount) || 0, rating: Number(c.rating) || 0,
+      lessons_json: JSON.stringify(Array.isArray(c.lessons) ? c.lessons : []),
+      created_at: c.createdAt,
+    };
+  }
+  const UPSERT_COURSE_SQL = `
+    INSERT INTO edu_courses
+      (id, author_id, title, description, category, level, duration_hours,
+       instructor, institution, kind, status, enrollment_count, rating,
+       lessons_json, created_at)
+    VALUES
+      (@id, @author_id, @title, @description, @category, @level, @duration_hours,
+       @instructor, @institution, @kind, @status, @enrollment_count, @rating,
+       @lessons_json, @created_at)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title, description = excluded.description,
+      category = excluded.category, level = excluded.level,
+      duration_hours = excluded.duration_hours, instructor = excluded.instructor,
+      institution = excluded.institution, kind = excluded.kind, status = excluded.status,
+      enrollment_count = excluded.enrollment_count, rating = excluded.rating,
+      lessons_json = excluded.lessons_json
+  `;
+  function dbCourseStore(db) {
+    return {
+      listAll() { return db.prepare("SELECT * FROM edu_courses ORDER BY rowid ASC").all().map(rowToCourse); },
+      get(id) { const r = db.prepare("SELECT * FROM edu_courses WHERE id = ?").get(id); return r ? rowToCourse(r) : null; },
+      put(c) { db.prepare(UPSERT_COURSE_SQL).run(courseToParams(c)); },
+      delete(id) { db.prepare("DELETE FROM edu_courses WHERE id = ?").run(id); },
+    };
+  }
+  function memCourseStore(s) {
+    return {
+      listAll() { return [...s.courses.values()]; },
+      get(id) { return s.courses.get(id) || null; },
+      put(c) { s.courses.set(c.id, c); },
+      delete(id) { s.courses.delete(id); },
+    };
+  }
+  function courseStore(ctx, s) {
+    const db = getEduDb(ctx);
+    return db ? dbCourseStore(db) : memCourseStore(s);
+  }
+  // A caller may always see their OWN courses (draft or published); anyone
+  // else only sees `status === 'published'`. Keeps a draft genuinely
+  // private to its author until they publish it.
+  function courseVisibleTo(course, userId) {
+    return !!course && (course.status === "published" || course.authorId === userId);
+  }
+
+  // ── discussions (course-scoped forum posts; open-post, no author gate
+  //    beyond what already existed) ───────────────────────────────
+  function rowToDiscussion(r) {
+    return { id: r.id, courseId: r.course_id, text: r.text, replyTo: r.reply_to || null, author: r.author_id, upvotes: r.upvotes || 0, createdAt: r.created_at };
+  }
+  function discussionToParams(d) {
+    return { id: d.id, course_id: d.courseId, author_id: d.author, text: d.text, reply_to: d.replyTo || null, upvotes: Number(d.upvotes) || 0, created_at: d.createdAt };
+  }
+  const UPSERT_DISCUSSION_SQL = `
+    INSERT INTO edu_discussions (id, course_id, author_id, text, reply_to, upvotes, created_at)
+    VALUES (@id, @course_id, @author_id, @text, @reply_to, @upvotes, @created_at)
+    ON CONFLICT(id) DO UPDATE SET upvotes = excluded.upvotes
+  `;
+  function dbDiscussionStore(db) {
+    return {
+      listByCourse(courseId) { return db.prepare("SELECT * FROM edu_discussions WHERE course_id = ? ORDER BY rowid ASC").all(courseId).map(rowToDiscussion); },
+      listAll() { return db.prepare("SELECT * FROM edu_discussions ORDER BY rowid ASC").all().map(rowToDiscussion); },
+      get(id) { const r = db.prepare("SELECT * FROM edu_discussions WHERE id = ?").get(id); return r ? rowToDiscussion(r) : null; },
+      put(d) { db.prepare(UPSERT_DISCUSSION_SQL).run(discussionToParams(d)); },
+    };
+  }
+  function memDiscussionStore(s) {
+    return {
+      listByCourse(courseId) { return [...s.discussions.values()].filter(d => d.courseId === courseId); },
+      listAll() { return [...s.discussions.values()]; },
+      get(id) { return s.discussions.get(id) || null; },
+      put(d) { s.discussions.set(d.id, d); },
+    };
+  }
+  function discussionStore(ctx, s) {
+    const db = getEduDb(ctx);
+    return db ? dbDiscussionStore(db) : memDiscussionStore(s);
+  }
+
+  // ── cohorts (course-scoped live classroom sessions; open-join, but
+  //    status transitions gated to the scheduling author) ────────────
+  function rowToCohort(r) {
+    return {
+      id: r.id, courseId: r.course_id || null, authorId: r.author_id,
+      title: r.title, instructor: r.instructor, scheduledAt: r.scheduled_at,
+      durationMin: r.duration_min || 60, capacity: r.capacity || 30,
+      status: r.status || "scheduled", roster: safeParseArrayEdu(r.roster_json),
+      agenda: r.agenda || "", startedAt: r.started_at || null, endedAt: r.ended_at || null,
+      createdAt: r.created_at,
+    };
+  }
+  function cohortToParams(c) {
+    return {
+      id: c.id, course_id: c.courseId || null, author_id: c.authorId,
+      title: c.title, instructor: c.instructor, scheduled_at: c.scheduledAt,
+      duration_min: Number(c.durationMin) || 60, capacity: Number(c.capacity) || 30,
+      status: c.status || "scheduled", roster_json: JSON.stringify(Array.isArray(c.roster) ? c.roster : []),
+      agenda: c.agenda || "", started_at: c.startedAt || null, ended_at: c.endedAt || null,
+      created_at: c.createdAt,
+    };
+  }
+  const UPSERT_COHORT_SQL = `
+    INSERT INTO edu_cohorts
+      (id, course_id, author_id, title, instructor, scheduled_at, duration_min,
+       capacity, status, roster_json, agenda, started_at, ended_at, created_at)
+    VALUES
+      (@id, @course_id, @author_id, @title, @instructor, @scheduled_at, @duration_min,
+       @capacity, @status, @roster_json, @agenda, @started_at, @ended_at, @created_at)
+    ON CONFLICT(id) DO UPDATE SET
+      status = excluded.status, roster_json = excluded.roster_json,
+      started_at = excluded.started_at, ended_at = excluded.ended_at
+  `;
+  function dbCohortStore(db) {
+    return {
+      listByCourse(courseId) { return db.prepare("SELECT * FROM edu_cohorts WHERE course_id = ? ORDER BY rowid ASC").all(courseId).map(rowToCohort); },
+      listAll() { return db.prepare("SELECT * FROM edu_cohorts ORDER BY rowid ASC").all().map(rowToCohort); },
+      get(id) { const r = db.prepare("SELECT * FROM edu_cohorts WHERE id = ?").get(id); return r ? rowToCohort(r) : null; },
+      put(c) { db.prepare(UPSERT_COHORT_SQL).run(cohortToParams(c)); },
+    };
+  }
+  function memCohortStore(s) {
+    return {
+      listByCourse(courseId) { return [...s.cohorts.values()].filter(c => c.courseId === courseId); },
+      listAll() { return [...s.cohorts.values()]; },
+      get(id) { return s.cohorts.get(id) || null; },
+      put(c) { s.cohorts.set(c.id, c); },
+    };
+  }
+  function cohortStore(ctx, s) {
+    const db = getEduDb(ctx);
+    return db ? dbCohortStore(db) : memCohortStore(s);
   }
 
   /**
@@ -778,15 +969,25 @@ Constraints:
     return h;
   }
 
-  // ── Courses CRUD + catalog search ─────────────────────────────
+  // ── Courses: shared multi-tenant catalog + ownership-gated mutation ──
+  // courses-list / courses-search return every PUBLISHED course from every
+  // author, plus the caller's own drafts (never someone else's draft).
+  // Pass `mine: true` to see only courses the caller authored (any status)
+  // — the "My Courses" view an instructor needs regardless of publish
+  // state. Mutating an existing course (courses-update, courses-delete) is
+  // gated to `course.authorId === caller`.
 
   registerLensAction("education", "courses-list", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
-    const courses = ensureEduBucket(s, "courses", userId);
+    const store = courseStore(ctx, s);
     const category = params.category ? String(params.category) : null;
-    const filtered = category ? courses.filter(c => c.category === category) : courses;
-    return { ok: true, result: { courses: filtered, total: filtered.length } };
+    const mineOnly = params.mine === true;
+    let list = mineOnly
+      ? store.listAll().filter(c => c.authorId === userId)
+      : store.listAll().filter(c => courseVisibleTo(c, userId));
+    if (category) list = list.filter(c => c.category === category);
+    return { ok: true, result: { courses: list, total: list.length } };
   });
 
   registerLensAction("education", "courses-create", (ctx, _a, params = {}) => {
@@ -795,7 +996,7 @@ Constraints:
     const title = String(params.title || "").trim();
     if (!title) return { ok: false, error: "title required" };
     const course = {
-      id: uidEdu("course"), title,
+      id: uidEdu("course"), authorId: userId, title,
       description: String(params.description || ""),
       category: String(params.category || "general"),
       level: ["beginner", "intermediate", "advanced"].includes(params.level) ? params.level : "beginner",
@@ -803,12 +1004,43 @@ Constraints:
       instructor: String(params.instructor || ""),
       institution: String(params.institution || ""),
       kind: ["course", "specialization", "certificate", "guided_project"].includes(params.kind) ? params.kind : "course",
+      // Default published (backward-compatible with the pre-catalog single-
+      // user behavior every existing test relies on: create → immediately
+      // visible). Pass status:"draft" to stage a course privately first.
+      status: params.status === "draft" ? "draft" : "published",
       lessons: [],
       enrollmentCount: 0,
       rating: Math.max(0, Math.min(5, Number(params.rating) || 0)),
       createdAt: new Date().toISOString(),
     };
-    ensureEduBucket(s, "courses", userId).push(course);
+    courseStore(ctx, s).put(course);
+    saveStateIfAvailable();
+    return { ok: true, result: { course } };
+  });
+
+  registerLensAction("education", "courses-update", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const store = courseStore(ctx, s);
+    const id = String(params.id || "");
+    const course = store.get(id);
+    if (!course) return { ok: false, error: "course not found" };
+    if (course.authorId !== userId) return { ok: false, error: "not authorized: only the course author can update this course" };
+    if (params.title != null) {
+      const title = String(params.title).trim();
+      if (!title) return { ok: false, error: "title cannot be empty" };
+      course.title = title;
+    }
+    if (params.description != null) course.description = String(params.description);
+    if (params.category != null) course.category = String(params.category);
+    if (params.level != null) course.level = ["beginner", "intermediate", "advanced"].includes(params.level) ? params.level : course.level;
+    if (params.durationHours != null) course.durationHours = Math.max(0, Number(params.durationHours) || 0);
+    if (params.instructor != null) course.instructor = String(params.instructor);
+    if (params.institution != null) course.institution = String(params.institution);
+    if (params.kind != null) course.kind = ["course", "specialization", "certificate", "guided_project"].includes(params.kind) ? params.kind : course.kind;
+    if (params.rating != null) course.rating = Math.max(0, Math.min(5, Number(params.rating) || 0));
+    if (params.status != null) course.status = params.status === "draft" ? "draft" : "published";
+    store.put(course);
     saveStateIfAvailable();
     return { ok: true, result: { course } };
   });
@@ -817,19 +1049,20 @@ Constraints:
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const id = String(params.id || "");
-    const course = ensureEduBucket(s, "courses", userId).find(c => c.id === id);
-    if (!course) return { ok: false, error: "course not found" };
+    const course = courseStore(ctx, s).get(id);
+    if (!course || !courseVisibleTo(course, userId)) return { ok: false, error: "course not found" };
     return { ok: true, result: { course } };
   });
 
   registerLensAction("education", "courses-delete", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
+    const store = courseStore(ctx, s);
     const id = String(params.id || "");
-    const list = ensureEduBucket(s, "courses", userId);
-    const idx = list.findIndex(c => c.id === id);
-    if (idx < 0) return { ok: false, error: "course not found" };
-    list.splice(idx, 1);
+    const course = store.get(id);
+    if (!course) return { ok: false, error: "course not found" };
+    if (course.authorId !== userId) return { ok: false, error: "not authorized: only the course author can delete this course" };
+    store.delete(id);
     saveStateIfAvailable();
     return { ok: true, result: { id, deleted: true } };
   });
@@ -839,7 +1072,7 @@ Constraints:
     const userId = eduActor(ctx);
     const query = String(params.query || "").trim().toLowerCase();
     if (!query) return { ok: false, error: "query required" };
-    const all = ensureEduBucket(s, "courses", userId);
+    const all = courseStore(ctx, s).listAll().filter(c => courseVisibleTo(c, userId));
     const matches = all.filter(c =>
       c.title.toLowerCase().includes(query) ||
       c.description.toLowerCase().includes(query) ||
@@ -856,19 +1089,21 @@ Constraints:
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const courseId = String(params.courseId || "");
-    const course = ensureEduBucket(s, "courses", userId).find(c => c.id === courseId);
-    if (!course) return { ok: false, error: "course not found" };
+    const course = courseStore(ctx, s).get(courseId);
+    if (!course || !courseVisibleTo(course, userId)) return { ok: false, error: "course not found" };
     return { ok: true, result: { lessons: course.lessons || [] } };
   });
 
   registerLensAction("education", "lessons-create", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
+    const store = courseStore(ctx, s);
     const courseId = String(params.courseId || "");
     const title = String(params.title || "").trim();
     if (!courseId || !title) return { ok: false, error: "courseId and title required" };
-    const course = ensureEduBucket(s, "courses", userId).find(c => c.id === courseId);
-    if (!course) return { ok: false, error: "course not found" };
+    const course = store.get(courseId);
+    if (!course || !courseVisibleTo(course, userId)) return { ok: false, error: "course not found" };
+    if (course.authorId !== userId) return { ok: false, error: "not authorized: only the course author can add lessons" };
     const lesson = {
       id: uidEdu("less"), title,
       videoUrl: String(params.videoUrl || ""),
@@ -878,6 +1113,7 @@ Constraints:
       createdAt: new Date().toISOString(),
     };
     course.lessons.push(lesson);
+    store.put(course);
     saveStateIfAvailable();
     return { ok: true, result: { lesson } };
   });
@@ -908,10 +1144,10 @@ Constraints:
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const enrollments = ensureEduBucket(s, "enrollments", userId);
-    const courses = ensureEduBucket(s, "courses", userId);
+    const store = courseStore(ctx, s);
     const progress = ensureEduBucket(s, "lessonProgress", userId);
     const enriched = enrollments.map(e => {
-      const course = courses.find(c => c.id === e.courseId);
+      const course = store.get(e.courseId);
       const total = course?.lessons?.length || 0;
       const completed = progress.filter(p => p.courseId === e.courseId).length;
       return {
@@ -927,10 +1163,11 @@ Constraints:
   registerLensAction("education", "enrollments-enroll", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
+    const store = courseStore(ctx, s);
     const courseId = String(params.courseId || "");
     if (!courseId) return { ok: false, error: "courseId required" };
-    const course = ensureEduBucket(s, "courses", userId).find(c => c.id === courseId);
-    if (!course) return { ok: false, error: "course not found" };
+    const course = store.get(courseId);
+    if (!course || !courseVisibleTo(course, userId)) return { ok: false, error: "course not found" };
     const enrollments = ensureEduBucket(s, "enrollments", userId);
     if (enrollments.find(e => e.courseId === courseId)) return { ok: false, error: "already enrolled" };
     const enrollment = {
@@ -940,6 +1177,7 @@ Constraints:
     };
     enrollments.push(enrollment);
     course.enrollmentCount = (course.enrollmentCount || 0) + 1;
+    store.put(course);
     saveStateIfAvailable();
     return { ok: true, result: { enrollment } };
   });
@@ -1077,8 +1315,8 @@ Constraints:
     const userId = eduActor(ctx);
     const courseId = String(params.courseId || "");
     if (!courseId) return { ok: false, error: "courseId required" };
-    const course = ensureEduBucket(s, "courses", userId).find(c => c.id === courseId);
-    if (!course) return { ok: false, error: "course not found" };
+    const course = courseStore(ctx, s).get(courseId);
+    if (!course || !courseVisibleTo(course, userId)) return { ok: false, error: "course not found" };
     const lessons = course.lessons || [];
     const progress = ensureEduBucket(s, "lessonProgress", userId);
     const completed = progress.filter(p => p.courseId === courseId).length;
@@ -1211,15 +1449,18 @@ Constraints:
     return { ok: true, result: { id, deleted: true } };
   });
 
-  // ── Course discussions ────────────────────────────────────────
+  // ── Course discussions — shared per-course forum, cross-user by design.
+  //    Open-post/open-upvote (a genuine forum, no per-post ownership gate
+  //    beyond what the domain already had); the multi-tenant fix here is
+  //    visibility — a discussion thread now shows every user's posts, not
+  //    just the reader's own. ─────────────────────────────────────────
 
   registerLensAction("education", "discussions-list", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = eduActor(ctx);
+    const store = discussionStore(ctx, s);
     const courseId = params.courseId ? String(params.courseId) : null;
-    const all = ensureEduBucket(s, "discussions", userId);
-    const filtered = courseId ? all.filter(d => d.courseId === courseId) : all;
-    return { ok: true, result: { discussions: filtered.slice().reverse() } };
+    const all = courseId ? store.listByCourse(courseId) : store.listAll();
+    return { ok: true, result: { discussions: all.slice().reverse() } };
   });
 
   registerLensAction("education", "discussions-post", (ctx, _a, params = {}) => {
@@ -1235,18 +1476,19 @@ Constraints:
       upvotes: 0,
       createdAt: new Date().toISOString(),
     };
-    ensureEduBucket(s, "discussions", userId).push(post);
+    discussionStore(ctx, s).put(post);
     saveStateIfAvailable();
     return { ok: true, result: { post } };
   });
 
   registerLensAction("education", "discussions-upvote", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = eduActor(ctx);
+    const store = discussionStore(ctx, s);
     const id = String(params.id || "");
-    const post = ensureEduBucket(s, "discussions", userId).find(p => p.id === id);
+    const post = store.get(id);
     if (!post) return { ok: false, error: "post not found" };
     post.upvotes++;
+    store.put(post);
     saveStateIfAvailable();
     return { ok: true, result: { upvotes: post.upvotes } };
   });
@@ -1257,7 +1499,9 @@ Constraints:
   try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
-    const courses = ensureEduBucket(s, "courses", userId);
+    // "My courses" = courses this user authored (courses are now a shared
+    // catalog; a per-user dashboard stat means "mine", not "everyone's").
+    const myCourseCount = courseStore(ctx, s).listAll().filter(c => c.authorId === userId).length;
     const enrollments = ensureEduBucket(s, "enrollments", userId);
     const progress = ensureEduBucket(s, "lessonProgress", userId);
     const skills = ensureEduBucket(s, "skills", userId);
@@ -1278,7 +1522,7 @@ Constraints:
     return {
       ok: true,
       result: {
-        totalCourses: courses.length,
+        totalCourses: myCourseCount,
         enrolledCount: enrollments.length,
         completedLessons: progress.length,
         totalSkills: skills.length,
@@ -1537,13 +1781,13 @@ Constraints:
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const paths = ensureEduBucket(s, "learningPaths", userId);
-    const courses = ensureEduBucket(s, "courses", userId);
+    const store = courseStore(ctx, s);
     const progress = ensureEduBucket(s, "lessonProgress", userId);
     const enriched = paths.map(p => {
       let unlocked = true;
       let completedSteps = 0;
       const steps = p.courseIds.map((cid) => {
-        const course = courses.find(c => c.id === cid);
+        const course = store.get(cid);
         const total = course?.lessons?.length || 0;
         const done = progress.filter(pr => pr.courseId === cid).length;
         const courseComplete = total > 0 && done >= total;
@@ -1626,13 +1870,17 @@ Constraints:
   // A cohort session has a scheduled time, instructor, roster, and a
   // live status. Learners join/leave; instructor opens/closes the room.
 
+  // Cohorts are shared course-scoped live sessions — any user can list/
+  // join/leave any cohort (open enrollment, like the discussions forum
+  // above), but the scheduling author is the only one who can transition
+  // its status (cohorts-set-status), same ownership-gate shape as courses.
+
   registerLensAction("education", "cohorts-list", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = eduActor(ctx);
+    const store = cohortStore(ctx, s);
     const courseId = params.courseId ? String(params.courseId) : null;
-    const all = ensureEduBucket(s, "cohorts", userId);
-    const filtered = courseId ? all.filter(c => c.courseId === courseId) : all;
-    return { ok: true, result: { cohorts: filtered.slice().sort((a, b) => String(a.scheduledAt).localeCompare(String(b.scheduledAt))) } };
+    const all = courseId ? store.listByCourse(courseId) : store.listAll();
+    return { ok: true, result: { cohorts: all.slice().sort((a, b) => String(a.scheduledAt).localeCompare(String(b.scheduledAt))) } };
   });
 
   registerLensAction("education", "cohorts-create", (ctx, _a, params = {}) => {
@@ -1643,7 +1891,7 @@ Constraints:
     if (!title) return { ok: false, error: "title required" };
     if (!instructor) return { ok: false, error: "instructor required" };
     const cohort = {
-      id: uidEdu("cohort"), title, instructor,
+      id: uidEdu("cohort"), authorId: userId, title, instructor,
       courseId: params.courseId ? String(params.courseId) : null,
       scheduledAt: params.scheduledAt ? String(params.scheduledAt) : new Date().toISOString(),
       durationMin: Math.max(0, Number(params.durationMin) || 60),
@@ -1651,9 +1899,10 @@ Constraints:
       status: "scheduled",
       roster: [],
       agenda: String(params.agenda || ""),
+      startedAt: null, endedAt: null,
       createdAt: new Date().toISOString(),
     };
-    ensureEduBucket(s, "cohorts", userId).push(cohort);
+    cohortStore(ctx, s).put(cohort);
     saveStateIfAvailable();
     return { ok: true, result: { cohort } };
   });
@@ -1661,14 +1910,16 @@ Constraints:
   registerLensAction("education", "cohorts-join", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
+    const store = cohortStore(ctx, s);
     const id = String(params.id || "");
     const learner = String(params.learner || userId).trim();
-    const cohort = ensureEduBucket(s, "cohorts", userId).find(c => c.id === id);
+    const cohort = store.get(id);
     if (!cohort) return { ok: false, error: "cohort not found" };
     if (cohort.status === "ended") return { ok: false, error: "cohort has ended" };
     if (cohort.roster.includes(learner)) return { ok: false, error: "already on roster" };
     if (cohort.roster.length >= cohort.capacity) return { ok: false, error: "cohort at capacity" };
     cohort.roster.push(learner);
+    store.put(cohort);
     saveStateIfAvailable();
     return { ok: true, result: { cohort } };
   });
@@ -1676,29 +1927,36 @@ Constraints:
   registerLensAction("education", "cohorts-leave", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
+    const store = cohortStore(ctx, s);
     const id = String(params.id || "");
     const learner = String(params.learner || userId).trim();
-    const cohort = ensureEduBucket(s, "cohorts", userId).find(c => c.id === id);
+    const cohort = store.get(id);
     if (!cohort) return { ok: false, error: "cohort not found" };
     const idx = cohort.roster.indexOf(learner);
     if (idx < 0) return { ok: false, error: "not on roster" };
     cohort.roster.splice(idx, 1);
+    store.put(cohort);
     saveStateIfAvailable();
     return { ok: true, result: { cohort } };
   });
 
-  // cohorts-set-status — instructor transitions scheduled → live → ended.
+  // cohorts-set-status — the scheduling author transitions scheduled → live
+  // → ended. Ownership-gated: any other caller (even a roster member) is
+  // rejected, matching the courses mutation-gate shape.
   registerLensAction("education", "cohorts-set-status", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
+    const store = cohortStore(ctx, s);
     const id = String(params.id || "");
     const status = String(params.status || "");
     if (!["scheduled", "live", "ended"].includes(status)) return { ok: false, error: "status must be scheduled|live|ended" };
-    const cohort = ensureEduBucket(s, "cohorts", userId).find(c => c.id === id);
+    const cohort = store.get(id);
     if (!cohort) return { ok: false, error: "cohort not found" };
+    if (cohort.authorId && cohort.authorId !== userId) return { ok: false, error: "not authorized: only the scheduling instructor can change cohort status" };
     cohort.status = status;
     if (status === "live") cohort.startedAt = new Date().toISOString();
     if (status === "ended") cohort.endedAt = new Date().toISOString();
+    store.put(cohort);
     saveStateIfAvailable();
     return { ok: true, result: { cohort } };
   });

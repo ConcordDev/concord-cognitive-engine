@@ -235,14 +235,97 @@ describe("regression: pre-existing analytical macros still work", () => {
 // ── Full-app parity (Khan + Coursera 2026) ────────────────────────
 
 describe("education.courses-* (CRUD + search)", () => {
-  it("create / list / get / delete cycle, per-user scoped", () => {
+  it("create / list / get / delete cycle: published courses are a shared multi-tenant catalog", () => {
     const a = call("courses-create", ctxA, { title: "Intro to ML", description: "fundamentals", category: "data", instructor: "Dr Sael" });
     assert.equal(a.ok, true);
     const id = a.result.course.id;
+    assert.equal(a.result.course.authorId, userA);
+    assert.equal(a.result.course.status, "published");
     assert.equal(call("courses-list", ctxA, {}).result.courses.length, 1);
-    assert.equal(call("courses-list", ctxB, {}).result.courses.length, 0);
+    // The whole point of the multi-tenant catalog fix: a PUBLISHED course
+    // authored by A is visible to a completely different user B.
+    assert.equal(call("courses-list", ctxB, {}).result.courses.length, 1);
     assert.equal(call("courses-get", ctxA, { id }).result.course.title, "Intro to ML");
+    assert.equal(call("courses-get", ctxB, { id }).result.course.title, "Intro to ML");
     assert.equal(call("courses-delete", ctxA, { id }).ok, true);
+  });
+
+  describe("multi-tenant catalog: cross-user visibility + ownership-gated mutation", () => {
+    it("a course authored by A is discoverable and enrollable by B", () => {
+      const created = call("courses-create", ctxA, { title: "Shared Course", category: "math", instructor: "Dr A" });
+      const id = created.result.course.id;
+
+      // B sees it in the global catalog and can look it up directly.
+      const listedByB = call("courses-list", ctxB, {});
+      assert.ok(listedByB.result.courses.some((c) => c.id === id));
+      assert.equal(call("courses-get", ctxB, { id }).result.course.title, "Shared Course");
+
+      // B can enroll in A's course.
+      const enr = call("enrollments-enroll", ctxB, { courseId: id });
+      assert.equal(enr.ok, true, enr.error);
+      const bEnrollments = call("enrollments-list", ctxB, {}).result.enrollments;
+      assert.ok(bEnrollments.some((e) => e.courseId === id));
+      // The enrollment is B's own, not visible in A's enrollment list.
+      const aEnrollments = call("enrollments-list", ctxA, {}).result.enrollments;
+      assert.ok(!aEnrollments.some((e) => e.courseId === id));
+    });
+
+    it("only the author can update or delete a course; a non-author's attempt is rejected cleanly", () => {
+      const created = call("courses-create", ctxA, { title: "A's Course", category: "science" });
+      const id = created.result.course.id;
+
+      // B (non-owner) cannot delete it.
+      const badDelete = call("courses-delete", ctxB, { id });
+      assert.equal(badDelete.ok, false);
+      assert.match(badDelete.error, /not authorized/);
+      // Course still exists and is unchanged.
+      assert.equal(call("courses-get", ctxA, { id }).result.course.title, "A's Course");
+
+      // B (non-owner) cannot update it either.
+      const badUpdate = call("courses-update", ctxB, { id, title: "Hijacked" });
+      assert.equal(badUpdate.ok, false);
+      assert.match(badUpdate.error, /not authorized/);
+      assert.equal(call("courses-get", ctxA, { id }).result.course.title, "A's Course");
+
+      // A (the real author) CAN update their own course.
+      const goodUpdate = call("courses-update", ctxA, { id, title: "A's Renamed Course" });
+      assert.equal(goodUpdate.ok, true);
+      assert.equal(goodUpdate.result.course.title, "A's Renamed Course");
+
+      // A (the real author) CAN delete their own course.
+      const goodDelete = call("courses-delete", ctxA, { id });
+      assert.equal(goodDelete.ok, true);
+      assert.equal(call("courses-get", ctxA, { id }).ok, false);
+    });
+
+    it("a draft course is private to its author until published", () => {
+      const draft = call("courses-create", ctxA, { title: "Unfinished Draft", status: "draft" });
+      const id = draft.result.course.id;
+      assert.equal(draft.result.course.status, "draft");
+
+      // A (author) sees their own draft in the default catalog view.
+      assert.ok(call("courses-list", ctxA, {}).result.courses.some((c) => c.id === id));
+      assert.equal(call("courses-get", ctxA, { id }).ok, true);
+
+      // B does NOT see the draft — neither in list nor by direct get.
+      assert.ok(!call("courses-list", ctxB, {}).result.courses.some((c) => c.id === id));
+      assert.equal(call("courses-get", ctxB, { id }).ok, false);
+
+      // Publishing it makes it visible to B.
+      const published = call("courses-update", ctxA, { id, status: "published" });
+      assert.equal(published.result.course.status, "published");
+      assert.ok(call("courses-list", ctxB, {}).result.courses.some((c) => c.id === id));
+    });
+
+    it("lessons-create is gated to the course author; a non-author's attempt is rejected", () => {
+      const created = call("courses-create", ctxA, { title: "Gated Lessons", category: "cs" });
+      const id = created.result.course.id;
+      const badLesson = call("lessons-create", ctxB, { courseId: id, title: "Sneaky lesson" });
+      assert.equal(badLesson.ok, false);
+      assert.match(badLesson.error, /not authorized/);
+      const goodLesson = call("lessons-create", ctxA, { courseId: id, title: "Real lesson" });
+      assert.equal(goodLesson.ok, true);
+    });
   });
   it("rejects empty title", () => {
     assert.equal(call("courses-create", ctxA, { title: "" }).ok, false);

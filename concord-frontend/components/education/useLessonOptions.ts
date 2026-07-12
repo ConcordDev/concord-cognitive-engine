@@ -15,14 +15,21 @@ interface RawLesson { id: string; title: string; order: number }
 interface RawCourse { id: string; title: string; lessons?: RawLesson[] }
 
 /**
- * Flattens the caller's own courses (education.courses-list — which embeds
+ * Flattens the visible course catalog (education.courses-list — which embeds
  * each course's `lessons` array directly, no extra round-trip needed) into a
- * pickable lesson list. This is the missing link for the video-progress /
- * transcript / notes / lesson-Q&A macros: they all key off a real `lessonId`,
- * but nothing in the UI surfaced one — CoursesCatalog's lesson rows never
- * displayed the raw id, so a user had no way to reach those macros short of
- * reading server state directly. Any component that needs a lessonId should
- * offer this picker instead of (or in addition to) a raw text field.
+ * pickable lesson list. Since courses-list now returns the shared multi-
+ * tenant catalog (every published course from every author, plus the
+ * caller's own drafts — see docs/lens-specs/education-capability-map.md),
+ * this picker offers lessons from any course the caller can see, not just
+ * ones they authored — which is the correct scope for personal-notes /
+ * video-progress / lesson-Q&A actions a learner takes against a course they
+ * enrolled in but didn't write. This is the missing link for the
+ * video-progress / transcript / notes / lesson-Q&A macros: they all key off
+ * a real `lessonId`, but nothing in the UI surfaced one — CoursesCatalog's
+ * lesson rows never displayed the raw id, so a user had no way to reach
+ * those macros short of reading server state directly. Any component that
+ * needs a lessonId should offer this picker instead of (or in addition to)
+ * a raw text field.
  */
 export function useLessonOptions() {
   const [options, setOptions] = useState<LessonOption[]>([]);
