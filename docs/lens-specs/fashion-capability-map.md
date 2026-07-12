@@ -128,7 +128,7 @@ provide them.
 | 17 | Resale / marketplace integration for unworn items | **ALREADY REAL (different, deliberate scope)** | `declutter-suggestions` (real depreciation-curve estimate) + `resale-list-item`/`resale-unlist-item`/`resale-listings` — a real listing **handoff** to external channels (Depop/Vinted/Poshmark/eBay/local), not an embedded checkout/payment flow. This is an honest, deliberate scope difference (Concord doesn't process resale payments), not a gap to close |
 | 18 | Capsule wardrobe planning | **ALREADY REAL** | `capsule-create`/`capsule-list`/`capsule-toggle-item`/`capsule-delete` — `FashionCapsulePanel` |
 | 19 | `#30wears`-style sustainability wear-pledge tracking | **ALREADY REAL** | `challenge-enroll`/`challenge-unenroll`/`challenge-list` — progress reads real `timesWorn`, not a fabricated counter |
-| 20 | Laundry/availability status (clean / dirty / at cleaner / lent out) | ~~**GENUINELY MISSING — HONEST, DEFERRED**~~ **CLOSED (2026-07-12, pending commit)** | See "Wave 4 gap-closure — laundry/availability status" below. A real `laundryStatus` field now exists on every closet item (`clean`/`dirty`/`at_cleaner`/`lent_out`, defaulting to `clean` including for back-compat reads of pre-existing items), settable via the existing `item-update` macro (exactly the small, well-scoped addition this row originally called for — no new macro), with a real "what can I wear right now" status filter on `item-list` and in `FashionClosetPanel`. |
+| 20 | Laundry/availability status (clean / dirty / at cleaner / lent out) | ~~**GENUINELY MISSING — HONEST, DEFERRED**~~ **CLOSED (2026-07-12, `d4cb7951`)** | See "Wave 4 gap-closure — laundry/availability status" below. A real `laundryStatus` field now exists on every closet item (`clean`/`dirty`/`at_cleaner`/`lent_out`, defaulting to `clean` including for back-compat reads of pre-existing items), settable via the existing `item-update` macro (exactly the small, well-scoped addition this row originally called for — no new macro), with a real "what can I wear right now" status filter on `item-list` and in `FashionClosetPanel`. |
 | 21 | AI-assisted item tagging from a photo (auto-detect category/color) | **UNSURFACED → WIRED THIS SESSION (honest form)** | `fashion.vision` existed with zero callers. Wired as a real, human-in-the-loop "Analyze photo" helper (see macro table above) rather than auto-filling fields from unstructured model prose |
 
 **Coverage summary:** 13 of 21 checklist items already real before this
@@ -364,7 +364,7 @@ follows that exact, pre-existing convention.
 - `cd concord-frontend && npx tsc --noEmit -p .` (full project) — 0
   errors.
 
-## Wave 4 gap-closure (2026-07-12, pending commit) — laundry/availability status
+## Wave 4 gap-closure (2026-07-12, `d4cb7951`) — laundry/availability status
 
 Closed checklist item #20 (see the table above). Confirmed genuinely
 missing before starting (`git log --oneline -10 -- server/domains/fashion.js
