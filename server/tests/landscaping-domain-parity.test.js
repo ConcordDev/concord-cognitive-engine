@@ -553,3 +553,170 @@ describe("landscaping — invoice status transitions (draft -> sent -> accepted 
     assert.equal(r.ok, false, "user B must not be able to transition user A's invoice");
   });
 });
+
+// ─── Feature 11 — persisted Client (CRM) entity ─────────────────────
+describe("landscaping — persisted Client (CRM) entity", () => {
+  it("client-add → client-list: an added client is listed with its contact fields", () => {
+    const added = call("client-add", ctxA, {
+      name: "Union Station HOA", phone: "555-0100", email: "hoa@example.com", address: "1 Union Sq",
+    });
+    assert.equal(added.ok, true);
+    assert.equal(added.result.client.name, "Union Station HOA");
+    assert.equal(added.result.client.phone, "555-0100");
+    assert.equal(added.result.client.email, "hoa@example.com");
+    assert.equal(added.result.client.address, "1 Union Sq");
+    const id = added.result.client.id;
+    const list = call("client-list", ctxA, {});
+    assert.equal(list.ok, true);
+    assert.ok(list.result.clients.some((c) => c.id === id), "client appears in the list");
+  });
+
+  it("client-add: rejects a blank name", () => {
+    const r = call("client-add", ctxA, { phone: "555-0000" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /name required/);
+  });
+
+  it("client-list: query filters by substring, case-insensitive", () => {
+    call("client-add", ctxA, { name: "Acme Bakery" });
+    call("client-add", ctxA, { name: "Beta Diner" });
+    const found = call("client-list", ctxA, { query: "acme" });
+    assert.equal(found.result.count, 1);
+    assert.equal(found.result.clients[0].name, "Acme Bakery");
+  });
+
+  it("client-add is user-scoped: a fresh user doesn't see another's clients", () => {
+    call("client-add", ctxA, { name: "Private Client" });
+    const list = call("client-list", ctxB, {});
+    assert.ok(!list.result.clients.some((c) => c.name === "Private Client"), "other user's roster is isolated");
+  });
+
+  it("proposal-build + clientId: resolves the client's name onto the proposal", () => {
+    const client = call("client-add", ctxA, { name: "Jane Doe" });
+    const cid = client.result.client.id;
+    const r = call("proposal-build", ctxA, {
+      clientId: cid,
+      lineItems: [{ description: "Labor", quantity: 1, unitCost: 100 }],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.client, "Jane Doe");
+    assert.equal(r.result.clientId, cid);
+    assert.match(r.result.proposalMarkdown, /Jane Doe/);
+  });
+
+  it("proposal-build: bad clientId is rejected (fails honest, doesn't silently fall through)", () => {
+    const r = call("proposal-build", ctxA, { clientId: "client_ghost", lineItems: [{ description: "x", quantity: 1, unitCost: 10 }] });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /client_not_found/);
+  });
+
+  it("proposal-build: REGRESSION — omitting clientId preserves the exact original free-text behavior", () => {
+    const r = call("proposal-build", ctxA, {
+      client: "Walk-in Customer",
+      lineItems: [{ description: "Labor", quantity: 1, unitCost: 100 }],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.client, "Walk-in Customer");
+    assert.equal(r.result.clientId, null);
+  });
+
+  it("proposal-build: works with STATE entirely gone when clientId is omitted (still pure-compute)", () => {
+    const savedState = globalThis._concordSTATE;
+    globalThis._concordSTATE = undefined;
+    try {
+      const r = call("proposal-build", ctxA, {
+        client: "No State Needed",
+        lineItems: [{ description: "Labor", quantity: 1, unitCost: 100 }],
+      });
+      assert.equal(r.ok, true);
+      assert.equal(r.result.client, "No State Needed");
+      assert.equal(r.result.clientId, null);
+    } finally {
+      globalThis._concordSTATE = savedState;
+    }
+  });
+
+  it("proposal-build: fails soft (not throws) when STATE is gone AND clientId is supplied", () => {
+    const savedState = globalThis._concordSTATE;
+    globalThis._concordSTATE = undefined;
+    try {
+      let r;
+      assert.doesNotThrow(() => {
+        r = call("proposal-build", ctxA, { clientId: "client_x", lineItems: [{ description: "x", quantity: 1, unitCost: 10 }] });
+      });
+      assert.equal(r.ok, false);
+      assert.equal(typeof r.error, "string");
+    } finally {
+      globalThis._concordSTATE = savedState;
+    }
+  });
+
+  it("invoice-from-proposal + clientId: resolves the client's name onto the invoice", () => {
+    const client = call("client-add", ctxA, { name: "Downtown Cafe" });
+    const cid = client.result.client.id;
+    const inv = call("invoice-from-proposal", ctxA, {
+      clientId: cid, lineItems: [{ description: "Repipe", quantity: 1, unitCost: 500 }],
+    });
+    assert.equal(inv.ok, true);
+    assert.equal(inv.result.invoice.client, "Downtown Cafe");
+    assert.equal(inv.result.invoice.clientId, cid);
+  });
+
+  it("invoice-from-proposal: bad clientId is rejected", () => {
+    const r = call("invoice-from-proposal", ctxA, { clientId: "client_ghost", lineItems: [{ description: "x", quantity: 1, unitCost: 10 }] });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /client_not_found/);
+  });
+
+  it("invoice-from-proposal: REGRESSION — omitting clientId preserves the exact original free-text behavior", () => {
+    const inv = call("invoice-from-proposal", ctxA, {
+      client: "Cash Sale", lineItems: [{ description: "Service call", quantity: 1, unitCost: 90 }],
+    });
+    assert.equal(inv.ok, true);
+    assert.equal(inv.result.invoice.client, "Cash Sale");
+    assert.equal(inv.result.invoice.clientId, null);
+  });
+
+  it("job-schedule + clientId: resolves the client's name/address onto the job", () => {
+    const client = call("client-add", ctxA, {
+      name: "Riverside Apartments", phone: "555-0200", address: "200 River Rd",
+    });
+    const cid = client.result.client.id;
+    const r = call("job-schedule", ctxA, { title: "Water feature repair", clientId: cid });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.job.client, "Riverside Apartments");
+    assert.equal(r.result.job.clientId, cid);
+    assert.equal(r.result.job.address, "200 River Rd"); // derived from the client record
+  });
+
+  it("job-schedule: bad clientId is rejected (fails honest, doesn't silently fall through)", () => {
+    const r = call("job-schedule", ctxA, { title: "Leak", clientId: "client_ghost" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /client_not_found/);
+  });
+
+  it("job-schedule: REGRESSION — omitting clientId preserves the exact original free-text behavior", () => {
+    const r = call("job-schedule", ctxA, {
+      title: "Faucet swap", client: "Walk-in Customer", address: "42 Elm St",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.job.client, "Walk-in Customer");
+    assert.equal(r.result.job.address, "42 Elm St");
+    assert.equal(r.result.job.clientId, null);
+  });
+
+  it("client-list: aggregates real jobsCount/invoiceCount/totalBilled across documents for the same client", () => {
+    const client = call("client-add", ctxA, { name: "Aggregate Test Client" });
+    const cid = client.result.client.id;
+    call("job-schedule", ctxA, { title: "Job A", clientId: cid });
+    call("job-schedule", ctxA, { title: "Job B", clientId: cid });
+    // subtotal 100 + default overhead 15% (15) + default margin 20% of 115 (23) = 138 total
+    const inv = call("invoice-from-proposal", ctxA, { clientId: cid, lineItems: [{ description: "x", quantity: 1, unitCost: 100 }] });
+    assert.equal(inv.result.invoice.total, 138);
+    const list = call("client-list", ctxA, {});
+    const found = list.result.clients.find((c) => c.id === cid);
+    assert.equal(found.jobsCount, 2);
+    assert.equal(found.invoiceCount, 1);
+    assert.equal(found.totalBilled, 138);
+  });
+});

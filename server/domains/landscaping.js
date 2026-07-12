@@ -611,9 +611,21 @@ export default function registerLandscapingActions(registerLensAction) {
     };
   }
 
-  registerLensAction("landscaping", "proposal-build", (_ctx, _a, params = {}) => {
+  registerLensAction("landscaping", "proposal-build", (ctx, _a, params = {}) => {
   try {
-    const computed = computeProposal(params);
+    // Optional clientId resolution (Feature 11, below) — only touches STATE
+    // when a clientId is actually supplied, so this macro stays pure-compute
+    // (no STATE dependency) on the free-text path exactly as it was before.
+    let effectiveParams = params;
+    let resolvedClientId = null;
+    if (lsClean(params.clientId, 64)) {
+      const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const ref = lsResolveClientRef(s, lsActor(ctx), params);
+      if (ref.error) return { ok: false, error: ref.error };
+      resolvedClientId = ref.clientId;
+      effectiveParams = { ...params, client: ref.client.name };
+    }
+    const computed = computeProposal(effectiveParams);
     if (computed.error) return { ok: false, error: computed.error };
     const { client, project, lineItems, subtotal, overhead, margin, tax, total, overheadPct, marginPct, taxPct } = computed;
     const md = [
@@ -649,6 +661,7 @@ export default function registerLandscapingActions(registerLensAction) {
         subtotal: Math.round(subtotal * 100) / 100,
         overhead, margin, tax, total,
         overheadPct, marginPct, taxPct,
+        clientId: resolvedClientId,
         proposalMarkdown: md,
         generatedAt: new Date().toISOString(),
       },
@@ -788,10 +801,16 @@ export default function registerLandscapingActions(registerLensAction) {
     if (!title) return { ok: false, error: "job title required" };
     const bedId = lsClean(params.bedId, 80) || null;
     if (bedId && !lsBeds(s, userId).find((b) => b.id === bedId)) return { ok: false, error: "bed not found" };
+    // Optional clientId resolution (Feature 11, below) — resolves a saved
+    // client's name/address onto the job; omitting clientId preserves the
+    // original free-text client/address fields byte-for-byte.
+    const ref = lsResolveClientRef(s, userId, params);
+    if (ref.error) return { ok: false, error: ref.error };
     const job = {
       id: lsId("job"), title,
-      client: lsClean(params.client, 120) || "",
-      address: lsClean(params.address, 200) || "",
+      client: ref.client ? ref.client.name : (lsClean(params.client, 120) || ""),
+      clientId: ref.clientId,
+      address: lsClean(params.address, 200) || (ref.client ? (ref.client.address || "") : ""),
       proposalId: lsClean(params.proposalId, 80) || null,
       bedId,
       crew: lsClean(params.crew, 120) || "",
@@ -889,7 +908,12 @@ export default function registerLandscapingActions(registerLensAction) {
   try {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = lsActor(ctx);
-    const computed = computeProposal(params);
+    // Optional clientId resolution (Feature 11, below) — resolves a saved
+    // client's name onto the invoice; omitting clientId preserves the
+    // original free-text client field byte-for-byte.
+    const ref = lsResolveClientRef(s, userId, params);
+    if (ref.error) return { ok: false, error: ref.error };
+    const computed = computeProposal(ref.client ? { ...params, client: ref.client.name } : params);
     if (computed.error) return { ok: false, error: computed.error };
     const invoices = lsInvoices(s, userId);
     const seq = invoices.length + 1;
@@ -898,6 +922,7 @@ export default function registerLandscapingActions(registerLensAction) {
       number: lsClean(params.number, 32) || `INV-${String(seq).padStart(4, "0")}`,
       proposalRef: lsClean(params.proposalRef, 80) || null,
       client: computed.client,
+      clientId: ref.clientId,
       project: computed.project,
       lineItems: computed.lineItems,
       subtotal: computed.subtotal,
@@ -1015,6 +1040,81 @@ export default function registerLandscapingActions(registerLensAction) {
       ok: true,
       result: { invoice: inv, balanceDue: Math.max(0, Math.round((inv.total - inv.amountPaid) * 100) / 100) },
     };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ─── Feature 11 — Persisted Client (CRM) entity ──────────────────────
+  // Closes the "no persisted Client entity" gap (docs/lens-specs/landscaping-
+  // capability-map.md): client name was previously a free-text field
+  // re-typed on every proposal-build/invoice-from-proposal/job-schedule
+  // call, so it never autocompleted future proposals and history didn't
+  // aggregate across documents for the same client. This mirrors plumbing's
+  // clientAdd/clientList/resolveClientRef (server/domains/plumbing.js) —
+  // the exact precedent this gap's capability-map entry names — adapted to
+  // this file's hyphenated macro-naming convention (client-add/client-list)
+  // and its globalThis._concordSTATE-backed Map pattern. A small, additive
+  // pair plus an OPTIONAL `clientId` accepted by proposal-build /
+  // invoice-from-proposal / job-schedule (the three macros that already
+  // took a free-text `client` field): passing `clientId` looks the client
+  // up and uses its name/address; omitting it preserves the original
+  // free-text behavior byte-for-byte.
+  function lsClients(s, userId) {
+    if (!(s.clients instanceof Map)) s.clients = new Map();
+    if (!s.clients.has(userId)) s.clients.set(userId, []);
+    return s.clients.get(userId);
+  }
+  function lsResolveClientRef(s, userId, params) {
+    const clientId = lsClean(params.clientId, 64) || null;
+    if (!clientId) return { clientId: null, client: null };
+    const found = lsClients(s, userId).find((c) => c.id === clientId);
+    if (!found) return { error: "client_not_found" };
+    return { clientId: found.id, client: found };
+  }
+
+  registerLensAction("landscaping", "client-add", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const name = lsClean(params.name, 80);
+    if (!name) return { ok: false, error: "name required" };
+    const client = {
+      id: lsId("client"), name,
+      phone: lsClean(params.phone, 40) || "",
+      email: lsClean(params.email, 120) || "",
+      address: lsClean(params.address, 200) || "",
+      notes: lsClean(params.notes, 400) || "",
+      createdAt: new Date().toISOString(),
+    };
+    lsClients(s, userId).push(client);
+    saveLand();
+    return { ok: true, result: { client } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // client-list — filterable by a substring `query`; enriches each client
+  // with real cross-document history (job count / invoice count / total
+  // billed) joined on clientId against the job + invoice stores above, the
+  // same way plumbing's clientList aggregates against dispatch + invoices.
+  registerLensAction("landscaping", "client-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const clients = lsClients(s, userId);
+    const jobs = lsJobs(s, userId);
+    const invoices = lsInvoices(s, userId);
+    const query = lsClean(params.query, 80).toLowerCase();
+    const filtered = query ? clients.filter((c) => c.name.toLowerCase().includes(query)) : clients;
+    const enriched = filtered.map((c) => {
+      const clientJobs = jobs.filter((j) => j.clientId === c.id);
+      const clientInvoices = invoices.filter((i) => i.clientId === c.id);
+      return {
+        ...c,
+        jobsCount: clientJobs.length,
+        invoiceCount: clientInvoices.length,
+        totalBilled: Math.round(clientInvoices.reduce((n, i) => n + i.total, 0) * 100) / 100,
+      };
+    });
+    return { ok: true, result: { clients: enriched, count: enriched.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 }

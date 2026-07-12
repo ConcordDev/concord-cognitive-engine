@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
+import { ClientAutocomplete, type LandscapingClientRecord } from '@/components/landscaping/ClientAutocomplete';
 import {
   LayoutGrid,
   ImageIcon,
@@ -1006,6 +1007,8 @@ interface ProposalResult {
 
 function ProposalBuilder({ onConverted }: { onConverted?: (invoiceNumber: string) => void }) {
   const [client, setClient] = useState('');
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [clients, setClients] = useState<LandscapingClientRecord[]>([]);
   const [project, setProject] = useState('');
   const [overheadPct, setOverheadPct] = useState('15');
   const [marginPct, setMarginPct] = useState('20');
@@ -1019,17 +1022,40 @@ function ProposalBuilder({ onConverted }: { onConverted?: (invoiceNumber: string
   const [converting, setConverting] = useState(false);
   const [convertedNumber, setConvertedNumber] = useState<string | null>(null);
 
+  // Load the persisted client roster once so the autocomplete has real
+  // suggestions + history (jobsCount/invoiceCount/totalBilled) from the
+  // first keystroke.
+  useEffect(() => {
+    (async () => {
+      const r = await lensRun<{ clients: LandscapingClientRecord[] }>('landscaping', 'client-list', {});
+      if (r.data.ok && r.data.result) setClients(r.data.result.clients || []);
+    })();
+  }, []);
+
+  const selectClient = (c: LandscapingClientRecord | null, text: string) => {
+    setClientId(c ? c.id : null);
+    setClient(text);
+  };
+  const handleClientCreated = (c: LandscapingClientRecord) => {
+    setClients((cs) => (cs.some((existing) => existing.id === c.id) ? cs : [...cs, c]));
+  };
+
   const setItem = (i: number, patch: Partial<LineItem>) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
 
   // Shared with convertToInvoice below — the invoice conversion re-runs the
   // exact same server-side math (server/domains/landscaping.js#computeProposal)
   // from these raw inputs rather than trusting the already-rendered totals.
+  // `clientId` is sent additively: when a saved client is linked, the server
+  // resolves its name onto the proposal/invoice (server/domains/
+  // landscaping.js#lsResolveClientRef); a plain free-text client (no
+  // clientId) behaves exactly as it did before this file existed.
   const buildPayload = () => {
     const valid = items.filter((it) => it.description.trim() && it.unitCost);
     if (!valid.length) return null;
     return {
       client: client.trim(),
+      clientId: clientId || undefined,
       project: project.trim(),
       overheadPct: Number(overheadPct) || 0,
       marginPct: Number(marginPct) || 0,
@@ -1094,11 +1120,13 @@ function ProposalBuilder({ onConverted }: { onConverted?: (invoiceNumber: string
         </div>
       )}
       <div className="grid grid-cols-2 gap-2">
-        <input
-          className={inputCls}
-          placeholder="Client name"
+        <ClientAutocomplete
+          clients={clients}
           value={client}
-          onChange={(e) => setClient(e.target.value)}
+          clientId={clientId}
+          onSelect={selectClient}
+          onCreated={handleClientCreated}
+          placeholder="Client name"
         />
         <input
           className={inputCls}
