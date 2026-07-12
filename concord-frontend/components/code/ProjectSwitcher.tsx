@@ -77,7 +77,7 @@ export function ProjectSwitcher({ value, onChange, onCreated, onDeleted }: { val
         <div className="text-xs text-gray-400 italic">No projects.</div>
       ) : (
         <div className="flex items-center gap-1">
-          <select value={value || ''} onChange={e => onChange(e.target.value)} className="flex-1 min-w-0 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Select project" value={value || ''} onChange={e => onChange(e.target.value)} className="flex-1 min-w-0 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="">— Select project —</option>
             {list.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>

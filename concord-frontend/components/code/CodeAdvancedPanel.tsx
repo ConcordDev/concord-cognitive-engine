@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ProjectSwitcher } from './ProjectSwitcher';
+import { useCodeProject } from './CodeProjectContext';
 
 type AdvTab = 'intellisense' | 'debugger' | 'remote' | 'chat' | 'extensions' | 'layout' | 'liveshare';
 
@@ -41,7 +42,10 @@ interface FileRow { path: string; language: string; size: number }
 
 export function CodeAdvancedPanel() {
   const [tab, setTab] = useState<AdvTab>('intellisense');
-  const [projectId, setProjectId] = useState<string | null>(null);
+  // Shared across the quick-script tabs + CodeWorkbenchSection via
+  // CodeProjectContext — previously this was its own, disconnected
+  // ProjectSwitcher instance. See that file's header comment.
+  const { projectId, setProjectId } = useCodeProject();
   const [files, setFiles] = useState<FileRow[]>([]);
 
   const refreshFiles = useCallback(async () => {
