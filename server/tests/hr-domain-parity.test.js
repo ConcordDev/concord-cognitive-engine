@@ -311,3 +311,145 @@ describe("hr — per-user isolation", () => {
     assert.equal(cross.ok, false);
   });
 });
+
+describe("hr — I-9 / E-Verify employment eligibility", () => {
+  it("i9-add creates a pending record for a real document type", () => {
+    const emp = seedEmployee(ctxA);
+    const r = call("i9-add", ctxA, {
+      employeeId: emp.id, documentType: "us_passport", documentIdentifier: "X1234567",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.record.status, "pending");
+    assert.equal(r.result.record.documentType, "us_passport");
+    assert.equal(r.result.record.everifyStatus, "not_submitted");
+  });
+
+  it("i9-add rejects an unknown employee", () => {
+    const r = call("i9-add", ctxA, { employeeId: "emp_ghost", documentType: "us_passport" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /employee not found/);
+  });
+
+  it("i9-add rejects an invalid document type instead of silently defaulting", () => {
+    const emp = seedEmployee(ctxA);
+    const r = call("i9-add", ctxA, { employeeId: emp.id, documentType: "napkin" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /invalid document type/);
+  });
+
+  it("i9-add requires an expirationDate for a document type that always expires", () => {
+    const emp = seedEmployee(ctxA);
+    const noExp = call("i9-add", ctxA, { employeeId: emp.id, documentType: "employment_authorization_document" });
+    assert.equal(noExp.ok, false);
+    assert.match(noExp.error, /expirationDate/);
+    const withExp = call("i9-add", ctxA, {
+      employeeId: emp.id, documentType: "employment_authorization_document", expirationDate: "2099-01-01",
+    });
+    assert.equal(withExp.ok, true);
+    assert.equal(withExp.result.record.expirationDate, "2099-01-01");
+  });
+
+  it("i9-verify transitions pending -> verified and rejects verifying a rejected record", () => {
+    const emp = seedEmployee(ctxA);
+    const rec = call("i9-add", ctxA, { employeeId: emp.id, documentType: "permanent_resident_card", expirationDate: "2099-01-01" }).result.record;
+    const verified = call("i9-verify", ctxA, { id: rec.id });
+    assert.equal(verified.ok, true);
+    assert.equal(verified.result.record.status, "verified");
+    assert.ok(verified.result.record.verifiedAt);
+
+    const rec2 = call("i9-add", ctxA, { employeeId: emp.id, documentType: "us_passport" }).result.record;
+    call("i9-reject", ctxA, { id: rec2.id, reason: "expired at intake" });
+    const reverify = call("i9-verify", ctxA, { id: rec2.id });
+    assert.equal(reverify.ok, false);
+    assert.match(reverify.error, /cannot verify a rejected/);
+  });
+
+  it("i9-reject records a reason and rejects double-reject", () => {
+    const emp = seedEmployee(ctxA);
+    const rec = call("i9-add", ctxA, { employeeId: emp.id, documentType: "us_passport" }).result.record;
+    const rejected = call("i9-reject", ctxA, { id: rec.id, reason: "document appears altered" });
+    assert.equal(rejected.ok, true);
+    assert.equal(rejected.result.record.status, "rejected");
+    assert.equal(rejected.result.record.rejectionReason, "document appears altered");
+    const dup = call("i9-reject", ctxA, { id: rec.id, reason: "again" });
+    assert.equal(dup.ok, false);
+    assert.match(dup.error, /already rejected/);
+  });
+
+  it("i9-list surfaces daysUntilExpiration and auto-expires past-due records", () => {
+    const emp = seedEmployee(ctxA);
+    const rec = call("i9-add", ctxA, {
+      employeeId: emp.id, documentType: "employment_authorization_document", expirationDate: "2000-01-01",
+    }).result.record;
+    call("i9-verify", ctxA, { id: rec.id, expirationDate: "2000-01-01" });
+    const list = call("i9-list", ctxA, { employeeId: emp.id });
+    assert.equal(list.ok, true);
+    assert.equal(list.result.records[0].status, "expired");
+    assert.ok(list.result.records[0].daysUntilExpiration < 0);
+  });
+
+  it("i9-everify-submit rejects an invalid status enum", () => {
+    const emp = seedEmployee(ctxA);
+    const rec = call("i9-add", ctxA, { employeeId: emp.id, documentType: "us_passport" }).result.record;
+    const r = call("i9-everify-submit", ctxA, { id: rec.id, caseNumber: "E123", status: "vibes-good" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /invalid E-Verify status/);
+  });
+
+  it("i9-everify-submit final_nonconfirmation cascades the I-9 record to rejected", () => {
+    const emp = seedEmployee(ctxA);
+    const rec = call("i9-add", ctxA, { employeeId: emp.id, documentType: "us_passport" }).result.record;
+    call("i9-verify", ctxA, { id: rec.id });
+    const submitted = call("i9-everify-submit", ctxA, {
+      id: rec.id, caseNumber: "E-2026-000123", status: "final_nonconfirmation",
+    });
+    assert.equal(submitted.ok, true);
+    assert.equal(submitted.result.record.everifyStatus, "final_nonconfirmation");
+    assert.equal(submitted.result.record.status, "rejected");
+    assert.equal(submitted.result.record.rejectionReason, "E-Verify Final Nonconfirmation");
+  });
+
+  it("i9-document-attach reuses the hr-document store and links the doc id", () => {
+    const emp = seedEmployee(ctxA);
+    const rec = call("i9-add", ctxA, { employeeId: emp.id, documentType: "us_passport" }).result.record;
+    const attached = call("i9-document-attach", ctxA, { id: rec.id, title: "Passport scan" });
+    assert.equal(attached.ok, true);
+    assert.equal(attached.result.record.attachedDocumentIds.length, 1);
+    const docs = call("hr-document-list", ctxA, { employeeId: emp.id });
+    assert.equal(docs.result.count, 1);
+    assert.equal(docs.result.documents[0].kind, "i9_support");
+  });
+
+  it("i9-status org-wide reports compliancePct, missing, and overdue (>3 days, no record)", () => {
+    seedEmployee(ctxA, { hireDate: "2020-01-01" }); // overdue: hired long ago, no I-9
+    const emp2 = seedEmployee(ctxA, { hireDate: "2022-01-01" });
+    call("i9-add", ctxA, { employeeId: emp2.id, documentType: "us_passport" });
+    call("i9-verify", ctxA, { id: call("i9-list", ctxA, { employeeId: emp2.id }).result.records[0].id });
+    const st = call("i9-status", ctxA, {});
+    assert.equal(st.ok, true);
+    assert.equal(st.result.activeEmployees, 2);
+    assert.equal(st.result.verified, 1);
+    assert.equal(st.result.missing, 1);
+    assert.equal(st.result.overdue, 1);
+    assert.equal(st.result.compliancePct, 50);
+  });
+
+  it("i9-status per-employee returns that employee's records only", () => {
+    const emp = seedEmployee(ctxA);
+    const other = seedEmployee(ctxA, { name: "Other" });
+    call("i9-add", ctxA, { employeeId: emp.id, documentType: "us_passport" });
+    call("i9-add", ctxA, { employeeId: other.id, documentType: "us_passport" });
+    const st = call("i9-status", ctxA, { employeeId: emp.id });
+    assert.equal(st.ok, true);
+    assert.equal(st.result.records.length, 1);
+    assert.equal(st.result.records[0].employeeId, emp.id);
+  });
+
+  it("INVARIANT: I-9 records are scoped per-user workspace", () => {
+    const empA = seedEmployee(ctxA);
+    call("i9-add", ctxA, { employeeId: empA.id, documentType: "us_passport" });
+    const listB = call("i9-list", ctxB, {});
+    assert.equal(listB.ok, true);
+    assert.equal(listB.result.count, 0);
+  });
+});
