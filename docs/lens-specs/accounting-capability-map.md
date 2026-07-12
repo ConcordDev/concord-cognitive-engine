@@ -161,11 +161,21 @@ already had a designed panel.
   loops the same `suggestCategoryForTxn` helper this single-txn macro
   wraps. A per-row "suggest this one" button would be a redundant,
   lower-value duplicate of the existing one-click bulk flow.
-- `ai-suggest-vendor` — **real gap, ENGINEERING**. `BillsPanel`'s vendor
+- ~~`ai-suggest-vendor` — **real gap, ENGINEERING**. `BillsPanel`'s vendor
   field is a plain dropdown of existing vendors only; there's no free-text
   vendor auto-match/creation-suggestion flow the macro would back. Small,
   contained addition — not attempted here to keep this pass scoped to the
-  verified defects above.
+  verified defects above.~~ **CLOSED (2026-07-12, `975ceca9`).** `BillsPanel`'s
+  vendor field on the New-bill form is now a free-text combobox: typing
+  debounces (350ms) a real call to `ai-suggest-vendor`, and the dropdown
+  shows the macro's own token-overlap match (with its real `score`, never
+  invented client-side) or — when nothing matches well — the macro's
+  suggested new-vendor name behind a "Create vendor" action that calls the
+  real `vendors-create` macro. The field is never force-locked to only
+  known/suggested vendors — any free text can still be typed and, once a
+  vendor is selected (existing, AI-matched, or freshly created), submitted
+  with the bill. See `concord-frontend/components/accounting/BillsPanel.tsx`
+  + `concord-frontend/tests/components/BillsPanel.test.tsx`.
 - `audit-trail`, `generate-invoice`, `generate-statements`, `reconcile` —
   the four remaining legacy artifact-shaped macros from the deleted
   sandbox (Defect 1). Each is fully superseded by a real 2026-parity
@@ -177,13 +187,22 @@ already had a designed panel.
   UI that would have run them against the wrong data shape anyway.
 - `invoice-webhook-mark-paid` — correctly webhook-only (Stripe payment
   webhook calls it server-to-server); no UI surface should exist.
-- `validate-ledger` — legacy artifact-shaped ledger-integrity checker.
+- ~~`validate-ledger` — legacy artifact-shaped ledger-integrity checker.
   Lower priority than it looks: the persistent journal structurally can't
   go out of balance (`je-post` rejects any entry where debits ≠ credits
   before it's ever written), so the macro's value is narrower now (mainly
   useful for validating externally-pasted/imported books via
   `AccountingActionPanel`). A `Validate ledger` 5th button there would be
-  a reasonable small ENGINEERING follow-up.
+  a reasonable small ENGINEERING follow-up.~~ **CLOSED (2026-07-12,
+  `975ceca9`).** `AccountingActionPanel` now has a 5th "Validate" action
+  next to TB/P&L/AR-aging/variance, wired to the real `validate-ledger`
+  macro against the same pasted books JSON as the TB field. It renders the
+  macro's actual result — balanced/out-of-balance state, total debits vs.
+  credits, and any per-account issues the macro found — with an honest "no
+  issues" state (no fabricated warnings) when `accountIssues` comes back
+  empty, never a raw JSON dump. See
+  `concord-frontend/components/accounting/AccountingActionPanel.tsx` +
+  `concord-frontend/tests/components/AccountingActionPanel.test.tsx`.
 
 **Genuinely missing (deferred), triaged:** multi-unit property / rent-roll
 management (the legacy sandbox's `rentRoll` + "Properties" tab were never
