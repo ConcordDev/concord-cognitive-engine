@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { GitMerge, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface Send { id: string; projectId: string; fromTrackId: string; toTrackId: string; levelDb: number; prePost: 'pre' | 'post' }
 
@@ -26,7 +27,8 @@ export function SendsRouting({ projectId }: { projectId?: string }) {
   async function set() {
     if (!projectId || !form.fromTrackId.trim() || !form.toTrackId.trim()) return;
     try {
-      await lensRun({ domain: 'studio', action: 'sends-set', input: { projectId, ...form, levelDb: Number(form.levelDb) } });
+      const res = await lensRun({ domain: 'studio', action: 'sends-set', input: { projectId, ...form, levelDb: Number(form.levelDb) } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'sends-set', form.fromTrackId, { toTrackId: form.toTrackId, levelDb: Number(form.levelDb) });
       setForm({ fromTrackId: '', toTrackId: '', levelDb: '-6', prePost: 'post' });
       await refresh();
     } catch (e) { console.error('[Sends] set', e); }
@@ -34,7 +36,8 @@ export function SendsRouting({ projectId }: { projectId?: string }) {
 
   async function remove(id: string) {
     try {
-      await lensRun({ domain: 'studio', action: 'sends-delete', input: { id } });
+      const res = await lensRun({ domain: 'studio', action: 'sends-delete', input: { id } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'sends-delete', id);
       setSends(prev => prev.filter(s => s.id !== id));
     } catch (e) { console.error('[Sends] delete', e); }
   }

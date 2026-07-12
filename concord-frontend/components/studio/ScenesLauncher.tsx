@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Play, Plus, Loader2, Grid3x3 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface Scene { id: string; projectId: string; name: string; order: number; tempoBpm: number | null; launchedAt: string | null }
 
@@ -27,7 +28,8 @@ export function ScenesLauncher({ projectId }: { projectId?: string }) {
   async function create() {
     if (!projectId || !name.trim()) return;
     try {
-      await lensRun({ domain: 'studio', action: 'scenes-create', input: { projectId, name } });
+      const res = await lensRun({ domain: 'studio', action: 'scenes-create', input: { projectId, name } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'scenes-create', res.data.result?.scene?.id, { name });
       setName('');
       await refresh();
     } catch (e) { console.error('[Scenes] create', e); }
@@ -35,7 +37,8 @@ export function ScenesLauncher({ projectId }: { projectId?: string }) {
 
   async function launch(id: string) {
     try {
-      await lensRun({ domain: 'studio', action: 'scenes-launch', input: { id } });
+      const res = await lensRun({ domain: 'studio', action: 'scenes-launch', input: { id } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'scenes-launch', id);
       await refresh();
     } catch (e) { console.error('[Scenes] launch', e); }
   }

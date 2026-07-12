@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface Lane { id: string; trackId: string; parameter: string; points: Array<{ id: string; timeBeats: number; value: number }>; visible: boolean }
 
 const COMMON_PARAMS = ['volume', 'pan', 'sends.A', 'sends.B', 'filter_cutoff', 'reverb_wet', 'delay_feedback'];
 
-export function AutomationLanesPanel({ trackId }: { trackId?: string }) {
+export function AutomationLanesPanel({ projectId, trackId }: { projectId?: string; trackId?: string }) {
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [loading, setLoading] = useState(true);
   const [parameter, setParameter] = useState('volume');
@@ -28,21 +29,24 @@ export function AutomationLanesPanel({ trackId }: { trackId?: string }) {
   async function addLane() {
     if (!trackId) return;
     try {
-      await lensRun({ domain: 'studio', action: 'automation-add-lane', input: { trackId, parameter } });
+      const res = await lensRun({ domain: 'studio', action: 'automation-add-lane', input: { trackId, parameter } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'automation-add-lane', trackId, { parameter });
       await refresh();
     } catch (e) { console.error('[Automation] add-lane', e); }
   }
 
   async function addPoint(laneId: string, timeBeats: number, value: number) {
     try {
-      await lensRun({ domain: 'studio', action: 'automation-add-point', input: { laneId, timeBeats, value } });
+      const res = await lensRun({ domain: 'studio', action: 'automation-add-point', input: { laneId, timeBeats, value } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'automation-add-point', laneId, { timeBeats, value });
       await refresh();
     } catch (e) { console.error('[Automation] add-point', e); }
   }
 
   async function remove(id: string) {
     try {
-      await lensRun({ domain: 'studio', action: 'automation-delete-lane', input: { id } });
+      const res = await lensRun({ domain: 'studio', action: 'automation-delete-lane', input: { id } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'automation-delete-lane', id);
       setLanes(prev => prev.filter(l => l.id !== id));
     } catch (e) { console.error('[Automation] delete', e); }
   }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Flag, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 interface Marker { id: string; projectId: string; name: string; timeBeats: number; colour: string; kind: string }
 
@@ -26,7 +27,8 @@ export function MarkersPanel({ projectId }: { projectId?: string }) {
   async function add() {
     if (!projectId || !form.name.trim()) return;
     try {
-      await lensRun({ domain: 'studio', action: 'markers-add', input: { projectId, ...form, timeBeats: Number(form.timeBeats) } });
+      const res = await lensRun({ domain: 'studio', action: 'markers-add', input: { projectId, ...form, timeBeats: Number(form.timeBeats) } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'markers-add', res.data.result?.marker?.id, { name: form.name, kind: form.kind });
       setForm({ name: '', timeBeats: '0', kind: 'section', colour: '#fbbf24' });
       await refresh();
     } catch (e) { console.error('[Markers] add', e); }
@@ -34,7 +36,8 @@ export function MarkersPanel({ projectId }: { projectId?: string }) {
 
   async function remove(id: string) {
     try {
-      await lensRun({ domain: 'studio', action: 'markers-delete', input: { id } });
+      const res = await lensRun({ domain: 'studio', action: 'markers-delete', input: { id } });
+      if (res.data?.ok) logStudioCollabEdit(projectId, 'markers-delete', id);
       setMarkers(prev => prev.filter(m => m.id !== id));
     } catch (e) { console.error('[Markers] delete', e); }
   }

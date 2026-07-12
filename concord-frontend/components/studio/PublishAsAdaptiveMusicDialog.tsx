@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { logStudioCollabEdit } from '@/lib/daw/collab-log';
 
 const REGIONS = ['tavern', 'archive', 'forge', 'market', 'tower', 'plaza', 'wilderness', 'arena', 'underground'] as const;
 const INTENSITIES = ['ambient', 'active', 'battle'] as const;
@@ -127,6 +128,7 @@ export function PublishAsAdaptiveMusicDialog({
         setError(r.data.error || 'publish failed');
       } else {
         setResult(r.data?.result as PublishResult);
+        logStudioCollabEdit(projectId, 'publish-as-adaptive-music', undefined, { region, intensity, title });
       }
     } catch (e) {
       setError(String((e as Error)?.message || e));
