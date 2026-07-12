@@ -135,7 +135,7 @@ graph macro against it.
   deferred out of this pass's scope (the rebuild's defect was the panel
   being entirely dead, not this secondary richness gap).~~
 
-  **CLOSED (2026-07-12, pending commit, Wave 4 gap-closure pass).** The
+  **CLOSED (2026-07-12, `a49fedf2`, Wave 4 gap-closure pass).** The
   deferred build shipped for real, using the exact field names
   `teamComposition`'s already-existing Belbin/Simpson's-diversity logic was
   already reading (`member.role` against a 9-entry lowercase-hyphenated
