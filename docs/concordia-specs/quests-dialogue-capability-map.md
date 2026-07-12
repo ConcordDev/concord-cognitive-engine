@@ -181,6 +181,20 @@ each built once).
 ## 3. REAL MECHANICAL DEFECT — `moral_branch` / `reputation_change` are
 authored but never consumed
 
+**PARTIALLY CLOSED (2026-07-12, `0c0c57e1`):** a new `quest.resolve_moral_branch`
+macro (`server.js`) applies a chosen option's `reputation_change` to the
+real reputation substrate (`character_opinions`/
+`player_faction_reputation_cache`) via `lib/quests/moral-branch.js`,
+idempotent per `(userId, worldId, questAuthoredId)`. This closes the
+backend "did the number move" half of the defect described below. It
+deliberately does NOT close the frontend half: there is still no UI
+surface that presents `moral_branch.options` as a choice to the player
+and no gameplay trigger that calls the macro automatically on quest-step
+completion — a caller (a future dialogue-choice UI, or an admin/manual
+path) must supply `optionId` explicitly. The rest of this section's trace
+and its "what's needed" list (a UI, a trigger, an events table) remain
+accurate for that still-open half.
+
 This is a defect, not a design judgment, and is the most consequential
 finding of this audit.
 
@@ -442,7 +456,7 @@ equivalent, which is authoring work, not a missing mechanism.
 
 | # | Finding | Triage | Severity |
 |---|---|---|---|
-| 1 | `moral_branch` / `reputation_change` authored in 11 quest files, never read by any server or frontend code — the signature "meaningful choices" mechanic is inert | **ENGINEERING** | High — this is the single biggest gap between "the writing is Witcher-3-grade" and "the game plays like Witcher 3" |
+| 1 | ~~`moral_branch` / `reputation_change` authored in 11 quest files, never read by any server or frontend code — the signature "meaningful choices" mechanic is inert~~ **PARTIALLY CLOSED (`0c0c57e1`)** — backend apply-path now real (see §3); frontend choice UI + auto-trigger still open | **ENGINEERING** | High — this is the single biggest gap between "the writing is Witcher-3-grade" and "the game plays like Witcher 3" |
 | 2 | Only 15/136+ authored NPCs (and a much larger procedural population) have bespoke dialogue trees; the main arc's 5 key supporting characters (Maren/Rael/Cade/Sael/Voss) are not among them | **CURATION** | Medium-high — the best-written characters have no idle voice distinct from generic NPCs |
 | 3 | Grudge/desire/preoccupation template pools are 5/5/7 entries total for the entire game, with an unused content-override mechanism already built | **CURATION** | Medium — real system, thin content, will read as repetitive within normal play |
 | 4 | Last-words (5/5/4/3/3) and scheme-overhear snippets (6 total) pools are similarly narrow | **CURATION** | Low-medium — smaller-impact systems (death/overhear are rarer events than greetings) |

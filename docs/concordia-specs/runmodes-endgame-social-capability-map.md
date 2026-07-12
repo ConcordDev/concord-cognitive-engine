@@ -156,7 +156,15 @@ unlocks now MODIFY a run (they were stored but never read — `hasUnlock` had
 no caller)") — the fix landed for roguelite but the identical defect was
 never ported to horde.
 
-### 2.2 Roguelite's visible unlock shop and its effect engine are two disjoint catalogs
+### 2.2 Roguelite's visible unlock shop and its effect engine are two disjoint catalogs — CLOSED (2026-07-12, `dd7b1b03`)
+
+Fixed both compounding bugs: the shop catalog and effect engine now share
+IDs, and `purchaseUnlock` enforces the real server-side price for every
+recognized catalog id instead of falling back to the client-supplied
+`costCc` for unmatched ones. 11/11 new + updated tests in
+`server/tests/roguelite.test.js`. Original finding text kept below for
+record.
+
 - Effect engine: `server/lib/roguelite.js:25-31` `META_UNLOCK_CATALOG` — 5
   ids (`veteran_vigor`, `sharp_start`, `extra_pick`, `fortune_finder`,
   `second_chance`), consumed by `runMetaModifiers` (`:38-50`), which IS
@@ -251,7 +259,18 @@ there's no UI path calling it, but the macro itself (`dungeon.hit`,
 `server/domains/dungeon.js:35-41`) accepts `input.damage` from any
 authenticated caller with no validation.
 
-### 2.6 World bosses never spawn in production
+### 2.6 World bosses never spawn in production — CLOSED (2026-07-12, `49fe646c`)
+
+`registerSchedule` is now wired to production content. Re-verification
+while fixing this found a second, deeper bug the original audit missed:
+even with a schedule seeded, the heartbeat's `moduleCtx` never forwarded a
+`worldId` to the handler in either the single-process or sharded path, so
+every tick silently bailed with `no_db_or_world` — proven with a probe
+heartbeat, not assumed from reading code. Both fixed together;
+`server/tests/integration/world-boss-heartbeat-wire.test.js` (new) +
+`world-bosses.test.js` pin it. Original finding text kept below for
+record.
+
 `server/lib/world-bosses.js:21-42` `registerSchedule` is the only path that
 creates a `world_boss_schedule` row (which `runTriggerPass` needs to ever
 open an active boss). Grep confirms callers exist only in
@@ -275,7 +294,15 @@ comments, so this is not a "fabrication" finding — but it means the
 flagship lore raid event has zero actual boss-damage mechanics behind the
 phase-threshold/refusal-field scaffolding.
 
-### 2.8 Party-combat has no ability catalog; damage is caller-supplied
+### 2.8 Party-combat has no ability catalog; damage is caller-supplied — CLOSED (2026-07-12, `f9a2c6c1`)
+
+Fixed with a real server-side `PARTY_ABILITY_CATALOG` — one signature
+ability per existing `combat-polish.js` profile
+(`ufc_groundgame`/`sifu_brawler`/`street_freeroam`/`chrome_blade`/
+`caped_aerial`) — rather than just tightening the cap; damage/cooldown are
+now server-derived, not client-supplied. `server/tests/party-combat.test.js`
+pins it. Original finding text kept below for record.
+
 `server/lib/party-combat.js:227-243` (`ability` branch of `_applyAction`):
 `const damage = Math.min(Math.max(1, Number(payload.damage) || 15), DAMAGE_CAP_HARD)`
 — damage comes from the action payload, not a server-side ability
@@ -288,7 +315,15 @@ picked. There is exactly one `attack` button and one `ability` button in
 the HUD; no ability roster, no elements, no cooldown variety (client never
 sends `cooldownMs` either, so every action uses the flat 1200ms default).
 
-### 2.9 Guild bank/XP/hall system is fully unreachable
+### 2.9 Guild bank/XP/hall system is fully unreachable — CLOSED (2026-07-12, `e459dec3`)
+
+`lib/guild-substrate.js`'s 7 functions are now wired to real gameplay
+callers (`GuildPanel.tsx` surfaces level/XP/hall status as the primary
+path); 11 of `world-organizations.js`'s previously-unrouted 19 functions
+were also routed in passing. `server/tests/integration/
+guild-substrate-routes-wired.test.js` (new, 317 lines) pins it. Original
+finding text kept below for record.
+
 `server/lib/guild-substrate.js` exports 7 functions (`awardOrgXp`,
 `getOrgProgression`, `claimHallBuilding`, `depositToOrgInventory`,
 `withdrawFromOrgInventory`, `listOrgInventory`, `getOrgInventoryLog`).
