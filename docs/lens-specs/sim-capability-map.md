@@ -167,7 +167,7 @@ through the correct dispatch path. This lens genuinely earns its
   external dependency, a small deterministic-RNG swap), not urgent
   enough to bundle into this defect-fix session since it doesn't
   affect honesty (no fabricated numbers, just non-reproducible ones).~~
-  **CLOSED (2026-07-12, pending commit)** — `monteCarlo` now accepts an
+  **CLOSED (2026-07-12, `df11c27d`)** — `monteCarlo` now accepts an
   optional `seed` (via `params.seed`, preferred, or a persisted
   `artifact.data.seed`), reusing the same `makeRng` mulberry32 PRNG
   `agentBased`/`discreteEvent` already use. When a seed is given, every
