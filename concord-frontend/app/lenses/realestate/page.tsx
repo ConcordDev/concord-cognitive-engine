@@ -94,6 +94,7 @@ import SavedSearchAlerts from '@/components/realestate/SavedSearchAlerts';
 import PropertyDetailPanel from '@/components/realestate/PropertyDetailPanel';
 import ContactAgentForm from '@/components/realestate/ContactAgentForm';
 import WorldPropertiesPanel from '@/components/realestate/WorldPropertiesPanel';
+import CMAPanel from '@/components/realestate/CMAPanel';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 
 /* ------------------------------------------------------------------ */
@@ -3461,7 +3462,7 @@ export default function RealEstateLensPage() {
 /* ------------------------------------------------------------------ */
 
 type WorkbenchTab =
-  | 'browse' | 'mapsearch' | 'favs' | 'alerts' | 'tours' | 'avm' | 'priced' | 'detail'
+  | 'browse' | 'mapsearch' | 'favs' | 'alerts' | 'tours' | 'avm' | 'cma' | 'priced' | 'detail'
   | 'photos' | 'preapproval' | 'scores' | 'agents' | 'contact' | 'open' | 'ai' | 'compare' | 'notes';
 
 function RealtorWorkbenchSection() {
@@ -3487,6 +3488,7 @@ function RealtorWorkbenchSection() {
     { id: 'alerts', label: 'Alerts', icon: Bell },
     { id: 'tours', label: 'Tours', icon: Calendar },
     { id: 'avm', label: 'AVM', icon: Calculator },
+    { id: 'cma', label: 'CMA', icon: BarChart3 },
     { id: 'priced', label: 'Price history', icon: TrendingUp },
     { id: 'detail', label: 'Property detail', icon: Building2 },
     { id: 'photos', label: 'Photos & 3D', icon: Eye },
@@ -3535,6 +3537,7 @@ function RealtorWorkbenchSection() {
         {active === 'alerts' && <div className="lg:col-span-3"><SavedSearchAlerts onSelect={setSelected} /></div>}
         {active === 'tours' && <div className="lg:col-span-3"><ToursPanel defaultListingId={tourFor} /></div>}
         {active === 'avm' && <div className="lg:col-span-2"><AVMEstimator /></div>}
+        {active === 'cma' && <div className="lg:col-span-3"><CMAPanel /></div>}
         {active === 'priced' && <div className="lg:col-span-3"><PriceHistoryPanel listingId={selected?.id} /></div>}
         {active === 'detail' && <div className="lg:col-span-3"><PropertyDetailPanel listingId={selected?.id} onSelect={(l) => selectById(l.id)} /></div>}
         {active === 'photos' && <div className="lg:col-span-3"><ListingPhotoGallery listingId={selected?.id} /></div>}

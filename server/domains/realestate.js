@@ -624,6 +624,141 @@ export default function registerRealEstateActions(registerLensAction) {
     };
   });
 
+  // ── Comparative Market Analysis (CMA) ──────────────────────────
+  //
+  // HONESTY NOTE (docs/WAVE4_INVENTORY.md's `realestate` row / the
+  // "closing the hard 20%" invariant): Concord has no MLS/market-wide
+  // comps feed — no paid API (ATTOM/CoreLogic/etc.) is configured, and
+  // wiring one is a separate DATA-SOURCING decision requiring
+  // credentials this environment doesn't have. This is NOT a
+  // professional MLS-wide CMA. It is a real, honest valuation built
+  // ONLY from properties THIS USER has personally added to their own
+  // tracked-listings bucket (the same `listings-add`/`listings-list`
+  // data every other macro in this file reads/writes). If the user
+  // hasn't tracked any real comparable properties, this macro says so
+  // in plain language and returns zero fabricated comps/numbers — see
+  // the `comps.length === 0` branch below.
+  //
+  // Comp-selection criteria (deliberately documented here, not hidden
+  // in a black box):
+  //   - same city (case-insensitive, trimmed)
+  //   - same property `kind` (single_family / condo / townhouse / multi_family / land)
+  //   - beds within ±CMA_BEDS_TOLERANCE of the subject
+  //   - sqft within ±CMA_SQFT_TOLERANCE_PCT of the subject
+  //   - sqft > 0 and price > 0 (both required to compute a $/sqft)
+  //   - excludes the subject's own listing row when comparing against its own tracked bucket
+  // Baths are NOT a hard filter (tracked users rarely have enough
+  // volume to filter on three axes at once) but are surfaced on every
+  // comp row so the human can judge fit themselves — transparent, not
+  // silently dropped.
+  //
+  // Valuation math reuses the AVM condition-multiplier table
+  // (`avm-estimate` above) for consistency across the lens: median
+  // $/sqft across the real comps × subject sqft × condition
+  // multiplier. Low/high bounds come from the comps' own min/max
+  // $/sqft — the range is a function of the real comp spread, not an
+  // invented confidence interval.
+
+  const CMA_BEDS_TOLERANCE = 1;
+  const CMA_SQFT_TOLERANCE_PCT = 0.25;
+  const CMA_CONDITION_MULT = { excellent: 1.10, good: 1.00, fair: 0.90, poor: 0.78 };
+
+  registerLensAction("realestate", "cma_generate", (ctx, _a, params = {}) => {
+  try {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = reActor(ctx);
+    const allListings = ensureREBucket(s, "listings", userId);
+    const condition = ["excellent", "good", "fair", "poor"].includes(params.condition) ? params.condition : "good";
+
+    // ── Resolve the subject property: either an existing tracked
+    //    listing, or raw specs passed directly. ──
+    let subject;
+    let subjectListingId = null;
+    if (params.listingId) {
+      const found = allListings.find(l => l.id === String(params.listingId));
+      if (!found) return { ok: false, error: "subject listing not found in your tracked listings" };
+      subjectListingId = found.id;
+      subject = {
+        address: found.address, city: found.city, kind: found.kind,
+        beds: found.beds, baths: found.baths, sqft: found.sqft, condition,
+      };
+    } else {
+      const city = String(params.city || "").trim();
+      const kind = ["single_family", "condo", "townhouse", "multi_family", "land"].includes(params.kind) ? params.kind : "single_family";
+      const beds = Math.max(0, Number(params.beds) || 0);
+      const baths = Math.max(0, Number(params.baths) || 0);
+      const sqft = Math.max(0, Number(params.sqft) || 0);
+      if (!city) return { ok: false, error: "city required (or pass an existing listingId)" };
+      if (sqft <= 0) return { ok: false, error: "sqft must be > 0 (or pass an existing listingId)" };
+      subject = { address: String(params.address || "").trim() || null, city, kind, beds, baths, sqft, condition };
+    }
+    if (!subject.sqft || subject.sqft <= 0) {
+      return { ok: false, error: "subject sqft must be > 0 to compute a $/sqft valuation" };
+    }
+
+    // ── Select real comps from the user's own tracked listings ──
+    const subjectCity = String(subject.city || "").trim().toLowerCase();
+    const comps = allListings.filter(l => {
+      if (subjectListingId && l.id === subjectListingId) return false;
+      if (!l.sqft || l.sqft <= 0 || !l.price || l.price <= 0) return false;
+      if (String(l.city || "").trim().toLowerCase() !== subjectCity) return false;
+      if (l.kind !== subject.kind) return false;
+      if (Math.abs((l.beds || 0) - subject.beds) > CMA_BEDS_TOLERANCE) return false;
+      const sqftDiffPct = Math.abs(l.sqft - subject.sqft) / subject.sqft;
+      if (sqftDiffPct > CMA_SQFT_TOLERANCE_PCT) return false;
+      return true;
+    }).map(l => ({
+      id: l.id, address: l.address, city: l.city, kind: l.kind,
+      beds: l.beds, baths: l.baths, sqft: l.sqft, price: l.price,
+      status: l.status, daysOnMarket: l.daysOnMarket,
+      pricePerSqft: Math.round((l.price / l.sqft) * 100) / 100,
+    }));
+
+    if (comps.length === 0) {
+      return {
+        ok: true,
+        result: {
+          subject, comps: [], compCount: 0, valuation: null,
+          methodology: `Looked for tracked listings in "${subject.city || "the subject's city"}" matching kind=${subject.kind}, beds within ±${CMA_BEDS_TOLERANCE}, and sqft within ±${Math.round(CMA_SQFT_TOLERANCE_PCT * 100)}% — found none.`,
+          message: "No comparable listings tracked yet — add some in the Listings tab to generate a CMA.",
+        },
+      };
+    }
+
+    // ── Median/average/min/max $/sqft across the real comps ──
+    const ppsfList = comps.map(c => c.pricePerSqft).sort((a, b) => a - b);
+    const mid = Math.floor(ppsfList.length / 2);
+    const medianPpsf = ppsfList.length % 2 === 0 ? (ppsfList[mid - 1] + ppsfList[mid]) / 2 : ppsfList[mid];
+    const avgPpsf = ppsfList.reduce((sum, v) => sum + v, 0) / ppsfList.length;
+    const minPpsf = ppsfList[0];
+    const maxPpsf = ppsfList[ppsfList.length - 1];
+
+    const conditionMult = CMA_CONDITION_MULT[subject.condition] || 1.0;
+    const estimate = medianPpsf * subject.sqft * conditionMult;
+    const lowEstimate = minPpsf * subject.sqft * conditionMult;
+    const highEstimate = maxPpsf * subject.sqft * conditionMult;
+
+    return {
+      ok: true,
+      result: {
+        subject, comps, compCount: comps.length,
+        valuation: {
+          medianPricePerSqft: Math.round(medianPpsf * 100) / 100,
+          averagePricePerSqft: Math.round(avgPpsf * 100) / 100,
+          minPricePerSqft: minPpsf,
+          maxPricePerSqft: maxPpsf,
+          conditionMult,
+          estimate: Math.round(estimate),
+          lowEstimate: Math.round(lowEstimate),
+          highEstimate: Math.round(highEstimate),
+          formula: "estimate = median($/sqft across comps) × subject sqft × condition multiplier; low/high use the comps' own min/max $/sqft",
+        },
+        methodology: `Based on ${comps.length} comparable listing${comps.length === 1 ? "" : "s"} you're tracking in ${subject.city}, matched on kind=${subject.kind}, beds within ±${CMA_BEDS_TOLERANCE}, sqft within ±${Math.round(CMA_SQFT_TOLERANCE_PCT * 100)}%. This reflects only properties you've personally added to your tracked listings — it is NOT an MLS-wide professional CMA.`,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
   // ── School ratings (deterministic seeded heuristic) ────────────
 
   registerLensAction("realestate", "school-ratings", (_ctx, _a, params = {}) => {
