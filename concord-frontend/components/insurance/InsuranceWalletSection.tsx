@@ -6,28 +6,34 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ShieldCheck, FileText, ClipboardList, Archive, Loader2 } from 'lucide-react';
+import { ShieldCheck, FileText, ClipboardList, Archive, Users, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { InsurancePoliciesPanel } from './InsurancePoliciesPanel';
 import { InsuranceClaimsPanel } from './InsuranceClaimsPanel';
 import { InsuranceVaultPanel } from './InsuranceVaultPanel';
+import { InsuranceClientsPanel } from './InsuranceClientsPanel';
+import type { ClientRecord } from './ClientAutocomplete';
 
 interface Dash {
   activePolicies: number; totalPolicies: number; openClaims: number;
   annualPremium: number; renewalsDue: number; openReminders: number; coveredAssetValue: number;
 }
-type TabId = 'policies' | 'claims' | 'vault';
+type TabId = 'policies' | 'claims' | 'vault' | 'clients';
 const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
   { id: 'policies', label: 'Policies', icon: FileText },
   { id: 'claims', label: 'Claims', icon: ClipboardList },
   { id: 'vault', label: 'Vault', icon: Archive },
+  { id: 'clients', label: 'Clients', icon: Users },
 ];
 
 export function InsuranceWalletSection() {
   const [tab, setTab] = useState<TabId>('policies');
   const [dash, setDash] = useState<Dash | null>(null);
   const [loading, setLoading] = useState(true);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const [clientQuery, setClientQuery] = useState('');
 
   const refreshDash = useCallback(async () => {
     const r = await lensRun('insurance', 'insurance-dashboard', {});
@@ -35,7 +41,22 @@ export function InsuranceWalletSection() {
     setLoading(false);
   }, []);
 
+  // Shared Client (CRM) directory — used by the Clients tab AND handed to
+  // InsurancePoliciesPanel/InsuranceClaimsPanel so their "add" forms can
+  // link a saved client via the ClientAutocomplete combobox.
+  const refreshClients = useCallback(async (query = clientQuery) => {
+    setClientsLoading(true);
+    const r = await lensRun('insurance', 'client-list', { query });
+    setClients((r.data?.result as { clients: ClientRecord[] } | null)?.clients || []);
+    setClientsLoading(false);
+  }, [clientQuery]);
+
   useEffect(() => { void refreshDash(); }, [refreshDash]);
+  useEffect(() => { void refreshClients(clientQuery); }, [clientQuery, refreshClients]);
+
+  const handleClientCreated = useCallback((client: ClientRecord) => {
+    setClients((prev) => (prev.some((c) => c.id === client.id) ? prev : [...prev, client]));
+  }, []);
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
@@ -73,9 +94,22 @@ export function InsuranceWalletSection() {
       </nav>
 
       <div className="p-4">
-        {tab === 'policies' && <InsurancePoliciesPanel onChange={refreshDash} />}
-        {tab === 'claims' && <InsuranceClaimsPanel onChange={refreshDash} />}
+        {tab === 'policies' && (
+          <InsurancePoliciesPanel onChange={refreshDash} clients={clients} onClientCreated={handleClientCreated} />
+        )}
+        {tab === 'claims' && (
+          <InsuranceClaimsPanel onChange={refreshDash} clients={clients} onClientCreated={handleClientCreated} />
+        )}
         {tab === 'vault' && <InsuranceVaultPanel onChange={refreshDash} />}
+        {tab === 'clients' && (
+          <InsuranceClientsPanel
+            clients={clients}
+            loading={clientsLoading}
+            query={clientQuery}
+            onQueryChange={setClientQuery}
+            onRefresh={() => void refreshClients(clientQuery)}
+          />
+        )}
       </div>
     </div>
   );

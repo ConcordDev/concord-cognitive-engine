@@ -9,10 +9,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, ChevronLeft, Trash2, FileText, CreditCard, Users, CalendarClock, Pencil, Save } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ClientAutocomplete } from './ClientAutocomplete';
+import type { ClientRecord } from './ClientAutocomplete';
 
 interface Policy {
   id: string; carrier: string; policyNumber: string; kind: string;
   annualPremium: number; deductible: number; renewalDate: string; status: string;
+  clientId?: string | null; insuredName?: string | null;
 }
 interface PolicyDoc { id: string; title: string; kind: string }
 interface Payment { id: string; amount: number; date: string; method: string | null }
@@ -31,12 +34,20 @@ const STATUS_COLOR: Record<string, string> = {
   active: 'text-emerald-400', lapsed: 'text-amber-400', cancelled: 'text-zinc-400', pending: 'text-sky-400',
 };
 
-export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
+interface InsurancePoliciesPanelProps {
+  onChange: () => void;
+  clients?: ClientRecord[];
+  onClientCreated?: (client: ClientRecord) => void;
+}
+
+export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated }: InsurancePoliciesPanelProps) {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ carrier: '', policyNumber: '', kind: 'auto', annualPremium: '', deductible: '' });
+  const [clientText, setClientText] = useState('');
+  const [clientId, setClientId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Policy | null>(null);
   const [docs, setDocs] = useState<PolicyDoc[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -91,11 +102,17 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
     const r = await lensRun('insurance', 'policy-add', {
       carrier: form.carrier.trim(), policyNumber: form.policyNumber.trim(), kind: form.kind,
       annualPremium: Number(form.annualPremium) || 0, deductible: Number(form.deductible) || 0,
+      clientId: clientId || undefined, insuredName: clientId ? undefined : (clientText.trim() || undefined),
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setForm({ carrier: '', policyNumber: '', kind: 'auto', annualPremium: '', deductible: '' });
+    setClientText(''); setClientId(null);
     setShowAdd(false); setError(null);
     await refresh(); onChange();
+  };
+  const selectClient = (client: ClientRecord | null, text: string) => {
+    setClientId(client ? client.id : null);
+    setClientText(text);
   };
   const delPolicy = async (id: string) => {
     await lensRun('insurance', 'policy-delete', { id });
@@ -335,12 +352,13 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
+          <ClientAutocomplete clients={clients} value={clientText} clientId={clientId} onSelect={selectClient} onCreated={onClientCreated} placeholder="Insured (optional)" />
           <input placeholder="Annual premium ($)" inputMode="decimal" value={form.annualPremium} onChange={(e) => setForm({ ...form, annualPremium: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Deductible ($)" inputMode="decimal" value={form.deductible} onChange={(e) => setForm({ ...form, deductible: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addPolicy}
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save policy</button>
+            className="col-span-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save policy</button>
         </div>
       )}
 
@@ -358,6 +376,7 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
                 </p>
                 <p className="text-[11px] text-zinc-400 capitalize">
                   {p.kind} · {p.policyNumber} · ${p.annualPremium}/yr · renews {p.renewalDate}
+                  {p.insuredName ? ` · insured: ${p.insuredName}` : ''}
                 </p>
               </button>
               <button aria-label="Delete" type="button" onClick={() => delPolicy(p.id)} className="text-zinc-600 hover:text-rose-400">

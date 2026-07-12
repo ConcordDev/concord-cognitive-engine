@@ -9,11 +9,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ClientAutocomplete } from './ClientAutocomplete';
+import type { ClientRecord } from './ClientAutocomplete';
 
 interface Claim {
   id: string; carrier: string; description: string; kind: string;
   status: string; claimAmount: number; payoutAmount?: number;
-  submittedDate: string; daysSinceSubmit?: number;
+  submittedDate: string; daysSinceSubmit?: number; clientId?: string | null;
 }
 
 const STATUS_FLOW: Record<string, string> = {
@@ -24,12 +26,20 @@ const STATUS_COLOR: Record<string, string> = {
   denied: 'text-rose-400', paid: 'text-emerald-400', closed: 'text-zinc-400',
 };
 
-export function InsuranceClaimsPanel({ onChange }: { onChange: () => void }) {
+interface InsuranceClaimsPanelProps {
+  onChange: () => void;
+  clients?: ClientRecord[];
+  onClientCreated?: (client: ClientRecord) => void;
+}
+
+export function InsuranceClaimsPanel({ onChange, clients = [], onClientCreated }: InsuranceClaimsPanelProps) {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ carrier: '', description: '', kind: 'collision', claimAmount: '' });
+  const [clientText, setClientText] = useState('');
+  const [clientId, setClientId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -46,11 +56,17 @@ export function InsuranceClaimsPanel({ onChange }: { onChange: () => void }) {
     const r = await lensRun('insurance', 'claim-file', {
       carrier: form.carrier.trim(), description: form.description.trim(),
       kind: form.kind, claimAmount: Number(form.claimAmount) || 0,
+      clientId: clientId || undefined,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setForm({ carrier: '', description: '', kind: 'collision', claimAmount: '' });
+    setClientText(''); setClientId(null);
     setShowAdd(false); setError(null);
     await refresh();
+  };
+  const selectClient = (client: ClientRecord | null, text: string) => {
+    setClientId(client ? client.id : null);
+    setClientText(text);
   };
   const advance = async (c: Claim) => {
     const next = STATUS_FLOW[c.status];
@@ -88,10 +104,11 @@ export function InsuranceClaimsPanel({ onChange }: { onChange: () => void }) {
           </select>
           <input placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <ClientAutocomplete clients={clients} value={clientText} clientId={clientId} onSelect={selectClient} onCreated={onClientCreated} placeholder="Claimant (optional)" />
           <input placeholder="Claim amount ($)" inputMode="decimal" value={form.claimAmount} onChange={(e) => setForm({ ...form, claimAmount: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={fileClaim}
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Submit claim</button>
+            className="col-span-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Submit claim</button>
         </div>
       )}
 
