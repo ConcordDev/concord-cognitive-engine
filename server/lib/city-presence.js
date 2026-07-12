@@ -1178,7 +1178,7 @@ function _getZoneDebuff(zone, armorPct) {
   return null;
 }
 
-export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, armorPierce = 0, contextModifiers = null, maxDamage = Infinity }) {
+export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, armorPierce = 0, contextModifiers = null, maxDamage = Infinity, critChanceBonus = 0 }) {
   if (!attackerId || !targetId) return { ok: false, error: "missing_ids" };
   if (attackerId === targetId) return { ok: false, error: "cannot_attack_self" };
 
@@ -1253,7 +1253,14 @@ export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, 
   const mitFactor = _armorMitigation(armorForCalc);
   const mitigated = Math.max(1, Math.floor(variedBase * (1 - mitFactor)));
 
-  const isCrit = Math.random() > 0.85;
+  // Wave 4 (Gap A/C) — an active horde/roguelite run's drafted `crit_oath`
+  // boon (or a stacked draft-pick + meta-unlock bundle) raises crit chance
+  // above the base 15%. critChanceBonus defaults to 0, which reproduces the
+  // exact prior `> 0.85` threshold byte-for-byte — every caller that doesn't
+  // pass it is unaffected. Clamped so a very large bundle can't push crit
+  // chance to a guaranteed(-feeling) 100%.
+  const critThreshold = Math.max(0.05, 0.85 - Math.max(0, Number(critChanceBonus) || 0));
+  const isCrit = Math.random() > critThreshold;
   // Server-authoritative ceiling: bound the resolved (post-crit) damage so a
   // client-supplied baseDamage can never one-shot regardless of variance/crit.
   // maxDamage defaults to Infinity (NPC/legacy callers unaffected); the socket

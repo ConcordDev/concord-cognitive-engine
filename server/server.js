@@ -8874,6 +8874,30 @@ async function tryInitWebSockets(server) {
         globalThis._concordCombatLimits = import("./lib/combat-limits.js");
       }
       const { clampBaseDamage, resolvedDamageCap } = await globalThis._concordCombatLimits;
+
+      // Wave 4 (Gap A/C) — this is the LIVE, socket-driven basic-attack path
+      // (system-affordances.ts dispatches combat:attack for both PvP and
+      // "Fight <hostile NPC>"), distinct from the DB-backed skill-cast REST
+      // route (routes/worlds.js#/combat/attack) which has its own copy of
+      // this same block. A player inside an active horde/roguelite run gets
+      // their accumulated damageMult folded into contextModifiers.damageMul
+      // (the existing hook this path already threads through applyAttack)
+      // and their critChance folded into applyAttack's new critChanceBonus
+      // param. Best-effort — no active run is a neutral pass-through.
+      let _critChanceBonus = 0;
+      try {
+        const { getActiveRunModifiers } = await import("./lib/run-modifiers.js");
+        const runMods = getActiveRunModifiers(db, userId);
+        const dmgMult = Number(runMods.modifiers?.damageMult) || 0;
+        _critChanceBonus = Number(runMods.modifiers?.critChance) || 0;
+        if (dmgMult !== 0) {
+          _contextModifiers = {
+            ...(_contextModifiers || {}),
+            damageMul: (Number(_contextModifiers?.damageMul ?? 1) || 1) * (1 + dmgMult),
+          };
+        }
+      } catch { /* run-modifier substrate optional — neutral pass-through */ }
+
       const result = cityPresence.applyAttack({
         attackerId: userId,
         targetId: _ffTargetId,
@@ -8882,6 +8906,7 @@ async function tryInitWebSockets(server) {
         armorPierce: Number(data.armorPierce) || 0,
         contextModifiers: _contextModifiers,
         maxDamage: resolvedDamageCap(),
+        critChanceBonus: _critChanceBonus,
       });
 
       // Ack back to attacker with full detail (damage, crit, kill)
@@ -52696,12 +52721,22 @@ app.post("/api/horde/:runId/wave", requireAuth(), asyncHandler(async (req, res) 
 
 app.post("/api/horde/:runId/upgrade", requireAuth(), asyncHandler(async (req, res) => {
   const { pickUpgrade } = await import("./lib/horde-mode.js");
-  res.json(pickUpgrade(db, req.params.runId, req.body?.upgradeId));
+  const userId = req.user?.id || req.user?.userId;
+  const r = pickUpgrade(db, req.params.runId, req.body?.upgradeId);
+  // Wave 4 — a picked boon must affect this player's very next hit, not wait
+  // out the modifier cache's TTL.
+  if (r.ok) {
+    try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  }
+  res.json(r);
 }));
 
 app.post("/api/horde/:runId/end", requireAuth(), asyncHandler(async (req, res) => {
   const { endHorde } = await import("./lib/horde-mode.js");
-  res.json(endHorde(db, req.params.runId, req.body || {}));
+  const userId = req.user?.id || req.user?.userId;
+  const r = endHorde(db, req.params.runId, req.body || {});
+  try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  res.json(r);
 }));
 
 app.get("/api/horde/active", requireAuth(), asyncHandler(async (req, res) => {
@@ -52714,12 +52749,37 @@ app.get("/api/horde/active", requireAuth(), asyncHandler(async (req, res) => {
 app.post("/api/roguelite/run/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startRun } = await import("./lib/roguelite.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(startRun(db, userId, req.body || {}));
+  const r = startRun(db, userId, req.body || {});
+  try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  res.json(r);
 }));
 
 app.post("/api/roguelite/run/:runId/end", requireAuth(), asyncHandler(async (req, res) => {
   const { endRun } = await import("./lib/roguelite.js");
-  res.json(endRun(db, req.params.runId, req.body || {}));
+  const userId = req.user?.id || req.user?.userId;
+  const r = endRun(db, req.params.runId, req.body || {});
+  try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  res.json(r);
+}));
+
+// Wave 4 (Gap B) — the in-run draft moment (mirrors horde's /wave). Advances
+// depth and offers a fresh structured boon draft; extraDraftPicks (an owned
+// meta-unlock) banks more than one pick per advance.
+app.post("/api/roguelite/run/:runId/advance", requireAuth(), asyncHandler(async (req, res) => {
+  const { advanceRun } = await import("./lib/roguelite.js");
+  res.json(advanceRun(db, req.params.runId, req.body || {}));
+}));
+
+// Wave 4 (Gap B) — spend a banked draft pick on a boon (mirrors horde's
+// /upgrade, but through the banked-picks accounting advanceRun grants).
+app.post("/api/roguelite/run/:runId/draft-pick", requireAuth(), asyncHandler(async (req, res) => {
+  const { pickDraftBoon } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = pickDraftBoon(db, req.params.runId, userId, req.body?.pickId);
+  if (r.ok) {
+    try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  }
+  res.json(r);
 }));
 
 app.get("/api/roguelite/balance", requireAuth(), asyncHandler(async (req, res) => {
@@ -52734,7 +52794,13 @@ app.post("/api/roguelite/unlock", requireAuth(), asyncHandler(async (req, res) =
   // Security fix — the price is looked up server-side from
   // META_UNLOCK_CATALOG inside purchaseUnlock; a client-supplied cost is
   // never read or forwarded here (see roguelite.js#purchaseUnlock).
-  res.json(purchaseUnlock(db, userId, req.body?.unlockId));
+  const r = purchaseUnlock(db, userId, req.body?.unlockId);
+  // Wave 4 — a newly-purchased meta-unlock (e.g. sharp_start's damageMult)
+  // should affect the player's CURRENT run's next hit if they have one.
+  if (r.ok) {
+    try { (await import("./lib/run-modifiers.js")).invalidateRunModifierCache(userId); } catch { /* best-effort */ }
+  }
+  res.json(r);
 }));
 
 app.get("/api/roguelite/unlocks", requireAuth(), asyncHandler(async (req, res) => {

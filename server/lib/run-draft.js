@@ -106,4 +106,23 @@ export function getRunModifiers(db, runKind, runId) {
   return { modifiers, picks: picked, synergies };
 }
 
+/**
+ * Wave 4 — "one pick away" synergy hints for the CURRENT picks-so-far, used to
+ * badge an offered boon in the draft UI ("completes Inferno!") before the
+ * player commits. Purely additive/read-only — does not affect getRunModifiers.
+ * Returns [{ id, name, missingBoonId }] for every synergy where exactly one
+ * required boon is still unpicked.
+ */
+export function nearSynergyHints(db, runKind, runId) {
+  const picked = pickedFor(db, runKind, runId);
+  const hints = [];
+  for (const syn of SYNERGIES) {
+    const missing = syn.requires.filter((r) => !picked.includes(r));
+    if (missing.length === 1) {
+      hints.push({ id: syn.id, name: syn.name, missingBoonId: missing[0] });
+    }
+  }
+  return hints;
+}
+
 export { POOL_BY_ID };

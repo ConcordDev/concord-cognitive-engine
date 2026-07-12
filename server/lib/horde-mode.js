@@ -6,13 +6,23 @@
 // one of three random upgrades. Damage cap is bypassed by design
 // (the genre's signature is "numbers exploding upward").
 //
-// 9 authored upgrades. Auto-attack mode is the default — the combat
-// route reads horde_runs.auto_attack to decide whether to tick damage
-// without explicit player input.
+// Auto-attack mode is the default — `isHordeAutoAttack` exposes
+// horde_runs.auto_attack for a future combat-route auto-tick; today the
+// player still drives their own attacks (socket combat:attack / the
+// skill-cast REST route), and this run's picked boons modify THAT
+// damage — see server/lib/run-modifiers.js.
+//
+// Wave 4 gap-closure: the wave-upgrade offering used to be 9 purely
+// COSMETIC strings (UPGRADE_CATALOG, kept below for historical reference —
+// nothing reads it anymore) with no mechanical effect. It now delegates to
+// the shared structured draft engine (run-draft.js) so a picked boon has a
+// real {stat, value} effect that server/lib/run-modifiers.js folds into the
+// player's combat math for the rest of the run.
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { grantRunMeta } from "./run-difficulty.js";
+import { rollDraft, recordPick, getRunModifiers, nearSynergyHints } from "./run-draft.js";
 
 // D6 — horde is a survival mode: it ALWAYS ends in a "loss" (death/timeout),
 // so the payout is the wave/kill yield itself. The wave reached IS the risk
@@ -20,6 +30,11 @@ import { grantRunMeta } from "./run-difficulty.js";
 const HORDE_META_PER_WAVE = Number(process.env.CONCORD_HORDE_META_PER_WAVE) || 8;
 const HORDE_META_PER_KILL = Number(process.env.CONCORD_HORDE_META_PER_KILL) || 0.25;
 
+// DEPRECATED — superseded by run-draft.js's DRAFT_POOL (Wave 4). Kept only so
+// the id vocabulary + historical flavor text stay grep-able; _rollUpgrades /
+// pickUpgrade no longer read this. "second_wind" (revive) has no DRAFT_POOL
+// equivalent — horde has no revive mechanic today (only roguelite's
+// purchased `second_chance` meta-unlock does; see roguelite.js).
 export const UPGRADE_CATALOG = Object.freeze([
   { id: "blade_storm",     name: "Blade Storm",     effect: "all damage +25%" },
   { id: "hot_blooded",     name: "Hot Blooded",     effect: "attack speed +20%" },
@@ -81,59 +96,51 @@ export function tickWave(db, runId, opts = {}) {
       kills: newKills,
       score: newScore,
       spawnRate: spawnRateAtWave(newWave),
-      upgradeChoices: _rollUpgrades(db, runId, 3),
+      // Wave 4 — structured draft offering (real {stat,value} effects) instead
+      // of the old cosmetic-string UPGRADE_CATALOG roll. Still deterministic
+      // per (runId, picks-so-far) via run-draft.js#rollDraft.
+      upgradeChoices: rollDraft(db, "horde", runId, 3),
+      synergyHints: nearSynergyHints(db, "horde", runId),
     };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
 }
 
-function _rollUpgrades(db, runId, count) {
-  try {
-    const picked = db.prepare(`
-      SELECT upgrade_id FROM horde_upgrades WHERE run_id = ?
-    `).all(runId).map(r => r.upgrade_id);
-    const available = UPGRADE_CATALOG.filter(u => !picked.includes(u.id));
-    if (available.length === 0) return [];
-    // Deterministic seed so re-roll on same wave returns the same set.
-    const seed = parseInt(crypto.createHash("sha1")
-      .update(runId + ":" + picked.length)
-      .digest("hex").slice(0, 8), 16);
-    const shuffled = [...available].sort((a, b) => {
-      const ha = parseInt(crypto.createHash("sha1").update(a.id + seed).digest("hex").slice(0, 4), 16);
-      const hb = parseInt(crypto.createHash("sha1").update(b.id + seed).digest("hex").slice(0, 4), 16);
-      return ha - hb;
-    });
-    return shuffled.slice(0, count);
-  } catch { return []; }
-}
-
+/**
+ * Wave 4 — records a wave-upgrade pick through the shared structured draft
+ * engine (run-draft.js) so the boon's {stat,value} effect is real and reads
+ * back through server/lib/run-modifiers.js#getActiveRunModifiers, which the
+ * combat routes apply to this player's damage for the rest of the run.
+ *
+ * The historical `horde_upgrades` table + UPGRADE_CATALOG cosmetic strings
+ * are no longer written to — `run_draft_picks` (run_kind='horde') is now the
+ * single source of truth for a horde run's picks, shared with roguelite's
+ * draft moment via the same engine.
+ */
 export function pickUpgrade(db, runId, upgradeId) {
   if (!db || !runId || !upgradeId) return { ok: false, error: "missing_inputs" };
-  if (!UPGRADE_CATALOG.find(u => u.id === upgradeId)) {
-    return { ok: false, error: "invalid_upgrade" };
-  }
   try {
-    const r = db.prepare(`SELECT ended_at FROM horde_runs WHERE id = ?`).get(runId);
+    const r = db.prepare(`SELECT user_id, ended_at FROM horde_runs WHERE id = ?`).get(runId);
     if (!r) return { ok: false, error: "no_run" };
     if (r.ended_at) return { ok: false, error: "run_ended" };
 
-    const existing = db.prepare(`
-      SELECT COUNT(*) AS n FROM horde_upgrades WHERE run_id = ?
-    `).get(runId);
-    const nextSlot = (existing?.n || 0);
-    try {
-      db.prepare(`
-        INSERT INTO horde_upgrades (run_id, slot_idx, upgrade_id)
-        VALUES (?, ?, ?)
-      `).run(runId, nextSlot, upgradeId);
-    } catch (err) {
-      if (String(err?.message || "").includes("UNIQUE")) {
-        return { ok: false, error: "slot_collision" };
-      }
-      throw err;
+    const rec = recordPick(db, { runKind: "horde", runId, userId: r.user_id, pickId: upgradeId });
+    if (!rec.ok) {
+      // Preserve the historical error vocabulary callers/tests expect.
+      const error = rec.reason === "unknown_boon" ? "invalid_upgrade"
+        : rec.reason === "already_picked" ? "slot_collision"
+        : (rec.reason || "pick_failed");
+      return { ok: false, error };
     }
-    return { ok: true, slotIdx: nextSlot };
+    const bundle = getRunModifiers(db, "horde", runId);
+    return {
+      ok: true,
+      pickId: rec.pickId,
+      boon: rec.boon,
+      modifiers: bundle.modifiers,
+      synergies: bundle.synergies,
+    };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
@@ -167,10 +174,19 @@ export function endHorde(db, runId, opts = {}) {
 export function getActiveHorde(db, userId) {
   if (!db || !userId) return null;
   try {
-    return db.prepare(`
+    const run = db.prepare(`
       SELECT id, world_id, started_at, wave_reached, kills, score, auto_attack
       FROM horde_runs WHERE user_id = ? AND ended_at IS NULL
     `).get(userId) || null;
+    if (!run) return null;
+    // Wave 4 — surface the live accumulated modifier bundle alongside the run
+    // so the HUD can show real "damage +X%" numbers without a second request.
+    try {
+      const bundle = getRunModifiers(db, "horde", run.id);
+      run.modifiers = bundle.modifiers;
+      run.synergies = bundle.synergies;
+    } catch { run.modifiers = {}; run.synergies = []; }
+    return run;
   } catch { return null; }
 }
 

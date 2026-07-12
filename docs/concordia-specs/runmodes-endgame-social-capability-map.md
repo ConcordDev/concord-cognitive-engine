@@ -31,17 +31,26 @@ research this project cites). That part deserves credit and is real.
 But the genre-defining moment — Hades' boon pick, Vampire Survivors' weapon
 evolution, a horde-mode upgrade screen — is **decorative or unreachable** in
 every mode that has one:
-- **Horde's in-run upgrade picker does nothing.** The only upgrades a player
+- ~~**Horde's in-run upgrade picker does nothing.** The only upgrades a player
   can ever pick (`POST /api/horde/:runId/upgrade`) write to a table nothing
-  ever reads back into combat math.
-- **Roguelite's visible meta-shop is disconnected from its own effect
+  ever reads back into combat math.~~ **CLOSED (2026-07-12) — see §2.1.** Now
+  runs through the shared draft engine (§2.3) and genuinely modifies combat
+  damage on both live combat paths.
+- ~~**Roguelite's visible meta-shop is disconnected from its own effect
   engine.** The shop UI shows 6 unlocks from a content JSON file; none of
   them share an id with the 5 unlocks that `runMetaModifiers` actually
-  applies to a run. The 5 that work are never offered for sale.
-- **A genuinely well-built "shared draft engine"
+  applies to a run. The 5 that work are never offered for sale.~~ **CLOSED
+  (2026-07-12) — see §2.2.** Catalogs reconciled; the 5 real unlocks are now
+  the ones on sale, priced server-side.
+- ~~**A genuinely well-built "shared draft engine"
   (`server/lib/run-draft.js`) — structured effects, synergy combos,
   deterministic seeded rolls — has zero callers anywhere in the frontend.**
-  It was explicitly built to serve exactly the gap above and was never wired.
+  It was explicitly built to serve exactly the gap above and was never wired.~~
+  **CLOSED (2026-07-12) — see §2.3.** Now powers horde's wave-clear pick AND
+  a new roguelite in-run "Descend" draft moment; a related, previously
+  undocumented gap (roguelite's meta-unlock modifiers computed but never
+  applied to gameplay) was found and closed in the same pass — see §2.3's
+  "Gap C."
 - ~~**Time-loop is functionally broken for players**, not just
   under-designed: 3 of its 5 HTTP routes are unreachable due to a
   route-registration typo, so the HUD never renders and a loop can never
@@ -138,7 +147,48 @@ marriage candidate*, ×12 candidates).
 
 ## 2. Concrete findings
 
-### 2.1 Horde-mode upgrade picks are cosmetic text with no mechanical effect
+### 2.1 Horde-mode upgrade picks are cosmetic text with no mechanical effect — CLOSED (2026-07-12, Wave 4 run-mode gap-closure unit)
+
+Fixed by wiring horde's wave-upgrade offering onto the shared structured
+draft engine (§2.3) instead of the cosmetic `UPGRADE_CATALOG` strings, and
+by making the picked boon's `{stat, value}` effect genuinely modify the
+player's combat damage for the rest of the run. Original finding text kept
+below for record.
+
+- `server/lib/horde-mode.js`'s `tickWave` now offers `rollDraft(db, "horde",
+  runId, 3)` (real `{stat,value}` boons + `nearSynergyHints`) instead of the
+  old `_rollUpgrades()` reading `UPGRADE_CATALOG`; `pickUpgrade` now calls
+  `recordPick` into the shared `run_draft_picks` table (mapping
+  `recordPick`'s `unknown_boon`/`already_picked` reasons back onto the
+  historical `invalid_upgrade`/`slot_collision` error vocabulary so existing
+  callers don't need to change). `UPGRADE_CATALOG` is kept in the file,
+  explicitly marked deprecated, purely for the id/flavor-text vocabulary —
+  nothing reads it anymore.
+- The picked bundle is applied to damage in **two** live combat paths, both
+  traced and verified rather than assumed: the DB-backed skill-cast REST
+  route (`routes/worlds.js#/api/worlds/:worldId/combat/attack`, a post-cap
+  multiplier alongside the existing env/mass/mount multipliers) **and** the
+  socket-driven basic-attack path (`server.js`'s `combat:attack` handler →
+  `cityPresence.applyAttack`, the path `system-affordances.ts` actually
+  dispatches for "Fight `<hostile NPC>`" — tracing the code showed this,
+  not the REST route, is the live everyday attack path). `damageMult` folds
+  into `applyAttack`'s existing `contextModifiers.damageMul` hook;
+  `critChance` required a new (backward-compatible, default-0) `critChanceBonus`
+  param on `applyAttack` itself.
+- `server/lib/run-modifiers.js` is the new read-side glue
+  (`getActiveRunModifiers`) that both call sites share, with a documented
+  short-TTL cache + explicit invalidation from every mutating route.
+- Tests: `server/tests/horde-mode.test.js` (rewritten pick assertions +
+  2 new synergy tests) and `server/tests/integration/run-mode-gap-closure.test.js`
+  (hand-verified numeric examples for damageMult stacking + critChanceBonus
+  shifting a real, mocked-random `applyAttack` roll).
+- Horde still has no revive mechanic (`second_wind`'s flavor text has no
+  `DRAFT_POOL` equivalent) — only roguelite's purchased `second_chance`
+  meta-unlock does (§2.3's fix). Not treated as a gap: the original finding
+  never claimed horde needed one.
+
+Original finding text, kept for record:
+
 `server/lib/horde-mode.js:23-33` — `UPGRADE_CATALOG` entries carry only a
 human-readable `effect` string (`"all damage +25%"`). `pickUpgrade`
 (`:111-140`) inserts a row into `horde_upgrades` and nothing else.
@@ -188,7 +238,71 @@ record.
   specifically written to close: "Costs are catalog-driven (server-priced)
   so the client can't self-price").
 
-### 2.3 A real structured-draft engine exists and is completely unwired
+### 2.3 A real structured-draft engine exists and is completely unwired — CLOSED (2026-07-12, Wave 4 run-mode gap-closure unit)
+
+Fixed for both consumers named in the original finding: horde's per-wave
+pick (§2.1) now runs through this engine, and roguelite gained the missing
+in-run draft moment. A third, related gap found independently while tracing
+this one (not in the original audit) was closed in the same unit — see
+"Gap C" below.
+
+- **Roguelite's in-run draft moment** — two new functions in
+  `server/lib/roguelite.js`: `advanceRun` (mirrors horde's `tickWave`:
+  advances `depth_reached`, banks `1 + extraDraftPicks` picks into a new
+  `draft_picks_available` column, rolls an offering via `rollDraft(db,
+  "roguelite", runId, …)`) and `pickDraftBoon` (spends one banked pick via
+  `recordPick`, rejecting `no_picks_available` once the bank is empty — a
+  player can't out-pick their advances). New routes `POST
+  /api/roguelite/run/:runId/advance` and `.../draft-pick`; new UI in
+  `RogueliteRunHUD.tsx` (a "Descend" button + boon-picker modal, mirroring
+  `HordeWaveHUD.tsx`'s wave-clear picker).
+- **`extraDraftPicks` is now genuinely a "grants an extra pick" effect** —
+  the `extra_pick` meta-unlock (§2.2) previously computed `extraDraftPicks:
+  1` with no consumer; `advanceRun` now reads it and banks 2 picks per
+  advance instead of 1 (hand-verified in
+  `run-mode-gap-closure.test.js`).
+- **Gap C (found tracing this finding, not in the original audit): the
+  roguelite meta-unlock catalog computed a correct modifier bundle
+  (`runMetaModifiers`) that `startRun` returned and NOTHING read** —
+  `startingHpBonus` never touched a player's HP, `damageMult` never touched
+  combat, `metaCurrencyMult` never touched a payout, and `revives` never
+  prevented a death. All five now apply for real: `startingHpBonus` is
+  added to `player_resource_bars` at `startRun` and removed symmetrically
+  at `endRun` (migration 359's `hp_bonus_applied` column stores the exact
+  amount to reverse, so a mid-run purchase can't cause a stacking or
+  over-subtraction bug); `damageMult` merges additively with any drafted
+  boon's `damageMult` in `server/lib/run-modifiers.js` and applies to
+  combat the same way §2.1 wires horde's; `metaCurrencyMult` multiplies the
+  cash-out in `endRun` (`floor(25 * 1.25) = 31` for a `fortune_finder`-owning
+  extract at depth 4, hand-verified); `revives` seeds a new
+  `revives_remaining` column, consumed by the new
+  `maybeReviveRoguelitePlayer` — wired into **both** live sources of lethal
+  player damage: `routes/worlds.js`'s `combat/npc-attack` route AND
+  `server/lib/npc-simulator.js`'s autonomous NPC-attacks-player heartbeat
+  (both traced and confirmed as real, independent kill paths, not assumed).
+  `GET /api/roguelite/run-modifiers` (previously zero frontend callers) is
+  now read by `RogueliteRunHUD.tsx` to show the owned-unlock effects as real
+  text.
+- **Known, disclosed scope limit:** only `damageMult` (both run kinds, both
+  live combat paths) and `critChance` (the socket path only, via a new
+  `critChanceBonus` param on `cityPresence.applyAttack`) were wired into
+  actual combat math. The remaining `DRAFT_POOL` stats
+  (`attackSpeedMult`, `fireDotPerHit`, `critDamageMult`, `maxHpFlat`,
+  `reflectPct`, `regenPerSec`, `lifestealPct`, `pickupRadiusMult`,
+  `moveSpeedMult`) are real, structured, and correctly displayed in the HUD
+  (derived from the server's actual numbers, never fabricated text) but are
+  not yet consumed by a gameplay system beyond that display — each would
+  need its own systems work (animation-speed threading, a DoT-tick system,
+  a pickup-radius query, etc.) that was out of this unit's scope. Recorded
+  here rather than left silent, per this repo's "genuinely missing" honesty
+  discipline.
+- Tests: `server/tests/integration/run-mode-gap-closure.test.js` (19 cases,
+  hand-verified numeric examples for the HP-bonus round-trip, the currency
+  multiplier, the revive HP restoration, the additive damageMult stacking,
+  the draft-pick banking, and the cache invalidation contract).
+
+Original finding text, kept for record:
+
 `server/lib/run-draft.js` — 12 boons with real `{stat, value}` effects, 4
 synergy combos, deterministic sha1-seeded rolls (fair, no save-scumming).
 Registered as macros in `server/domains/run-draft.js` (`run_draft.offer` /
@@ -396,11 +510,14 @@ wide margin.
 
 ### ENGINEERING (no external data dependency — build it)
 
-1. **[High] Wire `run-draft.js` into horde's upgrade step and roguelite's
+1. ~~**[High] Wire `run-draft.js` into horde's upgrade step and roguelite's
    in-run pick.** The engine (2.3) already exists with synergies and
    deterministic rolls; horde's dead `UPGRADE_CATALOG`/`pickUpgrade` path
    (2.1) should be replaced by a call to `run_draft.offer`/`.pick`, and
-   roguelite should gain an in-run draft moment using the same macros.
+   roguelite should gain an in-run draft moment using the same macros.~~
+   **CLOSED (2026-07-12, Wave 4 run-mode gap-closure unit)** — see §2.1 and
+   §2.3: both wired, plus the previously-undocumented "Gap C" (roguelite
+   meta-unlocks computed but never applied) closed in the same pass.
 2. ~~**[High] Fix the 3 broken time-loop routes** (2.4) — add the missing
    `/` before `:sessionId`/`:worldId` in the three route registrations, and
    wire an "end loop" call from the frontend (currently absent even from

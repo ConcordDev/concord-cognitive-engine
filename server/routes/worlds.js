@@ -2543,6 +2543,26 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* Phase 3 substrate not applied — neutral pass-through */ }
 
+      // Wave 4 (Gap A/C) — run-mode draft-pick + meta-unlock damage modifiers.
+      // A player inside an active horde or roguelite run accumulates a live
+      // modifier bundle (drafted boons, and for roguelite, purchased
+      // meta-unlocks) via server/lib/run-modifiers.js. Same post-cap pattern
+      // as the env/mass/mount multipliers above — the anti-cheat cap stays a
+      // bound on RAW damage, and a legitimate run buff can push finalDamage
+      // past it. damageMult is the SUM of every damageMult-contributing
+      // source (see run-modifiers.js's stacking-rule doc comment for why
+      // additive, not multiplicative, is the correct read of the existing
+      // getRunModifiers precedent) applied as one multiplicative factor.
+      try {
+        const { getActiveRunModifiers } = await import("../lib/run-modifiers.js");
+        const runMods = getActiveRunModifiers(db, userId);
+        const dmgMult = Number(runMods.modifiers?.damageMult) || 0;
+        if (dmgMult !== 0 && Number.isFinite(damageResult.finalDamage)) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * (1 + dmgMult) * 10) / 10;
+          damageResult.runModifier = { runKind: runMods.runKind, runId: runMods.runId, damageMult: dmgMult };
+        }
+      } catch { /* run-modifier substrate optional — neutral pass-through */ }
+
       // Phase 8 — combat-polish substrate. Player spends gas, records a
       // strike (combo + multiplier), and the multiplier amplifies damage
       // before applyDamageToNPC. NPC may be triggered into rocked state
@@ -3173,9 +3193,30 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* combat-state optional — fall through to undefended damage */ }
 
-      const { eventId, kill } = applyDamageToPlayer(db, worldId, npcId, 'npc', userId, damageResult, {
+      const { eventId, kill: killRaw } = applyDamageToPlayer(db, worldId, npcId, 'npc', userId, damageResult, {
         element, bar_used: 'hp', bar_cost: damageResult.finalDamage,
       });
+      let kill = killRaw;
+
+      // Wave 4 (Gap C) — roguelite death handling. A hit that WOULD kill the
+      // player is intercepted here, before any downstream kill-consequence
+      // logic (near-death awakening, pvp-loot) runs, so a consumed revive
+      // reads as "survived" everywhere below, not as a death that got
+      // undone after the fact.
+      let revived = null;
+      if (kill) {
+        try {
+          const { maybeReviveRoguelitePlayer } = await import("../lib/roguelite.js");
+          const rev = maybeReviveRoguelitePlayer(db, userId, worldId);
+          if (rev.revived) {
+            kill = false;
+            revived = rev;
+            req.app.locals.io?.to(`user:${userId}`)?.emit?.("roguelite:revived", {
+              worldId, revivesRemaining: rev.revivesRemaining, reviveHp: rev.reviveHp,
+            });
+          }
+        } catch { /* roguelite substrate optional — a kill without an active run is unaffected */ }
+      }
 
       // ── Layer 8: record pain signal ────────────────────────────────────────
       // Players' bodies remember. The repair-cycle heartbeat will turn this
@@ -3247,7 +3288,11 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       }
 
-      res.json({ ok: true, damageResult, eventId, kill, lootDrop: lootDrop || undefined, message: kill ? 'You have been defeated' : undefined });
+      res.json({
+        ok: true, damageResult, eventId, kill, lootDrop: lootDrop || undefined,
+        revived: revived || undefined,
+        message: kill ? 'You have been defeated' : (revived ? 'A second chance — you live on' : undefined),
+      });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

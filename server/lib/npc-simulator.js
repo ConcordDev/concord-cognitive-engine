@@ -458,9 +458,32 @@ function _performNPCAttack(npc, target, worldId, db, archetype) {
     };
 
     const damageResult = computeDamage(attackerStats, defenderStats, {});
-    applyDamageToPlayer(db, worldId, npc.id, 'npc', target.userId, damageResult, {
+    const { kill } = applyDamageToPlayer(db, worldId, npc.id, 'npc', target.userId, damageResult, {
       element: 'none', bar_used: 'hp', bar_cost: damageResult.finalDamage,
     });
+
+    // Wave 4 (Gap C) — autonomous NPC heartbeat attacks are a second real
+    // source of lethal damage to a player (independent of the HTTP
+    // combat/npc-attack route, which only fires on an explicit client call).
+    // A roguelite run's purchased revive must cover this path too, or a
+    // player fighting wilderness NPCs during a run could die here with a
+    // banked revive charge that never gets the chance to fire.
+    // `_performNPCAttack` is synchronous by design (called fire-and-forget,
+    // no callers await it) — use the same .then()-chain style the flow-
+    // recorder block below already uses for its own optional async work,
+    // rather than making this whole function async.
+    if (kill) {
+      import("./roguelite.js").then(({ maybeReviveRoguelitePlayer }) => {
+        const rev = maybeReviveRoguelitePlayer(db, target.userId, worldId);
+        if (rev.revived) {
+          try {
+            globalThis._concordREALTIME?.io?.to(`user:${target.userId}`)?.emit?.("roguelite:revived", {
+              worldId, revivesRemaining: rev.revivesRemaining, reviveHp: rev.reviveHp,
+            });
+          } catch { /* emit best-effort */ }
+        }
+      }).catch(() => { /* roguelite substrate optional — a kill without an active run is unaffected */ });
+    }
 
     // Flow Combat: NPCs evolve their own styles. Record this attack into the
     // flow substrate so the flow engine can derive personalized combos for

@@ -18,6 +18,7 @@ import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 
 import { up as up245 } from "../../migrations/245_roguelite_runs.js";
+import { up as up359 } from "../../migrations/359_run_mode_modifiers.js";
 import {
   runMetaModifiers, purchaseUnlock, startRun, META_UNLOCK_CATALOG, getBalance,
 } from "../../lib/roguelite.js";
@@ -25,6 +26,7 @@ import {
 function freshDb(balance = 2000) {
   const db = new Database(":memory:");
   up245(db);
+  up359(db);
   db.prepare(`INSERT INTO roguelite_meta_currency (user_id, balance, lifetime) VALUES ('u1', ?, ?)`).run(balance, balance);
   return db;
 }

@@ -8,8 +8,11 @@ import {
   hasUnlock, getActiveRun, listRecentRuns,
 } from "../lib/roguelite.js";
 import { up as upRoguelite } from "../migrations/245_roguelite_runs.js";
+import { up as upRunModifiers } from "../migrations/359_run_mode_modifiers.js";
 
-function freshDb() { const db = new Database(":memory:"); upRoguelite(db); return db; }
+// Wave 4 — startRun/endRun now read/write hp_bonus_applied, revives_remaining,
+// draft_picks_available (migration 359); apply it so those columns exist.
+function freshDb() { const db = new Database(":memory:"); upRoguelite(db); upRunModifiers(db); return db; }
 
 describe("Phase CB1 — roguelite runs", () => {
   let db;
