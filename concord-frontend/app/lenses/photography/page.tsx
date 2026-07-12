@@ -624,7 +624,7 @@ export default function PhotographyPage() {
             <Sliders className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm mb-2">Photo Editing</p>
             <p className="text-xs text-gray-400">Exposure, contrast, color grading, and LUT presets.</p>
-            <VisionAnalyzeButton domain="photography" onResult={() => {}} />
+            <VisionAnalyzeButton domain="photography" viaMacro onResult={() => {}} />
           </div>
         )}
 

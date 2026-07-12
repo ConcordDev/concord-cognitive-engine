@@ -8,9 +8,18 @@ interface Props {
   prompt?: string;
   onResult: (result: { analysis: string; suggestedTags?: string[] }) => void;
   className?: string;
+  /**
+   * Route through the domain's own `vision` registerLensAction macro
+   * (server/domains/<domain>.js) instead of the generic `/api/chat`
+   * vision path. Only pass this for domains that actually register a real
+   * `vision` macro (confirmed today: `photography` —
+   * server/domains/photography.js) — otherwise the call fails honestly
+   * with `unknown_macro` rather than silently falling back to chat.
+   */
+  viaMacro?: boolean;
 }
 
-export function VisionAnalyzeButton({ domain, prompt, onResult, className }: Props) {
+export function VisionAnalyzeButton({ domain, prompt, onResult, className, viaMacro }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const { analyzeImage, isAnalyzing, result, error, reset } = useVisionAnalysis();
   const [preview, setPreview] = useState<string | null>(null);
@@ -19,7 +28,7 @@ export function VisionAnalyzeButton({ domain, prompt, onResult, className }: Pro
     const file = e.target.files?.[0];
     if (!file) return;
     setPreview(URL.createObjectURL(file));
-    const res = await analyzeImage(file, domain, prompt);
+    const res = await analyzeImage(file, domain, prompt, viaMacro);
     if (res) onResult(res);
   };
 
