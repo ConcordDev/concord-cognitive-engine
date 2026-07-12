@@ -31,6 +31,49 @@ export function reputationWageMultiplier(reputation) {
   return 0.8 + (r / 100) * 0.4;
 }
 
+/**
+ * Derive a worker's reputation (0..100) from REAL DB history this careers
+ * system itself already writes — never fabricated, never trusted from an
+ * arbitrary caller-supplied number. Two grounded signals:
+ *   - signed contracts (`career_contracts` rows where this holder is the
+ *     WORKER and the contract reached 'active'/'completed') — a real
+ *     counterparty committed to them. Weighted heaviest (20 pts each).
+ *   - worked shifts (`sparks_txn_refs`, the idempotency ledger
+ *     `lib/sparks-service.js` writes for every `creditSparks` call — the
+ *     `careers.work` macro credits with refId `career:<workerId>:<trackId>:
+ *     <ts>` and reason 'career_play_shift') — self-directed practice.
+ *     Weighted lighter (4 pts each).
+ * `trackId`, if given, scopes both signals to that one track; omitted, it's
+ * the worker's reputation across every track. Saturates at 100 (5 signed
+ * contracts, or 25 shifts, or a mix, maxes it out) so an established worker
+ * tops the scale without grinding hundreds of shifts. Never throws — a
+ * minimal build without these tables returns 0 (an honest "no track record
+ * yet"), which gates a fresh worker to reputationGateTier(0) = tier 3.
+ */
+export function deriveWorkerReputation(db, workerKind, workerId, trackId = null) {
+  if (!db || !workerId) return 0;
+
+  let contractCount = 0;
+  try {
+    const sql = trackId
+      ? `SELECT COUNT(*) AS n FROM career_contracts WHERE worker_kind = ? AND worker_id = ? AND track_id = ? AND status IN ('active','completed')`
+      : `SELECT COUNT(*) AS n FROM career_contracts WHERE worker_kind = ? AND worker_id = ? AND status IN ('active','completed')`;
+    const params = trackId ? [workerKind, workerId, trackId] : [workerKind, workerId];
+    contractCount = db.prepare(sql).get(...params)?.n || 0;
+  } catch { /* career_contracts absent in a minimal build */ }
+
+  let shiftCount = 0;
+  try {
+    const pattern = trackId ? `career:${workerId}:${trackId}:%` : `career:${workerId}:%`;
+    shiftCount = db.prepare(`
+      SELECT COUNT(*) AS n FROM sparks_txn_refs
+      WHERE holder_kind = ? AND holder_id = ? AND reason = 'career_play_shift' AND ref_id LIKE ?
+    `).get(workerKind, workerId, pattern)?.n || 0;
+  } catch { /* sparks_txn_refs not created yet — no shift has ever been worked */ }
+
+  return Math.max(0, Math.min(100, contractCount * 20 + shiftCount * 4));
+}
+
 function sanitizeClauses(clauses) {
   return [...new Set((clauses || []).filter((c) => VALID_CLAUSES.has(c)))];
 }

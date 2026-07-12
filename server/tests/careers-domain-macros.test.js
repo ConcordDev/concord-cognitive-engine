@@ -37,9 +37,20 @@ function freshDb() {
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, delta INTEGER NOT NULL,
       reason TEXT NOT NULL, world_id TEXT, created_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
+    -- minimal world_npcs shape (real migration 042 base + 060 archetype/level
+    -- columns) so the employer-discovery macro has something real to query.
+    CREATE TABLE world_npcs (
+      id TEXT PRIMARY KEY, world_id TEXT NOT NULL, archetype TEXT DEFAULT 'generic',
+      level INTEGER DEFAULT 1, is_dead INTEGER DEFAULT 0, faction TEXT, state TEXT DEFAULT '{}',
+      x REAL, z REAL
+    );
   `);
   upContracts(db);
   return db;
+}
+function seedNpc(db, { id, worldId = "concordia-hub", archetype = "generic", level = 1, name = null }) {
+  db.prepare(`INSERT INTO world_npcs (id, world_id, archetype, level, state) VALUES (?, ?, ?, ?, ?)`)
+    .run(id, worldId, archetype, level, name ? JSON.stringify({ name }) : "{}");
 }
 function seedUser(db, id, sparks = 0) {
   db.prepare(`INSERT INTO users (id, sparks) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET sparks = excluded.sparks`).run(id, sparks);
@@ -56,7 +67,7 @@ describe("careers domain macros", () => {
   beforeEach(() => { db = freshDb(); macros = collectMacros(); });
 
   it("registers the full read + write surface", () => {
-    for (const name of ["tracks", "ladder", "work", "contracts", "offer", "accept", "counter", "reject"]) {
+    for (const name of ["tracks", "ladder", "work", "contracts", "offer", "accept", "counter", "reject", "employers", "myReputation"]) {
       assert.equal(typeof macros.get(name), "function", `missing macro: ${name}`);
     }
   });
@@ -240,5 +251,109 @@ describe("careers domain macros", () => {
       if (prev === undefined) delete process.env.CONCORD_LIVING_CAREER;
       else process.env.CONCORD_LIVING_CAREER = prev;
     }
+  });
+
+  // ── employers: NPC employer directory (checklist item 6) ───────────────────
+  it("employers finds NPCs whose real archetype maps to the requested track, excludes unmapped archetypes", async () => {
+    seedNpc(db, { id: "trader1", archetype: "trader", level: 4, name: "Vell the Trader" });
+    seedNpc(db, { id: "flavor1", archetype: "vampire_noble", level: 4 }); // no track mapping — must not appear
+
+    const forTrader = await macros.get("employers")(ctxFor(db), { trackId: "trader" });
+    assert.equal(forTrader.ok, true);
+    assert.equal(forTrader.employers.length, 1);
+    assert.equal(forTrader.employers[0].npcId, "trader1");
+    assert.equal(forTrader.employers[0].name, "Vell the Trader");
+
+    const forChef = await macros.get("employers")(ctxFor(db), { trackId: "chef" });
+    assert.equal(forChef.ok, true);
+    assert.deepEqual(forChef.employers, [], "no chef-mapped archetype was seeded — honest empty, not fabricated");
+
+    const unfiltered = await macros.get("employers")(ctxFor(db), {});
+    assert.equal(unfiltered.employers.some((e) => e.npcId === "flavor1"), false, "unmapped archetype never appears even unfiltered");
+  });
+
+  it("employers rejects an unknown trackId and doesn't require auth (read-only browse)", async () => {
+    const bad = await macros.get("employers")(ctxFor(db), { trackId: "no_such_track" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.reason, "unknown_track");
+
+    const noAuth = await macros.get("employers")(ctxFor(db), {}); // ctxFor(db) with no userId
+    assert.equal(noAuth.ok, true, "employer directory is a public read, like tracks/ladder");
+  });
+
+  // ── myReputation: surfaces the SAME gate the offer macro enforces ──────────
+  it("myReputation requires auth and returns 0/tier-3 for a fresh worker with no history", async () => {
+    const noAuth = await macros.get("myReputation")(ctxFor(db), {});
+    assert.equal(noAuth.ok, false);
+    assert.equal(noAuth.reason, "auth_required");
+
+    seedUser(db, "fresh", 0);
+    const r = await macros.get("myReputation")(ctxFor(db, "fresh"), { trackId: "chef" });
+    assert.equal(r.ok, true);
+    assert.equal(r.trackId, "chef");
+    assert.equal(r.reputation, 0);
+    assert.equal(r.gateTier, 3, "reputationGateTier(0) === 3 — the exact function offerContract uses");
+    assert.deepEqual(r.gatedTiers, [4, 5, 6, 7, 8, 9, 10]);
+  });
+
+  it("myReputation grows with real accepted contracts and matches offerContract's own gate for the same value", async () => {
+    seedUser(db, "climber", 0);
+    // an employer offers climber a chef contract; climber accepts → 'active'.
+    const offered = await macros.get("offer")(ctxFor(db, "someEmployer"), {
+      employerKind: "player", employerId: "someEmployer",
+      workerKind: "player", workerId: "climber",
+      trackId: "chef", tier: 1, baseWage: 5, signingBonus: 0,
+    });
+    assert.equal(offered.ok, true);
+    const accepted = await macros.get("accept")(ctxFor(db, "climber"), { contractId: offered.contractId });
+    assert.equal(accepted.ok, true);
+
+    const r = await macros.get("myReputation")(ctxFor(db, "climber"), { trackId: "chef" });
+    assert.equal(r.ok, true);
+    assert.equal(r.reputation, 20, "1 active contract * 20 pts");
+    // reputationGateTier: <20 -> 3, <50 -> 6; 20 lands in the [20,50) bracket -> 6.
+    assert.equal(r.gateTier, 6, "reputationGateTier(20) === 6 (the [20,50) bracket)");
+
+    // cross-check against the real gate function directly — the macro must
+    // not reimplement the tier math, only call it.
+    const { reputationGateTier } = await import("../lib/career-contracts.js");
+    assert.equal(r.gateTier, reputationGateTier(r.reputation));
+  });
+
+  it("offer computes the player-worker's reputation server-side — a client-supplied workerReputation cannot bypass the gate", async () => {
+    seedUser(db, "newbie", 0);
+    // newbie has ZERO track record → reputationGateTier(0) = 3. Try to offer
+    // a tier-8 contract with newbie as the worker, lying with a spoofed
+    // workerReputation: 100 in the input. The server must ignore it and
+    // compute newbie's REAL reputation (0), rejecting the offer.
+    const spoofed = await macros.get("offer")(ctxFor(db, "newbie"), {
+      employerKind: "npc", employerId: "emp1",
+      workerKind: "player", workerId: "newbie",
+      trackId: "chef", tier: 8, baseWage: 50,
+      workerReputation: 100, // spoofed — must be ignored for the self-worker path
+    });
+    assert.equal(spoofed.ok, false);
+    assert.equal(spoofed.reason, "reputation_too_low", "server-computed reputation (0) gates the tier-8 offer, not the spoofed 100");
+
+    // a tier the real (zero) reputation DOES permit still works.
+    const legit = await macros.get("offer")(ctxFor(db, "newbie"), {
+      employerKind: "npc", employerId: "emp1",
+      workerKind: "player", workerId: "newbie",
+      trackId: "chef", tier: 2, baseWage: 20,
+      workerReputation: 100, // still ignored, but tier 2 is within reputationGateTier(0)=3 anyway
+    });
+    assert.equal(legit.ok, true);
+  });
+
+  it("offer still honors a caller-supplied workerReputation when the worker is an NPC (unchanged pre-existing behavior)", async () => {
+    seedUser(db, "e2", 100);
+    const r = await macros.get("offer")(ctxFor(db, "e2"), {
+      employerKind: "player", employerId: "e2",
+      workerKind: "npc", workerId: "npc-worker-1",
+      trackId: "chef", tier: 8, baseWage: 50,
+      workerReputation: 10, // low — should still gate, proving the client value was actually used for an NPC worker
+    });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "reputation_too_low");
   });
 });

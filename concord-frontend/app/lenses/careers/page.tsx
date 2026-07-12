@@ -21,12 +21,34 @@ import { LensShell } from '@/components/lens/LensShell';
  * a11y: the track select + skill slider + every button carry accessible names.
  * Responsive: mobile-first Tailwind (single column → sm: row). Toasts surface
  * success (shift earned) + failure (load/shift error) via the global UI store.
+ *
+ * Employer discovery + reputation (closes the two remaining GENUINELY MISSING
+ * checklist items in docs/lens-specs/careers-capability-map.md), each its own
+ * tested component (see tests/components/EmployerBrowser.test.tsx and
+ * tests/components/ReputationGate.test.tsx):
+ *   `<EmployerBrowser>`  — real NPCs (`careers.employers` →
+ *                          server/lib/career-employers.js, a READ-ONLY
+ *                          archetype→track derivation over world_npcs;
+ *                          never fabricated) hiring for the selected track,
+ *                          with a "Propose contract" flow that calls the
+ *                          real `careers.offer` macro.
+ *   `<ReputationGate>`   — the player's real reputation for the selected
+ *                          track (`careers.myReputation`), computed
+ *                          server-side from actual career_contracts +
+ *                          worked-shift history, and the SAME
+ *                          reputationGateTier/wageMultiplier functions
+ *                          offerContract enforces — so what's shown here is
+ *                          guaranteed consistent with what actually gates a
+ *                          contract offer. Reports gated tiers up so the
+ *                          ladder below can mark them locked.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Briefcase, RefreshCw, Hammer, AlertTriangle, Loader2, Check, X, ArrowLeftRight, ListOrdered, Star, GitBranch } from 'lucide-react';
+import { Briefcase, RefreshCw, Hammer, AlertTriangle, Loader2, Check, X, ArrowLeftRight, ListOrdered, Star, GitBranch, Lock } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
+import { EmployerBrowser } from '@/components/careers/EmployerBrowser';
+import { ReputationGate, type ReputationInfo } from '@/components/careers/ReputationGate';
 
 interface Track { id: string; category: string; activity: string; branch: string[] }
 interface WorkResult { ok: boolean; trackId?: string; tier?: number; performanceScore?: number; wage?: number; xp?: number; paid?: boolean; reason?: string }
@@ -62,6 +84,7 @@ export default function CareersLens() {
   const [counterWage, setCounterWage] = useState<Record<string, string>>({});
   const [ladder, setLadder] = useState<TierInfo[]>([]);
   const [ladderLoading, setLadderLoading] = useState(false);
+  const [reputation, setReputation] = useState<ReputationInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
   const refresh = useCallback(async () => {
@@ -216,7 +239,9 @@ export default function CareersLens() {
             )}
           </section>
 
-          {/* Tier ladder — careers.ladder for the selected track */}
+          {/* Tier ladder — careers.ladder for the selected track. Tiers the
+              player's real reputation currently gates them out of (reported
+              up by <ReputationGate>) render locked. */}
           <section className="mb-6 rounded-lg border border-white/10 bg-black/40 p-4" aria-label="Tier ladder">
             <h2 className="text-sm font-semibold text-amber-100 mb-2 flex items-center gap-1">
               <ListOrdered className="w-4 h-4" aria-hidden="true" /> {selected} ladder
@@ -229,20 +254,28 @@ export default function CareersLens() {
               <p className="text-gray-500 text-xs">No ladder data for this track.</p>
             ) : (
               <ol className="space-y-1 text-xs">
-                {ladder.map((t) => (
-                  <li key={t.tier} className="flex items-center justify-between gap-2 bg-black/30 border border-white/5 rounded px-2 py-1">
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-gray-500 tabular-nums w-5 shrink-0">{t.tier}.</span>
-                      <span className="text-gray-100 truncate">{t.title}</span>
-                      {t.isBranchPoint && <GitBranch className="w-3 h-3 text-sky-300 shrink-0" aria-label="Branch point" />}
-                      {t.isMastery && <Star className="w-3 h-3 text-amber-300 shrink-0" aria-label="Mastery tier" />}
-                    </span>
-                    <span className="text-gray-400 shrink-0 tabular-nums">gate {t.skillGate} · {t.wageBase} sparks/shift</span>
-                  </li>
-                ))}
+                {ladder.map((t) => {
+                  const gated = !!reputation && reputation.gatedTiers.includes(t.tier);
+                  return (
+                    <li key={t.tier} className={`flex items-center justify-between gap-2 bg-black/30 border rounded px-2 py-1 ${gated ? 'border-red-500/20 opacity-60' : 'border-white/5'}`}>
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-gray-500 tabular-nums w-5 shrink-0">{t.tier}.</span>
+                        <span className="text-gray-100 truncate">{t.title}</span>
+                        {t.isBranchPoint && <GitBranch className="w-3 h-3 text-sky-300 shrink-0" aria-label="Branch point" />}
+                        {t.isMastery && <Star className="w-3 h-3 text-amber-300 shrink-0" aria-label="Mastery tier" />}
+                        {gated && <Lock className="w-3 h-3 text-red-400 shrink-0" aria-label={`Gated by reputation — requires more than ${reputation?.reputation} reputation`} />}
+                      </span>
+                      <span className="text-gray-400 shrink-0 tabular-nums">gate {t.skillGate} · {t.wageBase} sparks/shift</span>
+                    </li>
+                  );
+                })}
               </ol>
             )}
           </section>
+
+          {/* Reputation (checklist item 7) + Employer discovery (checklist item 6) */}
+          <ReputationGate trackId={selected} onLoaded={setReputation} />
+          <EmployerBrowser trackId={selected} onContractProposed={() => void refreshContracts()} />
 
           {/* Taxonomy */}
           <section className="mb-6" aria-label="Professions">
