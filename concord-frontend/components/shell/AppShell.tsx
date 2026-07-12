@@ -99,7 +99,10 @@ const NowPlayingBar = dynamic(
 );
 
 /** Routes that render their own chrome and should skip the AppShell layout. */
-const STANDALONE_PREFIXES = ['/legal/'];
+// '/welding-portal/' is the public, no-account customer portal (view/approve
+// a welding estimate or invoice via an emailed token link) — it must not
+// show Concord's app sidebar/nav to a visitor who was never asked to sign up.
+const STANDALONE_PREFIXES = ['/legal/', '/welding-portal/'];
 
 interface AppShellProps {
   children: React.ReactNode;

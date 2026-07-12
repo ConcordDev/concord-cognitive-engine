@@ -15,7 +15,10 @@ import Database from "better-sqlite3";
 import { up as up278 } from "../migrations/278_resource_properties.js";
 import {
   RESOURCE_CATALOG, propsFor, tierOf, isValidAffinity, seedResourceProperties, RESOURCE_CONSTANTS,
+  RESOURCE_ID_ALIASES,
 } from "../lib/resources.js";
+import { resolveCraft } from "../lib/craft-resolve.js";
+import { BASE_PRICES } from "../lib/world-economy.js";
 
 function setupDb() {
   const db = new Database(":memory:");
@@ -102,5 +105,85 @@ describe("Phase 0 — propsFor resolution order", () => {
     const again = seedResourceProperties(db); // upsert, no dup error
     assert.equal(again.seeded, Object.keys(RESOURCE_CATALOG).length);
     assert.equal(seedResourceProperties(new Database(":memory:")).ok, false); // no table
+  });
+});
+
+// ── Market-id ↔ catalog-id reconciliation ────────────────────────────────────
+//
+// `docs/concordia-specs/crafting-economy-housing-capability-map.md` §2.2 found
+// RESOURCE_CATALOG (crafting-property namespace) and BASE_PRICES
+// (world-economy.js, supply/demand pricing namespace) only overlapped on 3
+// exact string ids. A material gathered/traded via the standard world-market
+// path (e.g. `iron-ore`) silently fell through `propsFor` to DEFAULT_PROPS
+// instead of its real, differentiated catalog entry — these tests pin the
+// fix (an alias layer, not a rename of either namespace) and prove the
+// reconciled ids resolve to their REAL catalog properties end-to-end through
+// resolveCraft, not just via string comparison.
+describe("Phase 0 — market-id → catalog-id alias reconciliation", () => {
+  it("every alias target exists in RESOURCE_CATALOG and every alias source exists in BASE_PRICES", () => {
+    for (const [marketId, catalogId] of Object.entries(RESOURCE_ID_ALIASES)) {
+      assert.ok(marketId in BASE_PRICES, `alias source '${marketId}' is not a real BASE_PRICES id`);
+      assert.ok(catalogId in RESOURCE_CATALOG, `alias target '${catalogId}' is not a real RESOURCE_CATALOG id`);
+    }
+  });
+
+  it("a market-namespace id resolves to its real catalog entry, not DEFAULT_PROPS", () => {
+    const viaMarketId = propsFor("iron-ore");
+    const viaCatalogId = propsFor("iron_ore");
+    assert.deepEqual(viaMarketId, viaCatalogId);
+    assert.equal(viaMarketId.potency, RESOURCE_CATALOG.iron_ore.potency); // 14, not DEFAULT_PROPS' 10
+    assert.notEqual(viaMarketId.potency, RESOURCE_CONSTANTS.DEFAULT_PROPS.potency);
+  });
+
+  it("mana-crystal / herbs / gold-ore all reconcile to their real catalog entries", () => {
+    assert.deepEqual(propsFor("mana-crystal"), propsFor("mana_crystal"));
+    assert.equal(propsFor("mana-crystal").affinity, "magic");
+    assert.deepEqual(propsFor("herbs"), propsFor("herb"));
+    assert.equal(propsFor("herbs").source_type, "forage");
+    assert.deepEqual(propsFor("gold-ore"), propsFor("gold"));
+    assert.equal(propsFor("gold-ore").rarity_tier, 3);
+  });
+
+  it("a DB row seeded under the canonical id is found when looked up by the market id", () => {
+    const db = setupDb();
+    seedResourceProperties(db); // seeds using RESOURCE_CATALOG's canonical (snake_case) ids only
+    db.prepare("UPDATE resource_properties SET potency = 77 WHERE item_id = 'iron_ore'").run();
+    // Crafting reads player_inventory.item_id, which is the market-style id ('iron-ore').
+    // propsFor must fall back through the alias to find the canonical DB row.
+    assert.equal(propsFor("iron-ore", { db }).potency, 77);
+  });
+
+  it("a market id with no real catalog counterpart still degrades honestly to DEFAULT_PROPS (not invented)", () => {
+    // mythril-ore / vibranium-ore / scrap-metal etc are genuinely distinct
+    // concepts with no crafting-property entry — the residual gap is real,
+    // not a naming mismatch, so no alias should exist for them.
+    assert.ok(!("mythril-ore" in RESOURCE_ID_ALIASES));
+    const p = propsFor("mythril-ore");
+    assert.deepEqual(p, { ...RESOURCE_CONSTANTS.DEFAULT_PROPS, ...(RESOURCE_CATALOG["mythril-ore"] || {}) });
+    assert.equal(p.potency, RESOURCE_CONSTANTS.DEFAULT_PROPS.potency);
+  });
+
+  it("round-trip through resolveCraft: a gathered 'iron-ore' input now produces the same craft as its real 'iron_ore' catalog twin", () => {
+    const viaMarketId = resolveCraft({
+      inputs: [{ itemId: "iron-ore", qty: 1 }],
+      playerSkill: 80, stationQuality: 50, risk: 0,
+    });
+    const viaCatalogId = resolveCraft({
+      inputs: [{ itemId: "iron_ore", qty: 1 }],
+      playerSkill: 80, stationQuality: 50, risk: 0,
+    });
+    assert.equal(viaMarketId.outputPotency, viaCatalogId.outputPotency);
+    assert.equal(viaMarketId.outputStability, viaCatalogId.outputStability);
+
+    // And it must differ measurably from the pre-fix DEFAULT_PROPS-driven result
+    // (same skill/station/risk, but resolved via an uncatalogued id) — proving
+    // the alias genuinely changes the craft outcome, not just a lookup detail.
+    const viaUnknownId = resolveCraft({
+      inputs: [{ itemId: "totally-unknown-mat", qty: 1 }],
+      playerSkill: 80, stationQuality: 50, risk: 0,
+    });
+    assert.notEqual(viaMarketId.outputPotency, viaUnknownId.outputPotency);
+    // iron_ore (potency 14) > DEFAULT_PROPS (potency 10) → real material craft is stronger
+    assert.ok(viaMarketId.outputPotency > viaUnknownId.outputPotency);
   });
 });

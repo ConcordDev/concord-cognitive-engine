@@ -16,6 +16,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { subscribe } from '@/lib/realtime/socket';
 import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
+import { RecipientSearchInput } from '@/components/message/RecipientSearchInput';
 import type { DTU } from '@/lib/api/generated-types';
 
 // Mirrors server/lib/player-mail.js MAX_ATTACHMENTS — client-side cap is a
@@ -383,14 +384,14 @@ export default function MailLensPage() {
             <form onSubmit={handleSend} className="sm:col-span-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
               <h2 className="mb-3 text-sm font-semibold text-slate-100">Compose mail</h2>
               <label className="mb-2 block">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400">Recipient user id</span>
-                <input
-                  value={composeTo}
-                  onChange={(e) => setComposeTo(e.target.value)}
-                  placeholder="user-id"
-                  required
-                  className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100 focus:border-cyan-500/50 focus:outline-none"
-                />
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">Recipient</span>
+                <div className="mt-0.5">
+                  <RecipientSearchInput
+                    value={composeTo}
+                    onChange={setComposeTo}
+                    inputId="mail-compose-recipient"
+                  />
+                </div>
               </label>
               <label className="mb-2 block">
                 <span className="text-[10px] uppercase tracking-wider text-slate-400">Subject</span>

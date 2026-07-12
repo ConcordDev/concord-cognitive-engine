@@ -4,6 +4,18 @@
 
 const DOMAIN_RULES = new Map();
 
+// Accepts either an ARRAY of vote objects ({voterId, choice, ...}) or a
+// Record<voterId, choice> and returns a normalized array of {voterId, choice}
+// for read-only derived-field computation. See the "council" rule below for
+// the concrete bug this fixes.
+function _normalizeVotesForCompute(votes) {
+  if (Array.isArray(votes)) return votes;
+  if (votes && typeof votes === "object") {
+    return Object.entries(votes).map(([voterId, choice]) => ({ voterId, choice }));
+  }
+  return [];
+}
+
 // === Paper (Research) ===
 DOMAIN_RULES.set("paper", {
   types: ["research", "review", "survey", "meta-analysis", "preprint", "commentary"],
@@ -76,8 +88,24 @@ DOMAIN_RULES.set("council", {
     archived: [],
   },
   requiredFields: { proposal: ["title"] },
+  // `data.votes` arrives in two real shapes depending on the caller: an ARRAY
+  // of { voterId, choice, ... } (the registerLensAction("council","vote"/"audit", ...)
+  // handlers in server.js), or a Record<voterId, choice> (the council lens
+  // frontend's own `Proposal.votes` type — concord-frontend/app/lenses/council/
+  // page.tsx). Both are real, both are in production use. The array-only
+  // assumption below used to call `.map`/`.forEach` directly on `data.votes`,
+  // which threw `votes.map is not a function` for EVERY update to a proposal
+  // artifact carrying Record-shaped votes (including the default empty `{}`
+  // every freshly-created proposal starts with) — i.e. every vote cast, status
+  // advance, comment, or amendment on a real proposal 500'd. Verified live via
+  // runMacro("lens","update",...) before this fix; pinned by
+  // tests/domain-logic-council-votes.test.js. `_normalizeVotesForCompute` reads
+  // both shapes for the derived-field computation below WITHOUT mutating the
+  // stored `data.votes` value itself — callers that persisted a Record keep
+  // reading back a Record; only the derived voteCount/uniqueVoters/voteTally/
+  // hasVotes fields become shape-agnostic.
   computedFields: (type, data) => {
-    const votes = data.votes || [];
+    const votes = _normalizeVotesForCompute(data.votes);
     data.voteCount = votes.length;
     data.uniqueVoters = [...new Set(votes.map(v => v.voterId))].length;
     if (votes.length > 0) {
@@ -88,7 +116,7 @@ DOMAIN_RULES.set("council", {
     return data;
   },
   scoring: (type, data) => {
-    const votes = data.votes || [];
+    const votes = _normalizeVotesForCompute(data.votes);
     const debate = data.debate || {};
     const hasDebate = !!(debate.turns && debate.turns.length > 0);
     const hasVotes = votes.length > 0;

@@ -23,6 +23,7 @@ import {
   CalendarDays, FileText, Receipt, BookOpen, Award, Camera,
   Search, Loader2, Plus, Trash2, Send, ArrowRightCircle,
   DollarSign, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCw,
+  Check, Link2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
@@ -89,6 +90,52 @@ const fmt = (n: number | undefined) => `$${(n || 0).toLocaleString(undefined, { 
 const inputCls = 'rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white';
 const btnCls = 'inline-flex items-center gap-1 rounded bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-400 disabled:opacity-40';
 const ghostBtn = 'inline-flex items-center gap-1 rounded border border-zinc-800 px-2 py-1 text-[11px] text-zinc-300 hover:border-orange-500/40';
+
+// Renders the real, working `/welding-portal/:token` link a customer with
+// no Concord account uses to view/approve an estimate or view an invoice
+// (server.js `/api/welding/portal/:token*`, concord-frontend
+// `app/welding-portal/[token]/page.tsx`). Before this, the token was minted
+// server-side but only ever shown as a raw string with no URL and no way to
+// copy it — a welder had to hand-assemble the link themselves to actually
+// use the feature the backend already supports.
+function PortalLinkBanner({ token, label }: { token: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window !== 'undefined'
+    ? `${window.location.origin}/welding-portal/${token}`
+    : `/welding-portal/${token}`;
+
+  const copy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const input = document.createElement('input');
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [url]);
+
+  return (
+    <div className="flex items-center gap-2 rounded border border-cyan-500/30 bg-cyan-500/5 px-3 py-2 text-[11px] text-cyan-200">
+      <span className="shrink-0">{label}</span>
+      <span className="min-w-0 flex-1 truncate font-mono text-cyan-300">{url}</span>
+      <button
+        type="button"
+        onClick={copy}
+        className="inline-flex shrink-0 items-center gap-1 rounded border border-cyan-500/30 px-1.5 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/10"
+      >
+        {copied ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
+        {copied ? 'Copied' : 'Copy link'}
+      </button>
+    </div>
+  );
+}
 
 function StandingBadge({ standing }: { standing?: string }) {
   const map: Record<string, string> = {
@@ -277,11 +324,7 @@ function QuotesTab() {
         </div>
       )}
 
-      {portal && (
-        <div className="rounded border border-cyan-500/30 bg-cyan-500/5 px-3 py-2 text-[11px] text-cyan-200">
-          Client-portal token issued: <span className="font-mono">{portal}</span> — share for quote approval.
-        </div>
-      )}
+      {portal && <PortalLinkBanner token={portal} label="Send to client:" />}
 
       <div className="space-y-1.5">
         {busy && !data && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
@@ -317,6 +360,7 @@ function InvoicesTab() {
   const [busy, setBusy] = useState(false);
   const [jobId, setJobId] = useState('');
   const [amount, setAmount] = useState('');
+  const [portal, setPortal] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setBusy(true);
@@ -336,7 +380,8 @@ function InvoicesTab() {
   const createInvoice = async () => {
     if (!jobId) return;
     setBusy(true);
-    await run('invoice-from-job', { jobId, amount: Number(amount) || 0 });
+    const r = await run<{ invoice: Invoice }>('invoice-from-job', { jobId, amount: Number(amount) || 0 });
+    if (r?.invoice?.portalToken) setPortal(r.invoice.portalToken);
     setJobId(''); setAmount('');
     await reload();
   };
@@ -351,6 +396,8 @@ function InvoicesTab() {
         <input type="number" min={0} className={inputCls} placeholder="Amount (if no estimate)" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <button type="button" className={btnCls} onClick={createInvoice} disabled={busy || !jobId}><Receipt className="h-3.5 w-3.5" /> Generate invoice</button>
       </div>
+
+      {portal && <PortalLinkBanner token={portal} label="Send to client:" />}
 
       {data && (
         <div className="grid grid-cols-3 gap-2">

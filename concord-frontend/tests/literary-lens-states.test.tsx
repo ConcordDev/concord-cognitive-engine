@@ -261,4 +261,97 @@ describe('literary lens — four UX states', () => {
     await waitFor(() => expect(getByText('Your annotations')).toBeInTheDocument());
     expect(getByText(/Conscience as a brake/i)).toBeInTheDocument();
   });
+
+  // ── literary.crystallize — was registered/tested server-side with zero UI
+  // caller. Pins that the browse/discovery panel calls the real macro with the
+  // right input and renders its real ranked-list return shape.
+  const CRYSTAL_A = { chunkId: 'c9', dtuId: 'dtu_lit_9', heading: 'The Question', title: 'Hamlet', author: 'William Shakespeare', edgeCount: 7, avgScore: 0.81, salience: 0.93 };
+  const CRYSTAL_B = { chunkId: 'c10', dtuId: 'dtu_lit_10', heading: null, title: 'Macbeth', author: 'William Shakespeare', edgeCount: 2, avgScore: 0.5, salience: 0.42 };
+
+  describe('CRYSTALLIZE: resonance-salience ranking panel', () => {
+    it('calls literary.crystallize on mount with the expected input shape', async () => {
+      lensRun.mockImplementation((_d: string, name: string) => {
+        if (name === 'stats') return reply({ ok: true, sources: 1, chunks: 2, embedded: 2 });
+        if (name === 'crystallize') return reply({ ok: true, crystals: [CRYSTAL_A, CRYSTAL_B] });
+        return reply({ ok: true, nodes: [], edges: [] });
+      });
+      render(<LiteraryLensPage />);
+      await waitFor(() => expect(lensRun).toHaveBeenCalledWith('literary', 'crystallize', { limit: 8 }));
+    });
+
+    it('POPULATED: renders the ranked list with title, author/heading, edge count, avg score, and salience', async () => {
+      lensRun.mockImplementation((_d: string, name: string) => {
+        if (name === 'stats') return reply({ ok: true, sources: 1, chunks: 2, embedded: 2 });
+        if (name === 'crystallize') return reply({ ok: true, crystals: [CRYSTAL_A, CRYSTAL_B] });
+        return reply({ ok: true, nodes: [], edges: [] });
+      });
+      const { getByText, getAllByText } = render(<LiteraryLensPage />);
+      await waitFor(() => expect(getByText('Crystallization candidates')).toBeInTheDocument());
+
+      // Ranked (highest salience first): Hamlet (93%) before Macbeth (42%).
+      expect(getAllByText('Hamlet').length).toBeGreaterThan(0);
+      expect(getByText('Macbeth')).toBeInTheDocument();
+      expect(getByText('93%')).toBeInTheDocument();
+      expect(getByText('42%')).toBeInTheDocument();
+      expect(getByText(/7 bridges · avg score 0\.81/)).toBeInTheDocument();
+      expect(getByText(/2 bridges · avg score 0\.50/)).toBeInTheDocument();
+      expect(getByText(/The Question/)).toBeInTheDocument();
+    });
+
+    it('EMPTY: shows an honest empty state when there are no resonance edges yet', async () => {
+      lensRun.mockImplementation((_d: string, name: string) => {
+        if (name === 'stats') return reply({ ok: true, sources: 1, chunks: 2, embedded: 2 });
+        if (name === 'crystallize') return reply({ ok: true, crystals: [] });
+        return reply({ ok: true, nodes: [], edges: [] });
+      });
+      const { getByText } = render(<LiteraryLensPage />);
+      await waitFor(() => expect(getByText(/No cross-domain resonance edges yet/i)).toBeInTheDocument());
+    });
+
+    it('ERROR: a failed literary.crystallize call shows role=alert with a working Retry', async () => {
+      let fail = true;
+      lensRun.mockImplementation((_d: string, name: string) => {
+        if (name === 'stats') return reply({ ok: true, sources: 1, chunks: 2, embedded: 2 });
+        if (name === 'crystallize') {
+          if (fail) return reply({ error: 'no_db' }, false);
+          return reply({ ok: true, crystals: [CRYSTAL_A] });
+        }
+        return reply({ ok: true, nodes: [], edges: [] });
+      });
+      const { getByText, container } = render(<LiteraryLensPage />);
+      await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
+      expect(getByText(/Couldn.t rank passages/i)).toBeInTheDocument();
+
+      fail = false;
+      await act(async () => { fireEvent.click(getByText('Retry')); });
+      await waitFor(() => expect(getByText('Hamlet')).toBeInTheDocument());
+    });
+
+    it('DETAIL: clicking a candidate calls literary.detail with its chunkId and renders the full passage', async () => {
+      lensRun.mockImplementation((_d: string, name: string, input?: Record<string, unknown>) => {
+        if (name === 'stats') return reply({ ok: true, sources: 1, chunks: 2, embedded: 2 });
+        if (name === 'crystallize') return reply({ ok: true, crystals: [CRYSTAL_A] });
+        if (name === 'detail') {
+          return reply({
+            ok: true,
+            chunk: { chunkId: input?.chunkId, sourceId: 'gut_1524', dtuId: 'dtu_lit_9', ord: 3, heading: 'The Question', content: 'To be, or not to be, that is the question' },
+            neighbors: [],
+          });
+        }
+        return reply({ ok: true, nodes: [], edges: [] });
+      });
+      const { getByText, getByTestId } = render(<LiteraryLensPage />);
+      await waitFor(() => expect(getByText('Hamlet')).toBeInTheDocument());
+
+      await act(async () => { fireEvent.click(getByText('Hamlet')); });
+      await waitFor(() => expect(lensRun).toHaveBeenCalledWith('literary', 'detail', { chunkId: 'c9' }));
+      await waitFor(() => expect(getByTestId('crystal-detail')).toBeInTheDocument());
+      expect(getByText(/To be, or not to be, that is the question/)).toBeInTheDocument();
+
+      // Clicking again collapses the accordion without re-fetching.
+      const callsBefore = lensRun.mock.calls.filter((c) => c[1] === 'detail').length;
+      await act(async () => { fireEvent.click(getByText('Hamlet')); });
+      expect(lensRun.mock.calls.filter((c) => c[1] === 'detail').length).toBe(callsBefore);
+    });
+  });
 });

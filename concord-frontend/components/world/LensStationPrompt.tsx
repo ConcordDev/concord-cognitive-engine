@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { resolveStationLens, type StationLens } from '@/lib/station-lens-registry';
 import { worldToSceneAxis } from '@/lib/world-lens/coord-frame';
+import { useActiveWorldId } from '@/hooks/useActiveWorldId';
 
 const APPROACH_RADIUS_M = 6; // show the cue a touch beyond the router's 4m gate
 const POLL_MS = 300;
@@ -38,21 +39,25 @@ export function nearestStation(
   return best;
 }
 
-function activeWorldId(): string {
-  if (typeof window === 'undefined') return 'concordia-hub';
-  return localStorage.getItem('concordia:activeWorldId') || 'concordia-hub';
-}
-
 export function LensStationPrompt() {
-  const [worldId] = useState(activeWorldId);
+  // Same-tab-reactive active world (updates on world travel via
+  // concordia:active-world-changed) — replaces the one-shot mount read; the
+  // buildings-fetch effect below already depends on [worldId] so travel
+  // correctly re-fetches instead of staying pinned to the old world's buildings.
+  const worldId = useActiveWorldId('concordia-hub');
   const [stations, setStations] = useState<StationBuilding[]>([]);
   const [near, setNear] = useState<{ building: StationBuilding; station: StationLens } | null>(null);
   const nearRef = useRef(near);
   nearRef.current = near;
 
-  // Load the world's buildings once, keep only the lens-station ones.
+  // Load the world's buildings once per world, keep only the lens-station ones.
   useEffect(() => {
     let cancelled = false;
+    // Drop the previous world's stations immediately so a mid-flight world
+    // change can't leave a stale building nearby-checked (or E-entered)
+    // against the new world.
+    setStations([]);
+    setNear(null);
     (async () => {
       try {
         const r = await fetch(`/api/worlds/${encodeURIComponent(worldId)}/buildings`, { credentials: 'include' });

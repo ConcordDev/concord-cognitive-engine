@@ -1309,7 +1309,7 @@ export default function MarketplaceLensPage() {
   // optimistic entries not yet reflected in the fetched data (e.g. the
   // fetch hasn't refetched yet after a just-completed checkout).
   const purchases = useMemo<Purchase[]>(() => {
-    const fetched = (myPurchasesData?.purchases ?? []).map(normalizeServerPurchase);
+    const fetched: Purchase[] = ((myPurchasesData?.purchases ?? []) as ServerPurchaseRow[]).map(normalizeServerPurchase);
     const fetchedItemIds = new Set(fetched.map((p) => p.item.id));
     const extra = optimisticPurchases.filter((p) => !fetchedItemIds.has(p.item.id));
     return [...extra, ...fetched];

@@ -13,10 +13,34 @@ interface Guild {
   memberCount?: number;
 }
 
+interface GuildProgression {
+  org_level: number;
+  org_xp: number;
+  hall_building_id: string | null;
+}
+
+interface BankItem {
+  item_kind: string;
+  item_descriptor: string;
+  quantity: number;
+  deposited_by: string;
+  deposited_at: number;
+}
+
+interface InventoryItem {
+  id: string;
+  item_id: string;
+  item_name: string;
+  quantity: number;
+}
+
 interface GuildPanelProps {
   playerId: string;
   onClose: () => void;
 }
+
+// 100 * level^2 — must match server/lib/guild-substrate.js#DEFAULT_XP_CURVE.
+const nextLevelXp = (level: number) => 100 * level * level;
 
 export function GuildPanel({ playerId, onClose }: GuildPanelProps) {
   const [guilds, setGuilds] = useState<Guild[]>([]);
@@ -28,6 +52,16 @@ export function GuildPanel({ playerId, onClose }: GuildPanelProps) {
   const [joining, setJoining] = useState<string | null>(null);
   const [tab, setTab] = useState<'mine' | 'browse'>('mine');
 
+  // Guild bank / XP / hall — the Phase BC1 substrate (server/lib/guild-substrate.js),
+  // previously fully built but unreachable from any route. See routes/world-orgs-extended.js.
+  const [progression, setProgression] = useState<GuildProgression | null>(null);
+  const [bankItems, setBankItems] = useState<BankItem[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [depositItemId, setDepositItemId] = useState('');
+  const [depositQty, setDepositQty] = useState(1);
+  const [depositing, setDepositing] = useState(false);
+  const [bankError, setBankError] = useState<string | null>(null);
+
   const reload = useCallback(() => {
     setLoading(true);
     api.get('/api/world/orgs').then(r => {
@@ -38,6 +72,53 @@ export function GuildPanel({ playerId, onClose }: GuildPanelProps) {
   }, [playerId]);
 
   useEffect(() => { reload(); }, [reload]);
+
+  const reloadGuildSubstrate = useCallback((orgId: string) => {
+    api.get(`/api/world-orgs/${orgId}/progression`).then(r => {
+      setProgression(r.data?.progression ?? null);
+    }).catch(() => setProgression(null));
+    api.get(`/api/world-orgs/${orgId}/bank`).then(r => {
+      setBankItems(r.data?.items ?? []);
+    }).catch(() => setBankItems([]));
+  }, []);
+
+  useEffect(() => {
+    if (myGuild) {
+      reloadGuildSubstrate(myGuild.id);
+      api.get('/api/player-inventory').then(r => {
+        setInventory((r.data?.items ?? []).filter((i: InventoryItem) => i.quantity > 0));
+      }).catch(() => setInventory([]));
+    } else {
+      setProgression(null);
+      setBankItems([]);
+    }
+  }, [myGuild, reloadGuildSubstrate]);
+
+  const handleDeposit = useCallback(async () => {
+    if (!myGuild || !depositItemId || depositQty <= 0) return;
+    setDepositing(true);
+    setBankError(null);
+    try {
+      const res = await api.post(`/api/world-orgs/${myGuild.id}/bank/deposit`, {
+        inventoryItemId: depositItemId,
+        quantity: depositQty,
+      });
+      if (res.data?.ok === false) {
+        setBankError(res.data.error || 'deposit failed');
+      } else {
+        setDepositItemId('');
+        setDepositQty(1);
+        reloadGuildSubstrate(myGuild.id);
+        api.get('/api/player-inventory').then(r => {
+          setInventory((r.data?.items ?? []).filter((i: InventoryItem) => i.quantity > 0));
+        }).catch(() => {});
+      }
+    } catch (e: any) {
+      setBankError(e?.response?.data?.error || 'deposit failed');
+    } finally {
+      setDepositing(false);
+    }
+  }, [myGuild, depositItemId, depositQty, reloadGuildSubstrate]);
 
   const handleCreate = useCallback(async () => {
     if (!newName.trim()) return;
@@ -93,12 +174,81 @@ export function GuildPanel({ playerId, onClose }: GuildPanelProps) {
                 <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
                   <div className="text-white font-bold">{myGuild.name}</div>
                   <div className="text-white/40 text-xs mt-1">{myGuild.description}</div>
-                  {myGuild.bankSparks !== undefined && (
-                    <div className="text-yellow-400 text-xs font-mono mt-2">⚡ Bank: {myGuild.bankSparks.toLocaleString()} Sparks</div>
-                  )}
                   {myGuild.memberCount !== undefined && (
                     <div className="text-white/30 text-xs mt-1">{myGuild.memberCount} member{myGuild.memberCount !== 1 ? 's' : ''}</div>
                   )}
+
+                  {/* Guild level / XP — server-canonical org_progression (guild-substrate.js) */}
+                  {progression && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-purple-300 font-bold">Level {progression.org_level}</span>
+                        <span className="text-white/30 font-mono">
+                          {progression.org_xp} / {nextLevelXp(progression.org_level)} XP
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-white/10 mt-1 overflow-hidden">
+                        <div
+                          className="h-full bg-purple-500"
+                          style={{
+                            width: `${Math.min(100, (progression.org_xp / Math.max(1, nextLevelXp(progression.org_level))) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="text-white/30 text-[10px] mt-1">
+                        {progression.hall_building_id ? '🏛 Guild hall claimed' : 'No guild hall claimed yet'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Guild bank — org_inventory, real shared storage */}
+                <div className="p-4 rounded-xl border border-white/10 space-y-2">
+                  <div className="text-white text-xs font-semibold">Guild Bank</div>
+                  {bankItems.length === 0 ? (
+                    <div className="text-white/30 text-xs">Empty. Contribute an item below.</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {bankItems.map(item => (
+                        <div key={item.item_descriptor} className="flex items-center justify-between text-xs">
+                          <span className="text-white/70">{item.item_descriptor}</span>
+                          <span className="text-white/40 font-mono">×{item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {inventory.length > 0 && (
+                    <div className="flex gap-2 pt-2 border-t border-white/5">
+                      <select
+                        value={depositItemId}
+                        onChange={e => setDepositItemId(e.target.value)}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-white/30"
+                      >
+                        <option value="">Choose item…</option>
+                        {inventory.map(item => (
+                          <option key={item.id} value={item.id}>
+                            {item.item_name || item.item_id} (×{item.quantity})
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        min={1}
+                        value={depositQty}
+                        onChange={e => setDepositQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        className="w-14 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-white/30"
+                      />
+                      <button
+                        onClick={handleDeposit}
+                        disabled={!depositItemId || depositing}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white flex-shrink-0"
+                      >
+                        {depositing ? '…' : 'Contribute'}
+                      </button>
+                    </div>
+                  )}
+                  {bankError && <div className="text-red-400 text-[10px]">{bankError}</div>}
                 </div>
               </div>
             ) : (

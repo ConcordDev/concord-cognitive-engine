@@ -62,31 +62,67 @@ const DEFAULT_PROPS = Object.freeze({
   potency: 10, affinity: "physical", stability: 80, volume: 1.0, weight: 1.0, rarity_tier: 1, source_type: "gather", magical_sub: null,
 });
 
+// ── Market-id → catalog-id aliases ───────────────────────────────────────────
+//
+// `RESOURCE_CATALOG` (this file, snake_case ids — the crafting-property
+// namespace) and `BASE_PRICES` (`server/lib/world-economy.js`, mostly
+// hyphenated ids — the supply/demand pricing namespace) grew independently
+// and only overlap on 3 exact string ids (`wood`, `stone`, `crystal`) out of
+// 30 catalog / 36 market entries (see
+// `docs/concordia-specs/crafting-economy-housing-capability-map.md` §2.2).
+// `world_resource_nodes.resource_id` / `player_inventory.item_id` /
+// `world_market.resource_id` all use the MARKET id — so a material gathered
+// or traded via the world market (e.g. `iron-ore`) fell through `propsFor` to
+// `DEFAULT_PROPS` instead of its real catalog entry (`iron_ore`), even though
+// both sides describe the same material.
+//
+// This alias table reconciles ONLY the entries that are genuinely the same
+// resource under a different string format (hyphen/underscore, plural/
+// singular, "-ore" naming a mined form the catalog already represents) — not
+// a rename of either namespace (both are referenced too widely — persisted
+// `world_market`/`player_inventory` rows, `content/*.json`, frontend code —
+// to safely rename in place) and not an invented mapping for market ids with
+// no real catalog counterpart (e.g. `mythril-ore`, `vibranium-ore`,
+// `scrap-metal`, `moonbloom` — those are genuinely distinct concepts with no
+// crafting-property entry yet; they still degrade to DEFAULT_PROPS, which is
+// honest, not a bug).
+const ID_ALIASES = Object.freeze({
+  "iron-ore": "iron_ore",       // format-only (hyphen vs underscore)
+  "mana-crystal": "mana_crystal", // format-only (hyphen vs underscore)
+  "herbs": "herb",               // plural market id, singular catalog id — same forage material
+  "gold-ore": "gold",            // catalog's `gold` entry is source_type "mining" (raw/mined), same material
+});
+
 /**
  * Resolve a resource's properties. Order: a per-slot override (parsed
- * properties_json) → the DB `resource_properties` row → the catalog → default.
- * `db` and `overrideJson` are optional so this is pure-callable in tests.
+ * properties_json) → the DB `resource_properties` row (exact id, then
+ * alias-canonical id) → the catalog (exact id, then alias-canonical id) →
+ * default. `db` and `overrideJson` are optional so this is pure-callable in
+ * tests.
  */
 export function propsFor(itemId, { db = null, overrideJson = null } = {}) {
+  const canonicalId = ID_ALIASES[itemId] || itemId;
   if (overrideJson) {
     try {
       const o = typeof overrideJson === "string" ? JSON.parse(overrideJson) : overrideJson;
       if (o && typeof o === "object" && (o.potency != null || o.affinity != null)) {
-        return { ...DEFAULT_PROPS, ...(RESOURCE_CATALOG[itemId] || {}), ...o };
+        return { ...DEFAULT_PROPS, ...(RESOURCE_CATALOG[itemId] || RESOURCE_CATALOG[canonicalId] || {}), ...o };
       }
     } catch { /* fall through */ }
   }
   if (db) {
     try {
-      const row = db.prepare(`SELECT potency, affinity, stability, volume, weight, rarity_tier, source_type, magical_sub FROM resource_properties WHERE item_id = ?`).get(itemId);
+      const stmt = db.prepare(`SELECT potency, affinity, stability, volume, weight, rarity_tier, source_type, magical_sub FROM resource_properties WHERE item_id = ?`);
+      const row = stmt.get(itemId) || (canonicalId !== itemId ? stmt.get(canonicalId) : null);
       if (row) return { ...DEFAULT_PROPS, ...row };
     } catch { /* table absent → catalog */ }
   }
-  return { ...DEFAULT_PROPS, ...(RESOURCE_CATALOG[itemId] || {}) };
+  return { ...DEFAULT_PROPS, ...(RESOURCE_CATALOG[itemId] || RESOURCE_CATALOG[canonicalId] || {}) };
 }
 
 export function tierOf(itemId) { return propsFor(itemId).rarity_tier; }
 export function isValidAffinity(a) { return AFFINITIES.includes(a); }
+export const RESOURCE_ID_ALIASES = ID_ALIASES;
 
 /**
  * Persist the canonical catalog into resource_properties (idempotent upsert).
@@ -171,4 +207,4 @@ export function seedItemBlueprints(db, items) {
   return n;
 }
 
-export const RESOURCE_CONSTANTS = Object.freeze({ AFFINITIES, DEFAULT_PROPS });
+export const RESOURCE_CONSTANTS = Object.freeze({ AFFINITIES, DEFAULT_PROPS, ID_ALIASES });

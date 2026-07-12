@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSoundscape } from '@/components/world-lens/SoundscapeEngine';
+import { useCancelableCompletion } from '@/hooks/useCancelableCompletion';
 
 interface GatheringMinigameProps {
   toolTier: number;       // 0-4 — determines zone width
@@ -23,6 +24,7 @@ export function GatheringMinigame({ toolTier, resourceName, onComplete, onCancel
   const [showHit, setShowHit] = useState<'hit' | 'miss' | null>(null);
   const [done, setDone] = useState(false);
   const { triggerSFX } = useSoundscape();
+  const { scheduleComplete, cancelPendingComplete } = useCancelableCompletion(onComplete);
 
   const dirRef = useRef(1);
   const posRef = useRef(0);
@@ -71,16 +73,21 @@ export function GatheringMinigame({ toolTier, resourceName, onComplete, onCancel
     if (newClicks >= TOTAL_CLICKS) {
       setDone(true);
       if (newHits === TOTAL_CLICKS) triggerSFX('gather-full');
-      setTimeout(() => onComplete(newHits), 700);
+      scheduleComplete(newHits, 700);
     }
-  }, [done, hits, clicks, zonePos, zoneWidth, repositionZone, onComplete, triggerSFX]);
+  }, [done, hits, clicks, zonePos, zoneWidth, repositionZone, scheduleComplete, triggerSFX]);
+
+  const handleCancel = useCallback(() => {
+    cancelPendingComplete();
+    onCancel();
+  }, [cancelPendingComplete, onCancel]);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">
       <div className="bg-black/90 border border-white/10 rounded-2xl p-6 w-full max-w-sm mx-4 flex flex-col gap-5">
         <div className="flex items-center justify-between">
           <h3 className="text-white font-bold text-base">Gathering: {resourceName}</h3>
-          <button onClick={onCancel} className="text-white/30 hover:text-white text-lg">✕</button>
+          <button onClick={handleCancel} className="text-white/30 hover:text-white text-lg">✕</button>
         </div>
 
         <p className="text-white/50 text-xs text-center">Click when the needle is in the highlighted zone — {TOTAL_CLICKS - clicks} click{TOTAL_CLICKS - clicks !== 1 ? 's' : ''} remaining</p>
@@ -102,6 +109,7 @@ export function GatheringMinigame({ toolTier, resourceName, onComplete, onCancel
         <div
           className="relative h-10 bg-white/5 rounded-xl overflow-hidden cursor-pointer select-none"
           style={{ width: BAR_WIDTH }}
+          data-testid="gathering-rhythm-bar"
           onClick={handleClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           {/* Green zone */}
           <div

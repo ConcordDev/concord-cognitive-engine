@@ -45,7 +45,20 @@ function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: stri
   );
 }
 
-export function LivenessPanel() {
+interface LivenessPanelProps {
+  /**
+   * Wave 4 gap-closure (ops-telemetry-capability-map.md) — this panel's own
+   * unjittered 5s setInterval used to run independently of the ops-telemetry
+   * page's own 5s refresh loop, so the page fired two uncoordinated 5s
+   * network round-trips. When a `refreshToken` is supplied, the host page
+   * owns the single interval and bumps this token on each tick; this panel
+   * refetches on token change instead of running its own timer. Omit it to
+   * keep this panel self-sufficient for any other/standalone mount.
+   */
+  refreshToken?: number;
+}
+
+export function LivenessPanel({ refreshToken }: LivenessPanelProps = {}) {
   const [report, setReport] = useState<LivenessReport | null>(null);
   const [off, setOff] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -64,12 +77,20 @@ export function LivenessPanel() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  const externallyDriven = refreshToken !== undefined;
   useEffect(() => {
+    if (!externallyDriven || refreshToken === 0) return;
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on the host's shared tick
+  }, [refreshToken]);
+  useEffect(() => {
+    if (externallyDriven) return;
     const id = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') refresh();
     }, 5000);
     return () => clearInterval(id);
-  }, [refresh]);
+  }, [refresh, externallyDriven]);
 
   const h = report?.headline;
 

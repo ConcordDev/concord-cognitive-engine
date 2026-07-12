@@ -135,6 +135,27 @@ describe("validateEnvelope", () => {
     assert.equal(v.ok, false);
     assert.equal(v.reason, "dtu_hash_mismatch");
   });
+
+  // Wave 4 gap-closure — the DTU-portability UI (dtus lens) is the first
+  // real frontend caller of this domain. It dispatches through the shared
+  // `lensRun()` helper, which — on any `{ok:false, ...}` macro result —
+  // discards every field except a top-level `error` string. Every failure
+  // path here must therefore mirror `reason` into `error` so the UI can
+  // surface the real cause (e.g. "dtu_hash_mismatch") instead of a generic
+  // fallback message. This pins that every ok:false shape carries both.
+  it("mirrors `reason` into `error` on every failure shape (lensRun() compat)", () => {
+    const cases = [
+      validateEnvelope({ spec: "wrong/v0", dtus: [], creator_id: "x" }),
+      validateEnvelope({ spec: "concord-dtu-pack/v1", dtus: [] }),
+      validateEnvelope({ spec: "concord-dtu-pack/v1", creator_id: "x" }),
+      exportUserCorpus(null, null),
+    ];
+    for (const c of cases) {
+      assert.equal(c.ok, false);
+      assert.ok(c.reason, "expected a reason string");
+      assert.equal(c.error, c.reason, `error should mirror reason for ${c.reason}`);
+    }
+  });
 });
 
 describe("importEnvelope", () => {
@@ -160,5 +181,19 @@ describe("importEnvelope", () => {
     const targetDb = makeFakeDb();
     const r = await importEnvelope(targetDb, { spec: "wrong" });
     assert.equal(r.ok, false);
+  });
+
+  it("rejects bad envelope with a lensRun()-compatible mirrored error", async () => {
+    const targetDb = makeFakeDb();
+    const r = await importEnvelope(targetDb, { spec: "wrong" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, r.reason);
+  });
+
+  it("rejects no db with a lensRun()-compatible mirrored error", async () => {
+    const r = await importEnvelope(null, { spec: "concord-dtu-pack/v1", dtus: [], creator_id: "x" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "no_db");
+    assert.equal(r.error, "no_db");
   });
 });

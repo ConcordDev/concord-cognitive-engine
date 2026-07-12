@@ -755,12 +755,37 @@ export default function BuildingRenderer3D({
         group.traverse((obj) => {
           const mesh = obj as {
             geometry?: { dispose: () => void };
-            material?: { dispose: () => void } | { dispose: () => void }[];
+            material?:
+              | {
+                  dispose: () => void;
+                  map?: { dispose: () => void } | null;
+                  normalMap?: { dispose: () => void } | null;
+                  roughnessMap?: { dispose: () => void } | null;
+                  gradientMap?: { dispose: () => void } | null;
+                }
+              | {
+                  dispose: () => void;
+                  map?: { dispose: () => void } | null;
+                  normalMap?: { dispose: () => void } | null;
+                  roughnessMap?: { dispose: () => void } | null;
+                  gradientMap?: { dispose: () => void } | null;
+                }[];
           };
           if (mesh.geometry) mesh.geometry.dispose();
           if (mesh.material) {
             const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            mats.forEach((m) => m.dispose());
+            mats.forEach((m) => {
+              // Material.dispose() does NOT cascade to its texture maps —
+              // each CanvasTexture/DataTexture allocated in createMaterial()
+              // (procedural map/normalMap/roughnessMap, toon gradientMap)
+              // must be disposed explicitly or every rebuild leaks GPU
+              // texture memory. Mirrors SkyWeatherRenderer.tsx's pattern.
+              if (m.map) m.map.dispose();
+              if (m.normalMap) m.normalMap.dispose();
+              if (m.roughnessMap) m.roughnessMap.dispose();
+              if (m.gradientMap) m.gradientMap.dispose();
+              m.dispose();
+            });
           }
         });
       }

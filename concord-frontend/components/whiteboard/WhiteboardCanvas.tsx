@@ -48,6 +48,13 @@ export interface WhiteboardCanvasProps {
   voteCounts?: Record<string, number>;
   /** Called with world-coords on pointer move (for broadcasting your cursor to peers). */
   onCursorMove?: (x: number, y: number) => void;
+  /**
+   * Click-to-vote: when set, the Select tool casts a vote on whichever
+   * votable shape (rect/sticky/embed/frame — the same kinds the vote badge
+   * renders on) the pointer is over, instead of doing nothing. Omit to keep
+   * Select inert (e.g. on a private board with no shared-vote ledger).
+   */
+  onVoteElement?: (elementId: string) => void;
   className?: string;
 }
 
@@ -63,7 +70,30 @@ function uid() {
   return `s_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syncSignal, peerCursors, voteCounts, onCursorMove, className }: WhiteboardCanvasProps) {
+// Votable kinds mirror the badge-rendering condition below (and the server's
+// shared-vote-cast + shared-vote-tally usage) — strokes/connectors don't vote.
+const VOTABLE_KINDS: ReadonlySet<Shape['kind']> = new Set(['rect', 'sticky', 'embed', 'frame']);
+
+function shapeBounds(s: Shape): { x: number; y: number; w: number; h: number } {
+  const w = s.w || (s.kind === 'sticky' ? 120 : s.kind === 'embed' ? 200 : s.kind === 'frame' ? 240 : 40);
+  const h = s.h || (s.kind === 'sticky' ? 80 : s.kind === 'embed' ? 120 : s.kind === 'frame' ? 180 : 30);
+  return { x: s.x, y: s.y, w, h };
+}
+
+/** Topmost votable shape under a world-space point, or null. Frames are large
+ * background regions, so children (added later, later in the array) must win
+ * — iterate from the end so later-drawn/added shapes are hit first. */
+function hitTestVotable(shapes: Shape[], wx: number, wy: number): Shape | null {
+  for (let i = shapes.length - 1; i >= 0; i -= 1) {
+    const s = shapes[i];
+    if (!VOTABLE_KINDS.has(s.kind)) continue;
+    const b = shapeBounds(s);
+    if (wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h) return s;
+  }
+  return null;
+}
+
+export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syncSignal, peerCursors, voteCounts, onCursorMove, onVoteElement, className }: WhiteboardCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [shapes, setShapes] = useState<Shape[]>(initialShapes);
   const [tool, setTool] = useState<Tool>('select');
@@ -76,6 +106,7 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
   peerCursorsRef.current = peerCursors;
   const voteCountsRef = useRef(voteCounts);
   voteCountsRef.current = voteCounts;
+  const [hoveredVotableId, setHoveredVotableId] = useState<string | null>(null);
 
   useEffect(() => {
     onChange?.(shapes);
@@ -254,7 +285,14 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
   }
 
   function onMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (tool === 'select') return;
+    if (tool === 'select') {
+      if (onVoteElement) {
+        const p = worldFromMouse(e);
+        const hit = hitTestVotable(shapes, p.x, p.y);
+        if (hit) onVoteElement(hit.id);
+      }
+      return;
+    }
     const p = worldFromMouse(e);
     if (tool === 'rect') {
       drawingRef.current = { id: uid(), kind: 'rect', x: p.x, y: p.y, w: 0, h: 0 };
@@ -271,6 +309,11 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
 
   function onMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
     if (onCursorMove) { const wp = worldFromMouse(e); onCursorMove(wp.x, wp.y); }
+    if (onVoteElement && tool === 'select') {
+      const wp = worldFromMouse(e);
+      const hit = hitTestVotable(shapes, wp.x, wp.y);
+      setHoveredVotableId(hit ? hit.id : null);
+    }
     if (!drawingRef.current) return;
     const p = worldFromMouse(e);
     if (drawingRef.current.kind === 'rect') {
@@ -291,11 +334,14 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
     <div className={cn('relative w-full h-full bg-[#0d0d0f] overflow-hidden', className)}>
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full cursor-crosshair"
+        className={cn(
+          'absolute inset-0 w-full h-full',
+          onVoteElement && tool === 'select' && hoveredVotableId ? 'cursor-pointer' : 'cursor-crosshair',
+        )}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
+        onMouseLeave={() => { onMouseUp(); setHoveredVotableId(null); }}
       />
       {/* Tool palette — the tldraw island bottom-center */}
       <div className="absolute left-1/2 -translate-x-1/2 bottom-4 flex items-center gap-1 bg-black/70 backdrop-blur border border-white/10 rounded-full p-1 shadow-lg">
@@ -343,6 +389,14 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
       >
         <Trash2 className="w-3 h-3" /> Clear
       </button>
+      {/* Click-to-vote hint — only shown when the host wired shared-vote-cast
+          (a shared/live board). Discoverability for the Select-tool vote
+          affordance, which otherwise has no visible control. */}
+      {onVoteElement && (
+        <div className="absolute top-14 left-4 inline-flex items-center gap-1 text-[11px] text-amber-200 px-2 py-1 rounded-md bg-amber-500/10 backdrop-blur border border-amber-500/30">
+          🗳️ Click a shape to vote
+        </div>
+      )}
       {/* Zoom indicator */}
       <div className="absolute bottom-4 right-4 text-[10px] text-gray-400 font-mono">
         {Math.round(zoom * 100)}%

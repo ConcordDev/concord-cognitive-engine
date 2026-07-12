@@ -607,7 +607,14 @@ export type SocketEvent =
   | 'friend:request-received'
   | 'mail:received'
   | 'world:invite-received'
-  | 'world:marker-placed';
+  | 'world:marker-placed'
+  // Consolidation fix (Wave 4 backlog #15) — server/lib/world-clock.js
+  // broadcasts this un-scoped every 30s (no auth/room-join required to
+  // receive it) but it was missing from this union, so HUDContextProvider
+  // had bypassed the shared typed socket entirely and opened its own raw
+  // `socket.io-client` connection just to hear it. Now routed through the
+  // singleton like everything else.
+  | 'world:clock';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

@@ -20,6 +20,7 @@
 
 import { useEffect, useRef } from 'react';
 import { create } from 'zustand';
+import { subscribe } from '@/lib/realtime/socket';
 
 export type InputMode = 'exploration' | 'combat' | 'dialogue' | 'vehicle' | 'photo' | 'creation' | 'spectator' | 'lens_work';
 export type ExpertiseLevel = 'newcomer' | 'standard' | 'detailed' | 'engineering';
@@ -254,45 +255,40 @@ export function HUDContextProvider() {
   const setWorldSeason = useHUDContext((s) => s.setWorldSeason);
   const pollRef = useRef<number | null>(null);
 
-  // World clock — subscribe to server's broadcast (every 30s). Drives
-  // SkyWeather's timeOfDay so day/night actually progresses on screen.
+  // World clock — subscribe to server's broadcast (every 30s) via the
+  // shared app-wide socket singleton (lib/realtime/socket.ts), not a
+  // private connection. Drives SkyWeather's timeOfDay so day/night
+  // actually progresses on screen.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let cancelled = false;
-    let cleanup: (() => void) | null = null;
-    (async () => {
-      try {
-        const { io } = await import('socket.io-client');
-        const socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
-        const onClock = (p: { phase?: number; segment?: string; ts?: number }) => {
-          if (cancelled) return;
-          if (typeof p?.phase === 'number') {
-            const seg = (p.segment as 'dawn' | 'morning' | 'midday' | 'afternoon' | 'dusk' | 'night') || 'midday';
-            setWorldClock(p.phase, seg);
-          }
-        };
-        socket.on('world:clock', onClock);
-        // Also tween phase forward locally between server ticks so the
-        // sky updates smoothly between 30s broadcasts. One in-world day
-        // = 24 real minutes (see server/lib/world-clock.js).
-        const tweenId = window.setInterval(() => {
-          const cur = useHUDContext.getState().worldPhase;
-          const next = (cur + (1 / 24 / 60 / (60 / 5))) % 1;  // 5s tween step
-          const seg: HUDContextState['worldDaySegment'] =
-            next < 0.10 ? 'dawn'      :
-            next < 0.40 ? 'morning'   :
-            next < 0.55 ? 'midday'    :
-            next < 0.70 ? 'afternoon' :
-            next < 0.85 ? 'dusk'      : 'night';
-          setWorldClock(next, seg);
-        }, 5000);
-        cleanup = () => {
-          window.clearInterval(tweenId);
-          try { socket.off('world:clock', onClock); socket.disconnect(); } catch { /* noop */ }
-        };
-      } catch { /* socket optional in tests */ }
-    })();
-    return () => { cancelled = true; cleanup?.(); };
+    const onClock = (p: { phase?: number; segment?: string; ts?: string }) => {
+      if (cancelled) return;
+      if (typeof p?.phase === 'number') {
+        const seg = (p.segment as 'dawn' | 'morning' | 'midday' | 'afternoon' | 'dusk' | 'night') || 'midday';
+        setWorldClock(p.phase, seg);
+      }
+    };
+    const unsubscribe = subscribe('world:clock', onClock);
+    // Also tween phase forward locally between server ticks so the
+    // sky updates smoothly between 30s broadcasts. One in-world day
+    // = 24 real minutes (see server/lib/world-clock.js).
+    const tweenId = window.setInterval(() => {
+      const cur = useHUDContext.getState().worldPhase;
+      const next = (cur + (1 / 24 / 60 / (60 / 5))) % 1;  // 5s tween step
+      const seg: HUDContextState['worldDaySegment'] =
+        next < 0.10 ? 'dawn'      :
+        next < 0.40 ? 'morning'   :
+        next < 0.55 ? 'midday'    :
+        next < 0.70 ? 'afternoon' :
+        next < 0.85 ? 'dusk'      : 'night';
+      setWorldClock(next, seg);
+    }, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(tweenId);
+      unsubscribe();
+    };
   }, [setWorldClock]);
 
   // Season — poll the season macro on world change. Cheap.

@@ -6,8 +6,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Save, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Loader2, Save, Trash2, ChevronUp, ChevronDown, Play, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
 import { PjTaskDetail } from './PjTaskDetail';
 
 interface Task {
@@ -38,6 +39,7 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [viewName, setViewName] = useState('');
   const [bulk, setBulk] = useState({ status: '', priority: '' });
+  const [activeView, setActiveView] = useState<string | null>(null);
 
   const loadMeta = useCallback(async () => {
     const g = await lensRun('projects', 'project-get', { id: projectId });
@@ -49,6 +51,7 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setActiveView(null);
     const params: Record<string, string> = { projectId, sort: filters.sort };
     if (filters.status) params.status = filters.status;
     if (filters.assigneeId) params.assigneeId = filters.assigneeId;
@@ -79,13 +82,19 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
     await loadMeta();
   };
 
+  // Runs the view server-side (via the real `view-run` macro, not a local
+  // re-filter) so the result respects every filter the view was saved with —
+  // including label/sprint filters the ad-hoc filter bar above doesn't expose.
   const runView = async (v: View) => {
-    setFilters({
-      status: v.filters.status || '', assigneeId: v.filters.assigneeId || '',
-      priority: v.filters.priority || '', type: v.filters.type || '',
-      query: v.filters.query || '', sort: v.filters.sort || 'created',
-    });
+    const r = await lensRun('projects', 'view-run', { id: v.id });
+    const result = r.data?.result as { view: string; tasks: Task[]; count: number } | undefined;
+    if (result) {
+      setTasks(result.tasks || []);
+      setActiveView(result.view);
+    }
   };
+
+  const clearView = () => { void refresh(); };
 
   const applyBulk = async () => {
     if (!selected.size) return;
@@ -145,8 +154,14 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {views.map((v) => (
-            <span key={v.id} className="flex items-center gap-1 text-[10px] bg-zinc-800 rounded-lg pl-2 pr-1 py-0.5">
-              <button type="button" onClick={() => runView(v)} className="text-zinc-300 hover:text-indigo-300">{v.name}</button>
+            <span key={v.id}
+              className={cn('flex items-center gap-1 text-[10px] rounded-lg pl-1 pr-1 py-0.5',
+                activeView === v.name ? 'bg-indigo-950/60 border border-indigo-700/60' : 'bg-zinc-800')}>
+              <button type="button" onClick={() => runView(v)} title={`Run saved view "${v.name}"`}
+                className={cn('flex items-center gap-1 px-1 hover:text-indigo-300',
+                  activeView === v.name ? 'text-indigo-300' : 'text-zinc-300')}>
+                <Play className="w-2.5 h-2.5" /> {v.name}
+              </button>
               <button type="button" onClick={() => lensRun('projects', 'view-delete', { id: v.id }).then(loadMeta)}
                 className="text-zinc-400 hover:text-rose-300">×</button>
             </span>
@@ -159,6 +174,19 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
           </button>
         </div>
       </section>
+
+      {/* Active saved view */}
+      {activeView && (
+        <div className="flex items-center gap-2 bg-indigo-950/40 border border-indigo-900/50 rounded-lg px-3 py-1.5">
+          <Play className="w-3 h-3 text-indigo-400" />
+          <span className="text-[11px] text-indigo-200">Viewing saved view "{activeView}"</span>
+          <span className="flex-1" />
+          <button type="button" onClick={clearView}
+            className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-200">
+            <X className="w-3 h-3" /> Back to filters
+          </button>
+        </div>
+      )}
 
       {/* Bulk bar */}
       {selected.size > 0 && (

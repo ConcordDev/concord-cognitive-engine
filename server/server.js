@@ -1132,15 +1132,22 @@ registerHeartbeat("farm-growth-cycle", {
   handler: ({ db: ctxDb } = {}) => runFarmGrowthCycle({ db: ctxDb || db }),
 });
 
-// Phase BD1: world boss scheduler. Every 16 ticks (~4 min) per active
-// world runs a trigger pass (opens any schedule whose next_spawn_at <=
-// now), sweeps expired actives, advances next_spawn_at. Kill-switch:
+// Phase BD1: world boss scheduler. Every 16 ticks (~4 min) runs one
+// global trigger pass across every world's schedule (opens any row whose
+// next_spawn_at <= now), sweeps expired actives, advances next_spawn_at.
+// scope: 'global' (not the default 'world') because tickAllRegistered
+// never forwards a per-world worldId into a handler's ctx (see the fix
+// note in emergent/world-boss-cycle.js) — this heartbeat processes every
+// world in one pass instead of depending on a worldId it would never
+// receive, matching the farm-growth-cycle / announcement-broadcaster
+// pattern for scope:'global' heartbeats. Kill-switch:
 // CONCORD_WORLD_BOSSES_ENABLED=0.
 import { runWorldBossCycle } from "./emergent/world-boss-cycle.js";
 registerHeartbeat("world-boss-cycle", {
   frequency: 16,
-  handler: ({ db: ctxDb, worldId } = {}) => runWorldBossCycle({
-    db: ctxDb || db, worldId, io: REALTIME?.io,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => runWorldBossCycle({
+    db: ctxDb || db, io: REALTIME?.io,
   }),
 });
 
@@ -6554,6 +6561,20 @@ function authMiddleware(req, res, next) {
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
   if (req.method === "POST" && req.path === "/api/quality-pipeline/preview") return next();
+  // Welding client portal (Wave 4 gap closure) — a customer with NO Concord
+  // account opens a link a welder sent them (`welding.estimate-send` /
+  // `invoice-from-job`) to view/approve an estimate or view an invoice.
+  // The `portalToken` in the URL IS the authentication (unguessable
+  // crypto.randomBytes(24) base64url, minted server-side, scoped to
+  // exactly one estimate/invoice — see `wPortalToken()` in
+  // server/domains/welding.js and the route handlers below near
+  // `/api/shared/:token`). These routes never go through `/api/lens/run` —
+  // they call the LENS_ACTIONS handler directly with the token as the only
+  // caller-supplied identifier, so there is no domain/macro passthrough an
+  // anonymous caller could widen. Payment capture (`/pay`) is intentionally
+  // NOT bypassed into a real charge here — see that route's own comment.
+  if (req.method === "GET" && /^\/api\/welding\/portal\/[^/]+$/.test(req.path)) return next();
+  if (req.method === "POST" && /^\/api\/welding\/portal\/[^/]+\/(approve|pay)$/.test(req.path)) return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
@@ -6693,7 +6714,12 @@ function requireRole(...roles) {
 // /api/stripe/webhook is signature-authenticated by Stripe (no cookie/JWT), so
 // it must bypass the production write-auth gate or every webhook 401s and paid
 // coins never mint. handleWebhook verifies the Stripe signature before any write.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook"];
+// /api/welding/portal/:token/{approve,pay} — anonymous customer using an
+// unguessable, single-purpose portal token (see the welding client-portal
+// comment on the Gate-1 bypass above). No Concord account exists to
+// authenticate, and the token itself is the access control, scoped
+// server-side to exactly one estimate/invoice.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/"];
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -24468,7 +24494,27 @@ register("mesh", "channels", (ctx, input) => {
 }, { description: "Get available transport layers and their status." });
 
 register("mesh", "send", async (ctx, input) => {
-  const dtu = input.dtu || (input.dtuId ? STATE.dtus?.get(input.dtuId) : null);
+  // Ownership/visibility gate (personal_dtus_never_leak, see CLAUDE.md): a
+  // resolved-by-id DTU comes from the SHARED STATE.dtus store, so an
+  // unguarded lookup would let any caller exfiltrate another user's private
+  // DTU over the mesh just by guessing/enumerating its id. `input.dtu` (a
+  // caller-supplied inline object, not a store lookup) carries no such risk
+  // — the caller already has whatever content they put in it — so only the
+  // id-resolved path is gated. Mirrors the dtu.create lineage-consent check
+  // above: owner, system/founder-authored, or public/global-scope all pass.
+  let dtu = input.dtu || null;
+  if (!dtu && input.dtuId) {
+    const stored = STATE.dtus?.get(input.dtuId);
+    if (stored) {
+      const _meshUserId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
+      const isOwner = !stored.ownerId || stored.ownerId === _meshUserId ||
+        stored.ownerId === "system" || stored.ownerId === "founder";
+      const vis = stored.meta?.visibility || stored.visibility;
+      const isPublic = vis === "published" || vis === "public" || stored.scope === "global";
+      if (!isOwner && !isPublic) return { ok: false, error: "not_your_dtu" };
+      dtu = stored;
+    }
+  }
   if (!dtu) return { ok: false, error: "No DTU specified. Provide dtu or dtuId." };
   const result = meshSendDTU(dtu, input.destination || input.destinationNodeId || "broadcast", {
     proximity: input.proximity,
@@ -32330,6 +32376,7 @@ import { seedWorlds } from "./lib/world-seed.js";
 import { seedToolRecipes } from "./lib/tool-tree.js";
 import { seedLensPortals } from "./lib/lens-portal-registry.js";
 import { seedContent } from "./lib/content-seeder.js";
+import { seedSubWorldStarterContent } from "./lib/sub-world-starter-content.js";
 import { initWorldFlavors, getWorldFlavor, listAllFlavors, getSkillCeiling as getWorldSkillCeiling } from "./lib/world-flavor.js";
 import { initAchievementCatalog, listEarned as listEarnedAchievements, listRecent as listRecentAchievements, listCatalog as listAchievementCatalog } from "./lib/achievement-engine.js";
 import { initAchievementBridge, bridgeRealtimeEvent } from "./lib/achievement-bridge.js";
@@ -33922,7 +33969,7 @@ try { app.use("/api/social-extended", createSocialExtendedRouter({ STATE, requir
 // contributions, member-role admin, parties, recruitment board,
 // mentorships, org stats.
 import createWorldOrgsExtendedRouter from "./routes/world-orgs-extended.js";
-try { app.use("/api/world-orgs", createWorldOrgsExtendedRouter({ requireAuth })); } catch (e) { structuredLog("warn", "world_orgs_extended_routes_skip", { error: e.message }); }
+try { app.use("/api/world-orgs", createWorldOrgsExtendedRouter({ requireAuth, db })); } catch (e) { structuredLog("warn", "world_orgs_extended_routes_skip", { error: e.message }); }
 
 // Lattice (6th brain) consent infrastructure. Endpoints stage opt-in
 // flags on user-authored DTUs and expose corpus stats. The brain
@@ -38527,10 +38574,21 @@ register("lens", "create", async (ctx, input={}) => {
   if (!domain || !type) return { ok: false, error: "domain and type required" };
 
   // v5.5: Scope enforcement via capability bridge
-  const scopeCheck = (() => {
+  //
+  // ctx.macro.run() calls runMacro(), an `async function` — it ALWAYS
+  // returns a Promise, even though the bridge.lensScope handler itself is
+  // synchronous. The un-awaited IIFE below used to capture that Promise
+  // object as `scopeCheck` (always truthy) and read `.allowed` off of it
+  // (always undefined), so `!scopeCheck.allowed` was always true and every
+  // lens.create call — the generic POST /api/lens/:domain path every lens
+  // without a bespoke create macro relies on via useCreateArtifact() — fell
+  // through to `scope_denied` unconditionally. Found live (not just
+  // grepped) while wiring the council lens's Simulate Budget button, which
+  // is what actually calls this path end-to-end. `await` fixes it.
+  const scopeCheck = await (async () => {
     try {
       const tempArt = { data, meta: meta || {} };
-      return ctx.macro.run("emergent", "bridge.lensScope", { artifact: tempArt, operation: "create", actorScope: ctx.actor?.scope || "local", STATE });
+      return await ctx.macro.run("emergent", "bridge.lensScope", { artifact: tempArt, operation: "create", actorScope: ctx.actor?.scope || "local", STATE });
     } catch { return { ok: false, allowed: false, error: 'scope_check_error' }; }
   })();
   if (scopeCheck && !scopeCheck.allowed) {
@@ -49230,6 +49288,95 @@ app.get("/api/shared/:token", (req, res) => {
   res.json(result);
 });
 
+// ── Welding client portal (Wave 4 gap closure) ──────────────────────────
+// `docs/lens-specs/welding-capability-map.md` "Investigated and honestly
+// deferred": the `welding.portal-view` / `portal-approve` / `portal-pay`
+// macros (server/domains/welding.js) already implement a token-based
+// client portal — a welder sends a customer a `portalToken` when they send
+// an estimate (`estimate-send`) or generate an invoice (`invoice-from-job`)
+// — but nothing exposed it publicly: the only way to reach a
+// `registerLensAction` handler is `lens.run`, which requires a real
+// `STATE.lensArtifacts` id + ownership check + (in production) a real
+// authenticated actor (`_lensActionForbiddenForAnon` above) — exactly
+// backwards for a customer who has no Concord account. These three routes
+// are the dedicated, narrowly-scoped public surface the doc's
+// recommendation asked for.
+//
+// Security shape: the LENS_ACTIONS handler is invoked DIRECTLY (same
+// technique as `runMcpTool`/`_dispatchLensRunForTest` above), never via
+// `runMacro`/`lens.run` — so there is no generic domain/macro passthrough
+// an anonymous caller could widen to reach anything else. The only
+// caller-supplied identifier is the token itself; the handler resolves
+// `ownerId`/`refId` from the server-side `s.portal` Map (see
+// `wPortalToken()` in welding.js — crypto.randomBytes(24) base64url, not
+// enumerable/guessable), so a valid token for job A can only ever resolve
+// job A's estimate/invoice, never job B's.
+function _weldingPortalCtx() {
+  return { db: STATE?.db || globalThis._concordDB, actor: null, state: STATE };
+}
+async function _runWeldingPortalAction(action, token, extraParams = {}) {
+  const handler = LENS_ACTIONS.get(`welding.${action}`);
+  if (!handler) return { ok: false, error: "portal_unavailable" };
+  const data = { token: String(token == null ? "" : token).slice(0, 120), ...extraParams };
+  const virtualArtifact = { id: null, domain: "welding", type: "domain_action", data, meta: {} };
+  return await handler(_weldingPortalCtx(), virtualArtifact, data);
+}
+
+// GET — customer opens their emailed/texted link. Public, no auth.
+app.get("/api/welding/portal/:token", async (req, res) => {
+  try {
+    const result = await _runWeldingPortalAction("portal-view", req.params.token);
+    if (!result?.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// POST — customer accepts or rejects an estimate. Public, no auth; the
+// underlying macro re-validates the token and only ever mutates the one
+// estimate it resolves to (`portal-approve` in welding.js).
+app.post("/api/welding/portal/:token/approve", async (req, res) => {
+  try {
+    const decision = req.body?.decision === "reject" ? "reject" : "accept";
+    const signature = typeof req.body?.signature === "string" ? req.body.signature.slice(0, 160) : "";
+    const result = await _runWeldingPortalAction("portal-approve", req.params.token, { decision, signature });
+    if (!result?.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// POST — invoice payment. Deliberately NOT wired to the `welding.portal-pay`
+// macro. That macro only RECORDS a self-reported {amount, method,
+// reference} onto the invoice — there is no real card/ACH charge behind it
+// (no Stripe PaymentIntent, no gateway call of any kind). Exposing that as
+// a public, unauthenticated action would let anyone holding a portal link
+// mark their own invoice "paid" with zero money changing hands — an
+// invoice-fraud vector, not an honest payment flow, and squarely the kind
+// of fabricated-success path CLAUDE.md's honest-by-construction + money
+// invariants rule out. This route still validates the token (so it 404s
+// instead of leaking on a bad token) and returns an explicit "not yet
+// wired" state rather than a fabricated success. `portal-pay` remains
+// reachable through the authenticated `/api/lens/run` path for a
+// logged-in welder to log a payment they received by another channel
+// (cash/check/in-person card reader) — that use is unaffected.
+app.post("/api/welding/portal/:token/pay", async (req, res) => {
+  try {
+    const view = await _runWeldingPortalAction("portal-view", req.params.token);
+    if (!view?.ok) return res.status(404).json(view);
+    if (view.result?.kind !== "invoice") return res.status(400).json({ ok: false, error: "not_an_invoice" });
+    res.status(501).json({
+      ok: false,
+      reason: "payment_capture_not_wired",
+      message: "Online payment isn't available yet for this invoice. Please contact the business directly to arrange payment.",
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // ---- Wave 4: Activity Log ----
 app.get("/api/activity", (req, res) => {
   const result = getActivityLog({
@@ -52518,7 +52665,10 @@ app.get("/api/roguelite/balance", requireAuth(), asyncHandler(async (req, res) =
 app.post("/api/roguelite/unlock", requireAuth(), asyncHandler(async (req, res) => {
   const { purchaseUnlock } = await import("./lib/roguelite.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(purchaseUnlock(db, userId, req.body?.unlockId, req.body?.costCc));
+  // Security fix — the price is looked up server-side from
+  // META_UNLOCK_CATALOG inside purchaseUnlock; a client-supplied cost is
+  // never read or forwarded here (see roguelite.js#purchaseUnlock).
+  res.json(purchaseUnlock(db, userId, req.body?.unlockId));
 }));
 
 app.get("/api/roguelite/unlocks", requireAuth(), asyncHandler(async (req, res) => {
@@ -77869,6 +78019,24 @@ register("sub_world", "spawn_from_forge", (ctx, input = {}) => {
       INSERT INTO sub_worlds (world_id, forge_app_dtu_id, name, kind, spawned_by_user_id)
       VALUES (?, ?, ?, ?, ?)
     `).run(worldId, forgeAppDtuId, name, kind, userId);
+    // Backend-hygiene fix (docs/lens-specs/sub-worlds-capability-map.md —
+    // this legacy macro had the identical "never mirrors to the real
+    // `worlds` table" defect as the plural `sub_worlds.spawn` lens macro,
+    // PLUS never mirrored at all: "Enter" via the real cross-world travel
+    // path (`POST /api/worlds/travel` → `loadWorld`, `SELECT * FROM worlds
+    // WHERE id = ? AND status = 'active'`) would 404 on every world this
+    // macro ever spawned. Mirror + starter content, best-effort — never
+    // blocks the canonical `sub_worlds` row insert above.
+    try {
+      db.prepare(`
+        INSERT INTO worlds (id, name, universe_type, description, created_by, status)
+        VALUES (?, ?, ?, ?, ?, 'active')
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          universe_type = excluded.universe_type
+      `).run(worldId, name, kind, `Spawned from Forge app ${forgeAppDtuId}`, userId);
+      seedSubWorldStarterContent(db, { worldId, kind });
+    } catch (_e) { /* best-effort mirror; the sub_worlds row stays canonical */ }
     return { ok: true, worldId, name, kind };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Spawn a Forge app as a sub-world reachable via existing world-travel." });

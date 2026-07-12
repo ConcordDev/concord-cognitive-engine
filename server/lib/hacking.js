@@ -12,6 +12,28 @@ import logger from "../logger.js";
 
 const VALID_COMMANDS = new Set(["ls", "cd", "cat", "connect", "exec", "decrypt", "ssh"]);
 
+// Wave 4 — hint-spam gate (minigames-capability-map.md item 1). getHint()
+// used to be free and unlimited, and each hint reveals the next step's
+// argument outright (a filename, a hostname, a path) — spamming it lets a
+// player skip the exploration puzzle entirely for zero cost. The first hint
+// per attempt stays free (it doubles as the "initial nudge" the terminal
+// shows on connect); every hint beyond that shaves a chunk off the eventual
+// bounty, floored so completing still always pays something.
+const FREE_HINTS_PER_ATTEMPT = 1;
+const HINT_PENALTY_RATE = 0.15; // 15% of the bounty per hint past the free one
+const MIN_REWARD_FRACTION = 0.4; // never reduce the payout below 40% of base
+
+/**
+ * Reward after hint-spam penalty. Pure function so it's independently
+ * testable without touching the DB.
+ */
+export function applyHintPenalty(baseReward, hintsUsed) {
+  const extra = Math.max(0, (hintsUsed || 0) - FREE_HINTS_PER_ATTEMPT);
+  if (extra <= 0) return baseReward;
+  const penaltyFraction = Math.min(extra * HINT_PENALTY_RATE, 1 - MIN_REWARD_FRACTION);
+  return Math.round(baseReward * (1 - penaltyFraction));
+}
+
 // T1.5 — turn a solution step into trail GUIDANCE (the intent, not the literal
 // command) so exploring the system points you toward the next move instead of
 // requiring you to memorize an exact command list. The fiction (penetrate a
@@ -101,11 +123,18 @@ export function attemptCommand(db, puzzleId, userId, command) {
     }
 
     if (nextStepIdx >= solution.length) {
+      const hintsUsed = db.prepare(`
+        SELECT hints_used FROM hacking_attempts WHERE user_id = ? AND puzzle_id = ?
+      `).get(userId, puzzleId)?.hints_used || 0;
+      const finalReward = applyHintPenalty(puzzle.reward_cc, hintsUsed);
       db.prepare(`
         UPDATE hacking_attempts SET completed_at = unixepoch()
         WHERE user_id = ? AND puzzle_id = ?
       `).run(userId, puzzleId);
-      return { ok: true, matched: true, completed: true, rewardCc: puzzle.reward_cc };
+      return {
+        ok: true, matched: true, completed: true,
+        rewardCc: finalReward, baseRewardCc: puzzle.reward_cc, hintsUsed,
+      };
     }
 
     // T1.5 — guide the player toward the next lead instead of making them
@@ -124,16 +153,37 @@ export function attemptCommand(db, puzzleId, userId, command) {
 export function getHint(db, puzzleId, userId) {
   if (!db || !puzzleId) return { ok: false, error: "missing_inputs" };
   try {
-    const puzzle = db.prepare(`SELECT solution_path_json FROM hacking_puzzles WHERE id = ?`).get(puzzleId);
+    const puzzle = db.prepare(`SELECT solution_path_json, reward_cc FROM hacking_puzzles WHERE id = ?`).get(puzzleId);
     if (!puzzle) return { ok: false, error: "no_puzzle" };
     const solution = JSON.parse(puzzle.solution_path_json);
     let idx = 0;
+    let hintsUsed = 0;
     if (userId) {
-      const attempt = db.prepare(`SELECT commands_log, completed_at FROM hacking_attempts WHERE user_id = ? AND puzzle_id = ?`).get(userId, puzzleId);
+      // Ensure the attempt row exists so an unlimited pre-attempt hint spam
+      // still gets tracked (a player who never submits a command but keeps
+      // hitting /hint must still accrue the penalty).
+      db.prepare(`
+        INSERT INTO hacking_attempts (user_id, puzzle_id, attempt_count)
+        VALUES (?, ?, 0)
+        ON CONFLICT DO NOTHING
+      `).run(userId, puzzleId);
+
+      const attempt = db.prepare(`SELECT commands_log, completed_at, hints_used FROM hacking_attempts WHERE user_id = ? AND puzzle_id = ?`).get(userId, puzzleId);
       if (attempt?.completed_at) return { ok: true, completed: true, hint: null };
       if (attempt?.commands_log) { try { idx = JSON.parse(attempt.commands_log).length; } catch { idx = 0; } }
+
+      // Wave 4 hint-spam gate — every explicit /hint request counts, even
+      // repeats of the same step. The first is free; the rest cost bounty.
+      db.prepare(`
+        UPDATE hacking_attempts SET hints_used = hints_used + 1
+        WHERE user_id = ? AND puzzle_id = ?
+      `).run(userId, puzzleId);
+      hintsUsed = (attempt?.hints_used || 0) + 1;
     }
-    return { ok: true, step: idx, totalSteps: solution.length, hint: hintForStep(solution[idx]) };
+    return {
+      ok: true, step: idx, totalSteps: solution.length, hint: hintForStep(solution[idx]),
+      hintsUsed, projectedRewardCc: applyHintPenalty(puzzle.reward_cc, hintsUsed),
+    };
   } catch (err) {
     return { ok: false, error: err?.message };
   }

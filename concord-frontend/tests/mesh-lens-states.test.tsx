@@ -36,6 +36,7 @@ vi.mock('@/components/lens/RecentMineCard', () => ({ RecentMineCard: () => null 
 vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => null }));
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/mesh/MeshRepos', () => ({ MeshRepos: () => null }));
+vi.mock('@/components/mesh/MeshSendDtu', () => ({ MeshSendDtu: () => null }));
 vi.mock('@/components/mesh/MeshTopology', () => ({ MeshTopology: () => null }));
 vi.mock('@/components/mesh/MeshMessaging', () => ({ MeshMessaging: () => null }));
 vi.mock('@/components/mesh/MeshSignal', () => ({ MeshSignal: () => null }));

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ReviewHistogram, type ReviewHistogramBucket } from '@/components/mentorship/ReviewHistogram';
 
 interface Mentor {
   id: string;
@@ -69,6 +70,9 @@ export function MentorDirectoryPanel() {
   const [selected, setSelected] = useState<Mentor | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [openSlots, setOpenSlots] = useState(0);
+  const [reviewStats, setReviewStats] = useState<{ histogram: ReviewHistogramBucket[]; avgRating: number; count: number }>({
+    histogram: [1, 2, 3, 4, 5].map((star) => ({ star, count: 0 })), avgRating: 0, count: 0,
+  });
 
   const [reqForm, setReqForm] = useState({ menteeName: '', topic: '', message: '', goals: '' });
   const [revForm, setRevForm] = useState({ authorName: '', rating: 5, comment: '', tags: '' });
@@ -87,6 +91,17 @@ export function MentorDirectoryPanel() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const loadReviewStats = useCallback(async (mentorId: string) => {
+    const r = await lensRun('mentorship', 'review-list', { mentorId });
+    if (r.data?.ok !== false) {
+      setReviewStats({
+        histogram: r.data?.result?.histogram || [1, 2, 3, 4, 5].map((star) => ({ star, count: 0 })),
+        avgRating: r.data?.result?.avgRating || 0,
+        count: r.data?.result?.count || 0,
+      });
+    }
+  }, []);
+
   const openProfile = async (m: Mentor) => {
     setSelected(m);
     setReviews([]);
@@ -97,6 +112,7 @@ export function MentorDirectoryPanel() {
       setReviews(r.data?.result?.reviews || []);
       setOpenSlots(r.data?.result?.openSlots || 0);
     }
+    void loadReviewStats(m.id);
   };
 
   const register = async () => {
@@ -150,6 +166,7 @@ export function MentorDirectoryPanel() {
     if (r.data?.ok === false) { setError(r.data.error || 'Review failed.'); return; }
     setRevForm({ authorName: '', rating: 5, comment: '', tags: '' });
     void openProfile(selected);
+    void loadReviewStats(selected.id);
     void refresh();
   };
 
@@ -203,6 +220,7 @@ export function MentorDirectoryPanel() {
         {/* Reviews */}
         <div className="panel p-4 space-y-3">
           <h4 className="font-semibold text-sm flex items-center gap-2"><Star className="w-4 h-4 text-amber-400" /> Reviews ({reviews.length})</h4>
+          <ReviewHistogram histogram={reviewStats.histogram} avgRating={reviewStats.avgRating} count={reviewStats.count} />
           {reviews.length === 0 ? (
             <p className="text-xs text-zinc-400">No reviews yet. Be the first.</p>
           ) : reviews.map((rv) => (

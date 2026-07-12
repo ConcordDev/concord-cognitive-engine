@@ -4,12 +4,15 @@
  * StravaBeaconPanel — live activity sharing ("Beacon"). Starts a live
  * session, streams real browser-geolocation position fixes to followers
  * via fitness.beacon-ping, and surfaces the share token. A second tab
- * lets a follower watch a live beacon by its share token.
+ * lets a follower watch a live beacon by its share token. Both tabs also
+ * browse persisted beacons via fitness.beacon-list (mine/following) so a
+ * page refresh doesn't lose an in-progress beacon's share token, and
+ * followers can see who they're already watching.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Loader2, Radio, Square, Share2, MapPin, Eye, Copy, Check,
+  Loader2, Radio, Square, Share2, MapPin, Eye, Copy, Check, History, Users,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { MapView, type MapMarker } from '@/components/viz/MapView';
@@ -26,6 +29,17 @@ interface BeaconState {
   followerCount?: number;
   track?: { lat: number; lon: number }[];
   lastUpdate?: string;
+}
+
+interface BeaconSummary {
+  id?: string;
+  shareToken?: string;
+  userId: string;
+  type: string;
+  status: string;
+  startedAt: string;
+  lastUpdate?: string;
+  distanceKm: number;
 }
 
 const TYPES = ['run', 'ride', 'walk', 'hike'];
@@ -49,6 +63,9 @@ export function StravaBeaconPanel() {
   const [followed, setFollowed] = useState<BeaconState | null>(null);
   const [followErr, setFollowErr] = useState<string | null>(null);
 
+  const [list, setList] = useState<{ mine: BeaconSummary[]; following: BeaconSummary[] }>({ mine: [], following: [] });
+  const [listLoading, setListLoading] = useState(true);
+
   const watchRef = useRef<number | null>(null);
   const startRef = useRef<number>(0);
   const distRef = useRef<number>(0);
@@ -69,6 +86,30 @@ export function StravaBeaconPanel() {
     if (pollRef.current) clearInterval(pollRef.current);
   }, [cleanup]);
 
+  const loadList = useCallback(async () => {
+    setListLoading(true);
+    const r = await lensRun('fitness', 'beacon-list', {});
+    if (r.data?.ok) {
+      setList({ mine: r.data.result?.mine || [], following: r.data.result?.following || [] });
+    }
+    setListLoading(false);
+  }, []);
+
+  useEffect(() => { void loadList(); }, [loadList]);
+
+  const resumeBeacon = async (b: BeaconSummary) => {
+    if (!b.id) return;
+    setError(null);
+    setBusy(true);
+    const r = await lensRun('fitness', 'beacon-status', { id: b.id });
+    setBusy(false);
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not load beacon'); return; }
+    const beacon = r.data?.result?.beacon as BeaconState;
+    setActive(beacon);
+    setElapsed(beacon.durationSec || 0);
+    setView('mine');
+  };
+
   const startBeacon = async () => {
     setError(null);
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -81,6 +122,7 @@ export function StravaBeaconPanel() {
     if (r.data?.ok === false) { setError(r.data?.error || 'Could not start beacon'); return; }
     const beacon = r.data?.result?.beacon as BeaconState;
     setActive(beacon);
+    void loadList();
     startRef.current = Date.now();
     distRef.current = 0;
     lastRef.current = null;
@@ -128,6 +170,7 @@ export function StravaBeaconPanel() {
     await lensRun('fitness', 'beacon-stop', { id: active.id });
     setBusy(false);
     setActive((prev) => prev ? { ...prev, status: 'ended' } : prev);
+    void loadList();
   };
 
   const copyToken = async () => {
@@ -187,6 +230,31 @@ export function StravaBeaconPanel() {
             <Radio className={cn('w-4 h-4', active?.status === 'live' ? 'text-rose-400 animate-pulse' : 'text-orange-400')} />
             <h3 className="text-sm font-semibold text-zinc-100">Live Beacon</h3>
           </div>
+
+          {!listLoading && list.mine.length > 0 && (
+            <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-2 space-y-1">
+              <p className="flex items-center gap-1 text-[10px] uppercase text-zinc-400">
+                <History className="w-3 h-3" /> Your beacons
+              </p>
+              <ul className="space-y-1">
+                {list.mine.map((b) => (
+                  <li key={b.id} className="flex items-center gap-2 text-[11px]">
+                    <span className={cn('capitalize', b.status === 'live' ? 'text-rose-400' : 'text-zinc-400')}>{b.status}</span>
+                    <span className="text-zinc-300 capitalize">{b.type}</span>
+                    <span className="text-zinc-500">{b.distanceKm} km</span>
+                    <button
+                      type="button"
+                      onClick={() => void resumeBeacon(b)}
+                      disabled={busy || active?.id === b.id}
+                      className="ml-auto text-orange-400 hover:text-orange-300 disabled:opacity-40 flex items-center gap-1"
+                    >
+                      <Eye className="w-3 h-3" /> View
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {!active || active.status !== 'live' ? (
             <div className="flex items-center gap-2">
@@ -258,6 +326,26 @@ export function StravaBeaconPanel() {
             <Eye className="w-4 h-4 text-orange-400" />
             <h3 className="text-sm font-semibold text-zinc-100">Follow a live athlete</h3>
           </div>
+
+          {!listLoading && list.following.length > 0 && (
+            <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-2 space-y-1">
+              <p className="flex items-center gap-1 text-[10px] uppercase text-zinc-400">
+                <Users className="w-3 h-3" /> Beacons you&apos;re following
+              </p>
+              <ul className="space-y-1">
+                {list.following.map((b, i) => (
+                  <li key={`${b.userId}-${i}`} className="flex items-center gap-2 text-[11px]">
+                    <span className={cn('capitalize', b.status === 'live' ? 'text-rose-400' : 'text-zinc-400')}>{b.status}</span>
+                    <span className="text-zinc-300 capitalize">{b.type}</span>
+                    <span className="text-zinc-500 truncate">{b.userId}</span>
+                    <span className="ml-auto text-zinc-500">{b.distanceKm} km</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] text-zinc-500">Ask the athlete for their share token to watch live.</p>
+            </div>
+          )}
+
           <div className="flex items-center gap-2">
             <input
               placeholder="Paste a beacon share token"

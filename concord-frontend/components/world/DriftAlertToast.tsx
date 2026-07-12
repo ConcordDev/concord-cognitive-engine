@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useClientConfig } from '@/hooks/useClientConfig';
+import { useActiveWorldId } from '@/hooks/useActiveWorldId';
 import { AlertTriangle, Brain, X, Loader2 } from 'lucide-react';
 
 interface Alert {
@@ -27,12 +28,11 @@ export function DriftAlertToast() {
   const [activeAlert, setActiveAlert] = useState<Alert | null>(null);
   const [pending, setPending] = useState(false);
   const [resolution, setResolution] = useState<string | null>(null);
-  const [worldId, setWorldId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const id = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
-    setWorldId(id);
-  }, []);
+  // Same-tab-reactive active world (updates on world travel via
+  // concordia:active-world-changed) — replaces the one-shot mount read. Falsy
+  // (fallback '') is a valid state here — it means "no world filter, show
+  // alerts across all worlds" and must be preserved.
+  const worldId = useActiveWorldId('');
 
   const refresh = useCallback(async () => {
     try {
@@ -53,6 +53,15 @@ export function DriftAlertToast() {
   // Push: refresh the instant the server emits a drift alert; slow backstop poll
   // self-heals missed events / reconnect gaps.
   useRealtimeRefresh(['world:drift-alert'], refresh, { backstopMs: POLL_MS });
+  // Force an immediate re-fetch scoped to the new world the moment the player
+  // travels — useRealtimeRefresh reads refresh() via a ref, so a worldId change
+  // alone doesn't retrigger its subscribe effect; without this the alert list
+  // stays scoped to the old world (or the old "no filter") until the next
+  // backstop tick.
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldId]);
 
   const resolve = useCallback(async () => {
     if (!activeAlert) return;

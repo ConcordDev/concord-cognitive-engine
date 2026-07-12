@@ -12,7 +12,7 @@ import { SystemHealth } from '@/components/meta/SystemHealth';
 import { DevPortal } from '@/components/meta/DevPortal';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,6 +37,7 @@ import {
   ArrowRight,
   Cog,
   Server,
+  RefreshCw,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -249,16 +250,47 @@ function copyToClipboard(text: string) {
 // ---------------------------------------------------------------------------
 
 function OverviewTab() {
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
   const { data, isLoading } = useQuery<InventoryOverview>({
     queryKey: ['inventory-overview'],
     queryFn: () => api.get('/api/inventory').then((r) => r.data),
   });
+
+  // Wave 4 gap-closure — POST /api/inventory/refresh (server/routes/inventory.js)
+  // busts the server-side scan cache and re-scans, but had no frontend caller.
+  // Invalidate every inventory-* query so all tabs (not just this one) pick up
+  // the fresh scan on next render.
+  const refreshInventory = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await api.post('/api/inventory/refresh');
+      await queryClient.invalidateQueries({
+        predicate: (query) => typeof query.queryKey[0] === 'string' && query.queryKey[0].startsWith('inventory'),
+      });
+    } catch {
+      /* non-fatal — the stale scan just stays visible */
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
 
   if (isLoading || !data) return <LoadingSpinner message="Loading inventory overview..." />;
 
   return (
     <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-6">
       {/* Stat cards */}
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => void refreshInventory()}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-lattice-border bg-lattice-deep text-gray-300 hover:text-white hover:border-neon-cyan/40 disabled:opacity-50 transition-colors"
+        >
+          <RefreshCw className={cn('w-3.5 h-3.5', refreshing && 'animate-spin')} />
+          {refreshing ? 'Re-scanning…' : 'Refresh inventory'}
+        </button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard icon={Package} label="Components" value={data.totalComponents} color="text-neon-blue" index={0} />
         <StatCard icon={Eye} label="Lenses" value={data.totalLenses} color="text-neon-purple" index={1} />

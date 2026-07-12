@@ -114,6 +114,38 @@ a fix.
 
 ## Investigated and honestly deferred
 
+**Update (Wave 4 gap closure, 2026-07-11): the client-portal gap below is
+CLOSED for view + approve.** A dedicated public route family now exists —
+`GET /api/welding/portal/:token`, `POST /api/welding/portal/:token/approve`,
+`POST /api/welding/portal/:token/pay` (server.js, next to `/api/shared/:token`)
+— that calls the `welding.portal-*` `LENS_ACTIONS` handlers directly
+(never through `/api/lens/run`), bypasses auth via a narrow Gate-1 regex
+(`authMiddleware`) + `WRITE_AUTH_PUBLIC_PATHS` entry, and is consumed by a
+genuinely public frontend page at `/welding-portal/[token]` (added to
+`middleware.ts`'s `PUBLIC_PREFIXES` and `AppShell.tsx`'s
+`STANDALONE_PREFIXES` so an anonymous visitor is neither redirected to
+`/login` nor shown app chrome). The portal token itself was hardened in the
+same pass: `estimate-send` / `invoice-from-job` now mint it via
+`crypto.randomBytes(24).toString("base64url")` (`wPortalToken()` in
+welding.js) instead of the old `wId("pt")` shape (a 6-char
+`Math.random()` base36 suffix behind a timestamp prefix — guessable enough
+that it shouldn't have gated money-adjacent access). Token-scoping (a
+token for job A can never resolve job B) was already correctly implemented
+in the macros themselves; only the missing public entry point and the weak
+token were the real gaps. Covered end-to-end (real HTTP, real auth-mode
+server, two distinct welder accounts, no auth headers) by
+`server/tests/e2e/welding-portal-routes.test.js` (13/13 passing).
+**`portal-pay` is deliberately NOT wired to a real charge** — the macro
+only ever recorded a self-reported `{amount, method, reference}` with no
+Stripe/gateway call behind it, so exposing it publicly as-is would have let
+any token-holder mark their own invoice "paid" with zero money moving. The
+public `/pay` route instead validates the token and returns an honest
+`{ok:false, reason:"payment_capture_not_wired"}` — never a fabricated
+success — while `portal-pay` remains reachable through the authenticated
+`/api/lens/run` path for a logged-in welder logging an out-of-band payment
+(cash/check/in-person reader). Real online payment capture (Stripe
+PaymentIntent or similar) is still a genuinely open, separate build.
+
 **`welding.portal-view` / `portal-approve` / `portal-pay` — unsurfaced.**
 These three macros implement a token-based client portal (a customer
 receives a `portalToken` when a welder sends an estimate via

@@ -25,11 +25,12 @@ import { LineageTreePanel, type LineageRoot } from './LineageTreePanel';
 import { BulkOpsPanel } from './BulkOpsPanel';
 import { CompareMergePanel, type CompareDtu } from './CompareMergePanel';
 import { LayerEditor } from './LayerEditor';
+import { PortabilityPanel } from './PortabilityPanel';
 import {
-  Network, Filter, GitBranch, Layers, GitMerge, FileText, CheckSquare, Square,
+  Network, Filter, GitBranch, Layers, GitMerge, FileText, CheckSquare, Square, Archive,
 } from 'lucide-react';
 
-type Tab = 'graph' | 'search' | 'lineage' | 'bulk' | 'compare' | 'editor';
+type Tab = 'graph' | 'search' | 'lineage' | 'bulk' | 'compare' | 'editor' | 'backup';
 
 interface CitationGraphResult {
   nodes: GraphNode[];
@@ -68,6 +69,7 @@ const TABS: { id: Tab; label: string; icon: typeof Network }[] = [
   { id: 'bulk', label: 'Bulk Ops', icon: Layers },
   { id: 'compare', label: 'Compare / Merge', icon: GitMerge },
   { id: 'editor', label: 'Layer Editor', icon: FileText },
+  { id: 'backup', label: 'Backup & Portability', icon: Archive },
 ];
 
 export function KnowledgeWorkbench({
@@ -236,6 +238,7 @@ export function KnowledgeWorkbench({
           {tab === 'editor' && (
             <LayerEditor dtuId={focusId} seed={focusId ? byId.get(focusId) : undefined} />
           )}
+          {tab === 'backup' && <PortabilityPanel />}
         </div>
 
         {/* Right rail — select list + saved collections */}

@@ -94,6 +94,12 @@ export default function OpsTelemetryPage() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   // Wave 7 / D2 — the cost-story telemetry ("a thousand NPCs for the cost of ten").
   const [costs, setCosts] = useState<{ calls: number; tokensIn: number; tokensOut: number; costLabel: string; byBrain: Record<string, { calls: number }> } | null>(null);
+  // Wave 4 gap-closure — this page's own refresh() and LivenessPanel's
+  // internal refresh used to run on two independent, uncoordinated 5s
+  // setIntervals (two unjittered network round-trips every 5s). This page
+  // now owns the single interval and bumps livenessTick each tick;
+  // LivenessPanel refetches off that shared token instead of its own timer.
+  const [livenessTick, setLivenessTick] = useState(0);
 
   const refresh = useCallback(async () => {
     setLoading(true); setErr(null);
@@ -128,7 +134,10 @@ export default function OpsTelemetryPage() {
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
     const id = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') refresh();
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refresh();
+        setLivenessTick((t) => t + 1);
+      }
     }, 5000);
     return () => clearInterval(id);
   }, [refresh]);
@@ -245,7 +254,7 @@ export default function OpsTelemetryPage() {
         <section className="mx-auto grid max-w-screen-2xl gap-4 px-3 py-4 sm:px-6 sm:py-5">
           {/* F2 — substrate liveness (the moat-mass + funnel/distribution/economy headline) */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
-            <LivenessPanel />
+            <LivenessPanel refreshToken={livenessTick} />
           </div>
 
           {/* Wave 7 / D2 — the cost-story telemetry: LLM calls track SALIENT exchanges,

@@ -6,7 +6,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, X, Trash2, Link2, Paperclip, MessageSquare, History, GitBranch, Upload, FileDown } from 'lucide-react';
+import {
+  Loader2, X, Trash2, Link2, Paperclip, MessageSquare, History, GitBranch, Upload, FileDown,
+  Github, MessageCircle, CheckCircle2,
+} from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -31,15 +34,19 @@ interface Detail {
   attachments: {
     id: string; name: string; url?: string; kind?: string;
     fileName?: string; mimeType?: string; bytes?: number;
+    integrationKind?: string; ciStatus?: string | null;
   }[];
   comments: { id: string; body: string; author: string; parentCommentId: string | null; mentions: string[]; createdAt: string }[];
   activity: { id: string; action: string; detail: string | null; at: string }[];
 }
 
+interface Integration { id: string; kind: string; target: string; enabled: boolean }
+
 const TYPES = ['story', 'bug', 'task', 'epic', 'chore'];
 const STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done'];
 const PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'];
 const REL_KINDS = ['blocks', 'blocked_by', 'relates', 'duplicates'];
+const CI_STATUSES = ['passed', 'failed', 'running'];
 
 export function PjTaskDetail({
   taskId, projectId, members, sprints, milestones, labels, customFields, allTasks, onClose, onChange,
@@ -60,6 +67,8 @@ export function PjTaskDetail({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rel, setRel] = useState({ toTaskId: '', kind: 'blocks' });
   const [subtaskTitle, setSubtaskTitle] = useState('');
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [itgLink, setItgLink] = useState({ integrationId: '', url: '', label: '', ciStatus: 'passed' });
 
   const refresh = useCallback(async () => {
     const r = await lensRun('projects', 'task-detail', { id: taskId });
@@ -68,6 +77,18 @@ export function PjTaskDetail({
   }, [taskId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // Connected integrations for this project — used to attach an external
+  // tracker item (GitHub PR/issue, CI run, Slack thread) to this issue.
+  useEffect(() => {
+    let stale = false;
+    (async () => {
+      const r = await lensRun('projects', 'integration-list', { projectId });
+      const list = (r.data?.result?.integrations as Integration[] | undefined) || [];
+      if (!stale) setIntegrations(list.filter((i) => i.enabled));
+    })();
+    return () => { stale = true; };
+  }, [projectId]);
 
   const patch = async (p: Record<string, unknown>) => {
     await lensRun('projects', 'task-update', { id: taskId, ...p });
@@ -100,6 +121,21 @@ export function PjTaskDetail({
     await lensRun('projects', 'attachment-add', { taskId, url: att.url.trim(), name: att.name.trim() });
     setAtt({ name: '', url: '' });
     await refresh();
+  };
+
+  const selectedIntegration = integrations.find((i) => i.id === itgLink.integrationId);
+
+  const linkIntegration = async () => {
+    if (!itgLink.integrationId || !itgLink.url.trim()) return;
+    const r = await lensRun('projects', 'integration-link', {
+      taskId, integrationId: itgLink.integrationId, url: itgLink.url.trim(),
+      label: itgLink.label.trim() || undefined,
+      ciStatus: selectedIntegration?.kind === 'ci' ? itgLink.ciStatus : undefined,
+    });
+    if (r.data?.ok !== false) {
+      setItgLink({ integrationId: '', url: '', label: '', ciStatus: 'passed' });
+      await refresh();
+    }
   };
 
   // Read the selected file as base64 and upload it as a binary attachment.
@@ -323,29 +359,71 @@ export function PjTaskDetail({
           {/* Attachments */}
           <Section icon={Paperclip} title="Attachments">
             <ul className="space-y-1 mb-1.5">
-              {detail.attachments.map((a) => (
-                <li key={a.id} className="flex items-center gap-2 text-[11px]">
-                  {a.kind === 'binary' ? (
-                    <>
-                      <FileDown className="w-3 h-3 text-emerald-400 shrink-0" />
-                      <button type="button" onClick={() => downloadAttachment(a.id, a.fileName || a.name)}
-                        className="flex-1 truncate text-emerald-400 hover:underline text-left">{a.name}</button>
-                      <span className="text-[9px] text-zinc-400">{fmtBytes(a.bytes || 0)}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Link2 className="w-3 h-3 text-indigo-400 shrink-0" />
-                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-indigo-400 hover:underline">{a.name}</a>
-                    </>
-                  )}
-                  <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'attachment-delete', { id: a.id }).then(refresh)}
-                    className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
-                </li>
-              ))}
+              {detail.attachments.map((a) => {
+                const IntegrationIcon = a.integrationKind === 'github' ? Github
+                  : a.integrationKind === 'slack' ? MessageCircle : CheckCircle2;
+                return (
+                  <li key={a.id} className="flex items-center gap-2 text-[11px]">
+                    {a.kind === 'binary' ? (
+                      <>
+                        <FileDown className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <button type="button" onClick={() => downloadAttachment(a.id, a.fileName || a.name)}
+                          className="flex-1 truncate text-emerald-400 hover:underline text-left">{a.name}</button>
+                        <span className="text-[9px] text-zinc-400">{fmtBytes(a.bytes || 0)}</span>
+                      </>
+                    ) : a.kind === 'integration' ? (
+                      <>
+                        <IntegrationIcon className="w-3 h-3 text-teal-400 shrink-0" />
+                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-teal-300 hover:underline">{a.name}</a>
+                        {a.ciStatus && (
+                          <span className={cn('text-[9px] px-1.5 py-0.5 rounded',
+                            a.ciStatus === 'passed' ? 'bg-emerald-900/50 text-emerald-300'
+                              : a.ciStatus === 'failed' ? 'bg-rose-900/50 text-rose-300' : 'bg-amber-900/50 text-amber-300')}>
+                            {a.ciStatus}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="w-3 h-3 text-indigo-400 shrink-0" />
+                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-indigo-400 hover:underline">{a.name}</a>
+                      </>
+                    )}
+                    <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'attachment-delete', { id: a.id }).then(refresh)}
+                      className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  </li>
+                );
+              })}
               {detail.attachments.length === 0 && (
                 <li className="text-[10px] text-zinc-400 italic">No attachments yet.</li>
               )}
             </ul>
+            {integrations.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                <select value={itgLink.integrationId} onChange={(e) => setItgLink({ ...itgLink, integrationId: e.target.value })}
+                  className="bg-zinc-900 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                  <option value="">Link integration…</option>
+                  {integrations.map((i) => <option key={i.id} value={i.id}>{i.kind}: {i.target}</option>)}
+                </select>
+                <input placeholder="https://… PR / run / thread" value={itgLink.url}
+                  onChange={(e) => setItgLink({ ...itgLink, url: e.target.value })}
+                  className="flex-1 min-w-[10rem] bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
+                <input placeholder="Label (optional)" value={itgLink.label}
+                  onChange={(e) => setItgLink({ ...itgLink, label: e.target.value })}
+                  className="w-28 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
+                {selectedIntegration?.kind === 'ci' && (
+                  <select value={itgLink.ciStatus} onChange={(e) => setItgLink({ ...itgLink, ciStatus: e.target.value })}
+                    className="bg-zinc-900 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                    {CI_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                )}
+                <button type="button" onClick={linkIntegration}
+                  disabled={!itgLink.integrationId || !itgLink.url.trim()}
+                  className="flex items-center gap-1 text-[11px] px-2 py-1 bg-teal-700 hover:bg-teal-600 disabled:opacity-40 rounded text-white">
+                  <Link2 className="w-3 h-3" /> Attach
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-2 mb-1.5">
               <input placeholder="Name" value={att.name} onChange={(e) => setAtt({ ...att, name: e.target.value })}
                 className="w-28 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />

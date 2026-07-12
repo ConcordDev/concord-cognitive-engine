@@ -357,6 +357,21 @@ wide margin.
    with real effects and server-side prices, or stop serving the JSON
    catalog to the shop UI and surface the 5 real unlocks instead. Either
    fix removes the client-suppliable `costCc` fallback path.
+   **Status: FIXED.** `content/roguelite-unlocks.json` now carries exactly
+   `META_UNLOCK_CATALOG`'s 5 ids/names/costs (the backend catalog was made
+   the source of truth since it's the one with real mechanical effects; the
+   3 JSON-only ids with no real counterpart — `extra_slot`, `starter_potion`,
+   `deeper_drift` — were dropped rather than faked). `purchaseUnlock`
+   (`server/lib/roguelite.js`) now rejects any unlockId absent from
+   `META_UNLOCK_CATALOG` (`error: "unknown_unlock"`) instead of falling back
+   to a client-supplied `costCc`; the route
+   (`POST /api/roguelite/unlock`, `server.js`) no longer even reads
+   `req.body.costCc`. `roguelite_meta_currency` is the separate gem-bank
+   currency, not the CC wallet, so this was never a real-money exploit — but
+   it was a real self-pricing bug in the closed-loop meta-economy. Pinned by
+   `server/tests/roguelite.test.js` ("unknown unlock id is rejected..." /
+   "a client-supplied cost is ignored...") and
+   `server/tests/integration/roguelite-meta-modifiers.test.js`.
 4. **[High] Wire `guild-substrate.js` into a route/macro surface** (2.9) —
    the bank/XP/hall functions are complete and tested; they need a
    `domains/guild.js` (or `routes/guild.js`) that calls them with real

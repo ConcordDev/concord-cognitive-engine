@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -4387,6 +4387,174 @@ export default function WorldLensPage() {
     setShowOnboarding(false);
   }, []);
 
+  // ── AvatarSystem3D prop stabilization (runtime-health-capability-map.md #1) ──
+  // AvatarSystem3D's ~1,740-line setup effect (mesh/mixer construction, physics
+  // character registration, 8 combat/death/knockback listener registrations)
+  // depends on `npcs`/`onMove`/`onEmote`. Before this fix all three were fresh
+  // references built inline on EVERY render of this page — `npcs` a brand-new
+  // array literal, `onMove`/`onEmote` brand-new closures — regardless of whether
+  // the underlying NPC/avatar data had actually changed. Worse, `onMove` fires
+  // from INSIDE that same effect's own per-frame movement loop, so moving fed
+  // back into itself: player moves -> onMove -> setPlayerAvatar -> this page
+  // re-renders -> fresh onMove/npcs identities -> AvatarSystem3D's effect
+  // dependency check fails -> full teardown/rebuild of the player's own
+  // mesh/mixer/physics registration, potentially dozens of times per second
+  // during sustained movement.
+  //
+  // Fixed with the same "ref-stored callback + stabilized dependency array"
+  // technique `hooks/useRealtimeRefresh.ts` already uses for this exact
+  // footgun elsewhere in this codebase: values that change often (district id,
+  // socket connection state, the latest avatar snapshot) are read through refs
+  // kept fresh on every render instead of being closed over directly, so
+  // `handleAvatarMove`/`handleAvatarEmote` keep a permanently stable identity.
+  //
+  // `otherPlayers` is deliberately NOT stabilized here — see the note at its
+  // `setOtherPlayers` call site (handleCityPositions) for why a naive "skip the
+  // update if nothing changed" dedupe there would silently break the >5s stale
+  // eviction that keeps disconnected players from lingering as ghosts. It's a
+  // real, bounded (~10Hz) socket-broadcast-cadence churn, not part of the
+  // self-feeding loop above, and is left as documented follow-up work.
+  const activeDistrictIdRef = useRef(activeDistrict.id);
+  activeDistrictIdRef.current = activeDistrict.id;
+  const isConnectedRef = useRef(worldSocket.isConnected);
+  isConnectedRef.current = worldSocket.isConnected;
+  const playerAvatarRef = useRef(playerAvatar);
+  playerAvatarRef.current = playerAvatar;
+
+  // Merged NPC list. worldNPCs/walkerNpcs/procgenNpcs each only change
+  // reference when their own setState fires (poll refresh), so this keeps
+  // `mergedNpcs`'s identity stable across renders where none of them changed —
+  // previously `[...worldNPCs, ...walkerNpcs, ...procgenNpcs]` was inlined
+  // directly in JSX and allocated a new array on every render.
+  const mergedNpcs = useMemo(
+    () => [...worldNPCs, ...walkerNpcs, ...procgenNpcs],
+    [worldNPCs, walkerNpcs, procgenNpcs]
+  );
+
+  // BuildingRenderer3D's `buildings` prop, stabilized the same way as
+  // `mergedNpcs` above — previously this `.map()` was inlined directly in
+  // JSX and allocated a new array (and new per-building object literals) on
+  // EVERY render of this page, not only when `worldBuildings` data actually
+  // changed. Since BuildingRenderer3D's rebuild effect depends on `buildings`
+  // by reference, that churn re-ran (and re-leaked, see the texture-map
+  // dispose fix in BuildingRenderer3D.tsx) the legacy per-floor material path
+  // far more often than necessary.
+  const buildingRendererBuildings = useMemo(
+    () => worldBuildings.map((b) => ({
+      id: b.id,
+      name: b.name || b.building_type,
+      position: { x: b.x, y: b.y ?? 0, z: b.z },
+      dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
+      floors: 1,
+      material: coerceMaterial(b.material),
+      style: 'colonial' as const,
+      // building_type drives the procedural archetype + iconic silhouette.
+      building_type: b.building_type,
+      structure: {
+        columns: { count: 0, spacing: 0, radius: 0 },
+        beams: { count: 0, height: 0 },
+        roofType: 'gable' as const,
+        hasBasement: false,
+        windowRows: 1,
+        windowsPerRow: 2,
+      },
+    })),
+    [worldBuildings]
+  );
+
+  const handleAvatarMove = useCallback(
+    (pos: { x: number; y: number; z: number }, rotation: number) => {
+      // Update local avatar immediately for snappy response,
+      // then emit to the server so other players see us move.
+      setPlayerAvatar((prev) => ({ ...prev, position: pos, rotation }));
+      // Advance tutorial on first significant movement
+      window.dispatchEvent(
+        new CustomEvent('concordia:tutorial-action', {
+          detail: { action: 'moved-significant-distance' },
+        })
+      );
+      if (isConnectedRef.current) {
+        worldSocket.emit('player:move', {
+          cityId: activeDistrictIdRef.current,
+          districtId: activeDistrictIdRef.current,
+          x: pos.x,
+          y: pos.y,
+          z: pos.z,
+          rotation,
+          direction: rotation,
+          action: 'walk',
+          currentAnimation: 'walk',
+        });
+
+        // ── ReconciliationBuffer: client-side prediction ────────────
+        // Build an InputFrame from the position delta vs last state,
+        // run it through the buffer's predict() so unacknowledged
+        // inputs are stored for re-simulation if the server rejects.
+        const seq = ++inputSeqRef.current;
+        const prev = prevCharStateRef.current;
+        const dt = 1 / 60; // nominal; AvatarSystem3D owns real delta
+        const dx = prev ? pos.x - prev.position.x : 0;
+        const dz = prev ? pos.z - prev.position.z : 0;
+        const len = Math.sqrt(dx * dx + dz * dz) || 1;
+        const inputFrame = {
+          seq,
+          delta: dt,
+          forward: dz / len,
+          strafe: dx / len,
+          jump: false,
+          sprint: false,
+          yaw: rotation,
+        };
+        const currentState: CharState = prev ?? {
+          seq: 0,
+          position: pos,
+          velocity: { x: 0, y: 0, z: 0 },
+          onGround: true,
+          health: combatStateRef.current.health,
+          stamina: combatStateRef.current.stamina,
+        };
+        const predicted = getRecon().predict(currentState, inputFrame);
+
+        // Delta-compressed binary move alongside JSON
+        if (prev) {
+          worldSocket.emit('player:move:delta', encodeDelta(prev, predicted));
+        }
+        prevCharStateRef.current = predicted;
+      }
+    },
+    // worldSocket.emit is a useCallback with [] deps inside useSocket(), so its
+    // identity is stable across renders of this same hook call site — safe to
+    // depend on directly instead of routing it through a ref too. `worldSocket`
+    // itself is a fresh object literal every render (useSocket() doesn't
+    // memoize its return value) and MUST NOT be added here — doing so would
+    // reintroduce the exact prop-identity churn this callback exists to fix.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [worldSocket.emit]
+  );
+
+  const handleAvatarEmote = useCallback(
+    (emote: string) => {
+      setPlayerAvatar((prev) => ({ ...prev, currentAnimation: emote as PlayerAnimationClip }));
+      if (isConnectedRef.current) {
+        const av = playerAvatarRef.current;
+        worldSocket.emit('player:move', {
+          cityId: activeDistrictIdRef.current,
+          districtId: activeDistrictIdRef.current,
+          x: av.position.x,
+          y: av.position.y,
+          z: av.position.z,
+          rotation: av.rotation,
+          direction: av.rotation,
+          action: emote,
+          currentAnimation: emote,
+        });
+      }
+    },
+    // See the identical note on handleAvatarMove's dependency array above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [worldSocket.emit]
+  );
+
   return (
     <LensShell lensId="world" asMain={false}>
       <FirstRunTour lensId="world" />
@@ -4617,25 +4785,7 @@ export default function WorldLensPage() {
             quality="medium"
           />
           <BuildingRenderer3D
-            buildings={worldBuildings.map((b) => ({
-              id: b.id,
-              name: b.name || b.building_type,
-              position: { x: b.x, y: b.y ?? 0, z: b.z },
-              dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
-              floors: 1,
-              material: coerceMaterial(b.material),
-              style: 'colonial' as const,
-              // building_type drives the procedural archetype + iconic silhouette.
-              building_type: b.building_type,
-              structure: {
-                columns: { count: 0, spacing: 0, radius: 0 },
-                beams: { count: 0, height: 0 },
-                roofType: 'gable' as const,
-                hasBasement: false,
-                windowRows: 1,
-                windowsPerRow: 2,
-              },
-            }))}
+            buildings={buildingRendererBuildings}
             viewMode="normal"
             buildingStyle={buildingStyleForWorld(worldIdForTheme)}
           />
@@ -4816,85 +4966,12 @@ export default function WorldLensPage() {
             <AvatarSystem3D
               playerAvatar={playerAvatar}
               otherPlayers={otherPlayers}
-              npcs={[...worldNPCs, ...walkerNpcs, ...procgenNpcs]}
+              npcs={mergedNpcs}
               weatherModifiers={weatherModifiers ?? undefined}
               quality="medium"
               cameraMode={cameraMode}
-              onMove={(pos, rotation) => {
-                // Update local avatar immediately for snappy response,
-                // then emit to the server so other players see us move.
-                setPlayerAvatar((prev) => ({ ...prev, position: pos, rotation }));
-                // Advance tutorial on first significant movement
-                window.dispatchEvent(
-                  new CustomEvent('concordia:tutorial-action', {
-                    detail: { action: 'moved-significant-distance' },
-                  })
-                );
-                if (worldSocket.isConnected) {
-                  worldSocket.emit('player:move', {
-                    cityId: activeDistrict.id,
-                    districtId: activeDistrict.id,
-                    x: pos.x,
-                    y: pos.y,
-                    z: pos.z,
-                    rotation,
-                    direction: rotation,
-                    action: 'walk',
-                    currentAnimation: 'walk',
-                  });
-
-                  // ── ReconciliationBuffer: client-side prediction ────────────
-                  // Build an InputFrame from the position delta vs last state,
-                  // run it through the buffer's predict() so unacknowledged
-                  // inputs are stored for re-simulation if the server rejects.
-                  const seq = ++inputSeqRef.current;
-                  const prev = prevCharStateRef.current;
-                  const dt = 1 / 60; // nominal; AvatarSystem3D owns real delta
-                  const dx = prev ? pos.x - prev.position.x : 0;
-                  const dz = prev ? pos.z - prev.position.z : 0;
-                  const len = Math.sqrt(dx * dx + dz * dz) || 1;
-                  const inputFrame = {
-                    seq,
-                    delta: dt,
-                    forward: dz / len,
-                    strafe: dx / len,
-                    jump: false,
-                    sprint: false,
-                    yaw: rotation,
-                  };
-                  const currentState: CharState = prev ?? {
-                    seq: 0,
-                    position: pos,
-                    velocity: { x: 0, y: 0, z: 0 },
-                    onGround: true,
-                    health: combatState.health,
-                    stamina: combatState.stamina,
-                  };
-                  const predicted = getRecon().predict(currentState, inputFrame);
-
-                  // Delta-compressed binary move alongside JSON
-                  if (prev) {
-                    worldSocket.emit('player:move:delta', encodeDelta(prev, predicted));
-                  }
-                  prevCharStateRef.current = predicted;
-                }
-              }}
-              onEmote={(emote) => {
-                setPlayerAvatar((prev) => ({ ...prev, currentAnimation: emote as PlayerAnimationClip }));
-                if (worldSocket.isConnected) {
-                  worldSocket.emit('player:move', {
-                    cityId: activeDistrict.id,
-                    districtId: activeDistrict.id,
-                    x: playerAvatar.position.x,
-                    y: playerAvatar.position.y,
-                    z: playerAvatar.position.z,
-                    rotation: playerAvatar.rotation,
-                    direction: playerAvatar.rotation,
-                    action: emote,
-                    currentAnimation: emote,
-                  });
-                }
-              }}
+              onMove={handleAvatarMove}
+              onEmote={handleAvatarEmote}
             />
           </div>
           {/* Lens portal markers — rendered as 2D overlays */}

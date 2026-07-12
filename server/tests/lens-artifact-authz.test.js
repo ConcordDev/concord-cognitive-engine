@@ -39,11 +39,11 @@ test("lens artifact authz", async (t) => {
 
   // Seed the artifact directly into STATE.lensArtifacts (the same pattern
   // tests/depth/_harness.js#lensRun uses) instead of going through
-  // `lens.create`. `lens.create`'s scope-enforcement bridge calls
-  // `ctx.macro.run(...)` without awaiting the result (a separate,
-  // pre-existing bug unrelated to this authz fix — filed for follow-up, not
-  // addressed here since it's out of scope for the security-lens audit),
-  // so routing through it here would conflate two different defects.
+  // `lens.create` — this test is about the by-id ownership gates, not
+  // artifact creation, so seeding directly keeps the two concerns separate.
+  // (The `lens.create` scope-check's un-awaited-Promise bug this comment
+  // used to describe is fixed and pinned separately at
+  // tests/lens-create-scope-check-await.test.js.)
   function makeArtifact(domain = "security") {
     const id = `lens-authz-${domain}-${randomUUID()}`;
     STATE.lensArtifacts.set(id, {

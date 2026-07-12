@@ -55,7 +55,14 @@ function sha256(value) {
  * Returns: { ok, envelope, hashes }
  */
 export function exportUserCorpus(db, userId, opts = {}) {
-  if (!db || !userId) return { ok: false, reason: "missing_inputs" };
+  // `error` mirrors `reason` on every failure path below (added, not
+  // replacing `reason`) so the frontend `lensRun()` helper — which
+  // collapses a `{ok:false, ...}` macro result down to `{result:null,
+  // error}` and only preserves a top-level `error` string — still
+  // surfaces the real cause instead of falling back to its generic
+  // "lens error" text. `reason` remains the field the existing
+  // `tests/dtu-portability.test.js` assertions read.
+  if (!db || !userId) return { ok: false, reason: "missing_inputs", error: "missing_inputs" };
 
   const includeEconomy = opts.includeEconomy !== false;
   const limit = Math.min(50000, Math.max(1, Number(opts.limit) || 10000));
@@ -69,7 +76,7 @@ export function exportUserCorpus(db, userId, opts = {}) {
       FROM dtus WHERE creator_id = ?
       ORDER BY created_at ASC LIMIT ?
     `).all(userId, limit);
-  } catch { return { ok: false, reason: "no_dtus_table" }; }
+  } catch { return { ok: false, reason: "no_dtus_table", error: "no_dtus_table" }; }
 
   // Citations (royalty cascade)
   let citations = [];
@@ -180,26 +187,26 @@ function computeInstanceSignature() {
  * { ok, reason?, dtuCount, citationCount, mismatched? }.
  */
 export function validateEnvelope(envelope) {
-  if (!envelope || envelope.spec !== SPEC) return { ok: false, reason: "bad_spec" };
-  if (!envelope.creator_id) return { ok: false, reason: "no_creator_id" };
-  if (!Array.isArray(envelope.dtus)) return { ok: false, reason: "dtus_missing" };
+  if (!envelope || envelope.spec !== SPEC) return { ok: false, reason: "bad_spec", error: "bad_spec" };
+  if (!envelope.creator_id) return { ok: false, reason: "no_creator_id", error: "no_creator_id" };
+  if (!Array.isArray(envelope.dtus)) return { ok: false, reason: "dtus_missing", error: "dtus_missing" };
 
   const expectedDtuHash = envelope.hashes?.dtus_sha256;
   if (expectedDtuHash) {
     const recomputed = sha256(canonicalStringify(envelope.dtus));
-    if (recomputed !== expectedDtuHash) return { ok: false, reason: "dtu_hash_mismatch" };
+    if (recomputed !== expectedDtuHash) return { ok: false, reason: "dtu_hash_mismatch", error: "dtu_hash_mismatch" };
   }
   const expectedCiteHash = envelope.hashes?.citations_sha256;
   if (expectedCiteHash) {
     const recomputed = sha256(canonicalStringify(envelope.citations || []));
-    if (recomputed !== expectedCiteHash) return { ok: false, reason: "citation_hash_mismatch" };
+    if (recomputed !== expectedCiteHash) return { ok: false, reason: "citation_hash_mismatch", error: "citation_hash_mismatch" };
   }
   // Universal-file-format: verify attachment integrity if the envelope
   // declared one. Pre-1.x packs without attachments stay valid.
   const expectedAttachHash = envelope.hashes?.attachments_sha256;
   if (expectedAttachHash) {
     const recomputed = sha256(canonicalStringify(envelope.attachments || []));
-    if (recomputed !== expectedAttachHash) return { ok: false, reason: "attachment_hash_mismatch" };
+    if (recomputed !== expectedAttachHash) return { ok: false, reason: "attachment_hash_mismatch", error: "attachment_hash_mismatch" };
   }
   return {
     ok: true,
@@ -223,7 +230,7 @@ export function validateEnvelope(envelope) {
  * Returns { ok, imported: { dtus, citations, economy, attachments }, skipped }.
  */
 export async function importEnvelope(db, envelope, opts = {}) {
-  if (!db) return { ok: false, reason: "no_db" };
+  if (!db) return { ok: false, reason: "no_db", error: "no_db" };
   const validation = validateEnvelope(envelope);
   if (!validation.ok) return validation;
 

@@ -2,6 +2,11 @@
 // Domain actions for temporal analysis: critical path computation, Gantt
 // scheduling, temporal clustering, and event pattern detection.
 
+// Real friend-graph lookup (migration 214 `friendships` table) — the
+// authoritative, server-verified source for "are these two users friends",
+// as opposed to a client-supplied assertion. See checkPostAccess() below.
+import { areFriends } from "../lib/friendships.js";
+
 export default function registerTimelineActions(registerLensAction) {
   /**
    * criticalPath
@@ -486,19 +491,37 @@ export default function registerTimelineActions(registerLensAction) {
 
   // A "private" post is "only me" by definition, regardless of the caller's
   // knowledge of its id (e.g. a leaked notification payload or a guessed
-  // base36 id). Every macro that reads or writes a specific post BY ID
-  // (react / comment-add / comment-list / reactions-breakdown) must honor
-  // this — feed-list's privacy filter alone is not enough, since it only
-  // gates *listing*, not direct id-addressed access. `share-post` already
-  // enforced this; the others didn't. Returns { found, blocked } so callers
-  // can return an identical "Post not found." for both "doesn't exist" and
-  // "exists but is private and you're not the owner" — never let the error
-  // message itself become an oracle for "this private post exists".
-  function checkPostAccess(s, postId, viewerId) {
+  // base36 id). A "friends" post is visible to its owner and to their
+  // *confirmed* friends only — friendship is resolved through the real
+  // friend-graph in lib/friendships.js (`areFriends`, backed by migration
+  // 214's `friendships` table), never through a client-supplied assertion.
+  // (`feed-list`'s `params.friendIds` is exactly such an assertion — fine
+  // for filtering what shows up in a *listing*, since a lie there only
+  // hides posts from yourself, but it must never be trusted to *grant*
+  // access to a specific post by id.) Every macro that reads or writes a
+  // specific post BY ID (react / comment-add / comment-list /
+  // reactions-breakdown) must honor both tiers — feed-list's privacy
+  // filter alone is not enough, since it only gates *listing*, not direct
+  // id-addressed access. `share-post` already enforced the private tier;
+  // the others didn't, and none enforced the friends tier. Returns
+  // { found, blocked } so callers can return an identical "Post not
+  // found." for "doesn't exist", "exists but is private and you're not
+  // the owner", and "exists but is friends-only and you're not a
+  // confirmed friend of the owner" — never let the error message itself
+  // become an oracle for "this restricted post exists". When no `db`
+  // handle is available to verify friendship (should not happen outside
+  // a misconfigured caller), a friends-tier post fails CLOSED — treated
+  // the same as private — rather than trusting an unverifiable claim.
+  function checkPostAccess(s, postId, viewerId, db) {
     const found = findPost(s, postId);
     if (!found) return { found: null, blocked: false };
-    const blocked = found.post.privacy === "private" && found.ownerId !== viewerId;
-    return { found, blocked };
+    if (found.ownerId === viewerId) return { found, blocked: false };
+    if (found.post.privacy === "private") return { found, blocked: true };
+    if (found.post.privacy === "friends") {
+      const confirmedFriend = db ? areFriends(db, found.ownerId, viewerId) : false;
+      return { found, blocked: !confirmedFriend };
+    }
+    return { found, blocked: false };
   }
 
   // Append a notification for a recipient (skips self-notifications).
@@ -606,7 +629,7 @@ export default function registerTimelineActions(registerLensAction) {
     const text = tlClean(params.text, 2000);
     if (!postId || !text) return { ok: false, error: "postId and text required." };
     const actorId = tlAid(ctx);
-    const { found, blocked } = checkPostAccess(s, postId, actorId);
+    const { found, blocked } = checkPostAccess(s, postId, actorId, ctx?.db);
     if (!found || blocked) return { ok: false, error: "Post not found." };
     const parentId = params.parentId ? tlClean(params.parentId, 64) : null;
     const list = tlList(s.comments, postId);
@@ -634,7 +657,7 @@ export default function registerTimelineActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = tlClean(params.postId, 64);
     if (!postId) return { ok: false, error: "postId required." };
-    const { blocked } = checkPostAccess(s, postId, tlAid(ctx));
+    const { blocked } = checkPostAccess(s, postId, tlAid(ctx), ctx?.db);
     if (blocked) return { ok: false, error: "Post not found." };
     const flat = [...(s.comments.get(postId) || [])];
     flat.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -676,7 +699,7 @@ export default function registerTimelineActions(registerLensAction) {
     if (!postId) return { ok: false, error: "postId required." };
     if (!REACTION_KINDS.includes(kind)) return { ok: false, error: "Unknown reaction kind." };
     const actorId = tlAid(ctx);
-    const { found, blocked } = checkPostAccess(s, postId, actorId);
+    const { found, blocked } = checkPostAccess(s, postId, actorId, ctx?.db);
     if (!found || blocked) return { ok: false, error: "Post not found." };
     const list = tlList(s.reactions, postId);
     const existing = list.findIndex((r) => r.userId === actorId);
@@ -712,7 +735,7 @@ export default function registerTimelineActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = tlClean(params.postId, 64);
     if (!postId) return { ok: false, error: "postId required." };
-    const { blocked } = checkPostAccess(s, postId, tlAid(ctx));
+    const { blocked } = checkPostAccess(s, postId, tlAid(ctx), ctx?.db);
     if (blocked) return { ok: false, error: "Post not found." };
     const list = [...(s.reactions.get(postId) || [])];
     list.sort((a, b) => b.at.localeCompare(a.at));
@@ -738,12 +761,20 @@ export default function registerTimelineActions(registerLensAction) {
     if (!postId) return { ok: false, error: "postId required." };
     const found = findPost(s, postId);
     if (!found) return { ok: false, error: "Post not found." };
-    if (found.post.privacy === "private" && found.ownerId !== tlAid(ctx)) {
+    const actorId = tlAid(ctx);
+    if (found.post.privacy === "private" && found.ownerId !== actorId) {
       return { ok: false, error: "Cannot share a private post." };
+    }
+    // Same friends-tier gap checkPostAccess() closes for react/comment-add/
+    // comment-list/reactions-breakdown — share-post had its own inline
+    // private-tier check (not routed through checkPostAccess) so it needs
+    // the same fix applied here directly, using the real friend-graph.
+    if (found.post.privacy === "friends" && found.ownerId !== actorId) {
+      const confirmedFriend = ctx?.db ? areFriends(ctx.db, found.ownerId, actorId) : false;
+      if (!confirmedFriend) return { ok: false, error: "Cannot share a friends-only post." };
     }
     const privacy = PRIVACY_KINDS.includes(String(params.privacy))
       ? String(params.privacy) : "friends";
-    const actorId = tlAid(ctx);
     const shared = {
       id: tlId("pst"),
       authorId: actorId,

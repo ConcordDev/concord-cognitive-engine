@@ -29,7 +29,7 @@
  * on the receiver side).
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
 import { requestHitPause } from '@/lib/concordia/hit-pause';
 import { requestKnockback, requestHitReaction } from '@/lib/concordia/strike-fx-dedup';
@@ -587,8 +587,120 @@ export function CombatStaggerCameraBridge({ userId }: { userId: string | null })
  * Player position is read from a window-attached store
  * (`globalThis.__CONCORD_PLAYER_POS__`) that AvatarSystem3D updates.
  * Fallback: if no position is known, treat as ambient.
+ *
+ * runtime-health-capability-map.md finding #7 (2026-07-11): the server
+ * correctly drives standing→damaged→collapsed and this bridge re-shapes the
+ * event for the two presentational consumers above (BuildingWearLayer's
+ * persistent scar, BuildingCollapseVFX's transient dust-puff) — but neither
+ * of those touches the actual 3D building mesh or its Rapier collider, so a
+ * "collapsed" building left a fully solid, fully visible mesh behind: the
+ * player would see the dust-puff burst and the scar decal, then walk into an
+ * invisible wall where the building still structurally stood forever after.
+ *
+ * ConcordiaScene.tsx has a working `removeBuilding(id)` on its imperative
+ * `ConcordiaSceneAPI`, reachable via `useConcordiaScene()` — but that hook's
+ * context Provider only wraps ConcordiaScene's OWN internal JSX (the
+ * component declares no `children` prop and never renders one), so nothing
+ * outside ConcordiaScene.tsx's own file can ever be a descendant of the
+ * Provider. This bridge (via `CombatPolishLayer`) mounts as a SIBLING of
+ * `<ConcordiaScene>` in app/lenses/world/page.tsx, not a descendant, so
+ * calling `useConcordiaScene()` here would throw ("must be used within
+ * ConcordiaScene") rather than silently no-op. Editing ConcordiaScene.tsx to
+ * expose the API differently (forwardRef, a `children` prop, etc.) is also
+ * off the table for this fix — a parallel pass is independently touching
+ * that file for an unrelated composer/listener-leak finding.
+ *
+ * So the effect below reimplements removeBuilding's two steps using
+ * channels that are already reachable from outside ConcordiaScene.tsx:
+ *   1. `concordia:scene-ready` / `concordia:scene-request-ready` — the same
+ *      handshake TreeLayer/RockLayer/QuestMarker3D already use to attach
+ *      self-contained overlays to the live THREE.Scene from outside
+ *      ConcordiaScene's subtree. We cache the scene once it's dispatched.
+ *   2. The `physicsWorld` singleton (`lib/world-lens/physics-world.ts`),
+ *      imported directly instead of through ConcordiaScene's internal
+ *      `physicsRef`. `syncFromScene`'s default profile for an
+ *      `userData.isBuilding === true` object is `'box'`, and it builds the
+ *      registration id as `${profile}:${baseId}` (baseId = the object's
+ *      `userData.buildingId`) BEFORE handing that id to
+ *      `registerBuildingFromObject` → `createBuildingCollider`, which
+ *      prefixes it again as `building:${entityId}` — so the real,
+ *      double-prefixed key is `building:box:${buildingId}`, not
+ *      `box:${buildingId}`. `removeBuildingCollider` is guarded + idempotent,
+ *      so calling it with a key nothing registered (including this file's
+ *      own earlier, wrong single-prefixed guess) is a silent no-op rather
+ *      than an error — worth knowing if this still doesn't fix a reported
+ *      "walk through a collapsed building" case: verify the key format
+ *      against `physics-world.ts` again rather than assuming this comment
+ *      stays accurate forever.
+ *
+ *      Separately, and OUT OF SCOPE for this fix: `BuildingRenderer3D.tsx`
+ *      (the real, DTU-backed building path — "the path most real buildings
+ *      render through" per finding #5) never stamps `userData.isBuilding` or
+ *      `userData.colliderProfile` on the groups it produces, and its mount
+ *      path (`onBuildingsReady` in ConcordiaScene.tsx) never calls
+ *      `registerBuildingFromObject` either. The one-shot `syncFromScene`
+ *      retroactive pass at scene-ready therefore SKIPS these groups (no
+ *      profile → skip), so real buildings may not get a Rapier collider
+ *      registered via any current path at all — a deeper, wider gap than
+ *      "collapsed buildings keep their collider," which this fix does not
+ *      attempt to close. If that turns out to be true, the collider-removal
+ *      half of this fix is a correctly-keyed no-op against a building that
+ *      was never solid to begin with, not a bug in this fix itself.
  */
+function removeCollapsedBuildingFromWorld(scene: ConcordiaSceneLike | null, buildingId: string) {
+  // Mesh half: best-effort. Find the building group BuildingRenderer3D
+  // stamped with userData.buildingId === buildingId and detach it from its
+  // parent, mirroring removeBuilding()'s own mesh-removal step.
+  try {
+    if (scene?.traverse) {
+      // An object wrapper (rather than a bare `let`) sidesteps a TypeScript
+      // control-flow-narrowing limitation where a variable only ever
+      // reassigned inside a callback gets narrowed to `never` at its
+      // post-call read site.
+      const found: { target: ConcordiaSceneLike | null } = { target: null };
+      scene.traverse((child) => {
+        if (found.target) return;
+        if (child.userData?.buildingId === buildingId) found.target = child;
+      });
+      if (found.target?.parent) {
+        found.target.parent.remove(found.target);
+      }
+    }
+  } catch {
+    // Mesh removal is best-effort — the collider removal below is the
+    // load-bearing fix for the "invisible wall" symptom.
+  }
+  // Physics half: load-bearing when a collider was actually registered.
+  // Real key is double-prefixed — see the doc comment above this function.
+  void import('@/lib/world-lens/physics-world')
+    .then(({ physicsWorld }) => physicsWorld.removeBuildingCollider(`building:box:${buildingId}`))
+    .catch(() => { /* physicsWorld guards internally; best-effort here too */ });
+}
+
+/** Minimal shape of a THREE.Object3D needed to locate + detach a building. */
+interface ConcordiaSceneLike {
+  userData?: Record<string, unknown>;
+  parent?: { remove: (child: unknown) => void } | null;
+  traverse?: (cb: (child: ConcordiaSceneLike) => void) => void;
+}
+
 export function BuildingCollapseBridge({ userId }: { userId: string | null }) {
+  // Cache the live THREE.Scene the same way TreeLayer/RockLayer do, so a
+  // 'collapsed' transition can actually detach the building's mesh group.
+  const sceneRef = useRef<ConcordiaSceneLike | null>(null);
+  useEffect(() => {
+    function onSceneReady(e: Event) {
+      const detail = (e as CustomEvent).detail as { scene?: ConcordiaSceneLike } | undefined;
+      if (detail?.scene) sceneRef.current = detail.scene;
+    }
+    window.addEventListener('concordia:scene-ready', onSceneReady);
+    // The scene may already be up if this bridge mounts after the one-shot
+    // scene-ready already fired — request a re-broadcast (same pattern as
+    // TreeLayer/RockLayer/QuestMarker3D).
+    window.dispatchEvent(new CustomEvent('concordia:scene-request-ready'));
+    return () => window.removeEventListener('concordia:scene-ready', onSceneReady);
+  }, []);
+
   useEffect(() => {
     const off = subscribe('world:building-state' as Parameters<typeof subscribe>[0], (payload: unknown) => {
       const ev = payload as {
@@ -618,6 +730,14 @@ export function BuildingCollapseBridge({ userId }: { userId: string | null }) {
       }));
 
       if (ev.state !== 'collapsed') return;
+
+      // finding #7 — actually remove the collapsed building's mesh + Rapier
+      // collider (see the doc comment above BuildingCollapseBridge for why
+      // this doesn't go through ConcordiaScene's removeBuilding()/
+      // useConcordiaScene()). Fires for every collapsed building regardless
+      // of local-relevance — a distant collapse still needs its collider
+      // gone for anyone who later walks up to it.
+      removeCollapsedBuildingFromWorld(sceneRef.current, ev.buildingId);
 
       // Local-relevance check.
       let localRelevance: 'full' | 'soft' = 'soft';

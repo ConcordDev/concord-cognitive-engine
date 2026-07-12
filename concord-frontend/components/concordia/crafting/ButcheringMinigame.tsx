@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSoundscape } from '@/components/world-lens/SoundscapeEngine';
+import { useCancelableCompletion } from '@/hooks/useCancelableCompletion';
 
 interface ButcheringMinigameProps {
   toolTier: number;        // 0-4 — wider sweet spot at higher tiers
@@ -29,6 +30,7 @@ export default function ButcheringMinigame({ toolTier, speciesName, onComplete, 
   const [showHit, setShowHit] = useState<'hit' | 'miss' | null>(null);
   const [done, setDone] = useState(false);
   const { triggerSFX } = useSoundscape();
+  const { scheduleComplete, cancelPendingComplete } = useCancelableCompletion(onComplete);
 
   const dirRef = useRef(1);
   const posRef = useRef(0);
@@ -75,16 +77,21 @@ export default function ButcheringMinigame({ toolTier, speciesName, onComplete, 
       // Quality multiplier: 0 hits=0.5, 1 hit=1.0, 2 hits=1.5, 3 hits=2.0
       const q = 0.5 + newHits * 0.5;
       if (newHits === TOTAL_CUTS) triggerSFX('gather-full');
-      setTimeout(() => onComplete(q), 700);
+      scheduleComplete(q, 700);
     }
-  }, [cuts, hits, needlePos, zonePos, zoneWidth, repositionZone, onComplete, done, triggerSFX]);
+  }, [cuts, hits, needlePos, zonePos, zoneWidth, repositionZone, scheduleComplete, done, triggerSFX]);
+
+  const handleCancel = useCallback(() => {
+    cancelPendingComplete();
+    onCancel();
+  }, [cancelPendingComplete, onCancel]);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">
       <div className="bg-black/90 border border-red-500/30 rounded-2xl p-6 w-full max-w-sm mx-4 flex flex-col gap-5">
         <div className="flex items-center justify-between">
           <h3 className="text-white font-bold text-base">Butchering: {speciesName}</h3>
-          <button onClick={onCancel} className="text-xs text-white/40 hover:text-white">cancel</button>
+          <button onClick={handleCancel} className="text-xs text-white/40 hover:text-white">cancel</button>
         </div>
 
         <div className="text-xs text-white/60 text-center">

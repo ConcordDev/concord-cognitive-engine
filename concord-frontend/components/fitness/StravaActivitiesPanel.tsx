@@ -8,10 +8,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Loader2, Plus, Heart, Trash2, Flame, Clock, Ruler, TrendingUp, Mountain,
-  MessageSquare, ImagePlus, ChevronDown, ChevronUp, Send, X,
+  MessageSquare, ImagePlus, ChevronDown, ChevronUp, Send, X, Map as MapIcon,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { MapView, type MapMarker } from '@/components/viz/MapView';
 
 interface Activity {
   id: string;
@@ -27,7 +28,11 @@ interface Activity {
   kudos: string[];
   comments?: { userId: string; text: string; at: string }[];
   photos?: { id: string; url: string | null; dataUrl: string | null; caption: string | null }[];
+  hasGps?: boolean;
+  source?: string;
 }
+
+interface GpsTrackPoint { lat: number; lon: number; ele: number | null }
 
 const TYPES = ['run', 'ride', 'swim', 'walk', 'hike', 'row', 'workout', 'yoga'];
 
@@ -51,6 +56,10 @@ export function StravaActivitiesPanel() {
   const [form, setForm] = useState({ type: 'run', name: '', distanceKm: '', durationMin: '', elevationGainM: '', avgHr: '', calories: '' });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
+  const [routeOpenId, setRouteOpenId] = useState<string | null>(null);
+  const [routeTrack, setRouteTrack] = useState<GpsTrackPoint[] | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -127,6 +136,18 @@ export function StravaActivitiesPanel() {
   const removePhoto = async (a: Activity, photoId: string) => {
     await lensRun('fitness', 'activity-photo-remove', { id: a.id, photoId });
     await refresh();
+  };
+
+  const viewRoute = async (a: Activity) => {
+    if (routeOpenId === a.id) { setRouteOpenId(null); return; }
+    setRouteOpenId(a.id);
+    setRouteTrack(null);
+    setRouteError(null);
+    setRouteLoading(true);
+    const r = await lensRun('fitness', 'gps-track', { id: a.id });
+    setRouteLoading(false);
+    if (r.data?.ok === false) { setRouteError(r.data?.error || 'Could not load route'); return; }
+    setRouteTrack(r.data?.result?.track?.points || []);
   };
 
   if (loading) {
@@ -228,7 +249,48 @@ export function StravaActivitiesPanel() {
                   )}
                   {expanded === a.id ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
                 </button>
+                {a.hasGps && (
+                  <button
+                    type="button"
+                    onClick={() => viewRoute(a)}
+                    className={cn(
+                      'flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border transition-colors',
+                      routeOpenId === a.id
+                        ? 'border-orange-700/50 bg-orange-950/40 text-orange-300'
+                        : 'border-zinc-800 text-zinc-400 hover:text-orange-300',
+                    )}
+                  >
+                    <MapIcon className="w-3 h-3" /> {routeOpenId === a.id ? 'Hide route' : 'View route'}
+                  </button>
+                )}
               </div>
+
+              {routeOpenId === a.id && (
+                <div className="mt-2 border-t border-zinc-800 pt-2">
+                  {routeLoading ? (
+                    <div className="flex items-center justify-center py-6 text-zinc-400">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </div>
+                  ) : routeError ? (
+                    <p className="text-xs text-rose-400">{routeError}</p>
+                  ) : routeTrack && routeTrack.length > 0 ? (
+                    <MapView
+                      markers={routeTrack
+                        .filter((_, i) => routeTrack.length <= 300 || i % Math.ceil(routeTrack.length / 300) === 0)
+                        .map((p, i, arr): MapMarker => ({
+                          id: `pt-${i}`,
+                          lat: p.lat,
+                          lon: p.lon,
+                          tone: i === 0 ? 'good' : i === arr.length - 1 ? 'bad' : 'info',
+                          label: i === 0 ? 'Start' : i === arr.length - 1 ? 'Finish' : undefined,
+                        }))}
+                      height={220}
+                    />
+                  ) : (
+                    <p className="text-xs text-zinc-400 italic">No GPS track stored for this activity.</p>
+                  )}
+                </div>
+              )}
 
               {expanded === a.id && (
                 <div className="mt-2 border-t border-zinc-800 pt-2 space-y-2">

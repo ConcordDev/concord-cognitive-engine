@@ -2165,9 +2165,28 @@ export default function AvatarSystem3D({
       window.addEventListener('keydown', handleKeyDown);
       window.addEventListener('keyup', handleKeyUp);
 
-      // Register player character controller with Rapier (guard: only if world is ready)
-      if ((physicsWorld as unknown as Record<string, unknown>)['world'] != null) {
+      // Retry handler for the physics-not-ready-yet branch below. Guarded
+      // by `disposed` so a stale retry can't fire a registration after this
+      // effect has already torn down (unmount / dep-driven rebuild).
+      function onPhysicsReady() {
+        if (disposed) return;
         physicsWorld.createCharacterController('player');
+      }
+
+      // Register player character controller with Rapier. Finding #9
+      // (runtime-health-capability-map.md): this used to be a one-shot
+      // synchronous check with no retry — if Rapier's async WASM init
+      // hadn't finished yet, the controller was never registered and the
+      // player fell through terrain/buildings for the rest of the session.
+      // Fix: register immediately if physics is already ready (unchanged
+      // happy path), otherwise listen for the concordia:physics-ready
+      // event physics-world.ts now dispatches once init() resolves and
+      // retry then — same request/response-ready shape ConcordiaScene
+      // already uses for concordia:scene-request-ready.
+      if (physicsWorld.isReady()) {
+        physicsWorld.createCharacterController('player');
+      } else {
+        window.addEventListener('concordia:physics-ready', onPhysicsReady, { once: true });
       }
 
       // Per-NPC stride phases — keyed by NPC id, captured in closure.
@@ -2847,6 +2866,10 @@ export default function AvatarSystem3D({
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
+        // Finding #9: drop the retry listener on unmount if physics never
+        // became ready in this component's lifetime — `{ once: true }`
+        // only auto-removes it once it FIRES, not on unmount.
+        window.removeEventListener('concordia:physics-ready', onPhysicsReady);
         window.removeEventListener('concordia:hit-reaction', handleHitReaction);
         window.removeEventListener('concordia:hit-pause', handleHitPause);
         window.removeEventListener('concordia:knockback', handleKnockback);
@@ -2915,7 +2938,28 @@ export default function AvatarSystem3D({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- createAvatarMeshSmart is a stable builder; effect keys on the listed avatar deps
   }, [
-    playerAvatar,
+    // NOT `playerAvatar` (the whole object) — see runtime-health-capability-map.md
+    // finding #1. Every field this effect actually reads at construction time
+    // (id/appearance/name/profession/firmEmblem — grep-verified above) is listed
+    // individually. `playerAvatar.position`/`.rotation`/`.currentAnimation` are
+    // ONLY read here to seed the initial mesh transform/mixer clip on a genuine
+    // (re)construction; they're deliberately excluded because `onMove`/`onEmote`
+    // update them via `setPlayerAvatar((prev) => ({...prev, position, rotation}))`
+    // on every movement frame — a shallow spread that leaves appearance/name/
+    // profession/firmEmblem referentially/value-unchanged. Depending on the whole
+    // object meant every step the player took fed back into a full teardown and
+    // rebuild of this player's own mesh/mixer/physics registration (the effect's
+    // own per-frame movement loop calls onMove, which calls setPlayerAvatar, which
+    // changes `playerAvatar` identity, which re-triggers this effect — a genuine
+    // self-feeding loop). Whichever render DOES retrigger this effect (e.g. an
+    // appearance change) still reads the CURRENT position/rotation/currentAnimation
+    // off `playerAvatar` in that render's closure — never stale, since React state
+    // is always fully up to date on every render regardless of which field changed.
+    playerAvatar.id,
+    playerAvatar.appearance,
+    playerAvatar.name,
+    playerAvatar.profession,
+    playerAvatar.firmEmblem,
     otherPlayers,
     npcs,
     onMove,

@@ -11,6 +11,7 @@ import { IntegrationsRepos } from '@/components/integrations/IntegrationsRepos';
 import { WorkflowsPanel } from '@/components/integrations/WorkflowsPanel';
 import { ConnectorCatalog } from '@/components/integrations/ConnectorCatalog';
 import { AnalysisPanel } from '@/components/integrations/AnalysisPanel';
+import { WebhookSignatureVerifier } from '@/components/integrations/WebhookSignatureVerifier';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, lensRun } from '@/lib/api/client';
@@ -48,6 +49,7 @@ export default function IntegrationsLensPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [webhookTestResults, setWebhookTestResults] = useState<Record<string, { status: 'loading' | 'success' | 'error'; message: string }>>({});
   const [showDeliveryLog, setShowDeliveryLog] = useState<string | null>(null);
+  const [showVerifyFor, setShowVerifyFor] = useState<string | null>(null);
 
   // ── Real stat sources (replaces the prior fabricated artifact-CRUD reads) ──
   const { data: webhooks, isLoading, isError, error, refetch } = useQuery({
@@ -324,6 +326,14 @@ export default function IntegrationsLensPage() {
                     Log
                   </button>
                   <button
+                    onClick={() => setShowVerifyFor(showVerifyFor === (wh.id as string) ? null : (wh.id as string))}
+                    className="text-gray-400 hover:text-neon-cyan text-xs flex items-center gap-1"
+                    title="Verify an inbound signature"
+                  >
+                    <ShieldCheck className="w-3 h-3" />
+                    Verify
+                  </button>
+                  <button
                     onClick={() => toggleWebhookMutation.mutate({ id: wh.id as string, enabled: !(wh.enabled as boolean) })}
                     disabled={toggleWebhookMutation.isPending}
                     className="text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -387,6 +397,9 @@ export default function IntegrationsLensPage() {
                       </div>
                     )}
                   </div>
+                )}
+                {showVerifyFor === (wh.id as string) && (
+                  <WebhookSignatureVerifier webhookId={wh.id as string} />
                 )}
               </motion.div>
             ))

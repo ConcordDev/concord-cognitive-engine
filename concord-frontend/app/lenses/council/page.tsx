@@ -19,6 +19,11 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import {
+  buildBudgetSimulationInput,
+  computeProcessCompleteness,
+  type BudgetSimulation,
+} from '@/lib/council/council-audit';
 import { api, apiHelpers } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -463,6 +468,12 @@ export default function CouncilLensPage() {
   const [showAmendmentForm, setShowAmendmentForm] = useState(false);
   const [debatePointText, setDebatePointText] = useState('');
   const [synthesizingDebateId, setSynthesizingDebateId] = useState<string | null>(null);
+  // Budget Simulation (council.simulate-budget) — results keyed by proposal id.
+  // Not persisted on the Proposal type: this is the macro's own response,
+  // re-fetchable on demand, not a field the rest of the page reads.
+  const [budgetSimResults, setBudgetSimResults] = useState<Record<string, BudgetSimulation>>({});
+  const [simulatingBudgetId, setSimulatingBudgetId] = useState<string | null>(null);
+  const [budgetSimError, setBudgetSimError] = useState<string | null>(null);
 
   // ----- Data Hooks -----
   const {
@@ -972,6 +983,50 @@ export default function CouncilLensPage() {
       }
     },
     [debates, runArtifact, updateDebateItem]
+  );
+
+  // Calls the real council.simulate-budget macro (server/server.js:40272) —
+  // a variance-weighted low/high/expected budget projection over this
+  // proposal's linked budget items. The macro reads ONLY
+  // `artifact.data.budget` (it ignores its own `params` entirely), so the
+  // only way to feed it real data is to first PATCH the proposal artifact's
+  // stored `data.budget` field, then run the action so it reads what was
+  // just written. This write is safe: `budget` is not a field any other
+  // part of this page reads on a Proposal (line items live in
+  // `linkedBudgetItems`), so it can't corrupt anything else stored there.
+  const handleSimulateBudget = useCallback(
+    async (proposalId: string) => {
+      const p = proposals.find((pr) => pr.id === proposalId);
+      if (!p) return;
+      const input = buildBudgetSimulationInput(p, budgetItems);
+      setSimulatingBudgetId(proposalId);
+      setBudgetSimError(null);
+      try {
+        await updateProposalItem(proposalId, {
+          data: { ...p, budget: input } as unknown as Record<string, unknown>,
+        });
+        const res = await runArtifact.mutateAsync({ id: proposalId, action: 'simulate-budget' });
+        const inner = (res as { result?: { simulation?: BudgetSimulation } })?.result;
+        if (inner?.simulation) {
+          setBudgetSimResults((prev) => ({ ...prev, [proposalId]: inner.simulation as BudgetSimulation }));
+          addAuditEntry({
+            actor: 'Council Chair',
+            action: 'Simulated budget',
+            target: proposalId,
+            details: `Projected ${formatCurrency(inner.simulation.projected)} across ${input.items.length} line item${input.items.length === 1 ? '' : 's'}`,
+            category: 'budget',
+          });
+        } else {
+          setBudgetSimError('Simulation did not return a result.');
+        }
+      } catch (e) {
+        console.error(`Budget simulation failed for ${proposalId}:`, e);
+        setBudgetSimError(e instanceof Error ? e.message : 'Budget simulation failed.');
+      } finally {
+        setSimulatingBudgetId(null);
+      }
+    },
+    [proposals, budgetItems, updateProposalItem, runArtifact, addAuditEntry]
   );
 
   const handleExportAudit = useCallback(() => {
@@ -1530,10 +1585,20 @@ export default function CouncilLensPage() {
         {/* Linked Budget Items */}
         {p.linkedBudgetItems.length > 0 && (
           <div className={ds.panel}>
-            <h2 className={cn(ds.heading3, 'mb-3 flex items-center gap-2')}>
-              <DollarSign className="w-4 h-4 text-green-400" />
-              Linked Budget Items
-            </h2>
+            <div className={ds.sectionHeader}>
+              <h2 className={cn(ds.heading3, 'flex items-center gap-2')}>
+                <DollarSign className="w-4 h-4 text-green-400" />
+                Linked Budget Items
+              </h2>
+              <button
+                onClick={() => handleSimulateBudget(p.id)}
+                disabled={simulatingBudgetId === p.id}
+                className={ds.btnSecondary}
+              >
+                <TrendingUp className="w-4 h-4" />
+                {simulatingBudgetId === p.id ? 'Simulating…' : 'Simulate Budget'}
+              </button>
+            </div>
             <div className="space-y-2">
               {p.linkedBudgetItems.map((biId) => {
                 const bi = budgetItems.find((b) => b.id === biId);
@@ -1571,8 +1636,140 @@ export default function CouncilLensPage() {
                 );
               })}
             </div>
+
+            {budgetSimError && simulatingBudgetId === null && (
+              <p className="mt-3 text-xs text-red-400">{budgetSimError}</p>
+            )}
+
+            {budgetSimResults[p.id] && (
+              <div className="mt-4 pt-4 border-t border-lattice-border">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-2">
+                  <BarChart3 className="w-3.5 h-3.5 text-neon-cyan" />
+                  Budget Simulation
+                </h3>
+                {(() => {
+                  const sim = budgetSimResults[p.id];
+                  return (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="p-2 bg-lattice-elevated rounded-lg">
+                          <div className="text-[10px] text-gray-400">Projected</div>
+                          <div className="text-sm font-semibold text-white">
+                            {formatCurrency(sim.projected)}
+                          </div>
+                        </div>
+                        <div className="p-2 bg-lattice-elevated rounded-lg">
+                          <div className="text-[10px] text-gray-400">Range</div>
+                          <div className="text-sm font-semibold text-white">
+                            {formatCurrency(sim.range.low)}–{formatCurrency(sim.range.high)}
+                          </div>
+                        </div>
+                        <div className="p-2 bg-lattice-elevated rounded-lg">
+                          <div className="text-[10px] text-gray-400">Confidence</div>
+                          <div className="text-sm font-semibold text-white">
+                            {Math.round(sim.confidence * 100)}%
+                          </div>
+                        </div>
+                      </div>
+                      {sim.risks.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {sim.risks.map((r) => (
+                            <span
+                              key={r}
+                              className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400"
+                            >
+                              <AlertTriangle className="w-3 h-3" />
+                              {r.replace(/_/g, ' ')}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="space-y-1.5">
+                        {sim.itemBreakdown.map((item, idx) => (
+                          <div
+                            key={`${item.name}-${idx}`}
+                            className="flex items-center justify-between text-xs px-2 py-1.5 bg-lattice-elevated rounded-lg"
+                          >
+                            <span className="text-gray-300">{item.name}</span>
+                            <span className="text-gray-400">
+                              {formatCurrency(item.low)} – {formatCurrency(item.high)}
+                              <span className="text-white ml-1.5">({formatCurrency(item.expected)} expected)</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         )}
+
+        {/* Process Audit — computed live, client-side (see
+            lib/council/council-audit.ts for why this doesn't round-trip
+            through the council.audit macro for a real Proposal). */}
+        <div className={ds.panel}>
+          <h2 className={cn(ds.heading3, 'mb-3 flex items-center gap-2')}>
+            <ClipboardCheck className="w-4 h-4 text-purple-400" />
+            Process Audit
+          </h2>
+          {(() => {
+            const trail = computeProcessCompleteness(p);
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-2 rounded-full bg-lattice-elevated overflow-hidden">
+                    <div
+                      className={cn(
+                        'h-full rounded-full',
+                        trail.processCompleteness >= 1
+                          ? 'bg-green-500'
+                          : trail.processCompleteness >= 0.5
+                            ? 'bg-yellow-400'
+                            : 'bg-red-500'
+                      )}
+                      style={{ width: `${Math.round(trail.processCompleteness * 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold text-white w-10 text-right">
+                    {Math.round(trail.processCompleteness * 100)}%
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="p-2 bg-lattice-elevated rounded-lg">
+                    <div className="text-[10px] text-gray-400">Votes</div>
+                    <div className="text-white font-semibold">
+                      {trail.totalVotes} ({trail.uniqueVoters} unique)
+                    </div>
+                  </div>
+                  <div className="p-2 bg-lattice-elevated rounded-lg">
+                    <div className="text-[10px] text-gray-400">Discussion turns</div>
+                    <div className="text-white font-semibold">{trail.debateTurns}</div>
+                  </div>
+                  <div className="p-2 bg-lattice-elevated rounded-lg">
+                    <div className="text-[10px] text-gray-400">Linked budget</div>
+                    <div className="text-white font-semibold">
+                      {p.linkedBudgetItems.length > 0 ? `${p.linkedBudgetItems.length} item(s)` : 'None'}
+                    </div>
+                  </div>
+                </div>
+                {Object.keys(trail.choiceTally).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(trail.choiceTally).map(([choice, count]) => (
+                      <span
+                        key={choice}
+                        className="text-[10px] px-2 py-0.5 rounded-full bg-lattice-elevated text-gray-300"
+                      >
+                        {choice.replace(/_/g, ' ')}: {count}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
       </div>
     );
   }

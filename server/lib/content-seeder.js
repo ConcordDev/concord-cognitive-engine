@@ -183,8 +183,16 @@ function _deterministicPos(npcId, bounds = { minX: -400, maxX: 400, minZ: -400, 
  * on (id). Pulls archetype + faction + world_id from the authored
  * record; positions deterministically from sha-style hash. Failure is
  * logged but never throws — content-seeder is best-effort.
+ *
+ * Exported (despite the underscore, matching this file's existing
+ * `_authoredNPCs`/`_authoredFactions` convention) so other spawn paths
+ * that create a `worlds` row outside the authored content/world/ tree —
+ * e.g. `server/lib/sub-world-starter-content.js` for user-spawned
+ * sub-worlds — can seed a real, queryable starter NPC through the exact
+ * same persistence path real authored worlds use, instead of a parallel
+ * reimplementation of this INSERT.
  */
-function _persistAuthoredNpcToWorld(db, npc, defaultWorldId) {
+export function _persistAuthoredNpcToWorld(db, npc, defaultWorldId) {
   if (!db || !npc?.id) return false;
   const worldId = npc.world_id || defaultWorldId || "concordia-hub";
   const pos = (npc.spawn_location && typeof npc.spawn_location === "object")
@@ -755,6 +763,49 @@ export async function seedContent({ db = null } = {}) {
     } catch (err) {
       logger.warn("content_seeder", "npc_purpose_seed_skipped", { err: err?.message });
     }
+
+    // Wave 4 backlog — world-boss scheduler seeding
+    // (docs/concordia-specs/runmodes-endgame-social-capability-map.md §2.6).
+    // world-bosses.js's registerSchedule / runTriggerPass / lockout primitives
+    // and the world-boss-cycle heartbeat (already registered at server.js's
+    // `registerHeartbeat("world-boss-cycle", ...)`) were fully functional but
+    // had zero callers that ever created a `world_boss_schedule` row outside
+    // tests — the heartbeat faithfully swept an eternally-empty table and no
+    // boss ever spawned in any deployment. This seeds one default schedule
+    // per active world, the "handful of registerSchedule calls at boot" the
+    // audit recommends. Idempotent by checking listSchedule() first — unlike
+    // registerSchedule's own ON CONFLICT upsert (which would reset next_spawn_at
+    // to "now" on every restart), we skip entirely once a world has a row so a
+    // reboot never restarts an in-flight countdown.
+    try {
+      const { registerSchedule, listSchedule } = await import("./world-bosses.js");
+      const worldIds = [...new Set([..._authoredNPCs.values()].map((n) => n.world_id).filter(Boolean))];
+      if (!worldIds.includes("concordia-hub")) worldIds.push("concordia-hub");
+      let bossSchedulesSeeded = 0;
+      for (const wid of worldIds) {
+        try {
+          if (listSchedule(db, wid).length > 0) continue; // already seeded, don't reset the timer
+          // Daily spawn cadence against a "normal" tier (DEFAULT_LOCKOUT_HOURS.normal
+          // = 72h post-defeat lockout per player/group) — the boss stays contestable
+          // by other groups between any one group's re-engagements, matching the
+          // finder/normal/heroic/mythic ladder's weekly-scale-content intent rather
+          // than reading as a farmable trash spawn. bossTemplate is a plain slug
+          // identifier (no phase/mechanic catalog exists yet — authoring one is a
+          // separate, already-flagged follow-up item in the same audit, §recommendation 10).
+          const r = registerSchedule(db, {
+            id: `wbs_${wid}_default`,
+            worldId: wid,
+            bossTemplate: `${wid}-apex-guardian`,
+            cadenceSeconds: 86400,
+            difficultyTierDefault: "normal",
+          });
+          if (r.ok) bossSchedulesSeeded++;
+        } catch { /* per-world best-effort */ }
+      }
+      results.worldBossSchedulesSeeded = bossSchedulesSeeded;
+    } catch (err) {
+      logger.warn("content_seeder", "world_boss_schedule_seed_skipped", { err: err?.message });
+    }
   }
 
   // Onboarding quest chain
@@ -1087,6 +1138,43 @@ export async function seedContent({ db = null } = {}) {
       }
     } catch (err) {
       logger.warn("content_seeder", "hidden_object_seed_failed", { err: err?.message });
+    }
+
+    // Wave 4 backlog — multi-step craft chains (docs/concordia-specs/
+    // crafting-economy-housing-capability-map.md). server/lib/craft-chains.js
+    // has been a fully working engine (registerChain/startChain/advanceStep)
+    // since Phase 11 — migration 180's own header comment says the seeder was
+    // deferred to "Phase 14 territory" and nothing ever picked it up. The 4
+    // authored chains under content/world/<world>/recipes/chains.json (Cactem
+    // Textile, Foodstuffs Annual Cycle, Herbalist Tonic, Forged Blade) sat as
+    // dead JSON the engine could run but never saw. registerChain's own
+    // INSERT ... ON CONFLICT(id) DO UPDATE is already idempotent, so this
+    // walk just needs to find the files and call it — no separate
+    // check-before-insert needed. Walks every world dir (not just
+    // concordia-hub) so a future world's recipes/chains.json is picked up
+    // without touching this file again, mirroring the H1 per-world quest walk
+    // above.
+    try {
+      const { registerChain } = await import("./craft-chains.js");
+      const worldRoot = join(CONTENT_ROOT, "world");
+      let craftChainsSeeded = 0;
+      for (const worldName of readdirSync(worldRoot)) {
+        if (worldName.startsWith("_")) continue;
+        const chainsFile = readJSON(`world/${worldName}/recipes/chains.json`);
+        const chains = Array.isArray(chainsFile?.chains) ? chainsFile.chains : null;
+        if (!chains) continue;
+        for (const chain of chains) {
+          try {
+            // world_id defaults to the owning world directory; an explicit
+            // world_id on the authored chain (if ever added) wins.
+            const r = registerChain(db, { world_id: worldName, ...chain });
+            if (r?.ok) craftChainsSeeded++;
+          } catch { /* per-chain best-effort */ }
+        }
+      }
+      results.craftChainsSeeded = craftChainsSeeded;
+    } catch (err) {
+      logger.warn("content_seeder", "craft_chains_seed_failed", { err: err?.message });
     }
   }
 

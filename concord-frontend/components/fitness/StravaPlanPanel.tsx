@@ -7,7 +7,7 @@
  * forward via fitness.plan-reschedule.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Loader2, CalendarDays, Plus, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, Bed,
 } from 'lucide-react';
@@ -66,6 +66,9 @@ export function StravaPlanPanel() {
   const [goalRace, setGoalRace] = useState('');
   const [goalDate, setGoalDate] = useState('');
   const [drafts, setDrafts] = useState<DraftSession[]>([emptyDraft()]);
+  const [editingSession, setEditingSession] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const cancelEditRef = useRef(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -114,6 +117,16 @@ export function StravaPlanPanel() {
     const r = await lensRun('fitness', 'plan-reschedule', { planId, shiftDays: 1 });
     setBusy(false);
     if (r.data?.ok === false) { setError(r.data?.error || 'Reschedule failed'); return; }
+    await refresh();
+  };
+
+  const moveSession = async (planId: string, sessionId: string, date: string) => {
+    setEditingSession(null);
+    if (!date) return;
+    setBusy(true);
+    const r = await lensRun('fitness', 'plan-session-move', { planId, sessionId, date });
+    setBusy(false);
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not reschedule session'); return; }
     await refresh();
   };
 
@@ -237,7 +250,32 @@ export function StravaPlanPanel() {
                   <div key={s.id}
                     className={cn('rounded-lg border px-2 py-1.5 text-[11px]', TYPE_TONE[s.type] || TYPE_TONE.easy)}>
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{s.date.slice(5)}</span>
+                      {editingSession === s.id ? (
+                        <input
+                          type="date"
+                          autoFocus
+                          value={editDate}
+                          onChange={(e) => setEditDate(e.target.value)}
+                          onBlur={() => {
+                            if (cancelEditRef.current) { cancelEditRef.current = false; return; }
+                            void moveSession(p.id, s.id, editDate);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                            if (e.key === 'Escape') { cancelEditRef.current = true; setEditingSession(null); }
+                          }}
+                          className="bg-zinc-950 border border-orange-600 rounded px-1 py-0.5 text-[10px] text-zinc-100 w-full mr-1"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setEditingSession(s.id); setEditDate(s.date); }}
+                          title="Reschedule this session"
+                          className="font-medium hover:underline decoration-dotted decoration-orange-400"
+                        >
+                          {s.date.slice(5)}
+                        </button>
+                      )}
                       {s.type === 'rest' ? <Bed className="w-3 h-3" />
                         : s.status === 'completed' ? <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                         : s.status === 'missed' ? <XCircle className="w-3 h-3 text-rose-400" />

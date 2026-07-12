@@ -884,7 +884,7 @@ export default function MetacognitionLensPage() {
                   </div>
                 )}
                 {/* Per-domain confidence adjustments this pass produced/holds */}
-                {latestIntrospection.confidenceAdjustments && typeof latestIntrospection.confidenceAdjustments === 'object'
+                {!!latestIntrospection.confidenceAdjustments && typeof latestIntrospection.confidenceAdjustments === 'object'
                   && Object.keys(latestIntrospection.confidenceAdjustments as Record<string, unknown>).length > 0 && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-300 mb-2">Confidence Adjustments</h3>

@@ -102,7 +102,7 @@ export default function InheritancePage() {
     { id: 'inheritance-probate', keys: '6', description: 'Probate Timeline tab', category: 'navigation', action: () => setTab('probate') },
     { id: 'inheritance-notices', keys: '7', description: 'My Notices tab', category: 'navigation', action: () => setTab('notices') },
     { id: 'inheritance-market', keys: '8', description: 'Heir-Slot Market tab', category: 'navigation', action: () => setTab('market') },
-    { id: 'inheritance-reload', keys: 'r', description: 'Reload estate', category: 'action', action: () => { void loadAllRef.current?.(); } },
+    { id: 'inheritance-reload', keys: 'r', description: 'Reload estate', category: 'actions', action: () => { void loadAllRef.current?.(); } },
   ], { lensId: 'inheritance' });
 
   const [overview, setOverview] = useState<Overview | null>(null);

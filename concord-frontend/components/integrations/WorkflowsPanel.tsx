@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Zap, Plus, Play, Trash2, ToggleLeft, ToggleRight, Loader2, Clock,
-  History, RotateCcw, CheckCircle, Filter, AlertCircle, CalendarClock,
+  History, RotateCcw, CheckCircle, Filter, AlertCircle, CalendarClock, AlarmClock,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { TimelineView } from '@/components/viz';
@@ -36,6 +36,14 @@ interface RunRecord {
   trace: Array<Record<string, any>>;
 }
 
+interface DueSchedule {
+  zapId: string;
+  zapName: string;
+  kind: string;
+  nextFireAt: string;
+  isDue: boolean;
+}
+
 const STATUS_TONE: Record<string, { cls: string; icon: React.ReactNode }> = {
   success: { cls: 'text-neon-green', icon: <CheckCircle className="w-3.5 h-3.5" /> },
   filtered: { cls: 'text-yellow-400', icon: <Filter className="w-3.5 h-3.5" /> },
@@ -53,6 +61,7 @@ export function WorkflowsPanel() {
   const [history, setHistory] = useState<RunRecord[]>([]);
   const [scheduleFor, setScheduleFor] = useState<string | null>(null);
   const [showTester, setShowTester] = useState(false);
+  const [dueSchedules, setDueSchedules] = useState<DueSchedule[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,7 +70,15 @@ export function WorkflowsPanel() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loadDue = useCallback(async () => {
+    const r = await lensRun<{ schedules: DueSchedule[]; dueNow: number }>('integrations', 'dueSchedules', {});
+    if (r.data.ok && r.data.result) setDueSchedules(r.data.result.schedules || []);
+  }, []);
+
+  useEffect(() => { load(); void loadDue(); }, [load, loadDue]);
+
+  const dueCount = dueSchedules.filter((d) => d.isDue).length;
+  const dueByZap = new Map(dueSchedules.map((d) => [d.zapId, d]));
 
   const loadHistory = useCallback(async (zapId: string) => {
     const r = await lensRun<{ runs: RunRecord[] }>('integrations', 'runHistory', { zapId, limit: 50 });
@@ -96,6 +113,7 @@ export function WorkflowsPanel() {
     try {
       await lensRun('integrations', 'zapToggle', { zapId: zap.id, enabled: !zap.enabled });
       await load();
+      await loadDue();
     } finally { setBusy(null); }
   };
 
@@ -126,9 +144,20 @@ export function WorkflowsPanel() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-400">
-          Multi-step trigger {'→'} action workflows with branching, filters, and transforms.
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-gray-400">
+            Multi-step trigger {'→'} action workflows with branching, filters, and transforms.
+          </p>
+          {dueCount > 0 && (
+            <span
+              className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 border border-yellow-500/30"
+              title="Scheduled workflows whose next fire time has passed"
+              data-testid="due-schedules-badge"
+            >
+              <AlarmClock className="w-3 h-3" /> {dueCount} due now
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowTester((v) => !v)}
@@ -173,8 +202,9 @@ export function WorkflowsPanel() {
                 <p className="text-xs text-gray-400 mt-0.5">
                   On <span className="text-neon-cyan">{zap.trigger.event}</span> {'→'} {zap.steps.length} step{zap.steps.length !== 1 ? 's' : ''}
                   {zap.schedule && (
-                    <span className="ml-2 text-yellow-400">
+                    <span className={`ml-2 ${dueByZap.get(zap.id)?.isDue ? 'text-red-400 font-semibold' : 'text-yellow-400'}`}>
                       <CalendarClock className="w-3 h-3 inline" /> {zap.schedule.kind}
+                      {dueByZap.get(zap.id)?.isDue && <span className="ml-1">· due now</span>}
                     </span>
                   )}
                 </p>
@@ -215,7 +245,7 @@ export function WorkflowsPanel() {
               <SchedulePanel
                 zapId={zap.id}
                 current={zap.schedule}
-                onDone={async () => { setScheduleFor(null); await load(); }}
+                onDone={async () => { setScheduleFor(null); await load(); await loadDue(); }}
               />
             )}
 

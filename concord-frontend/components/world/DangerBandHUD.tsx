@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, AlertTriangle, Skull } from 'lucide-react';
 import { useClientConfig } from '@/hooks/useClientConfig';
+import { useActiveWorldId } from '@/hooks/useActiveWorldId';
 import {
   type GradientConfig, type HubAnchor,
   dangerBandAt, bandLevelRange, bandName, distanceFromHub,
@@ -31,17 +32,16 @@ function bandColor(band: number): string {
 
 export function DangerBandHUD() {
   const FRAME_THROTTLE_MS = useClientConfig().throttle.dangerBandFrameMs; // E0 — server-tunable
-  const [worldId, setWorldId] = useState<string | null>(null);
+  // Same-tab-reactive active world (updates on world travel via
+  // concordia:active-world-changed) — replaces the one-shot mount read.
+  const worldId = useActiveWorldId('');
   const [grad, setGrad] = useState<{ config: GradientConfig; anchor: HubAnchor } | null>(null);
   const [view, setView] = useState<{ band: number; name: string; min: number; max: number; inHub: boolean } | null>(null);
   const lastBand = useRef<number | null>(null);
 
-  useEffect(() => {
-    const id = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
-    setWorldId(id);
-  }, []);
-
-  // Fetch gradient config + anchor once (and on a slow backstop in case it's re-tuned).
+  // Fetch gradient config + anchor once per world (and on a slow backstop in
+  // case it's re-tuned) — this effect already re-runs on worldId change, so
+  // world travel correctly re-fetches instead of staying pinned to the old id.
   useEffect(() => {
     if (!worldId) return;
     let alive = true;

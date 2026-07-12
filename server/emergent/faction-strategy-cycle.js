@@ -28,6 +28,66 @@ import { maybeEmitPersonalStake } from "../lib/personal-stake.js";
 // WS5: structural strength decides wars/raids. Kill-switch CONCORD_FACTION_STRENGTH=0.
 function factionStrengthEnabled() { return process.env.CONCORD_FACTION_STRENGTH !== "0"; }
 
+// P0 (2026-07-11 politics-capability-map audit) — an autonomous DECLARE_WAR/RAID
+// move used to only ever update faction_strategy_state/faction_relations + emit
+// events; the real, fully-built joinable-combat pipeline in
+// server/lib/combat/faction-war.js (spawnFactionWar/tickAllFactionWars) had
+// exactly one caller in the whole codebase: the admin/test-only
+// POST /api/faction-war/spawn route. Nothing autonomous ever created a war a
+// player could walk up to and fight in. Kill-switch CONCORD_FACTION_WAR_SPAWN=0.
+function factionWarSpawnEnabled() { return process.env.CONCORD_FACTION_WAR_SPAWN !== "0"; }
+
+/**
+ * Best-effort resolve a "home" cityId/worldId for a faction from its living
+ * NPCs. Purely cosmetic metadata on the spawned faction_wars row (surfaced by
+ * FactionWarBanner/FactionWarIntel) — never gates the spawn itself.
+ */
+function resolveFactionWorld(db, factionId) {
+  try {
+    const row = db.prepare(`
+      SELECT world_id FROM world_npcs WHERE faction = ? AND world_id IS NOT NULL LIMIT 1
+    `).get(factionId);
+    return row?.world_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Wire-the-unwired hook: when the strategy cycle picks (and persists)
+ * DECLARE_WAR or RAID against a target faction, spawn the real, joinable
+ * faction-war combat encounter — unless one between this exact pair is
+ * already active, so a faction sitting in `war` stance doesn't spawn a fresh
+ * encounter on every ~50-minute RAID tick. Thin orchestrator: never edits
+ * spawnFactionWar itself, always try/catch-isolated, never throws back into
+ * the cycle.
+ */
+async function maybeSpawnFactionWarEncounter(db, { factionId, targetId, move, moveId }) {
+  if (!factionWarSpawnEnabled() || !targetId) return null;
+  try {
+    const fw = await import("../lib/combat/faction-war.js");
+    const existing = fw.findActiveWarBetween(db, factionId, targetId);
+    if (existing) return { ok: true, warId: existing.id, reused: true };
+    const result = fw.spawnFactionWar(db, {
+      sideA: factionId,
+      sideB: targetId,
+      eventId: moveId ?? null,
+      cityId: resolveFactionWorld(db, factionId) ?? resolveFactionWorld(db, targetId),
+    });
+    if (result?.ok) {
+      try {
+        logger.info("faction-strategy-cycle", "faction_war_spawned", {
+          warId: result.warId, factionId, targetId, move,
+        });
+      } catch { /* ignore */ }
+    }
+    return result;
+  } catch (err) {
+    try { logger.warn("faction-strategy-cycle", "faction_war_spawn_failed", { factionId, targetId, error: err?.message }); } catch { /* ignore */ }
+    return null;
+  }
+}
+
 function nudgeMomentum(db, factionId, delta) {
   try {
     db.prepare(`
@@ -149,6 +209,24 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
               } catch { /* emit best-effort */ }
             }
           } catch { /* strength resolution best-effort */ }
+        }
+        // P0 — the missing connector: turn the autonomous DECLARE_WAR/RAID
+        // decision above into a real, joinable faction-war combat encounter
+        // (server/lib/combat/faction-war.js), not just a state/relation
+        // update. Idempotent on the (factionId, target) pair via
+        // findActiveWarBetween — a RAID against an already-warring rival
+        // reuses the live encounter instead of spawning a duplicate.
+        if (applied.target && (applied.move === "RAID" || applied.move === "DECLARE_WAR")) {
+          const warResult = await maybeSpawnFactionWarEncounter(db, {
+            factionId: f.faction_id,
+            targetId: applied.target,
+            move: applied.move,
+            moveId: applied.moveId,
+          });
+          if (warResult?.ok) {
+            entry.warId = warResult.warId;
+            entry.warReused = !!warResult.reused;
+          }
         }
         moves.push(entry);
       }

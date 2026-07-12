@@ -166,6 +166,20 @@ const FOG_FRAGMENT_SHADER = `
 
 // ── Component ────────────────────────────────────────────────────
 
+// The normal-map's ripple pattern is procedural and time-invariant — only
+// the bucket-selected colors (deep/shallow/fog) depend on time of day, and
+// they're selected from four discrete bands, not a continuous function of
+// `timeOfDay`. Deriving a coarse bucket lets the effect's dependency array
+// skip rebuilding the whole water mesh (geometry, foam, creek ribbon, and
+// the normal-map texture) for every fractional `timeOfDay` tick — it only
+// needs to rebuild at the four band transitions per day/night cycle.
+export function timeOfDayBucket(timeOfDay: number): 'dawn' | 'dusk' | 'night' | 'day' {
+  if (timeOfDay >= 5 && timeOfDay < 8) return 'dawn';
+  if (timeOfDay >= 17 && timeOfDay < 20) return 'dusk';
+  if (timeOfDay < 5 || timeOfDay >= 20) return 'night';
+  return 'day';
+}
+
 export default function WaterRenderer({
   riverConfig,
   creekPath,
@@ -174,6 +188,12 @@ export default function WaterRenderer({
 }: WaterRendererProps) {
   const waterGroupRef = useRef<unknown>(null);
   const uniformsRef = useRef<Record<string, { value: unknown }>>({});
+  // Tracks the normal-map DataTexture from the most recent buildWater() call
+  // so the cleanup below can dispose it (see the disposal note near its
+  // creation for why the standard geometry/material traverse never reaches it).
+  const normalMapTexRef = useRef<{ dispose: () => void } | null>(null);
+
+  const timeBucket = timeOfDayBucket(timeOfDay);
 
   useEffect(() => {
     let disposed = false;
@@ -191,9 +211,9 @@ export default function WaterRenderer({
       const enableReflections = quality !== 'low';
 
       // ── Time-of-day color adjustments ──────────────────────────
-      const isDawn = timeOfDay >= 5 && timeOfDay < 8;
-      const isDusk = timeOfDay >= 17 && timeOfDay < 20;
-      const isNight = timeOfDay < 5 || timeOfDay >= 20;
+      const isDawn = timeBucket === 'dawn';
+      const isDusk = timeBucket === 'dusk';
+      const isNight = timeBucket === 'night';
 
       let deepColor = new THREE.Color(0x1a3a5c);
       let shallowColor = new THREE.Color(0x4a6b3a);
@@ -234,6 +254,18 @@ export default function WaterRenderer({
       normalMapTex.wrapS = THREE.RepeatWrapping;
       normalMapTex.wrapT = THREE.RepeatWrapping;
       normalMapTex.needsUpdate = true;
+
+      // Guard against the (rare) race where the effect was cleaned up while
+      // `await import('three')` above was pending: the top-of-function
+      // `disposed` check already returned early in that case, but re-check
+      // here too since `buildWater` keeps running synchronously past this
+      // point — an orphaned texture created after teardown would otherwise
+      // never reach `normalMapTexRef` and would leak silently.
+      if (disposed) {
+        normalMapTex.dispose();
+        return;
+      }
+      normalMapTexRef.current = normalMapTex;
 
       // ── Shared uniforms ────────────────────────────────────────
       const uniforms = {
@@ -483,8 +515,19 @@ export default function WaterRenderer({
           }
         });
       }
+      // The ripple normal map is bound as a custom ShaderMaterial uniform
+      // (`uNormalMap`), not a standard `.map`/`.normalMap` material property,
+      // so `material.dispose()` — and the traverse above — never reaches it.
+      // `buildWater()` allocates a fresh DataTexture (up to 512×512 RGBA)
+      // every run; without this it leaked GPU texture memory on every
+      // rebuild (mirrors BuildingRenderer3D.tsx / SkyWeatherRenderer.tsx's
+      // explicit-texture-dispose pattern, extended to non-standard uniforms).
+      if (normalMapTexRef.current) {
+        normalMapTexRef.current.dispose();
+        normalMapTexRef.current = null;
+      }
     };
-  }, [riverConfig, creekPath, timeOfDay, quality]);
+  }, [riverConfig, creekPath, timeBucket, quality]);
 
   return (
     <div

@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useClientConfig } from '@/hooks/useClientConfig';
+import { useActiveWorldId } from '@/hooks/useActiveWorldId';
 
 type Projection = { x: number; y: number; visible: boolean };
 type Projector = (world: { x: number; y: number; z: number }) => Projection | null;
@@ -26,15 +27,12 @@ export function FootprintLayer({ enabled = true }: Props) {
   const POLL_MS = _cfg.poll.footprintMs;
   const FRAME_THROTTLE_MS = _cfg.throttle.footprintFrameMs;
   const projectorRef = useRef<Projector | null>(null);
-  const [worldId, setWorldId] = useState<string | null>(null);
+  // Same-tab-reactive active world (updates on world travel via
+  // concordia:active-world-changed) — replaces the one-shot mount read.
+  const worldId = useActiveWorldId('');
   const [tracks, setTracks] = useState<Track[]>([]);
   const [gated, setGated] = useState(true);
   const [positions, setPositions] = useState<Map<string, Projection>>(new Map());
-
-  useEffect(() => {
-    const w = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
-    setWorldId(w);
-  }, []);
 
   useEffect(() => {
     const onProjector = (e: Event) => {
@@ -57,6 +55,15 @@ export function FootprintLayer({ enabled = true }: Props) {
   }, [worldId]);
 
   useRealtimeRefresh(['tracking:footprints-updated'], refresh, { backstopMs: POLL_MS, enabled: enabled && !!worldId });
+  // Force an immediate re-fetch (scoped to the new world) the moment the player
+  // travels — useRealtimeRefresh reads refresh() via a ref, so a worldId change
+  // alone (world-to-world, both truthy) doesn't retrigger its subscribe effect;
+  // without this the footprint layer stays pinned to the old world's tracks
+  // until the next backstop tick.
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldId]);
 
   useEffect(() => {
     if (!enabled || gated || tracks.length === 0) { setPositions(new Map()); return; }

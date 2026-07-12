@@ -7,6 +7,8 @@ import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
 import { decideVisible } from '@/lib/world-lens/cull';
 import { mountPerfMonitor, attachRenderer as attachPerfRenderer, tickPerfMonitor } from '@/lib/world-lens/perf-monitor';
 import { createTraumaShake, type TraumaShake } from '@/lib/concordia/screen-trauma';
+import { disposeBuildingArchetype } from '@/lib/world-lens/procedural-buildings';
+import { clearProceduralCache } from '@/lib/world-lens/procedural-texture';
 
 // Track 1 — camera shake is the shared trauma engine (`lib/concordia/screen-trauma.ts`,
 // the Eiserloh GDC model): trauma accumulates per event, decays linearly, and the
@@ -261,6 +263,7 @@ export default function ConcordiaScene({
   const composerRef = useRef<{
     render: (delta: number) => void;
     setSize: (w: number, h: number) => void;
+    dispose?: () => void;
   } | null>(null);
   const layersRef = useRef<Record<string, unknown>>({});
   const frameIdRef = useRef<number>(0);
@@ -285,6 +288,10 @@ export default function ConcordiaScene({
   // Sovereign Mass Raid Phase 4 dome — listener cleanup. Set in scene init,
   // invoked during teardown so the listener disposes with the scene.
   const domeCleanupRef = useRef<(() => void) | null>(null);
+  // Phase B2 — ragdoll bridge (concordia:lethal-hit listener) detach hook.
+  // Set in scene init, invoked during teardown so the listener disposes
+  // with the scene instead of accumulating across world/district switches.
+  const ragdollBridgeCleanupRef = useRef<(() => void) | null>(null);
   // WS2 — world-state renderers (resource nodes / crops / claims / VFX) mounted
   // into the infrastructure + particles layers; disposed with the scene.
   const worldRenderersRef = useRef<{ dispose(): void } | null>(null);
@@ -323,6 +330,90 @@ export default function ConcordiaScene({
   });
   const [isReady, setIsReady] = useState(false);
 
+  // ── Decoupled FPS auto-downgrade (runtime-health-capability-map.md #1) ──
+  // Previously this decision (and the `setQuality` write) lived INSIDE the
+  // scene setup effect's own per-frame render loop below — which also
+  // depends on `quality` for legitimate construction reasons (different
+  // post-processing passes / shadow / TAA settings per tier). That meant the
+  // effect's own per-frame logic could write to a value the SAME effect
+  // depends on, forcing a full teardown/rebuild (new WebGLRenderer, new
+  // physics world, 5 window listeners re-registered) as its own "fix" for
+  // sustained low FPS — a fix that itself risks causing another dip right
+  // after reconstruction, which the buffer-reset below only partially
+  // dampens. Moving the decision here — a permanently-mounted effect with a
+  // stable (empty) dependency array, driven by the `concordia:perf-budget`
+  // event the render loop already dispatches every frame for the
+  // PerformanceOverlay — fully decouples the write from the effect it used to
+  // live inside, while leaving every quality-dependent construction path (and
+  // the legitimate need to rebuild when quality genuinely changes, whether
+  // via this downgrade or the manual quality-selector UI) completely
+  // untouched. `bufferLength` replicates the exact original
+  // `fpsBuffer.length >= 60` warm-up gate so a low reading from a
+  // not-yet-settled buffer right after a rebuild can't trigger a downgrade —
+  // identical threshold/hysteresis (avgFps < 50 for 3 consecutive readings),
+  // just relocated.
+  useEffect(() => {
+    function onPerfBudget(ev: Event) {
+      const detail = (ev as CustomEvent).detail as
+        | { fps?: number; bufferLength?: number }
+        | undefined;
+      if (!detail) return;
+      const { fps, bufferLength } = detail;
+      if (typeof fps !== 'number' || typeof bufferLength !== 'number') return;
+      if (bufferLength >= 60 && fps < 50) {
+        lowFpsCountRef.current += 1;
+        if (lowFpsCountRef.current >= 3) {
+          lowFpsCountRef.current = 0;
+          setQuality((prev) => {
+            const order: QualityPreset[] = ['low', 'medium', 'high', 'ultra'];
+            const idx = order.indexOf(prev);
+            return idx > 0 ? order[idx - 1] : prev;
+          });
+        }
+      } else {
+        lowFpsCountRef.current = 0;
+      }
+    }
+    window.addEventListener('concordia:perf-budget', onPerfBudget);
+    return () => window.removeEventListener('concordia:perf-budget', onPerfBudget);
+  }, []);
+
+  // ── Procedural building material/texture caches — dispose on TRUE unmount
+  // only (runtime-health-capability-map.md #5) ─────────────────────────────
+  // `procedural-buildings.ts#getMaterial()`/`procedural-texture.ts#makePBR()`
+  // cache CanvasTexture-backed materials at MODULE scope, keyed per building
+  // (the seed derives from the building's own DTU id), not per district or
+  // per world. Deliberately NOT wired into the big scene-setup effect below
+  // (whose cleanup already fires on every districtId/quality/theme/
+  // renderStyle change, not just real unmounts — see finding #1's
+  // effect-thrash writeup and the decoupled-downgrade effect right above
+  // this one): that effect's own generic `sc.traverse(...)` cleanup already
+  // calls `.dispose()` on every material/texture actually in the scene on
+  // each such rebuild (GPU-side cost is already paid there, unavoidably),
+  // but BuildingRenderer3D — the component that actually calls
+  // `createBuilding()` — does NOT rebuild on quality/theme/renderStyle
+  // changes (its own effect only depends on `buildings`/`validationData`/
+  // `viewMode`), so clearing the MODULE-level cache at that same cadence
+  // would only ever throw away entries that are still valid and about to be
+  // reused unchanged — a pure loss with no corresponding memory-pressure
+  // signal. A real component unmount (leaving `/lenses/world` entirely, or
+  // toggling the page's `viewMode` away from 'concordia', which conditionally
+  // unmounts this component) is the closest match to the "session is over,
+  // these buildings are not coming back imminently" signal the header
+  // comment's "on world unmount" always meant — so this is a standalone,
+  // stable-([])-dependency effect (same pattern as the perf-budget listener
+  // above) whose cleanup fires exactly once, on that real unmount, not on
+  // every internal scene rebuild. The caches also carry a bounded LRU cap
+  // (see MAX_MATERIAL_CACHE_ENTRIES / MAX_CACHE_ENTRIES in the two modules)
+  // as a belt-and-braces bound for a very long single session that never
+  // triggers this unmount.
+  useEffect(() => {
+    return () => {
+      try { disposeBuildingArchetype(); } catch { /* best-effort */ }
+      try { clearProceduralCache(); } catch { /* best-effort */ }
+    };
+  }, []);
+
   // ── Initialize Three.js scene ──────────────────────────────────
 
   useEffect(() => {
@@ -337,6 +428,17 @@ export default function ConcordiaScene({
     let camera: InstanceType<typeof import('three').PerspectiveCamera>;
     let clock: InstanceType<typeof import('three').Clock>;
     let raycaster: InstanceType<typeof import('three').Raycaster>;
+    // Scene-lifecycle listeners (terrain/buildings/avatars/scene-request-ready)
+    // are registered from inside the async init() below, so — unlike
+    // handleResize/handleCameraPunch/handleFreecam/handleHideHud further down,
+    // which are declared at this top level — they aren't directly reachable
+    // from the cleanup closure. Stash their references here so cleanup can
+    // remove them by identity instead of leaking a duplicate listener on
+    // every re-fire of this effect (district/quality/theme/render-style change).
+    let onTerrainPhysicsListener: ((e: Event) => void) | null = null;
+    let onBuildingsReadyListener: ((e: Event) => void) | null = null;
+    let onAvatarsReadyListener: ((e: Event) => void) | null = null;
+    let onSceneRequestListener: (() => void) | null = null;
 
     const fpsBuffer: number[] = [];
     let lastTime = globalThis.performance.now();
@@ -362,9 +464,16 @@ export default function ConcordiaScene({
       // is stored on physicsRef.current for cleanup on unmount.
       try {
         const { attachRagdollBridge } = await import('@/lib/concordia/ragdoll-bridge');
-        const detach = attachRagdollBridge(physicsWorld as unknown as { spawnRagdoll: (id: string, p: { x: number; y: number; z: number }, imp?: { x: number; y: number; z: number }) => unknown; despawnRagdoll?: (id: string) => void; removeCharacter?: (id: string) => void });
-        // Stash detach on the global so the disposer below can call it.
-        (physicsRef.current as unknown as { __detachRagdoll?: () => void }).__detachRagdoll = detach;
+        const detach = attachRagdollBridge(physicsWorld as unknown as { spawnRagdoll: (id: string, p: { x: number; y: number; z: number }, imp?: { x: number; y: number; z: number }) => unknown; removeRagdoll?: (id: string) => void; removeCharacter?: (id: string) => void });
+        // The effect's cleanup may have already run while the dynamic
+        // import above was in flight (fast district/quality switch) — if
+        // so, detach immediately instead of stashing a handle nothing will
+        // ever call, which would leak the concordia:lethal-hit listener.
+        if (disposed) {
+          detach();
+        } else {
+          ragdollBridgeCleanupRef.current = detach;
+        }
       } catch { /* ragdoll bridge optional */ }
 
       // Listen for terrain-ready to register heightfield collider
@@ -461,7 +570,7 @@ export default function ConcordiaScene({
           })();
         }
       }
-      // @resource-leak-ok: terrain-ready is a one-shot scene-init signal; ConcordiaScene unmounts the whole canvas, not the listener individually
+      onTerrainPhysicsListener = onTerrainPhysics;
       window.addEventListener('concordia:terrain-ready', onTerrainPhysics);
 
       // Lens-as-Station — consume the React BuildingRenderer3D layer's output.
@@ -482,7 +591,7 @@ export default function ConcordiaScene({
         layer.add(g);
         currentBuildingsGroup = g;
       }
-      // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
+      onBuildingsReadyListener = onBuildingsReady;
       window.addEventListener('concordia:buildings-ready', onBuildingsReady);
 
       // Consume the AvatarSystem3D layer's output — the player + NPC meshes.
@@ -507,7 +616,7 @@ export default function ConcordiaScene({
         currentAvatarGroup = ag;
         layer.userData.update = (d: number, en: number) => { try { ag.userData?.update?.(d, en); } catch { /* per-frame, never throw */ } };
       }
-      // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
+      onAvatarsReadyListener = onAvatarsReady;
       window.addEventListener('concordia:avatars-ready', onAvatarsReady);
 
       // Answer scene-request-ready: TreeLayer / RockLayer / QuestMarker3D (and
@@ -521,7 +630,7 @@ export default function ConcordiaScene({
           window.dispatchEvent(new CustomEvent('concordia:scene-ready', { detail: { scene: s, camera: c } }));
         }
       }
-      // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
+      onSceneRequestListener = onSceneRequest;
       window.addEventListener('concordia:scene-request-ready', onSceneRequest);
 
       // Theme 6 deferred follow-up (game-feel pass): water plane + swim
@@ -1495,20 +1604,22 @@ export default function ConcordiaScene({
           });
         }
 
-        // ── Auto-downgrade quality when FPS sustained below 50 ──────
-        if (fpsBuffer.length >= 60 && avgFps < 50) {
-          lowFpsCountRef.current += 1;
-          if (lowFpsCountRef.current >= 3) {
-            lowFpsCountRef.current = 0;
-            setQuality((prev) => {
-              const order: QualityPreset[] = ['low', 'medium', 'high', 'ultra'];
-              const idx = order.indexOf(prev);
-              return idx > 0 ? order[idx - 1] : prev;
-            });
-          }
-        } else {
-          lowFpsCountRef.current = 0;
-        }
+        // Auto-downgrade quality when FPS is sustained below 50 — the DECISION
+        // (and the `setQuality` write) live in a separate effect below, driven
+        // by the `concordia:perf-budget` event dispatched a few lines down.
+        // This effect (the one this RAF loop lives inside) depends on `quality`
+        // for real construction reasons (post-processing passes, shadow/TAA
+        // settings, etc. genuinely differ per tier) — so it MUST keep rebuilding
+        // when quality changes. What must NOT happen is THIS SAME effect's own
+        // per-frame loop calling `setQuality` directly, which would make quality
+        // a dependency that the effect itself writes to — a full teardown+rebuild
+        // (new WebGLRenderer, new physics world, 5 window listeners
+        // re-registered) triggered by the effect's own FPS reading, which can
+        // itself cause a further FPS dip and trigger another downgrade. See
+        // docs/concordia-specs/runtime-health-capability-map.md finding #1.
+        // `bufferLength` lets the outside listener replicate the exact
+        // `fpsBuffer.length >= 60` warm-up gate below without needing access to
+        // this effect's local `fpsBuffer`.
 
         setPerfBudget({
           drawCalls: info.render.calls,
@@ -1521,7 +1632,8 @@ export default function ConcordiaScene({
           frameTime: Math.round(frameTime * 10) / 10,
         });
 
-        // Telemetry feed for the PerformanceOverlay + server aggregator.
+        // Telemetry feed for the PerformanceOverlay + server aggregator, and
+        // (bufferLength) for the auto-downgrade listener effect below.
         try {
           window.dispatchEvent(new CustomEvent('concordia:perf-budget', {
             detail: {
@@ -1530,6 +1642,7 @@ export default function ConcordiaScene({
               drawCalls: info.render.calls,
               triangles: info.render.triangles,
               textureMemory: (info.memory?.textures ?? 0) * 4,
+              bufferLength: fpsBuffer.length,
             },
           }));
         } catch { /* event dispatch silent */ }
@@ -1779,6 +1892,10 @@ export default function ConcordiaScene({
       window.removeEventListener('concordia:camera-punch', handleCameraPunch);
       window.removeEventListener('concordia:freecam', handleFreecam);
       window.removeEventListener('concordia:hide-hud', handleHideHud);
+      if (onTerrainPhysicsListener) window.removeEventListener('concordia:terrain-ready', onTerrainPhysicsListener);
+      if (onBuildingsReadyListener) window.removeEventListener('concordia:buildings-ready', onBuildingsReadyListener);
+      if (onAvatarsReadyListener) window.removeEventListener('concordia:avatars-ready', onAvatarsReadyListener);
+      if (onSceneRequestListener) window.removeEventListener('concordia:scene-request-ready', onSceneRequestListener);
       canvas.removeEventListener('click', handleCanvasClick);
       canvas.removeEventListener('contextmenu', handleContextMenu);
       canvas.removeEventListener('contextmenu', handleContextMenuPrevent);
@@ -1809,6 +1926,8 @@ export default function ConcordiaScene({
 
       try { domeCleanupRef.current?.(); } catch { /* ignore */ }
       domeCleanupRef.current = null;
+      try { ragdollBridgeCleanupRef.current?.(); } catch { /* ignore */ }
+      ragdollBridgeCleanupRef.current = null;
       try { worldRenderersRef.current?.dispose(); } catch { /* ignore */ }
       worldRenderersRef.current = null;
       try { terrainDeformRef.current?.dispose(); } catch { /* ignore */ }
@@ -1833,6 +1952,14 @@ export default function ConcordiaScene({
       probeManagerRef.current?.dispose();
       probeManagerRef.current = null;
       weatherSysRef.current = null;
+
+      try {
+        (composerRef.current as unknown as { _dofCleanup?: () => void } | null)?._dofCleanup?.();
+      } catch { /* idempotent */ }
+      try {
+        composerRef.current?.dispose?.();
+      } catch { /* idempotent */ }
+      composerRef.current = null;
 
       if (rendererRef.current) {
         (rendererRef.current as { dispose: () => void }).dispose();

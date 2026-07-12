@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Loader2, Plus, Trash2, Search, MapPin, ListChecks, Route, Navigation, Sparkles,
-  History, ChevronRight, Star, X, Network, Coffee, Utensils, Fuel, Hotel,
+  History, ChevronRight, ChevronUp, ChevronDown, Star, X, Network, Coffee, Utensils, Fuel, Hotel,
   ParkingCircle, Share2, ArrowDownUp, Car, PersonStanding, Bike, TrafficCone,
-  TrainFront, Compass as CompassIcon, Wrench, Info, Camera, DownloadCloud, Sliders,
+  TrainFront, Compass as CompassIcon, Wrench, Info, Camera, DownloadCloud, Sliders, Pencil, Check,
 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
@@ -297,6 +297,9 @@ function ExplorePanel({ onSaved, onShowOnMap }: { onSaved: () => void; onShowOnM
 function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onChanged: () => void; onShowOnMap: (m: MapMarker[]) => void }) {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ name: '', lat: '', lng: '', category: 'other', address: '', notes: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: '', category: 'other', address: '', notes: '', rating: '' });
+  const [saving, setSaving] = useState(false);
 
   async function create() {
     if (!draft.name.trim() || !draft.lat || !draft.lng) return;
@@ -312,6 +315,24 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
     if (!confirm('Delete this place?')) return;
     try { await lensRun({ domain: 'atlas', action: 'places-delete', input: { id } }); onChanged(); }
     catch (e) { console.error('[Places] delete', e); }
+  }
+  function startEdit(p: Place) {
+    setEditingId(p.id);
+    setEditDraft({ name: p.name, category: p.category, address: p.address, notes: p.notes, rating: p.rating != null ? String(p.rating) : '' });
+  }
+  function cancelEdit() { setEditingId(null); }
+  async function saveEdit(id: string) {
+    if (!editDraft.name.trim()) return;
+    setSaving(true);
+    try {
+      const input: Record<string, unknown> = { id, name: editDraft.name.trim(), category: editDraft.category, address: editDraft.address, notes: editDraft.notes };
+      if (editDraft.rating.trim() !== '') input.rating = Number(editDraft.rating);
+      const r = await lensRun({ domain: 'atlas', action: 'places-update', input });
+      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      setEditingId(null);
+      onChanged();
+    } catch (e) { console.error('[Places] update', e); }
+    finally { setSaving(false); }
   }
 
   return (
@@ -339,7 +360,25 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
       <ul className="flex-1 overflow-y-auto divide-y divide-white/5">
         {places.length === 0 ? (
           <li className="px-3 py-8 text-center text-xs text-gray-400">No saved places. Use Explore to find some.</li>
-        ) : places.map(p => (
+        ) : places.map(p => editingId === p.id ? (
+          <li key={p.id} className="px-3 py-2 space-y-1.5 bg-black/30 border-l-2 border-teal-500/50">
+            <input value={editDraft.name} onChange={e => setEditDraft({ ...editDraft, name: e.target.value })} placeholder="Name *" className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <div className="flex gap-1">
+              <select value={editDraft.category} onChange={e => setEditDraft({ ...editDraft, category: e.target.value })} className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                {CATEGORIES.map(c => <option key={c} value={c}>{CAT_EMOJI[c]} {c}</option>)}
+              </select>
+              <input value={editDraft.rating} onChange={e => setEditDraft({ ...editDraft, rating: e.target.value })} placeholder="Rating" type="number" min={0} max={5} step={0.5} className="w-16 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            </div>
+            <input value={editDraft.address} onChange={e => setEditDraft({ ...editDraft, address: e.target.value })} placeholder="Address" className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={editDraft.notes} onChange={e => setEditDraft({ ...editDraft, notes: e.target.value })} placeholder="Notes" className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <div className="flex gap-1">
+              <button onClick={() => saveEdit(p.id)} disabled={saving || !editDraft.name.trim()} className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1 text-xs rounded bg-teal-500 text-black font-bold hover:bg-teal-400 disabled:opacity-40">
+                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}Save
+              </button>
+              <button onClick={cancelEdit} className="px-2 py-1 text-xs rounded border border-white/10 text-gray-300 hover:text-white">Cancel</button>
+            </div>
+          </li>
+        ) : (
           <li key={p.id} className="px-3 py-2 hover:bg-white/[0.03] flex items-start gap-2 group cursor-pointer" onClick={() => onShowOnMap([{ lat: p.lat, lng: p.lng, label: `${CAT_EMOJI[p.category]} ${p.name}` }])}>
             <span className="text-base">{CAT_EMOJI[p.category] || '📍'}</span>
             <div className="flex-1 min-w-0">
@@ -348,6 +387,7 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
               {p.notes && <div className="text-[10px] text-gray-400 truncate">{p.notes}</div>}
             </div>
             {p.rating !== null && <span className="text-[10px] text-amber-300 inline-flex items-center gap-0.5"><Star className="w-2.5 h-2.5 fill-current" />{p.rating}</span>}
+            <button aria-label="Edit" onClick={(e) => { e.stopPropagation(); startEdit(p); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-teal-300"><Pencil className="w-3 h-3" /></button>
             <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); remove(p.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
           </li>
         ))}
@@ -472,6 +512,14 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
     try { await lensRun({ domain: 'atlas', action: 'trips-remove-stop', input: { tripId, stopId } }); onChanged(); }
     catch (e) { console.error('[Trips] removeStop', e); }
   }
+  async function moveStop(trip: Trip, index: number, direction: 'up' | 'down') {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= trip.stops.length) return;
+    const stopIds = trip.stops.map(st => st.id);
+    [stopIds[index], stopIds[targetIndex]] = [stopIds[targetIndex], stopIds[index]];
+    try { await lensRun({ domain: 'atlas', action: 'trips-reorder-stops', input: { tripId: trip.id, stopIds } }); onChanged(); }
+    catch (e) { console.error('[Trips] reorderStops', e); }
+  }
   async function del(id: string) {
     if (!confirm('Delete this trip?')) return;
     try { await lensRun({ domain: 'atlas', action: 'trips-delete', input: { id } }); onChanged(); }
@@ -506,10 +554,12 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
               {isOpen && (
                 <div className="px-3 pb-2 space-y-1">
                   {t.stops.map((st, i) => (
-                    <div key={st.id} className="flex items-center gap-1.5 text-[11px] text-gray-300">
+                    <div key={st.id} className="flex items-center gap-1 text-[11px] text-gray-300">
                       <span className="text-teal-400 font-mono">{i + 1}.</span>
                       <span className="flex-1 truncate">{st.name}</span>
                       <span className="text-[9px] text-gray-400">day {st.day}</span>
+                      <button aria-label="Move stop up" title="Move up" disabled={i === 0} onClick={() => moveStop(t, i, 'up')} className="text-gray-400 hover:text-teal-300 disabled:opacity-25 disabled:pointer-events-none"><ChevronUp className="w-3 h-3" /></button>
+                      <button aria-label="Move stop down" title="Move down" disabled={i === t.stops.length - 1} onClick={() => moveStop(t, i, 'down')} className="text-gray-400 hover:text-teal-300 disabled:opacity-25 disabled:pointer-events-none"><ChevronDown className="w-3 h-3" /></button>
                       <button aria-label="Remove stop" onClick={() => removeStop(t.id, st.id)} className="text-rose-300"><X className="w-3 h-3" /></button>
                     </div>
                   ))}
