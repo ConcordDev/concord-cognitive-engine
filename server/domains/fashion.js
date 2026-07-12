@@ -91,12 +91,13 @@ export default function registerFashionActions(registerLensAction) {
     };
   }
 
-  // ── Wardrobe items ──────────────────────────────────────────────────
-  registerLensAction("fashion", "item-add", (ctx, _a, params = {}) => {
-    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+  // Shared wardrobe-item constructor — used by item-add AND by
+  // wishlist-convert-to-item so "create a real closet item" has exactly
+  // one implementation, not a copy-pasted second one.
+  function buildWardrobeItem(params) {
     const name = fsClean(params.name, 120);
-    if (!name) return { ok: false, error: "item name required" };
-    const item = {
+    if (!name) return null;
+    return {
       id: fsId("itm"), name,
       category: CATEGORIES.includes(String(params.category).toLowerCase())
         ? String(params.category).toLowerCase() : "top",
@@ -111,6 +112,13 @@ export default function registerFashionActions(registerLensAction) {
       lastWorn: null,
       createdAt: fsNow(),
     };
+  }
+
+  // ── Wardrobe items ──────────────────────────────────────────────────
+  registerLensAction("fashion", "item-add", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const item = buildWardrobeItem(params);
+    if (!item) return { ok: false, error: "item name required" };
     fsListB(s.items, fsAid(ctx)).push(item);
     saveFashionState();
     return { ok: true, result: { item: itemView(item) } };
@@ -431,7 +439,7 @@ export default function registerFashionActions(registerLensAction) {
   function getFashionStateExt() {
     const s = getFashionState();
     if (!s) return null;
-    for (const k of ["styleProfiles", "challenges", "capsules"]) {
+    for (const k of ["styleProfiles", "challenges", "capsules", "wishlist"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     if (!Array.isArray(s.communityPosts)) s.communityPosts = [];
@@ -1007,6 +1015,77 @@ export default function registerFashionActions(registerLensAction) {
       ok: true,
       result: { challenges: list, count: list.length, completed: complete },
     };
+  });
+
+  // ── [M] Wishlist — save desired external items (price/link/note) ────
+  // Real per-user persistence (STATE.fashionLens.wishlist, the same
+  // Map-per-user shape as items/outfits/capsules). The old page's
+  // Wishlist tab was pure client-side useState with zero backend — this
+  // closes that gap for real, including a "convert to closet item"
+  // action that reuses buildWardrobeItem so a purchased wishlist item
+  // becomes a real, first-class wardrobe item instead of a second,
+  // parallel data shape.
+  registerLensAction("fashion", "wishlist-add", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = fsClean(params.name, 120);
+    if (!name) return { ok: false, error: "item name required" };
+    let price = null;
+    if (params.price != null && params.price !== "") {
+      const n = Number(params.price);
+      if (!Number.isFinite(n) || n < 0) return { ok: false, error: "price must be a non-negative number" };
+      price = Math.round(n * 100) / 100;
+    }
+    const category = CATEGORIES.includes(String(params.category || "").toLowerCase())
+      ? String(params.category).toLowerCase() : null;
+    const entry = {
+      id: fsId("wsh"), name, price,
+      link: fsClean(params.link, 500) || null,
+      note: fsClean(params.note, 300) || null,
+      category,
+      createdAt: fsNow(),
+    };
+    fsListB(s.wishlist, fsAid(ctx)).push(entry);
+    saveFashionState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("fashion", "wishlist-list", (ctx, _a, _params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entries = [...(s.wishlist.get(fsAid(ctx)) || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const totalValue = Math.round(entries.reduce((a, w) => a + (w.price || 0), 0) * 100) / 100;
+    return { ok: true, result: { wishlist: entries, count: entries.length, totalValue } };
+  });
+
+  registerLensAction("fashion", "wishlist-remove", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.wishlist.get(fsAid(ctx)) || [];
+    const i = arr.findIndex((w) => w.id === params.id);
+    if (i < 0) return { ok: false, error: "wishlist entry not found" };
+    arr.splice(i, 1);
+    saveFashionState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("fashion", "wishlist-convert-to-item", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const arr = s.wishlist.get(userId) || [];
+    const idx = arr.findIndex((w) => w.id === params.id);
+    if (idx < 0) return { ok: false, error: "wishlist entry not found" };
+    const entry = arr[idx];
+    const item = buildWardrobeItem({
+      name: params.name || entry.name,
+      category: params.category || entry.category || "top",
+      brand: params.brand,
+      color: params.color,
+      cost: params.cost != null ? params.cost : entry.price,
+      photo: params.photo,
+    });
+    if (!item) return { ok: false, error: "item name required" };
+    fsListB(s.items, userId).push(item);
+    arr.splice(idx, 1);
+    saveFashionState();
+    return { ok: true, result: { item: itemView(item), removedWishlistId: entry.id } };
   });
 
   // feed — ingest real fashion / costume pieces from The Metropolitan

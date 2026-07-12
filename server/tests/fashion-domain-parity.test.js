@@ -239,6 +239,82 @@ describe("fashion.social feed", () => {
   });
 });
 
+describe("fashion.wishlist", () => {
+  it("rejects add without a name", () => {
+    assert.equal(call("wishlist-add", ctxA, {}).ok, false);
+  });
+
+  it("rejects a negative price", () => {
+    assert.equal(call("wishlist-add", ctxA, { name: "Coat", price: -5 }).ok, false);
+  });
+
+  it("add/list/remove round-trip, scoped per user", () => {
+    const r = call("wishlist-add", ctxA, {
+      name: "Wool coat", price: 220, link: "https://example.com/coat", note: "For winter",
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.entry.id);
+    assert.equal(r.result.entry.price, 220);
+    assert.equal(r.result.entry.link, "https://example.com/coat");
+
+    const listA = call("wishlist-list", ctxA, {});
+    assert.equal(listA.result.count, 1);
+    assert.equal(listA.result.totalValue, 220);
+
+    const listB = call("wishlist-list", ctxB, {});
+    assert.equal(listB.result.count, 0);
+
+    const del = call("wishlist-remove", ctxA, { id: r.result.entry.id });
+    assert.equal(del.ok, true);
+    assert.equal(call("wishlist-list", ctxA, {}).result.count, 0);
+  });
+
+  it("removing an unknown id fails honestly", () => {
+    assert.equal(call("wishlist-remove", ctxA, { id: "nope" }).ok, false);
+  });
+
+  it("accepts an entry with no price (price stays null, totalValue unaffected)", () => {
+    const r = call("wishlist-add", ctxA, { name: "Free tote" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.entry.price, null);
+    assert.equal(call("wishlist-list", ctxA, {}).result.totalValue, 0);
+  });
+
+  it("converts a wishlist entry into a real closet item and removes the entry", () => {
+    const w = call("wishlist-add", ctxA, {
+      name: "Denim jacket", price: 85, category: "outerwear", link: "https://example.com/jacket",
+    }).result.entry;
+    const conv = call("wishlist-convert-to-item", ctxA, { id: w.id });
+    assert.equal(conv.ok, true);
+    assert.equal(conv.result.item.name, "Denim jacket");
+    assert.equal(conv.result.item.category, "outerwear");
+    assert.equal(conv.result.item.cost, 85);
+    assert.equal(conv.result.removedWishlistId, w.id);
+
+    // The wishlist entry is gone...
+    assert.equal(call("wishlist-list", ctxA, {}).result.count, 0);
+    // ...and a real closet item now exists in the same wardrobe substrate
+    // item-add writes to (proves the shared creation path, not a parallel one).
+    const items = call("item-list", ctxA, {}).result.items;
+    assert.ok(items.some((i) => i.id === conv.result.item.id && i.name === "Denim jacket"));
+  });
+
+  it("convert accepts overrides (cost/category/brand) on top of the wishlist entry", () => {
+    const w = call("wishlist-add", ctxA, { name: "Sneakers", price: 60 }).result.entry;
+    const conv = call("wishlist-convert-to-item", ctxA, { id: w.id, cost: 45, category: "shoes", brand: "Acme" });
+    assert.equal(conv.result.item.cost, 45);
+    assert.equal(conv.result.item.category, "shoes");
+    assert.equal(conv.result.item.brand, "Acme");
+  });
+
+  it("converting an unknown id fails honestly and creates nothing", () => {
+    const before = call("item-list", ctxA, {}).result.count;
+    const r = call("wishlist-convert-to-item", ctxA, { id: "nope" });
+    assert.equal(r.ok, false);
+    assert.equal(call("item-list", ctxA, {}).result.count, before);
+  });
+});
+
 describe("fashion.capsule + #30wears", () => {
   it("creates a capsule and toggles items in", () => {
     const item = newItem(ctxA, { name: "Capsule tee" });
