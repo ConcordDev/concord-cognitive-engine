@@ -294,20 +294,122 @@ Specifically, three files:
   `grade-ux-polish.mjs` are left to the orchestrator's single end-of-wave
   run, per the task's instructions.
 
-## Named residual (not fixed in this pass — documented, not hidden)
+## Wave 4 follow-up (2026-07-12): Events + Dashboard tabs rewired onto the real engine
 
-The top-level 8-tab generic DTU-artifact CRUD system in `page.tsx`
-(Dashboard/Events/Venues/Vendors/Guests/Run of Show/Budget/Tickets) is real
-and backend-persisted, but remains a structurally generic, disconnected
-duplicate of the STATE-backed production engine now properly surfaced below
-it. Unifying the two (routing the primary tab surface through
-`STATE.eventsLens` instead of generic DTU artifacts, or demoting the generic
-CRUD to a lightweight "quick notes before you build the real event" front
-door) is a full information-architecture rewrite of a ~2,900-line page — out
-of scope for a single-lens surgical pass. What *was* in scope and got fixed:
-every button that fired a macro against the wrong data (dead/garbage-output)
-or a macro that didn't exist (dead) was removed and replaced with an honest
-navigation link to the real system, so nothing on the page can silently
-"succeed" with fabricated or empty-default output anymore — but the two
-systems still don't share data, and a future pass should treat that as the
-next real gap for this lens.
+The prior pass (above) documented the 8-tab generic system as a full
+information-architecture rewrite "out of scope for a single-lens surgical
+pass" and stopped at an honest navigation link into `EventOps`. Following
+the exact precedent that shipped for the `calendar` lens (commit
+`66b40daa`, "calendar's main event grid rewired to the real scheduling
+engine" — swap the backend channel per generic-artifact type, keep the
+existing tab/IA, encode-or-honestly-drop fields with no real-schema home),
+this pass went one step further and re-examined each of the 7 generic
+types against the 44 real macros individually, rather than accepting the
+whole-page "too big" verdict at face value.
+
+**Result: 2 of 8 tabs (Events + Dashboard) were safely, losslessly
+rewireable onto the real engine; the other 6 are a genuine, larger IA
+mismatch — confirmed, not assumed.** Details below.
+
+### What was rewired
+
+`concord-frontend/app/lenses/events/page.tsx`'s **Events** and **Dashboard**
+tabs no longer call `useLensData('events', 'Event', …)`. They now fetch and
+mutate through the real, STATE-backed engine directly:
+`events.event-list` (`server/domains/events.js:110`) →
+`events.event-detail` (`:127`, one call per event id, in parallel — the
+`event-list` summary doesn't carry `tiers`/`registrations`) →
+`events.event-create` (`:81`) / `events.event-update` (`:137`) /
+`events.event-delete` (`:151`), plus `events.register-attendee` (`:339`)
+for RSVP. Field mapping:
+
+| UI field | Real engine field | Notes |
+|---|---|---|
+| `title` | `name` | exact |
+| `eventType` | `type` | exact enum match (conference/wedding/concert/festival/corporate/social) |
+| `date` | `date` | exact |
+| `venue` | `venue` | exact |
+| `capacity` (relabeled "Expected Guest Count") | `guestCount` | real, previously-unexposed-by-this-form field |
+| `budget` (new form field) | `budget` | real, previously-unexposed-by-this-form field — a genuine capability the generic store never surfaced |
+| status `planning`/`confirmed`/`cancelled` | same | exact |
+| status `completed` (UI) | `complete` (engine) | renamed, not encoded |
+| status `live` (UI) | *(derived, not stored)* | `status==='confirmed' && date===today` — computed for display only, never round-tripped as a distinct backend value; matches the CLAUDE.md "derived, not fabricated" standard |
+| `capacity`/`ticketPrice`/`registered`/`revenue` **as displayed on cards/detail/dashboard** | derived live from `event.tiers[]` / `event.registrations[]` | **a real feature the generic store never had** — these were previously arbitrary numbers a user typed into a form with no validation; they're now a genuine rollup of the real ticketing substrate (mirrors calendar's "newly surfaces real engine features" bullet: live conflict-check there, live ticket-tier rollups here) |
+| `attendees[]` (flat array of opaque ids, used only for a client-side `'current-user'` sentinel check) | `event.registrations[].name` | real attendee names, from real registrations |
+| RSVP button | `events.register-attendee` | previously pushed a string onto a local-only array with zero backing; now writes a real `registrations` row against a real tier (increments `tier.sold`, generates a real `ticketCode`), gated honestly: an event with 0 tiers shows "set one up in Event Operations" instead of a button that can't do anything real |
+| `endDate`, `time`, `location`, `description`, `ticketTiers` (CSV) | *(none — genuinely missing)* | `event-create`/`event-update` explicitly whitelist their accepted params (`server/domains/events.js:81-108`, `:137-149`) and silently drop anything else — unlike calendar's `description` field, there is no free-text field on this schema to carry a lossless trailing-JSON-meta block, and truncating real user text into the 200-char `venue`/`name` fields would be a data misrepresentation, not an honest encoding. **Genuine per-field gap, ENGINEERING triage** (would need a new `notes`/`description` column on the STATE event object — a small, safe backend addition, just not attempted in this frontend-only pass). Dropped from the edit form (not silently discarded after being typed — never offered); the modal shows an explicit note that ticket pricing/full scheduling live in Event Operations. |
+
+Loading/error states gained `role="status"`/`role="alert"` (previously
+neither), matching the a11y pattern already shipped for `calendar`.
+
+### Named residual — Venues/Vendors/Guests/RunOfShow/Budget/Tickets tabs (confirmed larger than calendar's case, not assumed)
+
+The other 6 generic types were each checked individually against the real
+macros, per the same rule applied to Events — and each has a genuine,
+different blocker from a simple field-mapping job:
+
+1. **Scope mismatch, all 6:** in the real engine every one of these is a
+   collection *nested inside a single STATE event* (`event.vendors[]`,
+   `event.tiers[]`, `event.registrations[]`, `event.agenda[]`,
+   `event.budgetLines[]` — every mutating macro takes a required
+   `eventId`). The generic UI models each as an independent, global,
+   flat list with a loose free-text `assignedEvent`/`eventName` string for
+   correlation. Wiring these tabs for real would mean adding an
+   event-picker to each and restructuring them from flat lists into
+   per-event sub-views — a materially different IA, not a backend-channel
+   swap (the same category of change the original audit called out of
+   scope, now confirmed specifically for these 6, not assumed for all 8).
+2. **`Venue` has no backend entity at all.** The real engine has no
+   `venue-*` macro family — `venue` is a single short string field
+   *on an event* (see the Events-tab mapping above). There is nothing to
+   wire a "Venues" directory tab to. Genuine gap — **ENGINEERING** (would
+   need a new venue-directory macro group; ~150-200 LOC in
+   `server/domains/events.js` plus a migration if persistence beyond
+   STATE is wanted).
+3. **Per-field schema gaps beyond a JSON-encode fix, the other 4:**
+   - `Vendor`: real fields are `name`/`role`/`cost`/`booked`
+     (`vendor-add` at `:199`) — no `contactName`/`phone`/`email`/
+     `paymentStatus`/`paidAmount`/`setupTime`/`teardownTime`/
+     `insuranceVerified`/`rating`. No `vendor-update` macro exists either
+     (delete-and-recreate only, same class of gap `tier-update` had before
+     the prior pass added it to `EventOps`).
+   - `Guest`: real registration fields are `name`/`email`/`tierId`/
+     `quantity`/`notes` (`register-attendee` at `:339`) plus a boolean
+     `checkedIn` — no `phone`/`rsvpStatus` (3-state)/`tableAssignment`
+     (though `seat-assign` at `:533` is a real, different mechanism)/
+     `dietaryRestrictions`.
+   - `RunOfShow`: real agenda items are `title`/`day`/`startTime`/
+     `durationMin`/`track`/`owner`/`notes` (`agenda-item-add` at `:681`)
+     — reasonably close to the UI's `activity`/`responsible`/`avCues`/
+     `transition`/`contingency` segment shape, but not a clean rename
+     (multiple UI fields would collapse into `notes`, lossily).
+   - `Budget`: real budget lines are `label`/`category`/`kind`/`budgeted`/
+     `actual`/`paid` (`budget-line-add` at `:591`) — no `sponsorships`
+     concept (sponsor name/tier) at all; a `kind:'revenue'` line can
+     represent sponsorship *revenue* but not a sponsor's identity.
+   - `TicketTier` (closest fit of the 6): `tier-create`/`tier-list`/
+     `tier-update`/`tier-delete` (`:260-337`) map cleanly onto
+     `tierName`↔`name`, `price`↔`price`, `totalAvailable`↔`quantity`,
+     `description`↔`description`, `perks`↔`perks`,
+     `saleStart`/`saleEnd`↔same — genuinely close. `sold` would need to
+     become read-only/derived (the engine tracks it via
+     `register-attendee`, not manual entry); `waitlist`/`compTickets`
+     have no backend equivalent. Blocked on the same scope mismatch as
+     #1 (needs an event-picker), not a field mismatch — the best
+     candidate for a future, narrowly-scoped follow-up.
+4. **`EventOps.tsx` already IS the real, designed, polished console for
+   4 of these 5** (Vendors/Guests via ticketing+seating/RunOfShow/
+   TicketTier — everything except Budget's sponsorship concept and the
+   Venues directory). Re-deriving that functionality a second time inside
+   6 new event-scoped generic-page sub-views would duplicate, not fix, the
+   real surface — two UIs for the same ticketing data, guaranteed to
+   drift. The honest fix for these 6 is not "wire them like Events" but
+   either (a) route them into `EventOps` the same way the Dashboard/
+   Event-detail "jump to Event Operations" cards already do (removing the
+   duplicate rather than half-wiring it), or (b) a genuine, larger unify
+   pass that gives `EventOps` an event-scoped sub-view reachable from each
+   of these 6 tab slots. Neither was attempted here — flagged for the next
+   pass, per the same rigor bar as `docs/QUESTS_ENGINE_INVESTIGATION.md`.
+
+These 6 tabs are **unchanged** in this pass (still `useLensData`-backed,
+still functioning exactly as before — no regression, no new fabrication).

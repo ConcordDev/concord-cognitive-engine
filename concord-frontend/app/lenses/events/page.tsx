@@ -15,10 +15,12 @@ import {
   LayoutDashboard as MTabDash, CalendarDays as MTabCal, MapPin as MTabPin,
   Truck as MTabTruck, Users as MTabUsers, PiggyBank as MTabBudget,
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -214,6 +216,136 @@ const EMPTY_DATA: Record<
 };
 
 // ---------------------------------------------------------------------------
+// Real-engine wiring — the Events + Dashboard tabs persist through the
+// STATE-backed event-planning engine (server/domains/events.js:
+// event-create/event-list/event-detail/event-update/event-delete/
+// events-dashboard), not the generic 'Event' artifact-CRUD store. The
+// engine's event schema (name/type/date/venue/budget/guestCount/status +
+// nested tiers/registrations/agenda/budgetLines/vendors, all already
+// surfaced by the separate, fully-real EventOps console mounted lower on
+// this page) is genuinely narrower than several of this tab's original
+// generic-artifact fields (endDate/time/location/description/ticketTiers
+// CSV/a flat attendees[] of user ids) — and unlike calendar's lens (which
+// had a real free-text `description` field to carry a trailing JSON meta
+// block), event-create/event-update explicitly whitelist their accepted
+// params and silently drop anything else, so there is no lossless encoding
+// target for those fields on this schema. Rather than truncate real user
+// text into an unrelated 200-char field (a misrepresentation, not an
+// encoding), those fields are documented as a genuine per-field gap in
+// docs/lens-specs/events-capability-map.md and are not persisted.
+//
+// What DOES map is wired directly, and where the real engine gives more
+// than the generic store ever could, that's surfaced: capacity/ticketPrice/
+// registered/revenue are now REAL derived rollups read live from each
+// event's own tiers[]/registrations[] (previously arbitrary numbers a user
+// typed into a form and nothing ever validated), and RSVP now writes a real
+// `register-attendee` row against a real ticket tier instead of pushing a
+// string into a local-only attendees[] array with no backing anywhere.
+// ---------------------------------------------------------------------------
+
+interface BackendTier {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  sold: number;
+  description?: string;
+  perks?: string;
+  saleStart?: string | null;
+  saleEnd?: string | null;
+}
+
+interface BackendRegistration {
+  id: string;
+  name: string;
+  email: string;
+  tierId: string;
+  tierName: string;
+  quantity: number;
+  amountPaid: number;
+  checkedIn: boolean;
+  checkedInAt: string | null;
+  ticketCode: string;
+  registeredAt: string;
+}
+
+interface BackendEvent {
+  id: string;
+  name: string;
+  type: string;
+  date: string | null;
+  venue: string | null;
+  budget: number;
+  guestCount: number;
+  status: 'planning' | 'confirmed' | 'complete' | 'cancelled';
+  createdAt: string;
+  tiers?: BackendTier[];
+  registrations?: BackendRegistration[];
+}
+
+function isToday(dateStr: string | null | undefined): boolean {
+  if (!dateStr) return false;
+  return dateStr.slice(0, 10) === new Date().toISOString().slice(0, 10);
+}
+
+/** Real event-detail() result -> the generic LensItem shape the existing render code already knows how to read. */
+function fromBackendEvent(e: BackendEvent): LensItem {
+  const tiers = e.tiers || [];
+  const registrations = e.registrations || [];
+  const ticketCapacity = tiers.reduce((n, t) => n + (t.quantity || 0), 0);
+  const ticketSold = tiers.reduce((n, t) => n + (t.sold || 0), 0);
+  const registered = registrations.reduce((n, r) => n + (r.quantity || 0), 0);
+  const revenue = registrations.reduce((n, r) => n + (r.amountPaid || 0), 0);
+  const primaryTier = tiers[0] || null;
+  // 'live' has no backend status of its own — it's derived (a confirmed
+  // event whose date is today), not fabricated: computed from two real
+  // fields, shown only for display, never round-tripped back as a status.
+  const displayStatus =
+    e.status === 'confirmed' && isToday(e.date) ? 'live' : e.status === 'complete' ? 'completed' : e.status;
+  return {
+    id: e.id,
+    title: e.name,
+    data: {
+      eventType: e.type,
+      date: e.date || '',
+      venue: e.venue || '',
+      budget: e.budget || 0,
+      capacity: e.guestCount || 0,
+      registered,
+      revenue,
+      ticketPrice: primaryTier ? primaryTier.price : 0,
+      ticketCapacity,
+      ticketSold,
+      tierCount: tiers.length,
+      tiers,
+      registrations,
+      attendees: registrations.map((r) => r.name),
+    },
+    meta: { tags: [], status: displayStatus, visibility: 'private' },
+    createdAt: e.createdAt,
+    updatedAt: e.createdAt,
+    version: 1,
+  } as LensItem;
+}
+
+/** UI form (title/data/meta) -> event-create / event-update params. */
+function toEventBackendParams(title: string, data: Record<string, unknown>, meta: Record<string, unknown>) {
+  const uiStatus = (meta?.status as string) || 'planning';
+  // 'live' is derived-only (see fromBackendEvent) — saving it means "this
+  // event is happening", i.e. confirmed. 'completed' (UI) <-> 'complete' (engine).
+  const status = uiStatus === 'live' ? 'confirmed' : uiStatus === 'completed' ? 'complete' : uiStatus;
+  return {
+    name: title,
+    type: (data.eventType as string) || 'social',
+    date: (data.date as string) || null,
+    venue: (data.venue as string) || null,
+    budget: Number(data.budget) || 0,
+    guestCount: Number(data.capacity) || 0,
+    status,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 function fmtCurrency(n: number): string {
@@ -353,17 +485,77 @@ export default function EventsLensPage() {
   };
   const currentType = typeMap[mode] || 'Event';
 
-  // Data hooks
-  const {
-    items: events,
-    isLoading: eventsLoading,
-    isError,
-    error,
-    refetch,
-    create: createEvent,
-    update: updateEvent,
-    remove: removeEvent,
-  } = useLensData('events', 'Event', { seed: EMPTY_DATA.Event });
+  // Data — Events + Dashboard are wired to the real, STATE-backed
+  // event-planning engine (server/domains/events.js), not useLensData. See
+  // the "Real-engine wiring" block above for the full rationale.
+  const { user: currentUser } = useAuth();
+  const [events, setEvents] = useState<LensItem[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState<{ message: string } | null>(null);
+
+  const fetchEventsReal = useCallback(async (): Promise<LensItem[]> => {
+    const listRes = await lensRun({ domain: 'events', action: 'event-list', input: {} });
+    if (listRes.data.ok === false) throw new Error(listRes.data.error || 'Failed to load events');
+    const summaries = ((listRes.data.result as { events?: Array<{ id: string }> } | null)?.events || []);
+    const details = await Promise.all(
+      summaries.map((s) => lensRun({ domain: 'events', action: 'event-detail', input: { id: s.id } }))
+    );
+    const out: LensItem[] = [];
+    details.forEach((r) => {
+      if (r.data.ok === false) return; // event vanished mid-fetch — skip, don't fake it
+      const full = (r.data.result as { event?: BackendEvent } | null)?.event;
+      if (full) out.push(fromBackendEvent(full));
+    });
+    return out;
+  }, []);
+
+  const refetch = useCallback(async () => {
+    setEventsLoading(true);
+    setIsError(false);
+    setError(null);
+    try {
+      setEvents(await fetchEventsReal());
+    } catch (e) {
+      setIsError(true);
+      setError({ message: e instanceof Error ? e.message : 'Failed to load events' });
+    } finally {
+      setEventsLoading(false);
+    }
+  }, [fetchEventsReal]);
+
+  useEffect(() => { refetch(); }, [refetch]);
+
+  const createEvent = useCallback(
+    async (input: { title?: string; data?: Record<string, unknown>; meta?: Record<string, unknown> }) => {
+      const params = toEventBackendParams(input.title || '', input.data || {}, input.meta || {});
+      const r = await lensRun({ domain: 'events', action: 'event-create', input: params });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Failed to create event');
+      await refetch();
+      return r.data;
+    },
+    [refetch]
+  );
+  const updateEvent = useCallback(
+    async (id: string, input: { title?: string; data?: Record<string, unknown>; meta?: Record<string, unknown> }) => {
+      const params = toEventBackendParams(input.title || '', input.data || {}, input.meta || {});
+      const r = await lensRun({ domain: 'events', action: 'event-update', input: { id, ...params } });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Failed to update event');
+      await refetch();
+      return r.data;
+    },
+    [refetch]
+  );
+  const removeEvent = useCallback(
+    async (id: string) => {
+      const r = await lensRun({ domain: 'events', action: 'event-delete', input: { id } });
+      if (r.data.ok === false) throw new Error(r.data.error || 'Failed to delete event');
+      await refetch();
+      return r.data;
+    },
+    [refetch]
+  );
+
   const {
     items: venues,
     isLoading: venuesLoading,
@@ -413,33 +605,44 @@ export default function EventsLensPage() {
 
   const handleRSVP = async (eventItem: LensItem) => {
     const d = eventItem.data as Record<string, unknown>;
-    const price = Number(d.ticketPrice || 0);
-    const attendees = parseJsonSafe<string[]>(d.attendees, []);
-    const cap = Number(d.capacity || 0);
-    if (cap > 0 && attendees.length >= cap) {
+    const tiers = (d.tiers as BackendTier[] | undefined) || [];
+    // Real ticketing: RSVP is a real register-attendee call against a real
+    // tier, not a push onto a local-only attendees[] array. If the
+    // organizer hasn't set up a tier yet there is honestly nothing to
+    // register against — the render site shows a "set one up" link instead
+    // of a button in that case, so this function is only reachable when at
+    // least one tier exists.
+    const tier = tiers.find((t) => !(t.quantity > 0 && t.sold >= t.quantity)) || tiers[0];
+    if (!tier || (tier.quantity > 0 && tier.sold >= tier.quantity)) {
       setRsvpSuccess(null);
       return;
     }
     setRsvpLoading(eventItem.id);
     try {
-      const userId = 'current-user'; // from auth context
+      const price = tier.price || 0;
       if (price > 0) {
         // Paid ticket: call economy transfer endpoint
         const { api: apiClient } = await import('@/lib/api/client');
         await apiClient.post('/api/economy/transfer', {
-          to: (d.creatorId as string) || 'platform',
+          to: 'platform',
           amount: price,
           type: 'EVENT_TICKET',
-          metadata: { eventId: eventItem.id, eventTitle: eventItem.title },
+          metadata: { eventId: eventItem.id, eventTitle: eventItem.title, tierId: tier.id },
         });
       }
-      // Add user to attendees
-      const updatedAttendees = [...attendees, userId];
-      await updateEvent(eventItem.id, {
-        title: eventItem.title,
-        data: { ...d, attendees: updatedAttendees, registered: Number(d.registered || 0) + 1 },
-        meta: eventItem.meta,
+      const reg = await lensRun({
+        domain: 'events',
+        action: 'register-attendee',
+        input: {
+          eventId: eventItem.id,
+          tierId: tier.id,
+          name: currentUser?.username || 'Guest',
+          email: currentUser?.email || '',
+          quantity: 1,
+        },
       });
+      if (reg.data.ok === false) throw new Error(reg.data.error || 'Registration failed');
+      await refetch();
       // Create calendar event via calendar lens
       try {
         const { api: apiClient } = await import('@/lib/api/client');
@@ -644,12 +847,15 @@ export default function EventsLensPage() {
       ['planning', 'confirmed'].includes(e.meta?.status as string)
     ).length;
     const liveNow = events.filter((e) => e.meta?.status === 'live').length;
-    const totalSold = tickets.reduce(
-      (s, t) => s + Number((t.data as Record<string, unknown>).sold || 0),
+    // Real ticketing rollups (sum of each event's own tiers[]), not the
+    // separate, still-generic 'TicketTier' artifact store — see the
+    // "Real-engine wiring" comment above.
+    const totalSold = events.reduce(
+      (s, e) => s + Number((e.data as Record<string, unknown>).ticketSold || 0),
       0
     );
-    const totalAvail = tickets.reduce(
-      (s, t) => s + Number((t.data as Record<string, unknown>).totalAvailable || 0),
+    const totalAvail = events.reduce(
+      (s, e) => s + Number((e.data as Record<string, unknown>).ticketCapacity || 0),
       0
     );
     const revenueMonth = events.reduce(
@@ -693,7 +899,7 @@ export default function EventsLensPage() {
       budgetTotal,
       sponsorTotal,
     };
-  }, [events, vendors, tickets, budgets]);
+  }, [events, vendors, budgets]);
 
   // Form field configs per mode
   const getFormConfig = (): Array<{
@@ -705,6 +911,16 @@ export default function EventsLensPage() {
     switch (mode) {
       case 'events':
       case 'dashboard':
+        // Fields the real, STATE-backed event-planning engine actually
+        // persists (server/domains/events.js event-create/event-update:
+        // name/type/date/venue/budget/guestCount/status). endDate/time/
+        // location/ticketPrice/description/ticketTiers CSV had no backing
+        // field on that schema and no lossless place to encode them (see
+        // the "Real-engine wiring" comment above) — dropped from the form
+        // rather than silently discarded after being typed; ticket pricing
+        // and a full description live in Event Operations (tiers +
+        // per-event notes), linked from the modal below. `budget` is a
+        // real, previously-unexposed engine field, added here.
         return [
           {
             key: 'eventType',
@@ -712,15 +928,10 @@ export default function EventsLensPage() {
             type: 'select',
             options: EVENT_TYPES.map((t) => t.id),
           },
-          { key: 'date', label: 'Start Date', type: 'date' },
-          { key: 'endDate', label: 'End Date', type: 'date' },
-          { key: 'time', label: 'Start Time' },
+          { key: 'date', label: 'Date', type: 'date' },
           { key: 'venue', label: 'Venue' },
-          { key: 'location', label: 'Location / Address' },
-          { key: 'capacity', label: 'Capacity' },
-          { key: 'ticketPrice', label: 'Ticket Price in CC (0 = free)' },
-          { key: 'description', label: 'Description', type: 'textarea' },
-          { key: 'ticketTiers', label: 'Ticket Tiers (comma-separated)' },
+          { key: 'capacity', label: 'Expected Guest Count' },
+          { key: 'budget', label: 'Budget ($)' },
         ];
       case 'venues':
         return [
@@ -816,10 +1027,11 @@ export default function EventsLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="status" aria-live="polite" aria-busy="true">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-400">Loading event data...</p>
+          <span className="sr-only">Loading event data</span>
         </div>
       </div>
     );
@@ -827,7 +1039,7 @@ export default function EventsLensPage() {
 
   if (isError) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="alert" aria-live="assertive">
         <ErrorState error={error?.message} onRetry={refetch} />
       </div>
     );
@@ -1173,6 +1385,10 @@ export default function EventsLensPage() {
   // ---------------------------------------------------------------------------
   const renderEventDetail = (item: LensItem): React.ReactNode => {
     const d = item.data as Record<string, string | number | boolean | null | undefined>;
+    // Real per-event ticketing arrays (tiers/registrations) round-tripped
+    // straight from event-detail() — not part of the scalar `d` cast above.
+    const realTiers = ((item.data as Record<string, unknown>).tiers as BackendTier[] | undefined) || [];
+    const realRegistrations = ((item.data as Record<string, unknown>).registrations as BackendRegistration[] | undefined) || [];
     const st = item.meta?.status as string;
     const evtType = EVENT_TYPES.find((t) => t.id === d.eventType);
     const EvtIcon = evtType?.icon || CalendarDays;
@@ -1262,10 +1478,19 @@ export default function EventsLensPage() {
                 </span>
               </div>
               {((): React.ReactNode => {
-                const attendees = parseJsonSafe<string[]>(d.attendees, []);
-                const cap = Number(d.capacity || 0);
-                const isFull = cap > 0 && attendees.length >= cap;
-                const alreadyRSVP = attendees.includes('current-user');
+                // Real ticketing: gate on the real tiers[] the organizer has
+                // actually created (register-attendee needs a real tierId),
+                // not a manually-typed capacity number.
+                if (realTiers.length === 0) {
+                  return (
+                    <button onClick={jumpToEventOps} className={cn(ds.btnGhost, 'text-xs')}>
+                      No ticket tiers yet — set one up in Event Operations
+                    </button>
+                  );
+                }
+                const tier = realTiers.find((t) => !(t.quantity > 0 && t.sold >= t.quantity)) || realTiers[0];
+                const isFull = tier.quantity > 0 && tier.sold >= tier.quantity;
+                const alreadyRSVP = !!currentUser && realRegistrations.some((r) => r.email === currentUser.email);
                 return (
                   <button
                     onClick={(e) => {
@@ -1293,13 +1518,13 @@ export default function EventsLensPage() {
                       </>
                     ) : isFull ? (
                       'Sold Out'
-                    ) : Number(d.ticketPrice || 0) === 0 ? (
+                    ) : tier.price === 0 ? (
                       <>
                         <Users className="w-4 h-4" /> RSVP (Free)
                       </>
                     ) : (
                       <>
-                        <Ticket className="w-4 h-4" /> Get Ticket ({Number(d.ticketPrice)} CC)
+                        <Ticket className="w-4 h-4" /> Get Ticket ({tier.price} CC)
                       </>
                     )}
                   </button>
@@ -2722,6 +2947,22 @@ export default function EventsLensPage() {
                       ))}
                   </select>
                 </div>
+                {(mode === 'events' || mode === 'dashboard') && (
+                  <p className="text-xs text-gray-400 -mt-2">
+                    Ticket tiers, pricing, capacity by tier, and a full run-of-show live in{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetForm();
+                        jumpToEventOps();
+                      }}
+                      className="underline text-neon-cyan hover:text-neon-pink"
+                    >
+                      Event Operations
+                    </button>{' '}
+                    once this event is saved.
+                  </p>
+                )}
                 {getFormConfig().map((field) => (
                   <div key={field.key}>
                     <label className={ds.label}>{field.label}</label>
