@@ -281,3 +281,104 @@ describe("landscaping — plant health diary", () => {
     assert.equal(b.result.count, 0);
   });
 });
+
+// ─── Feature 9 — job scheduling / dispatch board ────────────────────
+describe("landscaping — job scheduling / dispatch board", () => {
+  it("job-schedule requires a title and defaults status to scheduled", () => {
+    assert.equal(call("job-schedule", ctxA, {}).ok, false);
+    const r = call("job-schedule", ctxA, {
+      title: "Spring cleanup", client: "Acme HOA", address: "12 Elm St",
+      crew: "Crew A", date: "2026-06-01", startHour: 9, durationHours: 3,
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.job.id);
+    assert.equal(r.result.job.status, "scheduled");
+    assert.equal(r.result.job.crew, "Crew A");
+    assert.equal(r.result.job.durationHours, 3);
+  });
+
+  it("job-schedule rejects an unknown bedId but accepts a real one", () => {
+    assert.equal(call("job-schedule", ctxA, { title: "Bed job", bedId: "bed_bogus" }).ok, false);
+    const bed = call("bed-add", ctxA, { name: "Rose bed" }).result.bed;
+    const r = call("job-schedule", ctxA, { title: "Bed job", bedId: bed.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.job.bedId, bed.id);
+  });
+
+  it("job-schedule clamps startHour/durationHours and accepts an optional proposalId", () => {
+    const r = call("job-schedule", ctxA, {
+      title: "Overnight job", startHour: 99, durationHours: -5, proposalId: "prop_123",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.job.startHour, 23);
+    assert.equal(r.result.job.durationHours, 0.5);
+    assert.equal(r.result.job.proposalId, "prop_123");
+  });
+
+  it("job-list groups jobs into crew lanes + an unassigned lane with load hours", () => {
+    call("job-schedule", ctxA, { title: "A", crew: "Crew A", date: "2026-06-02", durationHours: 2 });
+    call("job-schedule", ctxA, { title: "B", crew: "Crew A", date: "2026-06-02", durationHours: 1.5 });
+    call("job-schedule", ctxA, { title: "C", date: "2026-06-02" });
+    const board = call("job-list", ctxA, { date: "2026-06-02" });
+    assert.equal(board.ok, true);
+    assert.equal(board.result.count, 3);
+    assert.equal(board.result.lanes.length, 1);
+    assert.equal(board.result.lanes[0].crew, "Crew A");
+    assert.equal(board.result.lanes[0].loadHours, 3.5);
+    assert.equal(board.result.unassigned.length, 1);
+    assert.equal(board.result.scheduledCount, 3);
+  });
+
+  it("job-list filters by status and by date range", () => {
+    call("job-schedule", ctxA, { title: "Early", date: "2026-05-01" });
+    const mid = call("job-schedule", ctxA, { title: "Mid", date: "2026-05-15" }).result.job;
+    call("job-schedule", ctxA, { title: "Late", date: "2026-06-01" });
+    call("job-complete", ctxA, { id: mid.id });
+
+    const done = call("job-list", ctxA, { status: "completed" });
+    assert.equal(done.ok, true);
+    assert.equal(done.result.count, 1);
+    assert.equal(done.result.jobs[0].id, mid.id);
+
+    const ranged = call("job-list", ctxA, { dateFrom: "2026-05-10", dateTo: "2026-05-31" });
+    assert.equal(ranged.ok, true);
+    assert.equal(ranged.result.count, 1);
+    assert.equal(ranged.result.jobs[0].title, "Mid");
+
+    assert.equal(call("job-list", ctxA, { status: "bogus" }).ok, false);
+  });
+
+  it("job-list scopes jobs per-user", () => {
+    call("job-schedule", ctxA, { title: "A-job" });
+    const b = call("job-list", ctxB, {});
+    assert.equal(b.ok, true);
+    assert.equal(b.result.count, 0);
+  });
+
+  it("job-complete stamps completion and rejects a second completion", () => {
+    const job = call("job-schedule", ctxA, { title: "Hedge trim" }).result.job;
+    const done = call("job-complete", ctxA, { id: job.id, notes: "Done, hauled clippings" });
+    assert.equal(done.ok, true);
+    assert.equal(done.result.job.status, "completed");
+    assert.ok(done.result.job.completedAt);
+    assert.equal(done.result.job.completionNotes, "Done, hauled clippings");
+
+    const again = call("job-complete", ctxA, { id: job.id });
+    assert.equal(again.ok, false);
+    assert.match(again.error, /already completed/);
+  });
+
+  it("job-complete rejects an unknown job id", () => {
+    assert.equal(call("job-complete", ctxA, { id: "nope" }).ok, false);
+  });
+
+  it("job-complete rejects a cancelled job", () => {
+    // No job-cancel macro exists yet (out of scope for this triple) — poke
+    // the in-memory record directly to exercise the cancelled-job guard.
+    const job = call("job-schedule", ctxA, { title: "Cancel me" }).result.job;
+    globalThis._concordSTATE.landscapingLens.jobs.get("user_a").find((j) => j.id === job.id).status = "cancelled";
+    const r = call("job-complete", ctxA, { id: job.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /cancelled/);
+  });
+});

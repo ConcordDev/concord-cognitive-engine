@@ -743,4 +743,105 @@ export default function registerLandscapingActions(registerLensAction) {
     saveLand();
     return { ok: true, result: { deleted: params.id } };
   });
+
+  // ─── Feature 9 — Job scheduling / dispatch board (field-service) ────
+  // Landscaping's design + calculation + record-keeping tools (beds,
+  // layouts, proposals, diary) didn't model an actual scheduled/dispatched
+  // job — this closes that gap with the same triple shape as plumbing's
+  // dispatchAssign/dispatchBoard/jobComplete (server/domains/plumbing.js),
+  // renamed to this file's hyphenated macro convention: job-schedule /
+  // job-list / job-complete. Scope note: unlike plumbing, this does NOT
+  // introduce a separate crew/tech entity substrate (techAdd/techList) —
+  // `crew` is a free-text assignee string on the job record, which is
+  // sufficient to group a real dispatch board into lanes without building
+  // a second CRUD surface the capability-map gap didn't ask for.
+  function lsJobs(s, userId) {
+    if (!(s.jobs instanceof Map)) s.jobs = new Map();
+    if (!s.jobs.has(userId)) s.jobs.set(userId, []);
+    return s.jobs.get(userId);
+  }
+  const JOB_STATUSES = ["scheduled", "in_progress", "completed", "cancelled"];
+
+  registerLensAction("landscaping", "job-schedule", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const title = lsClean(params.title, 120);
+    if (!title) return { ok: false, error: "job title required" };
+    const bedId = lsClean(params.bedId, 80) || null;
+    if (bedId && !lsBeds(s, userId).find((b) => b.id === bedId)) return { ok: false, error: "bed not found" };
+    const job = {
+      id: lsId("job"), title,
+      client: lsClean(params.client, 120) || "",
+      address: lsClean(params.address, 200) || "",
+      proposalId: lsClean(params.proposalId, 80) || null,
+      bedId,
+      crew: lsClean(params.crew, 120) || "",
+      date: lsClean(params.date, 16) || new Date().toISOString().slice(0, 10),
+      startHour: Math.min(23, Math.max(0, Math.round(lsNum(params.startHour)) || 8)),
+      durationHours: Math.min(24, Math.max(0.5, lsNum(params.durationHours) || 2)),
+      notes: lsClean(params.notes, 1000) || "",
+      status: "scheduled",
+      createdAt: new Date().toISOString(),
+    };
+    lsJobs(s, userId).push(job);
+    saveLand();
+    return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // job-list — the dispatch board: filterable by status/date range,
+  // grouped into per-crew lanes (+ an unassigned lane) so the frontend
+  // renders a real board, not a flat table.
+  registerLensAction("landscaping", "job-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const status = lsClean(params.status, 20);
+    if (status && !JOB_STATUSES.includes(status)) return { ok: false, error: "invalid status filter" };
+    let rows = lsJobs(s, lsActor(ctx)).slice();
+    if (status) rows = rows.filter((j) => j.status === status);
+    const dateFrom = lsClean(params.dateFrom, 16);
+    const dateTo = lsClean(params.dateTo, 16);
+    if (dateFrom) rows = rows.filter((j) => j.date >= dateFrom);
+    if (dateTo) rows = rows.filter((j) => j.date <= dateTo);
+    rows.sort((a, b) => a.date.localeCompare(b.date) || a.startHour - b.startHour);
+    const crews = [...new Set(rows.map((j) => j.crew).filter(Boolean))];
+    const lanes = crews.map((crew) => {
+      const crewJobs = rows.filter((j) => j.crew === crew);
+      return {
+        crew, jobs: crewJobs,
+        loadHours: crewJobs.filter((j) => j.status !== "cancelled")
+          .reduce((n, j) => n + j.durationHours, 0),
+      };
+    });
+    const unassigned = rows.filter((j) => !j.crew);
+    return {
+      ok: true,
+      result: {
+        jobs: rows, count: rows.length,
+        lanes, unassigned,
+        scheduledCount: rows.filter((j) => j.status === "scheduled").length,
+        inProgressCount: rows.filter((j) => j.status === "in_progress").length,
+        completedCount: rows.filter((j) => j.status === "completed").length,
+        cancelledCount: rows.filter((j) => j.status === "cancelled").length,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("landscaping", "job-complete", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const jobs = lsJobs(s, lsActor(ctx));
+    const job = jobs.find((j) => j.id === params.id);
+    if (!job) return { ok: false, error: "job not found" };
+    if (job.status === "completed") return { ok: false, error: "job already completed" };
+    if (job.status === "cancelled") return { ok: false, error: "cannot complete a cancelled job" };
+    job.status = "completed";
+    job.completedAt = new Date().toISOString();
+    job.completionNotes = lsClean(params.notes, 1000) || "";
+    saveLand();
+    return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

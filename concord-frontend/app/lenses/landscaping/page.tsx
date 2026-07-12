@@ -11,20 +11,22 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { cn } from '@/lib/utils';
-import { TreePine, Sprout, Flower2, Leaf, Calculator } from 'lucide-react';
+import { TreePine, Sprout, Flower2, Leaf, Calculator, CalendarClock } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { PlantFinder } from '@/components/landscaping/PlantFinder';
 import { ProLandscape } from '@/components/landscaping/ProLandscape';
 import { GardenStudio } from '@/components/landscaping/GardenStudio';
 import { GardenBeds } from '@/components/landscaping/GardenBeds';
+import { JobDispatchBoard } from '@/components/landscaping/JobDispatchBoard';
 
-type PageTab = 'studio' | 'beds' | 'finder' | 'calculators';
+type PageTab = 'studio' | 'beds' | 'finder' | 'calculators' | 'jobs';
 
 const PAGE_TABS: { id: PageTab; label: string; icon: typeof TreePine; hint: string }[] = [
   { id: 'studio', label: 'Garden Studio', icon: Sprout, hint: '1' },
   { id: 'beds', label: 'Garden Beds', icon: Flower2, hint: '2' },
   { id: 'finder', label: 'Plant Finder', icon: Leaf, hint: '3' },
   { id: 'calculators', label: 'Pro Calculators', icon: Calculator, hint: '4' },
+  { id: 'jobs', label: 'Jobs', icon: CalendarClock, hint: '5' },
 ];
 
 export default function LandscapingLensPage() {
@@ -36,6 +38,7 @@ export default function LandscapingLensPage() {
       { id: 'tab-beds', keys: '2', description: 'Garden Beds', category: 'navigation', action: () => setTab('beds') },
       { id: 'tab-finder', keys: '3', description: 'Plant Finder', category: 'navigation', action: () => setTab('finder') },
       { id: 'tab-calculators', keys: '4', description: 'Pro Calculators', category: 'navigation', action: () => setTab('calculators') },
+      { id: 'tab-jobs', keys: '5', description: 'Jobs', category: 'navigation', action: () => setTab('jobs') },
     ],
     { lensId: 'landscaping' }
   );
@@ -90,6 +93,11 @@ export default function LandscapingLensPage() {
         {tab === 'calculators' && (
           <section className="mt-6">
             <ProLandscape />
+          </section>
+        )}
+        {tab === 'jobs' && (
+          <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <JobDispatchBoard />
           </section>
         )}
       </LensPageShell>

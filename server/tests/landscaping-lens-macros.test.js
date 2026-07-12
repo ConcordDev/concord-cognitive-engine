@@ -364,6 +364,7 @@ describe("landscaping lens — degrade-graceful when STATE is unavailable", () =
     const stateBacked = [
       ["bed-list", {}], ["layout-list", {}], ["overlay-list", {}],
       ["diary-timeline", {}], ["landscaping-dashboard", {}], ["care-reminders", {}],
+      ["job-list", {}], ["job-schedule", { title: "x" }], ["job-complete", { id: "x" }],
     ];
     for (const [name, input] of stateBacked) {
       let r;
