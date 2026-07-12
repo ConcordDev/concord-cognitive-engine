@@ -302,7 +302,7 @@ every one of the ~20 mutating parity macros, which is a larger unit than
 this pass's budget. Recorded here as a named gap per the "closing the hard
 20%" invariant rather than left implicit.~~
 
-**CLOSED (2026-07-12, pending commit).** Built the collaborator-aware
+**CLOSED (2026-07-12, `508399c7`).** Built the collaborator-aware
 resolver family in `server/domains/studio.js` (`resolveStudioProject`,
 `resolveOwnerBucketItem`, `resolveTrackOwner`, `resolveClipOwner`,
 `resolveNoteOwner`, `resolveLaneOwner`, plus two leniency-preserving
@@ -387,7 +387,7 @@ Triaged per the "closing the hard 20%" invariant:
   `studio.*` macro to check active-collab-session membership and, when
   present, operate on the host's project map. Scoped out of this pass as
   larger than the unit; the finding + reproduction is recorded so it isn't
-  silently left to look complete.~~ **CLOSED (2026-07-12, pending commit)**
+  silently left to look complete.~~ **CLOSED (2026-07-12, `508399c7`)**
   — see the dedicated section above for the full fix (resolver family +
   every mutating macro + paired reads + regression tests).
 - **ENGINEERING, small — `collab-edit` logging isn't on every mutation.**
