@@ -214,7 +214,7 @@ what a bulk-op or a merge action must call to actually persist a change;
    after a real fetch), and no `Math.random()`/lorem placeholder exists
    anywhere in the tree.
 
-## 3. Durability caveat — ~~honest, not fixed this session (out of edit scope)~~ **CLOSED (2026-07-12, pending commit)**
+## 3. Durability caveat — ~~honest, not fixed this session (out of edit scope)~~ **CLOSED (2026-07-12, `2232d744`)**
 
 ~~`dtus.saveView`/`listViews`/`deleteView` and `dtus.getLayers`/`updateLayers`
 persist to `globalThis._concordSTATE.dtusLens` — **process-memory `Map`s
