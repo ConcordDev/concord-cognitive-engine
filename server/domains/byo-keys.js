@@ -40,6 +40,7 @@ function stateRoot() {
       fallback: new Map(),  // userId -> Map<slot, string[]>  (ordered fallback slots)
       health: new Map(),    // userId -> Map<slot, { lastError, lastErrorAt, lastOkAt, status }>
       orgKeys: new Map(),   // orgId  -> { ownerId, label, provider, members:Map<userId,role> }
+      alerts: new Map(),    // userId -> Map<slot, { month, threshold }>  (spend-alert dedupe, see checkSpendAlerts)
     };
   }
   return s.byoKeysLens;
@@ -531,4 +532,80 @@ export default function registerByoKeysMacros(register) {
     orgs.sort((a, b) => b.createdAt - a.createdAt);
     return { ok: true, result: { orgs } };
   }, { note: "List every org key group the caller is a member of, with the caller's role." });
+}
+
+// ── Spend alerts (Wave 4 gap-closure, docs/lens-specs/byo-keys-
+// capability-map.md item #10) ───────────────────────────────────
+//
+// `budget_status` above computes usdPct/tokenPct/exceeded per slot,
+// but it's pull-only — nothing surfaces a crossing until the user
+// opens the lens and calls it. `checkSpendAlerts` is the sweep the
+// `byo-budget-alert-cycle` heartbeat (server/emergent/
+// byo-budget-alert-cycle.js) calls every tick: it walks every user's
+// budgets against this month's real usage (the exact same math as
+// `budget_status`) and returns only the alerts that are NEW this
+// month — i.e. the first time a user's spend crosses a threshold in
+// SPEND_ALERT_THRESHOLDS, or crosses a HIGHER threshold than the one
+// already alerted. The heartbeat is the one that actually dispatches
+// the notification (via social-layer's createNotification); this
+// function only computes + records "have we already told them," so
+// it stays free of any dispatch-channel coupling and is trivially
+// testable in isolation.
+//
+// Idempotency lives in the `alerts` Map added to stateRoot() above:
+// Map<userId, Map<slot, { month, threshold }>>. A slot's dedupe entry
+// only blocks a re-fire at the SAME OR LOWER threshold within the
+// SAME month — a higher threshold (0.8 -> 1.0) or a new month always
+// re-evaluates and can fire again. This is deliberate: the CLAUDE.md
+// spec for this gap explicitly requires "doesn't re-fire ... until
+// the threshold resets/increases."
+
+export const SPEND_ALERT_THRESHOLDS = Object.freeze([1.0, 0.8]); // checked highest-first
+
+export function checkSpendAlerts() {
+  const root = stateRoot();
+  if (!root) return { ok: false, reason: "state_unavailable", fired: [] };
+  if (!root.alerts) root.alerts = new Map();
+  const thisMonth = monthKey();
+  const fired = [];
+
+  for (const [userId, bm] of root.budgets.entries()) {
+    const um = root.usage.get(userId);
+    for (const [slot, budget] of bm.entries()) {
+      if (!budget) continue;
+      const rec = um?.get(slot);
+      const events = (rec?.events || []).filter((e) => monthKey(e.at) === thisMonth);
+      const spentUsd = events.reduce((a, e) => a + e.costUsd, 0);
+      const spentTokens = events.reduce((a, e) => a + e.tokensIn + e.tokensOut, 0);
+      const usdPct = budget.monthlyUsdCap ? spentUsd / budget.monthlyUsdCap : null;
+      const tokenPct = budget.monthlyTokenCap ? spentTokens / budget.monthlyTokenCap : null;
+      const maxPct = Math.max(usdPct ?? -Infinity, tokenPct ?? -Infinity);
+      if (!Number.isFinite(maxPct)) continue; // no cap actually set on this slot
+
+      let crossed = null;
+      for (const t of SPEND_ALERT_THRESHOLDS) {
+        if (maxPct >= t) { crossed = t; break; }
+      }
+      if (crossed == null) continue; // under the lowest threshold — nothing to alert
+
+      let alertUserMap = root.alerts.get(userId);
+      if (!alertUserMap) { alertUserMap = new Map(); root.alerts.set(userId, alertUserMap); }
+      const prev = alertUserMap.get(slot);
+      const alreadyAlerted = !!prev && prev.month === thisMonth && prev.threshold >= crossed;
+      if (alreadyAlerted) continue;
+
+      alertUserMap.set(slot, { month: thisMonth, threshold: crossed });
+      fired.push({
+        userId,
+        slot,
+        threshold: crossed,
+        usdPct: usdPct == null ? null : Number(usdPct.toFixed(3)),
+        tokenPct: tokenPct == null ? null : Number(tokenPct.toFixed(3)),
+        spentUsd: Number(spentUsd.toFixed(4)),
+        spentTokens,
+        budget,
+      });
+    }
+  }
+  return { ok: true, fired };
 }

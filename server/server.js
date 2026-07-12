@@ -25995,6 +25995,21 @@ registerHeartbeat("news-compose-cycle", {
 import registerByoKeysMacros from "./domains/byo-keys.js";
 registerByoKeysMacros(register);
 
+// Wave 4 gap-closure — proactive spend alerts for BYO budgets
+// (docs/lens-specs/byo-keys-capability-map.md item #10). Sweeps every
+// user's monthly spend against their configured budget caps and
+// pushes a real in-app notification (via the existing social-layer
+// notification substrate) the first time a threshold is crossed —
+// see server/emergent/byo-budget-alert-cycle.js for the full design
+// note. Cross-user, process-global state (not per-world) -> scope
+// 'global'. Kill-switch: CONCORD_BYO_BUDGET_ALERTS=0.
+import { runByoBudgetAlertCycle } from "./emergent/byo-budget-alert-cycle.js";
+registerHeartbeat("byo-budget-alert-cycle", {
+  frequency: 20, // ~5 min
+  scope: "global",
+  handler: runByoBudgetAlertCycle,
+});
+
 // Sprint 10B+C — Expert mode (Perplexity-style cited answers) wired
 // to the BYO router + the revolving-door global-DTU pull. Free-tier
 // users automatically benefit from DTUs minted by paid-tier users;
