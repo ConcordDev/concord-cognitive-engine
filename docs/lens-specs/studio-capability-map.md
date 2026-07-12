@@ -293,14 +293,47 @@ mutate the host's shared project data. `CollabPanel`'s "Real-time
 collaboration" label is accurate for presence/cursor/log, not for shared
 editing — the label doesn't currently say so explicitly.
 
-**Disposition: ENGINEERING, deferred, not fixed this pass.** Making
+~~**Disposition: ENGINEERING, deferred, not fixed this pass.** Making
 `track-add`/`effect-add`/clip/marker/etc. macros collaborator-aware (check
 "does an active collab session for this `projectId` include me, and if so
 operate on the *host's* project map instead of my own") is a real,
 bounded backend change with no external data dependency — but it touches
 every one of the ~20 mutating parity macros, which is a larger unit than
 this pass's budget. Recorded here as a named gap per the "closing the hard
-20%" invariant rather than left implicit.
+20%" invariant rather than left implicit.~~
+
+**CLOSED (2026-07-12, pending commit).** Built the collaborator-aware
+resolver family in `server/domains/studio.js` (`resolveStudioProject`,
+`resolveOwnerBucketItem`, `resolveTrackOwner`, `resolveClipOwner`,
+`resolveNoteOwner`, `resolveLaneOwner`, plus two leniency-preserving
+`…OrSelf` fallbacks) and applied it to every mutating macro and the
+paired list/get reads that reference a project/track/clip/lane by id:
+`project-get`/`project-delete`, `track-add`/`-update`/`-delete`,
+`effect-add`/`-remove`, `clips-list`/`-create`/`-update`/`-delete`,
+`midi-notes-list`/`-add`/`-delete`, `automation-list`/`-add-lane`/
+`-add-point`/`-delete-lane`, `bounce`, `markers-list`/`-add`/`-delete`,
+`tempo-changes`/`-add`, `sends-list`/`-set`/`-delete`, `scenes-list`/
+`-create`/`-launch`, `clip-warp-set`/`-slice`/`-fade-set`, `drumrack-list`/
+`-create`/`-pad-assign`/`-delete`, `midi-map-list`/`-add`/`-delete`,
+`midi-quantize`/`groove-apply`, `record-config-get`/`-set`,
+`takes-list`/`-add`/`-comp-select`/`-delete`, `export-stems`, and
+`project-export`. A caller who holds an active `collab-join` seat for a
+projectId now reads/writes the **host's** real bucket (verified via the
+host's own `project-get`/`clips-list` — no separate "guest echo" copy);
+a caller who never joined (nor owns the project) still gets the same
+"not found" a stranger always got, in both directions — mutation AND
+lookup. `presets-*`/`fx-rack-*` were correctly left untouched (no
+`projectId` on those items — personal libraries, per the same rationale
+`03ff59a5` used for the collab-edit logging closure below).
+New regression tests: `server/tests/depth/studio-behavior.test.js`
+("studio EXTEND — collaborator-aware write access") reproduces the exact
+repro trace above end-to-end against a live server boot and proves the
+inverse (guest's `track-add`/`clips-create`/`markers-add` land on the
+host's project, the guest's own `project-list` stays empty, a stranger's
+attempt fails cleanly before AND after a legitimate guest has joined, and
+write access is revoked on `collab-leave`); `server/tests/
+studio-domain-parity.test.js` ("studio collab-join write-scoping") pins
+the same contract against the lighter in-process harness.
 
 ## Cross-check of the remaining ~21 mounted components
 
@@ -349,12 +382,14 @@ hunting elsewhere).
 
 Triaged per the "closing the hard 20%" invariant:
 
-- **ENGINEERING, medium — collaborator write access.** See the dedicated
+- ~~**ENGINEERING, medium — collaborator write access.** See the dedicated
   section above. No external data dependency; needs every mutating
   `studio.*` macro to check active-collab-session membership and, when
   present, operate on the host's project map. Scoped out of this pass as
   larger than the unit; the finding + reproduction is recorded so it isn't
-  silently left to look complete.
+  silently left to look complete.~~ **CLOSED (2026-07-12, pending commit)**
+  — see the dedicated section above for the full fix (resolver family +
+  every mutating macro + paired reads + regression tests).
 - **ENGINEERING, small — `collab-edit` logging isn't on every mutation.**
   Wired for track-add/effect-add/effect-remove/clip create/delete/update
   (§4); the other ~13 parity panels' mutations (markers, tempo, sends,

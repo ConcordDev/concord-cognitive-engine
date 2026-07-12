@@ -484,6 +484,87 @@ describe("studio.collab-* (real-time collaboration)", () => {
   });
 });
 
+// Regression for the documented studio-capability-map.md repro: a joined
+// guest's mutating macro calls used to scope to the GUEST's own (empty)
+// project map, so `track-add` silently succeeded against nothing while the
+// host's real shared project never changed. These macros now resolve to
+// the HOST's project when the caller holds an active collab-join seat for
+// it, and still refuse a caller who never joined.
+describe("studio collab-join write-scoping (collaborator-aware mutations)", () => {
+  const ctxStranger = { actor: { userId: "stranger" }, userId: "stranger" };
+
+  it("BEFORE join: track-add from a non-collaborator fails and touches nothing", () => {
+    const proj = call("project-create", ctxA, { name: "Shared" });
+    const projectId = proj.result.project.id;
+    call("collab-session-start", ctxA, { projectId });
+    const bad = call("track-add", ctxB, { projectId, kind: "audio", name: "Ghost" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "project not found");
+    assert.equal(call("project-get", ctxA, { id: projectId }).result.project.tracks.length, 0);
+  });
+
+  it("AFTER join: guest's track-add lands on the host's real project; guest's own project list stays empty", () => {
+    const proj = call("project-create", ctxA, { name: "Shared2" });
+    const projectId = proj.result.project.id;
+    call("collab-session-start", ctxA, { projectId });
+    assert.equal(call("collab-join", ctxB, { projectId }).ok, true);
+
+    const add = call("track-add", ctxB, { projectId, kind: "midi", name: "Guest Lead" });
+    assert.equal(add.ok, true);
+    const trackId = add.result.track.id;
+
+    // Host sees the guest's track on THEIR OWN project.
+    const hostProject = call("project-get", ctxA, { id: projectId });
+    assert.equal(hostProject.result.project.tracks.length, 1);
+    assert.equal(hostProject.result.project.tracks[0].id, trackId);
+
+    // No phantom project was created for the guest.
+    assert.equal(call("project-list", ctxB, {}).result.projects.length, 0);
+
+    // Effects, clips, and markers also route to the host's shared bucket.
+    const effect = call("effect-add", ctxB, { projectId, trackId, kind: "reverb" });
+    assert.equal(effect.ok, true);
+    assert.equal(call("project-get", ctxA, { id: projectId }).result.project.tracks[0].effects.length, 1);
+
+    const clip = call("clips-create", ctxB, { projectId, trackId, name: "Guest clip" });
+    assert.equal(clip.ok, true);
+    assert.equal(call("clips-list", ctxA, { projectId }).result.clips.length, 1);
+
+    const marker = call("markers-add", ctxB, { projectId, name: "Guest marker", timeBeats: 4 });
+    assert.equal(marker.ok, true);
+    assert.equal(call("markers-list", ctxA, { projectId }).result.markers.length, 1);
+  });
+
+  it("a stranger (never joined, never owned) cannot mutate the shared project either direction", () => {
+    const proj = call("project-create", ctxA, { name: "Shared3" });
+    const projectId = proj.result.project.id;
+    call("collab-session-start", ctxA, { projectId });
+    call("collab-join", ctxB, { projectId }); // a legitimate collaborator exists
+
+    const bad = call("track-add", ctxStranger, { projectId, kind: "audio", name: "Intruder" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "project not found");
+    assert.equal(call("project-get", ctxA, { id: projectId }).result.project.tracks.length, 0);
+
+    // Nor can the stranger read the host's clip/marker buckets through the
+    // collaborator-aware list paths — they fall back to their OWN (empty)
+    // bucket since they hold no membership.
+    assert.equal(call("clips-list", ctxStranger, { projectId }).result.clips.length, 0);
+  });
+
+  it("leaving the session revokes write access", () => {
+    const proj = call("project-create", ctxA, { name: "Shared4" });
+    const projectId = proj.result.project.id;
+    call("collab-session-start", ctxA, { projectId });
+    call("collab-join", ctxB, { projectId });
+    assert.equal(call("track-add", ctxB, { projectId, kind: "audio" }).ok, true);
+    call("collab-leave", ctxB, { projectId });
+    const after = call("track-add", ctxB, { projectId, kind: "audio", name: "Post-leave" });
+    assert.equal(after.ok, false);
+    assert.equal(after.error, "project not found");
+  });
+});
+
 describe("studio.dashboard-summary", () => {
   it("aggregates projects + clips + renders + presets", async () => {
     const ctxC = { actor: { userId: "user_dash_stu" }, userId: "user_dash_stu" };

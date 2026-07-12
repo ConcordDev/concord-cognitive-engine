@@ -242,21 +242,19 @@ export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "project-get", (ctx, _artifact, params = {}) => {
     const s = getStudioState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const map = s.projects.get(userId);
-    if (!map || !map.has(id)) return { ok: false, error: "not found" };
-    return { ok: true, result: { project: map.get(id) } };
+    const resolved = resolveStudioProject(s, ctx, id);
+    if (!resolved.ok) return { ok: false, error: "not found" };
+    return { ok: true, result: { project: resolved.project } };
   });
 
   registerLensAction("studio", "project-delete", (ctx, _artifact, params = {}) => {
     const s = getStudioState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const map = s.projects.get(userId);
-    if (!map || !map.has(id)) return { ok: false, error: "not found" };
-    map.delete(id);
+    const resolved = resolveStudioProject(s, ctx, id);
+    if (!resolved.ok) return { ok: false, error: "not found" };
+    s.projects.get(resolved.ownerUserId).delete(id);
     saveStudioState();
     return { ok: true, result: { deleted: id } };
   });
@@ -266,10 +264,10 @@ export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "track-add", (ctx, _artifact, params = {}) => {
     const s = getStudioState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
-    const project = s.projects.get(userId)?.get(projectId);
-    if (!project) return { ok: false, error: "project not found" };
+    const resolved = resolveStudioProject(s, ctx, projectId);
+    if (!resolved.ok) return { ok: false, error: "project not found" };
+    const project = resolved.project;
     const kind = ["audio", "midi", "drum", "synth", "sample"].includes(params.kind) ? params.kind : "audio";
     const name = String(params.name || `Track ${project.tracks.length + 1}`).slice(0, 60);
     const track = {
@@ -292,11 +290,11 @@ export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "track-update", (ctx, _artifact, params = {}) => {
     const s = getStudioState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const trackId = String(params.trackId || "");
-    const project = s.projects.get(userId)?.get(projectId);
-    if (!project) return { ok: false, error: "project not found" };
+    const resolved = resolveStudioProject(s, ctx, projectId);
+    if (!resolved.ok) return { ok: false, error: "project not found" };
+    const project = resolved.project;
     const track = project.tracks.find((t) => t.id === trackId);
     if (!track) return { ok: false, error: "track not found" };
     if (typeof params.volume === "number") {
@@ -318,11 +316,11 @@ export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "track-delete", (ctx, _artifact, params = {}) => {
     const s = getStudioState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const trackId = String(params.trackId || "");
-    const project = s.projects.get(userId)?.get(projectId);
-    if (!project) return { ok: false, error: "project not found" };
+    const resolved = resolveStudioProject(s, ctx, projectId);
+    if (!resolved.ok) return { ok: false, error: "project not found" };
+    const project = resolved.project;
     const idx = project.tracks.findIndex((t) => t.id === trackId);
     if (idx < 0) return { ok: false, error: "track not found" };
     project.tracks.splice(idx, 1);
@@ -336,9 +334,9 @@ export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "effect-add", (ctx, _artifact, params = {}) => {
     const s = getStudioState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
-    const project = s.projects.get(userId)?.get(String(params.projectId || ""));
-    if (!project) return { ok: false, error: "project not found" };
+    const resolved = resolveStudioProject(s, ctx, String(params.projectId || ""));
+    if (!resolved.ok) return { ok: false, error: "project not found" };
+    const project = resolved.project;
     const track = project.tracks.find((t) => t.id === String(params.trackId || ""));
     if (!track) return { ok: false, error: "track not found" };
     const kind = ["delay", "reverb", "eq3", "compressor", "distortion"].includes(params.kind) ? params.kind : null;
@@ -365,9 +363,9 @@ export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "effect-remove", (ctx, _artifact, params = {}) => {
     const s = getStudioState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
-    const project = s.projects.get(userId)?.get(String(params.projectId || ""));
-    if (!project) return { ok: false, error: "project not found" };
+    const resolved = resolveStudioProject(s, ctx, String(params.projectId || ""));
+    if (!resolved.ok) return { ok: false, error: "project not found" };
+    const project = resolved.project;
     const track = project.tracks.find((t) => t.id === String(params.trackId || ""));
     if (!track) return { ok: false, error: "track not found" };
     const idx = track.effects.findIndex((e) => e.id === String(params.effectId || ""));
@@ -386,10 +384,197 @@ export default function registerStudioActions(registerLensAction) {
     if (!state[key].has(userId)) state[key].set(userId, []);
     return state[key].get(userId);
   }
-  function findTrack(state, userId, projectId, trackId) {
-    const project = state.projects.get(userId)?.get(projectId);
-    if (!project) return null;
-    return project.tracks.find(t => t.id === trackId) || null;
+  // ── Collaborator-aware project/asset resolution ───────────────────
+  //
+  // `collab-join` lets a second user seat themselves on another user's
+  // project session with no ownership check (a Figma/Google-Docs
+  // share-by-link model, by design). But every mutating macro below used
+  // to look its target up as `s.projects.get(studioActor(ctx))` — the
+  // CALLER's own project map — so a joined guest's edits silently landed
+  // nowhere (their own map has no such project) while the host's shared
+  // project never changed. These helpers centralise "who actually owns
+  // the canonical data for this projectId / trackId / clipId, and does
+  // the caller have legitimate access to it (owns it outright, or holds
+  // an active collab seat for the project that owns it)?" so every
+  // mutating macro reads/writes the same place a fellow collaborator's
+  // `project-get` would show. A caller who neither owns the target nor
+  // holds an active collab seat for it gets the same "not found" a
+  // stranger always got — joining is required, not optional, to gain
+  // write access.
+
+  // Every active collab session the caller currently belongs to (as
+  // host or as a joined collaborator), as {projectId, hostUserId}
+  // pairs. This is the authorization boundary: only sessions the caller
+  // is an actual member of are considered, so a caller who never called
+  // collab-join for a project gets nothing back for it.
+  function collabMembershipsFor(state, userId) {
+    if (!state.collab) return [];
+    const out = [];
+    for (const session of state.collab.values()) {
+      if (session.collaborators.some(c => c.userId === userId)) {
+        out.push({ projectId: session.projectId, hostUserId: session.hostUserId });
+      }
+    }
+    return out;
+  }
+
+  // Resolve { ownerUserId, project } for a projectId the caller supplied
+  // directly. Tries the caller's own project map first (the common,
+  // non-collab case, and the host's own calls), then falls back to an
+  // active collab session the caller has actually joined for that exact
+  // projectId.
+  function resolveStudioProject(state, ctx, projectId) {
+    const userId = studioActor(ctx);
+    const pid = String(projectId || "");
+    if (!pid) return { ok: false, error: "projectId required" };
+    const own = state.projects.get(userId)?.get(pid);
+    if (own) return { ok: true, userId, ownerUserId: userId, project: own };
+    const session = state.collab?.get(pid);
+    if (session && session.collaborators.some(c => c.userId === userId)) {
+      const hostProject = state.projects.get(session.hostUserId)?.get(pid);
+      if (hostProject) return { ok: true, userId, ownerUserId: session.hostUserId, project: hostProject };
+    }
+    return { ok: false, userId, error: "project not found" };
+  }
+
+  // Resolve { ownerUserId, list, item } for an item living in a
+  // per-owner bucket where every item carries its own `.projectId`
+  // (clips, markers, sends, scenes, drumRacks, midiMaps, tempoChanges,
+  // takes, recordConfigs). Searches the caller's own bucket first; if
+  // not found there, searches the bucket of every host whose project the
+  // caller has actively joined — and only accepts a match whose
+  // `.projectId` equals THAT joined session's project, which closes the
+  // hole where a guest could otherwise reach a host's *other*, unshared
+  // project's items just because they happen to live in the same
+  // per-owner bucket.
+  function resolveOwnerBucketItem(state, ctx, bucketKey, itemId, matchFn) {
+    const userId = studioActor(ctx);
+    const test = matchFn || (it => it.id === itemId);
+    const ownList = ensureStuBucket(state, bucketKey, userId);
+    const ownItem = ownList.find(test);
+    if (ownItem) return { ok: true, userId, ownerUserId: userId, list: ownList, item: ownItem };
+    for (const { projectId, hostUserId } of collabMembershipsFor(state, userId)) {
+      if (hostUserId === userId) continue; // already checked the caller's own bucket
+      const hostList = ensureStuBucket(state, bucketKey, hostUserId);
+      const hostItem = hostList.find(it => test(it) && it.projectId === projectId);
+      if (hostItem) return { ok: true, userId, ownerUserId: hostUserId, list: hostList, item: hostItem };
+    }
+    return { ok: false, userId, error: "not found" };
+  }
+
+  // Resolve the owning project for a trackId. Tracks have no bucket of
+  // their own — they live inside `project.tracks` — so this walks every
+  // project the caller owns, then every project the caller has actively
+  // joined via collab.
+  function resolveTrackOwner(state, ctx, trackId) {
+    const userId = studioActor(ctx);
+    const ownMap = state.projects.get(userId);
+    if (ownMap) {
+      for (const project of ownMap.values()) {
+        const track = project.tracks.find(t => t.id === trackId);
+        if (track) return { ok: true, userId, ownerUserId: userId, projectId: project.id, project, track };
+      }
+    }
+    for (const { projectId, hostUserId } of collabMembershipsFor(state, userId)) {
+      if (hostUserId === userId) continue;
+      const project = state.projects.get(hostUserId)?.get(projectId);
+      const track = project?.tracks.find(t => t.id === trackId);
+      if (track) return { ok: true, userId, ownerUserId: hostUserId, projectId, project, track };
+    }
+    return { ok: false, userId, error: "track not found" };
+  }
+
+  // Resolve the owning clip (and therefore owner userId) for a clipId.
+  // Clips already carry `.projectId`, so this is just the generic
+  // bucket-item resolver specialised to "clips".
+  function resolveClipOwner(state, ctx, clipId) {
+    return resolveOwnerBucketItem(state, ctx, "clips", clipId);
+  }
+
+  // Resolve the owning MIDI-notes bucket for a clipId (used by
+  // midi-notes-add / midi-quantize / groove-apply, which only ever
+  // receive a clipId, never a projectId or note id).
+  function resolveNotesBucketForClip(state, ctx, clipId) {
+    const clip = resolveClipOwner(state, ctx, clipId);
+    if (!clip.ok) return { ok: false, userId: clip.userId, error: "clip not found" };
+    return {
+      ok: true,
+      userId: clip.userId,
+      ownerUserId: clip.ownerUserId,
+      clip: clip.item,
+      notes: ensureStuBucket(state, "midiNotes", clip.ownerUserId),
+    };
+  }
+
+  // Resolve the owning bucket entry for a MIDI note id. Notes only carry
+  // `.clipId`, not `.projectId`, so this is a two-hop resolve: find the
+  // note in a reachable midiNotes bucket, then confirm its parent clip is
+  // itself reachable (own, or reachable via an active collab session for
+  // that exact project) before trusting the result.
+  function resolveNoteOwner(state, ctx, noteId) {
+    const userId = studioActor(ctx);
+    const ownList = ensureStuBucket(state, "midiNotes", userId);
+    const ownNote = ownList.find(n => n.id === noteId);
+    if (ownNote) return { ok: true, userId, ownerUserId: userId, list: ownList, item: ownNote };
+    for (const { projectId, hostUserId } of collabMembershipsFor(state, userId)) {
+      if (hostUserId === userId) continue;
+      const hostList = ensureStuBucket(state, "midiNotes", hostUserId);
+      const hostNote = hostList.find(n => n.id === noteId);
+      if (!hostNote) continue;
+      const clip = ensureStuBucket(state, "clips", hostUserId).find(c => c.id === hostNote.clipId);
+      if (clip && clip.projectId === projectId) return { ok: true, userId, ownerUserId: hostUserId, list: hostList, item: hostNote };
+    }
+    return { ok: false, userId, error: "note not found" };
+  }
+
+  // A handful of creation macros (markers-add, tempo-add, sends-set,
+  // scenes-create, drumrack-create, midi-map-add, takes-add,
+  // record-config-get/set, automation-add-lane, midi-notes-add) never
+  // verified their projectId/trackId/clipId actually existed before this
+  // fix — they trusted the opaque id string and always wrote into the
+  // caller's own bucket. These two helpers preserve that exact leniency
+  // for an unresolved id (still succeeds, still writes into the
+  // caller's own bucket, byte-identical to the old behaviour) while
+  // routing a *resolvable* id — the caller's own project/track, or one
+  // they hold an active collab seat for — to its real owner's bucket.
+  function resolveStudioProjectOwnerOrSelf(state, ctx, projectId) {
+    const userId = studioActor(ctx);
+    const resolved = resolveStudioProject(state, ctx, projectId);
+    return resolved.ok ? resolved.ownerUserId : userId;
+  }
+  function resolveTrackOwnerOrSelf(state, ctx, trackId) {
+    const userId = studioActor(ctx);
+    const resolved = resolveTrackOwner(state, ctx, trackId);
+    return resolved.ok ? resolved.ownerUserId : userId;
+  }
+  // midi-notes-add never verified the clip existed either — same
+  // leniency-preserving fallback, specialised to return the resolved
+  // midiNotes bucket directly (callers push straight into it).
+  function resolveNotesBucketForClipOrSelf(state, ctx, clipId) {
+    const userId = studioActor(ctx);
+    const resolved = resolveClipOwner(state, ctx, clipId);
+    const ownerUserId = resolved.ok ? resolved.ownerUserId : userId;
+    return { ownerUserId, notes: ensureStuBucket(state, "midiNotes", ownerUserId) };
+  }
+
+  // Resolve the owning automation-lane bucket entry for a laneId. Lanes
+  // carry `.trackId`, not `.projectId`, so authorization for a
+  // not-my-own lane is confirmed via resolveTrackOwner-style project
+  // membership rather than a direct projectId match.
+  function resolveLaneOwner(state, ctx, laneId) {
+    const userId = studioActor(ctx);
+    const ownList = ensureStuBucket(state, "automation", userId);
+    const ownLane = ownList.find(l => l.id === laneId);
+    if (ownLane) return { ok: true, userId, ownerUserId: userId, list: ownList, item: ownLane };
+    for (const { projectId, hostUserId } of collabMembershipsFor(state, userId)) {
+      if (hostUserId === userId) continue;
+      const hostList = ensureStuBucket(state, "automation", hostUserId);
+      const hostLane = hostList.find(l => l.id === laneId);
+      if (!hostLane) continue;
+      const track = state.projects.get(hostUserId)?.get(projectId)?.tracks.find(t => t.id === hostLane.trackId);
+      if (track) return { ok: true, userId, ownerUserId: hostUserId, list: hostList, item: hostLane };
+    }
+    return { ok: false, userId, error: "lane not found" };
   }
 
   // ── Clips (regions on the timeline) ───────────────────────────
@@ -399,20 +584,23 @@ export default function registerStudioActions(registerLensAction) {
     const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const trackId = params.trackId ? String(params.trackId) : null;
-    const all = ensureStuBucket(s, "clips", userId);
+    const resolved = resolveStudioProject(s, ctx, projectId);
+    const bucketOwner = resolved.ok ? resolved.ownerUserId : userId;
+    const all = ensureStuBucket(s, "clips", bucketOwner);
     const clips = all.filter(c => c.projectId === projectId && (!trackId || c.trackId === trackId));
     return { ok: true, result: { clips } };
   });
 
   registerLensAction("studio", "clips-create", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const trackId = String(params.trackId || "");
     const startBeats = Math.max(0, Number(params.startBeats) || 0);
     const lengthBeats = Math.max(0.0625, Number(params.lengthBeats) || 4);
     if (!projectId || !trackId) return { ok: false, error: "projectId and trackId required" };
-    const track = findTrack(s, userId, projectId, trackId);
+    const resolved = resolveStudioProject(s, ctx, projectId);
+    if (!resolved.ok) return { ok: false, error: "project not found" };
+    const track = resolved.project.tracks.find(t => t.id === trackId);
     if (!track) return { ok: false, error: "track not found" };
     const clip = {
       id: uidStu("clip"), projectId, trackId,
@@ -429,17 +617,17 @@ export default function registerStudioActions(registerLensAction) {
       tempoLeader: false,
       createdAt: new Date().toISOString(),
     };
-    ensureStuBucket(s, "clips", userId).push(clip);
+    ensureStuBucket(s, "clips", resolved.ownerUserId).push(clip);
     saveStudioState();
     return { ok: true, result: { clip } };
   });
 
   registerLensAction("studio", "clips-update", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const clip = ensureStuBucket(s, "clips", userId).find(c => c.id === id);
-    if (!clip) return { ok: false, error: "clip not found" };
+    const resolved = resolveOwnerBucketItem(s, ctx, "clips", id);
+    if (!resolved.ok) return { ok: false, error: "clip not found" };
+    const clip = resolved.item;
     if (params.name != null) clip.name = String(params.name);
     if (params.startBeats != null) clip.startBeats = Math.max(0, Number(params.startBeats));
     if (params.lengthBeats != null) clip.lengthBeats = Math.max(0.0625, Number(params.lengthBeats));
@@ -452,14 +640,12 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "clips-delete", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const list = ensureStuBucket(s, "clips", userId);
-    const idx = list.findIndex(c => c.id === id);
-    if (idx < 0) return { ok: false, error: "clip not found" };
-    list.splice(idx, 1);
-    // also remove its MIDI notes
-    const notes = ensureStuBucket(s, "midiNotes", userId);
+    const resolved = resolveOwnerBucketItem(s, ctx, "clips", id);
+    if (!resolved.ok) return { ok: false, error: "clip not found" };
+    resolved.list.splice(resolved.list.indexOf(resolved.item), 1);
+    // also remove its MIDI notes (same owner bucket as the clip itself)
+    const notes = ensureStuBucket(s, "midiNotes", resolved.ownerUserId);
     for (let i = notes.length - 1; i >= 0; i--) if (notes[i].clipId === id) notes.splice(i, 1);
     saveStudioState();
     return { ok: true, result: { id, deleted: true } };
@@ -472,36 +658,35 @@ export default function registerStudioActions(registerLensAction) {
     const userId = studioActor(ctx);
     const clipId = String(params.clipId || "");
     if (!clipId) return { ok: false, error: "clipId required" };
-    const all = ensureStuBucket(s, "midiNotes", userId);
+    const resolved = resolveNotesBucketForClip(s, ctx, clipId);
+    const all = resolved.ok ? resolved.notes : ensureStuBucket(s, "midiNotes", userId);
     const notes = all.filter(n => n.clipId === clipId);
     return { ok: true, result: { notes } };
   });
 
   registerLensAction("studio", "midi-notes-add", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const clipId = String(params.clipId || "");
     const pitch = Math.max(0, Math.min(127, Number(params.pitch)));
     const velocity = Math.max(1, Math.min(127, Number(params.velocity) || 96));
     const startBeats = Math.max(0, Number(params.startBeats) || 0);
     const lengthBeats = Math.max(0.0625, Number(params.lengthBeats) || 0.25);
     if (!clipId || !Number.isFinite(pitch)) return { ok: false, error: "clipId and pitch 0-127 required" };
+    const resolved = resolveNotesBucketForClipOrSelf(s, ctx, clipId);
     const note = {
       id: uidStu("note"), clipId, pitch, velocity, startBeats, lengthBeats,
     };
-    ensureStuBucket(s, "midiNotes", userId).push(note);
+    resolved.notes.push(note);
     saveStudioState();
     return { ok: true, result: { note } };
   });
 
   registerLensAction("studio", "midi-notes-delete", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const list = ensureStuBucket(s, "midiNotes", userId);
-    const idx = list.findIndex(n => n.id === id);
-    if (idx < 0) return { ok: false, error: "note not found" };
-    list.splice(idx, 1);
+    const resolved = resolveNoteOwner(s, ctx, id);
+    if (!resolved.ok) return { ok: false, error: "note not found" };
+    resolved.list.splice(resolved.list.indexOf(resolved.item), 1);
     saveStudioState();
     return { ok: true, result: { id, deleted: true } };
   });
@@ -513,14 +698,14 @@ export default function registerStudioActions(registerLensAction) {
     const userId = studioActor(ctx);
     const trackId = String(params.trackId || "");
     if (!trackId) return { ok: false, error: "trackId required" };
-    const all = ensureStuBucket(s, "automation", userId);
+    const resolvedTrack = resolveTrackOwner(s, ctx, trackId);
+    const all = ensureStuBucket(s, "automation", resolvedTrack.ok ? resolvedTrack.ownerUserId : userId);
     const lanes = all.filter(l => l.trackId === trackId);
     return { ok: true, result: { lanes } };
   });
 
   registerLensAction("studio", "automation-add-lane", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const trackId = String(params.trackId || "");
     const parameter = String(params.parameter || "").trim();
     if (!trackId || !parameter) return { ok: false, error: "trackId and parameter required" };
@@ -530,20 +715,20 @@ export default function registerStudioActions(registerLensAction) {
       visible: true,
       createdAt: new Date().toISOString(),
     };
-    ensureStuBucket(s, "automation", userId).push(lane);
+    ensureStuBucket(s, "automation", resolveTrackOwnerOrSelf(s, ctx, trackId)).push(lane);
     saveStudioState();
     return { ok: true, result: { lane } };
   });
 
   registerLensAction("studio", "automation-add-point", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const laneId = String(params.laneId || "");
     const timeBeats = Math.max(0, Number(params.timeBeats) || 0);
     const value = Number(params.value);
     if (!laneId || !Number.isFinite(value)) return { ok: false, error: "laneId and value required" };
-    const lane = ensureStuBucket(s, "automation", userId).find(l => l.id === laneId);
-    if (!lane) return { ok: false, error: "lane not found" };
+    const resolved = resolveLaneOwner(s, ctx, laneId);
+    if (!resolved.ok) return { ok: false, error: "lane not found" };
+    const lane = resolved.item;
     lane.points.push({ id: uidStu("pt"), timeBeats, value });
     lane.points.sort((a, b) => a.timeBeats - b.timeBeats);
     saveStudioState();
@@ -552,11 +737,11 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "automation-delete-lane", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const list = ensureStuBucket(s, "automation", userId);
-    const idx = list.findIndex(l => l.id === id);
-    if (idx < 0) return { ok: false, error: "lane not found" };
+    const resolved = resolveLaneOwner(s, ctx, id);
+    if (!resolved.ok) return { ok: false, error: "lane not found" };
+    const list = resolved.list;
+    const idx = list.indexOf(resolved.item);
     list.splice(idx, 1);
     saveStudioState();
     return { ok: true, result: { id, deleted: true } };
@@ -577,8 +762,9 @@ export default function registerStudioActions(registerLensAction) {
     const projectId = String(params.projectId || "");
     const trackId = params.trackId ? String(params.trackId) : null;
     if (!projectId) return { ok: false, error: "projectId required" };
-    const project = s.projects.get(userId)?.get(projectId);
-    if (!project) return { ok: false, error: "project not found" };
+    const resolvedProject = resolveStudioProject(s, ctx, projectId);
+    if (!resolvedProject.ok) return { ok: false, error: "project not found" };
+    const project = resolvedProject.project;
     const format = ["wav_24", "wav_32f", "aiff_24", "mp3_320", "flac"].includes(params.format) ? params.format : "wav_24";
     const sampleRate = [44100, 48000, 88200, 96000, 192000].includes(Number(params.sampleRate)) ? Number(params.sampleRate) : 48000;
     const stems = params.stems === true;
@@ -635,14 +821,14 @@ export default function registerStudioActions(registerLensAction) {
     const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     if (!projectId) return { ok: false, error: "projectId required" };
-    const all = ensureStuBucket(s, "markers", userId);
+    const resolved = resolveStudioProject(s, ctx, projectId);
+    const all = ensureStuBucket(s, "markers", resolved.ok ? resolved.ownerUserId : userId);
     const markers = all.filter(m => m.projectId === projectId).sort((a, b) => a.timeBeats - b.timeBeats);
     return { ok: true, result: { markers } };
   });
 
   registerLensAction("studio", "markers-add", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const name = String(params.name || "").trim();
     const timeBeats = Math.max(0, Number(params.timeBeats) || 0);
@@ -652,19 +838,17 @@ export default function registerStudioActions(registerLensAction) {
       colour: String(params.colour || "#fbbf24"),
       kind: ["section", "cue", "loop_start", "loop_end"].includes(params.kind) ? params.kind : "section",
     };
-    ensureStuBucket(s, "markers", userId).push(marker);
+    ensureStuBucket(s, "markers", resolveStudioProjectOwnerOrSelf(s, ctx, projectId)).push(marker);
     saveStudioState();
     return { ok: true, result: { marker } };
   });
 
   registerLensAction("studio", "markers-delete", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const list = ensureStuBucket(s, "markers", userId);
-    const idx = list.findIndex(m => m.id === id);
-    if (idx < 0) return { ok: false, error: "marker not found" };
-    list.splice(idx, 1);
+    const resolved = resolveOwnerBucketItem(s, ctx, "markers", id);
+    if (!resolved.ok) return { ok: false, error: "marker not found" };
+    resolved.list.splice(resolved.list.indexOf(resolved.item), 1);
     saveStudioState();
     return { ok: true, result: { id, deleted: true } };
   });
@@ -673,17 +857,15 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "tempo-changes", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     if (!projectId) return { ok: false, error: "projectId required" };
-    const all = ensureStuBucket(s, "tempoChanges", userId);
+    const all = ensureStuBucket(s, "tempoChanges", resolveStudioProjectOwnerOrSelf(s, ctx, projectId));
     const changes = all.filter(t => t.projectId === projectId).sort((a, b) => a.atBeats - b.atBeats);
     return { ok: true, result: { changes } };
   });
 
   registerLensAction("studio", "tempo-add", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const bpm = Math.max(20, Math.min(999, Number(params.bpm) || 120));
     const atBeats = Math.max(0, Number(params.atBeats) || 0);
@@ -693,7 +875,7 @@ export default function registerStudioActions(registerLensAction) {
       timeSignatureNum: Math.max(1, Number(params.timeSignatureNum) || 4),
       timeSignatureDen: [1, 2, 4, 8, 16].includes(Number(params.timeSignatureDen)) ? Number(params.timeSignatureDen) : 4,
     };
-    ensureStuBucket(s, "tempoChanges", userId).push(change);
+    ensureStuBucket(s, "tempoChanges", resolveStudioProjectOwnerOrSelf(s, ctx, projectId)).push(change);
     saveStudioState();
     return { ok: true, result: { change } };
   });
@@ -743,23 +925,21 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "sends-list", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     if (!projectId) return { ok: false, error: "projectId required" };
-    const all = ensureStuBucket(s, "sends", userId);
+    const all = ensureStuBucket(s, "sends", resolveStudioProjectOwnerOrSelf(s, ctx, projectId));
     const sends = all.filter(s => s.projectId === projectId);
     return { ok: true, result: { sends } };
   });
 
   registerLensAction("studio", "sends-set", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const fromTrackId = String(params.fromTrackId || "");
     const toTrackId = String(params.toTrackId || "");
     const levelDb = Math.max(-Infinity, Math.min(12, Number(params.levelDb) || -Infinity));
     if (!projectId || !fromTrackId || !toTrackId) return { ok: false, error: "projectId, fromTrackId, toTrackId required" };
-    const all = ensureStuBucket(s, "sends", userId);
+    const all = ensureStuBucket(s, "sends", resolveStudioProjectOwnerOrSelf(s, ctx, projectId));
     const existing = all.find(s => s.projectId === projectId && s.fromTrackId === fromTrackId && s.toTrackId === toTrackId);
     if (existing) {
       existing.levelDb = levelDb;
@@ -775,12 +955,10 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "sends-delete", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const list = ensureStuBucket(s, "sends", userId);
-    const idx = list.findIndex(x => x.id === id);
-    if (idx < 0) return { ok: false, error: "send not found" };
-    list.splice(idx, 1);
+    const resolved = resolveOwnerBucketItem(s, ctx, "sends", id);
+    if (!resolved.ok) return { ok: false, error: "send not found" };
+    resolved.list.splice(resolved.list.indexOf(resolved.item), 1);
     saveStudioState();
     return { ok: true, result: { id, deleted: true } };
   });
@@ -789,21 +967,20 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "scenes-list", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     if (!projectId) return { ok: false, error: "projectId required" };
-    const all = ensureStuBucket(s, "scenes", userId);
+    const all = ensureStuBucket(s, "scenes", resolveStudioProjectOwnerOrSelf(s, ctx, projectId));
     const scenes = all.filter(sc => sc.projectId === projectId).sort((a, b) => a.order - b.order);
     return { ok: true, result: { scenes } };
   });
 
   registerLensAction("studio", "scenes-create", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const name = String(params.name || "").trim();
     if (!projectId || !name) return { ok: false, error: "projectId and name required" };
-    const all = ensureStuBucket(s, "scenes", userId).filter(sc => sc.projectId === projectId);
+    const ownerUserId = resolveStudioProjectOwnerOrSelf(s, ctx, projectId);
+    const all = ensureStuBucket(s, "scenes", ownerUserId).filter(sc => sc.projectId === projectId);
     const scene = {
       id: uidStu("scn"), projectId, name,
       order: all.length,
@@ -812,20 +989,21 @@ export default function registerStudioActions(registerLensAction) {
       launchedAt: null,
       createdAt: new Date().toISOString(),
     };
-    ensureStuBucket(s, "scenes", userId).push(scene);
+    ensureStuBucket(s, "scenes", ownerUserId).push(scene);
     saveStudioState();
     return { ok: true, result: { scene } };
   });
 
   registerLensAction("studio", "scenes-launch", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const scene = ensureStuBucket(s, "scenes", userId).find(sc => sc.id === id);
-    if (!scene) return { ok: false, error: "scene not found" };
+    const resolved = resolveOwnerBucketItem(s, ctx, "scenes", id);
+    if (!resolved.ok) return { ok: false, error: "scene not found" };
+    const scene = resolved.item;
     scene.launchedAt = new Date().toISOString();
-    // Find clips that belong to this scene and unmute; mute others on those tracks
-    const clips = ensureStuBucket(s, "clips", userId).filter(c => c.projectId === scene.projectId);
+    // Find clips that belong to this scene and unmute; mute others on those
+    // tracks — same owner bucket as the scene itself.
+    const clips = ensureStuBucket(s, "clips", resolved.ownerUserId).filter(c => c.projectId === scene.projectId);
     const clipsInScene = clips.filter(c => c.sceneId === id);
     const tracksInScene = new Set(clipsInScene.map(c => c.trackId));
     for (const clip of clips) {
@@ -847,10 +1025,10 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "clip-warp-set", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const clipId = String(params.clipId || "");
-    const clip = ensureStuBucket(s, "clips", userId).find(c => c.id === clipId);
-    if (!clip) return { ok: false, error: "clip not found" };
+    const resolved = resolveOwnerBucketItem(s, ctx, "clips", clipId);
+    if (!resolved.ok) return { ok: false, error: "clip not found" };
+    const clip = resolved.item;
     const markers = Array.isArray(params.warpMarkers) ? params.warpMarkers : [];
     clip.warpMarkers = markers
       .map(m => ({
@@ -869,11 +1047,11 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "clip-slice", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const clipId = String(params.clipId || "");
-    const list = ensureStuBucket(s, "clips", userId);
-    const clip = list.find(c => c.id === clipId);
-    if (!clip) return { ok: false, error: "clip not found" };
+    const resolved = resolveOwnerBucketItem(s, ctx, "clips", clipId);
+    if (!resolved.ok) return { ok: false, error: "clip not found" };
+    const list = resolved.list;
+    const clip = resolved.item;
     const at = Number(params.atBeats);
     if (!Number.isFinite(at) || at <= clip.startBeats || at >= clip.startBeats + clip.lengthBeats) {
       return { ok: false, error: "atBeats must fall inside the clip" };
@@ -900,10 +1078,10 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "clip-fade-set", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const clipId = String(params.clipId || "");
-    const clip = ensureStuBucket(s, "clips", userId).find(c => c.id === clipId);
-    if (!clip) return { ok: false, error: "clip not found" };
+    const resolved = resolveOwnerBucketItem(s, ctx, "clips", clipId);
+    if (!resolved.ok) return { ok: false, error: "clip not found" };
+    const clip = resolved.item;
     const cap = clip.lengthBeats;
     if (params.fadeInBeats != null) clip.fadeInBeats = Math.max(0, Math.min(cap, Number(params.fadeInBeats) || 0));
     if (params.fadeOutBeats != null) clip.fadeOutBeats = Math.max(0, Math.min(cap, Number(params.fadeOutBeats) || 0));
@@ -921,14 +1099,17 @@ export default function registerStudioActions(registerLensAction) {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
     const projectId = params.projectId ? String(params.projectId) : null;
-    const racks = ensureStuBucket(s, "drumRacks", userId)
+    // No projectId scopes to the caller's OWN racks across all their
+    // projects (unchanged) — a joined guest's shared racks only surface
+    // when they filter by the specific shared projectId.
+    const bucketOwner = projectId ? resolveStudioProjectOwnerOrSelf(s, ctx, projectId) : userId;
+    const racks = ensureStuBucket(s, "drumRacks", bucketOwner)
       .filter(r => !projectId || r.projectId === projectId);
     return { ok: true, result: { racks } };
   });
 
   registerLensAction("studio", "drumrack-create", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const name = String(params.name || "").trim();
     if (!projectId || !name) return { ok: false, error: "projectId and name required" };
@@ -953,17 +1134,17 @@ export default function registerStudioActions(registerLensAction) {
       })),
       createdAt: new Date().toISOString(),
     };
-    ensureStuBucket(s, "drumRacks", userId).push(rack);
+    ensureStuBucket(s, "drumRacks", resolveStudioProjectOwnerOrSelf(s, ctx, projectId)).push(rack);
     saveStudioState();
     return { ok: true, result: { rack } };
   });
 
   registerLensAction("studio", "drumrack-pad-assign", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const rackId = String(params.rackId || "");
-    const rack = ensureStuBucket(s, "drumRacks", userId).find(r => r.id === rackId);
-    if (!rack) return { ok: false, error: "rack not found" };
+    const resolved = resolveOwnerBucketItem(s, ctx, "drumRacks", rackId);
+    if (!resolved.ok) return { ok: false, error: "rack not found" };
+    const rack = resolved.item;
     const idx = Number(params.padIndex);
     const pad = rack.pads[idx];
     if (!pad) return { ok: false, error: "pad index out of range" };
@@ -987,12 +1168,10 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "drumrack-delete", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const list = ensureStuBucket(s, "drumRacks", userId);
-    const idx = list.findIndex(r => r.id === id);
-    if (idx < 0) return { ok: false, error: "rack not found" };
-    list.splice(idx, 1);
+    const resolved = resolveOwnerBucketItem(s, ctx, "drumRacks", id);
+    if (!resolved.ok) return { ok: false, error: "rack not found" };
+    resolved.list.splice(resolved.list.indexOf(resolved.item), 1);
     saveStudioState();
     return { ok: true, result: { id, deleted: true } };
   });
@@ -1060,14 +1239,14 @@ export default function registerStudioActions(registerLensAction) {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
     const projectId = params.projectId ? String(params.projectId) : null;
-    const maps = ensureStuBucket(s, "midiMaps", userId)
+    const bucketOwner = projectId ? resolveStudioProjectOwnerOrSelf(s, ctx, projectId) : userId;
+    const maps = ensureStuBucket(s, "midiMaps", bucketOwner)
       .filter(m => !projectId || m.projectId === projectId);
     return { ok: true, result: { maps } };
   });
 
   registerLensAction("studio", "midi-map-add", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const target = String(params.target || "").trim();
     if (!projectId || !target) return { ok: false, error: "projectId and target required" };
@@ -1082,19 +1261,18 @@ export default function registerStudioActions(registerLensAction) {
       deviceName: params.deviceName ? String(params.deviceName) : "any",
       createdAt: new Date().toISOString(),
     };
-    ensureStuBucket(s, "midiMaps", userId).push(map);
+    ensureStuBucket(s, "midiMaps", resolveStudioProjectOwnerOrSelf(s, ctx, projectId)).push(map);
     saveStudioState();
     return { ok: true, result: { map } };
   });
 
   registerLensAction("studio", "midi-map-delete", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const list = ensureStuBucket(s, "midiMaps", userId);
-    const idx = list.findIndex(m => m.id === id);
-    if (idx < 0) return { ok: false, error: "map not found" };
-    list.splice(idx, 1);
+    const resolved = resolveOwnerBucketItem(s, ctx, "midiMaps", id);
+    if (!resolved.ok) return { ok: false, error: "map not found" };
+    const list = resolved.list;
+    list.splice(list.indexOf(resolved.item), 1);
     saveStudioState();
     return { ok: true, result: { id, deleted: true } };
   });
@@ -1105,7 +1283,6 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "midi-quantize", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const clipId = String(params.clipId || "");
     if (!clipId) return { ok: false, error: "clipId required" };
     const grid = Number(params.gridBeats);
@@ -1113,7 +1290,7 @@ export default function registerStudioActions(registerLensAction) {
     const strength = Math.max(0, Math.min(1, params.strength != null ? Number(params.strength) : 1));
     const swing = Math.max(0, Math.min(0.75, Number(params.swing) || 0));
     const quantizeLength = params.quantizeLength === true;
-    const notes = ensureStuBucket(s, "midiNotes", userId).filter(n => n.clipId === clipId);
+    const notes = resolveNotesBucketForClipOrSelf(s, ctx, clipId).notes.filter(n => n.clipId === clipId);
     if (notes.length === 0) return { ok: false, error: "clip has no notes to quantize" };
     let moved = 0;
     for (const n of notes) {
@@ -1150,13 +1327,12 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "groove-apply", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const clipId = String(params.clipId || "");
     const swing = Math.max(0, Math.min(0.75, Number(params.swing) || 0));
     const velAccent = Math.max(-0.5, Math.min(0.5, Number(params.velAccent) || 0));
     const grid = Number(params.gridBeats) || 0.5;
     if (!clipId) return { ok: false, error: "clipId required" };
-    const notes = ensureStuBucket(s, "midiNotes", userId).filter(n => n.clipId === clipId);
+    const notes = resolveNotesBucketForClipOrSelf(s, ctx, clipId).notes.filter(n => n.clipId === clipId);
     if (notes.length === 0) return { ok: false, error: "clip has no notes" };
     for (const n of notes) {
       const slot = Math.round(n.startBeats / grid);
@@ -1177,10 +1353,9 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "record-config-get", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     if (!projectId) return { ok: false, error: "projectId required" };
-    const all = ensureStuBucket(s, "recordConfigs", userId);
+    const all = ensureStuBucket(s, "recordConfigs", resolveStudioProjectOwnerOrSelf(s, ctx, projectId));
     let cfg = all.find(c => c.projectId === projectId);
     if (!cfg) {
       cfg = {
@@ -1201,10 +1376,9 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "record-config-set", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     if (!projectId) return { ok: false, error: "projectId required" };
-    const all = ensureStuBucket(s, "recordConfigs", userId);
+    const all = ensureStuBucket(s, "recordConfigs", resolveStudioProjectOwnerOrSelf(s, ctx, projectId));
     let cfg = all.find(c => c.projectId === projectId);
     if (!cfg) {
       cfg = { id: uidStu("rcfg"), projectId, metronomeEnabled: true, metronomeVolume: 0.7, countInBars: 1, loopRecord: false, compMode: false, punchInBeats: null, punchOutBeats: null };
@@ -1223,10 +1397,9 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "takes-list", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const trackId = String(params.trackId || "");
     if (!trackId) return { ok: false, error: "trackId required" };
-    const takes = ensureStuBucket(s, "takes", userId)
+    const takes = ensureStuBucket(s, "takes", resolveTrackOwnerOrSelf(s, ctx, trackId))
       .filter(t => t.trackId === trackId)
       .sort((a, b) => a.takeNumber - b.takeNumber);
     return { ok: true, result: { takes } };
@@ -1234,11 +1407,10 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "takes-add", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
     const trackId = String(params.trackId || "");
     if (!projectId || !trackId) return { ok: false, error: "projectId and trackId required" };
-    const all = ensureStuBucket(s, "takes", userId);
+    const all = ensureStuBucket(s, "takes", resolveStudioProjectOwnerOrSelf(s, ctx, projectId));
     const existing = all.filter(t => t.trackId === trackId);
     const take = {
       id: uidStu("take"), projectId, trackId,
@@ -1258,12 +1430,11 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "takes-comp-select", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const all = ensureStuBucket(s, "takes", userId);
-    const take = all.find(t => t.id === id);
-    if (!take) return { ok: false, error: "take not found" };
-    for (const t of all) {
+    const resolved = resolveOwnerBucketItem(s, ctx, "takes", id);
+    if (!resolved.ok) return { ok: false, error: "take not found" };
+    const take = resolved.item;
+    for (const t of resolved.list) {
       if (t.trackId === take.trackId) t.selected = t.id === id;
     }
     saveStudioState();
@@ -1272,11 +1443,11 @@ export default function registerStudioActions(registerLensAction) {
 
   registerLensAction("studio", "takes-delete", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const id = String(params.id || "");
-    const all = ensureStuBucket(s, "takes", userId);
-    const idx = all.findIndex(t => t.id === id);
-    if (idx < 0) return { ok: false, error: "take not found" };
+    const resolved = resolveOwnerBucketItem(s, ctx, "takes", id);
+    if (!resolved.ok) return { ok: false, error: "take not found" };
+    const all = resolved.list;
+    const idx = all.indexOf(resolved.item);
     const wasSelected = all[idx].selected;
     const trackId = all[idx].trackId;
     all.splice(idx, 1);
@@ -1295,8 +1466,9 @@ export default function registerStudioActions(registerLensAction) {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
-    const project = s.projects.get(userId)?.get(projectId);
-    if (!project) return { ok: false, error: "project not found" };
+    const resolvedProject = resolveStudioProject(s, ctx, projectId);
+    if (!resolvedProject.ok) return { ok: false, error: "project not found" };
+    const project = resolvedProject.project;
     if (!project.tracks || project.tracks.length === 0) return { ok: false, error: "project has no tracks to export" };
     const format = ["wav_24", "wav_32f", "aiff_24", "flac"].includes(params.format) ? params.format : "wav_24";
     const sampleRate = [44100, 48000, 88200, 96000].includes(Number(params.sampleRate)) ? Number(params.sampleRate) : 48000;
@@ -1364,15 +1536,16 @@ export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "project-export", (ctx, _a, params = {}) => {
   try {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
-    const project = s.projects.get(userId)?.get(projectId);
-    if (!project) return { ok: false, error: "project not found" };
-    const clips = ensureStuBucket(s, "clips", userId).filter(c => c.projectId === projectId);
+    const resolvedProject = resolveStudioProject(s, ctx, projectId);
+    if (!resolvedProject.ok) return { ok: false, error: "project not found" };
+    const project = resolvedProject.project;
+    const ownerUserId = resolvedProject.ownerUserId;
+    const clips = ensureStuBucket(s, "clips", ownerUserId).filter(c => c.projectId === projectId);
     const clipIds = new Set(clips.map(c => c.id));
-    const midiNotes = ensureStuBucket(s, "midiNotes", userId).filter(n => clipIds.has(n.clipId));
+    const midiNotes = ensureStuBucket(s, "midiNotes", ownerUserId).filter(n => clipIds.has(n.clipId));
     const trackIds = new Set((project.tracks || []).map(t => t.id));
-    const automation = ensureStuBucket(s, "automation", userId).filter(l => trackIds.has(l.trackId));
+    const automation = ensureStuBucket(s, "automation", ownerUserId).filter(l => trackIds.has(l.trackId));
     const bundle = {
       format: "concord-studio-project/v1",
       exportedAt: new Date().toISOString(),
@@ -1380,12 +1553,12 @@ export default function registerStudioActions(registerLensAction) {
       clips,
       midiNotes,
       automation,
-      markers: ensureStuBucket(s, "markers", userId).filter(m => m.projectId === projectId),
-      tempoChanges: ensureStuBucket(s, "tempoChanges", userId).filter(t => t.projectId === projectId),
-      scenes: ensureStuBucket(s, "scenes", userId).filter(sc => sc.projectId === projectId),
-      sends: ensureStuBucket(s, "sends", userId).filter(x => x.projectId === projectId),
-      drumRacks: ensureStuBucket(s, "drumRacks", userId).filter(r => r.projectId === projectId),
-      midiMaps: ensureStuBucket(s, "midiMaps", userId).filter(m => m.projectId === projectId),
+      markers: ensureStuBucket(s, "markers", ownerUserId).filter(m => m.projectId === projectId),
+      tempoChanges: ensureStuBucket(s, "tempoChanges", ownerUserId).filter(t => t.projectId === projectId),
+      scenes: ensureStuBucket(s, "scenes", ownerUserId).filter(sc => sc.projectId === projectId),
+      sends: ensureStuBucket(s, "sends", ownerUserId).filter(x => x.projectId === projectId),
+      drumRacks: ensureStuBucket(s, "drumRacks", ownerUserId).filter(r => r.projectId === projectId),
+      midiMaps: ensureStuBucket(s, "midiMaps", ownerUserId).filter(m => m.projectId === projectId),
     };
     return { ok: true, result: { bundle } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
