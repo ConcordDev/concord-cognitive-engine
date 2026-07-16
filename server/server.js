@@ -65607,33 +65607,92 @@ function processGoalHeartbeat(ctx = {}) {
     }
   }
 
-  // 4) Progress active goals based on lattice activity (simplified: random small progress)
-  // In practice, this would hook into actual DTU creation/analysis events
+  // 4) Progress active goals from REAL lattice-activity signals where a real
+  // signal exists (2026-07-16, closing docs/WAVE4_INVENTORY.md "goals" row /
+  // docs/lens-specs/goals-capability-map.md's flagged simplification). Each
+  // goal type below is either (a) driven by a genuine STATE-tracked delta
+  // since this goal's last heartbeat tick, or (b) — where no real backing
+  // signal exists in the codebase today — an honestly-labeled small fixed
+  // nudge, never a fabricated-precise number. Per-goal baselines (last DTU
+  // count / last high-score DTU count / last contradiction load / last
+  // MEGA+HYPER count) live on `goal.meta`, which is already a free-form
+  // bag (see `createGoalProposal`'s `meta.awaitingFounderApproval` /
+  // `meta.abandonReason` for precedent) — no schema change.
   for (const goalId of STATE.goals.active) {
     const goal = STATE.goals.registry.get(goalId);
     if (!goal || goal.state !== GOAL_STATES.ACTIVE) continue;
 
-    // Simulate progress based on goal type
-    let progressChance = 0.1;
-    let progressAmount = 0.1;
+    let delta = 0;
 
-    if (goal.type === GOAL_TYPES.MAINTENANCE) {
-      progressChance = 0.3;
-      progressAmount = 0.2;
-    } else if (goal.type === GOAL_TYPES.CONSOLIDATION) {
-      // Check if MEGA/HYPER were created
-      const megaCount = Array.from(STATE.dtus?.values() || []).filter(d => d.tier === "mega" || d.tier === "hyper").length;
-      if (megaCount > 0) {
-        progressChance = 0.4;
-        progressAmount = 0.15;
+    if (goal.type === GOAL_TYPES.KNOWLEDGE_SYNTHESIS) {
+      // Real signal: growth of the DTU corpus while this goal is active —
+      // synthesis needs new raw material to combine. 3% of the goal's
+      // target per net-new DTU created since the last tick this goal was
+      // observed. First observation only establishes the baseline (no
+      // "prior tick" exists yet, so no progress is claimed).
+      const dtuCount = STATE.dtus instanceof Map ? STATE.dtus.size : Array.from(STATE.dtus?.values() || []).length;
+      const lastDtuCount = goal.meta._lastDtuCount;
+      goal.meta._lastDtuCount = dtuCount;
+      if (typeof lastDtuCount === "number") {
+        const newDtus = Math.max(0, dtuCount - lastDtuCount);
+        delta = newDtus * 0.03 * goal.progress.target;
       }
     } else if (goal.type === GOAL_TYPES.PATTERN_DISCOVERY) {
-      // Progress when high-quality DTUs are created
-      progressChance = 0.15;
+      // Real signal: growth in the count of high-authority DTUs (score >
+      // 0.7) — the same threshold generateAutoGoalProposals() already uses
+      // to spot pattern-discovery candidates. 5% of target per net-new
+      // high-score DTU since the last tick.
+      const highScoreCount = Array.from(STATE.dtus?.values() || [])
+        .filter(d => (d.authority?.score || 0) > 0.7).length;
+      const lastHighScoreCount = goal.meta._lastHighScoreDtuCount;
+      goal.meta._lastHighScoreDtuCount = highScoreCount;
+      if (typeof lastHighScoreCount === "number") {
+        const newHighScore = Math.max(0, highScoreCount - lastHighScoreCount);
+        delta = newHighScore * 0.05 * goal.progress.target;
+      }
+    } else if (goal.type === GOAL_TYPES.CLARIFICATION) {
+      // Real signal: STATE.growth.functionalDecline.contradictionLoad — a
+      // live-tracked 0..1 EMA (server.js ~71017) — falling. Resolving
+      // contradictions IS progress on a clarification goal; a drop of X in
+      // load maps to X * target progress. Load holding steady or rising
+      // yields zero (never negative — clamped in updateGoalProgress too,
+      // but Math.max here keeps intent explicit).
+      const load = Number(STATE.growth?.functionalDecline?.contradictionLoad ?? 0);
+      const lastLoad = goal.meta._lastContradictionLoad;
+      goal.meta._lastContradictionLoad = load;
+      if (typeof lastLoad === "number") {
+        const improvement = Math.max(0, lastLoad - load);
+        delta = improvement * goal.progress.target;
+      }
+    } else if (goal.type === GOAL_TYPES.CONSOLIDATION) {
+      // Real signal: growth in MEGA/HYPER-tier DTU count. This goal exists
+      // specifically to drive consolidation, so a newly-formed consolidated
+      // node IS direct progress — 15% of target per net-new MEGA/HYPER DTU
+      // since the last tick (replaces the old "megaCount > 0 -> dice roll"
+      // gate, which counted the same signal but then ignored its magnitude).
+      const megaCount = Array.from(STATE.dtus?.values() || []).filter(d => d.tier === "mega" || d.tier === "hyper").length;
+      const lastMegaCount = goal.meta._lastMegaCount;
+      goal.meta._lastMegaCount = megaCount;
+      if (typeof lastMegaCount === "number") {
+        const newMega = Math.max(0, megaCount - lastMegaCount);
+        delta = newMega * 0.15 * goal.progress.target;
+      }
+    } else if (goal.type === GOAL_TYPES.MAINTENANCE) {
+      // No real per-tick backing signal identified for generic maintenance
+      // goals — they span many unrelated housekeeping tasks with no single
+      // lattice metric to attach to. Honest fallback: a small fixed nudge
+      // on a low, clearly-labeled chance — NOT a fabricated precise
+      // measurement of "how much maintenance happened."
+      if (Math.random() < 0.3) delta = 0.2 * goal.progress.target;
+    } else {
+      // GAP_FILLING / EXPLORATION / USER_REQUESTED and any future type:
+      // no real backing signal in the codebase today either. Same honest,
+      // clearly-labeled fixed-nudge fallback as MAINTENANCE, at the
+      // original lower base rate.
+      if (Math.random() < 0.1) delta = 0.1 * goal.progress.target;
     }
 
-    if (Math.random() < progressChance) {
-      const delta = progressAmount * goal.progress.target;
+    if (delta > 0) {
       updateGoalProgress(goalId, delta, null);
       results.progressed++;
     }
@@ -78573,4 +78632,17 @@ export const __TEST__ = Object.freeze({
   // doc comments above. Call from a test file's after() hook.
   terminateAllWorkersForTest: __terminateAllWorkersForTest,
   clearActiveTimersForTest: __clearActiveTimersForTest,
+  // Goal-heartbeat real-signal test surface (2026-07-16 — closing
+  // docs/WAVE4_INVENTORY.md "goals" row). processGoalHeartbeat has no HTTP
+  // route or macro of its own (it's called inline from governorTick every
+  // tick, never on demand), so behavioral tests need direct access to it
+  // plus the goal-lifecycle helpers to construct an ACTIVE goal to observe.
+  GOAL_TYPES,
+  GOAL_STATES,
+  ensureGoalSystem,
+  createGoalProposal,
+  evaluateGoal,
+  activateGoal,
+  updateGoalProgress,
+  processGoalHeartbeat,
 });
