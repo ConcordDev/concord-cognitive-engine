@@ -247,13 +247,25 @@ the exact backend handler side by side — not assumed from either alone.
 
 ## Genuinely missing (deferred) — triage
 
-- **`counterArgumentGen`'s critique quality is a fixed rule set, not a real
-  argumentation-theory engine.** Triage: **ENGINEERING** (no external data
-  dependency) — could be extended with more attack-pattern rules (weak-link
-  identification via the map's `weakestClaim`, scheme-specific critical
-  questions from the `SCHEMES` library already in this file) in a future
-  pass. Not a blocking gap: it already surfaces the two real signals
-  (contradictions, matched fallacies) an opponent would actually use.
+- ~~**`counterArgumentGen`'s critique quality is a fixed rule set, not a
+  real argumentation-theory engine.**~~ **CLOSED (2026-07-16).**
+  `counterArgumentGen` now accepts an optional `mapId`; when it resolves to
+  a real persisted map, two more attack angles surface, both sourced from
+  data that already existed elsewhere in this file — nothing invented:
+  "weak-link" reuses `argumentMapCore`'s real `weakestClaim`/`contested`
+  computation (via a new `persistedMapToClaims` tree-flattener), surfaced
+  only when genuinely contested; "scheme-critical-question" surfaces the
+  real Walton-style `criticalQuestions` from the `SCHEMES` entry the map
+  was built from, when it names a scheme. Still a rule-based critique
+  engine by design, not an argumentation-theory reasoner — this is more
+  real signals, not more inference. The Analysis tab's counter-argument
+  result now renders as a badged card list instead of a raw JSON dump.
+  This page's local `selectedMapId` (Argument Maps tab) was deliberately
+  NOT wired into the new `mapId` param — it's client-only and never
+  resolves server-side, so doing so would have been a silently-no-op fake
+  affordance; a real wire-up needs `ArgumentMapStudio`'s own selected-map
+  id lifted up first. 8 new backend tests + 4 new frontend tests, all
+  passing.
 - **No LLM-backed "steelman"/adversarial mode.** `ArgumentWorkbench`'s
   separate "Cross-check" button already covers this honestly (explicitly
   agent-backed, via `chat_agent.do`, not disguised as a deterministic

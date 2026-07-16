@@ -235,43 +235,69 @@ that don't depend on it:
 
 ## Macro → UI classification (all 38 macros)
 
-**DESIGNED** (real, bespoke UI, no fabrication) — 37/38:
+**DESIGNED** (real, bespoke UI, no fabrication) — 38/38 (was 37/38 at the
+time of this audit; `recording-auto-label-speakers` closed 2026-07-16, see
+below):
 
 | Macro group | Count | Where |
 |---|---:|---|
 | `transcriptAnalyze`/`speakerDiarize`/`sentimentScore`/`keywordSpot` | 4 | `page.tsx` inline Voice Actions panel + `VoiceActionPanel.tsx` (analyst bench: mint/DM/publish/agent) |
 | `recording-create/-list/-detail/-rename/-delete`, `segment-edit`, `highlight-toggle`, `recording-summary`, `transcript-search`, `voice-dashboard` | 10 | `VoiceTranscripts.tsx` |
-| `live-start/-append/-detail/-list/-finalize` | 5 | `VoiceLiveTranscribe.tsx` (real `SpeechRecognition` streaming) |
+| `live-start/-append/-detail/-list/-finalize` | 5 | `VoiceLiveTranscribe.tsx` (real `SpeechRecognition` streaming + a parallel Web Audio mic tap for per-segment vectors) |
 | `recording-summary-llm` | 1 | `VoiceRecordingStudio.tsx` ("AI summary" button) |
-| `voiceprint-enroll/-list/-delete/-identify` | 4 | `VoiceprintEnroll.tsx` (real Web Audio acoustic feature extraction — pitch/energy/spectral-centroid/ZCR/rolloff) |
+| `voiceprint-enroll/-list/-delete/-identify` | 4 | `VoiceprintEnroll.tsx` (real Web Audio acoustic feature extraction — pitch/energy/spectral-centroid/ZCR/rolloff, now shared via `lib/voice/audio-features.ts`) |
+| `recording-auto-label-speakers` | 1 | `VoiceRecordingStudio.tsx` ("Auto-label speakers" button, renders the real per-segment match/distance/confidence result) |
 | `meeting-schedule/-list/-cancel/-bot-join/-bot-finalize` | 5 | `VoiceMeetings.tsx` |
 | `recording-share/-unshare`, `share-detail`, `segment-comment-add/-delete`, `segment-comments-list` | 6 | `VoiceRecordingStudio.tsx` (share + timestamped-playback-with-inline-comments panel) |
 | `transcript-translate`, `transcript-translations-list` | 2 | `VoiceRecordingStudio.tsx` (translate panel) |
 
-**UNSURFACED** (real, tested, no UI caller) — 1/38:
+**UNSURFACED at the time of this audit** — since closed (2026-07-16), see
+below; kept here for grep-back:
 
 - `recording-auto-label-speakers` — relabels a recording's segments by
   matching each segment's `.vector` acoustic fingerprint against enrolled
-  voice-prints (tested at `tests/depth/voice-behavior.test.js`). Genuinely
-  unreachable in practice, not just unmounted: no frontend code anywhere
-  ever attaches a `.vector` field to a segment (confirmed by grep across
-  `components/voice/*.tsx`) — `recording-create`'s segments come from typed
-  text or live ASR words, neither of which carries per-segment audio, so
-  there is nothing for this macro to match against today. See "Investigated
-  and honestly deferred" below for the triage.
+  voice-prints (tested at `tests/depth/voice-behavior.test.js`). Was
+  genuinely unreachable in practice at the time of this audit, not just
+  unmounted: no frontend code anywhere attached a `.vector` field to a
+  segment (confirmed by grep across `components/voice/*.tsx`) —
+  `recording-create`'s segments came from typed text or live ASR words,
+  neither of which carried per-segment audio, so there was nothing for this
+  macro to match against.
 
 ## Investigated and honestly deferred
 
-- **`recording-auto-label-speakers` — ENGINEERING gap, not a quick wire-up.**
-  Making this reachable needs real new frontend work (capturing isolated
-  per-segment audio during either the takes recorder or live transcription,
-  running the same Web Audio feature extraction `VoiceprintEnroll.tsx`
-  already does per segment, and attaching the resulting vector) — a genuine
-  audio-pipeline feature, not "add a button that calls an existing macro."
-  Per the CLAUDE.md triage classes: this is **ENGINEERING** (no external
-  data dependency, just unbuilt frontend capture logic), scoped out of this
-  pass, which fixes existing wiring + closes the security defect rather than
-  growing new frontend audio architecture.
+- **`recording-auto-label-speakers` — ENGINEERING gap, CLOSED 2026-07-16.**
+  Was left deferred by this audit ("needs real new frontend work: capturing
+  isolated per-segment audio during either the takes recorder or live
+  transcription, running the same Web Audio feature extraction
+  `VoiceprintEnroll.tsx` already does per segment, and attaching the
+  resulting vector — a genuine audio-pipeline feature, not 'add a button
+  that calls an existing macro'"). That work has since landed:
+  `server/domains/voice.js`'s `recording-create` and `live-append` now
+  accept an optional per-segment/per-append `vector` (validated when
+  present, honestly rejected when malformed, backward-compatible when
+  absent), and `live-finalize` folds per-word vectors into a real
+  running-mean per-speaker-group vector, cloning `voiceprint-enroll`'s
+  existing re-enrollment accumulation shape. The Web Audio extraction
+  itself moved out of `VoiceprintEnroll.tsx` into a shared
+  `lib/voice/audio-features.ts` (pure `accumulateFrame`/`finalizeVector`
+  functions plus the `captureVoiceFeatureVector` mic-capture wrapper, which
+  resolves `null` — never a fabricated vector — when mic/Web-Audio access
+  isn't available), so `VoiceLiveTranscribe.tsx` can open a parallel mic tap
+  using the identical math rather than reimplementing it. `recording-auto-
+  label-speakers` itself now also returns a per-segment `matches` array
+  (matched speaker + distance/confidence, or an honest unmatched reason),
+  surfaced by a new "Auto-label speakers" button in
+  `VoiceRecordingStudio.tsx`. Pinned by `server/tests/depth/voice-speaker-
+  vector-behavior.test.js` (9 tests: optional-vector accept/reject on both
+  endpoints, hand-verified running-mean math, and a genuine close-match/
+  far-no-match pair against real enrolled voice-prints — not manually
+  injected) and three new frontend test files under `concord-frontend/
+  tests/components/` (`VoiceAudioFeatures`, `VoiceLiveTranscribeVectorTap`,
+  `VoiceRecordingStudioAutoLabel`; 17 tests). Per the CLAUDE.md triage
+  classes this was **ENGINEERING** (no external data dependency, just
+  previously-unbuilt frontend capture logic) — confirmed by actually
+  building it.
 - **The `_harness.js` `process.exit(0)`-masks-failures bug** — documented in
   detail above. Confirmed real via a minimal, codebase-independent repro;
   confirmed to affect the ~90 `tests/depth/*.test.js` files sharing that

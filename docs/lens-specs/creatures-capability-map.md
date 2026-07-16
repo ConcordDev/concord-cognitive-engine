@@ -119,11 +119,15 @@ end-to-end.
   DATA-SOURCING/ENGINEERING gap with no free external fix available (no
   real-world creature-art API applies to fictional procedural species) —
   correctly left undone rather than faked with stock art or emoji.
-- **No global keyboard-shortcut registration (`useLensCommand`).** None of
-  the sibling Phase-D single-file lenses (`fishing`, `garage`,
-  `courtship`) register one either; adding it here alone would be
-  inconsistent with the group rather than filling a gap unique to this
-  lens. Left as a cross-lens follow-up, not a creatures-specific defect.
+- ~~**No global keyboard-shortcut registration (`useLensCommand`).**~~
+  **CLOSED (2026-07-16).** `app/lenses/creatures/page.tsx` now registers 4
+  shortcuts via `useLensCommand`: `r` → `refresh()`, `/` → focus the codex
+  search input, `l` → focus the lineage input, `b` → `breed()` (enabled
+  only when both parents are picked and a breed isn't already in flight).
+  All four bind to the real, pre-existing handlers/state — no new breeding
+  or search logic was added. Discoverability follows the UI-quality-rubric
+  requirement: `<kbd>` chips sit next to the Refresh/Breed buttons and the
+  two inputs carry placeholder hints. 12 new frontend tests, all passing.
 
 ## Verification
 
