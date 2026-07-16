@@ -913,30 +913,18 @@ function InsightsTab({ repoId }: { repoId: string }) {
 // `dependencyAudit` engines (server/domains/repos.js) that previously had
 // no real caller — the old page-level panel gated them behind a generic
 // lens-artifact system that never had a "repo" artifact to run against, so
-// the buttons were permanently disabled. Complexity is a lightweight
-// static-analysis heuristic (regex decision-point counts) over each real
-// file's real content — approximate, honestly labelled, never fabricated.
+// the buttons were permanently disabled.
+//
+// Complexity is a REAL AST analysis: this tab sends each real file's real
+// source text (`sourceFiles`) to `repos.codeComplexity`, which walks it with
+// the `typescript` compiler package (server/lib/code-ast-complexity.js) —
+// real per-function boundaries, real branch/loop/condition/nesting counts
+// from the actual syntax tree. The previous version of this tab computed
+// those counts itself via regex decision-point matching over raw text and
+// folded each whole file into one synthetic "function" — that heuristic
+// is gone; the server now does the honest parse.
 const COMPLEXITY_FILE_CAP = 40;
-
-function estimateFileComplexity(content: string) {
-  const branches = (content.match(/\bif\s*\(/g) || []).length
-    + (content.match(/\belse\b/g) || []).length
-    + (content.match(/\bcase\s+/g) || []).length
-    + (content.match(/\bcatch\s*\(/g) || []).length;
-  const loops = (content.match(/\bfor\s*\(/g) || []).length
-    + (content.match(/\bwhile\s*\(/g) || []).length
-    + (content.match(/\.(forEach|map|filter|reduce)\s*\(/g) || []).length;
-  const conditions = (content.match(/&&|\|\|/g) || []).length
-    + (content.match(/\?[^:?]*:/g) || []).length;
-  const lines = content ? content.split('\n').length : 0;
-  let maxIndent = 0;
-  for (const line of content.split('\n')) {
-    const m = line.match(/^[ \t]*/);
-    const indentChars = m ? m[0].replace(/\t/g, '  ').length : 0;
-    maxIndent = Math.max(maxIndent, Math.floor(indentChars / 2));
-  }
-  return { branches, loops, conditions, nesting: Math.min(maxIndent, 12), lines };
-}
+const AST_ANALYZABLE_RE = /\.(jsx?|tsx?|mjs|cjs|mts|cts)$/i;
 
 interface ComplexityResult {
   message?: string;
@@ -976,26 +964,23 @@ function AnalysisTab({ repoId }: { repoId: string }) {
   const runAnalysis = async () => {
     setBusy(true); setErr(null);
     try {
-      // 1) Code complexity — real static analysis over this repo's own files.
+      // 1) Code complexity — real AST analysis over this repo's own files.
+      // Only JS/TS-family files are analyzable (the `typescript` compiler
+      // parses .js/.jsx/.ts/.tsx/.mjs/.cjs/.mts/.cts); other real files
+      // (README, JSON, CSS, …) are excluded up front rather than wastefully
+      // round-tripped and AST-parsed into a meaningless near-empty record.
       const treeRes = await runX<{ tree: TreeFileNode[] }>('file-tree', { repoId });
       if (!treeRes.ok) throw new Error(treeRes.error || 'file-tree failed');
-      const flat = flattenFiles(treeRes.data?.tree || []);
+      const flat = flattenFiles(treeRes.data?.tree || []).filter((f) => AST_ANALYZABLE_RE.test(f.path));
       setFilesCapped(flat.length > COMPLEXITY_FILE_CAP);
       const capped = flat.slice(0, COMPLEXITY_FILE_CAP);
-      const modules: Array<{ name: string; imports: string[]; exports: string[]; functions: Array<Record<string, unknown>> }> = [];
+      const sourceFiles: Array<{ path: string; content: string }> = [];
       for (const f of capped) {
         const fr = await runX<FileContent>('file-read', { repoId, path: f.path });
         if (!fr.ok || !fr.data) continue;
-        const content = fr.data.content;
-        const m = estimateFileComplexity(content);
-        modules.push({
-          name: f.path,
-          imports: Array((content.match(/^\s*(import |const .+=\s*require\()/gm) || []).length).fill('import'),
-          exports: Array((content.match(/^\s*(export |module\.exports)/gm) || []).length).fill('export'),
-          functions: [{ name: f.path.split('/').pop() || f.path, branches: m.branches, nesting: m.nesting, lines: m.lines, loops: m.loops, conditions: m.conditions }],
-        });
+        sourceFiles.push({ path: f.path, content: fr.data.content });
       }
-      const cx = await runX<ComplexityResult>('codeComplexity', { modules });
+      const cx = await runX<ComplexityResult>('codeComplexity', { sourceFiles });
       setComplexity(cx.ok ? cx.data : null);
 
       // 2) Commit-pattern analysis — real commit-graph, field-mapped to the

@@ -5,6 +5,7 @@
 // Free at 60 req/hr; GITHUB_TOKEN env raises to 5000/hr.
 
 import { cachedFetchJson, fetchJsonWithTimeout } from "../lib/external-fetch.js";
+import { analyzeSourceComplexity } from "../lib/code-ast-complexity.js";
 
 const GITHUB_API_REPOS = "https://api.github.com";
 
@@ -129,11 +130,48 @@ export default function registerReposActions(registerLensAction) {
    * codeComplexity
    * Compute code complexity metrics — cyclomatic complexity, cognitive complexity,
    * dependency depth, and coupling/cohesion ratios.
-   * artifact.data.modules = [{ name, functions: [{ name, branches, nesting, lines, loops, conditions, dependencies?: [string] }], imports?: [string], exports?: [string] }]
+   *
+   * Two input shapes, checked in priority order:
+   *   1. artifact.data.sourceFiles = [{ path, content }] — REAL per-file
+   *      source text. Each file is AST-walked by
+   *      `server/lib/code-ast-complexity.js` (the same `typescript` compiler
+   *      package server/lib/ts-language-service.js already uses for the code
+   *      lens's LanguageService) into REAL per-function boundaries with real
+   *      branch/loop/condition/nesting counts — not a regex decision-point
+   *      count over the whole file treated as one function. This is the path
+   *      the repos lens's Analysis tab calls
+   *      (concord-frontend/components/repos/ConcordRepoWorkspace.tsx).
+   *   2. artifact.data.modules = [{ name, functions: [{ name, branches, nesting, lines, loops, conditions, dependencies?: [string] }], imports?: [string], exports?: [string] }]
+   *      — legacy pre-computed-metrics shape, kept for any caller that
+   *      already did its own counting (and for the exact-value contract
+   *      tests that pin this macro's arithmetic in isolation). This macro
+   *      only ever aggregates the counts it's given into cyclomatic/cognitive
+   *      complexity + risk — shape 1 just makes the default caller feed it
+   *      honest, AST-derived counts instead of regex-derived ones.
    */
   registerLensAction("repos", "codeComplexity", (ctx, artifact, params) => {
   try {
-    const modules = artifact.data?.modules || [];
+    const sourceFiles = artifact.data?.sourceFiles;
+    let modules;
+    if (Array.isArray(sourceFiles) && sourceFiles.length > 0) {
+      const analyzed = [];
+      for (const f of sourceFiles) {
+        const m = analyzeSourceComplexity(f?.path || f?.name || "file", String(f?.content ?? ""));
+        if (!m) {
+          // Honest failure — never silently fall back to a fabricated/regex
+          // count when the caller explicitly asked for real-source analysis.
+          return {
+            ok: false,
+            error: "ast_engine_unavailable",
+            message: "The TypeScript parser package is not loadable on this server, so complexity can't be honestly computed from source text.",
+          };
+        }
+        analyzed.push(m);
+      }
+      modules = analyzed;
+    } else {
+      modules = artifact.data?.modules || [];
+    }
     if (modules.length === 0) {
       return { ok: true, result: { message: "No modules to analyze." } };
     }
