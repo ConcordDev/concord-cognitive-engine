@@ -48,7 +48,7 @@ interface SpendTrend {
   hasData: boolean; hasTrend: boolean; months: string[]; counterparties: string[];
   series: Array<Record<string, string | number>>;
 }
-interface RenewalTrendPoint { month: string; total: number; completed: number; renewalRate: number }
+interface RenewalTrendPoint { month: string; total: number; completed: number; renewalRate: number; [key: string]: string | number }
 interface RenewalTrend { hasData: boolean; hasTrend: boolean; series: RenewalTrendPoint[] }
 interface Trends { cycleTime: CycleTimeTrend; spendTrend: SpendTrend; renewalTrend: RenewalTrend }
 

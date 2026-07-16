@@ -17,11 +17,13 @@ import { api } from '@/lib/api/client';
 
 export interface LensItem<T = Record<string, unknown>> {
   id: string;
-  /** Already present on every raw artifact the backend returns (server.js's
-   *  `lens.list`/`lens.get` hand back the artifact object as-is, which is
-   *  constructed with `ownerId` at `lens.create` time) — just not previously
-   *  declared here. Additive, not a new field. */
-  ownerId: string;
+  /** Present on every raw artifact the backend returns via the generic
+   *  `lens.list`/`lens.get` path (server.js hands back the artifact object
+   *  as-is, constructed with `ownerId` at `lens.create` time). Optional
+   *  because a few lenses (e.g. events) synthesize a `LensItem`-shaped
+   *  object from a domain-specific backend response that has no owner
+   *  concept of its own — those call sites simply won't have it. */
+  ownerId?: string;
   title: string;
   data: T;
   meta: { tags: string[]; status: string; visibility: string; [key: string]: unknown };
