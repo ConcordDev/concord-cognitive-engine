@@ -3,7 +3,7 @@
 /**
  * AmsWorkbench — Agency Management System workbench.
  *
- * Surfaces the seven Applied Epic / EZLynx feature-parity backlog items as
+ * Surfaces the eight Applied Epic / EZLynx feature-parity backlog items as
  * real, purpose-built UI wired to the `insurance` domain macros:
  *   1. Carrier rating / comparative quote bridge   (carrier-* / carrier-rate)
  *   2. Policy renewal automation pipeline           (renewal-pipeline-*)
@@ -12,6 +12,8 @@
  *   5. Certificate of insurance / ACORD export      (certificate-*)
  *   6. Producer / book-of-business leaderboard      (book-of-business / producer-leaderboard)
  *   7. Document e-signature + binder issuance       (esign-* / binder-issue)
+ *   8. Producer compliance tracking (CE credits, license renewal, E&O
+ *      insurance, carrier appointments)             (producer-compliance-*)
  *
  * Every value is real user input or computed by the backend from real
  * platform state — no seed/mock/demo data anywhere.
@@ -21,17 +23,18 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Building2, RefreshCw, ClipboardList, Receipt, FileCheck2, Trophy,
   PenLine, Loader2, Plus, Trash2, ArrowRight, AlertTriangle, CheckCircle2,
-  ChevronRight, Star, Send,
+  ChevronRight, Star, Send, GraduationCap,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ChartKit } from '@/components/viz/ChartKit';
+import { ProducerCompliance } from '@/components/insurance/ProducerCompliance';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type AmsTab = 'carriers' | 'renewals' | 'fnol' | 'reconcile' | 'certificates' | 'book' | 'esign';
+type AmsTab = 'carriers' | 'renewals' | 'fnol' | 'reconcile' | 'certificates' | 'book' | 'esign' | 'producers';
 
 interface Carrier {
   id: string;
@@ -163,6 +166,7 @@ const TABS: { id: AmsTab; label: string; icon: typeof Building2 }[] = [
   { id: 'certificates', label: 'ACORD / COI', icon: FileCheck2 },
   { id: 'book', label: 'Book of Business', icon: Trophy },
   { id: 'esign', label: 'E-Sign & Binder', icon: PenLine },
+  { id: 'producers', label: 'Producer Compliance', icon: GraduationCap },
 ];
 
 const SEVERITY_COLOR: Record<string, string> = {
@@ -228,6 +232,7 @@ export function AmsWorkbench() {
         {tab === 'certificates' && <Certificates policies={policies} />}
         {tab === 'book' && <BookPanel />}
         {tab === 'esign' && <ESignBinder policies={policies} />}
+        {tab === 'producers' && <ProducerCompliance />}
       </div>
     </div>
   );

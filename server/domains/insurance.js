@@ -304,7 +304,7 @@ export default function registerInsuranceActions(register) {
     const s = STATE.insLens;
     for (const k of [
       "policies", "claims", "documents", "payments", "agents",
-      "reminders", "beneficiaries", "assets", "clients",
+      "reminders", "beneficiaries", "assets", "clients", "producerCompliance",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -739,6 +739,211 @@ export default function registerInsuranceActions(register) {
   registerLensAction("insurance", "agent-list", (ctx, _a, _params = {}) => {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { agents: s.agents.get(insAid(ctx)) || [] } };
+  });
+
+  // ── Producer compliance tracking ────────────────────────────────────
+  // Closes the "producer compliance tracking" gap (docs/lens-specs/
+  // insurance-capability-map.md): CE-credit progress, license renewal
+  // dates, E&O insurance status, and carrier-appointment tracking — no
+  // backend macro tracked any of this before. This codebase's "producer"
+  // is the existing agent/broker roster above (agent-add/agent-list); we
+  // do NOT invent a separate producer entity — every compliance record
+  // attaches to a real `agentId` from that roster. Mirrors this session's
+  // read-time-derived expiry pattern already built three times this arc
+  // (plumbing.js techCertAdd/techCertList, masonry.js cert-add/cert-list,
+  // landscaping.js cert-add/cert-list — per-record `expiryDate` +
+  // `dueState` computed fresh on every list read, never stored), adapted
+  // to this file's hyphenated macro naming + insLens Map convention. Four
+  // categories, each with genuinely different fields (a CE-credit record
+  // tracks progress toward a requirement; a license/E&O/appointment
+  // record tracks a single expiring credential) rather than one
+  // one-size-fits-all shape.
+  const PRODUCER_COMPLIANCE_CATEGORIES = ["ce_credits", "license_renewal", "eo_insurance", "carrier_appointment"];
+
+  function findProducerCompliance(s, userId, id) {
+    return (s.producerCompliance.get(userId) || []).find((r) => r.id === id) || null;
+  }
+
+  registerLensAction("insurance", "producer-compliance-add", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const agentId = insClean(params.agentId, 64);
+    if (!agentId) return { ok: false, error: "agentId required" };
+    const agent = (s.agents.get(userId) || []).find((a) => a.id === agentId);
+    if (!agent) return { ok: false, error: "agent not found" };
+    const category = insClean(params.category, 40).toLowerCase();
+    if (!PRODUCER_COMPLIANCE_CATEGORIES.includes(category)) {
+      return { ok: false, error: `unrecognized category: ${category || "(none)"}` };
+    }
+    const badNum = badNumericField(params, ["creditsCompleted", "creditsRequired"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
+
+    const record = {
+      id: insId("pc"),
+      agentId,
+      category,
+      notes: insClean(params.notes, 500) || null,
+      createdAt: insNow(),
+      updatedAt: insNow(),
+    };
+
+    if (category === "ce_credits") {
+      const periodLabel = insClean(params.periodLabel, 80);
+      if (!periodLabel) return { ok: false, error: "periodLabel required for ce_credits" };
+      record.periodLabel = periodLabel;
+      record.creditsCompleted = Math.max(0, insNum(params.creditsCompleted, 0));
+      record.creditsRequired = Math.max(0, insNum(params.creditsRequired, 24));
+      record.expiryDate = insDay(params.expiryDate) || null;
+    } else if (category === "license_renewal") {
+      const licenseNumber = insClean(params.licenseNumber, 80);
+      if (!licenseNumber) return { ok: false, error: "licenseNumber required for license_renewal" };
+      const state = insClean(params.state, 40);
+      if (!state) return { ok: false, error: "state required for license_renewal" };
+      const expiryDate = insDay(params.expiryDate);
+      if (!expiryDate) return { ok: false, error: "expiryDate required for license_renewal" };
+      record.licenseNumber = licenseNumber;
+      record.state = state;
+      record.expiryDate = expiryDate;
+    } else if (category === "eo_insurance") {
+      const carrier = insClean(params.carrier, 120);
+      if (!carrier) return { ok: false, error: "carrier required for eo_insurance" };
+      const policyNumber = insClean(params.policyNumber, 80);
+      if (!policyNumber) return { ok: false, error: "policyNumber required for eo_insurance" };
+      const expiryDate = insDay(params.expiryDate);
+      if (!expiryDate) return { ok: false, error: "expiryDate required for eo_insurance" };
+      record.carrier = carrier;
+      record.policyNumber = policyNumber;
+      record.expiryDate = expiryDate;
+    } else if (category === "carrier_appointment") {
+      const carrierName = insClean(params.carrierName, 120);
+      if (!carrierName) return { ok: false, error: "carrierName required for carrier_appointment" };
+      record.carrierName = carrierName;
+      record.appointmentNumber = insClean(params.appointmentNumber, 80) || null;
+      record.expiryDate = insDay(params.expiryDate) || null;
+    }
+
+    insListB(s.producerCompliance, userId).push(record);
+    saveInsState();
+    return { ok: true, result: { record } };
+  });
+
+  registerLensAction("insurance", "producer-compliance-list", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const roster = s.agents.get(userId) || [];
+    const agentFilter = params.agentId ? insClean(params.agentId, 64) : null;
+    let records = s.producerCompliance.get(userId) || [];
+    if (agentFilter) records = records.filter((r) => r.agentId === agentFilter);
+
+    const enriched = records.map((r) => {
+      // Live re-derivation, not a stored snapshot: an agent deleted after
+      // the compliance record was created surfaces honestly as
+      // `agentFound:false` rather than a stale name or a silent vanish.
+      const agent = roster.find((a) => a.id === r.agentId) || null;
+      const out = { ...r, agentName: agent ? agent.name : null, agentFound: !!agent };
+      out.status = r.expiryDate ? dueState(r.expiryDate) : "none";
+      if (r.category === "ce_credits") {
+        const required = insNum(r.creditsRequired, 0);
+        const completed = insNum(r.creditsCompleted, 0);
+        // Divide-by-zero guard: a 0 (or unset) requirement can't compute a
+        // ratio, so treat "any credits logged" as fully satisfied instead
+        // of throwing/NaN-ing the percent.
+        out.creditsPercent = required > 0
+          ? Math.min(100, Math.round((completed / required) * 100))
+          : (completed > 0 ? 100 : 0);
+        out.creditsComplete = completed >= required;
+      }
+      return out;
+    });
+
+    const byCategory = {};
+    let overdueCount = 0;
+    let dueSoonCount = 0;
+    for (const r of enriched) {
+      byCategory[r.category] = (byCategory[r.category] || 0) + 1;
+      if (r.status === "overdue") overdueCount++;
+      if (r.status === "due_soon") dueSoonCount++;
+    }
+
+    return { ok: true, result: { records: enriched, overdueCount, dueSoonCount, byCategory } };
+  });
+
+  registerLensAction("insurance", "producer-compliance-update", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = insAid(ctx);
+    const id = insClean(params.id, 64);
+    if (!id) return { ok: false, error: "id required" };
+    const record = findProducerCompliance(s, userId, id);
+    if (!record) return { ok: false, error: "not found" };
+    const badNum = badNumericField(params, ["creditsCompleted", "creditsRequired"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
+
+    if (params.notes != null) record.notes = insClean(params.notes, 500) || null;
+
+    if (record.category === "ce_credits") {
+      if (params.periodLabel != null) {
+        const periodLabel = insClean(params.periodLabel, 80);
+        if (!periodLabel) return { ok: false, error: "periodLabel required for ce_credits" };
+        record.periodLabel = periodLabel;
+      }
+      if (params.creditsCompleted != null) record.creditsCompleted = Math.max(0, insNum(params.creditsCompleted, record.creditsCompleted));
+      if (params.creditsRequired != null) record.creditsRequired = Math.max(0, insNum(params.creditsRequired, record.creditsRequired));
+      if (params.expiryDate != null) record.expiryDate = insDay(params.expiryDate) || null;
+    } else if (record.category === "license_renewal") {
+      if (params.licenseNumber != null) {
+        const licenseNumber = insClean(params.licenseNumber, 80);
+        if (!licenseNumber) return { ok: false, error: "licenseNumber required for license_renewal" };
+        record.licenseNumber = licenseNumber;
+      }
+      if (params.state != null) {
+        const state = insClean(params.state, 40);
+        if (!state) return { ok: false, error: "state required for license_renewal" };
+        record.state = state;
+      }
+      if (params.expiryDate != null) {
+        const expiryDate = insDay(params.expiryDate);
+        if (!expiryDate) return { ok: false, error: "expiryDate required for license_renewal" };
+        record.expiryDate = expiryDate;
+      }
+    } else if (record.category === "eo_insurance") {
+      if (params.carrier != null) {
+        const carrier = insClean(params.carrier, 120);
+        if (!carrier) return { ok: false, error: "carrier required for eo_insurance" };
+        record.carrier = carrier;
+      }
+      if (params.policyNumber != null) {
+        const policyNumber = insClean(params.policyNumber, 80);
+        if (!policyNumber) return { ok: false, error: "policyNumber required for eo_insurance" };
+        record.policyNumber = policyNumber;
+      }
+      if (params.expiryDate != null) {
+        const expiryDate = insDay(params.expiryDate);
+        if (!expiryDate) return { ok: false, error: "expiryDate required for eo_insurance" };
+        record.expiryDate = expiryDate;
+      }
+    } else if (record.category === "carrier_appointment") {
+      if (params.carrierName != null) {
+        const carrierName = insClean(params.carrierName, 120);
+        if (!carrierName) return { ok: false, error: "carrierName required for carrier_appointment" };
+        record.carrierName = carrierName;
+      }
+      if (params.appointmentNumber != null) record.appointmentNumber = insClean(params.appointmentNumber, 80) || null;
+      if (params.expiryDate != null) record.expiryDate = insDay(params.expiryDate) || null;
+    }
+
+    record.updatedAt = insNow();
+    saveInsState();
+    return { ok: true, result: { record } };
+  });
+
+  registerLensAction("insurance", "producer-compliance-remove", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.producerCompliance.get(insAid(ctx)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "not found" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   // ── Reminders ───────────────────────────────────────────────────────
