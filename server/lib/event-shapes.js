@@ -376,6 +376,22 @@ export const EVENT_SHAPES = Object.freeze({
     required: ["userId", "reminder"],
     optional: [],
   },
+
+  // ── Forecast alert live delivery (Wave 4) ──────────────────────────
+  // Emitted by server/lib/world-forecast.js's forecast-alert-sweep
+  // heartbeat (~5min cadence) to room `user:${userId}` when a fresh
+  // forecast trips one or more of that user's alert subscriptions. Same
+  // honesty scope as productivity:reminder-fired above: this is live
+  // delivery to a currently-connected tab, NOT an OS-level push (no
+  // service-worker Web Push pipeline exists in this codebase) — a user
+  // with no connected socket still has their subscription correctly
+  // evaluated and `last_fired_at` stamped by `checkAlerts`, they just get
+  // no live event, matching AlertSubscriptions.tsx's manual "Check
+  // against fresh forecast" fallback.
+  "forecast:alert-triggered": {
+    required: ["userId", "worldId", "triggered"],
+    optional: ["forecastComposedAt"],
+  },
 });
 
 /**
