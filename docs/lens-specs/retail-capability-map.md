@@ -317,15 +317,52 @@ the honesty invariant these are relabeled as deferred, not faked:
   (248/248, 0 regressions) + 12 new frontend + 33/33 combined retail
   frontend regression (`PipelinePanel`/`TicketQueuePanel`/
   `DisplaysPanel`/`retail-lens-states`).
-- **Richer product schema** — variants (size/color/style sub-SKUs), price-
-  change history, supplier + lead-time fields, daily-sales-rate/turnover-
-  rate for ABC-analysis-style inventory forecasting. The real
-  `product-upsert` schema is `sku`/`name`/`price`/`stock`/`category`/
-  `barcode` only.
+- ~~**Richer product schema**~~ **BUILT (2026-07-16, `f5541272`) — Wave 4
+  larger-unit build, the FOURTH AND FINAL of this section's originally
+  "Genuinely missing" items; the whole section below is now historical.**
+  `product-upsert` extended with `supplier`/`leadTimeDays`/
+  `dailySalesRate`. A structural landmine specific to this macro (unlike
+  the sibling `deals-*`/`tickets-*`/`displays-*` upserts, which do
+  field-by-field partial updates, `product-upsert` does a FULL OBJECT
+  REPLACE every call — the only field it previously preserved from the
+  existing record was `createdAt`) was resolved by extending that exact
+  preserve-on-omit pattern to the three new fields, proven byte-identical
+  against the pre-existing minimal `{sku,name,price,stock}` call shape
+  (the shape existing callers already use). `priceHistory` is
+  SERVER-COMPUTED only — never readable from caller params — auto-
+  appending `{oldPrice,newPrice,changedAt}` only when `price` genuinely
+  changes. `turnoverRate` = `(dailySalesRate × 365) / stock` (standard
+  annual-turnover formula), honestly `null` (never `Infinity`) at
+  stock=0. `abcClass` is a real Pareto/ABC bucketing by revenue proxy
+  (`price × dailySalesRate`), ranked across the caller's whole catalog on
+  `product-list` (a lone product can't self-classify), classified by the
+  CUMULATIVE revenue share of every product ranked ABOVE it — this
+  specific design choice avoids a real boundary-overshoot bug where a
+  single dominant SKU's own revenue crossing 80% would otherwise
+  misclassify it as "C" instead of "A"; honestly `null` catalog-wide when
+  there's no sales-rate data to rank against. New `product-price-history`
+  (a lighter single-SKU read than fetching the whole catalog). Variants
+  (size/color/style sub-SKUs) are genuinely SEPARATE records
+  (`product-variant-upsert`/`-list`/`-delete`) — own SKU, own stock, a
+  `priceDelta` from the real parent price, parent-SKU validated against
+  the live catalog, cascade-deleted when the parent product is deleted —
+  with true partial-update semantics from day one (no legacy-shape
+  landmine, since these are new macros). New `ProductCatalogPanel.tsx`
+  REPLACES `RetailWorkbench`'s old thin `CatalogTab` (name/price/stock/
+  category/barcode only) rather than standing beside it as a second
+  competing catalog surface — ABC-class badges, turnover rate, a
+  read-only price-history timeline, and a variants sub-list with its own
+  add/edit/remove, all real designed fields, no JSON-paste. Tests: 36 new
+  backend + all 8 retail backend test files re-run together (284/284, 0
+  regressions) + 11 new frontend + 44/44 combined retail frontend
+  regression (`PipelinePanel`/`TicketQueuePanel`/`DisplaysPanel`/
+  `ProductCatalogPanel`/`retail-lens-states`).
 
-Each would need new `domains/retail.js` macros before a real, designed UI
-could be built for them — out of scope for a frontend-only pass ("do not
-invent new backend behavior").
+Each of the four items above needed new `domains/retail.js` macros
+before a real, designed UI could be built for them — all four are now
+built (2026-07-16, Wave 4 larger-unit builds `cb45c52b`/`e9c4f7fd`/
+`3f0dfc3d`/`f5541272`). This "Genuinely missing, deferred" section is
+now empty.
 
 ## Confirmed real and left alone, with reason
 
