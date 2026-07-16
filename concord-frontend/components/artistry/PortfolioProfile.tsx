@@ -6,6 +6,7 @@ import { lensRun } from '@/lib/api/client';
 import {
   User, Edit3, X, Loader2, Eye, Heart, FolderOpen, Users, Briefcase, Save, Link2,
 } from 'lucide-react';
+import { AnalyticsTrendChart } from './AnalyticsTrendChart';
 
 interface ProfileLink { label: string; url: string }
 interface Profile {
@@ -171,6 +172,9 @@ export function PortfolioProfile() {
           </div>
         ))}
       </div>
+
+      {/* Creator analytics trend — private to the owner, same totals as the stats tiles above, just plotted over time. */}
+      {isOwner && <AnalyticsTrendChart />}
 
       {/* Project grid in chosen layout */}
       {projects.length === 0 ? (

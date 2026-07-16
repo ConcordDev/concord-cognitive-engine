@@ -428,7 +428,7 @@ export default function registerArtistryActions(registerLensAction) {
     const s = STATE.artistryLens;
     for (const k of [
       "projects", "follows", "comments", "appreciations",
-      "collections", "profiles", "jobs", "galleries",
+      "collections", "profiles", "jobs", "galleries", "analyticsSnapshots",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -859,6 +859,71 @@ export default function registerArtistryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // computeArtistryStats — the single source of truth for a creator's live
+  // aggregate counters. `profileGet` and `analyticsSnapshot` BOTH call this
+  // (never a parallel computation) so a trend chart built from stored
+  // snapshots always matches what profileGet would show on that day.
+  // `projectsOverride` lets profileGet pass its already-visibility-filtered
+  // project list (private projects excluded when viewer !== owner); when
+  // omitted (the owner-only call sites: analyticsSnapshot, the auto-snapshot
+  // below) it reads the owner's full project list, unfiltered — matching
+  // profileGet's own isOwner=true branch, which never filters either.
+  function computeArtistryStats(s, uid, projectsOverride) {
+    const list = projectsOverride || (s.projects.get(uid) || []);
+    const totalViews = list.reduce((sum, p) => sum + (p.views || 0), 0);
+    const totalAppreciations = list.reduce(
+      (sum, p) => sum + (s.appreciations.get(p.id) || []).length, 0);
+    const followers = [];
+    for (const [u, following] of s.follows) { if (following.includes(uid)) followers.push(u); }
+    return {
+      projectCount: list.length,
+      totalViews,
+      totalAppreciations,
+      followerCount: followers.length,
+      followingCount: (s.follows.get(uid) || []).length,
+    };
+  }
+
+  // captureAnalyticsSnapshot — records (or refreshes) the CALLER'S OWN
+  // timestamped analytics row for today. One row per (userId, calendar day,
+  // UTC): a second call on the same UTC date UPDATES the existing row in
+  // place instead of pushing a duplicate, because a creator's live counters
+  // change continuously through the day — the stored snapshot should reflect
+  // the LATEST real state as of the most recent call on that date, not an
+  // ever-growing pile of same-day points. Every field is copied straight
+  // from `computeArtistryStats` — never estimated, interpolated, or
+  // fabricated for a day with no calls (a day with no call simply has no
+  // row; analyticsHistory does not backfill gaps).
+  function captureAnalyticsSnapshot(s, uid) {
+    const stats = computeArtistryStats(s, uid);
+    const date = artNow().slice(0, 10); // YYYY-MM-DD, UTC calendar day
+    const list = artList(s.analyticsSnapshots, uid);
+    const existing = list.find((x) => x.date === date);
+    if (existing) {
+      existing.totalViews = stats.totalViews;
+      existing.totalAppreciations = stats.totalAppreciations;
+      existing.followerCount = stats.followerCount;
+      existing.followingCount = stats.followingCount;
+      existing.projectCount = stats.projectCount;
+      existing.updatedAt = artNow();
+      return { snapshot: existing, deduped: true };
+    }
+    const snapshot = {
+      id: artId("asnap"),
+      userId: uid,
+      date,
+      totalViews: stats.totalViews,
+      totalAppreciations: stats.totalAppreciations,
+      followerCount: stats.followerCount,
+      followingCount: stats.followingCount,
+      projectCount: stats.projectCount,
+      createdAt: artNow(),
+      updatedAt: artNow(),
+    };
+    list.push(snapshot);
+    return { snapshot, deduped: false };
+  }
+
   registerLensAction("artistry", "profileGet", (ctx, artifact, params) => {
     try {
       const s = getArtState();
@@ -872,11 +937,19 @@ export default function registerArtistryActions(registerLensAction) {
       };
       let projects = (s.projects.get(uid) || []);
       if (uid !== viewer) projects = projects.filter((x) => x.published);
-      const totalViews = projects.reduce((sum, p) => sum + (p.views || 0), 0);
-      const totalAppreciations = projects.reduce(
-        (sum, p) => sum + (s.appreciations.get(p.id) || []).length, 0);
-      const followers = [];
-      for (const [u, list] of s.follows) { if (list.includes(uid)) followers.push(u); }
+      const isOwner = uid === viewer;
+      const stats = computeArtistryStats(s, uid, projects);
+      // Auto-snapshot: the owner loading their own profile is the natural
+      // moment to refresh today's trend point, so history accumulates
+      // without a separate explicit action (matching how real creator-
+      // analytics products trend automatically). Gated to isOwner only —
+      // another user viewing this profile must never write to the owner's
+      // analytics. Same-day de-dup (above) means repeated profileGet calls
+      // within one UTC day update the same row rather than spamming new
+      // ones. Best-effort: a snapshot failure must never break profileGet.
+      if (isOwner) {
+        try { captureAnalyticsSnapshot(s, uid); saveArtState(); } catch (_e) { /* best-effort, never break profileGet */ }
+      }
       return {
         ok: true,
         result: {
@@ -886,16 +959,65 @@ export default function registerArtistryActions(registerLensAction) {
             discipline: p.discipline, views: p.views,
             appreciations: (s.appreciations.get(p.id) || []).length,
           })),
-          stats: {
-            projectCount: projects.length,
-            totalViews,
-            totalAppreciations,
-            followerCount: followers.length,
-            followingCount: (s.follows.get(uid) || []).length,
-          },
-          isOwner: uid === viewer,
+          stats,
+          isOwner,
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * analyticsSnapshot — explicitly record today's real analytics point for
+   * the CALLER (not another user; always `artAid(ctx)`). Same source data
+   * and same same-day de-dup as the auto-snapshot in profileGet — this
+   * exists so a caller (e.g. an admin dashboard, a scheduled job, a test)
+   * can force a refresh without going through profileGet.
+   */
+  registerLensAction("artistry", "analyticsSnapshot", (ctx, _artifact, _params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const { snapshot, deduped } = captureAnalyticsSnapshot(s, uid);
+      saveArtState();
+      return { ok: true, result: { snapshot, deduped } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * analyticsHistory — the caller's real stored analytics snapshots,
+   * chronological, for charting a trend. params: { days? } — how many days
+   * back to include (default 30, min 1, capped 365). Always scoped to the
+   * caller (`artAid(ctx)`) — creator analytics are private, never another
+   * user's trend data, mirroring real portfolio products (Behance/ArtStation
+   * don't expose one creator's view-trend to another). Each snapshot after
+   * the first carries real deltas against the immediately-preceding real
+   * snapshot (`viewsDelta`/`appreciationsDelta`/`followerDelta`); the FIRST
+   * snapshot in the returned window has no prior point to diff against, so
+   * its deltas are honestly `null` — never a fabricated/interpolated value.
+   */
+  registerLensAction("artistry", "analyticsHistory", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const p = params || {};
+      const rawDays = Number(p.days);
+      const days = Math.max(1, Math.min(365, Number.isFinite(rawDays) ? Math.round(rawDays) : 30));
+      const cutoff = Date.now() - days * 86400000;
+      const list = (s.analyticsSnapshots.get(uid) || [])
+        .filter((x) => Date.parse(`${x.date}T00:00:00.000Z`) >= cutoff)
+        .slice()
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+      let prev = null;
+      const snapshots = list.map((snap) => {
+        const viewsDelta = prev ? snap.totalViews - prev.totalViews : null;
+        const appreciationsDelta = prev ? snap.totalAppreciations - prev.totalAppreciations : null;
+        const followerDelta = prev ? snap.followerCount - prev.followerCount : null;
+        prev = snap;
+        return { ...snap, viewsDelta, appreciationsDelta, followerDelta };
+      });
+      return { ok: true, result: { snapshots, count: snapshots.length, days } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
