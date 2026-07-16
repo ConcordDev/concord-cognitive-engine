@@ -11,6 +11,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TriviaPanel } from '@/components/game/TriviaPanel';
 import { GameFeed } from '@/components/game/GameFeed';
 import { HabitHub } from '@/components/game/HabitHub';
+import { XpActivityFeed } from '@/components/game/XpActivityFeed';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
@@ -1287,20 +1288,18 @@ export default function GameLensPage() {
             </div>
           </div>
 
-          {/* Recent Activity — there is no per-event XP activity log on the
-              backend for this meta-progression layer (only running totals),
-              so this used to be a hardcoded fake feed (and one that literally
-              referenced a different lens's content — "Compression skill",
-              "Daily Mix Session"). Point at the real per-domain activity feed
-              instead of inventing timestamps. */}
-          <div className="panel p-4">
-            <h3 className="font-semibold text-white mb-2">Recent Activity</h3>
-            <p className="text-xs text-gray-400">
-              A per-event XP log isn&apos;t tracked server-side yet. Your recent
-              DTUs, quest completions, and habit check-ins that feed this
-              profile&apos;s XP appear in the Recent panel below.
-            </p>
-          </div>
+          {/* Recent Activity — real per-event XP/gold log for the Habitica-
+              style gamification substrate (Habit Hub tasks / party quests /
+              challenge prizes), backed by `game.xpLogList` (server/domains/
+              game.js). This used to be a hardcoded fake feed (and one that
+              literally referenced a different lens's content — "Compression
+              skill", "Daily Mix Session"), then an honest "not tracked yet"
+              placeholder. It's a real per-event ledger now — see
+              XpActivityFeed. (The DTU-authorship-derived profile XP above
+              this tab has no per-event concept of its own — it's a live
+              computed snapshot, not an event log — so it still surfaces
+              through the Recent panel below rather than this feed.) */}
+          <XpActivityFeed />
         </motion.div>
       )}
 
