@@ -18,12 +18,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Workflow, Loader2, Crosshair, Filter, Palette, Clock,
-  LayoutGrid, RefreshCw, Download, Trash2, Plus, Link2,
+  LayoutGrid, RefreshCw, Download, Trash2, Plus, Link2, GitMerge,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface GNode { id: string; label: string; notes?: string; central?: boolean; dtuId?: string; syncedAt?: string }
+interface GNode {
+  id: string; label: string; notes?: string; central?: boolean; dtuId?: string; syncedAt?: string;
+  mergedFrom?: { id: string; label: string }[];
+}
 interface GEdge { id: string; from: string; to: string; label?: string }
 interface MapMeta { id: string; title: string; nodeCount: number; edgeCount: number }
 interface SavedFilter { id: string; name: string; query: FilterQuery }
@@ -31,9 +34,13 @@ interface FilterQuery { labelContains?: string; tag?: string; central?: boolean 
 interface GroupRule { id: string; name: string; color: string; labelContains?: string; tag?: string }
 interface LocalGraphNode extends GNode { hops: number }
 interface PositionMap { [id: string]: { x: number; y: number } }
+interface MergeResult {
+  keptNodeId: string; removedNodeId: string; keptLabel: string; removedLabel: string;
+  edgesRepointed: number; duplicateEdgesRemoved: number; selfLoopsDropped: number;
+}
 
 type Algorithm = 'radial' | 'hierarchical' | 'circular';
-type Tab = 'local' | 'filters' | 'groups' | 'timeline' | 'layout' | 'sync' | 'export';
+type Tab = 'local' | 'filters' | 'groups' | 'timeline' | 'layout' | 'sync' | 'export' | 'merge';
 
 const TABS: { id: Tab; label: string; icon: typeof Crosshair }[] = [
   { id: 'local', label: 'Local Graph', icon: Crosshair },
@@ -42,6 +49,7 @@ const TABS: { id: Tab; label: string; icon: typeof Crosshair }[] = [
   { id: 'timeline', label: 'Timeline', icon: Clock },
   { id: 'layout', label: 'Auto-Layout', icon: LayoutGrid },
   { id: 'sync', label: 'DTU Sync', icon: RefreshCw },
+  { id: 'merge', label: 'Merge Nodes', icon: GitMerge },
   { id: 'export', label: 'Export View', icon: Download },
 ];
 
@@ -242,6 +250,52 @@ export function GraphParityPanel() {
     else setNotice(r.data?.error || 'Sync failed');
   }
 
+  // ── Merge nodes state ─────────────────────────────────────────────
+  const [mergeSource, setMergeSource] = useState<string>('');
+  const [mergeTarget, setMergeTarget] = useState<string>('');
+  const [mergeConfirming, setMergeConfirming] = useState(false);
+  const [mergeResult, setMergeResult] = useState<MergeResult | null>(null);
+
+  function requestMerge() {
+    if (!mapId || !mergeSource || !mergeTarget || mergeSource === mergeTarget) return;
+    setMergeConfirming(true);
+  }
+  function cancelMerge() {
+    setMergeConfirming(false);
+  }
+  async function confirmMerge() {
+    if (!mapId || !mergeSource || !mergeTarget) return;
+    // Capture labels BEFORE the mutation — after a successful merge the
+    // removed node no longer exists in `nodes`, so labelOf() would fall
+    // back to a raw id if we looked it up post-refresh.
+    const sourceLabel = labelOf(mergeSource);
+    const targetLabel = labelOf(mergeTarget);
+    setBusy(true);
+    const r = await lensRun('graph', 'map-merge-nodes', {
+      mapId, sourceNodeId: mergeSource, targetNodeId: mergeTarget,
+    });
+    setBusy(false);
+    setMergeConfirming(false);
+    if (r.data?.ok) {
+      const keptId = (r.data.result?.keptNodeId as string) || mergeTarget;
+      const removedId = (r.data.result?.removedNodeId as string) || mergeSource;
+      setMergeResult({
+        keptNodeId: keptId,
+        removedNodeId: removedId,
+        keptLabel: keptId === mergeTarget ? targetLabel : sourceLabel,
+        removedLabel: removedId === mergeSource ? sourceLabel : targetLabel,
+        edgesRepointed: (r.data.result?.edgesRepointed as number) || 0,
+        duplicateEdgesRemoved: (r.data.result?.duplicateEdgesRemoved as number) || 0,
+        selfLoopsDropped: (r.data.result?.selfLoopsDropped as number) || 0,
+      });
+      setMergeSource(''); setMergeTarget('');
+      await loadMap(mapId);
+      setNotice('Nodes merged');
+    } else {
+      setNotice(r.data?.error || 'Merge failed');
+    }
+  }
+
   // ── Export-view state ─────────────────────────────────────────────
   const [exportFmt, setExportFmt] = useState<'svg' | 'json'>('svg');
   const [exZoom, setExZoom] = useState('1');
@@ -302,7 +356,10 @@ export function GraphParityPanel() {
         <label className="text-[11px] text-zinc-400">Map</label>
         <select
           value={mapId}
-          onChange={(e) => { setMapId(e.target.value); setLocalResult(null); setFilterMatch(null); setPositions({}); setExSvg(''); }}
+          onChange={(e) => {
+            setMapId(e.target.value); setLocalResult(null); setFilterMatch(null); setPositions({}); setExSvg('');
+            setMergeSource(''); setMergeTarget(''); setMergeConfirming(false); setMergeResult(null);
+          }}
           className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200"
         >
           <option value="">Select a mind map…</option>
@@ -599,6 +656,77 @@ export function GraphParityPanel() {
               <p className="text-[11px] text-cyan-300">
                 Last synced: {new Date(nodes.find((n) => n.id === syncNode)!.syncedAt!).toLocaleString()}
               </p>
+            )}
+          </div>
+        )}
+
+        {/* ── Merge nodes ── */}
+        {tab === 'merge' && (
+          <div className="space-y-2">
+            <p className="text-[11px] text-zinc-400">
+              Pick two real nodes to merge. The losing node&apos;s edges are re-pointed onto the
+              surviving node (never dropped), its notes and DTU link are folded in, and it is then
+              removed from the map. This cannot be undone.
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={mergeSource}
+                onChange={(e) => { setMergeSource(e.target.value); setMergeResult(null); }}
+                className="flex-1 min-w-[140px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200"
+              >
+                <option value="">Node to merge (removed)…</option>
+                {nodes.map((n) => (
+                  <option key={n.id} value={n.id} disabled={n.id === mergeTarget}>{n.label}</option>
+                ))}
+              </select>
+              <span className="text-[11px] text-zinc-500">into</span>
+              <select
+                value={mergeTarget}
+                onChange={(e) => { setMergeTarget(e.target.value); setMergeResult(null); }}
+                className="flex-1 min-w-[140px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200"
+              >
+                <option value="">Node to keep (survives)…</option>
+                {nodes.map((n) => (
+                  <option key={n.id} value={n.id} disabled={n.id === mergeSource}>{n.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {!mergeConfirming ? (
+              <button
+                onClick={requestMerge}
+                disabled={!mapId || !mergeSource || !mergeTarget || mergeSource === mergeTarget}
+                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]"
+              >
+                <GitMerge className="w-3 h-3" /> Merge
+              </button>
+            ) : (
+              <div className="rounded border border-amber-800/50 bg-amber-950/30 px-2 py-2 space-y-1.5">
+                <p className="text-[11px] text-amber-200">
+                  Merge &ldquo;{labelOf(mergeSource)}&rdquo; into &ldquo;{labelOf(mergeTarget)}&rdquo;?
+                  {' '}&ldquo;{labelOf(mergeSource)}&rdquo; will be removed permanently.
+                </p>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => void confirmMerge()}
+                    className="flex items-center gap-1 px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white text-[11px]">
+                    <GitMerge className="w-3 h-3" /> Confirm merge
+                  </button>
+                  <button onClick={cancelMerge}
+                    className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px]">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {mergeResult && (
+              <div className="text-[11px] text-zinc-300 border-t border-zinc-800 pt-1.5">
+                Merged &ldquo;{mergeResult.removedLabel}&rdquo; into{' '}
+                <span className="text-cyan-300">{mergeResult.keptLabel}</span> —{' '}
+                {mergeResult.edgesRepointed} edge(s) re-pointed
+                {mergeResult.duplicateEdgesRemoved > 0 && `, ${mergeResult.duplicateEdgesRemoved} duplicate(s) removed`}
+                {mergeResult.selfLoopsDropped > 0 && `, ${mergeResult.selfLoopsDropped} self-loop(s) dropped`}.
+              </div>
             )}
           </div>
         )}
