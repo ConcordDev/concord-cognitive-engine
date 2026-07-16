@@ -197,16 +197,20 @@ what was already built.
   exists that can identify itself. ENGINEERING-class gap, not
   DATA-SOURCING or CURATION — ships only if/when a real client exists
   to be honest about.
-- **The real portable-pack export (`dtu_sync.force_sync` →
+- ~~**The real portable-pack export (`dtu_sync.force_sync` →
   `dtu-portability.js#exportUserCorpus`, real SHA-256-hashed envelope)
-  is not wired into this lens.** `sync_now` reports a real DTU count
-  and real artifact-byte total (after this session's fixes) but does
-  not produce a downloadable/verifiable pack the way `dtu_sync.force_sync`
-  already does. Classed ENGINEERING: the pieces exist and are tested,
-  wiring them together is a deliberate architecture decision (the two
-  systems have different selective-sync semantics — `exportUserCorpus`
-  has no per-scope filter) best done as its own reviewed change, not
-  folded into a Wave-3 audit fix.
+  is not wired into this lens.**~~ **CLOSED (2026-07-16, `4b8a50b5`)** —
+  new `export_pack` macro calls `exportUserCorpus` exactly as both prior
+  real callers do (`dtu-portability.js` itself untouched). The two
+  systems' different selective-sync semantics were resolved honestly, not
+  glossed over: `sync_now`'s in-memory scope filter has no reliable
+  equivalent against the persisted `dtus` SQL table's free-form data
+  (written by dozens of unrelated call sites with no guaranteed common
+  field), so rather than ship a filter that looks device-scoped but isn't
+  reliably correct, `export_pack` exports the real full corpus labeled
+  `scoped:false` with an explanatory note. New "Download portable pack"
+  button per device in `SyncDashboard.tsx`, reusing the existing shared
+  `downloadFile` helper.
 
 ## Verification
 

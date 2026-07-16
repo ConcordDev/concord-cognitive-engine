@@ -132,6 +132,15 @@ d.get(name);`, no `LENS_ACTIONS` fallback). `/api/lens/run` (used by
 - **`graph.query`/`cluster`/`analyze` (server.js inline)** — left
   unreferenced by design; redundant with existing real features (see
   classification item 5).
-- **`graph.merge`** — genuinely missing real wiring; flagged above as a
-  scoped future build (needs backend `STATE.dtus`-level merge logic, not a
-  frontend fix), not faked.
+- ~~**`graph.merge`** — genuinely missing real wiring~~ **CLOSED (2026-07-16,
+  `b2877e49`)**: new `map-merge-nodes` macro operates on the real persisted
+  map via `findMap`, exactly like every other mutating macro in this file —
+  never the transient `artifact.data` scratch object the old sandbox
+  `graph.merge` used (left completely untouched, so nothing that calls it
+  today is affected). Every edge touching the losing node is re-pointed
+  onto the survivor (never dropped), self-loops from re-pointing are
+  removed, and duplicate edges are deduplicated using the same directed
+  `(from,to)` uniqueness rule `edge-add` already enforces. The losing
+  node's own data is folded into the survivor with recorded provenance,
+  never silently discarded. New destructive-confirm "Merge Nodes" tab in
+  `GraphParityPanel.tsx`.
