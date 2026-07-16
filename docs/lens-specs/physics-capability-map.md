@@ -249,22 +249,18 @@ watches run, not a fabricated result standing in for a backend call.
 
 ## Genuinely missing, deferred
 
-**ENGINEERING** — un-shadowing `domains/physics.js`'s richer
+~~**ENGINEERING** — un-shadowing `domains/physics.js`'s richer
 `kinematicsSim`/`orbitalMechanics`/`waveInterference`/`thermodynamics`
-bodies (multi-body drag kinematics, Keplerian-element orbital mechanics
-with Hohmann transfer, grid-based wave-interference field, ideal-gas
-process thermodynamics) would require removing the duplicate
-`registerLensAction` calls in `server.js`'s Engineering Compute block —
-the same precedented fix already applied to `math` and
-`engineering.runFEA` in that exact code block. Not done here because a
-dedicated test file (`tests/depth/physics-behavior.test.js`) already exists
-that documents and pins the *current* shadowed state as the live,
-intended contract; reversing that is a backend-canonical-engine decision
-(which of two real, well-written physics engines wins) plus a test-suite
-rewrite, not a frontend field-shape fix, and is out of scope for "do not
-invent new backend behavior" on a frontend-only pass. Recorded here so a
-future backend-focused session can make the call with full context instead
-of re-discovering the shadowing from scratch.
+bodies~~ **CLOSED (2026-07-16, `fcb7f7d9`)** — deleting the `server.js`
+duplicates was rejected as unsafe (`PhysicsAdvancedLab.tsx` and
+`physics-behavior.test.js` depend byte-for-byte on the shadowed shape).
+Instead the `orbitalMechanics` handler (Keplerian-element propagation +
+a real Hohmann-transfer Δv/time calculation) is also registered under a
+new additive name, `orbitalMechanicsAdvanced`, that nothing shadows —
+zero logic changed. A dedicated regression test proves the shadowed
+`physics.orbitalMechanics` name is still byte-identical. `kinematicsSim`/
+`waveInterference` were similarly dual-registered as stretch goals;
+`thermodynamics` remains untouched. New `PhysicsKeplerianLab` panel.
 
 ## Verification
 
