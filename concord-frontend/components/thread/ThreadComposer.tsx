@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { PenSquare, Plus, Trash2, Calendar, Send, Loader2, Clock } from 'lucide-react';
+import { PenSquare, Plus, Trash2, Copy, Calendar, Send, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +31,7 @@ export function ThreadComposer() {
   const [bestSlots, setBestSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [schedAt, setSchedAt] = useState('');
+  const [listErr, setListErr] = useState('');
 
   const refresh = useCallback(async () => {
     const [dl, d, bt] = await Promise.all([
@@ -79,6 +80,22 @@ export function ThreadComposer() {
     if (active?.id === id) newDraft();
     await refresh();
   }
+  // "Duplicate" — whole-thread clone (Wave-4 gap closure: the composer
+  // previously had no way to copy an entire thread, only per-node forking
+  // elsewhere in the lens). Mirrors del()'s refresh-after-mutation pattern
+  // so the new clone appears in the list the same way a delete disappears
+  // from it — but unlike del() (which fires-and-forgets), a clone failure
+  // is surfaced honestly rather than swallowed, since silently doing
+  // nothing on click would look like a broken button.
+  async function duplicate(id: string) {
+    setListErr('');
+    const r = await lensRun('thread', 'thread-clone', { id });
+    if (r.data?.ok) {
+      await refresh();
+    } else {
+      setListErr(r.data?.error || 'duplicate failed');
+    }
+  }
   async function schedule() {
     if (!active || !schedAt) return;
     await lensRun('thread', 'draft-schedule', { id: active.id, scheduledAt: new Date(schedAt).toISOString() });
@@ -116,10 +133,16 @@ export function ThreadComposer() {
                   <p className="text-[11px] font-semibold text-zinc-100 truncate">{d.title}</p>
                   <p className="text-[9px] text-zinc-400">{d.postCount} posts · {d.status}</p>
                 </button>
+                <button aria-label="Duplicate" onClick={() => duplicate(d.id)} className="opacity-0 group-hover:opacity-100 text-sky-400"><Copy className="w-3 h-3" /></button>
                 <button aria-label="Delete" onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>
+          {listErr && (
+            <p className="flex items-center gap-1 text-[10px] text-rose-400 mt-1">
+              <AlertCircle className="w-3 h-3" />{listErr}
+            </p>
+          )}
         </div>
 
         {/* Editor */}

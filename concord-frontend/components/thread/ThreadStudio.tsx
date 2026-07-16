@@ -12,6 +12,18 @@
  *
  * No seed data — every value is real user input or computed from the
  * platform state. Empty states say "no data yet".
+ *
+ * Design note (Wave-4 gap closure — thread.thread-clone / "Duplicate"):
+ * the clone action lives only in ThreadComposer's drafts list, not here.
+ * The Studio's tabs (Accounts/Media/Calendar/AI/Style/Analytics) all
+ * operate on a single draft the user already picked elsewhere — there's
+ * no natural per-thread row here to hang a duplicate action off (Media's
+ * `draftId` <select> and Analytics' publish picker both just pick an
+ * existing id, they don't list threads as first-class rows the way the
+ * composer's sidebar does). Duplicating is a list-level action on the
+ * drafts collection itself, so the composer's drafts list is the one real
+ * home for it — adding a second entry point here would be a redundant
+ * control with no context of its own, not genuine added capability.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
