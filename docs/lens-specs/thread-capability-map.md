@@ -237,14 +237,21 @@ lineage = 10 newly-fixed/wired this pass, total 26 + 10 = 36 DESIGNED.)
 
 ## Investigated and honestly deferred
 
-- **No cross-artifact "duplicate this thread" / clone feature.** The prior
-  fake header had a "Fork thread" button; it's gone (superseded by real
-  per-node `thread.branch`, which forks *from a specific message*, and by
-  `ThreadNodeActions`'s DTU-backed "Branch DTU", which forks *into a new
-  standalone DTU*). Cloning an entire thread as a new artifact is a
-  plausible **ENGINEERING** follow-up (a small new macro, no external data
-  dependency) but isn't a defect — no existing backend surface claimed to
-  do this, so nothing was misrepresented.
+- ~~**No cross-artifact "duplicate this thread" / clone feature.**~~ **CLOSED
+  (2026-07-16, `09ee34bd`)** — new `thread.thread-clone` macro, modeled on
+  the `thread-draft`/`draft-delete` per-user CRUD pattern. Deep-copies
+  content/platform/posts explicitly (not a shallow spread) so independence
+  is true by construction; media gets newly minted `med_` ids rather than
+  sharing the source's, matching the only other media-creating path
+  (`media-attach`) in the file. The clone always resets to draft status
+  with no schedule regardless of the source's status — Typefully's actual
+  "duplicate" use case is edit-and-repost, not silently re-publishing.
+  `ThreadComposer.tsx` gets a Duplicate button beside the existing Delete.
+  21 new backend tests, 4 new frontend tests. The prior fake header had a
+  "Fork thread" button; it's gone (superseded by real per-node
+  `thread.branch`, which forks *from a specific message*, `ThreadNodeActions`'s
+  DTU-backed "Branch DTU", which forks *into a new standalone DTU*, and now
+  `thread-clone`, which duplicates the *entire thread* as a new artifact).
 - **`thread.branch` accepts empty `content`** (defaults to `""`) — the
   frontend already disables Post while the composer is empty, so this is a
   backend leniency, not a reachable UI gap. Left unchanged rather than
