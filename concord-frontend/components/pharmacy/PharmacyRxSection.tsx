@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Pill, CalendarClock, DollarSign, HeartPulse, Loader2, Bell, Search, Flame } from 'lucide-react';
+import { Pill, CalendarClock, DollarSign, HeartPulse, Loader2, Bell, Search, Flame, Stethoscope } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { RxMedicationsPanel } from './RxMedicationsPanel';
@@ -18,6 +18,7 @@ import { RxHealthLogPanel } from './RxHealthLogPanel';
 import { RxRemindersPanel } from './RxRemindersPanel';
 import { RxPriceLookupPanel } from './RxPriceLookupPanel';
 import { RxAdherencePanel } from './RxAdherencePanel';
+import { RxAppointmentsPanel } from './RxAppointmentsPanel';
 
 interface Dash {
   medications: number;
@@ -26,11 +27,12 @@ interface Dash {
   refillsDue: number;
   openRefillRequests: number;
 }
-type TabId = 'meds' | 'reminders' | 'refills' | 'prices' | 'lookup' | 'adherence' | 'health';
+type TabId = 'meds' | 'reminders' | 'refills' | 'appointments' | 'prices' | 'lookup' | 'adherence' | 'health';
 const TABS: { id: TabId; label: string; icon: typeof Pill }[] = [
   { id: 'meds', label: 'Meds & Doses', icon: Pill },
   { id: 'reminders', label: 'Reminders', icon: Bell },
   { id: 'refills', label: 'Refills', icon: CalendarClock },
+  { id: 'appointments', label: 'Appointments', icon: Stethoscope },
   { id: 'prices', label: 'Price Compare', icon: DollarSign },
   { id: 'lookup', label: 'Price & Pill Lookup', icon: Search },
   { id: 'adherence', label: 'Adherence', icon: Flame },
@@ -90,6 +92,7 @@ export function PharmacyRxSection() {
         {tab === 'meds' && <RxMedicationsPanel onChange={refreshDash} />}
         {tab === 'reminders' && <RxRemindersPanel onChange={refreshDash} />}
         {tab === 'refills' && <RxRefillsPanel onChange={refreshDash} />}
+        {tab === 'appointments' && <RxAppointmentsPanel onChange={refreshDash} />}
         {tab === 'prices' && <RxPricePanel />}
         {tab === 'lookup' && <RxPriceLookupPanel />}
         {tab === 'adherence' && <RxAdherencePanel />}

@@ -506,6 +506,174 @@ export default function registerPharmacyActions(registerLensAction) {
     return { ok: true, result: { due, count: due.length } };
   });
 
+  // ── Doctor / provider appointments ──────────────────────────────────
+  // A per-user appointment tracker (Medisafe/GoodRx don't have one; this
+  // is a genuine gap-close, not a parity clone). Status is a small state
+  // machine:
+  //   scheduled -> completed | cancelled | missed   (each terminal)
+  // Terminal statuses can never transition again — an appointment that
+  // already happened or was cancelled doesn't un-happen; book a new one
+  // instead. Rescheduling (changing dateTime) is only allowed while
+  // status === "scheduled" for the same reason. Non-status/non-dateTime
+  // fields (reason, location, phone, notes, relatedMedId) stay editable
+  // in every status so post-visit notes can be added after the fact.
+  // relatedMedId is OPTIONAL — most appointments (annual physical, a
+  // general checkup) aren't about any one tracked medication; when given,
+  // it's validated via the same findMed lookup refill-request uses, so a
+  // bogus id is honestly rejected rather than silently stored.
+  const APPT_STATUSES = ["scheduled", "completed", "cancelled", "missed"];
+  const APPT_TERMINAL = ["completed", "cancelled", "missed"];
+
+  registerLensAction("pharmacy", "appointment-add", (ctx, _a, params = {}) => {
+  try {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const providerName = rclean(params.providerName, 120);
+    if (!providerName) return { ok: false, error: "providerName required" };
+    const dateTime = rclean(params.dateTime, 40);
+    if (!dateTime) return { ok: false, error: "dateTime required" };
+    let relatedMedId = null, relatedMedName = null;
+    if (params.relatedMedId != null && params.relatedMedId !== "") {
+      const med = findMed(s, userId, params.relatedMedId);
+      if (!med) return { ok: false, error: "related medication not found" };
+      relatedMedId = med.id; relatedMedName = med.name;
+    }
+    const appt = {
+      id: rid("appt"), providerName,
+      providerType: rclean(params.providerType, 60).toLowerCase() || null,
+      dateTime,
+      reason: rclean(params.reason, 200) || null,
+      location: rclean(params.location, 200) || null,
+      phone: rclean(params.phone, 40) || null,
+      relatedMedId, relatedMedName,
+      notes: null,
+      status: "scheduled",
+      createdAt: rnow(), updatedAt: rnow(),
+    };
+    rlistB(s.appointments, userId).push(appt);
+    saveRxState();
+    return { ok: true, result: { appointment: appt } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // appointment-list — every appointment for the caller, newest-scheduled
+  // first, each stamped with a derived `when: "upcoming"|"past"`.
+  // "upcoming" = still status "scheduled" AND dateTime hasn't passed yet;
+  // anything completed/cancelled/missed, or scheduled-but-elapsed, is
+  // "past". Mirrors refills-due's derived-not-stored status pattern.
+  registerLensAction("pharmacy", "appointment-list", (ctx, _a, _params = {}) => {
+  try {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const now = Date.now();
+    const withWhen = (s.appointments.get(userId) || []).map((a) => {
+      const t = Date.parse(a.dateTime);
+      const when = a.status === "scheduled" && Number.isFinite(t) && t >= now ? "upcoming" : "past";
+      return { ...a, when };
+    });
+    withWhen.sort((a, b) => String(a.dateTime).localeCompare(String(b.dateTime)));
+    const upcoming = withWhen.filter((a) => a.when === "upcoming");
+    const past = withWhen.filter((a) => a.when === "past");
+    return {
+      ok: true,
+      result: {
+        appointments: withWhen, count: withWhen.length,
+        upcoming, upcomingCount: upcoming.length,
+        past, pastCount: past.length,
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // appointments-due — upcoming-only view within a lookahead window
+  // (default 14 days), the appointment analogue of refills-due, for
+  // dashboard surfacing.
+  registerLensAction("pharmacy", "appointments-due", (ctx, _a, params = {}) => {
+  try {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const daysAhead = Math.max(1, Math.min(365, Math.round(rnum(params.daysAhead, 14))));
+    const now = Date.now();
+    const cutoff = now + daysAhead * RX_DAY;
+    const due = [];
+    for (const a of s.appointments.get(userId) || []) {
+      if (a.status !== "scheduled") continue;
+      const t = Date.parse(a.dateTime);
+      if (!Number.isFinite(t) || t < now || t > cutoff) continue;
+      const daysUntil = Math.ceil((t - now) / RX_DAY);
+      due.push({ ...a, daysUntil, urgency: daysUntil <= 1 ? "imminent" : daysUntil <= 3 ? "soon" : "upcoming" });
+    }
+    due.sort((a, b) => a.daysUntil - b.daysUntil);
+    return { ok: true, result: { due, count: due.length, daysAhead } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("pharmacy", "appointment-update", (ctx, _a, params = {}) => {
+  try {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const appt = (s.appointments.get(userId) || []).find((a) => a.id === params.id);
+    if (!appt) return { ok: false, error: "appointment not found" };
+
+    if (params.status != null) {
+      const status = String(params.status).toLowerCase();
+      if (!APPT_STATUSES.includes(status)) {
+        return { ok: false, error: `status must be one of ${APPT_STATUSES.join("/")}` };
+      }
+      if (APPT_TERMINAL.includes(appt.status)) {
+        return { ok: false, error: `appointment is already ${appt.status} and cannot change status` };
+      }
+      appt.status = status;
+    }
+    if (params.dateTime != null) {
+      if (APPT_TERMINAL.includes(appt.status)) {
+        return { ok: false, error: `cannot reschedule an appointment that is already ${appt.status}` };
+      }
+      const dt = rclean(params.dateTime, 40);
+      if (!dt) return { ok: false, error: "dateTime cannot be blank" };
+      appt.dateTime = dt;
+    }
+    if (params.providerName != null) {
+      const pname = rclean(params.providerName, 120);
+      if (!pname) return { ok: false, error: "providerName cannot be blank" };
+      appt.providerName = pname;
+    }
+    if (params.providerType != null) appt.providerType = rclean(params.providerType, 60).toLowerCase() || null;
+    for (const f of ["reason", "location", "phone"]) {
+      if (params[f] != null) appt[f] = rclean(params[f], 200) || null;
+    }
+    if (params.notes != null) appt.notes = rclean(params.notes, 1000) || null;
+    if (params.relatedMedId !== undefined) {
+      if (params.relatedMedId === null || params.relatedMedId === "") {
+        appt.relatedMedId = null; appt.relatedMedName = null;
+      } else {
+        const med = findMed(s, userId, params.relatedMedId);
+        if (!med) return { ok: false, error: "related medication not found" };
+        appt.relatedMedId = med.id; appt.relatedMedName = med.name;
+      }
+    }
+    appt.updatedAt = rnow();
+    saveRxState();
+    return { ok: true, result: { appointment: appt } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("pharmacy", "appointment-delete", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    rxExtra(s);
+    const userId = raid(ctx);
+    const list = s.appointments.get(userId) || [];
+    const idx = list.findIndex((a) => a.id === params.id);
+    if (idx === -1) return { ok: false, error: "appointment not found" };
+    list.splice(idx, 1);
+    saveRxState();
+    return { ok: true, result: { deleted: true, id: params.id } };
+  });
+
   // ── Pharmacies + price comparison ───────────────────────────────────
   registerLensAction("pharmacy", "pharmacy-add", (ctx, _a, params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -727,7 +895,7 @@ export default function registerPharmacyActions(registerLensAction) {
 
   function rxExtra(s) {
     for (const k of [
-      "reminders", "caregivers", "caregiverAlerts", "autoReorder",
+      "reminders", "caregivers", "caregiverAlerts", "autoReorder", "appointments",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
