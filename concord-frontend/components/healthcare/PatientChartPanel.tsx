@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardList, Loader2, Plus, Search, Pencil, X, Check } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardList, Loader2, Plus, Search, Pencil, X, Check, Camera, Trash2, AlertCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +13,7 @@ interface Vital { id: string; recordedAt: string; systolic: number | null; diast
 interface Lab { id: string; test: string; value: number; unit: string; refLow: number | null; refHigh: number | null; flag: string; collectedAt: string }
 interface Immun { id: string; vaccine: string; manufacturer: string; lotNumber: string; administeredAt: string }
 interface Encounter { id: string; number: string; encounterType: string; encounteredAt: string; chiefComplaint: string; status: string; signedAt: string | null }
+interface PhotoNote { id: string; number: string; imageRef: string; bodyRegion: string; note: string; analysisResult: string; analysisSource: string; analysisModel: string | null; capturedAt: string }
 interface ChartDetail {
   patient: Patient;
   problems: Problem[];
@@ -20,6 +22,7 @@ interface ChartDetail {
   labs: Lab[];
   immunizations: Immun[];
   encounters: Encounter[];
+  photoNotes: PhotoNote[];
 }
 interface ICDMatch { code: string; description: string }
 
@@ -43,7 +46,7 @@ const KNOWN_TESTS = ['glucose','a1c','sodium','potassium','creatinine','bun','he
 
 export function PatientChartPanel({ patientId }: { patientId: string }) {
   const [data, setData] = useState<ChartDetail | null>(null);
-  const [tab, setTab] = useState<'problems' | 'allergies' | 'meds' | 'vitals' | 'labs' | 'immunizations' | 'encounters'>('problems');
+  const [tab, setTab] = useState<'problems' | 'allergies' | 'meds' | 'vitals' | 'labs' | 'immunizations' | 'encounters' | 'photos'>('problems');
   const [loading, setLoading] = useState(true);
   // Forms
   const [showProblemForm, setShowProblemForm] = useState(false);
@@ -63,6 +66,17 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   const [editingPatient, setEditingPatient] = useState(false);
   const [patientDraft, setPatientDraft] = useState<Partial<Patient>>({});
   const [savingPatient, setSavingPatient] = useState(false);
+  // healthcare.photo-notes-* — closes docs/WAVE4_INVENTORY.md line 188 /
+  // healthcare-capability-map.md's "vision (photo→LLaVA analysis) has no
+  // image-upload UI anywhere". Uploading a photo runs it through the real
+  // vision brain server-side and only shows a result once that call
+  // genuinely succeeds — a down/unavailable brain surfaces as an honest
+  // error here, never a fabricated analysis.
+  const photoFileRef = useRef<HTMLInputElement>(null);
+  const [photoBodyRegion, setPhotoBodyRegion] = useState('');
+  const [photoNoteText, setPhotoNoteText] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only patientId should retrigger
   useEffect(() => { refresh(); }, [patientId]);
@@ -139,6 +153,54 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
       await lensRun({ domain: 'healthcare', action: 'allergies-delete', input: { id } });
       await refresh();
     } catch (e) { console.error('[Chart] deleteAllergy', e); }
+  }
+
+  // Reads the selected file as a base64 data: URL (same FileReader.readAsDataURL
+  // idiom used by TravelDocsPanel.tsx's onFileSelected / PjTaskDetail.tsx's
+  // uploadFile), then runs it through the REAL healthcare.photo-notes-add
+  // macro — which itself calls the same callVision()/callVisionUrl() the
+  // plain `vision` macro uses. Nothing renders as an analyzed photo until
+  // that macro call returns ok:true with a real analysisResult; a down
+  // vision brain (or a rejected upload) surfaces as an honest error here.
+  async function onPhotoFileSelected(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (photoFileRef.current) photoFileRef.current.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setPhotoError('Please choose an image file.'); return; }
+    if (file.size > 5 * 1024 * 1024) { setPhotoError('Image exceeds the 5 MB limit.'); return; }
+    setPhotoError(null);
+    setUploadingPhoto(true);
+    try {
+      const imageDataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Could not read the image file'));
+        reader.readAsDataURL(file);
+      });
+      const r = await lensRun({
+        domain: 'healthcare', action: 'photo-notes-add',
+        input: { patientId, imageDataUrl, bodyRegion: photoBodyRegion.trim(), note: photoNoteText.trim() },
+      });
+      if (r.data?.ok) {
+        setPhotoBodyRegion('');
+        setPhotoNoteText('');
+        await refresh();
+      } else {
+        setPhotoError(r.data?.error || 'Vision analysis failed — photo was not saved.');
+      }
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'Could not read or upload the image.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  async function deletePhotoNote(id: string) {
+    if (!confirm('Remove this photo note?')) return;
+    try {
+      await lensRun({ domain: 'healthcare', action: 'photo-notes-delete', input: { id } });
+      await refresh();
+    } catch (e) { console.error('[Chart] deletePhotoNote', e); }
   }
 
   async function recordVitals() {
@@ -242,6 +304,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
             { id: 'labs',          label: 'Labs',         count: data.labs.length,      icon: FlaskConical },
             { id: 'immunizations', label: 'Immunizations',count: data.immunizations.length, icon: Syringe },
             { id: 'encounters',    label: 'Encounters',   count: data.encounters.length,icon: Stethoscope },
+            { id: 'photos',        label: 'Photos',       count: data.photoNotes.length,icon: Camera },
           ] as const).map(t => {
             const Icon = t.icon;
             const active = tab === t.id;
@@ -483,6 +546,60 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                       <span className="font-mono text-[10px] text-gray-400">{e.number}</span>
                       <span className="text-xs text-white truncate flex-1">{e.encounterType.replace('_', ' ')}: {e.chiefComplaint || '(no CC)'}</span>
                       <span className="text-[10px] text-gray-400 font-mono">{e.encounteredAt.slice(0, 10)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* PHOTOS */}
+          {tab === 'photos' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Photo notes · {data.photoNotes.length}</div>
+              </div>
+
+              <div className="border border-white/10 rounded p-3 space-y-2 bg-black/30">
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={photoBodyRegion} onChange={e => setPhotoBodyRegion(e.target.value)} placeholder="Body region (e.g. left forearm)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input value={photoNoteText} onChange={e => setPhotoNoteText(e.target.value)} placeholder="Note (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                </div>
+                <input ref={photoFileRef} type="file" accept="image/*" className="hidden" onChange={e => { void onPhotoFileSelected(e); }} />
+                <button onClick={() => photoFileRef.current?.click()} disabled={uploadingPhoto}
+                  className="w-full px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
+                  {uploadingPhoto ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Analyzing photo…</> : <><Camera className="w-3.5 h-3.5" />Capture / upload photo</>}
+                </button>
+                <p className="text-[10px] text-gray-400">Routed through the real vision brain server-side (Qwen2.5-VL). The photo is only saved to the chart once analysis succeeds.</p>
+                {photoError && (
+                  <div className="flex items-start gap-1.5 text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded px-2 py-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{photoError}</span>
+                  </div>
+                )}
+              </div>
+
+              {data.photoNotes.length === 0 ? (
+                <div className="py-6 text-center text-xs text-gray-400">No photo notes yet.</div>
+              ) : (
+                <ul className="divide-y divide-white/5">
+                  {data.photoNotes.map(ph => (
+                    <li key={ph.id} className="py-2.5 flex items-start gap-3 group">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- data: URL thumbnail, same pattern as LensAgentPanel.tsx */}
+                      <img src={ph.imageRef} alt={ph.bodyRegion || 'patient photo'} className="w-16 h-16 rounded object-cover border border-white/10 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-[10px] text-gray-400">{ph.number}</span>
+                          {ph.bodyRegion && <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-200">{ph.bodyRegion}</span>}
+                          <span className="text-[10px] text-gray-400 font-mono">{ph.capturedAt.slice(0, 16).replace('T', ' ')}</span>
+                        </div>
+                        {ph.note && <p className="text-xs text-white mt-1">{ph.note}</p>}
+                        <p className="text-xs text-gray-300 mt-1 whitespace-pre-wrap">{ph.analysisResult}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">Vision analysis · {ph.analysisModel || ph.analysisSource}</p>
+                      </div>
+                      <button onClick={() => deletePhotoNote(ph.id)} aria-label="Delete photo note" className="opacity-0 group-hover:opacity-100 text-rose-300 hover:text-rose-200 shrink-0">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </li>
                   ))}
                 </ul>
