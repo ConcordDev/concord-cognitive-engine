@@ -10,7 +10,7 @@ interface AtlasPrivacyMonitorProps {
   loading?: boolean;
 }
 
-interface PrivacyMonitorData {
+export interface PrivacyMonitorData {
   ok: boolean;
   view: 'zones' | 'stats' | 'verify';
   zones?: {
@@ -36,7 +36,7 @@ interface PrivacyMonitorData {
   error?: string;
 }
 
-interface PrivacyZone {
+export interface PrivacyZone {
   id: string;
   classification: string;
   protection_level: string;

@@ -2281,6 +2281,8 @@ export const apiHelpers = {
     signalsAnomalies: (limit = 50) => api.get('/api/atlas/signals/anomalies', { params: { limit } }),
     signalsSpectrum: () => api.get('/api/atlas/signals/spectrum'),
     signalsClassify: (payload: Record<string, unknown>) => api.post('/api/atlas/signals/classify', payload),
+    privacyZones: (view: 'zones' | 'stats' | 'verify', params?: Record<string, unknown>) =>
+      api.get('/api/atlas/privacy_zones', { params: { view, ...params } }),
   },
 
   /** Qualia — Sensory / Body / Presence */
