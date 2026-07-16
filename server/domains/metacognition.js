@@ -289,16 +289,17 @@ export default function registerMetacognitionActions(registerLensAction) {
 });
 
   /**
-   * biasDetection
-   * Detect cognitive biases in decision data — anchoring, confirmation bias,
-   * and sunk cost patterns.
-   * artifact.data.decisions = [{ id, options: [{ name, score, evidence: [{ supports: bool, strength: number }] }], chosen, initialAnchor?, investedCost?, outcome? }]
+   * computeBiasReport — the real anchoring/confirmation/sunk-cost bias math,
+   * shared by the raw `biasDetection` macro (caller supplies decisions[]
+   * directly) and `journalBiasDetection` (adapter that sources decisions[]
+   * from the caller's own persisted Decision Journal — see below). Kept as
+   * a plain function so both entry points run byte-identical math instead
+   * of two copies that could drift.
+   * decisions = [{ id, options: [{ name, score, evidence: [{ supports: bool, strength: number }] }], chosen, initialAnchor?, investedCost?, outcome? }]
    */
-  registerLensAction("metacognition", "biasDetection", (ctx, artifact, params) => {
-  try {
-    const decisions = artifact.data?.decisions || [];
-    if (decisions.length === 0) {
-      return { ok: true, result: { message: "No decision data to analyze." } };
+  function computeBiasReport(decisions) {
+    if (!decisions || decisions.length === 0) {
+      return { message: "No decision data to analyze." };
     }
 
     const r = (v) => Math.round(v * 10000) / 10000;
@@ -429,23 +430,32 @@ export default function registerMetacognitionActions(registerLensAction) {
     const biasIndex = Math.min(1, totalBiasScore / maxPossibleScore);
 
     return {
-      ok: true,
-      result: {
-        decisionsAnalyzed: decisions.length,
-        biasesDetected: biases.length,
-        biases,
-        biasIndex: r(biasIndex),
-        riskLevel: biasIndex > 0.5 ? "high" : biasIndex > 0.2 ? "moderate" : "low",
-        recommendations: biases.map(b => {
-          switch (b.type) {
-            case "anchoring": return "Consider generating options independently before reviewing anchor values";
-            case "confirmation_bias": return "Actively seek disconfirming evidence and assign equal weight to contradicting data";
-            case "sunk_cost": return "Evaluate options based on future expected value, not past investments";
-            default: return "Review decision process for systematic biases";
-          }
-        }),
-      },
+      decisionsAnalyzed: decisions.length,
+      biasesDetected: biases.length,
+      biases,
+      biasIndex: r(biasIndex),
+      riskLevel: biasIndex > 0.5 ? "high" : biasIndex > 0.2 ? "moderate" : "low",
+      recommendations: biases.map(b => {
+        switch (b.type) {
+          case "anchoring": return "Consider generating options independently before reviewing anchor values";
+          case "confirmation_bias": return "Actively seek disconfirming evidence and assign equal weight to contradicting data";
+          case "sunk_cost": return "Evaluate options based on future expected value, not past investments";
+          default: return "Review decision process for systematic biases";
+        }
+      }),
     };
+  }
+
+  /**
+   * biasDetection
+   * Detect cognitive biases in decision data — anchoring, confirmation bias,
+   * and sunk cost patterns. artifact.data.decisions is caller-supplied
+   * directly (see computeBiasReport's doc comment above for the shape).
+   */
+  registerLensAction("metacognition", "biasDetection", (ctx, artifact, params) => {
+  try {
+    const decisions = artifact.data?.decisions || params?.decisions || [];
+    return { ok: true, result: computeBiasReport(decisions) };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -475,6 +485,69 @@ export default function registerMetacognitionActions(registerLensAction) {
   const mcReflections = (m, u) => { if (!m.reflections.has(u)) m.reflections.set(u, []); return m.reflections.get(u); };
   const round = (v) => Math.round(v * 10000) / 10000;
   const dayKey = (ts) => new Date(ts).toISOString().slice(0, 10);
+
+  // --- journalLog option / bias-field validation --------------------------
+  // biasDetection's real anchoring/confirmation/sunk-cost math (see
+  // computeBiasReport above) needs decisions shaped as
+  // { options: [{ name, score, evidence: [{ supports, strength }] }], chosen,
+  // initialAnchor?, investedCost? } — richer than the journal originally
+  // captured (flat option label strings, no anchor/invested-cost/evidence at
+  // all). mcValidateOption accepts EITHER shape per option so old flat-string
+  // callers keep working byte-for-byte, while a caller that wants real bias
+  // detection can supply the richer per-option shape. Malformed rich input
+  // throws with a precise message rather than being silently coerced —
+  // journalLog below catches it and returns an honest { ok:false, error }
+  // instead of persisting a shape that would make the bias math emit
+  // nonsense (e.g. a non-numeric score silently becoming NaN and poisoning
+  // every downstream average).
+  const mcValidateOption = (o, idx) => {
+    if (typeof o === "string" || typeof o === "number") {
+      const name = mcClean(o, 200);
+      return name ? { name, score: null, evidence: [] } : null;
+    }
+    if (!o || typeof o !== "object" || Array.isArray(o)) {
+      throw new Error(`option[${idx}] must be a string or an object with a name`);
+    }
+    const name = mcClean(o.name, 200);
+    if (!name) throw new Error(`option[${idx}] requires a non-empty name`);
+    let score = null;
+    if (o.score !== undefined && o.score !== null && o.score !== "") {
+      const n = Number(o.score);
+      if (!Number.isFinite(n)) throw new Error(`option "${name}" score must be a finite number`);
+      score = n;
+    }
+    let evidence = [];
+    if (o.evidence !== undefined && o.evidence !== null) {
+      if (!Array.isArray(o.evidence)) throw new Error(`option "${name}" evidence must be an array`);
+      evidence = o.evidence.slice(0, 20).map((e, ei) => {
+        if (!e || typeof e !== "object" || Array.isArray(e)) {
+          throw new Error(`option "${name}" evidence[${ei}] must be an object`);
+        }
+        if (typeof e.supports !== "boolean") {
+          throw new Error(`option "${name}" evidence[${ei}].supports must be a boolean`);
+        }
+        const strength = Number(e.strength);
+        if (!Number.isFinite(strength)) {
+          throw new Error(`option "${name}" evidence[${ei}].strength must be a finite number`);
+        }
+        return { supports: e.supports, strength };
+      });
+    }
+    return { name, score, evidence };
+  };
+
+  // Optional numeric field (initialAnchor / investedCost). Returns
+  // { present, value } so callers can distinguish "not supplied" from
+  // "supplied as 0" — and, critically, so journalLog can OMIT the key
+  // entirely when absent rather than storing `null` (computeBiasReport's
+  // anchoring/sunk-cost filters gate on `!== undefined`, which a stored
+  // `null` would incorrectly satisfy).
+  const mcOptionalNumber = (v, fieldName) => {
+    if (v === undefined || v === null || v === "") return { present: false, value: null };
+    const n = Number(v);
+    if (!Number.isFinite(n)) throw new Error(`${fieldName} must be a finite number`);
+    return { present: true, value: n };
+  };
 
   // Reflection prompt templates — structured after-action review questions.
   const REFLECTION_PROMPTS = [
@@ -518,13 +591,41 @@ export default function registerMetacognitionActions(registerLensAction) {
 
   /**
    * journalLog — log a decision with predicted outcome + confidence.
-   * params: { title, context?, predictedOutcome?, confidence (0-1), domain?, options?, biasChecklist? }
+   * params: { title, context?, predictedOutcome?, confidence (0-1), domain?,
+   *   options?: Array<string | { name, score?, evidence?: [{supports, strength}] }>,
+   *   biasChecklist?, chosen?: string (must match an options[].name to feed
+   *   confirmation/sunk-cost bias detection), initialAnchor?: number,
+   *   investedCost?: number }
+   * The richer options/chosen/initialAnchor/investedCost fields are optional
+   * and exist so `journalBiasDetection` (below) has real per-decision data to
+   * run anchoring/confirmation/sunk-cost bias detection against — a plain
+   * flat-string options list (the pre-existing shape) still works unchanged.
    */
   registerLensAction("metacognition", "journalLog", (ctx, _a, params = {}) => {
     try {
       const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
       const title = mcClean(params.title, 200);
       if (!title) return { ok: false, error: "decision title required" };
+
+      let options;
+      try {
+        options = Array.isArray(params.options)
+          ? params.options.slice(0, 12).map((o, i) => mcValidateOption(o, i)).filter(Boolean)
+          : [];
+      } catch (e) {
+        return { ok: false, error: `invalid options: ${e instanceof Error ? e.message : String(e)}` };
+      }
+
+      let initialAnchor, investedCost;
+      try {
+        initialAnchor = mcOptionalNumber(params.initialAnchor, "initialAnchor");
+        investedCost = mcOptionalNumber(params.investedCost, "investedCost");
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
+      }
+
+      const chosen = mcClean(params.chosen, 200) || null;
+
       const decision = {
         id: mcId("dec"),
         title,
@@ -532,7 +633,7 @@ export default function registerMetacognitionActions(registerLensAction) {
         predictedOutcome: mcClean(params.predictedOutcome, 1000),
         confidence: mcClamp(mcNum(params.confidence) || 0.5, 0, 1),
         domain: mcClean(params.domain, 80) || "general",
-        options: Array.isArray(params.options) ? params.options.slice(0, 12).map((o) => mcClean(o, 200)).filter(Boolean) : [],
+        options,
         biasChecks: Array.isArray(params.biasChecklist)
           ? params.biasChecklist.slice(0, 12).map((b) => mcClean(b, 80)).filter(Boolean) : [],
         status: "open",
@@ -542,6 +643,15 @@ export default function registerMetacognitionActions(registerLensAction) {
         createdAt: new Date().toISOString(),
         resolvedAt: null,
       };
+      // Only set these keys when actually supplied — computeBiasReport's
+      // anchoring/sunk-cost filters gate on `d.initialAnchor !== undefined` /
+      // `d.investedCost !== undefined`; a stored `null` would incorrectly
+      // satisfy that check and pull an anchor/investment-free decision into
+      // the bias math (NaN comparisons poisoning the averages).
+      if (chosen) decision.chosen = chosen;
+      if (initialAnchor.present) decision.initialAnchor = initialAnchor.value;
+      if (investedCost.present) decision.investedCost = investedCost.value;
+
       mcDecisions(m, mcActor(ctx)).push(decision);
       saveMeta();
       return { ok: true, result: { decision } };
@@ -604,6 +714,37 @@ export default function registerMetacognitionActions(registerLensAction) {
       list.splice(idx, 1);
       saveMeta();
       return { ok: true, result: { removed: id, remaining: list.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * journalBiasDetection — adapter: runs the real biasDetection math
+   * (computeBiasReport) against the authenticated actor's OWN persisted
+   * Decision Journal entries, instead of requiring the caller to hand-
+   * assemble a decisions[] array.
+   *
+   * Why an adapter and not a direct feed: journalList's `{ decisions, ... }`
+   * response shape already matches computeBiasReport's expected input
+   * field-for-field post the schema extension above (journalLog now persists
+   * options/chosen/initialAnchor/investedCost in exactly the shape the bias
+   * math reads) — so structurally a caller COULD chain
+   * `journalList()` → `biasDetection({ decisions: result.decisions })`
+   * itself. This macro exists anyway for three concrete reasons: (1) it
+   * saves every caller a round trip for what is really one feature ("find
+   * bias in my decisions"); (2) it keeps the actor scoping server-side —
+   * the caller can't accidentally pass the wrong user's decisions or a
+   * stale cached list; (3) it reads `mcDecisions` directly (the live array)
+   * rather than journalList's `.slice()` copy, so there's no risk of a
+   * future journalList filter (status/domain) silently narrowing the bias
+   * sample without the caller realizing. No reshaping actually happens
+   * inside — it is a sourcing adapter, not a data-transforming one.
+   * params: none (always scoped to the caller)
+   */
+  registerLensAction("metacognition", "journalBiasDetection", (ctx, _a, _params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      const decisions = mcDecisions(m, mcActor(ctx));
+      return { ok: true, result: computeBiasReport(decisions) };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
