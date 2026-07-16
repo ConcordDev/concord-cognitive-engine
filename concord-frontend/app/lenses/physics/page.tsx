@@ -45,6 +45,7 @@ import PhysicsWorkbench from '@/components/physics/PhysicsWorkbench';
 import { PhysicsLab } from '@/components/physics/PhysicsLab';
 import { PhysicsActionPanel } from '@/components/physics/PhysicsActionPanel';
 import { PhysicsAdvancedLab } from '@/components/physics/PhysicsAdvancedLab';
+import { PhysicsKeplerianLab } from '@/components/physics/PhysicsKeplerianLab';
 import { PipingProvider } from '@/components/panel-polish';
 
 // Physics body types
@@ -1621,6 +1622,14 @@ export default function PhysicsLensPage() {
           shape doesn't match what these macros read — see PhysicsAdvancedLab
           header comment for the field-shape mismatch this replaced). */}
       <PhysicsAdvancedLab />
+
+      {/* Un-shadowed richer orbital engine — Keplerian-element orbit
+          propagation + a real two-burn Hohmann-transfer Δv/time calc, reached
+          via the new additive physics.orbitalMechanicsAdvanced macro (see
+          server/domains/physics.js and PhysicsKeplerianLab's header comment
+          for why this is a separate macro name from PhysicsAdvancedLab's
+          "Orbital Mechanics" tab rather than a replacement for it). */}
+      <PhysicsKeplerianLab />
 
       {/* Lens Features */}
       <div className="border-t border-white/10">
