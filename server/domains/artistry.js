@@ -429,7 +429,7 @@ export default function registerArtistryActions(registerLensAction) {
     for (const k of [
       "projects", "follows", "comments", "appreciations",
       "collections", "profiles", "jobs", "galleries", "analyticsSnapshots",
-      "projectImages",
+      "projectImages", "dmThreads",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -795,6 +795,134 @@ export default function registerArtistryActions(registerLensAction) {
         ok: true,
         result: { mode, fromFollowsCount: fromFollows, items: feed.slice(0, limit), count: Math.min(feed.length, limit) },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Direct messages between creators ─────────────────────────────────
+  // Closes docs/WAVE4_INVENTORY.md line 100 / artistry-capability-map.md
+  // item 11: "No direct-messaging system between creators." Structurally
+  // cloned from server/domains/alliance.js's cross-org DM primitive
+  // (dmThreadKey / dm-send / dm-list / dm-inbox, alliance.js:1130-1239):
+  // same sorted-pair `[a,b].sort().join("::")` threadKey so both sides
+  // converge on one storage key regardless of who initiated, same
+  // Map<threadKey, Array<message>> state shape, same three-macro surface,
+  // same honest-fallback displayName resolution for dm-inbox.
+  //
+  // What's deliberately NOT copied is the message shape and the recipient-
+  // validation rule — both correctly diverge from the alliance template:
+  //
+  // Message shape: alliance's channel messages already carry attachments +
+  // emoji reactions + parentId threading, so its DMs inherited that richer
+  // shape. This lens's own existing per-project comments (commentAdd,
+  // above) are a plain { id, projectId, userId, body, createdAt } with no
+  // attachments/reactions/threading — so DMs mirror THAT simpler shape
+  // (field named `body` to match, not `content`) rather than importing
+  // richness alliance's own domain happens to have and this one doesn't.
+  //
+  // Recipient validation: alliance has closed membership — every real user
+  // on that lens belongs to some alliance, so `findAllianceMember` (scan
+  // every alliance's roster) is a complete "is this a real, known person"
+  // check. Artistry has NO membership concept at all — anyone with a
+  // session can follow/comment/view — so there is no roster to scan. The
+  // honest equivalent here is "has this userId left any real, visible
+  // trace on this lens": either they've set up a profile (`profileUpdate`
+  // → `s.profiles`) or they've published/created at least one project
+  // (`projectCreate` → `s.projects`). A wholly fabricated/never-seen userId
+  // has neither and is rejected — same discipline as alliance's "reject a
+  // fabricated/unknown userId" case, just adapted from a closed-membership
+  // check to an open-participation check. This mirrors the existing
+  // `follow`/`unfollow` macros' own honest gap (a free-text `targetUserId`
+  // with only a self-follow guard, no existence check) by finally adding
+  // the existence check follow/unfollow never had — DMs don't get to
+  // reach a name nobody has ever actually used on this lens.
+  function artDmThreadKey(a, b) { return [a, b].sort().join("::"); }
+
+  function artDmRecipientExists(s, userId) {
+    if (s.profiles.has(userId)) return true;
+    const projects = s.projects.get(userId);
+    return Array.isArray(projects) && projects.length > 0;
+  }
+
+  // Real display name if resolvable; otherwise the raw userId — never a
+  // fabricated name (honest-by-construction, same as alliance's
+  // dmDisplayName: a partner who never set a profile displayName still
+  // shows up in the inbox by their real id).
+  function artDmDisplayName(s, userId) {
+    const profile = s.profiles.get(userId);
+    return (profile && profile.displayName) || userId;
+  }
+
+  registerLensAction("artistry", "dm-send", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const fromId = artAid(ctx);
+      const toId = artClean((params || {}).toId, 80);
+      if (!toId) return { ok: false, error: "toId_required" };
+      if (!artDmRecipientExists(s, toId)) return { ok: false, error: "recipient_not_found" };
+      const body = artClean((params || {}).body, 1200);
+      if (!body) return { ok: false, error: "body_required" };
+      const key = artDmThreadKey(fromId, toId);
+      const thread = artList(s.dmThreads, key);
+      const message = {
+        id: artId("dm"),
+        threadKey: key,
+        fromId,
+        toId,
+        fromName: artDmDisplayName(s, fromId),
+        body,
+        createdAt: artNow(),
+      };
+      thread.push(message);
+      saveArtState();
+      return { ok: true, result: { message, threadKey: key } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Fetch the DM thread between the caller and a specific partner. The
+  // thread key is derived from the CALLER's own id + the requested partner,
+  // so a third party who is not one of the two real participants can never
+  // land on the real thread's key — they only ever see their own (empty,
+  // freshly-created) thread with that partner. Privacy is enforced by the
+  // key derivation itself, not by a separate ACL check.
+  registerLensAction("artistry", "dm-list", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = artAid(ctx);
+      const partnerId = artClean((params || {}).partnerId, 80);
+      if (!partnerId) return { ok: false, error: "partnerId_required" };
+      const key = artDmThreadKey(userId, partnerId);
+      // Push order is already chronological ascending (mirrors commentList).
+      const messages = artList(s.dmThreads, key).slice();
+      return { ok: true, result: { messages, count: messages.length, threadKey: key } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // List every DM thread the caller participates in — inbox view.
+  registerLensAction("artistry", "dm-inbox", (ctx, artifact, _params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = artAid(ctx);
+      const threads = [];
+      for (const [key, msgs] of s.dmThreads.entries()) {
+        const parts = key.split("::");
+        if (!parts.includes(userId) || msgs.length === 0) continue;
+        const partnerId = parts.find((p) => p !== userId) || parts[0];
+        const last = msgs[msgs.length - 1];
+        threads.push({
+          partnerId,
+          partnerName: artDmDisplayName(s, partnerId),
+          threadKey: key,
+          lastMessage: last.body,
+          lastFrom: last.fromId,
+          lastAt: last.createdAt,
+          messageCount: msgs.length,
+        });
+      }
+      threads.sort((a, b) => (b.lastAt > a.lastAt ? 1 : -1));
+      return { ok: true, result: { threads, count: threads.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

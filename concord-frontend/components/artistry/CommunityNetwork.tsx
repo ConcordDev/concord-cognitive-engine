@@ -3,9 +3,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
 import {
-  Users, UserPlus, UserMinus, Eye, Heart, MessageSquare, Loader2, Rss, ImageIcon, Sparkles,
+  Users, UserPlus, UserMinus, Eye, Heart, MessageSquare, Loader2, Rss, ImageIcon, Sparkles, Send,
 } from 'lucide-react';
+import { ArtistryDmPanel, type DmMessage, type DmThread } from './ArtistryDmPanel';
 
 interface FeedProject {
   id: string; userId: string; title: string; description: string; discipline: string;
@@ -17,6 +19,8 @@ interface GraphPayload {
   userId: string; following: string[]; followers: string[]; mutuals: string[];
   followingCount: number; followerCount: number; mutualCount: number;
 }
+interface DmInboxPayload { threads: DmThread[]; count: number }
+interface DmListPayload { messages: DmMessage[]; count: number; threadKey: string }
 
 export function CommunityNetwork() {
   const [feed, setFeed] = useState<FeedPayload | null>(null);
@@ -24,15 +28,25 @@ export function CommunityNetwork() {
   const [loading, setLoading] = useState(true);
   const [followInput, setFollowInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const { user } = useAuth();
+
+  // ── Direct messages between creators ──────────────────────────────
+  const [dmThreads, setDmThreads] = useState<DmThread[]>([]);
+  const [selDmPartner, setSelDmPartner] = useState<string | null>(null);
+  const [dmMessages, setDmMessages] = useState<DmMessage[]>([]);
+  const [dmDraft, setDmDraft] = useState('');
+  const [dmBusy, setDmBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [f, g] = await Promise.all([
+    const [f, g, i] = await Promise.all([
       lensRun('artistry', 'personalizedFeed', { limit: 24 }),
       lensRun('artistry', 'followGraph', {}),
+      lensRun('artistry', 'dm-inbox', {}),
     ]);
     if (f.data?.ok) setFeed(f.data.result as FeedPayload);
     if (g.data?.ok) setGraph(g.data.result as GraphPayload);
+    if (i.data?.ok) setDmThreads((i.data.result as DmInboxPayload)?.threads || []);
     setLoading(false);
   }, []);
 
@@ -59,6 +73,36 @@ export function CommunityNetwork() {
     await lensRun('artistry', 'appreciate', { projectId });
     load();
   }, [load]);
+
+  const loadDmThread = useCallback(async (partnerId: string) => {
+    const r = await lensRun('artistry', 'dm-list', { partnerId });
+    if (r.data?.ok) setDmMessages((r.data.result as DmListPayload)?.messages || []);
+  }, []);
+
+  // Opens (or resumes) a conversation with a specific creator — the ONLY
+  // entry point into the DM panel is the "Message" action on a real
+  // follow/follower row (or an existing inbox thread); there is no
+  // free-text recipient box.
+  const openDm = useCallback((partnerId: string | null) => {
+    setSelDmPartner(partnerId);
+    setDmMessages([]);
+    if (partnerId) loadDmThread(partnerId);
+  }, [loadDmThread]);
+
+  const sendDm = useCallback(async () => {
+    if (!selDmPartner || !dmDraft.trim()) return;
+    setDmBusy(true);
+    const r = await lensRun('artistry', 'dm-send', { toId: selDmPartner, body: dmDraft.trim() });
+    setDmBusy(false);
+    if (r.data?.ok) {
+      setDmDraft('');
+      const [, i] = await Promise.all([
+        loadDmThread(selDmPartner),
+        lensRun('artistry', 'dm-inbox', {}),
+      ]);
+      if (i.data?.ok) setDmThreads((i.data.result as DmInboxPayload)?.threads || []);
+    }
+  }, [selDmPartner, dmDraft, loadDmThread]);
 
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>;
@@ -88,18 +132,56 @@ export function CommunityNetwork() {
           </button>
         </div>
         {graph && graph.following.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {graph.following.map((u) => (
-              <span key={u} className="flex items-center gap-1 text-[11px] px-2 py-1 bg-white/5 border border-white/10 rounded-full">
-                {graph.mutuals.includes(u) && <Heart className="w-2.5 h-2.5 fill-neon-pink text-neon-pink" />}
-                {u}
-                <button onClick={() => unfollow(u)} className="text-gray-400 hover:text-red-400" aria-label={`Unfollow ${u}`}>
-                  <UserMinus className="w-2.5 h-2.5" />
-                </button>
-              </span>
-            ))}
+          <div>
+            <div className="text-[10px] text-gray-500 uppercase tracking-wider pt-1">Following</div>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {graph.following.map((u) => (
+                <span key={u} className="flex items-center gap-1 text-[11px] px-2 py-1 bg-white/5 border border-white/10 rounded-full">
+                  {graph.mutuals.includes(u) && <Heart className="w-2.5 h-2.5 fill-neon-pink text-neon-pink" />}
+                  {u}
+                  <button onClick={() => openDm(u)} className="text-gray-400 hover:text-neon-cyan" aria-label={`Message ${u}`}>
+                    <Send className="w-2.5 h-2.5" />
+                  </button>
+                  <button onClick={() => unfollow(u)} className="text-gray-400 hover:text-red-400" aria-label={`Unfollow ${u}`}>
+                    <UserMinus className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
           </div>
         )}
+        {graph && graph.followers.length > 0 && (
+          <div>
+            <div className="text-[10px] text-gray-500 uppercase tracking-wider pt-1">Followers</div>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {graph.followers.map((u) => (
+                <span key={u} className="flex items-center gap-1 text-[11px] px-2 py-1 bg-white/5 border border-white/10 rounded-full">
+                  {graph.mutuals.includes(u) && <Heart className="w-2.5 h-2.5 fill-neon-pink text-neon-pink" />}
+                  {u}
+                  <button onClick={() => openDm(u)} className="text-gray-400 hover:text-neon-cyan" aria-label={`Message ${u}`}>
+                    <Send className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Direct messages */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold flex items-center gap-2"><MessageSquare className="w-4 h-4 text-neon-pink" /> Messages</h3>
+        <ArtistryDmPanel
+          threads={dmThreads}
+          selPartner={selDmPartner}
+          onSelectPartner={openDm}
+          messages={dmMessages}
+          draft={dmDraft}
+          setDraft={setDmDraft}
+          onSend={sendDm}
+          busy={dmBusy}
+          currentUserId={user?.id || null}
+        />
       </div>
 
       {/* Personalized feed */}
