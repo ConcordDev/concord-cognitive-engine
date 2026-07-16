@@ -161,6 +161,165 @@ export default function registerMiningActions(registerLensAction) {
       seriousIncidents: incidents.filter((i) => i.severity === "serious" || i.severity === "fatal").length } };
   });
 
+  // ─── Environmental compliance + reclamation tracking (per-site) ──────
+  // Closes the "environmental compliance / reclamation tracking" gap
+  // (docs/lens-specs/mining-capability-map.md): permit/inspection records
+  // per site (a list, mirroring incident-log's per-site array shape) plus
+  // a single ongoing reclamation status per site (not a history — a site
+  // has one current disturbed/reclaimed-acreage + bond state, not a log
+  // of reclamation events). `site.status === "reclamation"` already
+  // exists on `site-update` — this section is what actually backs it,
+  // instead of leaving that value orphaned from any real tracking.
+  const MINING_COMPLIANCE_CATEGORIES = ["air_quality_permit", "water_discharge_permit", "tailings_management",
+    "land_disturbance_permit", "blasting_permit", "reclamation_bond", "other"];
+  const MINING_COMPLIANCE_STATUSES = ["compliant", "violation", "pending_review"];
+  const RECLAMATION_PHASES = ["not_started", "planning", "in_progress", "completed"];
+  const RECLAMATION_BOND_STATUSES = ["not_posted", "posted", "released", "forfeited"];
+  // Live day-diff, never stored — same "recompute on every read" discipline
+  // as this arc's other expiry-tracking macros (e.g. insurance.js's dueState).
+  const mnDaysUntil = (dateStr) => {
+    const t = new Date(String(dateStr) + "T00:00:00Z").getTime();
+    if (Number.isNaN(t)) return null;
+    return Math.floor((t - Date.now()) / 86400000);
+  };
+
+  registerLensAction("mining", "compliance-log", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.siteId);
+    if (!site) return { ok: false, error: "site not found" };
+    const category = mnClean(params.category, 40).toLowerCase();
+    if (!MINING_COMPLIANCE_CATEGORIES.includes(category)) {
+      return { ok: false, error: `unrecognized category: ${category || "(none)"}` };
+    }
+    const status = mnClean(params.status, 40).toLowerCase();
+    if (!MINING_COMPLIANCE_STATUSES.includes(status)) {
+      return { ok: false, error: `unrecognized status: ${status || "(none)"}` };
+    }
+    const record = {
+      id: mnId("cmp"), siteId: site.id, category, status,
+      permitNumber: mnClean(params.permitNumber, 80) || null,
+      issuingAgency: mnClean(params.issuingAgency, 120) || null,
+      inspectionDate: mnClean(params.inspectionDate, 30) || new Date().toISOString().slice(0, 10),
+      expiryDate: mnClean(params.expiryDate, 30) || null,
+      notes: mnClean(params.notes, 600) || null,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    if (!Array.isArray(site.complianceRecords)) site.complianceRecords = [];
+    site.complianceRecords.push(record); saveMining();
+    return { ok: true, result: { record } };
+  });
+
+  registerLensAction("mining", "compliance-list", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sites = mnSites(s, mnActor(ctx));
+    let scoped = sites;
+    if (params.siteId) {
+      const site = sites.find((x) => x.id === params.siteId);
+      if (!site) return { ok: false, error: "site not found" };
+      scoped = [site];
+    }
+    const records = scoped.flatMap((site) => (Array.isArray(site.complianceRecords) ? site.complianceRecords : []).map((r) => {
+      const daysUntilExpiry = r.expiryDate ? mnDaysUntil(r.expiryDate) : null;
+      return {
+        ...r, siteId: site.id, siteName: site.name,
+        isOverdue: daysUntilExpiry != null && daysUntilExpiry < 0,
+        daysUntilExpiry,
+      };
+    }));
+    const byCategory = {};
+    let violationCount = 0, overdueCount = 0;
+    for (const r of records) {
+      byCategory[r.category] = (byCategory[r.category] || 0) + 1;
+      if (r.status === "violation") violationCount++;
+      if (r.isOverdue) overdueCount++;
+    }
+    return { ok: true, result: { records, count: records.length, violationCount, overdueCount, byCategory } };
+  });
+
+  registerLensAction("mining", "compliance-update", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.siteId);
+    if (!site) return { ok: false, error: "site not found" };
+    if (!Array.isArray(site.complianceRecords)) site.complianceRecords = [];
+    const record = site.complianceRecords.find((r) => r.id === params.id);
+    if (!record) return { ok: false, error: "compliance record not found" };
+    if (params.category != null) {
+      const category = mnClean(params.category, 40).toLowerCase();
+      if (!MINING_COMPLIANCE_CATEGORIES.includes(category)) {
+        return { ok: false, error: `unrecognized category: ${category || "(none)"}` };
+      }
+      record.category = category;
+    }
+    if (params.status != null) {
+      const status = mnClean(params.status, 40).toLowerCase();
+      if (!MINING_COMPLIANCE_STATUSES.includes(status)) {
+        return { ok: false, error: `unrecognized status: ${status || "(none)"}` };
+      }
+      record.status = status;
+    }
+    if (params.permitNumber != null) record.permitNumber = mnClean(params.permitNumber, 80) || null;
+    if (params.issuingAgency != null) record.issuingAgency = mnClean(params.issuingAgency, 120) || null;
+    if (params.inspectionDate != null) record.inspectionDate = mnClean(params.inspectionDate, 30) || record.inspectionDate;
+    if (params.expiryDate != null) record.expiryDate = mnClean(params.expiryDate, 30) || null;
+    if (params.notes != null) record.notes = mnClean(params.notes, 600) || null;
+    record.updatedAt = new Date().toISOString();
+    saveMining();
+    return { ok: true, result: { record } };
+  });
+
+  registerLensAction("mining", "reclamation-update", (ctx, _a, params = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.siteId);
+    if (!site) return { ok: false, error: "site not found" };
+    if (params.phase != null && !RECLAMATION_PHASES.includes(params.phase)) {
+      return { ok: false, error: `unrecognized phase: ${params.phase || "(none)"}` };
+    }
+    if (params.bondStatus != null && !RECLAMATION_BOND_STATUSES.includes(params.bondStatus)) {
+      return { ok: false, error: `unrecognized bondStatus: ${params.bondStatus || "(none)"}` };
+    }
+    if (!site.reclamation) {
+      site.reclamation = {
+        phase: "not_started", acresDisturbed: 0, acresReclaimed: 0,
+        bondAmount: 0, bondStatus: "not_posted", createdAt: new Date().toISOString(),
+      };
+    }
+    const r = site.reclamation;
+    if (params.phase != null) r.phase = params.phase;
+    if (params.acresDisturbed != null) r.acresDisturbed = Math.max(0, mnNum(params.acresDisturbed));
+    if (params.acresReclaimed != null) r.acresReclaimed = Math.max(0, mnNum(params.acresReclaimed));
+    if (params.bondAmount != null) r.bondAmount = Math.max(0, mnNum(params.bondAmount));
+    if (params.bondStatus != null) r.bondStatus = params.bondStatus;
+    // Reclaimed acres can never exceed disturbed acres — clamp, don't
+    // reject (this file's established convention; see site-update /
+    // equipment-update's Math.max clamps rather than hard rejections for
+    // out-of-range-but-not-malformed numeric input).
+    r.acresReclaimed = Math.min(r.acresReclaimed, r.acresDisturbed);
+    r.updatedAt = new Date().toISOString();
+    saveMining();
+    return { ok: true, result: { reclamation: r } };
+  });
+
+  registerLensAction("mining", "reclamation-list", (ctx, _a, _p = {}) => {
+    const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sites = mnSites(s, mnActor(ctx));
+    const entries = sites
+      .filter((site) => site.reclamation || site.status === "reclamation")
+      .map((site) => {
+        // A site flagged `status:'reclamation'` (via site-update) but with
+        // no reclamation-update call yet still surfaces here, with the same
+        // defaults reclamation-update would create on first write — the
+        // status flag is never orphaned from this list.
+        const r = site.reclamation || {
+          phase: "not_started", acresDisturbed: 0, acresReclaimed: 0,
+          bondAmount: 0, bondStatus: "not_posted",
+        };
+        const reclamationPercent = r.acresDisturbed > 0
+          ? Math.round((r.acresReclaimed / r.acresDisturbed) * 100) : 0;
+        return { siteId: site.id, siteName: site.name, reclamation: r, reclamationPercent };
+      });
+    return { ok: true, result: { sites: entries, count: entries.length } };
+  });
+
   // ─── Drill-hole database (per-user, STATE-backed) ───────────────────
   // Each hole: id, name, collar {x,y,z}, azimuth, dip, totalDepth,
   // intervals[] = { from, to, lithology, assayGrade, recovery }.
