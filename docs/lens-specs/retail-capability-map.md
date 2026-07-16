@@ -258,9 +258,35 @@ the honesty invariant these are relabeled as deferred, not faked:
   and per-user isolation) + all 5 retail backend test files re-run
   together (148/148, 0 regressions) + 7 new frontend
   (`PipelinePanel.test.tsx`).
-- **Support tickets** — a persisted ticket queue (subject, priority, SLA
-  deadline, assignee, replies). `slaStatus` computes compliance from
-  pasted incidents but no macro creates or lists a ticket.
+- ~~**Support tickets**~~ **BUILT (2026-07-16, `e9c4f7fd`) — Wave 4
+  larger-unit build.** New `tickets-list`/`tickets-upsert`/
+  `tickets-status-move`/`tickets-reply-add`/`tickets-delete` macro
+  family: a real support-desk lifecycle
+  (open→in-progress→waiting-on-customer→resolved→closed), `closed` a
+  locked terminal requiring `reopen: true` back into an open status
+  only, and resolving a ticket stamps `resolvedWithinSla` (boolean)
+  computed against the ticket's real `slaDeadline` — never a
+  client-invented flag. The per-priority SLA target table
+  (`TICKET_PRIORITY_SLA_MINUTES = {critical:60, high:240, medium:1440,
+  low:2880}`) was hoisted to a single shared constant at the top of the
+  file and is now the ONE source of truth `slaStatus`'s pre-existing
+  incidents branch reads too, so a persisted ticket's deadline and the
+  ad-hoc incidents-report compliance math can never silently disagree.
+  `slaStatus`'s legacy `tickets` branch now falls back to reading this
+  persisted queue, gated the exact same way the sibling CRM unit's
+  `pipelineValue` fix required: true omission of the `tickets` key
+  (checked via `in`), never falsy/non-array shape — so a caller pasting
+  any value under `tickets`, even garbage, still gets the pre-existing
+  "invalid → empty report, never crash" behavior byte-identically
+  (verified against `retail-lens-macros.test.js`'s "a non-array
+  incidents payload falls through to the legacy ticket branch" test,
+  which still passes unmodified). New `TicketQueuePanel.tsx`: a real
+  list/detail split view — priority + SLA-countdown badges (color-coded
+  breached/approaching/healthy), status filter tabs, a create form, a
+  reply thread + composer, resolve and reopen actions. Mounted as a new
+  "Tickets" tab next to Pipeline. Tests: 24 new backend (standalone) +
+  all 6 retail backend test files re-run together (206/206, 0
+  regressions) + 9 new frontend (`TicketQueuePanel.test.tsx`).
 - **In-store marketing displays** — a persisted display/endcap record
   (location, budget, impressions, conversions). No macro anywhere.
 - **Richer product schema** — variants (size/color/style sub-SKUs), price-
