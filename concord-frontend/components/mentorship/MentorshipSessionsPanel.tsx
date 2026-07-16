@@ -9,10 +9,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Loader2, CalendarPlus, Video, Clock, Check, X, ChevronLeft,
-  CheckSquare, Square, Star, Bell,
+  CheckSquare, Square, Star, Bell, Users,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
+import { GroupSessionsPanel } from '@/components/mentorship/GroupSessionsPanel';
 import { cn } from '@/lib/utils';
 
 interface ActionItem { id: string; text: string; done: boolean; createdAt: string }
@@ -39,6 +40,12 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export function MentorshipSessionsPanel() {
+  // 1:1 sessions (session-book, mirrored onto both parties) and group
+  // sessions (group-session-*, a separate host+attendees[] entity — see
+  // GroupSessionsPanel's header comment for why they're not the same
+  // shape) are two backend surfaces, switched here rather than merged into
+  // one list so each keeps its own honest data shape.
+  const [mode, setMode] = useState<'1:1' | 'group'>('1:1');
   const [sessions, setSessions] = useState<MentorSession[]>([]);
   const [reminders, setReminders] = useState<MentorSession[]>([]);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all');
@@ -134,6 +141,34 @@ export function MentorshipSessionsPanel() {
     tone: s.status === 'completed' ? 'good' : s.status === 'cancelled' ? 'bad' : 'info',
   }));
 
+  const modeToggle = (
+    <div className="flex gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1 w-fit">
+      <button
+        onClick={() => setMode('1:1')}
+        className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all',
+          mode === '1:1' ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-zinc-400 hover:text-white')}
+      >
+        <CalendarPlus className="w-3.5 h-3.5" /> 1:1
+      </button>
+      <button
+        onClick={() => setMode('group')}
+        className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all',
+          mode === 'group' ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-zinc-400 hover:text-white')}
+      >
+        <Users className="w-3.5 h-3.5" /> Group
+      </button>
+    </div>
+  );
+
+  if (mode === 'group') {
+    return (
+      <div className="space-y-4">
+        {modeToggle}
+        <GroupSessionsPanel />
+      </div>
+    );
+  }
+
   if (selected) {
     const openItems = selected.actionItems.filter((i) => !i.done).length;
     return (
@@ -211,6 +246,7 @@ export function MentorshipSessionsPanel() {
 
   return (
     <div className="space-y-4">
+      {modeToggle}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2"><CalendarPlus className="w-4 h-4 text-neon-cyan" /> Sessions</h3>
         <button onClick={() => setShowBook(!showBook)} className="btn-neon text-sm">
