@@ -657,15 +657,102 @@ export default function registerRetailActions(registerLensAction) {
   function nowIsoRet() { return new Date().toISOString(); }
 
   // ── Product catalog ──
+  //
+  // Wave 4 larger-unit build (2026-07-16), fourth and final of retail's
+  // originally-deferred items: richer product schema. `product-upsert` is
+  // structurally different from the deals-*/tickets-*/displays-* macro
+  // families built just before it in this same file (`cb45c52b`/`e9c4f7fd`/
+  // `3f0dfc3d`) — those do field-by-field PARTIAL updates (only touch what
+  // the caller explicitly sends); `product-upsert` does a FULL OBJECT
+  // REPLACE every call, preserving only `createdAt` from `existing`. The
+  // three new catalog-depth fields below (`supplier`/`leadTimeDays`/
+  // `dailySalesRate`) are preserved from `existing` the SAME way `createdAt`
+  // already is, whenever the caller omits them — so the pre-existing
+  // minimal call shape `{sku,name,price,stock}` (still used by the POS/cart
+  // flow's stock-decrement writes and by every pre-existing test) never
+  // silently wipes catalog depth set by a prior richer call. Passing an
+  // explicit value (including `null`/`""` for leadTimeDays) DOES update/
+  // clear the field — that's the deliberate "unset" path, matching how
+  // `category`/`barcode` already behave on this same macro (full-replace,
+  // not preserved, pre-existing and unchanged here — out of this unit's
+  // scope, only the three NEW fields get the preserve treatment).
+  //
+  // `priceHistory` is never caller-supplied (a caller injecting a fake
+  // price history would defeat the whole point of an audit trail) — it's
+  // server-computed: seeded with one entry on create (`oldPrice: null`,
+  // mirrors the `statusHistory`/`stageHistory` seed-on-create convention
+  // the sibling units established), then appended to ONLY when the new
+  // `price` differs from `existing.price` on a later call. A same-price
+  // re-upsert (e.g. the POS stock-decrement path re-upserting a product at
+  // its unchanged price — it doesn't, but hypothetically could) never
+  // appends a spurious entry.
+  //
+  // `turnoverRate` = (dailySalesRate × 365) / stock — the standard
+  // "annual units sold ÷ average units on hand" inventory-turnover-rate
+  // formula (higher = faster-moving stock). Honestly `null`, never
+  // `Infinity`, when `stock === 0` (can't compute a rate against zero
+  // inventory on hand).
+  //
+  // `abcClass` ("A"/"B"/"C") CANNOT be computed by a single product record
+  // in isolation — ABC analysis ranks a product's revenue contribution
+  // against the REST of the catalog. It's computed in `product-list`
+  // (below) across the caller's full catalog, not here.
+
+  function computeProductAbcClasses(products) {
+    // Revenue proxy per product = price × dailySalesRate (a real "how much
+    // this SKU is worth per day" number from the schema — never fabricated).
+    // Standard Pareto/ABC bucketing: rank descending by revenue, classify
+    // each product by the CUMULATIVE revenue share of every product ranked
+    // ABOVE it (not including itself) — this is what correctly puts a
+    // single dominant SKU (0% preceding it) into "A" instead of overshooting
+    // into "C" when its own revenue alone crosses the 80% line. A = share
+    // preceding it < 80%, B = 80–95%, C = >= 95%. Honestly `null` for every
+    // product (not "C") when the catalog's total modeled revenue is 0 — no
+    // sales-rate data exists yet to classify against.
+    const revenues = products.map((p) => ({
+      sku: p.sku,
+      revenueRate: (Number(p.price) || 0) * (Number(p.dailySalesRate) || 0),
+    }));
+    const total = revenues.reduce((sum, r) => sum + r.revenueRate, 0);
+    const classBySku = new Map();
+    if (!(total > 0)) {
+      for (const r of revenues) classBySku.set(r.sku, null);
+      return classBySku;
+    }
+    const ranked = revenues.slice().sort((a, b) => b.revenueRate - a.revenueRate);
+    let cumulativeBefore = 0;
+    for (const r of ranked) {
+      const shareBefore = cumulativeBefore / total;
+      let cls;
+      if (shareBefore < 0.80) cls = "A";
+      else if (shareBefore < 0.95) cls = "B";
+      else cls = "C";
+      classBySku.set(r.sku, cls);
+      cumulativeBefore += r.revenueRate;
+    }
+    return classBySku;
+  }
 
   registerLensAction("retail", "product-list", (ctx, _artifact, _params = {}) => {
     const s = getRetailState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const map = s.products.get(userId);
-    if (!map) return { ok: true, result: { products: [] } };
-    const products = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-    return { ok: true, result: { products } };
+    if (!map) {
+      return { ok: true, result: { products: [], abcSummary: { A: 0, B: 0, C: 0, unclassified: 0 } } };
+    }
+    const productsRaw = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const classBySku = computeProductAbcClasses(productsRaw);
+    let aCount = 0, bCount = 0, cCount = 0, unclassified = 0;
+    const products = productsRaw.map((p) => {
+      const abcClass = classBySku.has(p.sku) ? classBySku.get(p.sku) : null;
+      if (abcClass === "A") aCount++;
+      else if (abcClass === "B") bCount++;
+      else if (abcClass === "C") cCount++;
+      else unclassified++;
+      return { ...p, abcClass };
+    });
+    return { ok: true, result: { products, abcSummary: { A: aCount, B: bCount, C: cCount, unclassified } } };
   });
 
   registerLensAction("retail", "product-upsert", (ctx, _artifact, params = {}) => {
@@ -683,17 +770,85 @@ export default function registerRetailActions(registerLensAction) {
     if (!Number.isFinite(stock) || stock < 0) return { ok: false, error: "stock must be >= 0" };
     if (!s.products.has(userId)) s.products.set(userId, new Map());
     const existing = s.products.get(userId).get(sku);
+
+    // ── Non-destructive preserve (the landmine): only touch these three
+    // when the caller actually passes them; otherwise carry the existing
+    // value forward exactly like `createdAt` already does. ──
+    let supplier = existing?.supplier || "";
+    if (params.supplier !== undefined) supplier = String(params.supplier || "").slice(0, 120);
+
+    let leadTimeDays = existing?.leadTimeDays ?? null;
+    if (params.leadTimeDays !== undefined) {
+      if (params.leadTimeDays === null || params.leadTimeDays === "") {
+        leadTimeDays = null;
+      } else {
+        const n = Number(params.leadTimeDays);
+        if (!Number.isFinite(n) || n < 0) return { ok: false, error: "leadTimeDays must be >= 0" };
+        leadTimeDays = n;
+      }
+    }
+
+    let dailySalesRate = existing?.dailySalesRate ?? 0;
+    if (params.dailySalesRate !== undefined) {
+      const n = Number(params.dailySalesRate);
+      if (!Number.isFinite(n) || n < 0) return { ok: false, error: "dailySalesRate must be >= 0" };
+      dailySalesRate = n;
+    }
+
+    // ── Server-computed only, never caller-supplied ──
+    const now = nowIsoRet();
+    let priceHistory;
+    if (!existing) {
+      priceHistory = [{ oldPrice: null, newPrice: price, changedAt: now }];
+    } else {
+      priceHistory = Array.isArray(existing.priceHistory) ? existing.priceHistory.slice() : [];
+      if (price !== existing.price) {
+        priceHistory.push({ oldPrice: existing.price, newPrice: price, changedAt: now });
+      }
+    }
+    // Standard inventory-turnover-rate formula: annual units sold ÷ average
+    // units on hand ≈ (dailySalesRate × 365) / stock. Honest `null` (never
+    // Infinity) when stock is 0.
+    const turnoverRate = stock > 0 ? Math.round(((dailySalesRate * 365) / stock) * 100) / 100 : null;
+
     const product = {
       sku, name, price,
       stock,
       category: String(params.category || "").slice(0, 40),
       barcode: String(params.barcode || "").slice(0, 32),
-      updatedAt: nowIsoRet(),
-      createdAt: existing?.createdAt || nowIsoRet(),
+      supplier,
+      leadTimeDays,
+      dailySalesRate,
+      turnoverRate,
+      priceHistory,
+      updatedAt: now,
+      createdAt: existing?.createdAt || now,
     };
     s.products.get(userId).set(sku, product);
     saveRetailState();
     return { ok: true, result: { product } };
+  });
+
+  // Read-only view of the auto-appended price-change audit trail for one
+  // SKU. Kept as a dedicated macro (rather than requiring the whole
+  // catalog via product-list) because a price-history mini-timeline widget
+  // in the UI shouldn't need to fetch every other product to render one
+  // product's history. `product-list`/`product-upsert` also carry
+  // `priceHistory` inline on the full product record for convenience when
+  // the caller already has the object in hand.
+  registerLensAction("retail", "product-price-history", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sku = String(params.sku || "").trim();
+    if (!sku) return { ok: false, error: "sku required" };
+    const map = s.products.get(userId);
+    const product = map ? map.get(sku) : null;
+    if (!product) return { ok: false, error: "product not found" };
+    return {
+      ok: true,
+      result: { sku, priceHistory: Array.isArray(product.priceHistory) ? product.priceHistory : [] },
+    };
   });
 
   registerLensAction("retail", "product-delete", (ctx, _artifact, params = {}) => {
@@ -705,8 +860,116 @@ export default function registerRetailActions(registerLensAction) {
     const map = s.products.get(userId);
     if (!map || !map.has(sku)) return { ok: false, error: "not found" };
     map.delete(sku);
+    // Cascade: a variant pointing at a deleted parent SKU is dangling data
+    // no UI can ever legitimately show (its price derives from a parent
+    // that no longer exists) — remove it rather than leave an orphan.
+    const variants = ensureRetailBucket(s, "productVariants", userId);
+    for (let i = variants.length - 1; i >= 0; i--) {
+      if (variants[i].parentSku === sku) variants.splice(i, 1);
+    }
     saveRetailState();
     return { ok: true, result: { deleted: sku } };
+  });
+
+  // ── Product variants (size/color/style sub-SKUs) ──
+  //
+  // Modeled as genuinely separate catalog-adjacent records (own SKU, own
+  // stock, own createdAt/updatedAt) rather than an array embedded on the
+  // parent product — the same reasoning the deals/tickets/displays units
+  // used for their own entities: a variant is independently addressable
+  // (its own SKU can be scanned at the register, its own stock decremented
+  // independently of the parent), so it gets its own bucket + its own CRUD
+  // rather than living inside product-upsert's full-replace object (which
+  // would reintroduce the exact landmine this unit is closing). Unlike
+  // product-upsert, these three macros use TRUE partial-update semantics
+  // from day one (only touch fields the caller sends) — there's no legacy
+  // minimal-call-shape contract to preserve here since the macros are new,
+  // so there was no reason to inherit product-upsert's full-replace shape.
+
+  registerLensAction("retail", "product-variant-upsert", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sku = String(params.sku || "").trim();
+    if (!sku) return { ok: false, error: "sku required" };
+    if (sku.length > 32) return { ok: false, error: "sku too long" };
+
+    const variants = ensureRetailBucket(s, "productVariants", userId);
+    const existing = variants.find((v) => v.sku === sku);
+
+    let parentSku = existing?.parentSku;
+    if (params.parentSku !== undefined) parentSku = String(params.parentSku || "").trim();
+    if (!parentSku) return { ok: false, error: "parentSku required" };
+    const catalog = s.products.get(userId);
+    if (!catalog || !catalog.has(parentSku)) {
+      return { ok: false, error: `parent product not found for sku: ${parentSku}` };
+    }
+    if (!existing && catalog.has(sku)) {
+      return { ok: false, error: "sku collides with an existing product SKU" };
+    }
+    const parent = catalog.get(parentSku);
+
+    let stock = existing?.stock ?? 0;
+    if (params.stock !== undefined) {
+      const n = Number(params.stock);
+      if (!Number.isFinite(n) || n < 0) return { ok: false, error: "stock must be >= 0" };
+      stock = n;
+    }
+    let priceDelta = existing?.priceDelta ?? 0;
+    if (params.priceDelta !== undefined) {
+      const n = Number(params.priceDelta);
+      if (!Number.isFinite(n)) return { ok: false, error: "priceDelta must be a finite number" };
+      priceDelta = n;
+    }
+    const price = Math.round((parent.price + priceDelta) * 100) / 100;
+    if (price < 0) return { ok: false, error: "parent price + priceDelta would be negative" };
+
+    let size = existing?.size ?? "";
+    if (params.size !== undefined) size = String(params.size || "").slice(0, 40);
+    let color = existing?.color ?? "";
+    if (params.color !== undefined) color = String(params.color || "").slice(0, 40);
+    let style = existing?.style ?? "";
+    if (params.style !== undefined) style = String(params.style || "").slice(0, 40);
+    if (!existing && !size && !color && !style) {
+      return { ok: false, error: "at least one of size/color/style is required" };
+    }
+
+    const now = nowIsoRet();
+    const variant = {
+      sku, parentSku,
+      size, color, style,
+      stock, priceDelta, price,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    };
+    if (existing) Object.assign(existing, variant);
+    else variants.push(variant);
+    saveRetailState();
+    return { ok: true, result: { variant } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "product-variant-list", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const all = ensureRetailBucket(s, "productVariants", userId);
+    const parentSku = params.parentSku !== undefined ? String(params.parentSku).trim() : null;
+    const variants = (parentSku ? all.filter((v) => v.parentSku === parentSku) : all.slice())
+      .sort((a, b) => a.sku.localeCompare(b.sku));
+    return { ok: true, result: { variants } };
+  });
+
+  registerLensAction("retail", "product-variant-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sku = String(params.sku || "");
+    if (!sku) return { ok: false, error: "sku required" };
+    const list = ensureRetailBucket(s, "productVariants", userId);
+    const idx = list.findIndex((v) => v.sku === sku);
+    if (idx < 0) return { ok: false, error: "variant not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { sku, deleted: true } };
   });
 
   // ── Cart + checkout ──

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, ShoppingCart, Package, Receipt, AlertTriangle, Plus, Trash2, Save, DollarSign, CreditCard } from 'lucide-react';
+import { X, ShoppingCart, Package, Receipt, AlertTriangle, DollarSign, CreditCard } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
+import { ProductCatalogPanel } from '@/components/retail/ProductCatalogPanel';
 
 export interface Product {
   sku: string;
@@ -15,6 +16,14 @@ export interface Product {
   barcode: string;
   createdAt: string;
   updatedAt: string;
+  // Wave 4 richer-product-schema fields — optional here since the POS/
+  // low-stock tabs below only ever read the base fields above; the full
+  // shape (incl. priceHistory/abcClass) lives in ProductCatalogPanel's own
+  // `CatalogProduct` type, which is what the Catalog tab actually renders.
+  supplier?: string;
+  leadTimeDays?: number | null;
+  dailySalesRate?: number;
+  turnoverRate?: number | null;
 }
 
 interface Props {
@@ -66,7 +75,7 @@ export function RetailWorkbench({ open, onClose }: Props) {
 
       <div className="flex-1 overflow-y-auto">
         {tab === 'pos' && <POSTab />}
-        {tab === 'catalog' && <CatalogTab />}
+        {tab === 'catalog' && <ProductCatalogPanel />}
         {tab === 'orders' && <OrdersTab />}
         {tab === 'lowstock' && <LowStockTab />}
       </div>
@@ -241,83 +250,13 @@ function POSTab() {
   );
 }
 
-function CatalogTab() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState({ sku: '', name: '', price: 0, stock: 0, category: '', barcode: '' });
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const r = await lensRun({ domain: 'retail', action: 'product-list', input: {} });
-      setProducts(((r.data as { result?: { products?: Product[] } }).result?.products) || []);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
-
-  const save = async () => {
-    try {
-      await lensRun({ domain: 'retail', action: 'product-upsert', input: draft });
-      setCreating(false); setDraft({ sku: '', name: '', price: 0, stock: 0, category: '', barcode: '' });
-      await refresh();
-    } catch (e) { console.error(e); }
-  };
-
-  const remove = async (sku: string) => {
-    try {
-      await lensRun({ domain: 'retail', action: 'product-delete', input: { sku } });
-      await refresh();
-    } catch (e) { console.error(e); }
-  };
-
-  return (
-    <div className="p-3 space-y-2">
-      <button type="button" onClick={() => setCreating((v) => !v)}
-        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-rose-500/30 bg-rose-500/10 text-xs text-rose-200">
-        <Plus className="w-3 h-3" /> Add product
-      </button>
-      {creating && (
-        <div className="rounded border border-rose-500/30 bg-rose-500/5 p-3 space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <input type="text" value={draft.sku} onChange={(e) => setDraft({ ...draft, sku: e.target.value })}
-              placeholder="SKU" maxLength={32}
-              className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-            <input type="text" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              placeholder="Product name"
-              className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <input type="number" value={draft.price} step="0.01" onChange={(e) => setDraft({ ...draft, price: Number(e.target.value) })}
-              placeholder="Price" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-            <input type="number" value={draft.stock} onChange={(e) => setDraft({ ...draft, stock: Number(e.target.value) })}
-              placeholder="Stock" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-            <input type="text" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}
-              placeholder="Category" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
-          </div>
-          <button type="button" onClick={save} disabled={!draft.sku.trim() || !draft.name.trim()}
-            className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-rose-500/40 bg-rose-500/15 text-xs text-rose-100 disabled:opacity-40">
-            <Save className="w-3 h-3" /> Save
-          </button>
-        </div>
-      )}
-      {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
-        products.map((p) => (
-          <div key={p.sku} className="rounded border border-white/10 bg-black/20 p-3 flex items-center justify-between group">
-            <div>
-              <p className="text-sm text-gray-100">{p.name} <code className="text-[10px] text-gray-400 ml-2">{p.sku}</code></p>
-              <p className="text-[11px] text-gray-400">${p.price} · {p.stock} in stock · {p.category || 'uncategorized'}</p>
-            </div>
-            <button type="button" onClick={() => remove(p.sku)} aria-label="Delete product"
-              className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
-          </div>
-        ))
-      }
-    </div>
-  );
-}
+// NOTE: the catalog surface used to live here as a thin inline `CatalogTab`
+// (name/price/stock/category/barcode only, no supplier/lead-time/sales-rate/
+// price-history/variants/ABC-class). It was extracted + extended into
+// `ProductCatalogPanel` (components/retail/ProductCatalogPanel.tsx) for the
+// Wave 4 richer-product-schema unit rather than duplicated — the Catalog tab
+// below mounts that component directly, so there is exactly one real
+// product-management surface, not two.
 
 function OrdersTab() {
   const [orders, setOrders] = useState<{ id: string; number: string; total: number; itemCount?: number; completedAt: string; lines: { sku: string; name: string; qty: number }[] }[]>([]);
