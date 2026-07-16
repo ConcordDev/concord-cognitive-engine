@@ -352,7 +352,7 @@ export function CareerPortfolio() {
 }
 
 function PeerDirectory({ items, isLoading, busy, peerStatus, onEndorse }: {
-  items: { id: string; ownerId: string; title: string; data: PortfolioData }[];
+  items: { id: string; ownerId?: string; title: string; data: PortfolioData }[];
   isLoading: boolean;
   busy: string | null;
   peerStatus: Record<string, 'ok' | 'error'>;
