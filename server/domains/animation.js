@@ -109,7 +109,7 @@ export default function registerAnimationActions(registerLensAction) {
   }
   const AN_MAX_LAYERS = 10;
   function blankLayer(name) {
-    return { id: anId("lyr"), name: name || "Layer 1", visible: true, opacity: 1, strokes: [] };
+    return { id: anId("lyr"), name: name || "Layer 1", visible: true, opacity: 1, type: "paintable", strokes: [] };
   }
   function blankFrame() {
     return { id: anId("frm"), exposure: 1, layers: [blankLayer("Layer 1")], strokes: [] };
@@ -118,10 +118,32 @@ export default function registerAnimationActions(registerLensAction) {
   function frameLayer(frame, layerId) {
     if (!Array.isArray(frame.layers) || !frame.layers.length) {
       // migrate a legacy frame: wrap its flat strokes in a default layer
-      frame.layers = [{ id: anId("lyr"), name: "Layer 1", visible: true, opacity: 1, strokes: frame.strokes || [] }];
+      frame.layers = [{ id: anId("lyr"), name: "Layer 1", visible: true, opacity: 1, type: "paintable", strokes: frame.strokes || [] }];
     }
     if (layerId) return frame.layers.find((l) => l.id === layerId) || null;
     return frame.layers[frame.layers.length - 1];
+  }
+  // A rotoscope-style reference layer attaches an already-uploaded image to a
+  // frame as a semi-transparent tracing underlay — it is NEVER converted into
+  // strokes/vector artwork (that would be an algorithmic auto-trace claim this
+  // codebase doesn't make). The animator draws real strokes on a separate
+  // paintable layer on top of it; see the stroke-commit guards below, which
+  // refuse to let a stroke land on a reference layer so the distinction can't
+  // silently blur.
+  function anValidImageRef(v) {
+    const cleaned = anClean(v, 600);
+    if (!cleaned) return null;
+    if (/^(https?:\/\/|data:image\/)/i.test(cleaned)) return cleaned;
+    // The real shape AnimationReferenceImages.tsx already produces for an
+    // uploaded reference image (server/routes/media.js's stream route).
+    if (/^\/api\/media\/[A-Za-z0-9_-]+\/stream$/.test(cleaned)) return cleaned;
+    return null;
+  }
+  function referenceLayer(name, imageRef, opacity) {
+    return {
+      id: anId("lyr"), name: name || "Reference", visible: true, opacity,
+      type: "reference", isReference: true, imageRef, strokes: [],
+    };
   }
   // Flatten a frame's visible layers into one stroke list (playback/onion/legacy).
   function frameStrokes(frame) {
@@ -280,8 +302,13 @@ export default function registerAnimationActions(registerLensAction) {
     frameLayer(src);   // migrate legacy frame to layered shape if needed
     const copy = {
       id: anId("frm"), exposure: src.exposure, strokes: [],
+      // Spread every field (name/visible/opacity/type/imageRef/isReference,
+      // and anything future) so a reference layer's imageRef survives a
+      // duplicate instead of silently degrading into a blank paintable
+      // layer — only id and strokes get fresh values.
       layers: src.layers.map((l) => ({
-        id: anId("lyr"), name: l.name, visible: l.visible, opacity: l.opacity,
+        ...l,
+        id: anId("lyr"),
         strokes: l.strokes.map((st) => ({ ...st, id: anId("stk"), points: st.points.map((p) => [...p]) })),
       })),
     };
@@ -380,6 +407,31 @@ export default function registerAnimationActions(registerLensAction) {
     return { ok: true, result: { deleted: params.layerId } };
   });
 
+  // Attach an uploaded reference image to a frame as a non-destructive
+  // tracing underlay (FlipaClip/Pencil2D rotoscope-reference pattern). This
+  // does NOT vectorize the image into strokes — it just records the image
+  // + display opacity on a dedicated layer the canvas renders as an
+  // underlay. Same guard shape as frame-layer-add.
+  registerLensAction("animation", "frame-layer-import-image", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const frame = anim.frames.find((f) => f.id === params.frameId);
+    if (!frame) return { ok: false, error: "frame not found" };
+    frameLayer(frame);
+    if (frame.layers.length >= AN_MAX_LAYERS) return { ok: false, error: `layer limit (${AN_MAX_LAYERS}) reached` };
+    const imageRef = anValidImageRef(params.imageRef);
+    if (!imageRef) {
+      return { ok: false, error: "a valid imageRef (http(s) URL, data:image/... URI, or /api/media/:id/stream path) is required" };
+    }
+    const opacity = anClamp(params.opacity, 0, 1, 0.5);
+    const layer = referenceLayer(anClean(params.name, 60) || "Reference", imageRef, opacity);
+    frame.layers.push(layer);
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { layer: { ...layer, strokes: undefined, strokeCount: 0 } } };
+  });
+
   // ── Strokes (commit to the active layer of a frame) ─────────────────
   registerLensAction("animation", "anim-stroke-commit", (ctx, _a, params = {}) => {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -389,6 +441,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     const layer = frameLayer(frame, params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.type === "reference") return { ok: false, error: "cannot draw on a reference layer — select or add a paintable layer" };
     if (layer.strokes.length >= AN_MAX_STROKES) return { ok: false, error: "layer stroke limit reached" };
     const stroke = anSanitizeStroke(params.stroke, anim);
     if (!stroke) return { ok: false, error: "invalid stroke" };
@@ -406,6 +459,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     const layer = frameLayer(frame, params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.type === "reference") return { ok: false, error: "cannot draw on a reference layer — select or add a paintable layer" };
     const incoming = Array.isArray(params.strokes) ? params.strokes : [];
     let added = 0;
     for (const raw of incoming) {
@@ -630,6 +684,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     const layer = frameLayer(frame, params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.type === "reference") return { ok: false, error: "cannot draw on a reference layer — select or add a paintable layer" };
     if (layer.strokes.length >= AN_MAX_STROKES) return { ok: false, error: "layer stroke limit reached" };
     const raw = params.stroke || {};
     const tool = AN_TOOLS.includes(String(raw.tool)) ? String(raw.tool) : "ink";
