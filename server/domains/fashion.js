@@ -207,6 +207,10 @@ export default function registerFashionActions(registerLensAction) {
       occasion: fsClean(params.occasion, 60).toLowerCase() || "casual",
       season: ["spring", "summer", "fall", "winter", "all"].includes(String(params.season).toLowerCase())
         ? String(params.season).toLowerCase() : "all",
+      // Per-item spatial arrangement on the collage canvas (Wave 4 #171 —
+      // see outfit-set-item-position below). Empty on creation; populated
+      // lazily as the user drags/resizes items, never fabricated up front.
+      layout: [],
       timesWorn: 0, lastWorn: null, createdAt: fsNow(),
     };
     fsListB(s.outfits, userId).push(outfit);
@@ -235,7 +239,11 @@ export default function registerFashionActions(registerLensAction) {
     const items = outfit.itemIds.map((id) => findItem(s, userId, id)).filter(Boolean).map(itemView);
     return {
       ok: true,
-      result: { outfit, items, totalCost: Math.round(items.reduce((a, i) => a + fsNum(i.cost), 0) * 100) / 100 },
+      result: {
+        outfit, items,
+        layout: outfitLayoutView(outfit),
+        totalCost: Math.round(items.reduce((a, i) => a + fsNum(i.cost), 0) * 100) / 100,
+      },
     };
   });
 
@@ -264,6 +272,70 @@ export default function registerFashionActions(registerLensAction) {
     fsListB(s.wearLog, userId).push({ id: fsId("wl"), itemId: null, outfitId: outfit.id, date, at: fsNow() });
     saveFashionState();
     return { ok: true, result: { outfit } };
+  });
+
+  // ── Outfit collage canvas — drag/resize layout (Wave 4 #171) ────────
+  // Whering "Dress Me" parity gap (docs/lens-specs/fashion-capability-map.md
+  // item 5: "Visual drag-and-resize outfit collage canvas"). The outfit's
+  // itemIds have always been real closet items; the missing piece was
+  // genuine SPATIAL arrangement — dragging/resizing each garment on a
+  // canvas, not just picking it into a flat tag list. Mirrors the
+  // moodboard's per-pin x/y pattern (see MOODBOARD_CANVAS_MAX below): an
+  // outfit's `layout` array holds one {itemId, x, y, scale} entry per item
+  // that has been EXPLICITLY positioned by the user. Items with no entry
+  // yet get a deterministic non-overlapping cascade default computed on
+  // read (outfitLayoutView) — never persisted until the user actually
+  // drags or resizes something, so an untouched outfit's layout is never
+  // fabricated storage, only a display-time computation.
+  const OUTFIT_CANVAS_MAX = 640;
+  const OUTFIT_SCALE_MIN = 0.5;
+  const OUTFIT_SCALE_MAX = 2.0;
+  const outfitClampPos = (n) => Math.max(0, Math.min(OUTFIT_CANVAS_MAX, Math.round(Number(n) || 0)));
+  const outfitClampScale = (n) => Math.max(OUTFIT_SCALE_MIN, Math.min(OUTFIT_SCALE_MAX, Number(n) || 1));
+  // Same cascade shape as the moodboard default (idx*step mod
+  // (MAX-cardSize), row-wrap every N items) — tuned to the smaller outfit
+  // canvas and a typical 4-8 item outfit instead of a many-pin moodboard.
+  function outfitDefaultPos(idx) {
+    return {
+      x: (idx * 70) % (OUTFIT_CANVAS_MAX - 140),
+      y: Math.floor(idx / 8) * 160,
+    };
+  }
+  // Merges saved layout entries with computed defaults for any item that
+  // hasn't been positioned yet, so callers always get a full,
+  // non-overlapping arrangement — even before the first drag ever happens.
+  function outfitLayoutView(outfit) {
+    const saved = Array.isArray(outfit.layout) ? outfit.layout : [];
+    return outfit.itemIds.map((itemId, idx) => {
+      const entry = saved.find((l) => l.itemId === itemId);
+      if (entry) return { itemId, x: entry.x, y: entry.y, scale: entry.scale ?? 1, custom: true };
+      const d = outfitDefaultPos(idx);
+      return { itemId, x: d.x, y: d.y, scale: 1, custom: false };
+    });
+  }
+
+  registerLensAction("fashion", "outfit-set-item-position", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const outfit = findOutfit(s, userId, params.id);
+    if (!outfit) return { ok: false, error: "outfit not found" };
+    const itemId = String(params.itemId || "");
+    const itemIdx = outfit.itemIds.indexOf(itemId);
+    if (itemIdx < 0) return { ok: false, error: "item is not part of this outfit" };
+    if (!Array.isArray(outfit.layout)) outfit.layout = [];
+    const existing = outfit.layout.find((l) => l.itemId === itemId);
+    // Partial updates are honored — a pure resize call (scale only) must
+    // not stomp the item's current x/y back to a default, and a pure drag
+    // call (x/y only) must not reset scale to 1.
+    const fallback = existing || { ...outfitDefaultPos(itemIdx), scale: 1 };
+    const x = params.x != null ? outfitClampPos(params.x) : outfitClampPos(fallback.x);
+    const y = params.y != null ? outfitClampPos(params.y) : outfitClampPos(fallback.y);
+    const scale = params.scale != null ? outfitClampScale(params.scale) : outfitClampScale(fallback.scale);
+    const entry = { itemId, x, y, scale };
+    const i = outfit.layout.findIndex((l) => l.itemId === itemId);
+    if (i >= 0) outfit.layout[i] = entry; else outfit.layout.push(entry);
+    saveFashionState();
+    return { ok: true, result: { outfitId: outfit.id, item: entry, layout: outfitLayoutView(outfit) } };
   });
 
   // ── Wear calendar ───────────────────────────────────────────────────
