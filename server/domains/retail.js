@@ -2,6 +2,15 @@
 // Domain actions for retail/CRM: reorder, pipeline, LTV, SLA checks.
 
 export default function registerRetailActions(registerLensAction) {
+  // Shared SLA-target-by-priority table (minutes). This is the SINGLE source
+  // of truth for "how fast must priority X be handled" across the whole
+  // retail domain — the live `slaStatus` incidents branch (below) and the
+  // persisted `tickets-*` queue (2026-07 Wave-4 support-desk unit, near the
+  // bottom of this file) both read this SAME object so a persisted ticket's
+  // computed deadline and the ad-hoc incidents-report compliance math can
+  // never silently disagree. Do not invent a second set of numbers.
+  const TICKET_PRIORITY_SLA_MINUTES = { critical: 60, high: 240, medium: 1440, low: 2880 };
+
   /**
    * reorderCheck
    * Flag products that have fallen below their reorder point.
@@ -468,7 +477,7 @@ export default function registerRetailActions(registerLensAction) {
     //   poisoned numeric → finite default; an incident with no response time is
     //   counted as an open breach; complianceRate/avgResponseMinutes stay finite.
     if (Array.isArray(artifact.data.incidents)) {
-      const defaultTargetByPriority = params.slaTargetMinutes || { critical: 60, high: 240, medium: 1440, low: 2880 };
+      const defaultTargetByPriority = params.slaTargetMinutes || TICKET_PRIORITY_SLA_MINUTES;
       const defaultTarget = finNum(params.defaultSlaMinutes) ?? 1440; // 24h
       const incidents = artifact.data.incidents.filter((i) => i && typeof i === "object");
       let withinSLA = 0;
@@ -517,7 +526,33 @@ export default function registerRetailActions(registerLensAction) {
       return { ok: true, result };
     }
 
-    const tickets = artifact.data.tickets || [];
+    // ── Legacy hours-based ticket branch, now with a persisted-queue fallback ──
+    // Mirrors the `pipelineValue` → `deals-*` fallback pattern exactly (2026-07
+    // support-desk unit): the ORIGINAL contract treated any non-array/falsy
+    // `tickets` (including a garbage non-array value) as an empty pasted book —
+    // that "malformed input → empty report, never crash" behavior is preserved
+    // BYTE-IDENTICALLY by only falling back to the persisted `tickets-*` queue
+    // when the caller supplied NEITHER `incidents` NOR `tickets` at all (checked
+    // via `in`, not truthiness/shape). A pasted `tickets` key — even an invalid
+    // value — still degrades to an empty ticket list exactly as before; only
+    // true omission of both keys reads the caller's own persisted queue.
+    let tickets;
+    let ticketSource;
+    if ("tickets" in artifact.data) {
+      tickets = Array.isArray(artifact.data.tickets) ? artifact.data.tickets : [];
+      ticketSource = "pasted";
+    } else {
+      const s = getRetailState();
+      const persisted = s ? ensureRetailBucket(s, "tickets", retailActor(ctx)) : [];
+      tickets = persisted.map((t) => ({
+        ticketId: t.id,
+        subject: t.subject,
+        priority: t.priority,
+        createdAt: t.createdAt,
+        resolvedAt: t.resolvedAt || null,
+      }));
+      ticketSource = "persisted";
+    }
     const defaultSlaHours = params.defaultSlaHours || 24;
     const now = new Date();
 
@@ -580,6 +615,7 @@ export default function registerRetailActions(registerLensAction) {
 
     const report = {
       checkedAt: new Date().toISOString(),
+      ticketSource,
       totalTickets: tickets.length,
       breachedCount: breached.length,
       atRiskCount: atRisk.length,
@@ -2569,6 +2605,320 @@ export default function registerRetailActions(registerLensAction) {
     const list = ensureRetailBucket(s, "deals", userId);
     const idx = list.findIndex((d) => d.id === id);
     if (idx < 0) return { ok: false, error: "deal not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Support-ticket queue — persisted tickets (2026-07 Wave-4 unit) ────────
+  //
+  // The persisted ticket record family the removed fake retail "Support"
+  // surface was standing in for (docs/lens-specs/retail-capability-map.md
+  // "Genuinely missing, deferred" #2: "a persisted ticket queue (subject,
+  // priority, SLA deadline, assignee, replies). `slaStatus` computes
+  // compliance from pasted incidents but no macro creates or lists a
+  // ticket."). Design decisions, documented here because tests pin them —
+  // deliberately mirrors the deals-* family's proven shape, diverging only
+  // where a support desk's real lifecycle actually differs from a sales
+  // funnel:
+  //   • `priority` reuses the EXACT 4-name enum + the EXACT per-priority SLA
+  //     minutes (`TICKET_PRIORITY_SLA_MINUTES`, declared once at the top of
+  //     this file) that `slaStatus`'s live incidents branch already uses —
+  //     one number per priority, never a second invented set, so a
+  //     persisted ticket's computed deadline and the ad-hoc incidents report
+  //     can never silently disagree.
+  //   • `status` is a real 5-state support-desk lifecycle: open →
+  //     in-progress → waiting-on-customer → resolved → closed. Unlike the
+  //     deals funnel (where BOTH won/lost are symmetric locked terminals),
+  //     only **closed** is locked here — leaving closed requires an explicit
+  //     `reopen: true` (mirrors deals' reopen gate) and clears
+  //     closedAt/resolvedAt/resolvedWithinSla (a reopened ticket is, by
+  //     definition, unresolved again). **resolved** is a real milestone but
+  //     NOT locked — a ticket can move from resolved to any other status
+  //     (including straight to closed, or back to an open status because the
+  //     fix didn't hold) without the reopen flag, modelling the common
+  //     "customer replies to a solved ticket" flow.
+  //   • Moving INTO `resolved` (from any status) stamps `resolvedAt` = now
+  //     and computes `resolvedWithinSla` = elapsed time <= the priority's SLA
+  //     deadline — the one place a ticket's SLA outcome is actually decided.
+  //     Moving INTO `closed` directly from an open status (e.g. closed as
+  //     duplicate/spam, never formally resolved) leaves `resolvedAt`/
+  //     `resolvedWithinSla` at `null` — honestly "not applicable", never a
+  //     fabricated true/false.
+  //   • Every status change goes through `tickets-status-move` and APPENDS to
+  //     `statusHistory` ({from, to, at, note?, reopened?}) — auditable, not a
+  //     mutable label. `tickets-upsert` REJECTS a status change on update,
+  //     exactly like `deals-upsert` rejects a stage change.
+  //   • `replies` is a real thread — `tickets-reply-add` appends
+  //     {author, body, at}; nothing about reply content changes ticket
+  //     status (no auto-transition magic — every state change stays an
+  //     explicit, auditable action).
+  //   • `tickets-list` returns computed rollups (open/breached counts,
+  //     per-priority breakdown, resolved-in-SLA compliance rate) — the UI
+  //     renders ONLY these, never a client-invented number. The "approaching
+  //     deadline" threshold (remaining time < 25% of the priority's SLA
+  //     window) reuses the exact ratio the legacy `slaStatus` ticket branch
+  //     already uses (`remainingHours < slaHours * 0.25`).
+  //   • Relationship to `slaStatus`: that calculator's legacy `tickets`
+  //     branch (see above) now falls back to READING this persisted queue,
+  //     but ONLY on true omission of the `tickets` key — gated the exact
+  //     same way as the `pipelineValue` → `deals-*` fallback, so the
+  //     pre-existing "malformed pasted payload → empty report, never crash"
+  //     contract stays byte-identical (pinned by the pre-existing
+  //     `retail-lens-macros.test.js` "a non-array incidents payload falls
+  //     through to the legacy ticket branch" case).
+
+  const TICKET_STATUSES = ["open", "in-progress", "waiting-on-customer", "resolved", "closed"];
+  const TICKET_OPEN_STATUSES = ["open", "in-progress", "waiting-on-customer"];
+  const TICKET_LOCKED_STATUS = "closed";
+  const TICKET_PRIORITIES = ["critical", "high", "medium", "low"];
+  const TICKET_DEFAULT_PRIORITY = "medium";
+  const TICKET_APPROACHING_RATIO = 0.25; // matches slaStatus's legacy `remainingHours < slaHours * 0.25`
+  const ticketRound2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+
+  function ticketSlaDeadline(createdAtIso, priority) {
+    const targetMinutes = TICKET_PRIORITY_SLA_MINUTES[priority];
+    return new Date(new Date(createdAtIso).getTime() + targetMinutes * 60000).toISOString();
+  }
+
+  function ticketSlaState(ticket, nowMs) {
+    if (ticket.status === TICKET_LOCKED_STATUS) return "closed";
+    if (ticket.status === "resolved") {
+      if (ticket.resolvedWithinSla === true) return "resolved-on-time";
+      if (ticket.resolvedWithinSla === false) return "resolved-late";
+      return "resolved";
+    }
+    const deadlineMs = new Date(ticket.slaDeadline).getTime();
+    const targetMinutes = TICKET_PRIORITY_SLA_MINUTES[ticket.priority];
+    const windowMs = targetMinutes * 60000;
+    const remainingMs = deadlineMs - nowMs;
+    if (remainingMs < 0) return "breached";
+    if (remainingMs < windowMs * TICKET_APPROACHING_RATIO) return "approaching";
+    return "healthy";
+  }
+
+  registerLensAction("retail", "tickets-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const all = ensureRetailBucket(s, "tickets", userId);
+
+    const statusFilter = params.status !== undefined ? String(params.status) : null;
+    if (statusFilter && !TICKET_STATUSES.includes(statusFilter)) {
+      return { ok: false, error: `unknown status: ${statusFilter} (expected one of ${TICKET_STATUSES.join(", ")})` };
+    }
+    const priorityFilter = params.priority !== undefined ? String(params.priority) : null;
+    if (priorityFilter && !TICKET_PRIORITIES.includes(priorityFilter)) {
+      return { ok: false, error: `unknown priority: ${priorityFilter} (expected one of ${TICKET_PRIORITIES.join(", ")})` };
+    }
+
+    const now = Date.now();
+    const byPriority = {};
+    for (const p of TICKET_PRIORITIES) byPriority[p] = { count: 0, open: 0, breached: 0 };
+
+    // Rollups are computed from the FULL book (never the filters) so the
+    // header numbers stay stable while the user narrows the list — same
+    // discipline as deals-list.
+    let openCount = 0;
+    let breachedOpenCount = 0;
+    let resolvedCount = 0;
+    let metCount = 0;
+    const withState = all.map((t) => {
+      const slaState = ticketSlaState(t, now);
+      const bucket = byPriority[t.priority];
+      bucket.count++;
+      const isOpen = TICKET_OPEN_STATUSES.includes(t.status);
+      if (isOpen) {
+        openCount++;
+        bucket.open++;
+        if (slaState === "breached") { breachedOpenCount++; bucket.breached++; }
+      }
+      if (t.resolvedWithinSla !== null && t.resolvedWithinSla !== undefined) {
+        resolvedCount++;
+        if (t.resolvedWithinSla === true) metCount++;
+      }
+      return { ...t, slaState };
+    });
+
+    const complianceRate = resolvedCount > 0 ? ticketRound2((metCount / resolvedCount) * 100) : 100;
+
+    const tickets = (withState
+      .filter((t) => (!statusFilter || t.status === statusFilter) && (!priorityFilter || t.priority === priorityFilter)))
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+
+    return {
+      ok: true,
+      result: {
+        tickets,
+        statuses: TICKET_STATUSES,
+        openStatuses: TICKET_OPEN_STATUSES,
+        priorities: TICKET_PRIORITIES,
+        rollup: {
+          totalTickets: all.length,
+          openCount,
+          breachedOpenCount,
+          resolvedCount,
+          metCount,
+          complianceRate,
+          byPriority,
+        },
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "tickets-upsert", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const tickets = ensureRetailBucket(s, "tickets", userId);
+    const id = params.id ? String(params.id) : null;
+
+    if (id) {
+      // ── update ──
+      const ticket = tickets.find((t) => t.id === id);
+      if (!ticket) return { ok: false, error: "ticket not found" };
+      if (params.status !== undefined && String(params.status) !== ticket.status) {
+        return { ok: false, error: "status changes go through tickets-status-move (auditable statusHistory)" };
+      }
+      if (params.subject !== undefined) {
+        const subject = String(params.subject).trim();
+        if (!subject) return { ok: false, error: "subject required" };
+        ticket.subject = subject.slice(0, 200);
+      }
+      if (params.description !== undefined) ticket.description = String(params.description).slice(0, 4000);
+      if (params.assignee !== undefined) ticket.assignee = String(params.assignee).trim().slice(0, 80);
+      if (params.requester !== undefined) ticket.requester = String(params.requester).trim().slice(0, 80);
+      if (params.contactEmail !== undefined) ticket.contactEmail = String(params.contactEmail).trim().slice(0, 120);
+      if (params.priority !== undefined) {
+        const priority = String(params.priority);
+        if (!TICKET_PRIORITIES.includes(priority)) {
+          return { ok: false, error: `unknown priority: ${priority} (expected one of ${TICKET_PRIORITIES.join(", ")})` };
+        }
+        ticket.priority = priority;
+        // Re-triage: the SLA clock still starts at ticket creation, only the
+        // per-priority target changes.
+        ticket.slaDeadline = ticketSlaDeadline(ticket.createdAt, priority);
+      }
+      ticket.updatedAt = nowIsoRet();
+      saveRetailState();
+      return { ok: true, result: { ticket } };
+    }
+
+    // ── create ──
+    const subject = String(params.subject || "").trim();
+    if (!subject) return { ok: false, error: "subject required" };
+    const priority = params.priority !== undefined ? String(params.priority) : TICKET_DEFAULT_PRIORITY;
+    if (!TICKET_PRIORITIES.includes(priority)) {
+      return { ok: false, error: `unknown priority: ${priority} (expected one of ${TICKET_PRIORITIES.join(", ")})` };
+    }
+    const now = nowIsoRet();
+    const ticket = {
+      id: nextRetailId("tkt"),
+      subject: subject.slice(0, 200),
+      description: String(params.description || "").slice(0, 4000),
+      priority,
+      assignee: String(params.assignee || "").trim().slice(0, 80),
+      requester: String(params.requester || "").trim().slice(0, 80),
+      contactEmail: String(params.contactEmail || "").trim().slice(0, 120),
+      status: "open",
+      slaTargetMinutes: TICKET_PRIORITY_SLA_MINUTES[priority],
+      slaDeadline: ticketSlaDeadline(now, priority),
+      statusHistory: [{ from: null, to: "open", at: now }],
+      replies: [],
+      resolvedAt: null,
+      resolvedWithinSla: null,
+      closedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    tickets.push(ticket);
+    saveRetailState();
+    return { ok: true, result: { ticket } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "tickets-status-move", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const ticket = ensureRetailBucket(s, "tickets", userId).find((t) => t.id === id);
+    if (!ticket) return { ok: false, error: "ticket not found" };
+    const status = String(params.status || "");
+    if (!TICKET_STATUSES.includes(status)) {
+      return { ok: false, error: `unknown status: ${status} (expected one of ${TICKET_STATUSES.join(", ")})` };
+    }
+    if (status === ticket.status) return { ok: false, error: `ticket is already in status: ${status}` };
+
+    const reopening = ticket.status === TICKET_LOCKED_STATUS;
+    if (reopening) {
+      if (params.reopen !== true) {
+        return { ok: false, error: "ticket is closed — pass reopen: true to move it back into the queue" };
+      }
+      if (!TICKET_OPEN_STATUSES.includes(status)) {
+        return { ok: false, error: "a closed ticket reopens into an open status only (open/in-progress/waiting-on-customer)" };
+      }
+    }
+
+    const at = nowIsoRet();
+    const entry = { from: ticket.status, to: status, at };
+    if (params.note) entry.note = String(params.note).slice(0, 500);
+    if (reopening) entry.reopened = true;
+    if (!Array.isArray(ticket.statusHistory)) ticket.statusHistory = [];
+    ticket.statusHistory.push(entry);
+
+    ticket.status = status;
+    if (status === "resolved") {
+      ticket.resolvedAt = at;
+      ticket.resolvedWithinSla = new Date(at).getTime() <= new Date(ticket.slaDeadline).getTime();
+    } else if (status === TICKET_LOCKED_STATUS) {
+      ticket.closedAt = at;
+      // resolvedAt/resolvedWithinSla are left as-is: a ticket closed straight
+      // from an open status (duplicate/spam/won't-fix) was never resolved —
+      // they stay null, honestly. A ticket closed after resolved keeps its
+      // real resolution stamp.
+    } else if (reopening) {
+      // Reopening means "not resolved anymore" — clear every closure stamp.
+      ticket.closedAt = null;
+      ticket.resolvedAt = null;
+      ticket.resolvedWithinSla = null;
+    }
+    ticket.updatedAt = at;
+    saveRetailState();
+    return { ok: true, result: { ticket, moved: entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "tickets-reply-add", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const ticket = ensureRetailBucket(s, "tickets", userId).find((t) => t.id === id);
+    if (!ticket) return { ok: false, error: "ticket not found" };
+    const author = String(params.author || "").trim();
+    if (!author) return { ok: false, error: "author required" };
+    const body = String(params.body || "").trim();
+    if (!body) return { ok: false, error: "body required" };
+    const reply = { author: author.slice(0, 80), body: body.slice(0, 4000), at: nowIsoRet() };
+    if (!Array.isArray(ticket.replies)) ticket.replies = [];
+    ticket.replies.push(reply);
+    ticket.updatedAt = reply.at;
+    saveRetailState();
+    return { ok: true, result: { ticket, reply } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "tickets-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "tickets", userId);
+    const idx = list.findIndex((t) => t.id === id);
+    if (idx < 0) return { ok: false, error: "ticket not found" };
     list.splice(idx, 1);
     saveRetailState();
     return { ok: true, result: { id, deleted: true } };
