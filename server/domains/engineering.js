@@ -7,6 +7,14 @@
 // All handlers return { ok: boolean, result?, error? } and never throw.
 
 import { runFEA } from '../lib/simulation/fea-solver.js';
+// boltedConnection (AISC allowable-shear) + transformerSizing (ANSI kVA
+// ladder) are real, exported functions in engineering-compute.js that no
+// registered macro called — genuinely unreachable at the macro layer (see
+// docs/lens-specs/engineering-capability-map.md's "Deliberately left
+// unsurfaced" section, now closed). Named imports mirror how server.js's
+// structuralCheck/electricalCheck combinators already consume this module's
+// other named exports (eng.columnBuckling, eng.voltageDrop, …).
+import { boltedConnection, transformerSizing } from '../lib/compute/engineering-compute.js';
 
 // ── Material library (mechanical properties — SI + imperial) ───────────────
 // E in MPa, yield/ultimate in MPa, density in kg/m³, CTE in 1e-6/K.
@@ -967,6 +975,49 @@ export default function registerEngineeringActions(registerLensAction) {
           })),
         },
       };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── connectionCheck — AISC bolted-connection allowable shear ────────────
+  // Real math: R = Fv · Ab · n · planes (see boltedConnection() header). This
+  // macro is a thin passthrough — no math is re-derived here. The compute fn
+  // never throws; on invalid input it returns { error, inputs } instead of a
+  // computed value, which this handler surfaces as an honest { ok:false }
+  // rather than nesting a fabricated success around it.
+  registerLensAction('engineering', 'connectionCheck', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const r = boltedConnection({
+        boltDiameter: data.boltDiameter,
+        boltGrade: data.boltGrade,
+        numBolts: data.numBolts,
+        loadType: data.loadType,
+      });
+      if (r.error) return { ok: false, error: r.error, inputs: r.inputs };
+      return { ok: true, result: r };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── transformerSizing — ANSI kVA-ladder transformer selection ──────────
+  // Real math: required = loadKva·growthFactor, selected = next standard
+  // ANSI kVA size, primaryAmps from the selected size (see transformerSizing()
+  // header). Thin passthrough, same honest-failure contract as above.
+  registerLensAction('engineering', 'transformerSizing', (ctx, artifact, params) => {
+    try {
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const r = transformerSizing({
+        loadKva: data.loadKva,
+        voltage: data.voltage,
+        phase: data.phase,
+        powerFactor: data.powerFactor,
+        growthFactor: data.growthFactor,
+      });
+      if (r.error) return { ok: false, error: r.error, inputs: r.inputs };
+      return { ok: true, result: r };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
