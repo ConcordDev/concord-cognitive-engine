@@ -370,13 +370,57 @@ the honesty invariant they're relabeled as deferred rather than faked:
   `insurance-death-pact-macros`, `death-insurance-lens-macros`,
   `depth/insurance-behavior`) still pass in full (120/120 combined with the
   new file) — the change is additive, not a rewrite.
-- **Producer compliance tracking** — CE-credit progress, license renewal
+- ~~**Producer compliance tracking** — CE-credit progress, license renewal
   dates, E&O insurance status, carrier-appointment tracking. No backend
-  macro tracks any of this.
-
-Producer compliance tracking would still need new `domains/insurance.js`
-macros (out of scope for a frontend-only pass — "do not invent new backend
-behavior") before a real, designed UI could be built for it.
+  macro tracks any of this.~~ **CLOSED (2026-07-16, `1383984a`).**
+  `server/domains/insurance.js` gained `producer-compliance-add`/
+  `producer-compliance-list`/`producer-compliance-update`/
+  `producer-compliance-remove`, attached to the EXISTING `agent-add`/
+  `agent-list` roster — this codebase's "producer" is the agent/broker
+  entity already there, so no new entity was invented. Four categories with
+  genuinely distinct fields (not one generic shape): `ce_credits` tracks
+  progress toward a requirement (`creditsCompleted`/`creditsRequired`, a
+  divide-by-zero-guarded `creditsPercent`, an optional cycle deadline);
+  `license_renewal` (license number, state, required expiry);
+  `eo_insurance` (carrier, policy number, required expiry);
+  `carrier_appointment` (carrier name, optional appointment number, optional
+  expiry). `agentId` is validated against the real roster (`agent not
+  found` on a fabricated id); `category` is HARD-rejected on an invalid
+  value — deliberately not soft-defaulted the way some of this file's older
+  enums are, since a mis-tracked compliance category is a real
+  licensing-risk honesty concern, not a cosmetic mis-tag. `status`
+  (overdue/due_soon/scheduled, via the existing `dueState()` helper) and
+  `agentName`/`agentFound` are re-derived LIVE on every `producer-
+  compliance-list` call — the same live-rederivation-honesty pattern this
+  session applied to masonry/landscaping/plumbing job-linkage and history's
+  event-linkage: an agent removed after a compliance record was created
+  surfaces honestly as `agentFound:false`. This is the 4th instance this
+  session of the read-time-derived cert-expiry pattern (plumbing's
+  `techCertAdd`/`techCertList`, masonry's `cert-add`/`cert-list`,
+  landscaping's `cert-add`/`cert-list`), adapted to insurance's own
+  hyphenated macro-naming + `insLens` Map convention. Frontend: new
+  `ProducerCompliance.tsx`, an 8th tab in `AmsWorkbench.tsx` — the add/edit
+  form is genuinely category-adaptive (the rendered fields change per
+  selected category, not one generic field set), the producer picker is a
+  real `<select>` sourced from `agent-list` (never free text), status
+  badges are overdue=red/due_soon=amber/scheduled=neutral, a progress bar
+  renders for `ce_credits`, and `overdueCount`/`dueSoonCount` are surfaced
+  as prominent stat tiles at the top — a licensing-compliance risk panel
+  needs "N producers have overdue items" visible at a glance, not buried in
+  a list. Tests: 40 new behavioral cases in `server/tests/depth/insurance-
+  producer-compliance-behavior.test.js` (add/list/update/remove round-trip
+  for all 4 categories, category-specific required-field validation, a
+  fabricated `agentId` rejection, an unrecognized-category hard-rejection,
+  the live agent-removal honesty case, `dueState` correctness, `creditsPercent`/
+  `creditsComplete` derivation including the divide-by-zero guard, and a
+  partial-update regression) plus 16 new cases in `concord-frontend/tests/
+  components/ProducerCompliance.test.tsx` (render, the category-adaptive
+  form switching across all 4 categories, create/update/delete flows,
+  validation rejection, status-badge rendering, and the since-removed-agent
+  honesty case). All 137 pre-existing insurance backend tests still pass
+  alongside the new ones (177/177 combined, 0 regressions). This closes
+  insurance's entire ENGINEERING-class deferred list — only the paid-API
+  carrier-quote-comparison item remains, correctly DATA-SOURCING.
 
 ## Verification
 
