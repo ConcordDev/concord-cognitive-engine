@@ -7,80 +7,20 @@
  * spectral rolloff), and enrolls it as a voice-print. Later samples are
  * identified by nearest-neighbour match. Wires voice.voiceprint-enroll,
  * voice.voiceprint-list, voice.voiceprint-delete, voice.voiceprint-identify.
+ *
+ * The extraction itself lives in lib/voice/audio-features.ts — shared with
+ * VoiceLiveTranscribe.tsx so both capture the identical 5-dim vector.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Fingerprint, Mic, Trash2, Loader2, UserCheck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { captureVoiceFeatureVector } from '@/lib/voice/audio-features';
 
 interface VoicePrint { id: string; name: string; sampleCount: number; dimensions: number }
 interface IdentifyResult { matched: boolean; speaker: string | null; confidence: number; bestDistance: number }
 
 const SAMPLE_MS = 3000;
-
-/** Records ~3 s of mic audio and reduces it to a 5-dim acoustic feature vector. */
-async function captureVector(): Promise<number[]> {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const ctx = new AudioContext();
-  const src = ctx.createMediaStreamSource(stream);
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 2048;
-  src.connect(analyser);
-  const freq = new Float32Array(analyser.frequencyBinCount);
-  const time = new Float32Array(analyser.fftSize);
-  const acc = { pitch: 0, energy: 0, centroid: 0, zcr: 0, rolloff: 0, n: 0 };
-  const nyquist = ctx.sampleRate / 2;
-
-  await new Promise<void>((resolve) => {
-    const t0 = Date.now();
-    const tick = () => {
-      analyser.getFloatFrequencyData(freq);
-      analyser.getFloatTimeDomainData(time);
-      // Energy (RMS) of the time-domain signal.
-      let rms = 0;
-      for (let i = 0; i < time.length; i++) rms += time[i] * time[i];
-      rms = Math.sqrt(rms / time.length);
-      // Zero-crossing rate.
-      let zc = 0;
-      for (let i = 1; i < time.length; i++) if ((time[i - 1] < 0) !== (time[i] < 0)) zc++;
-      // Spectral centroid + total magnitude (linear, from dB bins).
-      let magSum = 0, weighted = 0, peakMag = 0, peakBin = 0;
-      const lin: number[] = new Array(freq.length);
-      for (let i = 0; i < freq.length; i++) {
-        const m = Math.pow(10, freq[i] / 20);
-        lin[i] = m;
-        magSum += m;
-        weighted += m * i;
-        if (m > peakMag) { peakMag = m; peakBin = i; }
-      }
-      // Spectral rolloff: bin holding 85% of cumulative energy.
-      let cum = 0, rollBin = 0;
-      const target = magSum * 0.85;
-      for (let i = 0; i < lin.length; i++) { cum += lin[i]; if (cum >= target) { rollBin = i; break; } }
-      acc.pitch += (peakBin / freq.length) * nyquist;
-      acc.energy += rms;
-      acc.centroid += magSum > 0 ? (weighted / magSum / freq.length) * nyquist : 0;
-      acc.zcr += zc / time.length;
-      acc.rolloff += (rollBin / freq.length) * nyquist;
-      acc.n++;
-      if (Date.now() - t0 < SAMPLE_MS) requestAnimationFrame(tick);
-      else resolve();
-    };
-    requestAnimationFrame(tick);
-  });
-
-  stream.getTracks().forEach(t => t.stop());
-  await ctx.close();
-  const n = Math.max(1, acc.n);
-  // Normalise into comparable [0,1]-ish ranges for stable distances.
-  return [
-    Math.round((acc.pitch / n / 4000) * 1000) / 1000,
-    Math.round(Math.min(1, (acc.energy / n) * 10) * 1000) / 1000,
-    Math.round((acc.centroid / n / 4000) * 1000) / 1000,
-    Math.round((acc.zcr / n) * 1000) / 1000,
-    Math.round((acc.rolloff / n / 8000) * 1000) / 1000,
-  ];
-}
 
 export function VoiceprintEnroll() {
   const [prints, setPrints] = useState<VoicePrint[]>([]);
@@ -103,7 +43,12 @@ export function VoiceprintEnroll() {
     setError(null);
     setRecording('enroll');
     try {
-      const vector = await captureVector();
+      // captureVoiceFeatureVector never fabricates a vector — a null result
+      // (no mic API / Web Audio / permission denied) is an honest no-op,
+      // surfaced as the same "Microphone unavailable" message the old
+      // throw-based capture used to produce via the catch block.
+      const vector = await captureVoiceFeatureVector(SAMPLE_MS);
+      if (!vector) { setError('Microphone unavailable'); return; }
       const r = await lensRun('voice', 'voiceprint-enroll', { name: name.trim(), vector });
       if (r.data?.ok) { setName(''); await refresh(); }
       else setError(r.data?.error || 'Enroll failed');
@@ -119,7 +64,8 @@ export function VoiceprintEnroll() {
     setIdentified(null);
     setRecording('identify');
     try {
-      const vector = await captureVector();
+      const vector = await captureVoiceFeatureVector(SAMPLE_MS);
+      if (!vector) { setError('Microphone unavailable'); return; }
       const r = await lensRun('voice', 'voiceprint-identify', { vector });
       if (r.data?.ok) setIdentified(r.data.result as IdentifyResult);
       else setError(r.data?.error || 'Identify failed');
