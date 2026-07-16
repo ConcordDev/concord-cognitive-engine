@@ -23,6 +23,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { TorNetworkStatus } from '@/components/anon/TorNetworkStatus';
 import { AnonMessenger } from '@/components/anon/AnonMessenger';
+import { PrivacyBudgetPanel } from '@/components/anon/PrivacyBudgetPanel';
 
 interface PrivacyRecord { age: number; zipcode: string; condition: string }
 
@@ -58,6 +59,10 @@ export default function AnonLensPage() {
   const [epsilon, setEpsilon] = useState(1.0);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
+  // Bumped after every differentialPrivacy call so PrivacyBudgetPanel
+  // re-fetches the real cross-session cumulative spend instead of showing a
+  // stale snapshot from before the call.
+  const [budgetRefreshKey, setBudgetRefreshKey] = useState(0);
 
   const addRecord = () => {
     const age = Number(newRecord.age);
@@ -103,6 +108,11 @@ export default function AnonLensPage() {
       setActionResult({
         message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`,
       });
+    }
+    if (action === 'differentialPrivacy') {
+      // Real budget was just spent (or a real short-circuit happened) —
+      // tell the panel to refetch its real cumulative total.
+      setBudgetRefreshKey((k) => k + 1);
     }
     setIsRunning(null);
   };
@@ -203,6 +213,11 @@ export default function AnonLensPage() {
               <span className="text-gray-500">lower = stronger privacy, more noise</span>
             </label>
           </div>
+
+          {/* Real cross-session epsilon-budget tracking — every differentialPrivacy
+              call spends against this identity's real accumulated ledger, not just
+              the current call. See server/domains/anon.js privacyBudgetStatus. */}
+          <PrivacyBudgetPanel refreshKey={budgetRefreshKey} />
 
           <div className="grid grid-cols-3 gap-3">
             <button
