@@ -804,6 +804,113 @@ export default function registerIngestActions(registerLensAction) {
     return { ok: true, result: { totalRecords: data.length, validRecords: validCount, invalidRecords: data.length - validCount, validationRate: Math.round((validCount / data.length) * 100), issues: results.filter(r => !r.valid).slice(0, 20) } };
   });
 
+  // detectSchema — real column-TYPE inference over a records sample. This
+  // promotes validateSchema's no-schema branch (which only lists field
+  // NAMES via `Object.keys`) into a first-class inference step: per-field
+  // type, nullable %, uniqueness %, and real sample values, sampled across
+  // every record (not just the first) so the inference reflects the actual
+  // distribution rather than a single row's shape. Airbyte-parity gap
+  // closure (docs/lens-specs/ingest-capability-map.md).
+  //
+  // Detection order per value (matters — a wrong order actively misleads a
+  // pipeline operator relying on the inference):
+  //   1. null/undefined/"" → not a type at all, tallied as "nullable" only.
+  //   2. JS boolean/number are unambiguous — no string-sniffing needed for
+  //      them. Within "number", integer is checked via Number.isInteger
+  //      BEFORE falling into the general "number" (decimal) bucket, so 3
+  //      and 3.14 are never conflated.
+  //   3. Strings are checked against real date patterns (ISO 8601 first,
+  //      then common slash-delimited forms) BEFORE falling back to plain
+  //      "string" — checking string last would misreport every date as
+  //      text; checking it first would misreport plain text as a date if
+  //      the date regex weren't anchored and specific.
+  //   4. Anything else (array/object) is honestly reported as "object" —
+  //      never silently coerced into a scalar type.
+  // A field is "mixed" only when the SAMPLE genuinely contains more than
+  // one of the above types across records — never forced into a single
+  // type when the data itself disagrees.
+  const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}([T\s]\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+  const SLASH_MDY_DATE_RE = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+  const SLASH_YMD_DATE_RE = /^\d{4}\/\d{1,2}\/\d{1,2}$/;
+  function looksLikeDate(str) {
+    const t = str.trim();
+    if (!t) return false;
+    return ISO_DATE_RE.test(t) || SLASH_MDY_DATE_RE.test(t) || SLASH_YMD_DATE_RE.test(t);
+  }
+  function inferValueType(v) {
+    if (v === null || v === undefined || v === "") return "null";
+    if (typeof v === "boolean") return "boolean";
+    if (typeof v === "number") {
+      if (Number.isNaN(v)) return "null";
+      return Number.isInteger(v) ? "integer" : "number";
+    }
+    if (typeof v === "string") return looksLikeDate(v) ? "date" : "string";
+    return "object";
+  }
+  const DETECT_SCHEMA_MAX_SAMPLES = 5;
+
+  registerLensAction("ingest", "detectSchema", (ctx, artifact, params) => {
+    try {
+      const p = { ...(artifact?.data || {}), ...params };
+      const data = Array.isArray(p.records) ? p.records : (Array.isArray(p.rows) ? p.rows : []);
+      if (data.length === 0) {
+        return { ok: true, result: { message: "Provide records/rows to infer a schema from.", recordCount: 0, fieldCount: 0, fields: [] } };
+      }
+      const allKeys = new Set();
+      for (const r of data) {
+        if (r && typeof r === "object") Object.keys(r).forEach((k) => allKeys.add(k));
+      }
+
+      const fields = [...allKeys].map((key) => {
+        const typeCounts = {};
+        const sampleValues = [];
+        const seenSamples = new Set();
+        const nonNullValues = [];
+        let nullCount = 0;
+        for (const record of data) {
+          const has = record && typeof record === "object" && Object.prototype.hasOwnProperty.call(record, key);
+          const raw = has ? record[key] : undefined;
+          const t = inferValueType(raw);
+          if (t === "null") { nullCount++; continue; }
+          typeCounts[t] = (typeCounts[t] || 0) + 1;
+          nonNullValues.push(raw);
+          const sampleKey = typeof raw === "object" ? JSON.stringify(raw) : String(raw);
+          if (sampleValues.length < DETECT_SCHEMA_MAX_SAMPLES && !seenSamples.has(sampleKey)) {
+            seenSamples.add(sampleKey);
+            sampleValues.push(raw);
+          }
+        }
+        const distinctTypes = Object.keys(typeCounts);
+        const nonNullCount = nonNullValues.length;
+        // Honest type resolution: only claim a single type when the sample
+        // actually agrees; otherwise say so ("mixed") rather than picking
+        // the majority and hiding the disagreement.
+        const type = distinctTypes.length === 0 ? "null" : distinctTypes.length === 1 ? distinctTypes[0] : "mixed";
+        const uniqueValueKeys = new Set(nonNullValues.map((v) => (typeof v === "object" ? JSON.stringify(v) : v)));
+        const uniqueCount = uniqueValueKeys.size;
+        const uniquePct = nonNullCount > 0 ? Math.round((uniqueCount / nonNullCount) * 100) : 0;
+        const nullablePct = Math.round((nullCount / data.length) * 100);
+        const likelyPrimaryKey = nullCount === 0 && nonNullCount > 1 && uniqueCount === nonNullCount;
+        return {
+          field: key, type, typeBreakdown: typeCounts,
+          nullCount, nullablePct,
+          nonNullCount, uniqueCount, uniquePct,
+          likelyPrimaryKey, sampleValues,
+        };
+      }).sort((a, b) => a.field.localeCompare(b.field));
+
+      return {
+        ok: true,
+        result: {
+          recordCount: data.length,
+          fieldCount: fields.length,
+          fields,
+          primaryKeyCandidates: fields.filter((f) => f.likelyPrimaryKey).map((f) => f.field),
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   registerLensAction("ingest", "batchStatus", (ctx, artifact, _params) => {
     const items = artifact.data?.items || artifact.data?.batch || [];
     if (items.length === 0) return { ok: true, result: { message: "Provide batch items with status fields to summarize." } };

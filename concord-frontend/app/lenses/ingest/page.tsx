@@ -16,7 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { motion } from 'framer-motion';
-import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, Layers, ChevronDown, FileUp, FileJson, FileText, Image as ImageIcon, Gauge, ArrowDownToLine, Activity, BarChart3, Search, List } from 'lucide-react';
+import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, Layers, ChevronDown, FileUp, FileJson, FileText, Image as ImageIcon, Gauge, ArrowDownToLine, Activity, BarChart3, Search, List, Table2, KeyRound } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -57,6 +57,26 @@ interface ValidateSchemaResult {
   issues: { row: number; valid: boolean; missingFields: string[]; extraFields: string[]; nullFields: string[]; field?: string; message?: string; count?: number }[];
 }
 
+interface DetectedField {
+  field: string;
+  type: 'string' | 'integer' | 'number' | 'boolean' | 'date' | 'null' | 'mixed' | 'object' | string;
+  typeBreakdown: Record<string, number>;
+  nullCount: number;
+  nullablePct: number;
+  nonNullCount: number;
+  uniqueCount: number;
+  uniquePct: number;
+  likelyPrimaryKey: boolean;
+  sampleValues: unknown[];
+}
+
+interface DetectSchemaResult {
+  recordCount: number;
+  fieldCount: number;
+  fields: DetectedField[];
+  primaryKeyCandidates: string[];
+}
+
 interface BatchStatusResult {
   totalItems: number;
   completed: number;
@@ -86,6 +106,21 @@ const TEXT_BATCH_EXT = /\.(txt|md|markdown|json|csv|tsv|log|ya?ml|xml|html)$/i;
 
 // Ingest-analysis actions that read plain text (vs. a structured JSON array).
 const TEXT_ANALYSIS_ACTIONS = new Set(['parseDocument', 'extractEntities']);
+
+// Type-badge colors for the Detect Schema results table — one visual voice
+// per inferred column type, "mixed" reads as a warning (genuinely ambiguous
+// data), not a normal type.
+const TYPE_BADGE_COLORS: Record<string, string> = {
+  string: 'bg-gray-500/10 text-gray-300',
+  integer: 'bg-neon-cyan/10 text-neon-cyan',
+  number: 'bg-sky-500/10 text-sky-400',
+  boolean: 'bg-neon-purple/10 text-neon-purple',
+  date: 'bg-neon-green/10 text-neon-green',
+  object: 'bg-amber-400/10 text-amber-400',
+  null: 'bg-gray-600/10 text-gray-500',
+  mixed: 'bg-red-500/10 text-red-400',
+  default: 'bg-gray-500/10 text-gray-300',
+};
 
 export default function IngestLensPage() {
   useLensNav('ingest');
@@ -120,18 +155,20 @@ export default function IngestLensPage() {
       if (TEXT_ANALYSIS_ACTIONS.has(action)) {
         input = { text: textInput };
       } else {
-        // validateSchema / batchStatus operate on a JSON array of records/items.
+        // validateSchema / detectSchema / batchStatus operate on a JSON array of records/items.
         let parsed: unknown = null;
         try { parsed = JSON.parse(textInput); } catch { parsed = null; }
         if (!Array.isArray(parsed)) {
           setAnalysisResult({
             action,
-            data: { message: `Paste a JSON array of ${action === 'validateSchema' ? 'records' : 'items'} into the text area, then run this action.` },
+            data: { message: `Paste a JSON array of ${action === 'batchStatus' ? 'items' : 'records'} into the text area, then run this action.` },
           });
           return;
         }
         input = action === 'validateSchema'
           ? { records: parsed, expectedFields: expectedFields.split(',').map((s) => s.trim()).filter(Boolean) }
+          : action === 'detectSchema'
+          ? { records: parsed }
           : { items: parsed };
       }
       const r = await lensRun('ingest', action, input);
@@ -592,6 +629,7 @@ export default function IngestLensPage() {
             { action: 'parseDocument', label: 'Parse Document', icon: FileText, color: 'text-neon-cyan', needsText: true },
             { action: 'extractEntities', label: 'Extract Entities', icon: Search, color: 'text-neon-purple', needsText: true },
             { action: 'validateSchema', label: 'Validate Schema', icon: CheckCircle2, color: 'text-neon-green', needsText: true },
+            { action: 'detectSchema', label: 'Detect Schema', icon: Table2, color: 'text-sky-400', needsText: true },
             { action: 'batchStatus', label: 'Batch Status', icon: List, color: 'text-yellow-400', needsText: true },
           ].map(({ action, label, icon: Icon, color, needsText }) => {
             const disabled = analysisPending !== null || (needsText && !textInput.trim());
@@ -733,6 +771,74 @@ export default function IngestLensPage() {
                     <span className="text-red-400">{[...(issue.missingFields || []), ...(issue.extraFields || []), ...(issue.nullFields || [])].join(', ') || 'invalid'}</span>
                   </div>
                 ))}
+              </div>
+            );
+          }
+          if (analysisResult.action === 'detectSchema') {
+            const d = analysisResult.data as DetectSchemaResult;
+            return (
+              <div className="space-y-3 pt-2 border-t border-lattice-border">
+                <h3 className="text-sm font-semibold text-sky-400">Detected Schema</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {[
+                    { label: 'Records sampled', value: (d.recordCount || 0).toLocaleString(), color: 'text-gray-300' },
+                    { label: 'Fields', value: (d.fieldCount || 0).toLocaleString(), color: 'text-sky-400' },
+                    { label: 'PK candidates', value: (d.primaryKeyCandidates || []).length, color: 'text-neon-green' },
+                  ].map(s => (
+                    <div key={s.label} className="lens-card text-center">
+                      <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                      <p className="text-xs text-gray-400">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="overflow-x-auto rounded-lg border border-lattice-border">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-gray-400 bg-lattice-deep/60">
+                        <th className="py-2 px-3 font-medium">Field</th>
+                        <th className="py-2 px-3 font-medium">Type</th>
+                        <th className="py-2 px-3 font-medium">Nullable</th>
+                        <th className="py-2 px-3 font-medium">Unique</th>
+                        <th className="py-2 px-3 font-medium">Sample values</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(d.fields || []).map((f) => (
+                        <tr key={f.field} className="border-t border-lattice-border/60 align-top">
+                          <td className="py-2 px-3 text-white font-mono">{f.field}</td>
+                          <td className="py-2 px-3">
+                            <span className={cn('text-[11px] px-2 py-0.5 rounded-full font-mono', TYPE_BADGE_COLORS[f.type] || TYPE_BADGE_COLORS.default)}>
+                              {f.type}
+                            </span>
+                            {f.type === 'mixed' && f.typeBreakdown && (
+                              <p className="text-[10px] text-gray-500 mt-1">
+                                {Object.entries(f.typeBreakdown).map(([t, n]) => `${t}:${n}`).join(', ')}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-gray-300">{f.nullablePct}%</td>
+                          <td className="py-2 px-3 text-gray-300">
+                            {f.uniquePct}%
+                            {f.likelyPrimaryKey && (
+                              <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-300">
+                                <KeyRound className="w-2.5 h-2.5" /> likely PK
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-gray-400">
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                              {f.sampleValues.slice(0, 5).map((v, i) => (
+                                <span key={i} className="px-1.5 py-0.5 rounded bg-lattice-deep border border-white/5 truncate max-w-[8rem]">
+                                  {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             );
           }
