@@ -9,10 +9,10 @@
  * but the shape says "this is your books".
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Home, Banknote, FileText, Receipt, BookOpen, ScrollText, Users, Truck,
-  PieChart as PieIcon, Calendar, Sparkles,
+  PieChart as PieIcon, Calendar, Sparkles, Menu, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -95,49 +95,95 @@ const GROUP_LABELS: Record<NavItem['group'], string> = {
 
 export function BooksShell({ activeNav, onNavChange, badges = {}, children, askBar }: BooksShellProps) {
   const groups: NavItem['group'][] = ['core', 'sales', 'expenses', 'reports'];
+  // Mobile nav drawer — the w-44 sidebar is hidden below md:, replaced by a
+  // hamburger in the main header that opens the same nav as a slide-over.
+  // Selecting a destination closes the drawer (the capability-map's flagged
+  // "re-add a real mobile affordance for BooksShell's sidebar nav" follow-up).
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const navList = (onSelect: (next: BooksNav) => void) => (
+    <nav className="flex-1 overflow-y-auto py-2">
+      {groups.map((g) => (
+        <div key={g} className="mb-3">
+          <div className="px-3 mb-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold">{GROUP_LABELS[g]}</div>
+          <ul>
+            {NAV.filter((n) => n.group === g).map((n) => {
+              const Icon = n.icon;
+              const active = activeNav === n.id;
+              const badge = badges[n.id];
+              return (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(n.id)}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors',
+                      active ? 'bg-emerald-500/10 text-emerald-200 border-l-2 border-emerald-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.04] border-l-2 border-transparent',
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span className="truncate flex-1 text-left">{n.label}</span>
+                    {badge !== undefined && badge !== 0 && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-500/20 text-amber-300 font-mono">{badge}</span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+
+  const activeLabel = NAV.find((n) => n.id === activeNav)?.label || 'Books';
+
   return (
-    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-emerald-500/15 rounded-lg overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-44 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
+    <div className="relative flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-emerald-500/15 rounded-lg overflow-hidden">
+      {/* Sidebar (desktop) */}
+      <aside className="hidden md:flex w-44 bg-[#0a0c10] border-r border-white/5 flex-col flex-shrink-0">
         <header className="px-3 py-3 border-b border-white/5 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-emerald-400" />
           <span className="text-xs font-semibold text-gray-200 tracking-wide">Books</span>
         </header>
-        <nav className="flex-1 overflow-y-auto py-2">
-          {groups.map((g) => (
-            <div key={g} className="mb-3">
-              <div className="px-3 mb-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold">{GROUP_LABELS[g]}</div>
-              <ul>
-                {NAV.filter((n) => n.group === g).map((n) => {
-                  const Icon = n.icon;
-                  const active = activeNav === n.id;
-                  const badge = badges[n.id];
-                  return (
-                    <li key={n.id}>
-                      <button
-                        type="button"
-                        onClick={() => onNavChange(n.id)}
-                        className={cn(
-                          'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors',
-                          active ? 'bg-emerald-500/10 text-emerald-200 border-l-2 border-emerald-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.04] border-l-2 border-transparent',
-                        )}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        <span className="truncate flex-1 text-left">{n.label}</span>
-                        {badge !== undefined && badge !== 0 && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-500/20 text-amber-300 font-mono">{badge}</span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </nav>
+        {navList(onNavChange)}
       </aside>
+
+      {/* Mobile nav drawer */}
+      {drawerOpen && (
+        <div className="absolute inset-0 z-20 flex md:hidden">
+          <aside className="w-52 max-w-[80%] bg-[#0a0c10] border-r border-white/10 flex flex-col shadow-2xl">
+            <header className="px-3 py-3 border-b border-white/5 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-semibold text-gray-200 tracking-wide">Books</span>
+              </span>
+              <button type="button" aria-label="Close navigation" onClick={() => setDrawerOpen(false)}
+                className="p-1 rounded text-gray-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </header>
+            {navList((next) => { onNavChange(next); setDrawerOpen(false); })}
+          </aside>
+          <button
+            type="button"
+            aria-label="Close navigation overlay"
+            onClick={() => setDrawerOpen(false)}
+            className="flex-1 bg-black/50 cursor-default"
+          />
+        </div>
+      )}
+
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile header row — hamburger + current destination */}
+        <header className="flex md:hidden items-center gap-2 px-3 py-2 border-b border-white/5 bg-[#0a0c10]/60">
+          <button type="button" aria-label="Open navigation" onClick={() => setDrawerOpen(true)}
+            className="p-1 rounded text-gray-400 hover:text-white">
+            <Menu className="w-4 h-4" />
+          </button>
+          <span className="text-xs font-semibold text-gray-200">{activeLabel}</span>
+        </header>
         {askBar && (
           <header className="px-4 py-2 border-b border-white/5 bg-[#0a0c10]/60">
             {askBar}
