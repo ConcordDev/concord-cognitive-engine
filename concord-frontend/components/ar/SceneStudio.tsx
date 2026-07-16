@@ -7,9 +7,10 @@ import { Canvas } from '@react-three/fiber';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { ARCaptureGallery } from './ARCaptureGallery';
 import {
   Box, Plus, Trash2, Save, Play, Zap, Image as ImageIcon,
-  Share2, Film, RefreshCw, Crosshair, Eye, Move3d,
+  Share2, Film, RefreshCw, Crosshair, Eye, Move3d, Camera,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -134,14 +135,24 @@ function PrimitiveMesh({ obj, selected, onSelect }: { obj: SceneObject; selected
   );
 }
 
-function Viewport({ scene, selectedId, onSelect }: {
+function Viewport({ scene, selectedId, onSelect, canvasRef }: {
   scene: SceneModel; selectedId: string | null; onSelect: (id: string | null) => void;
+  canvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
 }) {
   return (
     <Canvas
       camera={{ position: [3.2, 2.6, 4], fov: 55 }}
       onPointerMissed={() => onSelect(null)}
       className="rounded-lg"
+      // preserveDrawingBuffer keeps the last-rendered frame in the WebGL
+      // backbuffer so canvas.toDataURL()/captureStream() grab the real
+      // rendered pixels instead of a blank buffer (three.js clears the
+      // buffer after each frame by default).
+      gl={{ preserveDrawingBuffer: true }}
+      // Real react-three-fiber render target — this IS the same
+      // HTMLCanvasElement three.js draws the scene into, not a decorative
+      // wrapper. ARCaptureGallery captures directly from this DOM node.
+      onCreated={(state) => { canvasRef.current = state.gl.domElement; }}
     >
       <color attach="background" args={['#0d0d14']} />
       <ambientLight intensity={0.55} color="#404060" />
@@ -173,7 +184,10 @@ export function SceneStudio() {
   const [scenes, setScenes] = useState<SceneSummary[]>([]);
   const [scene, setScene] = useState<SceneModel | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'inspector' | 'behaviors' | 'animation' | 'targets' | 'publish'>('inspector');
+  const [panel, setPanel] = useState<'inspector' | 'behaviors' | 'animation' | 'targets' | 'publish' | 'capture'>('inspector');
+  // The real react-three-fiber WebGL canvas the Viewport renders into —
+  // populated by Canvas's onCreated below. ARCaptureGallery captures from it.
+  const viewportCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -525,7 +539,7 @@ export function SceneStudio() {
         {/* 3D viewport + object list */}
         <div className="space-y-2">
           <div className="h-80 rounded-lg overflow-hidden border border-lattice-border bg-lattice-deep">
-            <Viewport scene={scene} selectedId={selectedId} onSelect={setSelectedId} />
+            <Viewport scene={scene} selectedId={selectedId} onSelect={setSelectedId} canvasRef={viewportCanvasRef} />
           </div>
           <div className="flex items-center gap-2">
             <button onClick={addObject} className={ds.btnSecondary}><Plus className="w-4 h-4" /> Object</button>
@@ -564,6 +578,7 @@ export function SceneStudio() {
               ['behaviors', Zap, 'Behaviors'],
               ['animation', Film, 'Animate'],
               ['targets', ImageIcon, 'Targets'],
+              ['capture', Camera, 'Capture'],
               ['publish', Share2, 'Publish'],
             ] as const).map(([id, Icon, label]) => (
               <button
@@ -845,6 +860,15 @@ export function SceneStudio() {
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Capture — real screenshot/recording pipeline + gallery */}
+          {panel === 'capture' && (
+            <ARCaptureGallery
+              canvasRef={viewportCanvasRef}
+              sceneId={scene.id || null}
+              onNotify={flash}
+            />
           )}
 
           {/* Publish + WebXR */}
