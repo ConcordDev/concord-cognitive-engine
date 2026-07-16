@@ -28,17 +28,20 @@ import {
   applyServerChange,
   clearLocal,
   localBytes,
+  getDeviceId,
   type LocalDoc,
 } from './local-store';
 
 interface PushResult {
-  applied: { id: string; rev: string; seq: number; deleted: boolean }[];
+  applied: { id: string; rev: string; seq: number; deleted: boolean; deviceId?: string | null }[];
   conflicts: {
     id: string;
     serverRev: string;
     serverBody: any;
+    serverDeviceId?: string | null;
     clientRev: string | null;
     clientBody: any;
+    clientDeviceId?: string | null;
     reason: string;
   }[];
   appliedCount: number;
@@ -53,6 +56,7 @@ interface PullChange {
   deleted: boolean;
   doc: Record<string, unknown> | null;
   updatedAt: string;
+  deviceId?: string | null;
 }
 
 interface PullResult {
@@ -211,14 +215,18 @@ export function ReplicationPanel({
         baseRev: d.baseRev,
         deleted: d.deleted,
       }));
-      const r = await lensRun<PushResult>('offline', 'replicationPush', { docs: payload });
+      // Stable per-browser device id — stamped on every doc/change/conflict
+      // this push produces so a later conflict can show which device wrote
+      // which revision (see local-store.ts#getDeviceId).
+      const deviceId = getDeviceId();
+      const r = await lensRun<PushResult>('offline', 'replicationPush', { docs: payload, deviceId });
       if (!r.data.ok || !r.data.result) {
         setErr(r.data.error || 'push failed');
         return null;
       }
       const res = r.data.result;
       for (const a of res.applied) {
-        await markClean(a.id, a.rev, a.deleted);
+        await markClean(a.id, a.rev, a.deleted, deviceId);
       }
       logFeed(
         `Pushed ${res.appliedCount} doc${res.appliedCount === 1 ? '' : 's'}`,
@@ -265,7 +273,7 @@ export function ReplicationPanel({
         }
         const res = r.data.result;
         for (const c of res.changes) {
-          await applyServerChange(c.id, c.rev, c.doc, c.deleted);
+          await applyServerChange(c.id, c.rev, c.doc, c.deleted, c.deviceId ?? null);
         }
         total += res.changes.length;
         since = res.lastSeq;

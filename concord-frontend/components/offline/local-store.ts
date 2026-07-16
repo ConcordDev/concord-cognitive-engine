@@ -23,11 +23,49 @@ export interface LocalDoc {
   updatedAt: string;
   dirty: boolean;
   deleted: boolean;
+  /** The device that authored the current `rev` — null when unknown (e.g. a
+   * local write not yet pushed, or a revision written before this field
+   * existed). Multi-device conflict provenance: see `getDeviceId` below. */
+  deviceId: string | null;
 }
 
 const DB_NAME = 'concord-offline-lens';
 const DB_VERSION = 1;
 const DOCS = 'docs';
+const DEVICE_ID_KEY = 'concord-offline-device-id';
+
+/**
+ * Stable, per-browser device identifier for multi-device conflict
+ * provenance (which device wrote which revision). Generated once and
+ * persisted in `localStorage` — deliberately separate from
+ * `ReplicationPanel`'s `checkpointIdFor`/`replicationId`, which identifies a
+ * SYNC STREAM (the unfiltered feed vs. a saved filter's own incremental
+ * checkpoint), not a physical device; conflating the two would corrupt the
+ * just-shipped filtered-replication checkpoint isolation.
+ *
+ * Every `offline.replicationPush` / `offline.mergeResolve` call from this
+ * browser stamps this id, so a later conflict — or any document pulled from
+ * another device — can honestly show "written by device X".
+ *
+ * Best-effort: returns null (never a fabricated id) when `localStorage` is
+ * unavailable (SSR, privacy mode, storage quota errors, etc.), so an absent
+ * writer id stays honestly absent rather than invented.
+ */
+export function getDeviceId(): string | null {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const existing = window.localStorage.getItem(DEVICE_ID_KEY);
+    if (existing) return existing;
+    const id =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    window.localStorage.setItem(DEVICE_ID_KEY, id);
+    return id;
+  } catch {
+    return null;
+  }
+}
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -88,6 +126,9 @@ export async function putDoc(id: string, body: Record<string, unknown>): Promise
     updatedAt: new Date().toISOString(),
     dirty: true,
     deleted: false,
+    // Not yet re-assigned to this device's writer id — that happens once the
+    // push that carries this write actually lands (see markClean).
+    deviceId: existing?.deviceId ?? null,
   };
   await tx('readwrite', (s) => s.put(doc));
   return doc;
@@ -110,23 +151,40 @@ export async function deleteDocLocal(id: string): Promise<void> {
   );
 }
 
-/** Mark a doc as successfully replicated — clears the dirty flag, stamps server rev. */
-export async function markClean(id: string, rev: string, deleted: boolean): Promise<void> {
+/**
+ * Mark a doc as successfully replicated — clears the dirty flag, stamps
+ * server rev. `deviceId` (optional) is this browser's own device id — the
+ * push that just landed was authored by us, so the local copy's writer id
+ * is stamped to match what the server now has on record.
+ */
+export async function markClean(
+  id: string,
+  rev: string,
+  deleted: boolean,
+  deviceId: string | null = null,
+): Promise<void> {
   if (deleted) {
     await tx('readwrite', (s) => s.delete(id));
     return;
   }
   const existing = await getDoc(id);
   if (!existing) return;
-  await tx('readwrite', (s) => s.put({ ...existing, rev, baseRev: rev, dirty: false }));
+  await tx('readwrite', (s) =>
+    s.put({ ...existing, rev, baseRev: rev, dirty: false, deviceId: deviceId ?? existing.deviceId ?? null }),
+  );
 }
 
-/** Merge a server change pulled from the changes feed into the local store. */
+/**
+ * Merge a server change pulled from the changes feed into the local store.
+ * `deviceId` (optional) is the ORIGIN device of this revision as reported by
+ * `offline.replicationPull` — may be a different browser than this one.
+ */
 export async function applyServerChange(
   id: string,
   rev: string,
   body: Record<string, unknown> | null,
   deleted: boolean,
+  deviceId: string | null = null,
 ): Promise<void> {
   if (deleted || body === null) {
     await tx('readwrite', (s) => s.delete(id));
@@ -140,6 +198,7 @@ export async function applyServerChange(
     updatedAt: new Date().toISOString(),
     dirty: false,
     deleted: false,
+    deviceId: deviceId ?? null,
   };
   await tx('readwrite', (s) => s.put(doc));
 }

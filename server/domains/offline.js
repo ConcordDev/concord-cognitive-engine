@@ -457,6 +457,10 @@ export default function registerOfflineActions(registerLensAction) {
    * real position and re-applies the same filter, which is exactly how the
    * unfiltered path already behaves. A `filterId` that doesn't resolve for
    * the caller is a hard error, never a silent "treat as unfiltered".
+   * Each mapped change carries `deviceId` — the (possibly null) id of the
+   * device whose `replicationPush`/`mergeResolve` call produced that
+   * revision — so a puller can show provenance for changes written by
+   * OTHER devices, not just resolve local conflicts.
    */
   registerLensAction("offline", "replicationPull", (ctx, _artifact, params = {}) => {
     try {
@@ -481,6 +485,7 @@ export default function registerOfflineActions(registerLensAction) {
             seq: c.seq, id: c.id, rev: c.rev, deleted: !!c.deleted,
             doc: c.deleted ? null : (ofUserDocs(o, uid).get(c.id)?.body ?? null),
             updatedAt: c.at,
+            deviceId: c.deviceId ?? null,
           })),
           lastSeq: slice.length ? slice[slice.length - 1].seq : since,
           pending: Math.max(0, all.length - slice.length),
@@ -495,6 +500,15 @@ export default function registerOfflineActions(registerLensAction) {
    * replicationPush — accept a batch of client docs into the server store.
    * Detects conflicts via rev-generation comparison and records both branches.
    * params.docs = [{ id, body, rev?, baseRev?, deleted? }]
+   * params.deviceId = optional, client-generated, stable-per-browser id for
+   * multi-device conflict provenance (which device wrote which revision).
+   * It is a PER-PUSH identity, not per-doc — one push call originates from
+   * one physical device, so every doc/change/conflict this call produces is
+   * stamped with the same id. Distinct from `syncCheckpoint`'s
+   * `replicationId`, which identifies a SYNC STREAM (unfiltered vs. a saved
+   * filter), not a physical device — the two must never be conflated.
+   * Omitting it is fully backward compatible: the writer field is simply
+   * absent/null, exactly as before this feature existed.
    */
   registerLensAction("offline", "replicationPush", (ctx, _artifact, params = {}) => {
     try {
@@ -504,6 +518,8 @@ export default function registerOfflineActions(registerLensAction) {
       const incoming = Array.isArray(params.docs) ? params.docs : [];
       if (incoming.length === 0) return { ok: false, error: "no docs to push" };
       if (incoming.length > 500) return { ok: false, error: "batch too large (max 500)" };
+      const deviceId = params.deviceId != null && ofClean(params.deviceId, 200) !== ""
+        ? ofClean(params.deviceId, 200) : null;
       const store = ofUserDocs(o, uid);
       const feed = ofUserChanges(o, uid);
       const applied = [];
@@ -518,8 +534,8 @@ export default function registerOfflineActions(registerLensAction) {
         if (existing && baseRev && baseRev !== existing.rev) {
           conflicts.push({
             id,
-            serverRev: existing.rev, serverBody: existing.body,
-            clientRev: raw.rev || null, clientBody: raw.deleted ? null : (raw.body ?? null),
+            serverRev: existing.rev, serverBody: existing.body, serverDeviceId: existing.deviceId ?? null,
+            clientRev: raw.rev || null, clientBody: raw.deleted ? null : (raw.body ?? null), clientDeviceId: deviceId,
             reason: "rev_mismatch",
           });
           continue;
@@ -530,9 +546,9 @@ export default function registerOfflineActions(registerLensAction) {
         const seq = ofNextSeq(o, uid);
         const at = new Date().toISOString();
         if (raw.deleted) { store.delete(id); }
-        else { store.set(id, { id, body, rev, updatedAt: at }); }
-        feed.push({ seq, id, rev, deleted: !!raw.deleted, at });
-        applied.push({ id, rev, seq, deleted: !!raw.deleted });
+        else { store.set(id, { id, body, rev, updatedAt: at, deviceId }); }
+        feed.push({ seq, id, rev, deleted: !!raw.deleted, at, deviceId });
+        applied.push({ id, rev, seq, deleted: !!raw.deleted, deviceId });
       }
       // Cap the changes feed to the last 5000 entries per user.
       if (feed.length > 5000) feed.splice(0, feed.length - 5000);
@@ -569,7 +585,7 @@ export default function registerOfflineActions(registerLensAction) {
           updateSeq: o.seq.get(uid) || 0,
           changeCount: feed.length,
           approxBytes: bytes,
-          docs: [...store.values()].slice(0, 50).map((d) => ({ id: d.id, rev: d.rev, updatedAt: d.updatedAt })),
+          docs: [...store.values()].slice(0, 50).map((d) => ({ id: d.id, rev: d.rev, updatedAt: d.updatedAt, deviceId: d.deviceId ?? null })),
           checkpoints: cps ? [...cps.entries()].map(([rid, v]) => ({ replicationId: rid, seq: v.seq, at: v.at })) : [],
         },
       };
@@ -721,6 +737,12 @@ export default function registerOfflineActions(registerLensAction) {
    * mergeResolve — apply a human conflict-resolution decision and persist the
    * winning body back into the replicated store as a new revision.
    * params.id, params.winner = "server" | "client" | "merged", params.mergedBody?
+   * params.deviceId = optional — the device that PERFORMED the resolution.
+   * The resulting revision (and its changes-feed entry) is stamped with this
+   * id the same way a `replicationPush`-authored revision is, so "who wrote
+   * which revision" stays honest across ordinary pushes AND human conflict
+   * resolutions. Omitting it is backward compatible — the writer field is
+   * simply null, exactly as before this feature existed.
    */
   registerLensAction("offline", "mergeResolve", (ctx, _artifact, params = {}) => {
     try {
@@ -730,6 +752,8 @@ export default function registerOfflineActions(registerLensAction) {
       const id = ofClean(params.id, 200);
       if (!id) return { ok: false, error: "doc id required" };
       const winner = ["server", "client", "merged"].includes(params.winner) ? params.winner : "merged";
+      const deviceId = params.deviceId != null && ofClean(params.deviceId, 200) !== ""
+        ? ofClean(params.deviceId, 200) : null;
       const store = ofUserDocs(o, uid);
       const feed = ofUserChanges(o, uid);
       const existing = store.get(id);
@@ -742,11 +766,11 @@ export default function registerOfflineActions(registerLensAction) {
       const seq = ofNextSeq(o, uid);
       const at = new Date().toISOString();
       if (body == null) { store.delete(id); }
-      else { store.set(id, { id, body, rev, updatedAt: at }); }
-      feed.push({ seq, id, rev, deleted: body == null, at });
+      else { store.set(id, { id, body, rev, updatedAt: at, deviceId }); }
+      feed.push({ seq, id, rev, deleted: body == null, at, deviceId });
       if (feed.length > 5000) feed.splice(0, feed.length - 5000);
       saveOffline();
-      return { ok: true, result: { id, rev, seq, winner, resolvedBody: body } };
+      return { ok: true, result: { id, rev, seq, winner, resolvedBody: body, deviceId } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 

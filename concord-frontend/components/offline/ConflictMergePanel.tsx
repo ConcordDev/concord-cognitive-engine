@@ -5,14 +5,20 @@
 import { useCallback, useState } from 'react';
 import { GitMerge, Server, Smartphone, Check, Loader2, ShieldQuestion } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { markClean } from './local-store';
+import { markClean, getDeviceId } from './local-store';
 
 export interface Conflict {
   id: string;
   serverRev: string;
   serverBody: any;
+  /** Device that wrote the currently-stored server revision — null when
+   * unknown (e.g. written before this feature existed, or from a session
+   * with no persisted device id). Multi-device conflict provenance. */
+  serverDeviceId?: string | null;
   clientRev: string | null;
   clientBody: any;
+  /** Device whose push produced this conflicting client branch. */
+  clientDeviceId?: string | null;
   reason: string;
 }
 
@@ -22,6 +28,14 @@ interface ResolveResult {
   seq: number;
   winner: string;
   resolvedBody: any;
+  deviceId?: string | null;
+}
+
+/** Short, human-scannable label for a device id — never a fabricated name,
+ * just the tail of the real persisted id (or an honest "unknown device"). */
+function deviceLabel(deviceId: string | null | undefined): string {
+  if (!deviceId) return 'unknown device';
+  return `device ${deviceId.slice(-8)}`;
 }
 
 type Winner = 'server' | 'client' | 'merged';
@@ -56,10 +70,15 @@ export function ConflictMergePanel({
       setBusy(`${c.id}:${winner}`);
       setErrors((e) => ({ ...e, [c.id]: '' }));
       try {
+        // The device performing the resolution — stamped onto the new
+        // revision the same way an ordinary push is, so provenance stays
+        // honest across both ordinary edits and human conflict resolutions.
+        const deviceId = getDeviceId();
         const input: Record<string, unknown> = {
           id: c.id,
           winner,
           clientBody: c.clientBody,
+          deviceId,
         };
         if (winner === 'merged') {
           const raw = drafts[c.id] ?? pretty(c.clientBody ?? c.serverBody);
@@ -79,7 +98,7 @@ export function ConflictMergePanel({
           return;
         }
         // Reconcile the local store with the committed revision.
-        await markClean(c.id, r.data.result.rev, r.data.result.resolvedBody == null);
+        await markClean(c.id, r.data.result.rev, r.data.result.resolvedBody == null, r.data.result.deviceId ?? deviceId);
         onResolved(c.id);
       } catch (e) {
         setErrors((err) => ({
@@ -131,6 +150,9 @@ export function ConflictMergePanel({
                 <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-300">
                   <Server className="h-3 w-3" /> Server · {c.serverRev}
                 </div>
+                <div className="mb-1 font-mono text-[9px] text-zinc-500">
+                  written by {deviceLabel(c.serverDeviceId)}
+                </div>
                 <pre className="max-h-40 overflow-auto font-mono text-[10px] text-zinc-300">
                   {pretty(c.serverBody)}
                 </pre>
@@ -138,6 +160,9 @@ export function ConflictMergePanel({
               <div className="rounded border border-zinc-800 bg-zinc-950 p-2">
                 <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
                   <Smartphone className="h-3 w-3" /> Client · {c.clientRev ?? 'new'}
+                </div>
+                <div className="mb-1 font-mono text-[9px] text-zinc-500">
+                  written by {deviceLabel(c.clientDeviceId)}
                 </div>
                 <pre className="max-h-40 overflow-auto font-mono text-[10px] text-zinc-300">
                   {pretty(c.clientBody)}
