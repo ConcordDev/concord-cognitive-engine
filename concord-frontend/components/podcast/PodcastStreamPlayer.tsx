@@ -11,10 +11,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward, ListTree, Moon,
-  Scissors, Loader2, Gauge, X,
+  Scissors, Loader2, Gauge, X, Wand2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import {
+  analyzeEpisodeForSilence,
+  resolveSilenceAutoSkip,
+  type SilenceRange,
+} from '@/lib/podcast/silence-detect';
 
 interface Chapter { startSec: number; title: string }
 interface StreamDescriptor {
@@ -59,6 +64,9 @@ export function PodcastStreamPlayer({
   const [introSkipped, setIntroSkipped] = useState(false);
   const [skipIntroSec, setSkipIntroSecState] = useState(0);
   const [savingSkipIntro, setSavingSkipIntro] = useState(false);
+  const [trimSilenceOn, setTrimSilenceOn] = useState(false);
+  const [savingTrimSilence, setSavingTrimSilence] = useState(false);
+  const [silenceRanges, setSilenceRanges] = useState<SilenceRange[]>([]);
 
   // Load the stream descriptor from the backend.
   useEffect(() => {
@@ -71,6 +79,7 @@ export function PodcastStreamPlayer({
         setDescriptor(r.data.result);
         setSpeed(r.data.result.playbackSpeed || 1);
         setSkipIntroSecState(r.data.result.skipIntroSec || 0);
+        setTrimSilenceOn(r.data.result.trimSilence === true);
       } else {
         setError(r.data?.error || 'Could not load stream');
       }
@@ -99,6 +108,27 @@ export function PodcastStreamPlayer({
     return () => audio.removeEventListener('loadedmetadata', onLoaded);
   }, [descriptor]);
 
+  // Trim-silence — runs a real RMS-threshold silence analysis
+  // (`lib/podcast/silence-detect.ts`) over the actual episode audio,
+  // progressively as chunks are fetched/decoded, and only while the
+  // preference is on. Turning it off aborts any in-flight analysis and
+  // drops previously-found ranges — the "trim silence on" badge and the
+  // auto-skip below both key off real detected ranges, never a guess.
+  useEffect(() => {
+    if (!trimSilenceOn || !descriptor?.audioUrl) {
+      setSilenceRanges([]);
+      return;
+    }
+    const controller = new AbortController();
+    setSilenceRanges([]);
+    void analyzeEpisodeForSilence(
+      descriptor.audioUrl,
+      (ranges) => setSilenceRanges(ranges),
+      { signal: controller.signal },
+    );
+    return () => controller.abort();
+  }, [trimSilenceOn, descriptor?.audioUrl]);
+
   // Persist progress to the backend via sync-push every 10s of playback.
   const lastPushRef = useRef(0);
   const pushSync = useCallback(async (pos: number) => {
@@ -115,12 +145,20 @@ export function PodcastStreamPlayer({
   const onTimeUpdate = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    // Trim-silence auto-skip — mirrors the skip-intro auto-seek pattern
+    // above (read a persisted prefs value, act on it during playback) but
+    // checked on every timeupdate against real detected silence ranges
+    // rather than a single fixed offset.
+    const skipTo = resolveSilenceAutoSkip(trimSilenceOn, silenceRanges, audio.currentTime);
+    if (skipTo !== null) {
+      audio.currentTime = isFinite(audio.duration) ? Math.min(skipTo, audio.duration) : skipTo;
+    }
     setPosition(audio.currentTime);
     if (audio.currentTime - lastPushRef.current >= 10) {
       lastPushRef.current = audio.currentTime;
       void pushSync(audio.currentTime);
     }
-  }, [pushSync]);
+  }, [pushSync, trimSilenceOn, silenceRanges]);
 
   const toggle = useCallback(() => {
     const audio = audioRef.current;
@@ -180,6 +218,17 @@ export function PodcastStreamPlayer({
     setSavingSkipIntro(false);
   }, []);
 
+  // Trim-silence toggle — persists the preference (server/domains/podcast.js
+  // already stores/returns it faithfully) and drives the real analysis
+  // effect above. Previously there was no control anywhere that ever set
+  // this to true, so the "trim silence on" badge could never render.
+  const saveTrimSilence = useCallback(async (on: boolean) => {
+    setTrimSilenceOn(on);
+    setSavingTrimSilence(true);
+    await lensRun('podcast', 'playback-prefs-set', { trimSilence: on });
+    setSavingTrimSilence(false);
+  }, []);
+
   const activeChapterIdx = descriptor
     ? descriptor.chapters.reduce((acc, c, i) => (position >= c.startSec ? i : acc), -1)
     : -1;
@@ -213,7 +262,11 @@ export function PodcastStreamPlayer({
           <p className="text-[11px] text-zinc-400">
             Streaming enclosure
             {introSkipped && <span className="ml-1 text-violet-400">· intro skipped ({descriptor.skipIntroSec}s)</span>}
-            {descriptor.trimSilence && <span className="ml-1 text-emerald-400">· trim silence on</span>}
+            {trimSilenceOn && (
+              <span className="ml-1 text-emerald-400">
+                · trim silence on{silenceRanges.length > 0 ? ` (${silenceRanges.length} gap${silenceRanges.length === 1 ? '' : 's'} found)` : ''}
+              </span>
+            )}
           </p>
         </div>
         <button type="button" onClick={onClose} className="text-zinc-600 hover:text-zinc-300 shrink-0" aria-label="Close player">
@@ -301,6 +354,19 @@ export function PodcastStreamPlayer({
               {m === 0 ? 'off' : `${m}m`}
             </button>
           ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => void saveTrimSilence(!trimSilenceOn)}
+            aria-pressed={trimSilenceOn}
+            aria-label="Toggle trim silence"
+            className={cn('flex items-center gap-1 px-1.5 py-0.5 rounded border',
+              trimSilenceOn ? 'border-emerald-700/60 bg-emerald-950/50 text-emerald-300' : 'border-zinc-700 text-zinc-400')}
+          >
+            <Wand2 className="w-3.5 h-3.5" />
+            Trim silence{savingTrimSilence && '…'}
+          </button>
         </div>
         <div className="flex items-center gap-1">
           <Scissors className="w-3.5 h-3.5 text-amber-400" />
