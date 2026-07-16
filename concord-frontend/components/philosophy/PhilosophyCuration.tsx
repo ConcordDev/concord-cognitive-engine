@@ -17,7 +17,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Grid3x3, Globe, Users, Sparkles, BookMarked, Network,
   MessagesSquare, Loader2, Plus, Trash2, ImageIcon, Link2,
-  Search, X, ChevronRight,
+  Search, X, ChevronRight, FileText, Quote,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { TreeDiagram, type TreeNode } from '@/components/viz';
@@ -58,9 +58,15 @@ interface DebateThread {
   id: string; title: string; claim: string; branch: string; author: string;
   status: string; posts: DebatePost[]; resolution?: string | null; postCount?: number; createdAt: string;
 }
+interface SearchChannelResult { id: string; title: string; description: string; createdAt: string }
+interface SearchBlockResult { id: string; kind: string; excerpt: string; channelIds: string[] }
+interface PhilosophySearchResult { channels: SearchChannelResult[]; blocks: SearchBlockResult[]; count: number }
+/** A request to focus a specific channel in the Image Grid tab (used by cross-tab search deep-links). */
+interface ChannelFocusRequest { channelId: string; token: number }
 
 const SUBTAByS = [
   { id: 'grid', label: 'Image Grid', icon: Grid3x3 },
+  { id: 'search', label: 'Search', icon: Search },
   { id: 'discover', label: 'Discover', icon: Globe },
   { id: 'collab', label: 'Collaborators', icon: Users },
   { id: 'embed', label: 'Embeds', icon: Sparkles },
@@ -77,12 +83,21 @@ type SubTab = typeof SUBTAByS[number]['id'];
 export function PhilosophyCuration() {
   const [tab, setTab] = useState<SubTab>('grid');
   const [channels, setChannels] = useState<ChannelMeta[]>([]);
+  const [channelFocus, setChannelFocus] = useState<ChannelFocusRequest | null>(null);
 
   const loadChannels = useCallback(async () => {
     const r = await lensRun('philosophy', 'channel-list', {});
     if (r.data.ok) setChannels((r.data.result as { channels: ChannelMeta[] })?.channels || []);
   }, []);
   useEffect(() => { void loadChannels(); }, [loadChannels]);
+
+  // Deep-link from a search result into the Image Grid tab, focused on
+  // its owning channel. `token` forces the target effect to re-fire even
+  // when the same channel is opened twice in a row.
+  const openChannel = useCallback((channelId: string) => {
+    setChannelFocus({ channelId, token: Date.now() });
+    setTab('grid');
+  }, []);
 
   return (
     <div>
@@ -110,7 +125,8 @@ export function PhilosophyCuration() {
         ))}
       </div>
 
-      {tab === 'grid' && <ImageGridTab channels={channels} onMutate={loadChannels} />}
+      {tab === 'grid' && <ImageGridTab channels={channels} onMutate={loadChannels} focus={channelFocus} />}
+      {tab === 'search' && <SearchTab channels={channels} onOpenChannel={openChannel} />}
       {tab === 'discover' && <DiscoverTab />}
       {tab === 'collab' && <CollaboratorsTab channels={channels} />}
       {tab === 'embed' && <EmbedTab channels={channels} onMutate={loadChannels} />}
@@ -125,7 +141,7 @@ export function PhilosophyCuration() {
 /*  Tab 1 — Visual image-block grid (masonry)                          */
 /* ------------------------------------------------------------------ */
 
-function ImageGridTab({ channels, onMutate }: { channels: ChannelMeta[]; onMutate: () => void }) {
+function ImageGridTab({ channels, onMutate, focus }: { channels: ChannelMeta[]; onMutate: () => void; focus?: ChannelFocusRequest | null }) {
   const [channelId, setChannelId] = useState('');
   const [blocks, setBlocks] = useState<GridBlock[]>([]);
   const [loading, setLoading] = useState(false);
@@ -144,6 +160,12 @@ function ImageGridTab({ channels, onMutate }: { channels: ChannelMeta[]; onMutat
   useEffect(() => {
     if (!channelId && channels.length > 0) setChannelId(channels[0].id);
   }, [channels, channelId]);
+  // A search-result deep-link always wins over the default selection —
+  // re-fires on every `focus` (new token) even if it targets the
+  // already-selected channel.
+  useEffect(() => {
+    if (focus?.channelId) setChannelId(focus.channelId);
+  }, [focus]);
   useEffect(() => { void load(channelId); }, [channelId, load]);
 
   async function addImage() {
@@ -227,6 +249,140 @@ function ImageGridTab({ channels, onMutate }: { channels: ChannelMeta[]; onMutat
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tab — Cross-cutting library search (channels + blocks)             */
+/*                                                                      */
+/*  Every other tab's search is scoped narrow (Discover searches only  */
+/*  published public channels; Reference looks up one Wikipedia topic  */
+/*  at a time). This is the one search that spans the whole personal   */
+/*  library — every channel title/description AND every block's       */
+/*  content, across every kind (text/link/quote/image/embed) — via     */
+/*  the philosophy-search macro. A block result deep-links into its    */
+/*  owning channel in the Image Grid tab.                              */
+/* ------------------------------------------------------------------ */
+
+const BLOCK_KIND_ICON: Record<string, typeof FileText> = {
+  text: FileText, link: Link2, quote: Quote, image: ImageIcon, embed: Sparkles,
+};
+
+function BlockKindIcon({ kind }: { kind: string }) {
+  const Icon = BLOCK_KIND_ICON[kind] || FileText;
+  return <Icon className="w-3 h-3" />;
+}
+
+function SearchTab({ channels, onOpenChannel }: { channels: ChannelMeta[]; onOpenChannel: (channelId: string) => void }) {
+  const [query, setQuery] = useState('');
+  const [submittedQuery, setSubmittedQuery] = useState('');
+  const [result, setResult] = useState<PhilosophySearchResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const channelTitle = useCallback(
+    (channelId: string) => channels.find((c) => c.id === channelId)?.title || channelId,
+    [channels],
+  );
+
+  const runSearch = useCallback(async (raw: string) => {
+    const q = raw.trim();
+    if (!q) { setResult(null); setSubmittedQuery(''); setError(''); return; }
+    setLoading(true); setError('');
+    const r = await lensRun('philosophy', 'philosophy-search', { query: q });
+    setLoading(false);
+    setSubmittedQuery(q);
+    if (r.data.ok) {
+      setResult(r.data.result as PhilosophySearchResult);
+    } else {
+      setResult(null);
+      setError(r.data.error || 'Search failed');
+    }
+  }, []);
+
+  const hasResults = Boolean(result && result.count > 0);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-zinc-400">
+        Search every channel and block in your library — titles, descriptions, and block content across text, link, quote, image and embed blocks.
+      </p>
+      <div className="flex gap-1.5">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+          <input
+            value={query} onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void runSearch(query); }}
+            placeholder="Search your library…"
+            className="w-full pl-7 pr-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200"
+          />
+        </div>
+        <button
+          onClick={() => runSearch(query)} disabled={loading || !query.trim()}
+          className="px-3 py-1.5 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1"
+        >
+          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}Search
+        </button>
+      </div>
+
+      {error && <p className="text-[11px] text-rose-400">{error}</p>}
+
+      {loading ? (
+        <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+      ) : !submittedQuery ? (
+        <p className="text-xs text-zinc-400 italic">Type a query and press Enter (or click Search) to search across every channel and block in your library.</p>
+      ) : !hasResults ? (
+        <p className="text-xs text-zinc-400 italic">No results for &ldquo;{submittedQuery}&rdquo;.</p>
+      ) : (
+        <div className="space-y-4">
+          {result!.channels.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase text-zinc-400 mb-1">Channels ({result!.channels.length})</p>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {result!.channels.map((c) => (
+                  <button
+                    key={c.id} onClick={() => onOpenChannel(c.id)}
+                    className="text-left bg-zinc-900/60 border border-zinc-800 hover:border-amber-700/50 rounded-lg p-3"
+                  >
+                    <p className="text-xs font-bold text-zinc-100">{c.title}</p>
+                    {c.description && <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-2">{c.description}</p>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {result!.blocks.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase text-zinc-400 mb-1">Blocks ({result!.blocks.length})</p>
+              <ul className="space-y-1.5">
+                {result!.blocks.map((b) => (
+                  <li key={b.id}>
+                    <button
+                      onClick={() => b.channelIds[0] && onOpenChannel(b.channelIds[0])}
+                      disabled={b.channelIds.length === 0}
+                      className="w-full text-left bg-zinc-900/60 border border-zinc-800 hover:border-amber-700/50 rounded-lg p-2.5 disabled:opacity-50 disabled:hover:border-zinc-800"
+                    >
+                      <div className="flex items-center gap-1.5 text-amber-400">
+                        <BlockKindIcon kind={b.kind} />
+                        <span className="text-[9px] uppercase font-bold">{b.kind}</span>
+                        {b.channelIds.length > 1 && (
+                          <span className="text-[9px] text-zinc-500 ml-auto">in {b.channelIds.length} channels</span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-zinc-300 mt-1">{b.excerpt}</p>
+                      {b.channelIds[0] && (
+                        <p className="text-[9px] text-zinc-500 mt-1">in {channelTitle(b.channelIds[0])}</p>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
