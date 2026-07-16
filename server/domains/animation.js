@@ -226,7 +226,19 @@ export default function registerAnimationActions(registerLensAction) {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.id);
     if (!anim) return { ok: false, error: "animation not found" };
-    return { ok: true, result: { animation: anim } };
+    // Cheap booleans only — never the raw opLog/redoStack snapshots (see the
+    // "Cross-operation undo/redo" note below on why those stay off `anim`).
+    // Lets the Studio UI restore correct Undo/Redo button state on load
+    // (e.g. after a page refresh mid-session) instead of guessing.
+    const u = s.animUndo?.get(anim.id);
+    return {
+      ok: true,
+      result: {
+        animation: anim,
+        canUndo: !!(u && u.opLog.length),
+        canRedo: !!(u && u.redoStack.length),
+      },
+    };
   });
 
   registerLensAction("animation", "anim-rename", (ctx, _a, params = {}) => {
@@ -272,8 +284,101 @@ export default function registerAnimationActions(registerLensAction) {
     const i = arr.findIndex((a) => a.id === params.id);
     if (i < 0) return { ok: false, error: "animation not found" };
     arr.splice(i, 1);
+    s.animUndo?.delete(params.id); // don't leak undo/redo history for a deleted project
     saveAnimState();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Cross-operation undo/redo (op-log) ──────────────────────────────
+  // A bounded stack of whole-`frames`-tree snapshots taken immediately
+  // before each destructive frame/layer-level mutation (frame add/
+  // duplicate/delete/reorder, layer add/update/delete, frame-clear).
+  // This is DELIBERATELY coarse-grained — one snapshot per structural
+  // op, not per stroke — so it composes with (but never replaces) the
+  // narrower single-level per-layer stroke undo (`anim-stroke-undo`
+  // above, which just pops the last stroke off one layer's array). A
+  // structural undo/redo therefore also rewinds/replays any strokes
+  // drawn on a frame since the last structural op — the same trade-off
+  // FlipaClip's own app-wide undo makes (it explicitly can't selectively
+  // undo a deleted/merged layer either; see the capability-map note).
+  //
+  // Depth is capped at AN_MAX_UNDO_DEPTH so a long session can't grow
+  // this unboundedly — the oldest entry silently drops off once the cap
+  // is hit, the same bounded-resource discipline AN_MAX_FRAMES already
+  // uses elsewhere in this file. 40 was picked as a generous "several
+  // minutes of active editing" depth without holding an unbounded
+  // number of full-frame-tree clones in memory; FlipaClip/Pencil2D don't
+  // publish a documented undo depth, so this is a considered default,
+  // not a reproduced one.
+  //
+  // The log/stack live in a SEPARATE side-map (`s.animUndo`, keyed by
+  // animId) rather than as fields on the `anim` object itself. Several
+  // read macros (anim-get, anim-list's non-whitelisted cousins, etc.)
+  // return the live `anim` object straight through to the client — if
+  // opLog/redoStack lived on `anim`, every one of those responses would
+  // silently balloon by up to AN_MAX_UNDO_DEPTH full-frame-tree clones.
+  // Keeping undo state off the serialized object is load-bearing, not
+  // stylistic.
+  const AN_MAX_UNDO_DEPTH = 40;
+  function anCloneFrames(frames) {
+    return JSON.parse(JSON.stringify(frames));
+  }
+  function anUndoEntry(s, animId) {
+    const map = (s.animUndo ||= new Map());
+    let entry = map.get(animId);
+    if (!entry) { entry = { opLog: [], redoStack: [] }; map.set(animId, entry); }
+    return entry;
+  }
+  // Call BEFORE mutating anim.frames in any destructive frame/layer macro.
+  // Standard undo-stack semantics: performing a genuinely new edit clears
+  // the redo stack — you can't redo past a fork in history.
+  function anPushUndoSnapshot(s, anim, opType) {
+    const u = anUndoEntry(s, anim.id);
+    u.opLog.push({ type: opType, snapshot: anCloneFrames(anim.frames), at: anNow() });
+    if (u.opLog.length > AN_MAX_UNDO_DEPTH) u.opLog.shift();
+    u.redoStack = [];
+  }
+
+  registerLensAction("animation", "anim-undo", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const u = anUndoEntry(s, anim.id);
+    if (!u.opLog.length) return { ok: false, error: "nothing to undo" };
+    const entry = u.opLog.pop();
+    u.redoStack.push({ type: entry.type, snapshot: anCloneFrames(anim.frames), at: anNow() });
+    if (u.redoStack.length > AN_MAX_UNDO_DEPTH) u.redoStack.shift();
+    anim.frames = entry.snapshot;
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return {
+      ok: true,
+      result: {
+        undone: entry.type, frameCount: anim.frames.length,
+        canUndo: u.opLog.length > 0, canRedo: u.redoStack.length > 0,
+      },
+    };
+  });
+
+  registerLensAction("animation", "anim-redo", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const u = anUndoEntry(s, anim.id);
+    if (!u.redoStack.length) return { ok: false, error: "nothing to redo" };
+    const entry = u.redoStack.pop();
+    u.opLog.push({ type: entry.type, snapshot: anCloneFrames(anim.frames), at: anNow() });
+    if (u.opLog.length > AN_MAX_UNDO_DEPTH) u.opLog.shift();
+    anim.frames = entry.snapshot;
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return {
+      ok: true,
+      result: {
+        redone: entry.type, frameCount: anim.frames.length,
+        canUndo: u.opLog.length > 0, canRedo: u.redoStack.length > 0,
+      },
+    };
   });
 
   // ── Frames ──────────────────────────────────────────────────────────
@@ -282,6 +387,7 @@ export default function registerAnimationActions(registerLensAction) {
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
     if (anim.frames.length >= AN_MAX_FRAMES) return { ok: false, error: `frame limit (${AN_MAX_FRAMES}) reached` };
+    anPushUndoSnapshot(s, anim, "frame-add");
     const frame = blankFrame();
     const afterIdx = anim.frames.findIndex((f) => f.id === params.afterFrameId);
     if (afterIdx >= 0) anim.frames.splice(afterIdx + 1, 0, frame);
@@ -298,6 +404,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (anim.frames.length >= AN_MAX_FRAMES) return { ok: false, error: `frame limit (${AN_MAX_FRAMES}) reached` };
     const idx = anim.frames.findIndex((f) => f.id === params.frameId);
     if (idx < 0) return { ok: false, error: "frame not found" };
+    anPushUndoSnapshot(s, anim, "frame-duplicate");
     const src = anim.frames[idx];
     frameLayer(src);   // migrate legacy frame to layered shape if needed
     const copy = {
@@ -325,6 +432,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (anim.frames.length <= 1) return { ok: false, error: "an animation needs at least one frame" };
     const idx = anim.frames.findIndex((f) => f.id === params.frameId);
     if (idx < 0) return { ok: false, error: "frame not found" };
+    anPushUndoSnapshot(s, anim, "frame-delete");
     anim.frames.splice(idx, 1);
     anim.updatedAt = anNow();
     saveAnimState();
@@ -341,6 +449,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (j < 0 || j >= anim.frames.length) {
       return { ok: true, result: { order: anim.frames.map((f) => f.id) } };
     }
+    anPushUndoSnapshot(s, anim, "frame-reorder");
     [anim.frames[i], anim.frames[j]] = [anim.frames[j], anim.frames[i]];
     anim.updatedAt = anNow();
     saveAnimState();
@@ -368,6 +477,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     frameLayer(frame);
     if (frame.layers.length >= AN_MAX_LAYERS) return { ok: false, error: `layer limit (${AN_MAX_LAYERS}) reached` };
+    anPushUndoSnapshot(s, anim, "frame-layer-add");
     const layer = blankLayer(anClean(params.name, 60) || `Layer ${frame.layers.length + 1}`);
     frame.layers.push(layer);
     anim.updatedAt = anNow();
@@ -383,6 +493,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     const layer = frameLayer(frame, params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    anPushUndoSnapshot(s, anim, "frame-layer-update");
     if (params.name != null) layer.name = anClean(params.name, 60) || layer.name;
     if (params.visible != null) layer.visible = !!params.visible;
     if (params.opacity != null) layer.opacity = anClamp(params.opacity, 0, 1, layer.opacity);
@@ -401,6 +512,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (frame.layers.length <= 1) return { ok: false, error: "a frame needs at least one layer" };
     const i = frame.layers.findIndex((l) => l.id === params.layerId);
     if (i < 0) return { ok: false, error: "layer not found" };
+    anPushUndoSnapshot(s, anim, "frame-layer-delete");
     frame.layers.splice(i, 1);
     anim.updatedAt = anNow();
     saveAnimState();
@@ -494,6 +606,7 @@ export default function registerAnimationActions(registerLensAction) {
     if (!frame) return { ok: false, error: "frame not found" };
     const layer = frameLayer(frame, params.layerId);
     if (!layer) return { ok: false, error: "layer not found" };
+    anPushUndoSnapshot(s, anim, "frame-clear");
     if (params.allLayers) { for (const l of frame.layers) l.strokes = []; }
     else layer.strokes = [];
     anim.updatedAt = anNow();

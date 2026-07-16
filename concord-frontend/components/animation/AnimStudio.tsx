@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Loader2, ArrowLeft, Undo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers, Eye, EyeOff, Music,
+  Loader2, ArrowLeft, Undo2, Redo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers, Eye, EyeOff, Music,
   Wrench, ChevronLeft, ChevronRight, ImageIcon,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -153,6 +153,17 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
   // Real playback duration, sourced from the `playback-frames` macro (the
   // exposure-expanded sequence length) rather than recomputed client-side.
   const [duration, setDuration] = useState<{ totalFrames: number; durationSec: number } | null>(null);
+  // Cross-operation undo/redo. `lastAction` tracks whether the most recent
+  // edit was a single stroke draw (undone via the narrower single-level
+  // `anim-stroke-undo`) or a structural frame/layer edit (undone via the
+  // real cross-operation op-log: `anim-undo` / `anim-redo`, see
+  // server/domains/animation.js). The Undo button routes to whichever
+  // primitive matches the last edit; Redo only ever applies to the
+  // structural stack — stroke-undo is a single-level pop with no redo,
+  // and stays that way by design (it's a narrower, still-real primitive
+  // layered alongside the new stack, not replaced by it).
+  const [lastAction, setLastAction] = useState<'stroke' | 'structural' | null>(null);
+  const [canRedo, setCanRedo] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
@@ -181,6 +192,11 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
       const r = await lensRun('animation', 'anim-get', { id: animId });
       if (!active) return;
       setAnim((r.data?.result?.animation as Anim) || null);
+      // Restore real Undo/Redo button state from the server (e.g. after a
+      // page refresh mid-session) instead of guessing at load time.
+      const loaded = r.data?.result as { canUndo?: boolean; canRedo?: boolean } | undefined;
+      setLastAction(loaded?.canUndo ? 'structural' : null);
+      setCanRedo(!!loaded?.canRedo);
       setLoading(false);
     })();
     return () => { active = false; };
@@ -382,10 +398,32 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     } else {
       await lensRun('animation', 'anim-stroke-commit', { animId: anim.id, frameId: fid, layerId: lid, stroke });
     }
+    setLastAction('stroke');
   };
 
+  // Routes to whichever undo primitive matches the most recent edit. A
+  // structural edit (frame/layer add, delete, reorder, clear, …) undoes via
+  // the real cross-operation op-log; anything else falls back to the
+  // pre-existing single-level per-layer stroke undo.
   const undo = async () => {
     if (!anim) return;
+    if (lastAction === 'structural') {
+      const r = await lensRun('animation', 'anim-undo', { animId: anim.id });
+      const result = r.data?.result as { ok?: boolean; error?: string; canUndo?: boolean; canRedo?: boolean; frameCount?: number } | undefined;
+      if (r.data?.ok && result?.ok !== false) {
+        await reloadAnim();
+        setCanRedo(!!result?.canRedo);
+        setLastAction(result?.canUndo ? 'structural' : null);
+        // A structural undo can change the frame count (undoing a delete
+        // restores a frame; undoing an add removes one) — keep the current
+        // frame pointer in bounds so the render never indexes a frame that
+        // no longer exists.
+        if (typeof result?.frameCount === 'number') {
+          setFrameIdx((idx) => Math.min(idx, Math.max(0, result.frameCount! - 1)));
+        }
+      }
+      return;
+    }
     const fid = anim.frames[frameIdx].id;
     const lid = activeLayer;
     setAnim((prev) => prev && ({
@@ -394,16 +432,42 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         ? { ...f, layers: f.layers.map((l) => (l.id === lid ? { ...l, strokes: l.strokes.slice(0, -1) } : l)) } : f)),
     }));
     await lensRun('animation', 'anim-stroke-undo', { animId: anim.id, frameId: fid, layerId: lid });
+    setLastAction(null); // stroke-undo is single-level — nothing further to undo via this path
+  };
+
+  // Redo only ever applies to the structural op-log (there is no stroke redo).
+  const redo = async () => {
+    if (!anim || !canRedo) return;
+    const r = await lensRun('animation', 'anim-redo', { animId: anim.id });
+    const result = r.data?.result as { ok?: boolean; canUndo?: boolean; canRedo?: boolean; frameCount?: number } | undefined;
+    if (r.data?.ok && result?.ok !== false) {
+      await reloadAnim();
+      setCanRedo(!!result?.canRedo);
+      setLastAction('structural');
+      // Same frame-count clamp as undo() — a redone frame-add/delete can
+      // change how many frames exist.
+      if (typeof result?.frameCount === 'number') {
+        setFrameIdx((idx) => Math.min(idx, Math.max(0, result.frameCount! - 1)));
+      }
+    }
   };
 
   const reloadAnim = async () => {
     const r = await lensRun('animation', 'anim-get', { id: animId });
     setAnim((r.data?.result?.animation as Anim) || null);
   };
+  // Every handler below performs a structural, op-log-backed edit
+  // (server/domains/animation.js pushes a real undo snapshot before each of
+  // these macros mutates). Marking `lastAction: 'structural'` + clearing
+  // `canRedo` client-side after each one mirrors exactly what the backend
+  // just did (a genuinely new edit clears the redo stack) so the toolbar's
+  // Undo/Redo state never lags or fabricates availability that isn't real.
   const addLayer = async () => {
     if (!anim) return;
     await lensRun('animation', 'frame-layer-add', { animId: anim.id, frameId: anim.frames[frameIdx].id });
     await reloadAnim();
+    setLastAction('structural');
+    setCanRedo(false);
   };
   const updateLayer = async (layerId: string, patch: { visible?: boolean; opacity?: number }) => {
     if (!anim) return;
@@ -414,11 +478,15 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         ? { ...f, layers: f.layers.map((l) => (l.id === layerId ? { ...l, ...patch } : l)) } : f)),
     }));
     await lensRun('animation', 'frame-layer-update', { animId: anim.id, frameId: fid, layerId, ...patch });
+    setLastAction('structural');
+    setCanRedo(false);
   };
   const deleteLayer = async (layerId: string) => {
     if (!anim || (anim.frames[frameIdx].layers || []).length <= 1) return;
     await lensRun('animation', 'frame-layer-delete', { animId: anim.id, frameId: anim.frames[frameIdx].id, layerId });
     await reloadAnim();
+    setLastAction('structural');
+    setCanRedo(false);
   };
 
   const addFrame = async (duplicate: boolean) => {
@@ -435,6 +503,8 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         return { ...prev, frames };
       });
       setFrameIdx(frameIdx + 1);
+      setLastAction('structural');
+      setCanRedo(false);
     }
   };
 
@@ -444,6 +514,8 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     await lensRun('animation', 'frame-delete', { animId: anim.id, frameId: fid });
     setAnim((prev) => prev && ({ ...prev, frames: prev.frames.filter((f) => f.id !== fid) }));
     setFrameIdx(Math.max(0, frameIdx - 1));
+    setLastAction('structural');
+    setCanRedo(false);
   };
 
   const moveFrame = async (direction: 'left' | 'right') => {
@@ -459,6 +531,8 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
       return { ...prev, frames };
     });
     setFrameIdx(order.indexOf(fid));
+    setLastAction('structural');
+    setCanRedo(false);
   };
 
   const setExposure = async (val: number) => {
@@ -518,6 +592,10 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         <button type="button" onClick={undo} disabled={playing}
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg disabled:opacity-40">
           <Undo2 className="w-3.5 h-3.5" /> Undo
+        </button>
+        <button type="button" onClick={redo} disabled={playing || !canRedo}
+          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg disabled:opacity-40">
+          <Redo2 className="w-3.5 h-3.5" /> Redo
         </button>
         <button type="button" onClick={() => setShowTools((v) => !v)}
           className={cn('flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg',
