@@ -397,8 +397,14 @@ Triaged per the "closing the hard 20%" invariant:
   takes, project import/export) don't yet call `logStudioCollabEdit`. The
   helper and the call pattern are now established — extending it is
   mechanical, one call per mutation handler.
-- **ENGINEERING, small — `DawWorkbenchSection`'s project list doesn't
+- ~~**ENGINEERING, small — `DawWorkbenchSection`'s project list doesn't
   auto-refresh** when a project is created in the separate
   `StudioActionPanel` below it (the two aren't in the same `PipingProvider`
-  tree). The manual refresh button is an honest, working substitute, not a
-  fabricated auto-sync.
+  tree).~~ **CLOSED (2026-07-16, `a69f4dc7`).** The single `PipingProvider`
+  now wraps both components in one tree; `DawWorkbenchSection` subscribes
+  via `usePipeValue('studio.project')` and re-fetches its list whenever
+  `StudioActionPanel` publishes a newly created project. The manual refresh
+  button stays as the honest fallback. A dedicated test mounts both real
+  components under one provider and proves the picker updates with zero
+  manual interaction (sanity-checked load-bearing by reverting the fix and
+  confirming the test fails).
