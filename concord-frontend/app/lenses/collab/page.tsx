@@ -55,7 +55,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SharedSessionChat } from '@/components/social/SharedSessionChat';
-import { SharedSessionInvite } from '@/components/social/SharedSessionInvite';
 import { WorkspaceRoster } from '@/components/collab/WorkspaceRoster';
 import { CollabActionPanel } from '@/components/collab/CollabActionPanel';
 import { CollabDocWorkspace } from '@/components/collab/CollabDocWorkspace';
@@ -109,14 +108,29 @@ interface ChatMessage {
   isSystem?: boolean;
 }
 
+// Real shape produced by the backend's collab.sessionInvite /
+// sessionInviteRespond / sessionInviteList macros (server/domains/collab.js)
+// — a targeted (1:1) invite to a real, already-created session. This
+// replaced an earlier placeholder shape (`fromAvatar` as a server-picked
+// Tailwind class, `genre` as a pre-joined string, no `sessionId`/`toId`/
+// `status`) that nothing ever actually produced. Avatars are still derived
+// client-side via `avatarForUser(id)` — the backend never owns a UI class
+// name — and `projectType`/`genre` are honestly nullable/empty because a
+// session isn't required to have them.
 interface Invitation {
   id: string;
+  sessionId: string;
   sessionName: string;
+  fromId: string;
   fromName: string;
-  fromAvatar: string;
-  projectType: ProjectType;
-  genre: string;
+  toId: string;
+  toName: string;
+  projectType: ProjectType | null;
+  genre: string[];
+  message: string;
+  status: 'pending' | 'accepted' | 'declined';
   sentAt: number;
+  respondedAt: number | null;
 }
 
 interface HistoryEntry {
@@ -241,14 +255,30 @@ export default function CollabLensPage() {
   } = useLensData('collab', 'session', {
     seed: [],
   });
+  // Real invitations — the direct producer is `collab.sessionInviteList`
+  // (server/domains/collab.js), NOT the generic cross-user useLensData
+  // artifact store: `collab` is a "social" lens domain there, which would
+  // make a private 1:1 invite publicly readable by any caller. Default
+  // scope is 'received' — the invites sent TO the current user, which is
+  // exactly what this tab shows.
   const {
+    data: invitesResult,
     isLoading: isLoadingInvitations,
     isError: isError2,
     error: error2,
     refetch: refetch2,
-    items: invitationItems,
-  } = useLensData('collab', 'invitation', {
-    seed: [],
+  } = useQuery({
+    queryKey: ['collab-invitations', 'received', myUserId],
+    queryFn: async () => {
+      const r = await lensRun<{ invitations: Invitation[]; total: number }>(
+        'collab',
+        'sessionInviteList',
+        { scope: 'received' }
+      );
+      if (!r.data.ok) throw new Error(r.data.error || 'Failed to load invitations');
+      return r.data.result;
+    },
+    refetchInterval: 30000,
   });
   const {
     isLoading: isLoadingHistory,
@@ -294,7 +324,6 @@ export default function CollabLensPage() {
   const [activeSession, setActiveSession] = useState<CollabSession | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
-  const [inviteSessionId, setInviteSessionId] = useState<string | null>(null);
 
   // Merge the wrapping lens-artifact id into `.data` — the backend assigns
   // the real, stable, cross-user-visible id at the artifact level (`i.id`),
@@ -304,10 +333,7 @@ export default function CollabLensPage() {
     ...(i.data as unknown as CollabSession),
     id: i.id,
   }));
-  const invitations: Invitation[] = invitationItems.map((i) => ({
-    ...(i.data as unknown as Invitation),
-    id: i.id,
-  }));
+  const invitations: Invitation[] = invitesResult?.invitations || [];
   const history: HistoryEntry[] = historyItems.map((i) => ({
     ...(i.data as unknown as HistoryEntry),
     id: i.id,
@@ -552,20 +578,6 @@ export default function CollabLensPage() {
             transition={{ duration: 0.2 }}
             className="space-y-3"
           >
-            {/* Sovereignty gate for joining an invited session */}
-            {inviteSessionId && (
-              <div className="panel p-4 mb-4 border border-neon-blue/20">
-                <SharedSessionInvite
-                  sessionId={inviteSessionId}
-                  onJoined={(sid) => {
-                    setInviteSessionId(null);
-                    const joinedSession = sessions.find((s) => s.id === sid);
-                    if (joinedSession) setActiveSession(joinedSession);
-                  }}
-                  onDeclined={() => setInviteSessionId(null)}
-                />
-              </div>
-            )}
             {invitations.length === 0 ? (
               <div className="panel p-12 text-center text-gray-400">
                 <Mail className="w-12 h-12 mx-auto mb-3 opacity-40" />
@@ -576,12 +588,18 @@ export default function CollabLensPage() {
               </div>
             ) : (
               invitations.map((inv) => (
-                <div
+                <InvitationCard
                   key={inv.id}
-                  onClick={() => setInviteSessionId(inv.id)}
-                  className="cursor-pointer" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-                  <InvitationCard invitation={inv} />
-                </div>
+                  invitation={inv}
+                  onResponded={(accepted) => {
+                    refetch2();
+                    // On accept the invitee is now a real tracked participant
+                    // (collab.sessionJoin, called server-side by
+                    // sessionInviteRespond) — refresh the session list so
+                    // "My Sessions" picks it up too.
+                    if (accepted) refetch();
+                  }}
+                />
               ))
             )}
           </motion.div>
@@ -947,6 +965,40 @@ function ActiveSessionView({
     role: p.userId === session.host.id ? 'host' : 'participant',
     online: true,
   }));
+
+  // --- Targeted (1:1) session invitations ---
+  // Real producer: collab.sessionInvite (server/domains/collab.js). Same
+  // "text-input-for-userId" pattern the alliance lens's DM/invite flow
+  // uses (components/alliance/AllianceWorkspace.tsx) — this codebase has
+  // no dedicated user-picker component to reuse instead.
+  const [showInvitePanel, setShowInvitePanel] = useState(false);
+  const [inviteTargetId, setInviteTargetId] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
+  const sendSessionInvite = useCallback(async () => {
+    const targetId = inviteTargetId.trim();
+    if (!targetId) return;
+    setIsInviting(true);
+    try {
+      const r = await lensRun('collab', 'sessionInvite', {
+        sessionId: session.id,
+        inviteeId: targetId,
+      });
+      if (!r.data.ok) {
+        useUIStore.getState().addToast({ type: 'error', message: r.data.error || 'Failed to send invite' });
+        return;
+      }
+      useUIStore.getState().addToast({ type: 'success', message: `Invited ${targetId} to this session` });
+      setInviteTargetId('');
+      setShowInvitePanel(false);
+    } catch (err) {
+      console.error('[Collab] Failed to send session invite:', err);
+      useUIStore
+        .getState()
+        .addToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to send invite' });
+    } finally {
+      setIsInviting(false);
+    }
+  }, [inviteTargetId, session.id]);
 
   const [chatInput, setChatInput] = useState('');
   const { items: chatItems, create: createChatMessage } = useLensData('collab', 'chat', {
@@ -1481,8 +1533,45 @@ function ActiveSessionView({
               }}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-lattice-surface border border-lattice-border text-gray-300 hover:border-neon-blue/40 transition-colors"
             >
-              <UserPlus className="w-3.5 h-3.5" /> Invite
+              <UserPlus className="w-3.5 h-3.5" /> Copy Link
             </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowInvitePanel((v) => !v)}
+                className={cn(
+                  'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border transition-colors',
+                  showInvitePanel
+                    ? 'bg-neon-blue/20 border-neon-blue/40 text-neon-blue'
+                    : 'bg-lattice-surface border-lattice-border text-gray-300 hover:border-neon-blue/40'
+                )}
+              >
+                <Mail className="w-3.5 h-3.5" /> Invite a User
+              </button>
+              {showInvitePanel && (
+                <div className="absolute bottom-full mb-2 left-0 z-10 panel p-3 w-64 space-y-2 shadow-lg">
+                  <label className="text-[11px] font-medium text-gray-400 block">
+                    Invite by user ID
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={inviteTargetId}
+                      onChange={(e) => setInviteTargetId(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && sendSessionInvite()}
+                      placeholder="user id to invite"
+                      className="flex-1 text-xs px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded-md focus:outline-none focus:border-neon-blue/50"
+                    />
+                    <button
+                      onClick={sendSessionInvite}
+                      disabled={isInviting || !inviteTargetId.trim()}
+                      className="text-xs px-2.5 py-1.5 rounded-md bg-neon-blue/20 text-neon-blue hover:bg-neon-blue/30 font-medium transition-colors disabled:opacity-50 shrink-0"
+                    >
+                      {isInviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Send'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               onClick={() =>
                 useUIStore.getState().addToast({ type: 'info', message: 'Session settings' })
@@ -1578,9 +1667,50 @@ function ActiveSessionView({
 // Invitation Card
 // ---------------------------------------------------------------------------
 
-function InvitationCard({ invitation }: { invitation: Invitation }) {
-  const [responded, setResponded] = useState<'accepted' | 'declined' | null>(null);
-  const TypeIcon = TYPE_ICONS[invitation.projectType];
+function InvitationCard({
+  invitation,
+  onResponded,
+}: {
+  invitation: Invitation;
+  onResponded: (accepted: boolean) => void;
+}) {
+  const [responded, setResponded] = useState<'accepted' | 'declined' | null>(
+    invitation.status === 'pending' ? null : invitation.status
+  );
+  const [busy, setBusy] = useState(false);
+  // projectType/genre are honestly nullable — a session isn't required to
+  // have them — so fall back to a neutral icon/color rather than crashing
+  // on an undefined lookup.
+  const TypeIcon = (invitation.projectType && TYPE_ICONS[invitation.projectType]) || Handshake;
+  const typeColor = (invitation.projectType && TYPE_COLORS[invitation.projectType]) || 'text-gray-400';
+  const fromAvatar = avatarForUser(invitation.fromId);
+
+  const respond = async (accept: boolean) => {
+    setBusy(true);
+    try {
+      const r = await lensRun<{ invite: Invitation }>('collab', 'sessionInviteRespond', {
+        inviteId: invitation.id,
+        accept,
+      });
+      if (!r.data.ok) {
+        useUIStore.getState().addToast({
+          type: 'error',
+          message: r.data.error || `Failed to ${accept ? 'accept' : 'decline'} invitation`,
+        });
+        return;
+      }
+      setResponded(accept ? 'accepted' : 'declined');
+      onResponded(accept);
+    } catch (err) {
+      console.error(`[Collab] Failed to ${accept ? 'accept' : 'decline'} invitation:`, err);
+      useUIStore.getState().addToast({
+        type: 'error',
+        message: err instanceof Error ? err.message : `Failed to ${accept ? 'accept' : 'decline'} invitation`,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (responded) {
     return (
@@ -1617,7 +1747,7 @@ function InvitationCard({ invitation }: { invitation: Invitation }) {
         <div
           className={cn(
             'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white',
-            invitation.fromAvatar
+            fromAvatar
           )}
         >
           {invitation.fromName[0]}
@@ -1628,11 +1758,18 @@ function InvitationCard({ invitation }: { invitation: Invitation }) {
             <span className="text-gray-400"> invited you to </span>
             <span className="text-neon-blue">{invitation.sessionName}</span>
           </p>
+          {invitation.message && (
+            <p className="text-xs text-gray-400 italic mt-0.5 truncate">&quot;{invitation.message}&quot;</p>
+          )}
           <div className="flex items-center gap-2 mt-0.5">
-            <TypeIcon className={cn('w-3 h-3', TYPE_COLORS[invitation.projectType])} />
-            <span className="text-[11px] text-gray-400 capitalize">{invitation.projectType}</span>
-            <span className="text-[11px] text-gray-400">|</span>
-            <span className="text-[11px] text-gray-400">{invitation.genre}</span>
+            <TypeIcon className={cn('w-3 h-3', typeColor)} />
+            <span className="text-[11px] text-gray-400 capitalize">{invitation.projectType || 'session'}</span>
+            {invitation.genre.length > 0 && (
+              <>
+                <span className="text-[11px] text-gray-400">|</span>
+                <span className="text-[11px] text-gray-400">{invitation.genre.join(', ')}</span>
+              </>
+            )}
             <span className="text-[11px] text-gray-400">|</span>
             <span className="text-[11px] text-gray-400">{formatTimeAgo(invitation.sentAt)}</span>
           </div>
@@ -1640,36 +1777,16 @@ function InvitationCard({ invitation }: { invitation: Invitation }) {
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <button
-          onClick={() => {
-            api
-              .post(`/api/collab/${invitation.id}/close`)
-              .then((r) => r.data)
-              .then(() => setResponded('declined'))
-              .catch((err) => {
-                console.error('[Collab] Failed to decline invitation:', err);
-                useUIStore
-                  .getState()
-                  .addToast({ type: 'error', message: 'Failed to decline invitation' });
-              });
-          }}
-          className="text-xs px-3 py-1.5 rounded-md bg-lattice-surface border border-lattice-border text-gray-400 hover:text-red-400 hover:border-red-500/30 transition-colors"
+          onClick={() => respond(false)}
+          disabled={busy}
+          className="text-xs px-3 py-1.5 rounded-md bg-lattice-surface border border-lattice-border text-gray-400 hover:text-red-400 hover:border-red-500/30 transition-colors disabled:opacity-50"
         >
           Decline
         </button>
         <button
-          onClick={() => {
-            api
-              .post(`/api/collab/${invitation.id}/accept`)
-              .then((r) => r.data)
-              .then(() => setResponded('accepted'))
-              .catch((err) => {
-                console.error('[Collab] Failed to accept invitation:', err);
-                useUIStore
-                  .getState()
-                  .addToast({ type: 'error', message: 'Failed to accept invitation' });
-              });
-          }}
-          className="text-xs px-3 py-1.5 rounded-md bg-neon-blue/20 text-neon-blue hover:bg-neon-blue/30 font-medium transition-colors"
+          onClick={() => respond(true)}
+          disabled={busy}
+          className="text-xs px-3 py-1.5 rounded-md bg-neon-blue/20 text-neon-blue hover:bg-neon-blue/30 font-medium transition-colors disabled:opacity-50"
         >
           Accept
         </button>

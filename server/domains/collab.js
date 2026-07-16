@@ -37,7 +37,14 @@ export default function registerCollabActions(registerLensAction) {
     // be a lie the instant the process comes back. Same pattern as the
     // `presence` map above (doc cursor presence is also intentionally
     // memory-only for the same reason).
-    for (const k of ["documents", "presence", "comments", "notifications", "sessionRosters"]) {
+    // invites:       inviteId -> { id, sessionId, sessionName, projectType, genre,
+    //                               fromId, fromName, toId, toName, message,
+    //                               status:'pending'|'accepted'|'declined', sentAt, respondedAt }
+    // Targeted (1:1) session invitations — see the "Targeted session
+    // invitations" section below for why this is a SEPARATE store from both
+    // `sessionRosters` (live join tracking) and the generic cross-user
+    // STATE.lensArtifacts catalog (documents/session/chat/etc.).
+    for (const k of ["documents", "presence", "comments", "notifications", "sessionRosters", "invites"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -833,7 +840,11 @@ export default function registerCollabActions(registerLensAction) {
   // uses. `sessionLeave` removes them; `sessionRoster` reads the live set.
   // ═══════════════════════════════════════════════════════════════════
 
-  registerLensAction("collab", "sessionJoin", (ctx, _artifact, params) => {
+  // Named (not inline) so `sessionInviteRespond` below can call the EXACT
+  // same join logic on accept, rather than duplicating it — an accepted
+  // invite must genuinely add the user as a tracked roster participant,
+  // not just flip a status flag with no real effect.
+  function sessionJoinHandler(ctx, _artifact, params) {
     try {
       const sessionId = cbClean(params?.sessionId, 80);
       if (!sessionId) return { ok: false, error: "sessionId is required" };
@@ -856,7 +867,8 @@ export default function registerCollabActions(registerLensAction) {
       }
       return { ok: true, result: { sessionId, participants, count: participants.length } };
     } catch (e) { return { ok: false, error: e.message }; }
-  });
+  }
+  registerLensAction("collab", "sessionJoin", sessionJoinHandler);
 
   registerLensAction("collab", "sessionLeave", (ctx, _artifact, params) => {
     try {
@@ -890,6 +902,133 @@ export default function registerCollabActions(registerLensAction) {
       const participants = [...roster.values()].sort((a, b) => a.joinedAt - b.joinedAt);
       const uid = cbUid(ctx);
       return { ok: true, result: { sessionId, participants, count: participants.length, amJoined: roster.has(uid) } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Targeted (1:1) session invitations — the Discord/Teams-style
+  //  "invite a specific person to this session" producer for the frontend's
+  //  Invitations tab.
+  //
+  //  This is deliberately a THIRD substrate, distinct from both:
+  //    - `sessionRosters` above (a self-service "I am joining" roster — no
+  //      concept of "who was invited"), and
+  //    - the generic cross-user STATE.lensArtifacts catalog that backs
+  //      documents/session/chat/shared-notes/shared-file/history (created
+  //      via `lens.create` / `useLensData`). That catalog is the wrong home
+  //      for a private targeted invite: `collab` is listed in
+  //      `LENS_SOCIAL_DOMAINS` (server.js), which makes EVERY artifact of
+  //      that domain — including any type='invitation' row — visible to
+  //      any authenticated caller via `GET /api/lens/collab?type=invitation`,
+  //      not just its inviter/invitee. A 1:1 invite has to stay scoped to
+  //      the two people it actually concerns.
+  //  It's also a genuinely different shape from the `COLLAB_SESSIONS`
+  //  pairwise substrate in server.js (`/api/collab/create|accept|close`,
+  //  the DTU-search-scoping "collaboration" feature): that substrate has
+  //  nothing to do with these Discord/Teams-style multi-participant session
+  //  rooms — it pairs exactly two users for a scoped embedding search, has
+  //  no `sessionId` concept at all, and is reachable only as an HTTP route,
+  //  never a macro. It is untouched by this change.
+  //
+  //  So invites live here, in this file's own `STATE.collabLens` map (same
+  //  home as `sessionRosters`/`notifications`), scoped per-caller on read
+  //  by comparing `fromId`/`toId` to the caller's own uid.
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Invite a specific user to a real, already-created session.
+  registerLensAction("collab", "sessionInvite", (ctx, _artifact, params) => {
+    try {
+      const sessionId = cbClean(params?.sessionId, 80);
+      if (!sessionId) return { ok: false, error: "sessionId is required" };
+      const inviteeId = cbClean(params?.inviteeId, 120);
+      if (!inviteeId) return { ok: false, error: "inviteeId is required" };
+      const session = getSessionArtifact(sessionId);
+      if (!session) return { ok: false, error: "session not found" };
+      const uid = cbUid(ctx);
+      if (inviteeId === uid) return { ok: false, error: "cannot invite yourself" };
+      const s = getCollabState();
+      const sData = session.data || {};
+      const invite = {
+        id: cbId("inv"),
+        sessionId,
+        sessionName: cbClean(session.title || sData.name, 240) || "Untitled session",
+        projectType: sData.projectType || null,
+        genre: Array.isArray(sData.genre) ? sData.genre.slice(0, 20) : [],
+        fromId: uid,
+        fromName: cbName(ctx),
+        toId: inviteeId,
+        toName: cbClean(params?.inviteeName, 120) || inviteeId,
+        message: cbClean(params?.message, 500),
+        status: "pending",
+        sentAt: cbNow(),
+        respondedAt: null,
+      };
+      s.invites.set(invite.id, invite);
+      saveCollabState();
+      emitToUser(inviteeId, "collab:session-invite", { invite });
+      return { ok: true, result: { invite } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Accept or decline a pending invite. Accepting genuinely reuses
+  // `sessionJoinHandler` (the exact function `sessionJoin` registers) so the
+  // invitee becomes a real tracked roster participant, not just a flipped
+  // status flag. Declining has no participant side effect. Idempotent: a
+  // second response to an already-resolved invite is rejected outright
+  // (never a silent double-join / duplicated roster entry / clobbered
+  // status).
+  registerLensAction("collab", "sessionInviteRespond", (ctx, _artifact, params) => {
+    try {
+      const inviteId = cbClean(params?.inviteId, 80);
+      if (!inviteId) return { ok: false, error: "inviteId is required" };
+      const s = getCollabState();
+      const invite = s.invites.get(inviteId);
+      if (!invite) return { ok: false, error: "invitation not found" };
+      const uid = cbUid(ctx);
+      if (invite.toId !== uid) return { ok: false, error: "forbidden: not your invitation" };
+      if (invite.status !== "pending") {
+        return { ok: false, error: `invitation already ${invite.status}` };
+      }
+      const rawAccept = params?.accept;
+      if (rawAccept !== true && rawAccept !== false && rawAccept !== "true" && rawAccept !== "false") {
+        return { ok: false, error: "accept must be a boolean" };
+      }
+      const accept = rawAccept === true || rawAccept === "true";
+      if (accept) {
+        const joinResult = sessionJoinHandler(ctx, null, { sessionId: invite.sessionId });
+        if (!joinResult.ok) return joinResult;
+        invite.status = "accepted";
+        invite.respondedAt = cbNow();
+        saveCollabState();
+        emitToUser(invite.fromId, "collab:invite-accepted", {
+          inviteId, sessionId: invite.sessionId, byId: uid, byName: cbName(ctx),
+        });
+        return { ok: true, result: { invite, joined: joinResult.result } };
+      }
+      invite.status = "declined";
+      invite.respondedAt = cbNow();
+      saveCollabState();
+      emitToUser(invite.fromId, "collab:invite-declined", {
+        inviteId, sessionId: invite.sessionId, byId: uid, byName: cbName(ctx),
+      });
+      return { ok: true, result: { invite } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // List the caller's real invitations — `scope: 'received'` (default, the
+  // direct producer for the frontend's Invitations tab) or `scope: 'sent'`
+  // for invites the caller sent out.
+  registerLensAction("collab", "sessionInviteList", (ctx, _artifact, params) => {
+    try {
+      const s = getCollabState();
+      const uid = cbUid(ctx);
+      const scope = params?.scope === "sent" ? "sent" : "received";
+      const all = [...s.invites.values()];
+      const list = (scope === "sent"
+        ? all.filter((i) => i.fromId === uid)
+        : all.filter((i) => i.toId === uid)
+      ).sort((a, b) => b.sentAt - a.sentAt);
+      return { ok: true, result: { invitations: list, scope, total: list.length } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 }
