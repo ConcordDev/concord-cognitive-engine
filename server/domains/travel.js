@@ -16,9 +16,66 @@
 // hand-curated table.
 
 import { cachedFetchJson } from "../lib/external-fetch.js";
+// Wave-4 gap-closure (travel-capability-map.md #2): Gmail inbox auto-sync
+// reuses the same SSRF-guarded connector read path domains/gmail.js already
+// rides (readGmailMessages/readGmailMessage — see that file's `guard()` for
+// the honesty contract this module mirrors). Read-only import; gmail.js
+// itself is never modified.
+import { readGmailMessages, readGmailMessage } from "../lib/connector-client.js";
 
 const EXCHANGE_API = "https://api.exchangerate.host";
 const REST_COUNTRIES_API = "https://restcountries.com/v3.1";
+
+// Real gate mirrors domains/gmail.js's own kill-switch (same env var) so an
+// operator who disables Gmail globally also disables this lens's use of it —
+// one honesty contract, not two independently-drifting ones.
+const GMAIL_ENABLED_FOR_TRAVEL_SYNC = process.env.CONCORD_GMAIL_ENABLED !== "0";
+
+/**
+ * parseBookingEmail — pure text-parsing of a confirmation-email body into
+ * structured booking fields. Extracted (2026-07, Wave-4 gap-closure) from
+ * the original inline `booking-import` logic so the manual-paste macro AND
+ * the Gmail inbox-sync macro below parse through IDENTICAL rules and can
+ * never drift apart. No synthesis — fields it cannot find stay null/0.
+ * @param {string} text
+ * @returns {{ type: string, confirmationCode: string|null, provider: string|null, cost: number, date: string|null, confidence: number }}
+ */
+export function parseBookingEmail(text) {
+  const raw = String(text == null ? "" : text);
+  // Detect booking type from common confirmation-email keywords.
+  let type = "activity";
+  if (/\b(flight|airline|boarding|departure gate|seat \d)/i.test(raw)) type = "flight";
+  else if (/\b(hotel|room|check-?in|nights? stay|reservation at)/i.test(raw)) type = "hotel";
+  else if (/\b(car rental|rental car|pick-?up location|hertz|avis|enterprise|sixt)/i.test(raw)) type = "car";
+  else if (/\b(train|rail|amtrak|eurostar|coach \d)/i.test(raw)) type = "rail";
+  else if (/\b(cruise|cabin|sailing|embarkation)/i.test(raw)) type = "cruise";
+  // Confirmation code: 5-10 char alphanumeric near a confirmation keyword.
+  let confirmationCode = null;
+  const codeM = raw.match(/(?:confirmation|booking|reservation|record locator|pnr)[^A-Z0-9]{0,18}([A-Z0-9]{5,10})/i);
+  if (codeM) confirmationCode = codeM[1].toUpperCase();
+  // Provider: first capitalised word(s) near "with" / known brands.
+  let provider = null;
+  const provM = raw.match(/\b(?:with|on|via|airlines?|hotel)\s+([A-Z][A-Za-z&' ]{2,30})/);
+  if (provM) provider = provM[1].trim();
+  // Cost: first currency-prefixed number.
+  let cost = 0;
+  const costM = raw.match(/(?:total|amount|price|fare|paid)[^\d$€£]{0,12}[$€£]?\s?([\d,]+(?:\.\d{2})?)/i)
+    || raw.match(/[$€£]\s?([\d,]+(?:\.\d{2})?)/);
+  if (costM) { const n = Number(String(costM[1]).replace(/,/g, "")); cost = Number.isFinite(n) ? n : 0; }
+  // Date: ISO or "Month DD, YYYY".
+  let date = null;
+  const isoM = raw.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  if (isoM) date = isoM[1];
+  else {
+    const longM = raw.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s+(\d{4})\b/);
+    if (longM) {
+      const parsed = new Date(`${longM[1]} ${longM[2]}, ${longM[3]}`);
+      if (!Number.isNaN(parsed.getTime())) date = parsed.toISOString().slice(0, 10);
+    }
+  }
+  const confidence = [type !== "activity", !!confirmationCode, !!date, cost > 0].filter(Boolean).length;
+  return { type, confirmationCode, provider, cost: Math.max(0, cost), date, confidence };
+}
 
 export default function registerTravelActions(registerLensAction) {
   /**
@@ -1280,6 +1337,33 @@ export default function registerTravelActions(registerLensAction) {
     }
   });
 
+  // Shared record-builder — both booking-import (manual paste) and
+  // inbox-sync (Gmail) construct the booking + mirrored itinerary item
+  // through this one function so the two import paths produce identical
+  // shapes. `meta.note` overrides the default note; `meta.sourceMessageId`/
+  // `meta.sourceSubject` are stamped only when provided (inbox-sync), so the
+  // manual-paste booking shape is byte-identical to before this refactor.
+  function buildBookingRecord(trip, parsed, meta = {}) {
+    const { type, confirmationCode, provider, cost, date } = parsed;
+    const booking = {
+      id: tvid("bkg"), tripId: trip.id, type,
+      provider, confirmationCode, cost: Math.max(0, cost),
+      date, note: meta.note || "Imported from forwarded confirmation email",
+      importedFromEmail: true, createdAt: tvnow(),
+      ...(meta.sourceMessageId ? { sourceMessageId: meta.sourceMessageId } : {}),
+      ...(meta.sourceSubject ? { sourceSubject: meta.sourceSubject } : {}),
+    };
+    const itin = {
+      id: tvid("itin"), tripId: trip.id,
+      title: `${type[0].toUpperCase()}${type.slice(1)}${provider ? ` — ${provider}` : ""}`,
+      day: date, time: null,
+      category: type === "hotel" ? "lodging" : type === "flight" || type === "rail" || type === "car" ? "transport" : "activity",
+      location: provider, note: confirmationCode ? `Confirmation: ${confirmationCode}` : null,
+      fromBooking: booking.id, createdAt: tvnow(),
+    };
+    return { booking, itin };
+  }
+
   // ── Email-forwarding booking import (TripIt's signature) ────────────
   // Parses a pasted/forwarded confirmation email into a structured
   // booking + itinerary item. Pure text-parsing on real user input —
@@ -1290,55 +1374,10 @@ export default function registerTravelActions(registerLensAction) {
     if (!trip) return { ok: false, error: "trip not found" };
     const raw = tvclean(params.emailText, 8000);
     if (!raw) return { ok: false, error: "emailText required" };
-    const text = raw;
-    const lower = text.toLowerCase();
-    // Detect booking type from common confirmation-email keywords.
-    let type = "activity";
-    if (/\b(flight|airline|boarding|departure gate|seat \d)/i.test(text)) type = "flight";
-    else if (/\b(hotel|room|check-?in|nights? stay|reservation at)/i.test(text)) type = "hotel";
-    else if (/\b(car rental|rental car|pick-?up location|hertz|avis|enterprise|sixt)/i.test(text)) type = "car";
-    else if (/\b(train|rail|amtrak|eurostar|coach \d)/i.test(text)) type = "rail";
-    else if (/\b(cruise|cabin|sailing|embarkation)/i.test(text)) type = "cruise";
-    // Confirmation code: 5-10 char alphanumeric near a confirmation keyword.
-    let confirmationCode = null;
-    const codeM = text.match(/(?:confirmation|booking|reservation|record locator|pnr)[^A-Z0-9]{0,18}([A-Z0-9]{5,10})/i);
-    if (codeM) confirmationCode = codeM[1].toUpperCase();
-    // Provider: first capitalised word(s) near "with" / known brands.
-    let provider = null;
-    const provM = text.match(/\b(?:with|on|via|airlines?|hotel)\s+([A-Z][A-Za-z&' ]{2,30})/);
-    if (provM) provider = provM[1].trim();
-    // Cost: first currency-prefixed number.
-    let cost = 0;
-    const costM = text.match(/(?:total|amount|price|fare|paid)[^\d$€£]{0,12}[$€£]?\s?([\d,]+(?:\.\d{2})?)/i)
-      || text.match(/[$€£]\s?([\d,]+(?:\.\d{2})?)/);
-    if (costM) cost = tvnum(costM[1].replace(/,/g, ""));
-    // Date: ISO or "Month DD, YYYY".
-    let date = null;
-    const isoM = text.match(/\b(\d{4}-\d{2}-\d{2})\b/);
-    if (isoM) date = isoM[1];
-    else {
-      const longM = text.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s+(\d{4})\b/);
-      if (longM) {
-        const parsed = new Date(`${longM[1]} ${longM[2]}, ${longM[3]}`);
-        if (!Number.isNaN(parsed.getTime())) date = parsed.toISOString().slice(0, 10);
-      }
-    }
-    const booking = {
-      id: tvid("bkg"), tripId: trip.id, type,
-      provider, confirmationCode, cost: Math.max(0, cost),
-      date, note: "Imported from forwarded confirmation email",
-      importedFromEmail: true, createdAt: tvnow(),
-    };
+    const parsed = parseBookingEmail(raw);
+    const { booking, itin } = buildBookingRecord(trip, parsed);
     tvlistB(s.bookings, trip.id).push(booking);
     // Mirror as an itinerary item so it appears on the agenda.
-    const itin = {
-      id: tvid("itin"), tripId: trip.id,
-      title: `${type[0].toUpperCase()}${type.slice(1)}${provider ? ` — ${provider}` : ""}`,
-      day: date, time: null,
-      category: type === "hotel" ? "lodging" : type === "flight" || type === "rail" || type === "car" ? "transport" : "activity",
-      location: provider, note: confirmationCode ? `Confirmation: ${confirmationCode}` : null,
-      fromBooking: booking.id, createdAt: tvnow(),
-    };
     tvlistB(s.itinerary, trip.id).push(itin);
     saveTravelState();
     return {
@@ -1346,12 +1385,109 @@ export default function registerTravelActions(registerLensAction) {
       result: {
         booking, itineraryItem: itin,
         parsed: {
-          type, confirmationCode, provider, cost: booking.cost, date,
-          confidence: [type !== "activity", !!confirmationCode, !!date, cost > 0].filter(Boolean).length,
+          type: parsed.type, confirmationCode: parsed.confirmationCode, provider: parsed.provider,
+          cost: booking.cost, date: parsed.date, confidence: parsed.confidence,
         },
-        unparsedHint: !confirmationCode || !date
+        unparsedHint: !parsed.confirmationCode || !parsed.date
           ? "Some fields could not be parsed — edit the booking to fill them in."
           : null,
+      },
+    };
+  });
+
+  // ── Gmail inbox auto-sync (TripIt Pro's signature) ───────────────────
+  // Reads the user's connected Gmail inbox for a bounded window of
+  // confirmation-shaped messages, parses each one through the exact same
+  // parseBookingEmail() rules as the manual-paste macro above, and imports
+  // only the messages that resolve into a real booking (confidence >= 2 of
+  // the 4 signals). Rides the same SSRF-guarded connector read path as
+  // domains/gmail.js's `list`/`get` actions (readGmailMessages/
+  // readGmailMessage from lib/connector-client.js) and mirrors that file's
+  // honest reason codes (no_token / connector_not_configured / gmail_disabled
+  // / no_user) — never a fabricated "synced" result. Idempotent: a booking
+  // already imported from a given Gmail message id is never re-imported on a
+  // repeat sync (dedupe key = booking.sourceMessageId, scoped to the trip).
+  registerLensAction("travel", "inbox-sync", async (ctx, _a, params = {}) => {
+    // Identity/connector guards first (same order as domains/gmail.js's own
+    // guard()) — fail fast on "who are you" / "is Gmail even on" before
+    // touching trip state, rather than leaking trip-existence to an
+    // unauthenticated caller.
+    const userId = tvaid(ctx);
+    if (!userId || userId === "anon") return { ok: false, reason: "no_user", error: "no_user" };
+    if (!ctx?.db) return { ok: false, error: "db unavailable" };
+    if (!GMAIL_ENABLED_FOR_TRAVEL_SYNC) return { ok: false, reason: "gmail_disabled", error: "gmail_disabled" };
+    const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const trip = findTrip(s, userId, params.tripId);
+    if (!trip) return { ok: false, error: "trip not found" };
+
+    // Booking-confirmation-shaped subjects. Deliberately broad (TripIt-style
+    // forwarding covers flights/hotels/cars/rail/cruise) — precision is
+    // enforced downstream by the confidence-gated parse, not by the query.
+    const query = tvclean(params.query, 400)
+      || 'subject:(confirmation OR reservation OR itinerary OR "e-ticket" OR booking) (flight OR hotel OR reservation OR itinerary OR rental OR train OR cruise)';
+    const maxMessages = Math.min(Math.max(parseInt(params.maxMessages, 10) || 15, 1), 25);
+    // Test-only transport seam, same idiom as connectorFetch's own
+    // opts.fetchImpl (see lib/connector-client.js): a real HTTP caller can
+    // never supply a function value inside a JSON body, so this can only be
+    // set by a same-process test importing this module directly. Production
+    // traffic always takes the real SSRF-guarded egress.
+    const netOpts = typeof params.__fetchImpl === "function" ? { fetchImpl: params.__fetchImpl } : {};
+
+    let listRes;
+    try {
+      listRes = await readGmailMessages(ctx.db, userId, { q: query, maxResults: maxMessages, labelIds: ["INBOX"] }, netOpts);
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+    if (!listRes.ok) {
+      const reason = listRes.reason || "sync_failed";
+      return { ok: false, reason, error: reason, detail: listRes };
+    }
+
+    // Dedupe against bookings already imported from Gmail for this trip.
+    const already = new Set((s.bookings.get(trip.id) || []).map((b) => b.sourceMessageId).filter(Boolean));
+
+    const imported = [];
+    const skipped = [];
+    for (const meta of listRes.messages || []) {
+      const messageId = meta?.id;
+      if (!messageId) continue;
+      if (already.has(messageId)) { skipped.push({ messageId, reason: "already_imported" }); continue; }
+      let full;
+      try {
+        full = await readGmailMessage(ctx.db, userId, messageId, { format: "full" }, netOpts);
+      } catch (e) {
+        skipped.push({ messageId, reason: "fetch_failed", detail: String(e?.message || e) });
+        continue;
+      }
+      if (!full.ok) { skipped.push({ messageId, reason: full.reason || "fetch_failed" }); continue; }
+      const message = full.message || {};
+      const text = [message.subject, message.text || message.html || message.snippet || ""].filter(Boolean).join("\n");
+      const parsed = parseBookingEmail(text);
+      if (parsed.confidence < 2) {
+        skipped.push({ messageId, subject: message.subject || null, reason: "low_confidence", confidence: parsed.confidence });
+        continue;
+      }
+      const { booking, itin } = buildBookingRecord(trip, parsed, {
+        note: "Imported from Gmail inbox sync",
+        sourceMessageId: messageId,
+        sourceSubject: message.subject || null,
+      });
+      tvlistB(s.bookings, trip.id).push(booking);
+      tvlistB(s.itinerary, trip.id).push(itin);
+      already.add(messageId);
+      imported.push({ booking, itineraryItem: itin, parsed });
+    }
+    if (imported.length) saveTravelState();
+    return {
+      ok: true,
+      result: {
+        scanned: (listRes.messages || []).length,
+        imported: imported.length,
+        skippedCount: skipped.length,
+        bookings: imported.map((i) => i.booking),
+        itineraryItems: imported.map((i) => i.itineraryItem),
+        skipped,
       },
     };
   });
