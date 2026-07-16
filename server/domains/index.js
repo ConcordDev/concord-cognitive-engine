@@ -21,6 +21,15 @@ import education from './education.js';
 import legal from './legal.js';
 import nonprofit from './nonprofit.js';
 import realestate from './realestate.js';
+// Distinct from `realestate.js` above (a personal listing/search/calculator
+// CRM registered under domain string "realestate"): this is the genuine
+// in-world property market registered under "real_estate" (underscore) —
+// buy/sell/lease real Concordia world_buildings with real wallet debits.
+// Never previously imported anywhere, so the whole domain (10 macros,
+// including tick_rentals and its Wave 4 rent-collection heartbeat) was
+// dark in production despite a real, already-shipped frontend
+// (WorldPropertiesPanel.tsx) calling it.
+import realEstateWorld from './real-estate.js';
 import fitness from './fitness.js';
 import creative from './creative.js';
 import manufacturing from './manufacturing.js';
@@ -267,6 +276,7 @@ export default [
   legal,
   nonprofit,
   realestate,
+  realEstateWorld,
   fitness,
   creative,
   manufacturing,
