@@ -8,11 +8,14 @@
 ```
 grep -n "registerLensAction('engineering'" server/domains/engineering.js | wc -l
 ```
-→ **18** macros in `server/domains/engineering.js` (974 lines): `toleranceAnalysis`,
-`toleranceChain`, `stressAnalysis`, `unitConvert`, `materialLibrary`,
-`parametricSolid`, `partMesh`, `saveLoadCase`, `listLoadCases`, `deleteLoadCase`,
-`meshGenerate`, `runFEA`, `listSimJobs`, `savePart`, `listParts`, `deletePart`,
-`bom`, `bomRollup`.
+→ **20** macros in `server/domains/engineering.js` (was 18 at Wave 3; +2 in the
+Wave 4 gap-closure below): `toleranceAnalysis`, `toleranceChain`,
+`stressAnalysis`, `unitConvert`, `materialLibrary`, `parametricSolid`,
+`partMesh`, `saveLoadCase`, `listLoadCases`, `deleteLoadCase`, `meshGenerate`,
+`runFEA`, `listSimJobs`, `savePart`, `listParts`, `deletePart`, `bom`,
+`bomRollup`, and the two new ones — `connectionCheck`, `transformerSizing`
+(macro name; distinct from — but a thin passthrough to — the compute
+function of the same name).
 
 ```
 grep -n "registerLensAction('engineering'" server/server.js
@@ -26,9 +29,12 @@ pure functions behind one macro call sharing one flat params object — e.g.
 `structuralCheck` = `columnBuckling` (Euler critical buckling) +
 `reinforcedConcreteWall` (ACI-318-shaped shear wall FoS) + `weldStrength`
 (AWS D1.1 fillet weld capacity). `engineering-compute.js` also exports
-`boltedConnection` and `transformerSizing`, which are NOT wired into any of
-the 4 combinator macros (see "Deliberately left unsurfaced" below).
-Real total: **22 macros**, not 18 — the domain file is not the only source
+`boltedConnection` and `transformerSizing`, which were NOT wired into any of
+the 4 combinator macros at Wave 3 audit time (see "Deliberately left
+unsurfaced" below — **now CLOSED**: they're reachable via the two new
+`domains/engineering.js` macros above, kept out of `server.js`'s combinators
+deliberately so the fix stayed in the domain file).
+Real total: **24 macros**, not 18 — the domain file is not the only source
 for this lens, contra what a shallow grep of `domains/engineering.js` alone
 would conclude.
 
@@ -206,19 +212,39 @@ were narrower and more specific:
   generic-scaffold anti-pattern for zero added capability. Disposition:
   **superseded-by-a-better-designed-sibling-feature on this same page**, not
   fabricated, not hidden, and not deleted from the backend.
-- **`boltedConnection` and `transformerSizing`** (in
+- ~~**`boltedConnection` and `transformerSizing`** (in
   `server/lib/compute/engineering-compute.js`, exported from the module's
   default export, real AISC-shear / ANSI-kVA-ladder math) — these are NOT
   called by any of the 4 inline `structuralCheck`/`electricalCheck`/etc.
   combinator macros (grep confirms `structuralCheck` only calls
   `columnBuckling`/`reinforcedConcreteWall`/`weldStrength`;
   `electricalCheck` only calls `voltageDrop`/`breakerSizing`/`conduitFill`).
-  Disposition: **genuinely unreachable at the macro layer, not just the
-  frontend** — there is no `engineering.*` macro that invokes either
+  Disposition: genuinely unreachable at the macro layer, not just the
+  frontend — there is no `engineering.*` macro that invokes either
   function, so no frontend fix in this lens could surface them without
   first adding a backend macro (or extending an existing combinator's
   field set) to call them. Out of scope for a frontend-audit pass; flagged
-  here so the gap has a name instead of silently existing.
+  here so the gap has a name instead of silently existing.~~ **CLOSED
+  (Wave 4 gap-closure, ENGINEERING triage).** Two new macros —
+  `engineering.connectionCheck` and `engineering.transformerSizing` — were
+  added to `server/domains/engineering.js` (kept out of `server.js`'s
+  combinators deliberately, so the fix stays disjoint from that file). Both
+  are thin passthroughs: they call the real compute functions with the
+  caller's params and return the real output verbatim, or an honest
+  `{ok:false, error, inputs}` when the compute function itself rejects
+  invalid input (e.g. `boltDiameter <= 0`) — no math is re-derived in the
+  macro layer. Frontend: `MultiDisciplineCalcPanel.tsx` gained a "Bolted
+  connection (AISC allowable shear)" sub-card in `StructuralSection` and a
+  "Transformer sizing (ANSI kVA ladder)" sub-card in `ElectricalSection`,
+  each with its own real inputs, its own "Compute" button (a separate macro
+  call, not folded into the shared `structuralCheck`/`electricalCheck`
+  trigger), and a `ResultCard` rendering the real returned value. Pinned by
+  `server/tests/depth/engineering-connection-transformer-behavior.test.js`
+  (11 tests — exact hand-verified numeric values for both functions, plus
+  honest-rejection cases for invalid bolt/transformer params) and
+  `concord-frontend/tests/components/MultiDisciplineCalcPanel.test.tsx`
+  (4 tests — real macro call + real rendered result + honest failure
+  rendering for both sub-cards).
 - **`<ManifestActionBar/>`'s broken-manifest-action pattern on `eco`
   and potentially other lenses** — confirmed present on at least one
   sibling lens during this audit (`eco`'s `actions: ['map_dependencies',

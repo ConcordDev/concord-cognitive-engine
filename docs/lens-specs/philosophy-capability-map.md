@@ -154,7 +154,7 @@ Are.na provides them.
 | 5 | Channel collaborators (multi-editor channels) | **ALREADY REAL** | `channel-collaborator-add`/`-remove`/`-list` — `PhilosophyCuration` "Collaborators" tab |
 | 6 | Public/private visibility + discovery of others' channels | **ALREADY REAL** | `channel-publish` + `public-channels` + `public-channel-detail` — `PhilosophyCuration` "Discover" tab |
 | 7 | Cross-channel connection visualization | **ALREADY REAL** | `connections-graph` — `PhilosophyCuration` "Connections" tab (tree diagram + bridge list) |
-| 8 | Search across the curation library | **BACKEND-CAPABLE-BUT-UNSURFACED → still unsurfaced (scoped-deferred)** | `philosophy-search` is registered and tested but no UI in the current component set calls it. Each Curation Studio tab has its own narrower search (Discover's public-channel query, Reference's topic lookup); a cross-cutting library search would need new UI, not just re-plumbing — deferred as a named future gap rather than built speculatively in this rebuild pass, which was scoped to fixing the primary-surface honesty defect, not adding new UI surface area |
+| 8 | Search across the curation library | **ALREADY REAL — CLOSED (Wave 4 gap-closure)** | `philosophy-search` (searches both channel titles/descriptions and block content across all 5 kinds for the caller's own library) is now surfaced in `PhilosophyCuration`'s new "Search" tab (`SearchTab`, `concord-frontend/components/philosophy/PhilosophyCuration.tsx`) — Enter-to-search input, distinct Channels/Blocks result sections (blocks show their kind + a 160-char excerpt + owning-channel title), an honest empty-query prompt and no-results state, and a working deep-link from a block result into the Image Grid tab focused on the block's owning channel. No backend change was needed — the existing `{channels, blocks, count}` shape (with `channelIds` for the deep-link) was already sufficient; extending it would have been scope creep against the ENGINEERING triage class (a UI-only gap, not a data or endpoint gap). Pinned by `concord-frontend/tests/components/PhilosophyCuration.test.tsx` (5/5: channel-result rendering, block-result rendering incl. channel-title resolution, empty-query state, no-results state, deep-link) |
 | 9 | Structured argument mapping (claim → premises → conclusion, validity check) | **ALREADY REAL** | `argumentMap` — now surfaced in `DilemmaPanel`'s "Argument map" action with structured premise/conclusion inputs (was previously reachable only via the fake CRUD's free-text `premises`/`conclusion` fields, which never actually invoked this macro) |
 | 10 | Collaborative critique of an argument's premises | **ALREADY REAL** | `debate-create`/`debate-post`/`debate-detail` — `PhilosophyCuration` "Debate Threads" tab, 4 stances (support/object/rebut/clarify) with live tally |
 | 11 | Peer-authored concept/thinker reference entries | **ALREADY REAL (proxy source)** | `reference-page` — real Wikipedia REST `page/summary` + `page/related`, saved to a per-user library via `reference-list`/`reference-delete`. Honest proxy for a full IEP/SEP-style peer-reviewed entry (Concord has no editorial encyclopedia of its own); no fabricated claim of "peer-reviewed" anywhere in the UI |
@@ -166,9 +166,12 @@ Are.na provides them.
 session; 1 fixed this session (control-tower-style landing view promoted
 to primary, replacing the fake CRUD library); 1 promoted from
 buried-afterthought to primary destination; 1 resolved as an honest
-non-issue (no multi-tenant claim exists); 1 genuinely missing item
-(cross-cutting library search) explicitly deferred with a named reason.
-**No silent gaps.**
+non-issue (no multi-tenant claim exists). **Update (Wave 4 gap-closure,
+2026-07-16): the 14th item — cross-cutting library search, previously
+named-deferred — is now closed.** `philosophy-search` was already real
+backend-side (registered + tested); the only gap was UI, which the new
+`SearchTab` in `PhilosophyCuration.tsx` closes with no backend change.
+**No remaining gaps.**
 
 ## 2. What this rebuild changed
 

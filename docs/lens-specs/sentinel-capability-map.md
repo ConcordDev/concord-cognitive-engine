@@ -3,7 +3,8 @@
 > Derived, not asserted. Reproduce the macro counts:
 > `grep -c "registerLensAction('sentinel'" server/domains/sentinel.js` → 26
 > `grep -cE '^register\("shield"' server/server.js` → 11
-> `grep -cE '^register\("intel"' server/server.js` → 14
+> `grep -cE '^register\("intel"' server/server.js` → 15 (was 14 before the
+> `intel.research.review` gap-closure macro was added, 2026-07-16)
 > `grep -cE '^register\("semantic"' server/server.js` → 8
 
 ## What this lens actually is
@@ -83,33 +84,81 @@ renders verbatim (`iptables -A INPUT -j DROP # trojan`), and the
 "Fortifications feed" case, which asserts the DTU-object shape's `.rule`
 field renders correctly from a *different* macro in the same panel.
 
-## Genuinely missing (deferred) — `intel.research.*` + `intel.classifier.status` + `intel.metrics`
+## `intel.research.*` + `intel.classifier.status` + `intel.metrics` — CLOSED (2026-07-16)
 
 `server/server.js` also registers a **separate, bigger-scoped** "Foundation
 Intelligence 3-Tier Architecture": `intel.research.apply` /
 `.research.status` / `.research.data` / `.research.synthesis` /
 `.research.archive` (a governance-controlled research-access application
 workflow: submit → await approval → pull tiered data) plus
-`intel.classifier.status` and `intel.metrics`. Confirmed unsurfaced
-anywhere in the frontend (`grep -rln "research.apply\|classifier.status"
-concord-frontend/ --include=*.tsx --include=*.ts` matches nothing that
-actually calls these macros — the two files that matched the grep,
-`AtlasResearchView.tsx` and `app/research/page.tsx`, are an unrelated
-"research" feature).
+`intel.classifier.status` and `intel.metrics`. This was previously
+confirmed unsurfaced anywhere in the frontend, and the disposition below
+(ENGINEERING, deferred to its own designed workflow) is what a dedicated
+gap-closure pass then built.
 
-**Triage: ENGINEERING**, deferred. This is not a data-sourcing gap (no
-external feed needed — `submitResearchApplication` /
-`getResearchApplicationStatus` / `getResearchIntelligence` /
-`getResearchSynthesis` / `getResearchArchive` are all local, deterministic
-compute over the existing Foundation Intelligence corpus) and not a
-curation gap (no reference material to author). It's a real multi-step
-governance UI (apply → track application status → gated data access)
-that deserves its own designed workflow rather than being bolted onto
-Sentinel's threat-console layout as an afterthought — building it well
-means a dedicated "Research Access" panel with real state transitions
-(pending → approved/denied → tiered access), which is out of scope for
-this pass's surgical wiring fix. Left undocumented-as-done and flagged
-here per the sixth hard invariant, not silently dropped.
+**Two real backend gaps closed alongside the frontend workflow** (both
+found while wiring, not part of the original triage above):
+
+1. **The approval dead end.** `reviewResearchApplication`
+   (`server/lib/foundation-intelligence.js`) grants a real 1-year access
+   grant on approval and was imported into `server.js`, but was never
+   registered as a macro — `submitResearchApplication` sets
+   `status:"pending"` and there was **no reachable path to ever transition
+   it to approved/denied**. Fixed with a new `intel.research.review` macro
+   (`server/server.js`, the `register("intel", "research.review", ...)`
+   block right after `research.archive`), gated by an inline
+   `["owner","admin","founder"].includes(ctx.actor?.role)` check — the same
+   shape `goals.approve` already uses for founder-gated approval, chosen
+   over `entity.terminal_approve`'s heavier multi-voter council quorum
+   because research-access approval is a single-reviewer decision, not a
+   high-risk terminal-exec one. The check is enforced **in-handler**, not
+   via `allowMacro`'s ACL layer, because that layer (`_canRunMacro`) is
+   deliberately skipped for ordinary authenticated HTTP calls (see
+   `makeCtx`'s `_isHumanRequest` comment in `server.js`) — an ACL-only gate
+   here would never actually run on the path real users take.
+2. **Client-supplied `researcherId`.** `research.apply` /`.status` /
+   `.data` / `.synthesis` / `.archive` previously forwarded
+   `input.researcherId` verbatim to the library functions — a caller could
+   apply for, check the status of, or pull Tier-2 data under **any**
+   researcherId string, including someone else's. All five now derive
+   identity from `ctx.actor.userId` server-side via a shared
+   `_intelResearcherId(ctx)` helper; a spoofed `researcherId` in the input
+   is silently ignored. `research.status` additionally rejects a caller
+   reading an application that isn't theirs unless they hold a governance
+   role (`{ ok:false, error:"forbidden", reason:"not_your_application" }`).
+
+**Frontend**: new "Research" tab in the Sentinel lens
+(`concord-frontend/components/sentinel/SentinelResearchAccess.tsx`,
+mounted from `app/lenses/sentinel/page.tsx`), sibling to `SentinelIntel.tsx`
+(which wires the Tier 1 public feeds). Covers apply (institution/purpose/
+categories fetched live from `intel.classifier.status`, never hardcoded),
+status tracking, and gated Tier 2 data/synthesis/archive pulls once
+approved. Two intentional honesty constraints, both because the backend
+genuinely has no broader surface to build against (documented in the
+component's own header comment rather than worked around with fabricated
+data):
+
+- **No "list my applications" backend export exists** — only
+  lookup-by-applicationId. "My applications" is therefore this browser's
+  own record of applicationIds it has submitted (localStorage), each one
+  **re-verified live** against `research.status` on every render — never a
+  cached/assumed status. A manual "track by ID" field lets a user re-add an
+  id from another device/browser.
+- **No "list pending applications" backend export exists either** — so the
+  governance-review affordance (rendered only when the session's real,
+  server-issued role is `owner`/`admin`/`founder` — a UX honesty gate
+  mirroring `app/lenses/entity/page.tsx`'s `COUNCIL_ROLES` pattern for
+  `entity.terminal_approve`, never a substitute for the server-side check)
+  is a review-by-known-ID form, not a fabricated queue browser.
+
+Tests: 10 new backend behavioral cases
+(`server/tests/depth/sentinel-research-access-behavior.test.js` — identity
+scoping, non-owner isolation, reviewer-role gating, approve/deny/
+already-reviewed/not-found paths, data access gated on approval state) + 13
+new frontend cases
+(`concord-frontend/tests/components/SentinelResearchAccess.test.tsx`). The
+pre-existing 188 sentinel + foundation-intelligence tests are unaffected.
+eslint clean on every touched/created file.
 
 ## Security / authz review (this wave's special focus)
 
