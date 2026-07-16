@@ -8,6 +8,7 @@ import {
   Users, UserPlus, UserMinus, Eye, Heart, MessageSquare, Loader2, Rss, ImageIcon, Sparkles, Send,
 } from 'lucide-react';
 import { ArtistryDmPanel, type DmMessage, type DmThread } from './ArtistryDmPanel';
+import { ArtistryNotifications } from './ArtistryNotifications';
 
 interface FeedProject {
   id: string; userId: string; title: string; description: string; discipline: string;
@@ -110,6 +111,9 @@ export function CommunityNetwork() {
 
   return (
     <div className="space-y-5">
+      {/* Notification feed — new followers, comments, and appreciations */}
+      <ArtistryNotifications />
+
       {/* Follow graph */}
       <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
         <h3 className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-pink" /> Your Network</h3>

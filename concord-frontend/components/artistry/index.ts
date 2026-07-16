@@ -5,6 +5,7 @@ export type { CrossPostData } from './CrossPostModal';
 export { ProjectStudio } from './ProjectStudio';
 export { PortfolioProfile } from './PortfolioProfile';
 export { CommunityNetwork } from './CommunityNetwork';
+export { ArtistryNotifications } from './ArtistryNotifications';
 export { ArtistryDmPanel } from './ArtistryDmPanel';
 export type { DmMessage, DmThread } from './ArtistryDmPanel';
 export { Collections } from './Collections';

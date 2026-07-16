@@ -1,6 +1,23 @@
 // server/domains/artistry.js
 // Domain actions for artistry: color palette analysis, composition scoring, style classification, media inventory.
 
+// Wave 4 gap-closure — notification feed (docs/lens-specs/artistry-capability-map.md
+// item 14: "Notification feed (new follower, new comment, new appreciation)").
+// Reuses the existing platform-wide notification substrate instead of inventing
+// a parallel one — the exact cross-directory import precedent is
+// server/emergent/byo-budget-alert-cycle.js (a non-social domain importing from
+// social-layer.js); other domains import freely from ../emergent/*.js too (see
+// server/domains/civic-bonds.js -> emergent/microbond-governance.js,
+// server/domains/repair.js -> emergent/repair-cortex.js /
+// emergent/world-health-monitor.js). Calling createNotification() also fires a
+// live `social:notification` socket event (server/emergent/social-layer.js's
+// _fireNotificationSocket, wired at boot via setSocialEmitter) which
+// concord-frontend/hooks/useSocialNotificationToast.ts (mounted once, globally,
+// in AppShell) already renders as a toast with zero new frontend plumbing.
+import {
+  createNotification, getNotifications, markNotificationRead, markAllNotificationsRead,
+} from "../emergent/social-layer.js";
+
 export default function registerArtistryActions(registerLensAction) {
   // Fail-CLOSED numeric coercion for the pure-compute analysis macros.
   // `parseFloat("Infinity")` → Infinity and `Number("1e999")` → Infinity, and
@@ -447,6 +464,31 @@ export default function registerArtistryActions(registerLensAction) {
   const artArr = (v) => (Array.isArray(v) ? v : []);
   const artList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
 
+  // Shared project-owner lookup — projectId alone doesn't reveal which
+  // per-user bucket of s.projects it lives in (same scan projectView
+  // already performs at read time). commentAdd/appreciate both need the
+  // owner to resolve who a notification should target, so this is
+  // extracted once rather than duplicated in each handler.
+  function findProjectOwner(s, projectId) {
+    for (const [, list] of s.projects) {
+      const proj = list.find((x) => x.id === projectId);
+      if (proj) return proj;
+    }
+    return null;
+  }
+
+  // Fire-and-forget wrapper around the platform notification substrate.
+  // Never throws, never blocks the caller's own mutation — a notification
+  // failure must not turn a successful follow/comment/appreciate into an
+  // error response.
+  function notifyArtistry(userId, { type, fromUserId, postId, content }) {
+    try {
+      const STATE = globalThis._concordSTATE;
+      if (!STATE || !userId) return;
+      createNotification(STATE, { userId, type, fromUserId, postId, content });
+    } catch (_e) { /* best effort — never break the artistry action over this */ }
+  }
+
   // ── Native image upload/blob-storage pipeline for project images ────
   // Closes docs/WAVE4_INVENTORY.md line 101 / artistry-capability-map.md
   // item 12: "No native image upload/blob-storage pipeline for project
@@ -708,8 +750,18 @@ export default function registerArtistryActions(registerLensAction) {
       if (!target) return { ok: false, error: "targetUserId_required" };
       if (target === uid) return { ok: false, error: "cannot_follow_self" };
       const following = artList(s.follows, uid);
-      if (!following.includes(target)) following.push(target);
+      const isNewFollow = !following.includes(target);
+      if (isNewFollow) following.push(target);
       saveArtState();
+      // Only the transition into "following" is a notification-worthy
+      // event — a repeat follow call (already following) is a no-op and
+      // must not re-notify the target on every idempotent retry.
+      if (isNewFollow) {
+        notifyArtistry(target, {
+          type: "follow", fromUserId: uid,
+          content: `${uid} started following your artistry portfolio`,
+        });
+      }
       return { ok: true, result: { following: target, followingCount: following.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
@@ -936,15 +988,25 @@ export default function registerArtistryActions(registerLensAction) {
       const body = artClean(p.body, 1200);
       if (!projectId) return { ok: false, error: "projectId_required" };
       if (!body) return { ok: false, error: "body_required" };
+      const uid = artAid(ctx);
       const comment = {
         id: artId("cmt"),
         projectId,
-        userId: artAid(ctx),
+        userId: uid,
         body,
         createdAt: artNow(),
       };
       artList(s.comments, projectId).push(comment);
       saveArtState();
+      // Never self-notify — commenting on your own project shouldn't
+      // page you about yourself.
+      const owner = findProjectOwner(s, projectId);
+      if (owner && owner.userId !== uid) {
+        notifyArtistry(owner.userId, {
+          type: "comment", fromUserId: uid, postId: projectId,
+          content: `${uid} commented on your project "${owner.title}"`,
+        });
+      }
       return { ok: true, result: { comment, commentCount: s.comments.get(projectId).length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
@@ -991,7 +1053,68 @@ export default function registerArtistryActions(registerLensAction) {
         appreciated = false;
       }
       saveArtState();
+      // Only the toggle-ON transition (liking) is notification-worthy —
+      // un-appreciating must never notify, and self-appreciation must
+      // never notify either.
+      if (appreciated) {
+        const owner = findProjectOwner(s, projectId);
+        if (owner && owner.userId !== uid) {
+          notifyArtistry(owner.userId, {
+            type: "like", fromUserId: uid, postId: projectId,
+            content: `${uid} appreciated your project "${owner.title}"`,
+          });
+        }
+      }
       return { ok: true, result: { appreciated, count: list.length, projectId } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Notification feed ────────────────────────────────────────────────
+  // Durable, in-lens read of the notifications follow/commentAdd/appreciate
+  // (above) generate via the platform notification substrate. Filtered to
+  // the three types this unit produces (follow/comment/like) — this is
+  // deliberately an "your artistry activity" feed, not a mount of the
+  // whole platform inbox (mentions/DMs/other-lens alerts surface through
+  // their own lenses). Real-time delivery is already handled for free by
+  // useSocialNotificationToast's socket subscription; these two macros
+  // cover the durable "catch up on what you missed" half.
+  const ART_NOTIF_TYPES = new Set(["follow", "comment", "like"]);
+  registerLensAction("artistry", "notifications-list", (ctx, artifact, params) => {
+    try {
+      const STATE = globalThis._concordSTATE;
+      if (!STATE) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const p = params || {};
+      const unreadOnly = !!p.unreadOnly;
+      const limitReq = Number(p.limit);
+      const limit = Number.isFinite(limitReq) ? Math.min(Math.max(limitReq, 1), 100) : 30;
+      // Pull generously from the shared store, then filter to artistry's
+      // own notification types before applying the caller's limit — the
+      // underlying store already caps at 500 per user (social-layer.js).
+      const raw = getNotifications(STATE, uid, { limit: 500, offset: 0, unreadOnly });
+      const notifications = (raw.notifications || [])
+        .filter((n) => ART_NOTIF_TYPES.has(n.type))
+        .slice(0, limit);
+      const unread = notifications.filter((n) => !n.read).length;
+      return { ok: true, result: { notifications, count: notifications.length, unread } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "notifications-mark-read", (ctx, artifact, params) => {
+    try {
+      const STATE = globalThis._concordSTATE;
+      if (!STATE) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const p = params || {};
+      if (p.all) {
+        const r = markAllNotificationsRead(STATE, uid);
+        return { ok: true, result: { markedRead: r.markedRead } };
+      }
+      const id = artClean(p.id, 80);
+      if (!id) return { ok: false, error: "id_required" };
+      const r = markNotificationRead(STATE, { userId: uid, notificationId: id });
+      if (!r.ok) return { ok: false, error: r.error || "not_found" };
+      return { ok: true, result: { id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
