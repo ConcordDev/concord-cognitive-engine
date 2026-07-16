@@ -24846,30 +24846,71 @@ register("intel", "environment", (ctx, input) => {
 }, { description: "Get environmental assessment intelligence from Foundation signal analysis." });
 
 // -- Research Tier (governance-controlled access) --
+// researcherId is ALWAYS derived from the caller's own authenticated
+// identity (ctx.actor), never trusted from client input — a client-
+// supplied researcherId would let one caller apply for, check the status
+// of, or pull Tier-2 data under another user's identity (a real authz gap
+// the previous version of this block had: it forwarded input.researcherId
+// verbatim into submitResearchApplication/getResearchIntelligence/etc.).
+// This also closes the review dead-end: submitResearchApplication sets
+// status:"pending" and reviewResearchApplication (imported above, grants a
+// real 1-year access grant on approval) was NEVER registered as a macro —
+// every application was permanently stuck pending. See research.review below.
+function _intelResearcherId(ctx) {
+  return String(ctx?.actor?.userId || ctx?.actor?.id || "anon");
+}
+
 register("intel", "research.apply", (ctx, input) => {
   return submitResearchApplication(
-    input.researcherId, input.institution, input.purpose, input.categories || []
+    _intelResearcherId(ctx), input.institution, input.purpose, input.categories || []
   );
-}, { description: "Submit research access application for Tier 2 intelligence." });
+}, { description: "Submit research access application for Tier 2 intelligence (scoped to the caller's own identity)." });
 
 register("intel", "research.status", (ctx, input) => {
-  return getResearchApplicationStatus(input.applicationId);
-}, { description: "Check research access application status." });
+  const callerId = _intelResearcherId(ctx);
+  const isReviewer = ["owner", "admin", "founder"].includes(ctx?.actor?.role);
+  const result = getResearchApplicationStatus(input.applicationId);
+  if (!result.ok) return result;
+  if (result.application.researcherId !== callerId && !isReviewer) {
+    return { ok: false, error: "forbidden", reason: "not_your_application" };
+  }
+  return result;
+}, { description: "Check research access application status (caller's own application, or a governance reviewer)." });
 
 register("intel", "research.data", (ctx, input) => {
   const limit = Number(input.limit) || 50;
-  return getResearchIntelligence(input.researcherId, input.category, limit);
-}, { description: "Access authorized research intelligence data (governance-approved only)." });
+  return getResearchIntelligence(_intelResearcherId(ctx), input.category, limit);
+}, { description: "Access authorized research intelligence data (governance-approved only; scoped to the caller)." });
 
 register("intel", "research.synthesis", (ctx, input) => {
   const limit = Number(input.limit) || 50;
-  return getResearchSynthesis(input.researcherId, limit);
-}, { description: "Access cross-medium synthesis research findings." });
+  return getResearchSynthesis(_intelResearcherId(ctx), limit);
+}, { description: "Access cross-medium synthesis research findings (scoped to the caller)." });
 
 register("intel", "research.archive", (ctx, input) => {
   const limit = Number(input.limit) || 50;
-  return getResearchArchive(input.researcherId, limit);
-}, { description: "Access historical signal archaeology research data." });
+  return getResearchArchive(_intelResearcherId(ctx), limit);
+}, { description: "Access historical signal archaeology research data (scoped to the caller)." });
+
+// research.review — the missing approval macro. Gated the same way
+// goals.approve gates founder approval: an inline role check, because
+// runMacro's allowMacro/_canRunMacro ACL layer is deliberately skipped for
+// normal HTTP calls (see makeCtx's comment on _isHumanRequest above) — an
+// allowMacro-only gate here would be decorative on the path real users
+// take. entity.terminal_approve's multi-voter council quorum is the
+// heavier precedent this codebase uses for higher-risk terminal exec; a
+// single governance-role reviewer is proportionate for research-access
+// approval, matching goals.approve's shape rather than the quorum one.
+register("intel", "research.review", (ctx, input) => {
+  if (!["owner", "admin", "founder"].includes(ctx?.actor?.role)) {
+    return { ok: false, error: "forbidden", reason: "governance_role_required" };
+  }
+  const applicationId = String(input.applicationId || "");
+  if (!applicationId) return { ok: false, error: "applicationId required" };
+  const approved = input.approved === true || input.decision === "approve";
+  const reviewedBy = _intelResearcherId(ctx);
+  return reviewResearchApplication(applicationId, approved, reviewedBy);
+}, { description: "Governance review (approve/deny) of a Tier 2 research access application. Owner/admin/founder role required." });
 
 // -- Classifier & Metrics --
 register("intel", "classifier.status", (ctx, input) => {
