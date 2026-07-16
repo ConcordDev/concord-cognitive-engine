@@ -300,6 +300,40 @@ const DungeonHUD = dynamic(
     })),
   { ssr: false }
 );
+// Wave 4 gap-closure — Foundry Phase-7 runtime HUDs (Status Window, Size
+// Scaling, Skill Affinity, Reincarnation). The four size.*/status.*/
+// skill_affinity.*/reincarnation.* macros were real and tested but had
+// zero frontend caller (docs/lens-specs/foundry-capability-map.md "Honest
+// residual"). Each HUD is config-gated via useFoundrySystemGate and
+// renders nothing for a world whose Foundry worldspec never selected it.
+const StatusWindowHUD = dynamic(
+  () =>
+    import('@/components/world/StatusWindowHUD').then((m) => ({
+      default: m.StatusWindowHUD,
+    })),
+  { ssr: false }
+);
+const SizeScalingHUD = dynamic(
+  () =>
+    import('@/components/world/SizeScalingHUD').then((m) => ({
+      default: m.SizeScalingHUD,
+    })),
+  { ssr: false }
+);
+const SkillAffinityPanel = dynamic(
+  () =>
+    import('@/components/world/SkillAffinityPanel').then((m) => ({
+      default: m.SkillAffinityPanel,
+    })),
+  { ssr: false }
+);
+const ReincarnationPromptHUD = dynamic(
+  () =>
+    import('@/components/world/ReincarnationPromptHUD').then((m) => ({
+      default: m.ReincarnationPromptHUD,
+    })),
+  { ssr: false }
+);
 const CourtshipProgressOverlay = dynamic(
   () =>
     import('@/components/world/CourtshipProgressOverlay').then((m) => ({
@@ -6739,6 +6773,15 @@ export default function WorldLensPage() {
           mount HUD). Always shows a "Dungeons" launcher; swaps to a live
           boss hp%/phase/damage-share panel once an instance is joined. */}
       <DungeonHUD worldId={currentWorldId} />
+
+      {/* Wave 4 gap-closure — Foundry Phase-7 runtime HUDs. Each fetches the
+          current world's real rule_modulators.foundry.systems and honestly
+          renders nothing (no launcher, no panel) for a world whose
+          Foundry-authored worldspec never selected that system. */}
+      <StatusWindowHUD worldId={currentWorldId} />
+      <SizeScalingHUD worldId={currentWorldId} />
+      <SkillAffinityPanel worldId={currentWorldId} />
+      <ReincarnationPromptHUD worldId={currentWorldId} isDead={combatState.isDead} />
 
       {/* MMO completeness — combat/character QoL HUDs. AbilityCooldownHud polls
           world.combat-prefs-get (renders nothing with no bound abilities);
