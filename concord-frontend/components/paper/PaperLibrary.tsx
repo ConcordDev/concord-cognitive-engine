@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Library, Plus, Trash2, Loader2, Star } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { PaperVersionHistory } from '@/components/paper/PaperVersionHistory';
 
 interface Paper {
   id: string; title: string; authors: string[]; year: number | null; venue: string | null;
@@ -154,33 +155,63 @@ export function PaperLibrary() {
               <button aria-label="Delete" onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
             {active?.id === p.id && (
-              <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1.5">
-                {p.abstract && <p className="text-[11px] text-zinc-400 mb-1">{p.abstract}</p>}
-                <textarea defaultValue={p.notes} rows={2} placeholder="Your notes…"
-                  onBlur={e => { if (e.target.value !== p.notes) void update(p.id, { notes: e.target.value }); }}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
-                {collections.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1">
-                    <span className="text-[9px] text-zinc-400 uppercase tracking-wide mr-1">Collections</span>
-                    {collections.map(c => {
-                      const inColl = (p.collectionIds || []).includes(c.id);
-                      return (
-                        <button key={c.id} onClick={() => toggleCollection(p.id, c.id, inColl)}
-                          className={cn('text-[10px] px-2 py-0.5 rounded-full border transition-colors',
-                            inColl ? 'bg-cyan-600/20 border-cyan-600/50 text-cyan-300' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200')}>
-                          {c.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <PaperDetail
+                paper={p}
+                collections={collections}
+                onSaveNotes={notes => void update(p.id, { notes })}
+                onToggleCollection={(collectionId, remove) => void toggleCollection(p.id, collectionId, remove)}
+              />
             )}
           </li>
         ))}
       </ul>
       {collections.length > 0 && (
         <p className="text-[10px] text-zinc-400 mt-2">{collections.length} collection{collections.length === 1 ? '' : 's'}: {collections.map(c => `${c.name} (${c.paperCount})`).join(' · ')}</p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PaperDetail — the expanded per-paper view: abstract, notes editor (with a
+// real version-history + compare panel underneath), collections. Notes are
+// tracked as local controlled state so "Save version snapshot" always
+// snapshots exactly what's in the textarea, whether or not it has been
+// blurred/persisted via paper-update yet.
+// ---------------------------------------------------------------------------
+
+function PaperDetail({ paper, collections, onSaveNotes, onToggleCollection }: {
+  paper: Paper;
+  collections: CollectionMeta[];
+  onSaveNotes: (notes: string) => void;
+  onToggleCollection: (collectionId: string, remove: boolean) => void;
+}) {
+  const [notes, setNotes] = useState(paper.notes);
+
+  return (
+    <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1.5">
+      {paper.abstract && <p className="text-[11px] text-zinc-400 mb-1">{paper.abstract}</p>}
+      <textarea value={notes} rows={2} placeholder="Your notes…"
+        onChange={e => setNotes(e.target.value)}
+        onBlur={() => { if (notes !== paper.notes) onSaveNotes(notes); }}
+        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
+
+      <PaperVersionHistory paperId={paper.id} currentContent={notes} />
+
+      {collections.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[9px] text-zinc-400 uppercase tracking-wide mr-1">Collections</span>
+          {collections.map(c => {
+            const inColl = (paper.collectionIds || []).includes(c.id);
+            return (
+              <button key={c.id} onClick={() => onToggleCollection(c.id, inColl)}
+                className={cn('text-[10px] px-2 py-0.5 rounded-full border transition-colors',
+                  inColl ? 'bg-cyan-600/20 border-cyan-600/50 text-cyan-300' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200')}>
+                {c.name}
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );

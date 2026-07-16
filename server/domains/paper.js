@@ -2,6 +2,32 @@
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 export default function registerPaperActions(registerLensAction) {
+  // Shared line/word/char diff computation. Extracted so the pure-compute
+  // `revisionDiff` macro (caller-supplied text) and `paper-version-diff`
+  // (real stored version snapshots, see the "Version history" section
+  // below) run the exact same algorithm instead of duplicating it.
+  function computeTextDiff(oldText, newText) {
+    const oldLines = oldText.split("\n");
+    const newLines = newText.split("\n");
+    const oldWords = oldText.split(/\s+/).filter(Boolean);
+    const newWords = newText.split(/\s+/).filter(Boolean);
+    const oldSet = new Set(oldLines);
+    const newSet = new Set(newLines);
+    const added = newLines.filter(l => !oldSet.has(l));
+    const removed = oldLines.filter(l => !newSet.has(l));
+    const unchanged = oldLines.filter(l => newSet.has(l));
+    const oldChars = oldText.length;
+    const newChars = newText.length;
+    return {
+      oldStats: { lines: oldLines.length, words: oldWords.length, chars: oldChars },
+      newStats: { lines: newLines.length, words: newWords.length, chars: newChars },
+      diff: { linesAdded: added.length, linesRemoved: removed.length, linesUnchanged: unchanged.length, wordDelta: newWords.length - oldWords.length, charDelta: newChars - oldChars },
+      changeRate: Math.round(((added.length + removed.length) / Math.max(1, oldLines.length)) * 100),
+      addedPreview: added.slice(0, 10),
+      removedPreview: removed.slice(0, 10),
+    };
+  }
+
   registerLensAction("paper", "citationAnalyze", (ctx, artifact, _params) => {
     const citations = artifact.data?.citations || artifact.data?.references || [];
     if (citations.length === 0) return { ok: true, result: { message: "Add citations/references to analyze." } };
@@ -75,18 +101,7 @@ export default function registerPaperActions(registerLensAction) {
     const oldText = artifact.data?.original || artifact.data?.v1 || "";
     const newText = artifact.data?.revised || artifact.data?.v2 || "";
     if (!oldText || !newText) return { ok: true, result: { message: "Provide 'original' and 'revised' text to compare." } };
-    const oldLines = oldText.split("\n");
-    const newLines = newText.split("\n");
-    const oldWords = oldText.split(/\s+/).filter(Boolean);
-    const newWords = newText.split(/\s+/).filter(Boolean);
-    const oldSet = new Set(oldLines);
-    const newSet = new Set(newLines);
-    const added = newLines.filter(l => !oldSet.has(l));
-    const removed = oldLines.filter(l => !newSet.has(l));
-    const unchanged = oldLines.filter(l => newSet.has(l));
-    const oldChars = oldText.length;
-    const newChars = newText.length;
-    return { ok: true, result: { oldStats: { lines: oldLines.length, words: oldWords.length, chars: oldChars }, newStats: { lines: newLines.length, words: newWords.length, chars: newChars }, diff: { linesAdded: added.length, linesRemoved: removed.length, linesUnchanged: unchanged.length, wordDelta: newWords.length - oldWords.length, charDelta: newChars - oldChars }, changeRate: Math.round(((added.length + removed.length) / Math.max(1, oldLines.length)) * 100), addedPreview: added.slice(0, 10), removedPreview: removed.slice(0, 10) } };
+    return { ok: true, result: computeTextDiff(oldText, newText) };
   });
 
   // ─── Real paper search via arXiv (free, no key) ──
@@ -449,6 +464,60 @@ export default function registerPaperActions(registerLensAction) {
     savePaper();
     return { ok: true, result: { paperId: paper.id, synced: annots.length, notes: paper.notes } };
   });
+
+  // ─── Version history + real revision diff (paper's ENGINEERING gap) ─
+  // The paper record previously had no version-snapshot storage — just
+  // metadata. paper-version-save persists a labeled text snapshot onto
+  // the paper (modeled on the paper-annotate lookup/validate/push/save
+  // pattern above); paper-version-list reads them back oldest-first;
+  // paper-version-diff runs the shared computeTextDiff algorithm against
+  // two REAL stored snapshots (picked by versionNumber) instead of the
+  // caller-supplied text revisionDiff above operates on.
+
+  registerLensAction("paper", "paper-version-save", (ctx, _a, params = {}) => {
+  try {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    const content = ppClean(params.content, 8000);
+    if (!content) return { ok: false, error: "content required" };
+    const label = params.label != null ? (ppClean(params.label, 120) || null) : null;
+    if (!Array.isArray(paper.versions)) paper.versions = [];
+    const versionNumber = (paper.versions[paper.versions.length - 1]?.versionNumber || 0) + 1;
+    const version = { id: ppId("ver"), versionNumber, content, label, createdAt: ppNow() };
+    paper.versions.push(version);
+    savePaper();
+    return { ok: true, result: { version, total: paper.versions.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("paper", "paper-version-list", (ctx, _a, params = {}) => {
+  try {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    const versions = [...(paper.versions || [])].sort((a, b) => a.versionNumber - b.versionNumber);
+    return { ok: true, result: { versions, count: versions.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("paper", "paper-version-diff", (ctx, _a, params = {}) => {
+  try {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    const fromVersion = Number(params.fromVersion);
+    const toVersion = Number(params.toVersion);
+    if (!Number.isFinite(fromVersion) || !Number.isFinite(toVersion)) return { ok: false, error: "fromVersion and toVersion required" };
+    const versions = paper.versions || [];
+    const fromSnap = versions.find((v) => v.versionNumber === fromVersion);
+    const toSnap = versions.find((v) => v.versionNumber === toVersion);
+    if (!fromSnap) return { ok: false, error: `version not found: ${fromVersion}` };
+    if (!toSnap) return { ok: false, error: `version not found: ${toVersion}` };
+    const diff = computeTextDiff(fromSnap.content, toSnap.content);
+    return { ok: true, result: { fromVersion, toVersion, ...diff } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── One-click capture from DOI/URL (backlog item 3) ────────────────
   // Resolves a DOI through CrossRef and saves a fully-populated record.
