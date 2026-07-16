@@ -2283,6 +2283,7 @@ export const apiHelpers = {
     signalsClassify: (payload: Record<string, unknown>) => api.post('/api/atlas/signals/classify', payload),
     privacyZones: (view: 'zones' | 'stats' | 'verify', params?: Record<string, unknown>) =>
       api.get('/api/atlas/privacy_zones', { params: { view, ...params } }),
+    query: (payload: Record<string, unknown>) => api.post('/api/atlas/query', payload),
   },
 
   /** Qualia — Sensory / Body / Presence */

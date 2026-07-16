@@ -14,7 +14,7 @@ import { SafeCard } from '@/components/common/SafeCard';
 import { motion } from 'framer-motion';
 import {
   Map, Layers, Radio, AlertTriangle, RefreshCw,
-  Compass, Globe, Radar, Loader2, MapPinned, Satellite, Info, ShieldCheck,
+  Compass, Globe, Radar, Loader2, MapPinned, Satellite, Info, ShieldCheck, Search,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { MapMarker } from '@/components/common/MapView';
@@ -25,6 +25,7 @@ import AtlasOverlay from '@/components/chat/AtlasOverlay';
 import { SignalClassifyForm } from '@/components/atlas/SignalClassifyForm';
 import AtlasPrivacyMonitor, { type PrivacyMonitorData } from '@/components/chat/AtlasPrivacyMonitor';
 import { PrivacyVerifyForm } from '@/components/atlas/PrivacyVerifyForm';
+import { SpatialQueryForm } from '@/components/atlas/SpatialQueryForm';
 
 // Leaflet requires dynamic import (no SSR)
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -32,7 +33,7 @@ const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: fals
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type Mode = 'map' | 'tomography';
-type TomoTab = 'terrain' | 'signals' | 'anomalies' | 'coverage' | 'privacy';
+type TomoTab = 'terrain' | 'signals' | 'anomalies' | 'coverage' | 'privacy' | 'query';
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -193,6 +194,7 @@ function SignalTomography() {
     { id: 'anomalies', label: 'Anomalies', icon: <AlertTriangle className="w-4 h-4" /> },
     { id: 'coverage', label: 'Coverage', icon: <Layers className="w-4 h-4" /> },
     { id: 'privacy', label: 'Privacy', icon: <ShieldCheck className="w-4 h-4" /> },
+    { id: 'query', label: 'Query', icon: <Search className="w-4 h-4" /> },
   ];
 
   return (
@@ -405,6 +407,8 @@ function SignalTomography() {
             <AtlasPrivacyMonitor data={privacyStatsData ?? null} loading={privacyStatsLoading} />
           </>
         )}
+
+        {tab === 'query' && <SpatialQueryForm />}
       </div>
     </div>
   );
